@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #0e0e10;
+  --color-text: #e5e5e5;
+  --color-primary: #9146ff;
+  --color-primary-dark: #5a32b4;
+  --color-card: #1a1a1d;
+  --radius-base: 8px;
+}
+
+* {
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(2rem, 2.5vw, 2.5rem);
+}
+
+h2 {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+}
+
+h3 {
+  font-size: clamp(1.25rem, 1.5vw, 1.5rem);
+}
+
+.page-container {
+  padding: 1.5rem;
+}
+
+.card {
+  background-color: var(--color-card);
+  border-radius: var(--radius-base);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  padding: 1.25rem;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
