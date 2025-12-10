@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
@@ -30,7 +31,8 @@ const twitchActivityData = [
   { month: "Déc", value: 115 },
 ];
 
-const discordGrowthData = [
+// Données par défaut (fallback)
+const defaultDiscordGrowthData = [
   { month: "Janv", value: 160 },
   { month: "Fév", value: 180 },
   { month: "Mar", value: 200 },
@@ -158,6 +160,36 @@ const navLinks = [
 ];
 
 export default function DashboardPage() {
+  const [discordGrowthData, setDiscordGrowthData] = useState(defaultDiscordGrowthData);
+  const [loadingDiscordData, setLoadingDiscordData] = useState(true);
+
+  // Charger les données de croissance Discord depuis l'API
+  useEffect(() => {
+    async function loadDiscordGrowthData() {
+      try {
+        const response = await fetch('/api/admin/discord-growth', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.data && result.data.length > 0) {
+            setDiscordGrowthData(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données Discord:', error);
+      } finally {
+        setLoadingDiscordData(false);
+      }
+    }
+    
+    loadDiscordGrowthData();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
       <div className="p-8">
@@ -205,34 +237,41 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-white mb-4">
               Croissance Discord
             </h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={discordGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="month"
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1d",
-                    border: "1px solid #2a2a2d",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ fill: "#10b981", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loadingDiscordData ? (
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={discordGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    dataKey="month"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1a1a1d",
+                      border: "1px solid #2a2a2d",
+                      borderRadius: "8px",
+                      color: "#fff",
+                    }}
+                    formatter={(value: any) => [value, 'Membres']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={{ fill: "#10b981", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           {/* Engagement TENF */}
