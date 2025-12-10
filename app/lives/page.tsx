@@ -27,13 +27,14 @@ interface LiveMember {
   role: string;
 }
 
-const filters = ["Tous", "Affiliés", "Développement"];
-
 export default function LivesPage() {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mutedStreams, setMutedStreams] = useState<Set<string>>(new Set());
+  const [hoveredStream, setHoveredStream] = useState<string | null>(null);
+  const [availableGames, setAvailableGames] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchLiveStreams() {
@@ -113,6 +114,10 @@ export default function LivesPage() {
           .filter((live): live is LiveMember => live !== null)
           .sort((a, b) => b.viewerCount - a.viewerCount);
 
+        // Extraire les jeux uniques pour le filtre
+        const uniqueGames = Array.from(new Set(validLives.map(live => live.game).filter(Boolean))).sort();
+        setAvailableGames(uniqueGames);
+
         setLiveMembers(validLives);
       } catch (err) {
         console.error("Error fetching live streams:", err);
@@ -136,12 +141,8 @@ export default function LivesPage() {
     if (activeFilter === "Tous") {
       return liveMembers;
     }
-    const filterMap: Record<string, string> = {
-      Affiliés: "Affilié",
-      Développement: "Développement",
-    };
     return liveMembers.filter((live) => {
-      return live.role === filterMap[activeFilter];
+      return live.game === activeFilter;
     });
   };
 
@@ -164,11 +165,23 @@ export default function LivesPage() {
     }
   };
 
-  const formatViewerCount = (count: number) => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
-    }
-    return count.toString();
+
+  const toggleMute = (twitchLogin: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMutedStreams((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(twitchLogin)) {
+        newSet.delete(twitchLogin);
+      } else {
+        newSet.add(twitchLogin);
+      }
+      return newSet;
+    });
+  };
+
+  const isMuted = (twitchLogin: string) => {
+    return mutedStreams.has(twitchLogin);
   };
 
   if (loading) {
@@ -203,73 +216,130 @@ export default function LivesPage() {
         </div>
       </div>
 
-      {/* Barre de filtres */}
-      <div className="flex flex-wrap gap-3">
-        {filters.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-              activeFilter === filter
-                ? "bg-[#9146ff] text-white"
-                : "bg-[#1a1a1d] text-white border border-gray-700 hover:border-[#9146ff]/50"
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
+      {/* Filtre déroulant */}
+      <div className="flex items-center gap-3">
+        <label htmlFor="game-filter" className="text-sm text-gray-400">
+          Filtrer par jeu:
+        </label>
+        <select
+          id="game-filter"
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value)}
+          className="rounded-lg bg-[#1a1a1d] border border-gray-700 text-white px-4 py-2 text-sm font-medium transition-all hover:border-[#9146ff]/50 focus:border-[#9146ff] focus:outline-none"
+        >
+          <option value="Tous">Tous</option>
+          {availableGames.map((game) => (
+            <option key={game} value={game}>
+              {game}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Grille de lives */}
       {getFilteredLives().length > 0 ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {getFilteredLives().map((live) => {
+            const isHovered = hoveredStream === live.twitchLogin;
+            const muted = isMuted(live.twitchLogin);
+            const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+            
             return (
-              <Link
+              <div
                 key={live.twitchLogin}
-                href={live.twitchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="card overflow-hidden bg-[#1a1a1d] border border-gray-700 transition-transform hover:scale-[1.02] hover:border-[#9146ff]/50"
+                className="card overflow-hidden bg-[#1a1a1d] border border-gray-700 transition-all duration-300 hover:border-[#9146ff]/50 group"
+                onMouseEnter={() => setHoveredStream(live.twitchLogin)}
+                onMouseLeave={() => setHoveredStream(null)}
               >
-                {/* Thumbnail avec badge LIVE */}
-                <div className="relative aspect-video w-full bg-gradient-to-br from-[#9146ff]/20 to-[#5a32b4]/20">
+                {/* Thumbnail avec vidéo dynamique et zoom */}
+                <div className="relative aspect-video w-full bg-gradient-to-br from-[#9146ff]/20 to-[#5a32b4]/20 overflow-hidden">
+                  {/* Thumbnail de base */}
                   <img
                     src={live.thumbnailUrl}
                     alt={live.displayName}
-                    className="w-full h-full object-cover"
+                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
+                      isHovered ? 'scale-125 opacity-0' : 'scale-100 opacity-100'
+                    }`}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
                     }}
                   />
-                  <div className="absolute left-2 top-2 flex items-center gap-2">
-                    <div className="rounded bg-red-600 px-2 py-1 text-xs font-bold text-white flex items-center gap-1">
-                      <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                      LIVE
+                  
+                  {/* Vidéo Twitch en preview (affichée au survol) */}
+                  {isHovered && (
+                    <div className="absolute inset-0 z-10 overflow-hidden">
+                      <iframe
+                        src={`https://player.twitch.tv/?channel=${live.twitchLogin}&parent=${hostname}&muted=${muted ? 'true' : 'false'}&autoplay=true&controls=false`}
+                        width="100%"
+                        height="100%"
+                        allowFullScreen={false}
+                        className="w-full h-full"
+                        style={{ transform: 'scale(1.1)', transition: 'transform 0.5s ease' }}
+                        allow="autoplay; encrypted-media"
+                        frameBorder="0"
+                        scrolling="no"
+                      />
                     </div>
-                    <div className="rounded bg-black/70 px-2 py-1 text-xs font-semibold text-white">
-                      {formatViewerCount(live.viewerCount)} viewers
+                  )}
+                  
+                  {/* Overlay avec badges */}
+                  <div className="absolute inset-0 z-20 pointer-events-none">
+                    <div className="absolute left-2 top-2">
+                      <div className="rounded bg-red-600 px-2 py-1 text-xs font-bold text-white flex items-center gap-1">
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        LIVE
+                      </div>
+                    </div>
+                    
+                    {/* Bouton son */}
+                    <div className="absolute right-2 top-2 z-30 pointer-events-auto">
+                      <button
+                        onClick={(e) => toggleMute(live.twitchLogin, e)}
+                        className="rounded-full bg-black/70 hover:bg-black/90 p-2 transition-colors"
+                        aria-label={muted ? "Activer le son" : "Désactiver le son"}
+                      >
+                        {muted ? (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
 
                 {/* Infos du streamer */}
                 <div className="p-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={live.avatar}
-                      alt={live.displayName}
-                      className="h-10 w-10 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://placehold.co/40x40?text=${live.displayName.charAt(0)}`;
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white truncate">{live.displayName}</h3>
-                      <p className="text-sm text-gray-400 truncate">{live.game}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <img
+                        src={live.avatar}
+                        alt={live.displayName}
+                        className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://placehold.co/40x40?text=${live.displayName.charAt(0)}`;
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white truncate">{live.displayName}</h3>
+                        <p className="text-sm text-gray-400 truncate">{live.game}</p>
+                      </div>
                     </div>
+                    <Link
+                      href={live.twitchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-[#9146ff] hover:bg-[#5a32b4] text-white px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0"
+                    >
+                      Regarder
+                    </Link>
                   </div>
                   
                   {/* Badge rôle */}
@@ -283,7 +353,7 @@ export default function LivesPage() {
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

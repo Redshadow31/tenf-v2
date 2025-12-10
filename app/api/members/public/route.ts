@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAllLists } from '@/lib/memberData';
 import { initializeMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
+import { getVipBadgeText } from '@/lib/vipHistory';
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -46,12 +47,16 @@ export async function GET() {
         avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
       }
 
+      // Calculer le badge VIP+N si le membre est VIP
+      const vipBadge = member.isVip ? getVipBadgeText(member.twitchLogin) : undefined;
+
       return {
         twitchLogin: member.twitchLogin,
         twitchUrl: member.twitchUrl,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         role: member.role,
         isVip: member.isVip,
+        vipBadge: vipBadge,
         badges: member.badges || [],
         discordId: member.discordId,
         discordUsername: member.discordUsername,

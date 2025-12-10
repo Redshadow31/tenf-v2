@@ -19,6 +19,7 @@ type MemberModalProps = {
       youtube?: string;
     };
     isVip?: boolean;
+    vipBadge?: string;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -105,7 +106,7 @@ export default function MemberModal({
             />
             {member.isVip && (
               <div className="absolute -bottom-2 -right-2 rounded-full bg-[#9146ff] px-3 py-1 text-xs font-bold text-white">
-                VIP
+                {member.vipBadge || "VIP"}
               </div>
             )}
           </div>

@@ -11,6 +11,8 @@ interface VipMember {
   twitchLogin?: string;
   twitchUrl?: string;
   twitchAvatar?: string;
+  vipBadge?: string;
+  consecutiveMonths?: number;
 }
 
 export default function VipPage() {
@@ -96,7 +98,7 @@ export default function VipPage() {
                     }}
                   />
                   <div className="absolute -bottom-1 -right-1 rounded-full bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
-                    VIP
+                    {member.vipBadge || "VIP"}
                   </div>
                 </div>
 

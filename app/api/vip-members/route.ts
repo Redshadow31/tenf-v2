@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllVipMemberData, initializeMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
+import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
 
 interface VipMember {
   discordId: string;
@@ -10,6 +11,8 @@ interface VipMember {
   twitchLogin?: string;
   twitchUrl?: string;
   twitchAvatar?: string;
+  vipBadge?: string;
+  consecutiveMonths?: number;
 }
 
 // Initialiser les données au démarrage du serveur
@@ -61,6 +64,10 @@ export async function GET() {
         avatar = `https://placehold.co/128x128?text=${member.displayName.charAt(0)}`;
       }
 
+      // Calculer le badge VIP+N
+      const vipBadge = getVipBadgeText(member.twitchLogin);
+      const consecutiveMonths = getConsecutiveVipMonths(member.twitchLogin);
+
       return {
         discordId: member.discordId || '',
         username: member.discordUsername || member.displayName,
@@ -69,6 +76,8 @@ export async function GET() {
         twitchLogin: member.twitchLogin,
         twitchUrl: member.twitchUrl,
         twitchAvatar: twitchAvatar,
+        vipBadge: vipBadge,
+        consecutiveMonths: consecutiveMonths,
       };
     });
 

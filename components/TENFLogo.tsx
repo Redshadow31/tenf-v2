@@ -6,7 +6,7 @@ import Image from "next/image";
 interface TENFLogoProps {
   className?: string;
   showTagline?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   useImage?: boolean; // Si true, utilise l'image depuis /logo.png au lieu du SVG
 }
 
@@ -20,12 +20,14 @@ export default function TENFLogo({
     sm: "h-8 w-8",
     md: "h-12 w-12",
     lg: "h-16 w-16",
+    xl: "h-20 w-20",
   };
 
   const textSizes = {
     sm: "text-sm",
     md: "text-xl",
     lg: "text-2xl",
+    xl: "text-3xl",
   };
 
   // Utiliser le logo réel par défaut
@@ -36,8 +38,8 @@ export default function TENFLogo({
           <Image
             src="/logo.png"
             alt="TENF Logo"
-            width={48}
-            height={48}
+            width={size === "xl" ? 80 : size === "lg" ? 64 : size === "md" ? 48 : 32}
+            height={size === "xl" ? 80 : size === "lg" ? 64 : size === "md" ? 48 : 32}
             className="object-contain w-full h-full"
             priority
           />

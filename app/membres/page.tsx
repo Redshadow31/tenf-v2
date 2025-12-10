@@ -11,6 +11,7 @@ interface PublicMember {
   displayName: string;
   role: string;
   isVip: boolean;
+  vipBadge?: string;
   badges?: string[];
   discordId?: string;
   discordUsername?: string;
@@ -96,6 +97,7 @@ export default function Page() {
       description: `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
       isVip: member.isVip,
+      vipBadge: member.vipBadge,
       badges: member.badges || [],
     });
     setIsModalOpen(true);
@@ -161,7 +163,7 @@ export default function Page() {
                   </div>
                   {member.isVip && (
                     <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
-                      VIP
+                      {member.vipBadge || "VIP"}
                     </div>
                   )}
                 </div>
