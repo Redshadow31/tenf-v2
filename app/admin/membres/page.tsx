@@ -7,6 +7,7 @@ import EditMemberModal from "@/components/admin/EditMemberModal";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction } from "@/lib/admin";
+import MemberBadges from "@/components/admin/MemberBadges";
 
 type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
 type MemberStatus = "Actif" | "Inactif";
@@ -18,8 +19,13 @@ interface Member {
   role: MemberRole;
   statut: MemberStatus;
   discord: string;
+  discordId?: string;
   twitch: string;
   notesInternes?: string;
+  badges?: string[];
+  isVip?: boolean;
+  isModeratorJunior?: boolean;
+  isModeratorMentor?: boolean;
 }
 
 // Données mock
@@ -81,7 +87,8 @@ const navLinks = [
 ];
 
 export default function GestionMembresPage() {
-  const [members, setMembers] = useState<Member[]>(mockMembers);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -104,6 +111,67 @@ export default function GestionMembresPage() {
       .then((res) => res.json())
       .then((data) => setSafeModeEnabled(data.safeModeEnabled || false))
       .catch(() => setSafeModeEnabled(false));
+
+    // Charger les membres depuis Discord et les lier aux données locales
+    async function loadDiscordMembers() {
+      try {
+        // Récupérer les membres depuis Discord
+        const discordResponse = await fetch("/api/discord/members");
+        if (!discordResponse.ok) {
+          throw new Error("Erreur lors du chargement des membres Discord");
+        }
+        const discordData = await discordResponse.json();
+
+        // Récupérer les données centralisées pour avoir les Twitch logins
+        let centralMembers: any[] = [];
+        try {
+          const centralResponse = await fetch("/api/admin/members");
+          if (centralResponse.ok) {
+            const centralData = await centralResponse.json();
+            centralMembers = centralData.members || [];
+          }
+        } catch (err) {
+          console.warn("Impossible de charger les données centralisées:", err);
+        }
+
+        // Créer un map des membres par Discord ID
+        const centralByDiscordId = new Map(
+          centralMembers
+            .filter((m: any) => m.discordId)
+            .map((m: any) => [m.discordId, m])
+        );
+
+        // Mapper les membres Discord vers le format Member
+        const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
+          const centralMember = centralByDiscordId.get(discordMember.discordId);
+          
+          return {
+            id: index + 1,
+            avatar: discordMember.avatar,
+            nom: discordMember.discordNickname || discordMember.discordUsername,
+            role: discordMember.siteRole,
+            statut: "Actif" as MemberStatus,
+            discord: discordMember.discordUsername,
+            discordId: discordMember.discordId,
+            twitch: centralMember?.twitchLogin || "", // Utiliser le Twitch login depuis les données centralisées
+            badges: discordMember.badges,
+            isVip: discordMember.isVip,
+            isModeratorJunior: discordMember.isModeratorJunior,
+            isModeratorMentor: discordMember.isModeratorMentor,
+          };
+        });
+
+        setMembers(mappedMembers);
+      } catch (error) {
+        console.error("Erreur lors du chargement des membres:", error);
+        // En cas d'erreur, utiliser les données mock
+        setMembers(mockMembers);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDiscordMembers();
   }, []);
 
   const filteredMembers = members.filter((member) =>
@@ -257,19 +325,96 @@ export default function GestionMembresPage() {
       : "bg-purple-900/20 text-purple-400 border border-purple-900/30";
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
+          <p className="text-gray-400">Chargement des membres depuis Discord...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
       <div className="p-8">
         {/* Header avec navigation */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-4xl font-bold text-purple-300">Gestion des Membres</h1>
-            <button
-              onClick={() => setIsAddChannelModalOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-            >
-              AJOUTER UNE CHAÎNE
-            </button>
+            <div>
+              <h1 className="text-4xl font-bold text-purple-300">Gestion des Membres</h1>
+              <p className="text-sm text-gray-400 mt-2">
+                Synchronisé avec Discord • {members.length} membre{members.length > 1 ? 's' : ''} trouvé{members.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    // Récupérer les membres depuis Discord
+                    const discordResponse = await fetch("/api/discord/members");
+                    if (!discordResponse.ok) throw new Error("Erreur Discord");
+                    const discordData = await discordResponse.json();
+
+                    // Récupérer les données centralisées
+                    let centralMembers: any[] = [];
+                    try {
+                      const centralResponse = await fetch("/api/admin/members");
+                      if (centralResponse.ok) {
+                        const centralData = await centralResponse.json();
+                        centralMembers = centralData.members || [];
+                      }
+                    } catch (err) {
+                      console.warn("Impossible de charger les données centralisées:", err);
+                    }
+
+                    // Créer un map des membres par Discord ID
+                    const centralByDiscordId = new Map(
+                      centralMembers
+                        .filter((m: any) => m.discordId)
+                        .map((m: any) => [m.discordId, m])
+                    );
+
+                    // Mapper les membres
+                    const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
+                      const centralMember = centralByDiscordId.get(discordMember.discordId);
+                      return {
+                        id: index + 1,
+                        avatar: discordMember.avatar,
+                        nom: discordMember.discordNickname || discordMember.discordUsername,
+                        role: discordMember.siteRole,
+                        statut: "Actif" as MemberStatus,
+                        discord: discordMember.discordUsername,
+                        discordId: discordMember.discordId,
+                        twitch: centralMember?.twitchLogin || "",
+                        badges: discordMember.badges,
+                        isVip: discordMember.isVip,
+                        isModeratorJunior: discordMember.isModeratorJunior,
+                        isModeratorMentor: discordMember.isModeratorMentor,
+                      };
+                    });
+
+                    setMembers(mappedMembers);
+                  } catch (error) {
+                    console.error("Erreur lors de la synchronisation:", error);
+                    alert("Erreur lors de la synchronisation. Vérifiez la console.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                🔄 Synchroniser
+              </button>
+              <button
+                onClick={() => setIsAddChannelModalOpen(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+              >
+                AJOUTER UNE CHAÎNE
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-4">
             {navLinks.map((link) => (
@@ -323,17 +468,33 @@ export default function GestionMembresPage() {
                         alt={member.nom}
                         className="w-12 h-12 rounded-full object-cover"
                       />
-                      <span className="text-white font-medium">{member.nom}</span>
+                      <div>
+                        <div className="text-white font-medium">{member.nom}</div>
+                        {member.discord && (
+                          <div className="text-xs text-gray-400">@{member.discord}</div>
+                        )}
+                        {member.twitch && (
+                          <div className="text-xs text-gray-400">Twitch: {member.twitch}</div>
+                        )}
+                        <MemberBadges
+                          badges={member.badges || []}
+                          isVip={member.isVip}
+                          isModeratorJunior={member.isModeratorJunior}
+                          isModeratorMentor={member.isModeratorMentor}
+                        />
+                      </div>
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getRoleBadgeColor(
-                        member.role
-                      )}`}
-                    >
-                      {member.role}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit ${getRoleBadgeColor(
+                          member.role
+                        )}`}
+                      >
+                        {member.role}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-4 px-6">
                     <span
