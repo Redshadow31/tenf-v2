@@ -109,10 +109,14 @@ export async function GET() {
           .map(roleId => roleMap.get(roleId))
           .filter(Boolean) as string[];
 
+        // Convertir null en undefined pour discordNickname
+        const nickname = member.nick || member.user.global_name;
+        const discordNickname = nickname !== null && nickname !== undefined ? nickname : undefined;
+
         return {
           discordId: member.user.id,
           discordUsername: member.user.username,
-          discordNickname: member.nick || member.user.global_name || undefined,
+          discordNickname,
           avatar: member.user.avatar
             ? `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png`
             : `https://cdn.discordapp.com/embed/avatars/${member.user.discriminator && member.user.discriminator !== '0' ? parseInt(member.user.discriminator) % 5 : 0}.png`,
