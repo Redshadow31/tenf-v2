@@ -7,10 +7,10 @@ export type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "A
 export type MemberStatus = "active" | "inactive" | "vip";
 
 export interface MemberWithRole {
-  twitchLogin: string;
   role: MemberRole;
   isVip: boolean;
   isActive: boolean;
+  twitchLogin?: string; // Optionnel pour le déploiement
 }
 
 // Mapping des membres avec leurs rôles (mock pour l'instant)
@@ -30,7 +30,12 @@ export const memberRoles: Record<string, MemberWithRole> = {
 // Fonction pour obtenir le rôle d'un membre
 export function getMemberRole(twitchLogin: string): MemberWithRole {
   const login = twitchLogin.toLowerCase();
-  return memberRoles[login] || { role: "Affilié", isVip: false, isActive: true };
+  return memberRoles[login] || { 
+    role: "Affilié", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: login 
+  };
 }
 
 // Fonction pour obtenir tous les membres actifs
