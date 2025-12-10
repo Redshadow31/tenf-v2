@@ -74,6 +74,21 @@ export default function Page() {
           </p>
         </div>
 
+        {/* Bouton Rejoindre le serveur */}
+        <div className="flex flex-col items-center gap-2">
+          <Link
+            href="https://discord.gg/tenf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-[#9146ff] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#5a32b4]"
+          >
+            Rejoindre le serveur
+          </Link>
+          <p className="text-sm text-gray-400">
+            Rejoins plus de 170 créateurs déjà engagés dans l'aventure TENF.
+          </p>
+        </div>
+
         {/* Cartes de stats */}
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
           <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">

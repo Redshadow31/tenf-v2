@@ -14,7 +14,7 @@ export default function TENFLogo({
   className = "", 
   showTagline = true,
   size = "md",
-  useImage = false
+  useImage = true // Par défaut, utiliser le logo réel
 }: TENFLogoProps) {
   const sizeClasses = {
     sm: "h-8 w-8",
@@ -28,7 +28,7 @@ export default function TENFLogo({
     lg: "text-2xl",
   };
 
-  // Si une image logo existe, l'utiliser
+  // Utiliser le logo réel par défaut
   if (useImage) {
     return (
       <Link href="/" className={`flex items-center gap-3 ${className}`}>
@@ -36,8 +36,9 @@ export default function TENFLogo({
           <Image
             src="/logo.png"
             alt="TENF Logo"
-            fill
-            className="object-contain"
+            width={48}
+            height={48}
+            className="object-contain w-full h-full"
             priority
           />
         </div>
