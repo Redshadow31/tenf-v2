@@ -112,48 +112,29 @@ export default function GestionMembresPage() {
       .then((data) => setSafeModeEnabled(data.safeModeEnabled || false))
       .catch(() => setSafeModeEnabled(false));
 
-    // Charger les membres depuis Discord et les lier aux données locales
+    // Charger les membres depuis le canal Discord #vos-chaînes-twitch
     async function loadDiscordMembers() {
       try {
-        // Récupérer les membres depuis Discord
-        const discordResponse = await fetch("/api/discord/members");
+        // Récupérer les membres depuis le canal Discord
+        const discordResponse = await fetch("/api/discord/channel/members");
         if (!discordResponse.ok) {
+          const errorText = await discordResponse.text();
+          console.error("Erreur lors du chargement des membres depuis Discord:", errorText);
           throw new Error("Erreur lors du chargement des membres Discord");
         }
         const discordData = await discordResponse.json();
 
-        // Récupérer les données centralisées pour avoir les Twitch logins
-        let centralMembers: any[] = [];
-        try {
-          const centralResponse = await fetch("/api/admin/members");
-          if (centralResponse.ok) {
-            const centralData = await centralResponse.json();
-            centralMembers = centralData.members || [];
-          }
-        } catch (err) {
-          console.warn("Impossible de charger les données centralisées:", err);
-        }
-
-        // Créer un map des membres par Discord ID
-        const centralByDiscordId = new Map(
-          centralMembers
-            .filter((m: any) => m.discordId)
-            .map((m: any) => [m.discordId, m])
-        );
-
         // Mapper les membres Discord vers le format Member
         const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-          const centralMember = centralByDiscordId.get(discordMember.discordId);
-          
           return {
             id: index + 1,
             avatar: discordMember.avatar,
             nom: discordMember.discordNickname || discordMember.discordUsername,
             role: discordMember.siteRole,
-            statut: "Actif" as MemberStatus,
+            statut: "Actif" as MemberStatus, // Tous les membres du canal sont actifs
             discord: discordMember.discordUsername,
             discordId: discordMember.discordId,
-            twitch: centralMember?.twitchLogin || "", // Utiliser le Twitch login depuis les données centralisées
+            twitch: discordMember.twitchLogin || "", // Récupéré directement depuis le canal
             badges: discordMember.badges,
             isVip: discordMember.isVip,
             isModeratorJunior: discordMember.isModeratorJunior,
@@ -330,7 +311,7 @@ export default function GestionMembresPage() {
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des membres depuis Discord...</p>
+          <p className="text-gray-400">Chargement des membres depuis le canal #vos-chaînes-twitch...</p>
         </div>
       </div>
     );
@@ -345,7 +326,7 @@ export default function GestionMembresPage() {
             <div>
               <h1 className="text-4xl font-bold text-purple-300">Gestion des Membres</h1>
               <p className="text-sm text-gray-400 mt-2">
-                Synchronisé avec Discord • {members.length} membre{members.length > 1 ? 's' : ''} trouvé{members.length > 1 ? 's' : ''}
+                Synchronisé depuis le canal #vos-chaînes-twitch • {members.length} membre{members.length > 1 ? 's' : ''} actif{members.length > 1 ? 's' : ''}
               </p>
             </div>
             <div className="flex gap-3">
@@ -353,33 +334,16 @@ export default function GestionMembresPage() {
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    // Récupérer les membres depuis Discord
-                    const discordResponse = await fetch("/api/discord/members");
-                    if (!discordResponse.ok) throw new Error("Erreur Discord");
-                    const discordData = await discordResponse.json();
-
-                    // Récupérer les données centralisées
-                    let centralMembers: any[] = [];
-                    try {
-                      const centralResponse = await fetch("/api/admin/members");
-                      if (centralResponse.ok) {
-                        const centralData = await centralResponse.json();
-                        centralMembers = centralData.members || [];
-                      }
-                    } catch (err) {
-                      console.warn("Impossible de charger les données centralisées:", err);
+                    // Récupérer les membres depuis le canal Discord #vos-chaînes-twitch
+                    const discordResponse = await fetch("/api/discord/channel/members");
+                    if (!discordResponse.ok) {
+                      const errorText = await discordResponse.text();
+                      throw new Error(`Erreur Discord: ${errorText}`);
                     }
-
-                    // Créer un map des membres par Discord ID
-                    const centralByDiscordId = new Map(
-                      centralMembers
-                        .filter((m: any) => m.discordId)
-                        .map((m: any) => [m.discordId, m])
-                    );
+                    const discordData = await discordResponse.json();
 
                     // Mapper les membres
                     const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-                      const centralMember = centralByDiscordId.get(discordMember.discordId);
                       return {
                         id: index + 1,
                         avatar: discordMember.avatar,
@@ -388,7 +352,7 @@ export default function GestionMembresPage() {
                         statut: "Actif" as MemberStatus,
                         discord: discordMember.discordUsername,
                         discordId: discordMember.discordId,
-                        twitch: centralMember?.twitchLogin || "",
+                        twitch: discordMember.twitchLogin || "",
                         badges: discordMember.badges,
                         isVip: discordMember.isVip,
                         isModeratorJunior: discordMember.isModeratorJunior,
@@ -397,16 +361,17 @@ export default function GestionMembresPage() {
                     });
 
                     setMembers(mappedMembers);
+                    alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s) depuis le canal #vos-chaînes-twitch`);
                   } catch (error) {
                     console.error("Erreur lors de la synchronisation:", error);
-                    alert("Erreur lors de la synchronisation. Vérifiez la console.");
+                    alert(`Erreur lors de la synchronisation: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                   } finally {
                     setLoading(false);
                   }
                 }}
                 className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
               >
-                🔄 Synchroniser
+                🔄 Synchroniser depuis #vos-chaînes-twitch
               </button>
               <button
                 onClick={() => setIsAddChannelModalOpen(true)}
