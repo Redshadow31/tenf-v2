@@ -6,6 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
+import BulkImportModal from "@/components/admin/BulkImportModal";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
@@ -52,6 +53,7 @@ export default function GestionMembresPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
@@ -73,11 +75,70 @@ export default function GestionMembresPage() {
       .then((data) => setSafeModeEnabled(data.safeModeEnabled || false))
       .catch(() => setSafeModeEnabled(false));
 
-    // Charger les membres depuis le canal Discord #vos-chaînes-twitch
-    loadDiscordMembers();
-  }, []);
+    // Charger les membres depuis la base de données centralisée
+    loadMembers();
+  }, [currentAdmin]);
 
-  // Charger les membres depuis le canal Discord #vos-chaînes-twitch
+  // Charger les membres depuis la base de données centralisée
+  async function loadMembers() {
+    try {
+      setLoading(true);
+      
+      // Si l'admin est fondateur, charger depuis l'API centralisée
+      if (currentAdmin?.isFounder) {
+        try {
+          const centralResponse = await fetch("/api/admin/members");
+          if (centralResponse.ok) {
+            const centralData = await centralResponse.json();
+            const centralMembers = centralData.members || [];
+            
+            // Mapper les membres centralisés vers le format Member
+            const mappedMembers: Member[] = centralMembers.map((member: any, index: number) => {
+              // Essayer de récupérer l'avatar depuis Discord si on a l'ID
+              const avatar = member.discordId 
+                ? `https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`
+                : `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
+              
+              return {
+                id: index + 1,
+                avatar,
+                nom: member.displayName || member.twitchLogin,
+                role: member.role || "Affilié",
+                statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
+                discord: member.discordUsername || "",
+                discordId: member.discordId,
+                twitch: member.twitchLogin || "",
+                twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+                siteUsername: member.siteUsername,
+                description: member.description,
+                customBio: member.customBio,
+                twitchStatus: member.twitchStatus,
+                badges: [],
+                isVip: member.isVip || false,
+                isModeratorJunior: false,
+                isModeratorMentor: false,
+              };
+            });
+            
+            setMembers(mappedMembers);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.warn("Impossible de charger les membres depuis l'API centralisée:", err);
+        }
+      }
+      
+      // Fallback: essayer de charger depuis Discord si l'API centralisée n'est pas disponible
+      await loadDiscordMembers();
+    } catch (error) {
+      console.error("Erreur lors du chargement des membres:", error);
+      setMembers([]);
+      setLoading(false);
+    }
+  }
+
+  // Charger les membres depuis le canal Discord #vos-chaînes-twitch (fallback)
   async function loadDiscordMembers() {
     try {
       setLoading(true);
@@ -193,26 +254,43 @@ export default function GestionMembresPage() {
     }
 
     const member = members.find((m) => m.id === memberId);
-    if (!member) return;
+    if (!member || !member.twitch) return;
 
     const oldStatus = member.statut;
     const newStatus = oldStatus === "Actif" ? "Inactif" : "Actif";
 
-    await logAction(
-      currentAdmin.id,
-      currentAdmin.username,
-      newStatus === "Actif" ? "Activation d'un membre" : "Désactivation d'un membre",
-      member.nom,
-      { oldStatus, newStatus }
-    );
+    try {
+      // Mettre à jour via l'API si c'est un fondateur
+      if (currentAdmin.isFounder) {
+        const response = await fetch("/api/admin/members", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            twitchLogin: member.twitch,
+            isActive: newStatus === "Actif",
+          }),
+        });
 
-    setMembers((prev) =>
-      prev.map((member) =>
-        member.id === memberId
-          ? { ...member, statut: newStatus }
-          : member
-      )
-    );
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Erreur lors de la mise à jour");
+        }
+      }
+
+      await logAction(
+        currentAdmin.id,
+        currentAdmin.username,
+        newStatus === "Actif" ? "Activation d'un membre" : "Désactivation d'un membre",
+        member.nom,
+        { oldStatus, newStatus }
+      );
+
+      // Recharger les membres depuis la base de données
+      await loadMembers();
+    } catch (error) {
+      console.error("Erreur lors de la modification du statut:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
   };
 
   const handleEdit = (member: Member) => {
@@ -298,14 +376,11 @@ export default function GestionMembresPage() {
         }
       );
 
-      setMembers((prev) =>
-        prev.map((member) =>
-          member.id === mergedMember.id ? mergedMember : member
-        )
-      );
       setIsEditModalOpen(false);
       setSelectedMember(null);
       alert("Membre modifié avec succès");
+      // Recharger les membres depuis la base de données
+      await loadMembers();
     } catch (error) {
       console.error("Erreur lors de la modification:", error);
       alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
@@ -317,6 +392,7 @@ export default function GestionMembresPage() {
     role: MemberRole;
     statut: "Actif" | "Inactif";
     discord: string;
+    discordId?: string;
     twitch: string;
     avatar: string;
   }) => {
@@ -334,6 +410,7 @@ export default function GestionMembresPage() {
           twitchLogin: newMember.twitch,
           displayName: newMember.nom,
           twitchUrl: `https://www.twitch.tv/${newMember.twitch}`,
+          discordId: newMember.discordId,
           discordUsername: newMember.discord,
           role: newMember.role,
           isActive: newMember.statut === "Actif",
@@ -371,9 +448,10 @@ export default function GestionMembresPage() {
         twitchUrl: `https://www.twitch.tv/${newMember.twitch}`,
       };
 
-      setMembers((prev) => [...prev, addedMember]);
       setIsAddModalOpen(false);
       alert("Membre ajouté avec succès");
+      // Recharger les membres depuis la base de données
+      await loadMembers();
     } catch (error) {
       console.error("Erreur lors de l'ajout:", error);
       alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
@@ -411,12 +489,65 @@ export default function GestionMembresPage() {
         }
       );
 
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
       alert("Membre supprimé avec succès");
+      // Recharger les membres depuis la base de données
+      await loadMembers();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
       alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
     }
+  };
+
+  const handleBulkImport = async (members: Array<{ nom: string; discord: string; twitch: string; discordId?: string }>) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent importer des membres");
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    for (const member of members) {
+      try {
+        const response = await fetch("/api/admin/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            twitchLogin: member.twitch,
+            displayName: member.nom,
+            twitchUrl: `https://www.twitch.tv/${member.twitch}`,
+            discordId: member.discordId,
+            discordUsername: member.discord,
+            role: "Affilié",
+            isActive: true,
+          }),
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          const error = await response.json();
+          errorCount++;
+          errors.push(`${member.nom}: ${error.error || "Erreur inconnue"}`);
+        }
+      } catch (error) {
+        errorCount++;
+        errors.push(`${member.nom}: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+      }
+    }
+
+    await logAction(
+      currentAdmin.id,
+      currentAdmin.username,
+      "Import en masse de membres",
+      `${successCount} membres importés`,
+      { successCount, errorCount, errors: errors.slice(0, 10) }
+    );
+
+    alert(`Import terminé : ${successCount} membres ajoutés, ${errorCount} erreurs`);
+    setIsBulkImportOpen(false);
+    await loadMembers();
   };
 
   const getRoleBadgeColor = (role: MemberRole) => {
@@ -474,12 +605,20 @@ export default function GestionMembresPage() {
           
           <div className="flex gap-2">
             {currentAdmin?.isFounder && (
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              >
-                ➕ Ajouter une chaîne
-              </button>
+              <>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  ➕ Ajouter une chaîne
+                </button>
+                <button
+                  onClick={() => setIsBulkImportOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  📥 Import en masse
+                </button>
+              </>
             )}
             <button
               onClick={() => setViewMode(viewMode === "simple" ? "complet" : "simple")}
@@ -747,11 +886,18 @@ export default function GestionMembresPage() {
 
         {/* Modal d'ajout (pour les fondateurs) */}
         {currentAdmin?.isFounder && (
-          <AddChannelModal
-            isOpen={isAddModalOpen}
-            onClose={() => setIsAddModalOpen(false)}
-            onAdd={handleAdd}
-          />
+          <>
+            <AddChannelModal
+              isOpen={isAddModalOpen}
+              onClose={() => setIsAddModalOpen(false)}
+              onAdd={handleAdd}
+            />
+            <BulkImportModal
+              isOpen={isBulkImportOpen}
+              onClose={() => setIsBulkImportOpen(false)}
+              onImport={handleBulkImport}
+            />
+          </>
         )}
 
         {/* Modal d'édition (pour les fondateurs) */}

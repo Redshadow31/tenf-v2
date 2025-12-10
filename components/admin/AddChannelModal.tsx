@@ -12,6 +12,7 @@ interface AddChannelModalProps {
     role: MemberRole;
     statut: "Actif" | "Inactif";
     discord: string;
+    discordId?: string;
     twitch: string;
     avatar: string;
   }) => void;
@@ -26,6 +27,7 @@ export default function AddChannelModal({
     nom: "",
     twitch: "",
     discord: "",
+    discordId: "",
     role: "Affilié" as MemberRole,
     statut: "Actif" as "Actif" | "Inactif",
   });
@@ -35,14 +37,26 @@ export default function AddChannelModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nom || !formData.twitch || !formData.discord) {
-      alert("Veuillez remplir tous les champs obligatoires");
+      alert("Veuillez remplir tous les champs obligatoires (Nom, Twitch, Discord)");
       return;
     }
 
+    // Extraire le login Twitch de l'URL si fournie
+    let twitchLogin = formData.twitch.toLowerCase().trim();
+    if (twitchLogin.includes("twitch.tv/")) {
+      const match = twitchLogin.match(/twitch\.tv\/([a-zA-Z0-9_]+)/);
+      if (match) {
+        twitchLogin = match[1];
+      }
+    }
+    // Nettoyer le login Twitch (enlever les caractères spéciaux)
+    twitchLogin = twitchLogin.replace(/[^a-zA-Z0-9_]/g, "");
+
     onAdd({
       nom: formData.nom,
-      twitch: formData.twitch,
+      twitch: twitchLogin,
       discord: formData.discord,
+      discordId: formData.discordId.trim() || undefined,
       role: formData.role,
       statut: formData.statut,
       avatar: `https://placehold.co/64x64?text=${formData.nom.charAt(0).toUpperCase()}`,
@@ -53,6 +67,7 @@ export default function AddChannelModal({
       nom: "",
       twitch: "",
       discord: "",
+      discordId: "",
       role: "Affilié",
       statut: "Actif",
     });
@@ -106,30 +121,44 @@ export default function AddChannelModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Pseudo Twitch *
+              Pseudo Twitch ou URL *
             </label>
             <input
               type="text"
               value={formData.twitch}
               onChange={(e) => setFormData({ ...formData, twitch: e.target.value })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-              placeholder="Ex: clarastonewall"
+              placeholder="Ex: clarastonewall ou https://www.twitch.tv/clarastonewall"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Discord *
+              Pseudo Discord *
             </label>
             <input
               type="text"
               value={formData.discord}
               onChange={(e) => setFormData({ ...formData, discord: e.target.value })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-              placeholder="Ex: ClaraStonewall#1234"
+              placeholder="Ex: ClaraStonewall ou @ClaraStonewall"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              ID Discord (optionnel)
+            </label>
+            <input
+              type="text"
+              value={formData.discordId}
+              onChange={(e) => setFormData({ ...formData, discordId: e.target.value })}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+              placeholder="Ex: 535244297214361603"
+            />
+            <p className="text-xs text-gray-500 mt-1">L'ID Discord permet de synchroniser automatiquement les rôles depuis Discord</p>
           </div>
 
           <div>
