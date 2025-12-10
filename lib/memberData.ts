@@ -215,10 +215,19 @@ export function getMemberDataByList(listId: number): MemberData[] {
 
 /**
  * Récupère tous les membres actifs de toutes les listes (1, 2, et 3 combinées)
+ * Inclut aussi les membres sans listId pour la rétrocompatibilité
  */
 export function getAllActiveMemberDataFromAllLists(): MemberData[] {
   return Object.values(memberDataStore).filter(
-    (member) => member.isActive && (member.listId === 1 || member.listId === 2 || member.listId === 3)
+    (member) => {
+      if (!member.isActive) return false;
+      // Inclure les membres avec listId 1, 2, ou 3
+      if (member.listId === 1 || member.listId === 2 || member.listId === 3) return true;
+      // Inclure aussi les membres sans listId (rétrocompatibilité)
+      if (!member.listId) return true;
+      // Exclure les membres avec un listId invalide
+      return false;
+    }
   );
 }
 
