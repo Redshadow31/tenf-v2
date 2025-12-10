@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllMemberData, getAllActiveMemberData } from '@/lib/memberData';
 import { initializeMemberData } from '@/lib/memberData';
-import { getTwitchUser } from '@/lib/twitch';
+import { getTwitchUsers } from '@/lib/twitch';
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -22,34 +22,42 @@ export async function GET() {
     // Récupérer tous les membres actifs depuis la base de données centralisée
     const activeMembers = getAllActiveMemberData();
     
-    // Mapper vers un format simplifié pour la page publique avec avatars Twitch
-    const publicMembers = await Promise.all(
-      activeMembers.map(async (member) => {
-        // Récupérer l'avatar depuis Twitch
-        let avatar: string | undefined = undefined;
-        try {
-          const twitchUser = await getTwitchUser(member.twitchLogin);
-          avatar = twitchUser.profile_image_url;
-        } catch (err) {
-          // Si erreur, utiliser Discord en fallback, sinon undefined
-          if (member.discordId) {
-            avatar = `https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`;
-          }
-        }
-
-        return {
-          twitchLogin: member.twitchLogin,
-          twitchUrl: member.twitchUrl,
-          displayName: member.displayName || member.siteUsername || member.twitchLogin,
-          role: member.role,
-          isVip: member.isVip,
-          badges: member.badges || [],
-          discordId: member.discordId,
-          discordUsername: member.discordUsername,
-          avatar: avatar,
-        };
-      })
+    // Récupérer tous les logins Twitch uniques
+    const twitchLogins = activeMembers
+      .map(member => member.twitchLogin)
+      .filter(Boolean) as string[];
+    
+    // Récupérer tous les avatars Twitch en batch (beaucoup plus rapide)
+    const twitchUsers = await getTwitchUsers(twitchLogins);
+    
+    // Créer un map pour un accès rapide par login
+    const avatarMap = new Map(
+      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
     );
+    
+    // Mapper vers un format simplifié pour la page publique avec avatars Twitch
+    const publicMembers = activeMembers.map((member) => {
+      // Récupérer l'avatar depuis le map (déjà récupéré en batch)
+      let avatar: string | undefined = avatarMap.get(member.twitchLogin.toLowerCase());
+      
+      // Si pas d'avatar Twitch, utiliser Discord en fallback
+      if (!avatar && member.discordId) {
+        // Utiliser l'avatar Discord par défaut (sans hash, Discord générera un avatar par défaut)
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+      }
+
+      return {
+        twitchLogin: member.twitchLogin,
+        twitchUrl: member.twitchUrl,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        role: member.role,
+        isVip: member.isVip,
+        badges: member.badges || [],
+        discordId: member.discordId,
+        discordUsername: member.discordUsername,
+        avatar: avatar,
+      };
+    });
 
     const response = NextResponse.json({ 
       members: publicMembers,

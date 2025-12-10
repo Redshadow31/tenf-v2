@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getMemberByDiscordUsername } from "@/lib/members";
-import { getTwitchUser } from "@/lib/twitch";
 
 interface VipMember {
   discordId: string;
@@ -13,7 +11,6 @@ interface VipMember {
   twitchLogin?: string;
   twitchUrl?: string;
   twitchAvatar?: string;
-  twitchBio?: string;
 }
 
 export default function VipPage() {
@@ -35,38 +32,8 @@ export default function VipPage() {
         }
         const data = await response.json();
         
-        // Enrichir les données avec les informations Twitch
-        const enrichedMembers = await Promise.all(
-          data.members.map(async (member: VipMember) => {
-            // Chercher le membre dans la liste locale par son pseudo Discord
-            const localMember = getMemberByDiscordUsername(member.username);
-            
-            if (localMember) {
-              try {
-                const twitchUser = await getTwitchUser(localMember.twitchLogin);
-                return {
-                  ...member,
-                  twitchLogin: localMember.twitchLogin,
-                  twitchUrl: localMember.twitchUrl,
-                  twitchAvatar: twitchUser.profile_image_url,
-                  displayName: localMember.displayName,
-                };
-              } catch (err) {
-                console.error(`Error fetching Twitch data for ${member.username}:`, err);
-                return {
-                  ...member,
-                  twitchLogin: localMember.twitchLogin,
-                  twitchUrl: localMember.twitchUrl,
-                  displayName: localMember.displayName,
-                };
-              }
-            }
-            
-            return member;
-          })
-        );
-        
-        setVipMembers(enrichedMembers);
+        // Les données sont déjà enrichies depuis l'API (avatars Twitch, etc.)
+        setVipMembers(data.members || []);
       } catch (err) {
         console.error("Error fetching VIP members:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -120,11 +87,16 @@ export default function VipPage() {
                     className="w-20 h-20 rounded-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = member.avatar;
+                      // Fallback vers avatar Discord ou placeholder
+                      if (member.avatar && member.avatar !== target.src) {
+                        target.src = member.avatar;
+                      } else {
+                        target.src = `https://placehold.co/80x80?text=${member.displayName.charAt(0)}`;
+                      }
                     }}
                   />
                   <div className="absolute -bottom-1 -right-1 rounded-full bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
-                    WP
+                    VIP
                   </div>
                 </div>
 
@@ -141,7 +113,7 @@ export default function VipPage() {
               Aucun VIP Elite trouvé pour le moment.
             </p>
             <p className="text-gray-500 text-sm mt-2">
-              Vérifiez que le bot Discord est configuré et que le rôle VIP Elite existe sur le serveur.
+              Les membres VIP Elite sont gérés depuis le dashboard administrateur.
             </p>
           </div>
         )}

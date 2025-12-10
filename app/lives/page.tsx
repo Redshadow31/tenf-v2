@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getTwitchUser } from "@/lib/twitch";
 
 interface LiveStream {
   id: string;
@@ -80,43 +79,34 @@ export default function LivesPage() {
 
         // Enrichir les données avec les informations des membres actifs uniquement
         // On utilise activeMembers depuis l'API publique pour garantir la synchronisation
-        const enrichedLives = await Promise.all(
-          liveStreamsOnly.map(async (stream) => {
-            // Chercher dans les membres actifs uniquement (même logique que /membres)
-            const member = activeMembers.find(
-              (m: any) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
-            );
+        // Les avatars sont déjà récupérés dans l'API, pas besoin de faire des appels supplémentaires
+        const enrichedLives = liveStreamsOnly.map((stream) => {
+          // Chercher dans les membres actifs uniquement (même logique que /membres)
+          const member = activeMembers.find(
+            (m: any) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
+          );
 
-            if (!member) {
-              return null;
-            }
+          if (!member) {
+            return null;
+          }
 
-            // Utiliser l'avatar depuis l'API ou récupérer depuis Twitch
-            let avatar = member.avatar || '';
-            if (!avatar) {
-              try {
-                const twitchUser = await getTwitchUser(member.twitchLogin);
-                avatar = twitchUser.profile_image_url;
-              } catch (err) {
-                console.error(`Error fetching avatar for ${member.twitchLogin}:`, err);
-                avatar = `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`;
-              }
-            }
+          // Utiliser l'avatar depuis l'API (déjà récupéré en batch)
+          // Si pas d'avatar, utiliser un placeholder
+          const avatar = member.avatar || `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`;
 
-            return {
-              twitchLogin: member.twitchLogin,
-              twitchUrl: member.twitchUrl,
-              displayName: member.displayName,
-              game: stream.gameName,
-              viewerCount: stream.viewerCount,
-              thumbnailUrl: stream.thumbnailUrl
-                ?.replace("{width}", "640")
-                ?.replace("{height}", "360") || stream.thumbnailUrl,
-              avatar: avatar,
-              role: member.role,
-            };
-          })
-        );
+          return {
+            twitchLogin: member.twitchLogin,
+            twitchUrl: member.twitchUrl,
+            displayName: member.displayName,
+            game: stream.gameName,
+            viewerCount: stream.viewerCount,
+            thumbnailUrl: stream.thumbnailUrl
+              ?.replace("{width}", "640")
+              ?.replace("{height}", "360") || stream.thumbnailUrl,
+            avatar: avatar,
+            role: member.role,
+          };
+        });
 
         // Filtrer les nulls et trier par nombre de viewers (décroissant)
         const validLives = enrichedLives

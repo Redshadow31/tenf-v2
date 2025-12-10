@@ -1,117 +1,78 @@
 import { NextResponse } from 'next/server';
-
-interface DiscordMember {
-  user: {
-    id: string;
-    username: string;
-    discriminator: string;
-    avatar: string | null;
-  };
-  roles: string[];
-}
+import { getAllVipMemberData, initializeMemberData } from '@/lib/memberData';
+import { getTwitchUsers } from '@/lib/twitch';
 
 interface VipMember {
   discordId: string;
   username: string;
   avatar: string;
   displayName: string;
+  twitchLogin?: string;
+  twitchUrl?: string;
+  twitchAvatar?: string;
+}
+
+// Initialiser les données au démarrage du serveur
+let initialized = false;
+if (!initialized) {
+  initializeMemberData();
+  initialized = true;
 }
 
 /**
- * Récupère les membres avec le rôle VIP Elite depuis Discord
- * Serveur source: 1296104419146072075
- * Serveur cible: 535244857891880970
+ * Récupère les membres VIP Elite depuis le dashboard (memberData)
+ * Beaucoup plus simple et rapide que de passer par l'API Discord
  */
 export async function GET() {
   try {
-    const GUILD_ID = '535244857891880970'; // Serveur cible
-    const SOURCE_GUILD_ID = '1296104419146072075'; // Serveur source (pour référence)
+    // Récupérer tous les membres VIP depuis le dashboard
+    const vipMemberData = getAllVipMemberData();
     
-    // Note: Vous devrez configurer DISCORD_BOT_TOKEN dans vos variables d'environnement
-    const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-    
-    if (!DISCORD_BOT_TOKEN) {
-      console.error('DISCORD_BOT_TOKEN is not configured');
-      return NextResponse.json(
-        { error: 'Discord bot token not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Récupérer tous les membres du serveur
-    const membersResponse = await fetch(
-      `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000`,
-      {
-        headers: {
-          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-        },
-      }
-    );
-
-    if (!membersResponse.ok) {
-      const errorText = await membersResponse.text();
-      console.error('Discord API error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to fetch Discord members', details: errorText },
-        { status: membersResponse.status }
-      );
-    }
-
-    const members: DiscordMember[] = await membersResponse.json();
-
-    // Récupérer les rôles du serveur pour trouver l'ID du rôle VIP Elite
-    const rolesResponse = await fetch(
-      `https://discord.com/api/v10/guilds/${GUILD_ID}/roles`,
-      {
-        headers: {
-          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-        },
-      }
-    );
-
-    if (!rolesResponse.ok) {
-      const errorText = await rolesResponse.text();
-      console.error('Discord Roles API error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to fetch Discord roles', details: errorText },
-        { status: rolesResponse.status }
-      );
-    }
-
-    const roles = await rolesResponse.json();
-    
-    // Chercher le rôle VIP Elite (peut être nommé différemment, ajustez selon votre serveur)
-    // Recherche flexible : VIP Elite, VIPElite, Elite VIP, etc.
-    const vipEliteRole = roles.find(
-      (role: any) => {
-        const roleName = role.name.toLowerCase();
-        return (
-          (roleName.includes('vip') && roleName.includes('elite')) ||
-          roleName === 'vip elite' ||
-          roleName === 'elite vip'
-        );
-      }
-    );
-
-    if (!vipEliteRole) {
-      console.warn('VIP Elite role not found. Available roles:', roles.map((r: any) => r.name));
+    if (vipMemberData.length === 0) {
       return NextResponse.json({ 
         members: [],
-        warning: 'VIP Elite role not found. Please check the role name in your Discord server.'
+        message: 'Aucun membre VIP Elite trouvé dans le dashboard'
       });
     }
 
-    // Filtrer les membres qui ont le rôle VIP Elite
-    const vipMembers: VipMember[] = members
-      .filter((member) => member.roles.includes(vipEliteRole.id))
-      .map((member) => ({
-        discordId: member.user.id,
-        username: member.user.username,
-        avatar: member.user.avatar
-          ? `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png`
-          : `https://cdn.discordapp.com/embed/avatars/${member.user.discriminator && member.user.discriminator !== '0' ? parseInt(member.user.discriminator) % 5 : 0}.png`,
-        displayName: member.user.username,
-      }));
+    // Récupérer tous les logins Twitch uniques
+    const twitchLogins = vipMemberData
+      .map(member => member.twitchLogin)
+      .filter(Boolean) as string[];
+    
+    // Récupérer tous les avatars Twitch en batch
+    const twitchUsers = await getTwitchUsers(twitchLogins);
+    
+    // Créer un map pour un accès rapide par login
+    const avatarMap = new Map(
+      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
+    );
+    
+    // Mapper vers le format attendu par la page VIP
+    const vipMembers: VipMember[] = vipMemberData.map((member) => {
+      const twitchAvatar = avatarMap.get(member.twitchLogin.toLowerCase());
+      
+      // Avatar Discord en fallback si pas d'avatar Twitch
+      let avatar = twitchAvatar;
+      if (!avatar && member.discordId) {
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+      }
+      if (!avatar) {
+        avatar = `https://placehold.co/128x128?text=${member.displayName.charAt(0)}`;
+      }
+
+      return {
+        discordId: member.discordId || '',
+        username: member.discordUsername || member.displayName,
+        avatar: avatar,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        twitchLogin: member.twitchLogin,
+        twitchUrl: member.twitchUrl,
+        twitchAvatar: twitchAvatar,
+      };
+    });
+
+    console.log(`Found ${vipMembers.length} VIP Elite members from dashboard`);
 
     return NextResponse.json({ members: vipMembers });
   } catch (error) {

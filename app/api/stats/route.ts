@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllActiveMemberData } from '@/lib/memberData';
-
-// ID du salon Discord pour compter les membres
-const MEMBERS_CHANNEL_ID = '1300154679614898247';
+import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
  * GET - Récupère les statistiques pour la page d'accueil
@@ -11,13 +9,13 @@ export async function GET() {
   try {
     const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
     
-    // 1. Compter les membres du salon Discord (membres qui ont posté dans ce canal)
-    let discordChannelMembersCount = 0;
+    // 1. Récupérer le nombre total de membres du serveur Discord
+    let totalDiscordMembers = 0;
     if (DISCORD_BOT_TOKEN) {
       try {
-        // Récupérer les messages du canal pour compter les membres uniques
-        const messagesResponse = await fetch(
-          `https://discord.com/api/v10/channels/${MEMBERS_CHANNEL_ID}/messages?limit=100`,
+        // Récupérer les informations du serveur Discord (contient member_count)
+        const guildResponse = await fetch(
+          `https://discord.com/api/v10/guilds/${GUILD_ID}?with_counts=true`,
           {
             headers: {
               Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
@@ -25,18 +23,32 @@ export async function GET() {
           }
         );
 
-        if (messagesResponse.ok) {
-          const messages: any[] = await messagesResponse.json();
-          // Compter les auteurs uniques (membres qui ont posté dans ce canal)
-          const uniqueAuthors = new Set(
-            messages
-              .filter(msg => msg.author && !msg.author.bot)
-              .map(msg => msg.author.id)
-          );
-          discordChannelMembersCount = uniqueAuthors.size;
+        if (guildResponse.ok) {
+          const guildData: any = await guildResponse.json();
+          // member_count est le nombre total de membres (hors bots)
+          // approximate_member_count est une estimation si le serveur est grand
+          totalDiscordMembers = guildData.approximate_member_count || guildData.member_count || 0;
         }
       } catch (error) {
-        console.error('Error fetching Discord channel members count:', error);
+        console.error('Error fetching Discord server member count:', error);
+        // Fallback : essayer de compter via les membres récupérés
+        try {
+          const membersResponse = await fetch(
+            `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000`,
+            {
+              headers: {
+                Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+              },
+            }
+          );
+          if (membersResponse.ok) {
+            const members: any[] = await membersResponse.json();
+            // Compter uniquement les membres (pas les bots)
+            totalDiscordMembers = members.filter(m => !m.user?.bot).length;
+          }
+        } catch (fallbackError) {
+          console.error('Error in fallback member count:', fallbackError);
+        }
       }
     }
 
@@ -100,7 +112,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      totalMembers: discordChannelMembersCount,
+      totalMembers: totalDiscordMembers,
       activeMembers: activeMembersCount,
       livesInProgress: livesCount,
     });

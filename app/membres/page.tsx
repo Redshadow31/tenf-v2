@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import MemberModal from "@/components/MemberModal";
-import { getTwitchUser } from "@/lib/twitch";
 
 const filters = ["Tous", "Développement", "Affiliés", "Staff"];
 
@@ -84,20 +83,15 @@ export default function Page() {
     }
   };
 
-  const handleMemberClick = async (member: PublicMember) => {
-    let avatar = member.avatar;
-    try {
-      const twitchUser = await getTwitchUser(member.twitchLogin);
-      avatar = twitchUser.profile_image_url;
-    } catch (err) {
-      console.error("Erreur lors de la récupération de l'avatar Twitch:", err);
-    }
+  const handleMemberClick = (member: PublicMember) => {
+    // Utiliser l'avatar déjà récupéré depuis l'API (pas besoin d'appel supplémentaire)
+    const avatar = member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`;
     
     setSelectedMember({
       id: member.twitchLogin,
       name: member.displayName,
       role: member.role,
-      avatar: avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`,
+      avatar: avatar,
       twitchLogin: member.twitchLogin,
       description: `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
@@ -152,10 +146,19 @@ export default function Page() {
                       src={member.avatar}
                       alt={member.displayName}
                       className="h-16 w-16 rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4]"></div>
-                  )}
+                  ) : null}
+                  <div 
+                    className={`h-16 w-16 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-lg ${member.avatar ? 'hidden' : ''}`}
+                  >
+                    {member.displayName.charAt(0).toUpperCase()}
+                  </div>
                   {member.isVip && (
                     <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
                       VIP
