@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
+import { logAction } from "@/lib/logAction";
+import { getDiscordUser } from "@/lib/discord";
+import { canPerformAction } from "@/lib/admin";
 
 type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
 type MemberStatus = "Actif" | "Inactif";
@@ -84,6 +87,24 @@ export default function GestionMembresPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedMemberForNotes, setSelectedMemberForNotes] = useState<Member | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
+  const [safeModeEnabled, setSafeModeEnabled] = useState(false);
+
+  useEffect(() => {
+    async function loadAdmin() {
+      const user = await getDiscordUser();
+      if (user) {
+        setCurrentAdmin({ id: user.id, username: user.username });
+      }
+    }
+    loadAdmin();
+
+    // Vérifier le Safe Mode
+    fetch("/api/admin/safe-mode")
+      .then((res) => res.json())
+      .then((data) => setSafeModeEnabled(data.safeModeEnabled || false))
+      .catch(() => setSafeModeEnabled(false));
+  }, []);
 
   const filteredMembers = members.filter((member) =>
     member.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -91,11 +112,37 @@ export default function GestionMembresPage() {
     member.discord.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleToggleStatus = (memberId: number) => {
+  const handleToggleStatus = async (memberId: number) => {
+    if (!currentAdmin) {
+      alert("Vous devez être connecté pour effectuer cette action");
+      return;
+    }
+
+    // Vérifier les permissions (Safe Mode)
+    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
+      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+      return;
+    }
+
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+
+    const oldStatus = member.statut;
+    const newStatus = oldStatus === "Actif" ? "Inactif" : "Actif";
+
+    // Logger l'action
+    await logAction(
+      currentAdmin.id,
+      currentAdmin.username,
+      newStatus === "Actif" ? "Activation d'un membre" : "Désactivation d'un membre",
+      member.nom,
+      { oldStatus, newStatus }
+    );
+
     setMembers((prev) =>
       prev.map((member) =>
         member.id === memberId
-          ? { ...member, statut: member.statut === "Actif" ? "Inactif" : "Actif" }
+          ? { ...member, statut: newStatus }
           : member
       )
     );
@@ -106,7 +153,45 @@ export default function GestionMembresPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = (updatedMember: Member) => {
+  const handleSaveEdit = async (updatedMember: Member) => {
+    if (!currentAdmin) {
+      alert("Vous devez être connecté pour effectuer cette action");
+      return;
+    }
+
+    // Vérifier les permissions (Safe Mode)
+    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
+      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+      return;
+    }
+
+    const oldMember = members.find((m) => m.id === updatedMember.id);
+    if (!oldMember) return;
+
+    // Logger l'action
+    await logAction(
+      currentAdmin.id,
+      currentAdmin.username,
+      "Modification d'un membre",
+      updatedMember.nom,
+      {
+        oldData: {
+          nom: oldMember.nom,
+          role: oldMember.role,
+          statut: oldMember.statut,
+          discord: oldMember.discord,
+          twitch: oldMember.twitch,
+        },
+        newData: {
+          nom: updatedMember.nom,
+          role: updatedMember.role,
+          statut: updatedMember.statut,
+          discord: updatedMember.discord,
+          twitch: updatedMember.twitch,
+        },
+      }
+    );
+
     setMembers((prev) =>
       prev.map((member) =>
         member.id === updatedMember.id ? updatedMember : member
@@ -116,8 +201,35 @@ export default function GestionMembresPage() {
     setSelectedMember(null);
   };
 
-  const handleDelete = (memberId: number) => {
+  const handleDelete = async (memberId: number) => {
+    if (!currentAdmin) {
+      alert("Vous devez être connecté pour effectuer cette action");
+      return;
+    }
+
+    // Vérifier les permissions (Safe Mode)
+    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
+      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+      return;
+    }
+
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+
     if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
+      // Logger l'action
+      await logAction(
+        currentAdmin.id,
+        currentAdmin.username,
+        "Suppression d'un membre",
+        member.nom,
+        {
+          nom: member.nom,
+          role: member.role,
+          statut: member.statut,
+        }
+      );
+
       setMembers((prev) => prev.filter((member) => member.id !== memberId));
     }
   };
@@ -335,8 +447,42 @@ export default function GestionMembresPage() {
       <AddChannelModal
         isOpen={isAddChannelModalOpen}
         onClose={() => setIsAddChannelModalOpen(false)}
-        onAdd={(newMember) => {
-          setMembers((prev) => [...prev, { ...newMember, id: Date.now() }]);
+        onAdd={async (newMember) => {
+          if (!currentAdmin) {
+            alert("Vous devez être connecté pour effectuer cette action");
+            return;
+          }
+
+          // Vérifier les permissions (Safe Mode)
+          if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
+            alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+            return;
+          }
+
+          // Logger l'action
+          await logAction(
+            currentAdmin.id,
+            currentAdmin.username,
+            "Ajout d'un membre",
+            newMember.nom,
+            {
+              nom: newMember.nom,
+              role: newMember.role,
+              statut: newMember.statut,
+              discord: newMember.discord,
+              twitch: newMember.twitch,
+            }
+          );
+
+          // Ajouter le membre
+          const newId = Math.max(...members.map((m) => m.id), 0) + 1;
+          setMembers((prev) => [
+            ...prev,
+            {
+              ...newMember,
+              id: newId,
+            },
+          ]);
           setIsAddChannelModalOpen(false);
         }}
       />
