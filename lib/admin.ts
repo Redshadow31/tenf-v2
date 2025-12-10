@@ -5,14 +5,15 @@
 export type AdminRole = "Modérateur" | "Admin" | "Fondateur";
 
 // Liste des fondateurs (IDs Discord) - À configurer selon votre serveur
-const FOUNDER_IDS = [
-  // Ajoutez les IDs Discord des fondateurs ici
-  // Exemple: "123456789012345678"
+const FOUNDER_IDS: string[] = [
+  "333001130705420299", // clarastonewall
+  "535244297214361603", // nexou31
+  "1021398088474169414", // red_shadow_31
 ];
 
 // Liste des admins (IDs Discord)
-const ADMIN_IDS = [
-  // Ajoutez les IDs Discord des admins ici
+const ADMIN_IDS: string[] = [
+  // Ajoutez les IDs Discord des admins ici si nécessaire
   // Exemple: "987654321098765432"
 ];
 
