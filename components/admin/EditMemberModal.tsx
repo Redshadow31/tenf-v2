@@ -31,10 +31,12 @@ export default function EditMemberModal({
   onSave,
 }: EditMemberModalProps) {
   const [formData, setFormData] = useState<Member>(member);
+  const [badgeInput, setBadgeInput] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setFormData(member);
+      setBadgeInput("");
     }
   }, [isOpen, member]);
 
