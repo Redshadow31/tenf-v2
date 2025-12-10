@@ -175,51 +175,82 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
   }
 
   try {
-    // L'API Twitch permet jusqu'à 100 utilisateurs par requête
-    const queryParams = logins
-      .slice(0, 100)
-      .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
-      .join("&");
+    // L'API Twitch permet jusqu'à 100 utilisateurs par requête, mais on utilise 99 pour être sûr
+    const BATCH_SIZE = 99;
+    const allUsers: TwitchUser[] = [];
+    
+    // Diviser les logins en batches de 99
+    for (let i = 0; i < logins.length; i += BATCH_SIZE) {
+      const batch = logins.slice(i, i + BATCH_SIZE);
+      
+      const queryParams = batch
+        .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
+        .join("&");
 
-    const response = await fetch(
-      `https://api.twitch.tv/helix/users?${queryParams}`,
-      {
-        headers: {
-          "Client-ID": clientId,
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const response = await fetch(
+        `https://api.twitch.tv/helix/users?${queryParams}`,
+        {
+          headers: {
+            "Client-ID": clientId,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Twitch API error for batch ${i / BATCH_SIZE + 1}:`, errorText);
+        // Ajouter des mocks pour ce batch en cas d'erreur
+        batch.forEach((login) => {
+          allUsers.push({
+            id: `mock_${login}_${Date.now()}`,
+            login: login.toLowerCase(),
+            display_name: login,
+            profile_image_url: "https://placehold.co/128x128?text=Twitch",
+          });
+        });
+        continue;
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Twitch API error:", errorText);
-      return logins.map((login) => ({
-        id: `mock_${login}_${Date.now()}`,
-        login: login.toLowerCase(),
-        display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
-      }));
+      const data: TwitchAPIResponse = await response.json();
+      
+      // Ajouter les utilisateurs trouvés
+      if (data.data && data.data.length > 0) {
+        data.data.forEach((user) => {
+          allUsers.push({
+            id: user.id,
+            login: user.login,
+            display_name: user.display_name,
+            profile_image_url: user.profile_image_url,
+            description: user.description,
+          });
+        });
+      }
+      
+      // Ajouter des mocks pour les utilisateurs non trouvés dans ce batch
+      const foundLogins = new Set(data.data?.map((u: any) => u.login.toLowerCase()) || []);
+      batch.forEach((login) => {
+        if (!foundLogins.has(login.toLowerCase())) {
+          allUsers.push({
+            id: `mock_${login}_${Date.now()}`,
+            login: login.toLowerCase(),
+            display_name: login,
+            profile_image_url: "https://placehold.co/128x128?text=Twitch",
+          });
+        }
+      });
     }
-
-    const data: TwitchAPIResponse = await response.json();
 
     // Créer un map pour un accès rapide
     const userMap = new Map(
-      data.data.map((user) => [user.login.toLowerCase(), user])
+      allUsers.map((user) => [user.login.toLowerCase(), user])
     );
 
-    // Retourner les utilisateurs dans l'ordre demandé, avec des mocks pour ceux non trouvés
+    // Retourner les utilisateurs dans l'ordre demandé
     return logins.map((login) => {
       const user = userMap.get(login.toLowerCase());
       if (user) {
-        return {
-          id: user.id,
-          login: user.login,
-          display_name: user.display_name,
-          profile_image_url: user.profile_image_url,
-          description: user.description,
-        };
+        return user;
       }
       return {
         id: `mock_${login}_${Date.now()}`,

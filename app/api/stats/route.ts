@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllActiveMemberData } from '@/lib/memberData';
+import { getAllActiveMemberDataFromAllLists } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -52,8 +52,8 @@ export async function GET() {
       }
     }
 
-    // 2. Compter les membres actifs depuis le système centralisé (isActive: true)
-    const activeMembers = getAllActiveMemberData();
+    // 2. Compter les membres actifs depuis toutes les listes (1, 2, 3) du système centralisé
+    const activeMembers = getAllActiveMemberDataFromAllLists();
     const activeMembersCount = activeMembers.length;
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)

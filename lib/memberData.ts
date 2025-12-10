@@ -22,6 +22,7 @@ export interface MemberData {
   isVip: boolean;
   isActive: boolean;
   badges?: string[]; // Badges personnalisés (ex: "VIP Élite", "Modérateur Junior", etc.)
+  listId?: number; // ID de la liste (1, 2, ou 3) - pour gérer 3 listes séparées modifiables depuis le dashboard
   
   // Informations Twitch (synchronisées)
   twitchStatus?: {
@@ -200,6 +201,24 @@ export function getAllVipMemberData(): MemberData[] {
 export function getMemberDataByRole(role: MemberRole): MemberData[] {
   return Object.values(memberDataStore).filter(
     (member) => member.role === role && member.isActive
+  );
+}
+
+/**
+ * Récupère les membres d'une liste spécifique (1, 2, ou 3)
+ */
+export function getMemberDataByList(listId: number): MemberData[] {
+  return Object.values(memberDataStore).filter(
+    (member) => member.isActive && member.listId === listId
+  );
+}
+
+/**
+ * Récupère tous les membres actifs de toutes les listes (1, 2, et 3 combinées)
+ */
+export function getAllActiveMemberDataFromAllLists(): MemberData[] {
+  return Object.values(memberDataStore).filter(
+    (member) => member.isActive && (member.listId === 1 || member.listId === 2 || member.listId === 3)
   );
 }
 

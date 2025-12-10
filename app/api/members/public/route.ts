@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, getAllActiveMemberData } from '@/lib/memberData';
+import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAllLists } from '@/lib/memberData';
 import { initializeMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
 
@@ -19,8 +19,8 @@ if (!initialized) {
  */
 export async function GET() {
   try {
-    // Récupérer tous les membres actifs depuis la base de données centralisée
-    const activeMembers = getAllActiveMemberData();
+    // Récupérer tous les membres actifs de toutes les listes (1, 2, et 3) depuis la base de données centralisée
+    const activeMembers = getAllActiveMemberDataFromAllLists();
     
     // Récupérer tous les logins Twitch uniques
     const twitchLogins = activeMembers
