@@ -72,10 +72,7 @@ function isNetlify(): boolean {
  */
 async function loadMemberDataFromBlob(): Promise<Record<string, MemberData>> {
   try {
-    const store = getStore({
-      name: BLOB_STORE_NAME,
-      consistency: "strong",
-    });
+    const store = getStore(BLOB_STORE_NAME);
     
     const data = await store.get(BLOB_KEY, { type: "text" });
     
@@ -107,10 +104,7 @@ async function loadMemberDataFromBlob(): Promise<Record<string, MemberData>> {
  */
 async function saveMemberDataToBlob(): Promise<void> {
   try {
-    const store = getStore({
-      name: BLOB_STORE_NAME,
-      consistency: "strong",
-    });
+    const store = getStore(BLOB_STORE_NAME);
     
     // Convertir les dates en string pour la sérialisation JSON
     const serializableStore: Record<string, any> = {};
