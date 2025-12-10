@@ -32,12 +32,20 @@ export async function GET(request: Request) {
   );
   
   // Stocker le state dans un cookie httpOnly
+  // Utiliser 'none' pour sameSite en production pour permettre les redirections depuis Discord
+  const isProduction = process.env.NODE_ENV === 'production';
   response.cookies.set('discord_oauth_state', state, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction, // Requis avec sameSite: 'none'
+    sameSite: isProduction ? 'none' : 'lax', // 'none' permet les redirections cross-site
     maxAge: 600, // 10 minutes
+    path: '/',
   });
+  
+  // Log pour débogage
+  console.log('Login - State stored:', state);
+  console.log('Login - Base URL:', baseUrl);
+  console.log('Login - Redirect URI:', redirectUri);
 
   return response;
 }

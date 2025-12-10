@@ -51,7 +51,17 @@ export async function GET(request: NextRequest) {
   const cookieStore = cookies();
   const storedState = cookieStore.get('discord_oauth_state')?.value;
 
+  // Log pour débogage
+  console.log('Callback - State from URL:', state);
+  console.log('Callback - State from cookie:', storedState);
+  console.log('Callback - State match:', storedState === state);
+
   if (!storedState || storedState !== state) {
+    console.error('State mismatch!', {
+      storedState,
+      receivedState: state,
+      allCookies: cookieStore.getAll().map(c => ({ name: c.name, value: c.value?.substring(0, 20) + '...' }))
+    });
     return NextResponse.redirect(
       new URL('/auth/login?error=invalid_state', request.url)
     );
