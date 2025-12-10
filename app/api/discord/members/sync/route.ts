@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, isFounder } from '@/lib/admin';
-import { getAllMemberData, updateMemberData, createMemberData } from '@/lib/memberData';
+import { getAllMemberData, updateMemberData, createMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
 
 interface DiscordMember {
@@ -66,6 +66,10 @@ export async function POST(request: NextRequest) {
     }
 
     const discordMembers: DiscordMember[] = await membersResponse.json();
+    
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
     const existingMembers = getAllMemberData();
     const existingByDiscordId = new Map(
       existingMembers
@@ -112,7 +116,7 @@ export async function POST(request: NextRequest) {
           updates.role = role;
         }
         
-        updateMemberData(
+        await updateMemberData(
           existing.twitchLogin,
           updates,
           admin.id
@@ -122,7 +126,7 @@ export async function POST(request: NextRequest) {
         // Créer un nouveau membre (sans Twitch pour l'instant)
         // Il faudra lier manuellement via la page de gestion complète
         const twitchLogin = `discord_${discordId}`; // Placeholder
-        createMemberData(
+        await createMemberData(
           {
             twitchLogin,
             displayName,

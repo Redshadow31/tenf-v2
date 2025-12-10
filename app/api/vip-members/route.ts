@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllVipMemberData, initializeMemberData } from '@/lib/memberData';
+import { getAllVipMemberData, initializeMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
 
@@ -28,6 +28,9 @@ if (!initialized) {
  */
 export async function GET() {
   try {
+    // Charger les données depuis le stockage persistant (Blobs ou fichier)
+    await loadMemberDataFromStorage();
+    
     // Récupérer tous les membres VIP depuis le dashboard
     const vipMemberData = getAllVipMemberData();
     

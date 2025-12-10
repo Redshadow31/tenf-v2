@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAllLists } from '@/lib/memberData';
+import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage } from '@/lib/memberData';
 import { initializeMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
@@ -20,6 +20,9 @@ if (!initialized) {
  */
 export async function GET() {
   try {
+    // Charger les données depuis le stockage persistant (Blobs ou fichier)
+    await loadMemberDataFromStorage();
+    
     // Récupérer tous les membres actifs de toutes les listes (1, 2, et 3) depuis la base de données centralisée
     const activeMembers = getAllActiveMemberDataFromAllLists();
     

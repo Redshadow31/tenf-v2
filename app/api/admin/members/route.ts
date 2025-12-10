@@ -7,6 +7,7 @@ import {
   createMemberData,
   deleteMemberData,
   initializeMemberData,
+  loadMemberDataFromStorage,
 } from "@/lib/memberData";
 import { logAction } from "@/lib/logAction";
 
@@ -26,6 +27,9 @@ if (!initialized) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Charger les données depuis le stockage persistant (Blobs ou fichier)
+    await loadMemberDataFromStorage();
+    
     const admin = await getCurrentAdmin();
     
     if (!admin) {
@@ -126,7 +130,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newMember = createMemberData(
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
+    const newMember = await createMemberData(
       {
         twitchLogin,
         displayName,
@@ -201,12 +208,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     if (updates.role && updates.role !== existingMember.role) {
       updates.roleManuallySet = true;
     }
 
-    const updatedMember = updateMemberData(twitchLogin, updates, admin.id);
+    const updatedMember = await updateMemberData(twitchLogin, updates, admin.id);
 
     if (!updatedMember) {
       return NextResponse.json(
@@ -280,6 +290,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
     const member = getMemberData(twitchLogin);
     if (!member) {
       return NextResponse.json(
@@ -288,7 +301,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = deleteMemberData(twitchLogin);
+    const success = await deleteMemberData(twitchLogin);
 
     if (!success) {
       return NextResponse.json(

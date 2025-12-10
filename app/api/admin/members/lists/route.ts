@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, isFounder } from '@/lib/admin';
-import { getAllActiveMemberData, getMemberData, updateMemberData } from '@/lib/memberData';
+import { getAllActiveMemberData, getMemberData, updateMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
 /**
  * GET - Récupère les membres organisés par liste (1, 2, 3)
@@ -100,6 +100,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
     const member = getMemberData(twitchLogin);
     if (!member) {
       return NextResponse.json(
@@ -109,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mettre à jour le listId
-    updateMemberData(twitchLogin, {
+    await updateMemberData(twitchLogin, {
       listId: listId || undefined,
     }, admin.id);
 

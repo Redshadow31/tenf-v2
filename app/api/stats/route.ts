@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllActiveMemberDataFromAllLists } from '@/lib/memberData';
+import { getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -52,6 +52,9 @@ export async function GET() {
       }
     }
 
+    // Charger les données depuis le stockage persistant (Blobs ou fichier)
+    await loadMemberDataFromStorage();
+    
     // 2. Compter les membres actifs depuis toutes les listes (1, 2, 3) du système centralisé
     const activeMembers = getAllActiveMemberDataFromAllLists();
     const activeMembersCount = activeMembers.length;

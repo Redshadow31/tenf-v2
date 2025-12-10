@@ -5,6 +5,7 @@ import { allMembers } from "./members";
 import { memberRoles, getMemberRole, getBadgesForMember, type MemberRole } from "./memberRoles";
 import fs from "fs";
 import path from "path";
+import { getStore } from "@netlify/blobs";
 
 export interface MemberData {
   // Identifiants
@@ -44,12 +45,88 @@ export interface MemberData {
   updatedBy?: string; // ID Discord de l'admin qui a modifié
 }
 
-// Stockage en mémoire avec persistance dans un fichier JSON
+// Stockage en mémoire avec persistance dans un fichier JSON ou Netlify Blobs
 let memberDataStore: Record<string, MemberData> = {};
 
-// Chemin du fichier de persistance
+// Chemin du fichier de persistance (pour développement local)
 const DATA_DIR = path.join(process.cwd(), "data");
 const MEMBERS_DATA_FILE = path.join(DATA_DIR, "members.json");
+
+// Clé pour Netlify Blobs
+const BLOB_STORE_NAME = "tenf-members";
+const BLOB_KEY = "members-data";
+
+/**
+ * Détecte si on est sur Netlify
+ */
+function isNetlify(): boolean {
+  return !!(
+    process.env.NETLIFY ||
+    process.env.NETLIFY_DEV ||
+    process.env.VERCEL === undefined // Si pas Vercel, probablement Netlify
+  );
+}
+
+/**
+ * Charge les données depuis Netlify Blobs
+ */
+async function loadMemberDataFromBlob(): Promise<Record<string, MemberData>> {
+  try {
+    const store = getStore({
+      name: BLOB_STORE_NAME,
+      consistency: "strong",
+    });
+    
+    const data = await store.get(BLOB_KEY, { type: "text" });
+    
+    if (!data) {
+      return {};
+    }
+    
+    const parsed = JSON.parse(data);
+    
+    // Convertir les dates string en objets Date
+    const storeData: Record<string, MemberData> = {};
+    for (const [key, member] of Object.entries(parsed)) {
+      storeData[key] = {
+        ...(member as any),
+        createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
+        updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+      };
+    }
+    
+    return storeData;
+  } catch (error) {
+    console.error("Erreur lors du chargement des données depuis Netlify Blobs:", error);
+    return {};
+  }
+}
+
+/**
+ * Sauvegarde les données dans Netlify Blobs
+ */
+async function saveMemberDataToBlob(): Promise<void> {
+  try {
+    const store = getStore({
+      name: BLOB_STORE_NAME,
+      consistency: "strong",
+    });
+    
+    // Convertir les dates en string pour la sérialisation JSON
+    const serializableStore: Record<string, any> = {};
+    for (const [key, member] of Object.entries(memberDataStore)) {
+      serializableStore[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+    
+    await store.set(BLOB_KEY, JSON.stringify(serializableStore, null, 2));
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données dans Netlify Blobs:", error);
+  }
+}
 
 /**
  * Charge les données depuis le fichier JSON
@@ -111,16 +188,21 @@ function saveMemberDataToFile(): void {
 
 /**
  * Initialise le store avec les données existantes
+ * Note: Cette fonction est synchrone pour le chargement initial
+ * Les données seront rechargées depuis Blobs lors des appels API
  */
 export function initializeMemberData() {
-  // Charger les données sauvegardées depuis le fichier
-  const savedData = loadMemberDataFromFile();
-  
-  // Si des données sauvegardées existent, les utiliser
-  if (Object.keys(savedData).length > 0) {
-    memberDataStore = savedData;
-    return;
+  // En développement local, charger depuis le fichier
+  if (!isNetlify()) {
+    const savedData = loadMemberDataFromFile();
+    
+    // Si des données sauvegardées existent, les utiliser
+    if (Object.keys(savedData).length > 0) {
+      memberDataStore = savedData;
+      return;
+    }
   }
+  // Sur Netlify, on ne charge pas ici (sera chargé à la demande dans les API)
 
   // Sinon, construire le store à partir des données existantes (première initialisation)
   allMembers.forEach((member) => {
@@ -159,8 +241,27 @@ export function initializeMemberData() {
   });
 
   // Sauvegarder après l'initialisation (seulement si on a créé de nouveaux membres)
-  if (Object.keys(savedData).length === 0 && Object.keys(memberDataStore).length > 0) {
+  // En développement local uniquement
+  if (!isNetlify() && Object.keys(memberDataStore).length > 0) {
     saveMemberDataToFile();
+  }
+}
+
+/**
+ * Charge les données depuis le stockage persistant (Blobs ou fichier)
+ * À appeler dans les API routes pour s'assurer d'avoir les dernières données
+ */
+export async function loadMemberDataFromStorage(): Promise<void> {
+  if (isNetlify()) {
+    const savedData = await loadMemberDataFromBlob();
+    if (Object.keys(savedData).length > 0) {
+      memberDataStore = savedData;
+    }
+  } else {
+    const savedData = loadMemberDataFromFile();
+    if (Object.keys(savedData).length > 0) {
+      memberDataStore = savedData;
+    }
   }
 }
 
@@ -235,11 +336,11 @@ export function getAllActiveMemberDataFromAllLists(): MemberData[] {
 /**
  * Met à jour les données d'un membre (fondateurs uniquement)
  */
-export function updateMemberData(
+export async function updateMemberData(
   twitchLogin: string,
   updates: Partial<MemberData>,
   updatedBy: string
-): MemberData | null {
+): Promise<MemberData | null> {
   const login = twitchLogin.toLowerCase();
   const existing = memberDataStore[login];
   
@@ -256,7 +357,11 @@ export function updateMemberData(
   
   // Sauvegarder après modification
   if (typeof window === "undefined") {
-    saveMemberDataToFile();
+    if (isNetlify()) {
+      await saveMemberDataToBlob();
+    } else {
+      saveMemberDataToFile();
+    }
   }
   
   return memberDataStore[login];
@@ -265,10 +370,10 @@ export function updateMemberData(
 /**
  * Crée un nouveau membre (fondateurs uniquement)
  */
-export function createMemberData(
+export async function createMemberData(
   memberData: Omit<MemberData, "createdAt" | "updatedAt" | "updatedBy">,
   createdBy: string
-): MemberData {
+): Promise<MemberData> {
   const login = memberData.twitchLogin.toLowerCase();
   
   memberDataStore[login] = {
@@ -280,7 +385,11 @@ export function createMemberData(
   
   // Sauvegarder après création
   if (typeof window === "undefined") {
-    saveMemberDataToFile();
+    if (isNetlify()) {
+      await saveMemberDataToBlob();
+    } else {
+      saveMemberDataToFile();
+    }
   }
   
   return memberDataStore[login];
@@ -289,14 +398,18 @@ export function createMemberData(
 /**
  * Supprime un membre (fondateurs uniquement)
  */
-export function deleteMemberData(twitchLogin: string): boolean {
+export async function deleteMemberData(twitchLogin: string): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
   if (memberDataStore[login]) {
     delete memberDataStore[login];
     
     // Sauvegarder après suppression
     if (typeof window === "undefined") {
-      saveMemberDataToFile();
+      if (isNetlify()) {
+        await saveMemberDataToBlob();
+      } else {
+        saveMemberDataToFile();
+      }
     }
     
     return true;

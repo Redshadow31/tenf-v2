@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdmin, isFounder } from "@/lib/admin";
-import { getMemberData, updateMemberData } from "@/lib/memberData";
+import { getMemberData, updateMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 
 // Désactiver le cache pour cette route
 export const dynamic = 'force-dynamic';
@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
       "lelgamingandstreaming",
     ];
 
+    // Charger les données depuis le stockage persistant
+    await loadMemberDataFromStorage();
+    
     const results = {
       updated: [] as string[],
       notFound: [] as string[],
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Mettre à jour le rôle en "Développement" avec le flag roleManuallySet
-        updateMemberData(
+        await updateMemberData(
           login,
           {
             role: "Développement",
