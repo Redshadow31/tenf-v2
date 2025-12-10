@@ -28,11 +28,13 @@ interface MemberWithDiscordRoles {
   avatar: string;
   roles: string[]; // IDs des rôles Discord
   roleNames: string[]; // Noms des rôles Discord
-  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
+  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;
   isModeratorMentor: boolean;
+  isAdminFondateurs: boolean;
+  isAdminAdjoint: boolean;
 }
 
 /**
@@ -127,6 +129,8 @@ export async function GET() {
           isVip: member.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
           isModeratorJunior: member.roles.includes(DISCORD_ROLE_IDS.MODERATEUR_JUNIOR),
           isModeratorMentor: member.roles.includes(DISCORD_ROLE_IDS.MODERATEUR_MENTOR),
+          isAdminFondateurs: member.roles.includes(DISCORD_ROLE_IDS.ADMIN_FONDATEURS),
+          isAdminAdjoint: member.roles.includes(DISCORD_ROLE_IDS.ADMIN_ADJOINT),
         };
       });
 

@@ -11,6 +11,7 @@ interface DiscordMessage {
     username: string;
     global_name?: string | null;
     avatar: string | null;
+    bot?: boolean;
   };
   member?: {
     roles: string[];
@@ -26,11 +27,13 @@ interface ParsedMember {
   twitchUrl: string;
   avatar: string;
   roles: string[];
-  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
+  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;
   isModeratorMentor: boolean;
+  isAdminFondateurs: boolean;
+  isAdminAdjoint: boolean;
 }
 
 /**
@@ -144,6 +147,10 @@ export async function GET() {
     if (membersResponse.ok) {
       const members = await membersResponse.json();
       members.forEach((member: any) => {
+        // Filtrer les bots
+        if (member.user && member.user.bot) {
+          return;
+        }
         guildMembers.set(member.user.id, member);
       });
     }
@@ -154,6 +161,10 @@ export async function GET() {
     for (const message of messages) {
       // Ignorer les bots
       if (message.author.bot) continue;
+      
+      // Vérifier aussi dans les membres du serveur
+      const guildMember = guildMembers.get(message.author.id);
+      if (guildMember?.user?.bot) continue;
 
       const parsed = parseMessage(message.content);
       if (!parsed || !parsed.twitchLogin) {
@@ -163,7 +174,6 @@ export async function GET() {
       const discordId = message.author.id;
       // Utiliser toujours l'auteur du message comme source de vérité pour Discord
       const discordUsername = message.author.username;
-      const guildMember = guildMembers.get(discordId);
       const memberRoles = guildMember?.roles || message.member?.roles || [];
 
       // Tous les membres qui ont posté dans ce canal sont considérés comme actifs
@@ -196,6 +206,8 @@ export async function GET() {
           isVip: memberRoles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
           isModeratorJunior: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_JUNIOR),
           isModeratorMentor: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_MENTOR),
+          isAdminFondateurs: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_FONDATEURS),
+          isAdminAdjoint: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_ADJOINT),
         } as ParsedMember & { lastMessageId?: string });
       }
     }

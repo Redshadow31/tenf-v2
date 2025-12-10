@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
+type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
 
 interface AddChannelModalProps {
   isOpen: boolean;
@@ -146,6 +146,8 @@ export default function AddChannelModal({
               <option value="Staff">Staff</option>
               <option value="Mentor">Mentor</option>
               <option value="Admin">Admin</option>
+              <option value="Admin Adjoint">Admin Adjoint</option>
+              <option value="Créateur Junior">Créateur Junior</option>
             </select>
           </div>
 

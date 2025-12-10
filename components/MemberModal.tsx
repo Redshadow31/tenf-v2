@@ -56,6 +56,10 @@ export default function MemberModal({
         return "bg-gray-700 text-white";
       case "Admin":
         return "bg-gray-700 text-white";
+      case "Admin Adjoint":
+        return "bg-gray-700 text-white";
+      case "Créateur Junior":
+        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
       default:
         return "bg-gray-700 text-white";
     }

@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
 import MemberBadges from "@/components/admin/MemberBadges";
+import AddChannelModal from "@/components/admin/AddChannelModal";
+import EditMemberModal from "@/components/admin/EditMemberModal";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 
-type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
+type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
 type MemberStatus = "Actif" | "Inactif";
 
 interface Member {
@@ -49,6 +51,7 @@ export default function GestionMembresPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
@@ -191,7 +194,16 @@ export default function GestionMembresPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = async (updatedMember: Member) => {
+  const handleSaveEdit = async (updatedMember: {
+    id: number;
+    avatar: string;
+    nom: string;
+    role: MemberRole;
+    statut: "Actif" | "Inactif";
+    discord: string;
+    twitch: string;
+    notesInternes?: string;
+  }) => {
     if (!currentAdmin?.isFounder) {
       alert("Seuls les fondateurs peuvent modifier les membres");
       return;
@@ -200,36 +212,181 @@ export default function GestionMembresPage() {
     const oldMember = members.find((m) => m.id === updatedMember.id);
     if (!oldMember) return;
 
-    await logAction(
-      currentAdmin.id,
-      currentAdmin.username,
-      "Modification d'un membre",
-      updatedMember.nom,
-      {
-        oldData: {
-          nom: oldMember.nom,
-          role: oldMember.role,
-          statut: oldMember.statut,
-          discord: oldMember.discord,
-          twitch: oldMember.twitch,
-        },
-        newData: {
-          nom: updatedMember.nom,
-          role: updatedMember.role,
-          statut: updatedMember.statut,
-          discord: updatedMember.discord,
-          twitch: updatedMember.twitch,
-        },
-      }
-    );
+    // Fusionner les données du modal avec les données existantes
+    const mergedMember: Member = {
+      ...oldMember,
+      nom: updatedMember.nom,
+      role: updatedMember.role,
+      statut: updatedMember.statut,
+      discord: updatedMember.discord,
+      twitch: updatedMember.twitch,
+      description: updatedMember.notesInternes || oldMember.description,
+    };
 
-    setMembers((prev) =>
-      prev.map((member) =>
-        member.id === updatedMember.id ? updatedMember : member
-      )
-    );
-    setIsEditModalOpen(false);
-    setSelectedMember(null);
+    try {
+      // Mettre à jour via l'API
+      const response = await fetch("/api/admin/members", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          twitchLogin: mergedMember.twitch,
+          displayName: mergedMember.nom,
+          twitchUrl: mergedMember.twitchUrl || `https://www.twitch.tv/${mergedMember.twitch}`,
+          discordId: mergedMember.discordId,
+          discordUsername: mergedMember.discord,
+          role: mergedMember.role,
+          isActive: mergedMember.statut === "Actif",
+          description: mergedMember.description,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la mise à jour");
+      }
+
+      await logAction(
+        currentAdmin.id,
+        currentAdmin.username,
+        "Modification d'un membre",
+        mergedMember.nom,
+        {
+          oldData: {
+            nom: oldMember.nom,
+            role: oldMember.role,
+            statut: oldMember.statut,
+            discord: oldMember.discord,
+            twitch: oldMember.twitch,
+          },
+          newData: {
+            nom: mergedMember.nom,
+            role: mergedMember.role,
+            statut: mergedMember.statut,
+            discord: mergedMember.discord,
+            twitch: mergedMember.twitch,
+          },
+        }
+      );
+
+      setMembers((prev) =>
+        prev.map((member) =>
+          member.id === mergedMember.id ? mergedMember : member
+        )
+      );
+      setIsEditModalOpen(false);
+      setSelectedMember(null);
+      alert("Membre modifié avec succès");
+    } catch (error) {
+      console.error("Erreur lors de la modification:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
+  const handleAdd = async (newMember: {
+    nom: string;
+    role: MemberRole;
+    statut: "Actif" | "Inactif";
+    discord: string;
+    twitch: string;
+    avatar: string;
+  }) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent ajouter des membres");
+      return;
+    }
+
+    try {
+      // Créer via l'API
+      const response = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          twitchLogin: newMember.twitch,
+          displayName: newMember.nom,
+          twitchUrl: `https://www.twitch.tv/${newMember.twitch}`,
+          discordUsername: newMember.discord,
+          role: newMember.role,
+          isActive: newMember.statut === "Actif",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de l'ajout");
+      }
+
+      const data = await response.json();
+      
+      await logAction(
+        currentAdmin.id,
+        currentAdmin.username,
+        "Ajout d'un membre",
+        newMember.nom,
+        {
+          twitchLogin: newMember.twitch,
+          role: newMember.role,
+          statut: newMember.statut,
+        }
+      );
+
+      // Ajouter à la liste locale
+      const addedMember: Member = {
+        id: members.length + 1,
+        avatar: newMember.avatar,
+        nom: newMember.nom,
+        role: newMember.role,
+        statut: newMember.statut,
+        discord: newMember.discord,
+        twitch: newMember.twitch,
+        twitchUrl: `https://www.twitch.tv/${newMember.twitch}`,
+      };
+
+      setMembers((prev) => [...prev, addedMember]);
+      setIsAddModalOpen(false);
+      alert("Membre ajouté avec succès");
+    } catch (error) {
+      console.error("Erreur lors de l'ajout:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
+  const handleDelete = async (member: Member) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent supprimer des membres");
+      return;
+    }
+
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${member.nom} ? Cette action est irréversible.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/members?twitchLogin=${encodeURIComponent(member.twitch)}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la suppression");
+      }
+
+      await logAction(
+        currentAdmin.id,
+        currentAdmin.username,
+        "Suppression d'un membre",
+        member.nom,
+        {
+          twitchLogin: member.twitch,
+          role: member.role,
+        }
+      );
+
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      alert("Membre supprimé avec succès");
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
   };
 
   const getRoleBadgeColor = (role: MemberRole) => {
@@ -244,6 +401,10 @@ export default function GestionMembresPage() {
         return "bg-gray-700 text-white";
       case "Admin":
         return "bg-gray-700 text-white";
+      case "Admin Adjoint":
+        return "bg-gray-700 text-white";
+      case "Créateur Junior":
+        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
       default:
         return "bg-gray-700 text-white";
     }
@@ -282,6 +443,14 @@ export default function GestionMembresPage() {
           />
           
           <div className="flex gap-2">
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                ➕ Ajouter une chaîne
+              </button>
+            )}
             <button
               onClick={() => setViewMode(viewMode === "simple" ? "complet" : "simple")}
               className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
@@ -513,12 +682,20 @@ export default function GestionMembresPage() {
                           {member.statut === "Actif" ? "Désactiver" : "Activer"}
                         </button>
                         {currentAdmin?.isFounder && (
-                          <button
-                            onClick={() => handleEdit(member)}
-                            className="bg-[#9146ff] hover:bg-[#5a32b4] px-3 py-1 rounded text-xs font-semibold text-white transition-colors"
-                          >
-                            Modifier
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleEdit(member)}
+                              className="bg-[#9146ff] hover:bg-[#5a32b4] px-3 py-1 rounded text-xs font-semibold text-white transition-colors"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => handleDelete(member)}
+                              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-1 rounded text-xs font-semibold transition-colors"
+                            >
+                              Supprimer
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -529,65 +706,35 @@ export default function GestionMembresPage() {
           </div>
         </div>
 
+        {/* Modal d'ajout (pour les fondateurs) */}
+        {currentAdmin?.isFounder && (
+          <AddChannelModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onAdd={handleAdd}
+          />
+        )}
+
         {/* Modal d'édition (pour les fondateurs) */}
         {isEditModalOpen && selectedMember && currentAdmin?.isFounder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Modifier le membre</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Pseudo Site</label>
-                  <input
-                    type="text"
-                    value={selectedMember.siteUsername || ""}
-                    onChange={(e) =>
-                      setSelectedMember({ ...selectedMember, siteUsername: e.target.value })
-                    }
-                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Chaîne Twitch</label>
-                  <input
-                    type="text"
-                    value={selectedMember.twitch}
-                    onChange={(e) =>
-                      setSelectedMember({ ...selectedMember, twitch: e.target.value })
-                    }
-                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <textarea
-                    value={selectedMember.description || ""}
-                    onChange={(e) =>
-                      setSelectedMember({ ...selectedMember, description: e.target.value })
-                    }
-                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedMember(null);
-                  }}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-white"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => handleSaveEdit(selectedMember)}
-                  className="flex-1 bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded text-white"
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </div>
-          </div>
+          <EditMemberModal
+            isOpen={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedMember(null);
+            }}
+            member={{
+              id: selectedMember.id,
+              avatar: selectedMember.avatar,
+              nom: selectedMember.nom,
+              role: selectedMember.role,
+              statut: selectedMember.statut,
+              discord: selectedMember.discord,
+              twitch: selectedMember.twitch,
+              notesInternes: selectedMember.description,
+            }}
+            onSave={handleSaveEdit}
+          />
         )}
       </div>
     </div>
