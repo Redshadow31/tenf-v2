@@ -13,8 +13,8 @@ Assurez-vous que ces variables sont bien configurées :
 ```
 DISCORD_CLIENT_ID=1447980264641794108
 DISCORD_CLIENT_SECRET=DslmRsTQKGNXJM-DUa97V-VKqDVBINzl
-DISCORD_REDIRECT_URI=https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://papaya-lebkuchen-9e7d00.netlify.app
+DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 ```
 
 **⚠️ IMPORTANT** : 
@@ -30,14 +30,14 @@ NEXT_PUBLIC_BASE_URL=https://papaya-lebkuchen-9e7d00.netlify.app
 4. Dans la section **Redirects**, vérifiez que vous avez EXACTEMENT :
 
 ```
-https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
+https://teamnewfamily.netlify.app/api/auth/discord/callback
 ```
 
 **⚠️ Points critiques** :
 - ✅ Commence par `https://` (pas `http://`)
 - ✅ Pas de slash `/` à la fin
 - ✅ Chemin exact : `/api/auth/discord/callback`
-- ✅ Domaine exact : `papaya-lebkuchen-9e7d00.netlify.app`
+- ✅ Domaine exact : `teamnewfamily.netlify.app`
 
 ### 3. Vérifier les logs Netlify
 
@@ -72,11 +72,11 @@ Ces logs vous diront exactement quel `redirect_uri` est utilisé.
 
 1. **Dans Discord Developer Portal** :
    - Supprimez tous les redirects existants
-   - Ajoutez uniquement : `https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback`
+   - Ajoutez uniquement : `https://teamnewfamily.netlify.app/api/auth/discord/callback`
    - Cliquez sur **Save Changes**
 
 2. **Dans Netlify** :
-   - Vérifiez que `DISCORD_REDIRECT_URI` = `https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback`
+   - Vérifiez que `DISCORD_REDIRECT_URI` = `https://teamnewfamily.netlify.app/api/auth/discord/callback`
    - Redéployez le site
 
 3. **Testez à nouveau** :

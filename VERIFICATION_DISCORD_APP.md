@@ -43,7 +43,7 @@ Dans Discord Developer Portal, **une seule application** (TENFSITE) contient **d
 1. Toujours dans **OAuth2** → **General**
 2. Dans la section **"Redirects"**, vérifiez que vous avez EXACTEMENT :
    ```
-   https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
+   https://teamnewfamily.netlify.app/api/auth/discord/callback
    ```
 3. Si ce n'est pas là, **ajoutez-le** et **sauvegardez**
 
@@ -66,7 +66,7 @@ Si le Client ID dans Netlify (`1447980264641794108`) ne correspond PAS à l'appl
 - [ ] Je suis sur l'application "TENFSITE" dans Discord Developer Portal
 - [ ] Le Client ID dans Netlify correspond au Client ID de TENFSITE
 - [ ] Le Client Secret dans Netlify correspond au Client Secret de TENFSITE
-- [ ] Le redirect_uri est bien configuré dans Discord : `https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback`
+- [ ] Le redirect_uri est bien configuré dans Discord : `https://teamnewfamily.netlify.app/api/auth/discord/callback`
 - [ ] J'ai redéployé le site sur Netlify après avoir mis à jour les variables
 
 ## 🎯 Action immédiate

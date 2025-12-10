@@ -6,7 +6,7 @@ D'après votre configuration actuelle, vous avez :
 
 1. ✅ **DISCORD_CLIENT_ID** - ID de l'application Discord OAuth2
 2. ✅ **DISCORD_CLIENT_SECRET** - Secret de l'application Discord OAuth2
-3. ✅ **DISCORD_REDIRECT_URI** - `https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback`
+3. ✅ **DISCORD_REDIRECT_URI** - `https://teamnewfamily.netlify.app/api/auth/discord/callback`
 4. ✅ **NEXT_PUBLIC_BASE_URL** - URL de base de votre site Netlify
 5. ✅ **TWITCH_CLIENT_ID** - ID de l'application Twitch
 6. ✅ **TWITCH_CLIENT_SECRET** - Secret de l'application Twitch
@@ -21,7 +21,7 @@ D'après votre configuration actuelle, vous avez :
 
 ### 2. **NEXTAUTH_URL** (OBLIGATOIRE)
 - **Description** : URL de base de votre application pour NextAuth
-- **Valeur** : `https://papaya-lebkuchen-9e7d00.netlify.app`
+- **Valeur** : `https://teamnewfamily.netlify.app`
 - **Où l'utiliser** : Configuration NextAuth
 
 ### 3. **DISCORD_BOT_TOKEN** (Optionnel mais recommandé)
@@ -36,10 +36,10 @@ Ajoutez ces variables dans Netlify → Site settings → Environment variables :
 ```
 DISCORD_CLIENT_ID=1447980264641794108
 DISCORD_CLIENT_SECRET=DslmRsTQKGNXJM-DUa97V-VKqDVBINzl
-DISCORD_REDIRECT_URI=https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://papaya-lebkuchen-9e7d00.netlify.app
+DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 NEXTAUTH_SECRET=tenfSuperSecretKey2025
-NEXTAUTH_URL=https://papaya-lebkuchen-9e7d00.netlify.app
+NEXTAUTH_URL=https://teamnewfamily.netlify.app
 TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
 TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
 DISCORD_BOT_TOKEN=votre_bot_token_ici (optionnel)
@@ -50,7 +50,7 @@ DISCORD_BOT_TOKEN=votre_bot_token_ici (optionnel)
 Assurez-vous que dans Discord Developer Portal → OAuth2 → Redirects, vous avez ajouté :
 
 ```
-https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
+https://teamnewfamily.netlify.app/api/auth/discord/callback
 ```
 
 **Important** : L'URL doit être exactement identique (même protocole https, même domaine, même chemin).

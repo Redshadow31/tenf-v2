@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getMemberByDiscordUsername } from "@/lib/members";
-import { getTwitchUser } from "@/lib/twitch";
 
 interface Clip {
   id: string;
@@ -17,6 +15,9 @@ interface Clip {
   creatorBio: string;
   viewCount: number;
   createdAt: string;
+  embedUrl?: string;
+  broadcasterId?: string;
+  broadcasterName?: string;
 }
 
 interface VipMember {
@@ -34,99 +35,145 @@ export default function ClipsPage() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
-  const [vipMembers, setVipMembers] = useState<VipMember[]>([]);
+  const [validClips, setValidClips] = useState<Clip[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchVipMembers() {
+    async function fetchClips() {
       try {
-        const response = await fetch("/api/vip-members", {
+        setLoading(true);
+        
+        // Récupérer les membres VIP
+        const vipResponse = await fetch("/api/vip-members", {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
           },
         });
-        if (!response.ok) {
+        
+        if (!vipResponse.ok) {
           throw new Error("Failed to fetch VIP members");
         }
-        const data = await response.json();
         
-        // Enrichir les données avec les informations Twitch
-        const enrichedMembers = await Promise.all(
-          data.members.map(async (member: VipMember) => {
-            const localMember = getMemberByDiscordUsername(member.username);
-            
-            if (localMember) {
-              try {
-                const twitchUser = await getTwitchUser(localMember.twitchLogin);
-                return {
-                  ...member,
-                  twitchLogin: localMember.twitchLogin,
-                  twitchUrl: localMember.twitchUrl,
-                  twitchAvatar: twitchUser.profile_image_url,
-                  displayName: localMember.displayName,
-                  twitchBio: "", // TODO: Récupérer la bio depuis l'API Twitch
-                };
-              } catch (err) {
-                console.error(`Error fetching Twitch data for ${member.username}:`, err);
-                return {
-                  ...member,
-                  twitchLogin: localMember.twitchLogin,
-                  twitchUrl: localMember.twitchUrl,
-                  displayName: localMember.displayName,
-                };
-              }
-            }
-            
-            return member;
-          })
+        const vipData = await vipResponse.json();
+        const vipMembers = vipData.members || [];
+        
+        // Récupérer les IDs Twitch des VIP
+        const twitchLogins = vipMembers
+          .map((m: any) => m.twitchLogin)
+          .filter(Boolean);
+        
+        if (twitchLogins.length === 0) {
+          setClips([]);
+          setValidClips([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Récupérer les IDs Twitch (broadcaster IDs) depuis l'API Twitch
+        const usersResponse = await fetch(
+          `/api/twitch/users?logins=${twitchLogins.join(',')}`
         );
         
-        setVipMembers(enrichedMembers);
+        if (!usersResponse.ok) {
+          throw new Error("Failed to fetch Twitch user IDs");
+        }
         
-        // Générer des clips aléatoires pour chaque VIP
-        // TODO: Remplacer par une vraie récupération de clips depuis l'API Twitch
-        // Pour l'instant, on génère des clips mock avec des IDs Twitch valides
-        const mockClips: Clip[] = enrichedMembers
-          .filter((member) => member.twitchLogin)
-          .map((member, index) => {
-            // Générer un ID de clip mock (format Twitch: nom aléatoire)
-            const clipId = `${member.twitchLogin}-${Date.now()}-${index}`;
-            return {
-              id: clipId,
-              url: `https://clips.twitch.tv/${clipId}`,
-              title: `Clip épique de ${member.displayName}`,
-              thumbnailUrl: `https://placehold.co/640x360?text=Clip+${member.displayName}`,
-              creatorId: member.discordId,
-              creatorName: member.displayName,
-              creatorLogin: member.twitchLogin || "",
-              creatorAvatar: member.twitchAvatar || member.avatar,
-              creatorBio: member.twitchBio || `Streamer sur Twitch - ${member.displayName}`,
-              viewCount: Math.floor(Math.random() * 10000),
-              createdAt: new Date().toISOString(),
-            };
-          });
+        const usersData = await usersResponse.json();
+        const broadcasterIds = usersData.users
+          .map((u: any) => u.id)
+          .filter(Boolean);
         
-        // Mélanger les clips aléatoirement
-        const shuffledClips = mockClips.sort(() => Math.random() - 0.5);
-        setClips(shuffledClips);
+        if (broadcasterIds.length === 0) {
+          setClips([]);
+          setValidClips([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Récupérer les clips depuis l'API Twitch
+        const clipsResponse = await fetch(
+          `/api/twitch/clips?broadcaster_ids=${broadcasterIds.join(',')}&limit=50`
+        );
+        
+        if (!clipsResponse.ok) {
+          throw new Error("Failed to fetch clips");
+        }
+        
+        const clipsData = await clipsResponse.json();
+        const fetchedClips = clipsData.clips || [];
+        
+        // Créer un map des membres VIP par broadcaster ID
+        const membersByBroadcasterId = new Map();
+        usersData.users.forEach((user: any) => {
+          const member = vipMembers.find(
+            (m: any) => m.twitchLogin?.toLowerCase() === user.login?.toLowerCase()
+          );
+          if (member) {
+            membersByBroadcasterId.set(user.id, member);
+          }
+        });
+        
+        // Enrichir les clips avec les informations des membres VIP
+        const enrichedClips: Clip[] = fetchedClips.map((clip: any) => {
+          const member = membersByBroadcasterId.get(clip.broadcasterId);
+          
+          return {
+            id: clip.id,
+            url: clip.url,
+            title: clip.title,
+            thumbnailUrl: clip.thumbnailUrl,
+            creatorId: clip.creatorId,
+            creatorName: clip.creatorName || clip.broadcasterName || member?.displayName || 'Unknown',
+            creatorLogin: clip.broadcasterName || member?.twitchLogin || '',
+            creatorAvatar: member?.avatar || member?.twitchAvatar || `https://placehold.co/64x64?text=${(clip.broadcasterName || 'C').charAt(0)}`,
+            creatorBio: member?.displayName ? `Streamer sur Twitch - ${member.displayName}` : '',
+            viewCount: clip.viewCount,
+            createdAt: clip.createdAt,
+            embedUrl: clip.embedUrl,
+            broadcasterId: clip.broadcasterId,
+            broadcasterName: clip.broadcasterName,
+          };
+        });
+        
+        // Trier par nombre de vues (décroissant)
+        enrichedClips.sort((a, b) => b.viewCount - a.viewCount);
+        
+        setClips(enrichedClips);
+        setValidClips(enrichedClips); // Initialement, tous les clips sont considérés valides
       } catch (err) {
-        console.error("Error fetching VIP members:", err);
+        console.error("Error fetching clips:", err);
+        setError(err instanceof Error ? err.message : "Unknown error");
+        setClips([]);
+        setValidClips([]);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchVipMembers();
+    fetchClips();
   }, []);
+  
+  // Initialiser validClips avec tous les clips (l'API Twitch ne retourne que les clips disponibles)
+  useEffect(() => {
+    if (clips.length > 0 && validClips.length === 0) {
+      setValidClips(clips);
+    }
+  }, [clips]);
 
-  const currentClip = clips[currentClipIndex];
+  // Utiliser validClips au lieu de clips pour éviter les clips indisponibles
+  const currentClip = validClips.length > 0 
+    ? validClips[Math.min(currentClipIndex, validClips.length - 1)]
+    : null;
 
   const nextClip = () => {
-    setCurrentClipIndex((prev) => (prev + 1) % clips.length);
+    if (validClips.length === 0) return;
+    setCurrentClipIndex((prev) => (prev + 1) % validClips.length);
   };
 
   const previousClip = () => {
-    setCurrentClipIndex((prev) => (prev - 1 + clips.length) % clips.length);
+    if (validClips.length === 0) return;
+    setCurrentClipIndex((prev) => (prev - 1 + validClips.length) % validClips.length);
   };
 
   if (loading) {
@@ -134,6 +181,30 @@ export default function ClipsPage() {
       <main className="p-6 min-h-screen">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-white text-xl">Chargement des clips...</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="p-6 min-h-screen">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-bold text-white">Clips VIP</h1>
+            <Link
+              href="/vip"
+              className="text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              ← Retour aux VIP
+            </Link>
+          </div>
+          <div className="text-center py-12">
+            <p className="text-red-400 text-xl">Erreur: {error}</p>
+            <p className="text-gray-400 text-sm mt-2">
+              Impossible de charger les clips pour le moment.
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -160,7 +231,7 @@ export default function ClipsPage() {
               {/* Clip */}
               <div className="aspect-video w-full bg-black relative">
                 <iframe
-                  src={`https://clips.twitch.tv/embed?clip=${currentClip.id.split('/').pop()}&parent=${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}&autoplay=false`}
+                  src={currentClip.embedUrl || `https://clips.twitch.tv/embed?clip=${currentClip.id}&parent=${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}&autoplay=false`}
                   width="100%"
                   height="100%"
                   allowFullScreen
@@ -221,7 +292,7 @@ export default function ClipsPage() {
                 ← Clip précédent
               </button>
               <div className="text-gray-400">
-                {currentClipIndex + 1} / {clips.length}
+                {currentClipIndex + 1} / {validClips.length}
               </div>
               <button
                 onClick={nextClip}
@@ -234,32 +305,45 @@ export default function ClipsPage() {
             {/* Liste des clips disponibles */}
             <div>
               <h3 className="text-xl font-semibold text-white mb-4">
-                Tous les clips ({clips.length})
+                Tous les clips ({validClips.length})
               </h3>
-              <div className="grid grid-cols-4 gap-4">
-                {clips.map((clip, index) => (
-                  <button
-                    key={clip.id}
-                    onClick={() => setCurrentClipIndex(index)}
-                    className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                      index === currentClipIndex
-                        ? "border-purple-600"
-                        : "border-gray-700 hover:border-gray-600"
-                    }`}
-                  >
-                    <img
-                      src={clip.thumbnailUrl}
-                      alt={clip.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <span className="text-white text-sm font-semibold">
-                        {clip.creatorName}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {validClips.length > 0 ? (
+                <div className="grid grid-cols-4 gap-4">
+                  {validClips.map((clip, index) => {
+                    const actualIndex = validClips.findIndex(c => c.id === clip.id);
+                    return (
+                      <button
+                        key={clip.id}
+                        onClick={() => setCurrentClipIndex(actualIndex)}
+                        className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                          actualIndex === currentClipIndex
+                            ? "border-purple-600"
+                            : "border-gray-700 hover:border-gray-600"
+                        }`}
+                      >
+                        <img
+                          src={clip.thumbnailUrl}
+                          alt={clip.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://placehold.co/640x360?text=${clip.creatorName}`;
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <span className="text-white text-sm font-semibold">
+                            {clip.creatorName}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">Aucun clip valide disponible.</p>
+                </div>
+              )}
             </div>
           </div>
         ) : (

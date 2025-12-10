@@ -64,7 +64,7 @@ export default function LoginPage() {
                 <ul className="list-disc list-inside ml-2 space-y-1">
                   <li>Le redirect_uri dans Discord Developer Portal correspond exactement à l'URL Netlify</li>
                   <li>Les variables DISCORD_CLIENT_ID et DISCORD_CLIENT_SECRET sont correctes</li>
-                  <li>Le redirect_uri utilisé est : https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback</li>
+                  <li>Le redirect_uri utilisé est : https://teamnewfamily.netlify.app/api/auth/discord/callback</li>
                 </ul>
               </div>
             )}

@@ -24,10 +24,10 @@ Assurez-vous que toutes ces variables sont configurées :
 ```
 DISCORD_CLIENT_ID=1447980264641794108
 DISCORD_CLIENT_SECRET=ZzcRup7Ayz-HLu04XZE46P8n76YvNYTe
-DISCORD_REDIRECT_URI=https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://papaya-lebkuchen-9e7d00.netlify.app
+DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 NEXTAUTH_SECRET=tenfSuperSecretKey2025
-NEXTAUTH_URL=https://papaya-lebkuchen-9e7d00.netlify.app
+NEXTAUTH_URL=https://teamnewfamily.netlify.app
 TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
 TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
 ```
@@ -40,7 +40,7 @@ Dans Discord Developer Portal → TENFSITE → OAuth2 → General :
 2. **Client Secret** : Vient d'être réinitialisé ✅
 3. **Redirects** : Doit contenir exactement :
    ```
-   https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback
+   https://teamnewfamily.netlify.app/api/auth/discord/callback
    ```
 
 ## 🚀 Après la mise à jour
