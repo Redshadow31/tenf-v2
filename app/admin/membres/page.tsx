@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import AddChannelModal from "@/components/admin/AddChannelModal";
-import EditMemberModal from "@/components/admin/EditMemberModal";
+import AdminHeader from "@/components/admin/AdminHeader";
+import MemberBadges from "@/components/admin/MemberBadges";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
-import { canPerformAction } from "@/lib/admin";
-import MemberBadges from "@/components/admin/MemberBadges";
+import { canPerformAction, isFounder } from "@/lib/admin";
 
 type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin";
 type MemberStatus = "Actif" | "Inactif";
@@ -21,62 +20,21 @@ interface Member {
   discord: string;
   discordId?: string;
   twitch: string;
+  twitchUrl?: string;
+  siteUsername?: string;
   notesInternes?: string;
   badges?: string[];
   isVip?: boolean;
   isModeratorJunior?: boolean;
   isModeratorMentor?: boolean;
+  description?: string;
+  customBio?: string;
+  twitchStatus?: {
+    isLive: boolean;
+    gameName?: string;
+    viewerCount?: number;
+  };
 }
-
-// Données mock
-const mockMembers: Member[] = [
-  {
-    id: 1,
-    avatar: "https://placehold.co/64x64?text=C",
-    nom: "Clara",
-    role: "Affilié",
-    statut: "Actif",
-    discord: "ClaraStonewall#1234",
-    twitch: "clarastonewall",
-    notesInternes: "Conformité ok.",
-  },
-  {
-    id: 2,
-    avatar: "https://placehold.co/64x64?text=Y",
-    nom: "Yaya",
-    role: "Développement",
-    statut: "Inactif",
-    discord: "Yaya_TV#5678",
-    twitch: "yaya_romali",
-  },
-  {
-    id: 3,
-    avatar: "https://placehold.co/64x64?text=R",
-    nom: "Red_Shadow",
-    role: "Staff",
-    statut: "Actif",
-    discord: "Red_Shadow_31#9012",
-    twitch: "red_shadow_31",
-  },
-  {
-    id: 4,
-    avatar: "https://placehold.co/64x64?text=L",
-    nom: "Livio_On",
-    role: "Développement",
-    statut: "Actif",
-    discord: "Livio_On#3456",
-    twitch: "livio_on",
-  },
-  {
-    id: 5,
-    avatar: "https://placehold.co/64x64?text=S",
-    nom: "Selena",
-    role: "Staff",
-    statut: "Actif",
-    discord: "Selena_Akemi#7890",
-    twitch: "selena_akemi",
-  },
-];
 
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
@@ -90,18 +48,18 @@ export default function GestionMembresPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [selectedMemberForNotes, setSelectedMemberForNotes] = useState<Member | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
+  const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
 
   useEffect(() => {
     async function loadAdmin() {
       const user = await getDiscordUser();
       if (user) {
-        setCurrentAdmin({ id: user.id, username: user.username });
+        const founderStatus = isFounder(user.id);
+        setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus });
       }
     }
     loadAdmin();
@@ -113,52 +71,81 @@ export default function GestionMembresPage() {
       .catch(() => setSafeModeEnabled(false));
 
     // Charger les membres depuis le canal Discord #vos-chaînes-twitch
-    async function loadDiscordMembers() {
-      try {
-        // Récupérer les membres depuis le canal Discord
-        const discordResponse = await fetch("/api/discord/channel/members");
-        if (!discordResponse.ok) {
-          const errorText = await discordResponse.text();
-          console.error("Erreur lors du chargement des membres depuis Discord:", errorText);
-          throw new Error("Erreur lors du chargement des membres Discord");
-        }
-        const discordData = await discordResponse.json();
-
-        // Mapper les membres Discord vers le format Member
-        const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-          return {
-            id: index + 1,
-            avatar: discordMember.avatar,
-            nom: discordMember.discordNickname || discordMember.discordUsername,
-            role: discordMember.siteRole,
-            statut: "Actif" as MemberStatus, // Tous les membres du canal sont actifs
-            discord: discordMember.discordUsername,
-            discordId: discordMember.discordId,
-            twitch: discordMember.twitchLogin || "", // Récupéré directement depuis le canal
-            badges: discordMember.badges,
-            isVip: discordMember.isVip,
-            isModeratorJunior: discordMember.isModeratorJunior,
-            isModeratorMentor: discordMember.isModeratorMentor,
-          };
-        });
-
-        setMembers(mappedMembers);
-      } catch (error) {
-        console.error("Erreur lors du chargement des membres:", error);
-        // En cas d'erreur, utiliser les données mock
-        setMembers(mockMembers);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadDiscordMembers();
   }, []);
+
+  // Charger les membres depuis le canal Discord #vos-chaînes-twitch
+  async function loadDiscordMembers() {
+    try {
+      setLoading(true);
+      // Récupérer les membres depuis le canal Discord
+      const discordResponse = await fetch("/api/discord/channel/members");
+      if (!discordResponse.ok) {
+        const errorText = await discordResponse.text();
+        console.error("Erreur lors du chargement des membres depuis Discord:", errorText);
+        throw new Error("Erreur lors du chargement des membres Discord");
+      }
+      const discordData = await discordResponse.json();
+
+      // Si l'admin est fondateur, récupérer aussi les données centralisées pour enrichir
+      let centralMembers: any[] = [];
+      if (currentAdmin?.isFounder) {
+        try {
+          const centralResponse = await fetch("/api/admin/members");
+          if (centralResponse.ok) {
+            const centralData = await centralResponse.json();
+            centralMembers = centralData.members || [];
+          }
+        } catch (err) {
+          console.warn("Impossible de charger les données centralisées:", err);
+        }
+      }
+
+      // Créer un map des membres par Discord ID
+      const centralByDiscordId = new Map(
+        centralMembers
+          .filter((m: any) => m.discordId)
+          .map((m: any) => [m.discordId, m])
+      );
+
+      // Mapper les membres Discord vers le format Member
+      const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
+        const centralMember = centralByDiscordId.get(discordMember.discordId);
+        
+        return {
+          id: index + 1,
+          avatar: discordMember.avatar,
+          nom: discordMember.discordNickname || discordMember.discordUsername,
+          role: discordMember.siteRole,
+          statut: "Actif" as MemberStatus,
+          discord: discordMember.discordUsername,
+          discordId: discordMember.discordId,
+          twitch: discordMember.twitchLogin || "",
+          twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+          siteUsername: centralMember?.siteUsername,
+          badges: discordMember.badges,
+          isVip: discordMember.isVip,
+          isModeratorJunior: discordMember.isModeratorJunior,
+          isModeratorMentor: discordMember.isModeratorMentor,
+          description: centralMember?.description,
+          customBio: centralMember?.customBio,
+          twitchStatus: centralMember?.twitchStatus,
+        };
+      });
+
+      setMembers(mappedMembers);
+    } catch (error) {
+      console.error("Erreur lors du chargement des membres:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const filteredMembers = members.filter((member) =>
     member.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.twitch.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.discord.toLowerCase().includes(searchQuery.toLowerCase())
+    member.discord.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (member.siteUsername && member.siteUsername.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleToggleStatus = async (memberId: number) => {
@@ -167,7 +154,6 @@ export default function GestionMembresPage() {
       return;
     }
 
-    // Vérifier les permissions (Safe Mode)
     if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
       alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
       return;
@@ -179,7 +165,6 @@ export default function GestionMembresPage() {
     const oldStatus = member.statut;
     const newStatus = oldStatus === "Actif" ? "Inactif" : "Actif";
 
-    // Logger l'action
     await logAction(
       currentAdmin.id,
       currentAdmin.username,
@@ -198,26 +183,23 @@ export default function GestionMembresPage() {
   };
 
   const handleEdit = (member: Member) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent modifier les membres");
+      return;
+    }
     setSelectedMember(member);
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = async (updatedMember: Member) => {
-    if (!currentAdmin) {
-      alert("Vous devez être connecté pour effectuer cette action");
-      return;
-    }
-
-    // Vérifier les permissions (Safe Mode)
-    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
-      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent modifier les membres");
       return;
     }
 
     const oldMember = members.find((m) => m.id === updatedMember.id);
     if (!oldMember) return;
 
-    // Logger l'action
     await logAction(
       currentAdmin.id,
       currentAdmin.username,
@@ -248,39 +230,6 @@ export default function GestionMembresPage() {
     );
     setIsEditModalOpen(false);
     setSelectedMember(null);
-  };
-
-  const handleDelete = async (memberId: number) => {
-    if (!currentAdmin) {
-      alert("Vous devez être connecté pour effectuer cette action");
-      return;
-    }
-
-    // Vérifier les permissions (Safe Mode)
-    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
-      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
-      return;
-    }
-
-    const member = members.find((m) => m.id === memberId);
-    if (!member) return;
-
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
-      // Logger l'action
-      await logAction(
-        currentAdmin.id,
-        currentAdmin.username,
-        "Suppression d'un membre",
-        member.nom,
-        {
-          nom: member.nom,
-          role: member.role,
-          statut: member.statut,
-        }
-      );
-
-      setMembers((prev) => prev.filter((member) => member.id !== memberId));
-    }
   };
 
   const getRoleBadgeColor = (role: MemberRole) => {
@@ -320,138 +269,192 @@ export default function GestionMembresPage() {
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
       <div className="p-8">
-        {/* Header avec navigation */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-purple-300">Gestion des Membres</h1>
-              <p className="text-sm text-gray-400 mt-2">
-                Synchronisé depuis le canal #vos-chaînes-twitch • {members.length} membre{members.length > 1 ? 's' : ''} actif{members.length > 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    // Récupérer les membres depuis le canal Discord #vos-chaînes-twitch
-                    const discordResponse = await fetch("/api/discord/channel/members");
-                    if (!discordResponse.ok) {
-                      const errorText = await discordResponse.text();
-                      throw new Error(`Erreur Discord: ${errorText}`);
-                    }
-                    const discordData = await discordResponse.json();
+        <AdminHeader title="Gestion des Membres" navLinks={navLinks} />
 
-                    // Mapper les membres
-                    const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-                      return {
-                        id: index + 1,
-                        avatar: discordMember.avatar,
-                        nom: discordMember.discordNickname || discordMember.discordUsername,
-                        role: discordMember.siteRole,
-                        statut: "Actif" as MemberStatus,
-                        discord: discordMember.discordUsername,
-                        discordId: discordMember.discordId,
-                        twitch: discordMember.twitchLogin || "",
-                        badges: discordMember.badges,
-                        isVip: discordMember.isVip,
-                        isModeratorJunior: discordMember.isModeratorJunior,
-                        isModeratorMentor: discordMember.isModeratorMentor,
-                      };
-                    });
-
-                    setMembers(mappedMembers);
-                    alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s) depuis le canal #vos-chaînes-twitch`);
-                  } catch (error) {
-                    console.error("Erreur lors de la synchronisation:", error);
-                    alert(`Erreur lors de la synchronisation: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              >
-                🔄 Synchroniser depuis #vos-chaînes-twitch
-              </button>
-              <button
-                onClick={() => setIsAddChannelModalOpen(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-              >
-                AJOUTER UNE CHAÎNE
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  link.active
-                    ? "bg-[#9146ff] text-white"
-                    : "bg-[#1a1a1d] text-gray-300 hover:bg-[#252529] hover:text-white border border-gray-700"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Barre de recherche */}
-        <div className="mb-6">
+        {/* Barre de recherche et actions */}
+        <div className="mb-6 flex items-center gap-4 flex-wrap">
           <input
             type="text"
             placeholder="Rechercher un membre..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-md bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+            className="flex-1 max-w-md bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
           />
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode(viewMode === "simple" ? "complet" : "simple")}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              {viewMode === "simple" ? "📊 Vue complète" : "📋 Vue simple"}
+            </button>
+            
+            <button
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const discordResponse = await fetch("/api/discord/channel/members");
+                  if (!discordResponse.ok) throw new Error("Erreur Discord");
+                  const discordData = await discordResponse.json();
+
+                  let centralMembers: any[] = [];
+                  if (currentAdmin?.isFounder) {
+                    try {
+                      const centralResponse = await fetch("/api/admin/members");
+                      if (centralResponse.ok) {
+                        const centralData = await centralResponse.json();
+                        centralMembers = centralData.members || [];
+                      }
+                    } catch (err) {
+                      console.warn("Impossible de charger les données centralisées:", err);
+                    }
+                  }
+
+                  const centralByDiscordId = new Map(
+                    centralMembers
+                      .filter((m: any) => m.discordId)
+                      .map((m: any) => [m.discordId, m])
+                  );
+
+                  const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
+                    const centralMember = centralByDiscordId.get(discordMember.discordId);
+                    return {
+                      id: index + 1,
+                      avatar: discordMember.avatar,
+                      nom: discordMember.discordNickname || discordMember.discordUsername,
+                      role: discordMember.siteRole,
+                      statut: "Actif" as MemberStatus,
+                      discord: discordMember.discordUsername,
+                      discordId: discordMember.discordId,
+                      twitch: discordMember.twitchLogin || "",
+                      twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+                      siteUsername: centralMember?.siteUsername,
+                      badges: discordMember.badges,
+                      isVip: discordMember.isVip,
+                      isModeratorJunior: discordMember.isModeratorJunior,
+                      isModeratorMentor: discordMember.isModeratorMentor,
+                      description: centralMember?.description,
+                      customBio: centralMember?.customBio,
+                      twitchStatus: centralMember?.twitchStatus,
+                    };
+                  });
+
+                  setMembers(mappedMembers);
+                  alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s)`);
+                } catch (error) {
+                  console.error("Erreur lors de la synchronisation:", error);
+                  alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              🔄 Synchroniser
+            </button>
+
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/admin/members/sync-twitch", { method: "POST" });
+                    const data = await response.json();
+                    if (data.success) {
+                      alert(`Synchronisation Twitch terminée : ${data.synced}/${data.total} membres`);
+                      await loadDiscordMembers();
+                    } else {
+                      alert(`Erreur: ${data.error}`);
+                    }
+                  } catch (err) {
+                    console.error("Error syncing:", err);
+                    alert("Erreur lors de la synchronisation Twitch");
+                  }
+                }}
+                className="bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
+              >
+                🔄 Sync Twitch
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tableau des membres */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">CRÉATEUR</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">RÔLE</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">STATUT</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMembers.map((member) => (
-                <tr
-                  key={member.id}
-                  className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
-                >
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={member.avatar}
-                        alt={member.nom}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="text-white font-medium">{member.nom}</div>
-                        {member.discord && (
-                          <div className="text-xs text-gray-400">@{member.discord}</div>
-                        )}
-                        {member.twitch && (
-                          <div className="text-xs text-gray-400">Twitch: {member.twitch}</div>
-                        )}
-                        <MemberBadges
-                          badges={member.badges || []}
-                          isVip={member.isVip}
-                          isModeratorJunior={member.isModeratorJunior}
-                          isModeratorMentor={member.isModeratorMentor}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">CRÉATEUR</th>
+                  {viewMode === "complet" && (
+                    <>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Discord</th>
+                    </>
+                  )}
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">RÔLE</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">STATUT</th>
+                  {viewMode === "complet" && (
+                    <>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">VIP</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Live</th>
+                    </>
+                  )}
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMembers.map((member) => (
+                  <tr
+                    key={member.id}
+                    className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={member.avatar}
+                          alt={member.nom}
+                          className="w-12 h-12 rounded-full object-cover"
                         />
+                        <div>
+                          <div className="text-white font-medium">{member.nom}</div>
+                          {member.discord && (
+                            <div className="text-xs text-gray-400">@{member.discord}</div>
+                          )}
+                          {member.twitch && (
+                            <div className="text-xs text-gray-400">
+                              Twitch:{" "}
+                              <a
+                                href={member.twitchUrl || `https://www.twitch.tv/${member.twitch}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#9146ff] hover:text-[#5a32b4]"
+                              >
+                                {member.twitch}
+                              </a>
+                            </div>
+                          )}
+                          <MemberBadges
+                            badges={member.badges || []}
+                            isVip={member.isVip}
+                            isModeratorJunior={member.isModeratorJunior}
+                            isModeratorMentor={member.isModeratorMentor}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex flex-col gap-1">
+                    </td>
+                    {viewMode === "complet" && (
+                      <>
+                        <td className="py-4 px-6 text-gray-300">
+                          {member.siteUsername || "-"}
+                        </td>
+                        <td className="py-4 px-6">
+                          <code className="text-xs text-gray-400 bg-[#0e0e10] px-2 py-1 rounded">
+                            {member.discordId || "-"}
+                          </code>
+                        </td>
+                      </>
+                    )}
+                    <td className="py-4 px-6">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit ${getRoleBadgeColor(
                           member.role
@@ -459,171 +462,134 @@ export default function GestionMembresPage() {
                       >
                         {member.role}
                       </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(
-                        member.statut
-                      )}`}
-                    >
-                      {member.statut}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleStatus(member.id)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                          member.statut === "Actif"
-                            ? "bg-purple-900/30 text-purple-300 hover:bg-purple-900/50"
-                            : "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
-                        }`}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(
+                          member.statut
+                        )}`}
                       >
-                        {member.statut === "Actif" ? "Désactiver" : "Activer"}
-                      </button>
-                      <button
-                        onClick={() => handleEdit(member)}
-                        className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(member.id)}
-                        className="bg-red-900/30 text-red-300 hover:bg-red-900/50 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        Supprimer
-                      </button>
-                      <button
-                        onClick={() => setSelectedMemberForNotes(member)}
-                        className="bg-gray-700 text-gray-300 hover:bg-gray-600 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        Notes
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {member.statut}
+                      </span>
+                    </td>
+                    {viewMode === "complet" && (
+                      <>
+                        <td className="py-4 px-6">
+                          {member.isVip ? (
+                            <span className="px-2 py-1 rounded bg-[#9146ff] text-white text-xs font-semibold">
+                              VIP
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6">
+                          {member.twitchStatus?.isLive ? (
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                              <span className="text-red-400 text-xs font-semibold">LIVE</span>
+                              {member.twitchStatus.viewerCount && (
+                                <span className="text-gray-400 text-xs">
+                                  {member.twitchStatus.viewerCount} viewers
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                      </>
+                    )}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleToggleStatus(member.id)}
+                          className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
+                            member.statut === "Actif"
+                              ? "bg-red-600/20 text-red-300 hover:bg-red-600/30"
+                              : "bg-green-600/20 text-green-300 hover:bg-green-600/30"
+                          }`}
+                        >
+                          {member.statut === "Actif" ? "Désactiver" : "Activer"}
+                        </button>
+                        {currentAdmin?.isFounder && (
+                          <button
+                            onClick={() => handleEdit(member)}
+                            className="bg-[#9146ff] hover:bg-[#5a32b4] px-3 py-1 rounded text-xs font-semibold text-white transition-colors"
+                          >
+                            Modifier
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Section Notes internes */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Notes internes</h3>
-              {selectedMemberForNotes ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-2">
-                      Notes pour <span className="text-white font-semibold">{selectedMemberForNotes.nom}</span>
-                    </p>
-                    <textarea
-                      defaultValue={selectedMemberForNotes.notesInternes || ""}
-                      placeholder="Ajouter des notes internes..."
-                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 min-h-[100px]"
-                      onChange={(e) => {
-                        setSelectedMemberForNotes({
-                          ...selectedMemberForNotes,
-                          notesInternes: e.target.value,
-                        });
-                      }}
-                    />
-                    <div className="flex gap-2 mt-4">
-                      <button
-                        onClick={() => {
-                          if (selectedMemberForNotes) {
-                            handleSaveEdit(selectedMemberForNotes);
-                            setSelectedMemberForNotes(null);
-                          }
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        Enregistrer
-                      </button>
-                      <button
-                        onClick={() => setSelectedMemberForNotes(null)}
-                        className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
+        {/* Modal d'édition (pour les fondateurs) */}
+        {isEditModalOpen && selectedMember && currentAdmin?.isFounder && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Modifier le membre</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Pseudo Site</label>
+                  <input
+                    type="text"
+                    value={selectedMember.siteUsername || ""}
+                    onChange={(e) =>
+                      setSelectedMember({ ...selectedMember, siteUsername: e.target.value })
+                    }
+                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
+                  />
                 </div>
-              ) : (
-                <p className="text-gray-400 text-sm">
-                  Sélectionnez un membre et cliquez sur "Notes" pour voir ou modifier les notes internes.
-                </p>
-              )}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Chaîne Twitch</label>
+                  <input
+                    type="text"
+                    value={selectedMember.twitch}
+                    onChange={(e) =>
+                      setSelectedMember({ ...selectedMember, twitch: e.target.value })
+                    }
+                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <textarea
+                    value={selectedMember.description || ""}
+                    onChange={(e) =>
+                      setSelectedMember({ ...selectedMember, description: e.target.value })
+                    }
+                    className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded px-3 py-2 text-white"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedMember(null);
+                  }}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-white"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleSaveEdit(selectedMember)}
+                  className="flex-1 bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded text-white"
+                >
+                  Enregistrer
+                </button>
+              </div>
             </div>
           </div>
-          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Informations</h3>
-            <div className="space-y-2 text-sm text-gray-300">
-              <p>Total membres: {members.length}</p>
-              <p>Actifs: {members.filter((m) => m.statut === "Actif").length}</p>
-              <p>Inactifs: {members.filter((m) => m.statut === "Inactif").length}</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Modals */}
-      <AddChannelModal
-        isOpen={isAddChannelModalOpen}
-        onClose={() => setIsAddChannelModalOpen(false)}
-        onAdd={async (newMember) => {
-          if (!currentAdmin) {
-            alert("Vous devez être connecté pour effectuer cette action");
-            return;
-          }
-
-          // Vérifier les permissions (Safe Mode)
-          if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
-            alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
-            return;
-          }
-
-          // Logger l'action
-          await logAction(
-            currentAdmin.id,
-            currentAdmin.username,
-            "Ajout d'un membre",
-            newMember.nom,
-            {
-              nom: newMember.nom,
-              role: newMember.role,
-              statut: newMember.statut,
-              discord: newMember.discord,
-              twitch: newMember.twitch,
-            }
-          );
-
-          // Ajouter le membre
-          const newId = Math.max(...members.map((m) => m.id), 0) + 1;
-          setMembers((prev) => [
-            ...prev,
-            {
-              ...newMember,
-              id: newId,
-            },
-          ]);
-          setIsAddChannelModalOpen(false);
-        }}
-      />
-
-      {selectedMember && (
-        <EditMemberModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedMember(null);
-          }}
-          member={selectedMember}
-          onSave={handleSaveEdit}
-        />
-      )}
     </div>
   );
 }
