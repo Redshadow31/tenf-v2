@@ -35,6 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# data files
-/data/
+# data files (sauf members.json qui doit être versionné pour Netlify)
+/data/*
+!/data/members.json
 
