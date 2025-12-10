@@ -201,6 +201,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Si le rôle est modifié manuellement, marquer comme défini manuellement
+    if (updates.role && updates.role !== existingMember.role) {
+      updates.roleManuallySet = true;
+    }
+
     const updatedMember = updateMemberData(twitchLogin, updates, admin.id);
 
     if (!updatedMember) {

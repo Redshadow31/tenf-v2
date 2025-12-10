@@ -98,16 +98,23 @@ export async function POST(request: NextRequest) {
 
       if (existing) {
         // Mettre à jour le membre existant
+        // Ne pas écraser le rôle si il a été défini manuellement
+        const updates: any = {
+          discordId,
+          discordUsername,
+          displayName,
+          isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
+          isActive: true,
+        };
+        
+        // Ne mettre à jour le rôle que s'il n'a pas été défini manuellement
+        if (!existing.roleManuallySet) {
+          updates.role = role;
+        }
+        
         updateMemberData(
           existing.twitchLogin,
-          {
-            discordId,
-            discordUsername,
-            displayName,
-            role,
-            isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
-            isActive: true,
-          },
+          updates,
           admin.id
         );
         updated++;
