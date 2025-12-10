@@ -11,8 +11,10 @@ interface Member {
   role: MemberRole;
   statut: "Actif" | "Inactif";
   discord: string;
+  discordId?: string;
   twitch: string;
   notesInternes?: string;
+  description?: string;
   badges?: string[];
   isVip?: boolean;
 }
@@ -119,7 +121,7 @@ export default function EditMemberModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Discord *
+              Pseudo Discord *
             </label>
             <input
               type="text"
@@ -127,6 +129,19 @@ export default function EditMemberModal({
               onChange={(e) => setFormData({ ...formData, discord: e.target.value })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              ID Discord
+            </label>
+            <input
+              type="text"
+              value={formData.discordId || ""}
+              onChange={(e) => setFormData({ ...formData, discordId: e.target.value })}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+              placeholder="Ex: 535244297214361603"
             />
           </div>
 
@@ -250,13 +265,25 @@ export default function EditMemberModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Descriptif du streamer
+            </label>
+            <textarea
+              value={formData.description || ""}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 min-h-[100px]"
+              placeholder="Description publique du streamer..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
               Notes internes
             </label>
             <textarea
               value={formData.notesInternes || ""}
               onChange={(e) => setFormData({ ...formData, notesInternes: e.target.value })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 min-h-[100px]"
-              placeholder="Notes internes..."
+              placeholder="Notes internes (non visibles publiquement)..."
             />
           </div>
 

@@ -8,6 +8,7 @@ import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
 import { logAction } from "@/lib/logAction";
+import { getTwitchUser } from "@/lib/twitch";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 
@@ -101,33 +102,43 @@ export default function GestionMembresPage() {
             const centralData = await centralResponse.json();
             const centralMembers = centralData.members || [];
             
-            // Mapper les membres centralisés vers le format Member
-            const mappedMembers: Member[] = centralMembers.map((member: any, index: number) => {
-              // Essayer de récupérer l'avatar depuis Discord si on a l'ID
-              const avatar = member.discordId 
-                ? `https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`
-                : `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
+            // Mapper les membres centralisés vers le format Member avec avatars Twitch
+            const mappedMembers: Member[] = await Promise.all(
+              centralMembers.map(async (member: any, index: number) => {
+                // Récupérer l'avatar depuis Twitch
+                let avatar = `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
+                try {
+                  const { getTwitchUser } = await import('@/lib/twitch');
+                  const twitchUser = await getTwitchUser(member.twitchLogin);
+                  avatar = twitchUser.profile_image_url;
+                } catch (err) {
+                  // Si erreur, utiliser Discord en fallback
+                  if (member.discordId) {
+                    avatar = `https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`;
+                  }
+                }
               
-              return {
-                id: index + 1,
-                avatar,
-                nom: member.displayName || member.twitchLogin,
-                role: member.role || "Affilié",
-                statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
-                discord: member.discordUsername || "",
-                discordId: member.discordId,
-                twitch: member.twitchLogin || "",
-                twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
-                siteUsername: member.siteUsername,
-                description: member.description,
-                customBio: member.customBio,
-                twitchStatus: member.twitchStatus,
-                badges: member.badges || [],
-                isVip: member.isVip || false,
-                isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
-                isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
-              };
-            });
+                return {
+                  id: index + 1,
+                  avatar,
+                  nom: member.displayName || member.twitchLogin,
+                  role: member.role || "Affilié",
+                  statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
+                  discord: member.discordUsername || "",
+                  discordId: member.discordId,
+                  twitch: member.twitchLogin || "",
+                  twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+                  siteUsername: member.siteUsername,
+                  description: member.description,
+                  customBio: member.customBio,
+                  twitchStatus: member.twitchStatus,
+                  badges: member.badges || [],
+                  isVip: member.isVip || false,
+                  isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
+                  isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
+                };
+              })
+            );
             
             setMembers(mappedMembers);
             setLoading(false);
@@ -218,30 +229,44 @@ export default function GestionMembresPage() {
           .map((m: any) => [m.discordId, m])
       );
 
-      // Mapper les membres Discord vers le format Member
-      const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-        const centralMember = centralByDiscordId.get(discordMember.discordId);
-        
-        return {
-          id: index + 1,
-          avatar: discordMember.avatar,
-          nom: discordMember.discordNickname || discordMember.discordUsername,
-          role: discordMember.siteRole,
-          statut: "Actif" as MemberStatus,
-          discord: discordMember.discordUsername,
-          discordId: discordMember.discordId,
-          twitch: discordMember.twitchLogin || "",
-          twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
-          siteUsername: centralMember?.siteUsername,
-          badges: discordMember.badges,
-          isVip: discordMember.isVip,
-          isModeratorJunior: discordMember.isModeratorJunior,
-          isModeratorMentor: discordMember.isModeratorMentor,
-          description: centralMember?.description,
-          customBio: centralMember?.customBio,
-          twitchStatus: centralMember?.twitchStatus,
-        };
-      });
+      // Mapper les membres Discord vers le format Member avec avatars Twitch
+      const mappedMembers: Member[] = await Promise.all(
+        discordData.members.map(async (discordMember: any, index: number) => {
+          const centralMember = centralByDiscordId.get(discordMember.discordId);
+          
+          // Récupérer l'avatar depuis Twitch si on a un twitchLogin
+          let avatar = discordMember.avatar; // Fallback Discord
+          if (discordMember.twitchLogin) {
+            try {
+              const twitchUser = await getTwitchUser(discordMember.twitchLogin);
+              avatar = twitchUser.profile_image_url;
+            } catch (err) {
+              // Garder l'avatar Discord en cas d'erreur
+              console.warn(`Erreur récupération avatar Twitch pour ${discordMember.twitchLogin}:`, err);
+            }
+          }
+          
+          return {
+            id: index + 1,
+            avatar,
+            nom: discordMember.discordNickname || discordMember.discordUsername,
+            role: discordMember.siteRole,
+            statut: "Actif" as MemberStatus,
+            discord: discordMember.discordUsername,
+            discordId: discordMember.discordId,
+            twitch: discordMember.twitchLogin || "",
+            twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+            siteUsername: centralMember?.siteUsername,
+            badges: discordMember.badges,
+            isVip: discordMember.isVip,
+            isModeratorJunior: discordMember.isModeratorJunior,
+            isModeratorMentor: discordMember.isModeratorMentor,
+            description: centralMember?.description,
+            customBio: centralMember?.customBio,
+            twitchStatus: centralMember?.twitchStatus,
+          };
+        })
+      );
 
       setMembers(mappedMembers);
     } catch (error) {
@@ -332,8 +357,10 @@ export default function GestionMembresPage() {
     role: MemberRole;
     statut: "Actif" | "Inactif";
     discord: string;
+    discordId?: string;
     twitch: string;
     notesInternes?: string;
+    description?: string;
     badges?: string[];
     isVip?: boolean;
   }) => {
@@ -352,8 +379,12 @@ export default function GestionMembresPage() {
       role: updatedMember.role,
       statut: updatedMember.statut,
       discord: updatedMember.discord,
+      discordId: updatedMember.discordId,
       twitch: updatedMember.twitch,
-      description: updatedMember.notesInternes || oldMember.description,
+      description: updatedMember.description || oldMember.description,
+      notesInternes: updatedMember.notesInternes || oldMember.notesInternes,
+      badges: updatedMember.badges || oldMember.badges,
+      isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
     };
 
     try {
@@ -716,28 +747,43 @@ export default function GestionMembresPage() {
                       .map((m: any) => [m.discordId, m])
                   );
 
-                  const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-                    const centralMember = centralByDiscordId.get(discordMember.discordId);
-                    return {
-                      id: index + 1,
-                      avatar: discordMember.avatar,
-                      nom: discordMember.discordNickname || discordMember.discordUsername,
-                      role: discordMember.siteRole,
-                      statut: "Actif" as MemberStatus,
-                      discord: discordMember.discordUsername,
-                      discordId: discordMember.discordId,
-                      twitch: discordMember.twitchLogin || "",
-                      twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
-                      siteUsername: centralMember?.siteUsername,
-                      badges: discordMember.badges,
-                      isVip: discordMember.isVip,
-                      isModeratorJunior: discordMember.isModeratorJunior,
-                      isModeratorMentor: discordMember.isModeratorMentor,
-                      description: centralMember?.description,
-                      customBio: centralMember?.customBio,
-                      twitchStatus: centralMember?.twitchStatus,
-                    };
-                  });
+                  const mappedMembers: Member[] = await Promise.all(
+                    discordData.members.map(async (discordMember: any, index: number) => {
+                      const centralMember = centralByDiscordId.get(discordMember.discordId);
+                      
+                      // Récupérer l'avatar depuis Twitch si on a un twitchLogin
+                      let avatar = discordMember.avatar; // Fallback Discord
+                      if (discordMember.twitchLogin) {
+                        try {
+                          const twitchUser = await getTwitchUser(discordMember.twitchLogin);
+                          avatar = twitchUser.profile_image_url;
+                        } catch (err) {
+                          // Garder l'avatar Discord en cas d'erreur
+                          console.warn(`Erreur récupération avatar Twitch pour ${discordMember.twitchLogin}:`, err);
+                        }
+                      }
+                      
+                      return {
+                        id: index + 1,
+                        avatar,
+                        nom: discordMember.discordNickname || discordMember.discordUsername,
+                        role: discordMember.siteRole,
+                        statut: "Actif" as MemberStatus,
+                        discord: discordMember.discordUsername,
+                        discordId: discordMember.discordId,
+                        twitch: discordMember.twitchLogin || "",
+                        twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+                        siteUsername: centralMember?.siteUsername,
+                        badges: discordMember.badges,
+                        isVip: discordMember.isVip,
+                        isModeratorJunior: discordMember.isModeratorJunior,
+                        isModeratorMentor: discordMember.isModeratorMentor,
+                        description: centralMember?.description,
+                        customBio: centralMember?.customBio,
+                        twitchStatus: centralMember?.twitchStatus,
+                      };
+                    })
+                  );
 
                   setMembers(mappedMembers);
                   alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s)`);
@@ -968,8 +1014,12 @@ export default function GestionMembresPage() {
               role: selectedMember.role,
               statut: selectedMember.statut,
               discord: selectedMember.discord,
+              discordId: selectedMember.discordId,
               twitch: selectedMember.twitch,
+              description: selectedMember.description,
               notesInternes: selectedMember.description,
+              badges: selectedMember.badges,
+              isVip: selectedMember.isVip,
             }}
             onSave={handleSaveEdit}
           />
