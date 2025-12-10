@@ -66,7 +66,7 @@ export default function HistoriquePage() {
           );
 
           const enriched = logins.map(login => {
-            const member = membersMap.get(login.toLowerCase());
+            const member = membersMap.get(login.toLowerCase()) as { displayName?: string; avatar?: string } | undefined;
             
             return {
               login: login,
