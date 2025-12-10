@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } from "@/lib/discord";
 
 const publicLinks = [
   { href: "/membres", label: "Membres" },
@@ -11,18 +13,29 @@ const publicLinks = [
 ];
 
 export default function Header() {
-  // TODO: Gérer l'état de connexion (Twitch/Discord)
-  const isAuthenticated = false; // À remplacer par la vraie logique d'authentification
+  const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleTwitchLogin = () => {
-    // TODO: Implémenter la connexion Twitch
-    console.log("Connexion Twitch");
-  };
+  useEffect(() => {
+    async function fetchUser() {
+      const user = await getDiscordUser();
+      setDiscordUser(user);
+      setLoading(false);
+    }
+    fetchUser();
+  }, []);
 
   const handleDiscordLogin = () => {
-    // TODO: Implémenter la connexion Discord
-    console.log("Connexion Discord");
+    loginWithDiscord();
   };
+
+  const handleLogout = async () => {
+    await logoutDiscord();
+    setDiscordUser(null);
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!discordUser;
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0e0e10]/95 backdrop-blur">
@@ -53,9 +66,23 @@ export default function Header() {
 
         {/* Boutons d'action */}
         <div className="flex items-center gap-3">
-          {isAuthenticated ? (
+          {loading ? (
+            <div className="text-gray-400 text-sm">Chargement...</div>
+          ) : isAuthenticated ? (
             <>
               {/* Menu utilisateur connecté */}
+              <div className="flex items-center gap-3">
+                {discordUser?.avatar && (
+                  <img
+                    src={`https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`}
+                    alt={discordUser.username}
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <span className="text-sm text-gray-300 hidden md:block">
+                  {discordUser?.username}
+                </span>
+              </div>
               <Link
                 href="/membres/me"
                 className="rounded-lg bg-[#1a1a1d] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/5 border border-gray-700"
@@ -68,12 +95,18 @@ export default function Header() {
               >
                 Dashboard
               </Link>
+              <button
+                onClick={handleLogout}
+                className="rounded-lg bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+              >
+                Déconnexion
+              </button>
             </>
           ) : (
             <>
               {/* Boutons de connexion */}
               <button
-                onClick={handleTwitchLogin}
+                onClick={() => console.log("Connexion Twitch - À implémenter")}
                 className="rounded-lg bg-[#9146ff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5a32b4]"
               >
                 Connexion Twitch
