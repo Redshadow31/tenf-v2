@@ -65,10 +65,13 @@ export default function LivesPage() {
         const data = await response.json();
         const streams: LiveStream[] = data.streams || [];
 
+        // Filtrer uniquement les streams vraiment en live (double vérification)
+        const liveStreamsOnly = streams.filter((stream) => stream.isLive === true);
+
         // Enrichir les données avec les informations des membres actifs uniquement
         // On utilise activeMembers au lieu de allMembers pour garantir la synchronisation
         const enrichedLives = await Promise.all(
-          streams.map(async (stream) => {
+          liveStreamsOnly.map(async (stream) => {
             // Chercher dans les membres actifs uniquement (même logique que /membres)
             const member = activeMembers.find(
               (m) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()

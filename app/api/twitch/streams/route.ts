@@ -123,8 +123,12 @@ export async function GET(request: Request) {
 
     const data: TwitchStreamsResponse = await response.json();
 
+    // Filtrer uniquement les streams vraiment en live (type === 'live')
+    // L'API Twitch retourne normalement uniquement les streams actifs, mais on double-vérifie
+    const liveStreams = data.data.filter((stream) => stream.type === 'live');
+
     // Formater les données pour l'application
-    const streams = data.data.map((stream) => ({
+    const streams = liveStreams.map((stream) => ({
       id: stream.id,
       userId: stream.user_id,
       userLogin: stream.user_login,
@@ -136,7 +140,7 @@ export async function GET(request: Request) {
       thumbnailUrl: stream.thumbnail_url
         .replace('{width}', '640')
         .replace('{height}', '360'),
-      isLive: stream.type === 'live',
+      isLive: true, // Tous les streams retournés sont forcément en live
     }));
 
     return NextResponse.json({ streams });
