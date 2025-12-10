@@ -26,7 +26,14 @@ export async function GET(request: NextRequest) {
 
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/discord/callback`;
+  
+  // Utiliser l'URL de la requête pour construire le redirect_uri si DISCORD_REDIRECT_URI n'est pas défini
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${baseUrl}/api/auth/discord/callback`;
+  
+  // Log pour débogage (à retirer en production)
+  console.log('Callback - Redirect URI:', redirectUri);
+  console.log('Callback - Base URL:', baseUrl);
 
   if (error) {
     return NextResponse.redirect(
@@ -75,8 +82,18 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Discord token error:', errorText);
+      console.error('Redirect URI used:', redirectUri);
+      console.error('Client ID:', clientId);
+      // Log plus détaillé pour le débogage
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText };
+      }
+      console.error('Error details:', errorData);
       return NextResponse.redirect(
-        new URL('/auth/login?error=token_exchange_failed', request.url)
+        new URL(`/auth/login?error=token_exchange_failed&details=${encodeURIComponent(errorText.substring(0, 100))}`, request.url)
       );
     }
 

@@ -44,7 +44,7 @@ export default function LoginPage() {
 
         {error && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
-            <p className="text-red-400 text-sm">
+            <p className="text-red-400 text-sm font-semibold mb-2">
               {error === "missing_code_or_state" && "Code ou state manquant"}
               {error === "invalid_state" && "État invalide - veuillez réessayer"}
               {error === "server_config_error" && "Erreur de configuration serveur"}
@@ -53,6 +53,21 @@ export default function LoginPage() {
               {error === "oauth_error" && "Erreur lors de la connexion Discord"}
               {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error"].includes(error) && `Erreur: ${error}`}
             </p>
+            {searchParams.get("details") && (
+              <p className="text-red-300 text-xs mt-2 font-mono break-all">
+                Détails: {searchParams.get("details")}
+              </p>
+            )}
+            {error === "token_exchange_failed" && (
+              <div className="mt-3 text-xs text-gray-300 space-y-1">
+                <p>Vérifications à faire :</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li>Le redirect_uri dans Discord Developer Portal correspond exactement à l'URL Netlify</li>
+                  <li>Les variables DISCORD_CLIENT_ID et DISCORD_CLIENT_SECRET sont correctes</li>
+                  <li>Le redirect_uri utilisé est : https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
 

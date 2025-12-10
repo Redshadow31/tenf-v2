@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/discord/callback`;
+  
+  // Utiliser l'URL de la requête pour construire le redirect_uri si DISCORD_REDIRECT_URI n'est pas défini
+  // IMPORTANT: Le redirect_uri doit être EXACTEMENT le même que celui utilisé dans le callback
+  const requestUrl = new URL(request.url);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || requestUrl.origin;
+  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${baseUrl}/api/auth/discord/callback`;
+  
+  // Log pour débogage
+  console.log('Login - Redirect URI:', redirectUri);
+  console.log('Login - Base URL:', baseUrl);
   
   if (!clientId) {
     return NextResponse.json(
