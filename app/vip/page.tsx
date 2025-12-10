@@ -24,7 +24,12 @@ export default function VipPage() {
   useEffect(() => {
     async function fetchVipMembers() {
       try {
-        const response = await fetch("/api/vip-members");
+        const response = await fetch("/api/vip-members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch VIP members");
         }

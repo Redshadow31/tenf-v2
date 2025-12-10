@@ -91,7 +91,12 @@ export default function GestionMembresPage() {
       // Si l'admin est fondateur, charger depuis l'API centralisée
       if (currentAdmin?.isFounder) {
         try {
-          const centralResponse = await fetch("/api/admin/members");
+          const centralResponse = await fetch("/api/admin/members", {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
           if (centralResponse.ok) {
             const centralData = await centralResponse.json();
             const centralMembers = centralData.members || [];
@@ -147,7 +152,12 @@ export default function GestionMembresPage() {
     try {
       setLoading(true);
       // Récupérer les membres depuis le canal Discord
-      const discordResponse = await fetch("/api/discord/channel/members");
+      const discordResponse = await fetch("/api/discord/channel/members", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (!discordResponse.ok) {
         let errorMessage = "Erreur lors du chargement des membres Discord";
         try {
@@ -186,7 +196,12 @@ export default function GestionMembresPage() {
       let centralMembers: any[] = [];
       if (currentAdmin?.isFounder) {
         try {
-          const centralResponse = await fetch("/api/admin/members");
+          const centralResponse = await fetch("/api/admin/members", {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
           if (centralResponse.ok) {
             const centralData = await centralResponse.json();
             centralMembers = centralData.members || [];
@@ -268,7 +283,11 @@ export default function GestionMembresPage() {
       if (currentAdmin.isFounder) {
         const response = await fetch("/api/admin/members", {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          cache: 'no-store',
+          headers: {
+            "Content-Type": "application/json",
+            'Cache-Control': 'no-cache',
+          },
           body: JSON.stringify({
             twitchLogin: member.twitch,
             isActive: newStatus === "Actif",
@@ -341,7 +360,11 @@ export default function GestionMembresPage() {
       // Mettre à jour via l'API
       const response = await fetch("/api/admin/members", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        cache: 'no-store',
+        headers: { 
+          "Content-Type": "application/json",
+          'Cache-Control': 'no-cache',
+        },
         body: JSON.stringify({
           twitchLogin: mergedMember.twitch,
           displayName: mergedMember.nom,
@@ -413,7 +436,11 @@ export default function GestionMembresPage() {
       // Créer via l'API
       const response = await fetch("/api/admin/members", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        cache: 'no-store',
+        headers: { 
+          "Content-Type": "application/json",
+          'Cache-Control': 'no-cache',
+        },
         body: JSON.stringify({
           twitchLogin: newMember.twitch,
           displayName: newMember.nom,
@@ -477,7 +504,11 @@ export default function GestionMembresPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/members?twitchLogin=${encodeURIComponent(member.twitch)}`, {
+        const response = await fetch(`/api/admin/members?twitchLogin=${encodeURIComponent(member.twitch)}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
         method: "DELETE",
       });
 
@@ -520,7 +551,11 @@ export default function GestionMembresPage() {
       try {
         const response = await fetch("/api/admin/members", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          cache: 'no-store',
+          headers: { 
+            "Content-Type": "application/json",
+            'Cache-Control': 'no-cache',
+          },
           body: JSON.stringify({
             twitchLogin: member.twitch,
             displayName: member.nom,
@@ -639,7 +674,12 @@ export default function GestionMembresPage() {
               onClick={async () => {
                 setLoading(true);
                 try {
-                  const discordResponse = await fetch("/api/discord/channel/members");
+                  const discordResponse = await fetch("/api/discord/channel/members", {
+                    cache: 'no-store',
+                    headers: {
+                      'Cache-Control': 'no-cache',
+                    },
+                  });
                   if (!discordResponse.ok) {
                     let errorMessage = "Erreur lors de la synchronisation Discord";
                     try {
@@ -655,7 +695,12 @@ export default function GestionMembresPage() {
                   let centralMembers: any[] = [];
                   if (currentAdmin?.isFounder) {
                     try {
-                      const centralResponse = await fetch("/api/admin/members");
+                      const centralResponse = await fetch("/api/admin/members", {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
                       if (centralResponse.ok) {
                         const centralData = await centralResponse.json();
                         centralMembers = centralData.members || [];

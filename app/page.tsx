@@ -1,24 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { allMembers } from "@/lib/members";
-import { getVipMembers, getMemberRole } from "@/lib/memberRoles";
+import { getVipMembers } from "@/lib/memberRoles";
 
-// Mock data pour les stats
-const stats = {
-  totalMembers: allMembers.length,
-  activeThisMonth: allMembers.length, // TODO: Calculer les membres actifs ce mois
-  livesInProgress: 0, // TODO: Récupérer depuis l'API Twitch
-  vipOfMonth: getVipMembers()[0]?.displayName || "MissLyliee",
-};
-
-// Mock data pour les jeux (à remplacer par l'API Twitch)
-const mockGames: Record<string, string> = {
-  nexou31: "Fortnite",
-  clarastonewall: "The Sims 4",
-  yaya_romali: "VALORANT",
-  misslyliee: "Elden Ring",
-  jenny31200: "Animal Crossing",
-  red_shadow_31: "Dead by Daylight",
-};
+interface Stats {
+  totalMembers: number;
+  activeMembers: number;
+  livesInProgress: number;
+}
 
 // Fonction pour sélectionner aléatoirement N éléments d'un tableau
 function getRandomItems<T>(array: T[], count: number): T[] {
@@ -27,24 +18,112 @@ function getRandomItems<T>(array: T[], count: number): T[] {
 }
 
 export default function Page() {
+  const [stats, setStats] = useState<Stats>({
+    totalMembers: 0,
+    activeMembers: 0,
+    livesInProgress: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Charger les statistiques depuis l'API
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const response = await fetch("/api/stats", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            totalMembers: data.totalMembers || 0,
+            activeMembers: data.activeMembers || 0,
+            livesInProgress: data.livesInProgress || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des statistiques:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
+
   // Récupérer les VIP
   const allVip = getVipMembers();
   
   // Sélectionner 3 VIP au hasard parmi tous les VIP du mois
   const randomVip = getRandomItems(allVip, 3);
   
-  // Simuler des lives (à remplacer par l'API Twitch)
-  // Pour l'instant, on prend 8 membres actifs au hasard comme exemple de lives
-  const allLives = getRandomItems(allMembers, 8).map((member) => ({
-    id: member.twitchLogin,
-    username: member.displayName,
-    game: mockGames[member.twitchLogin.toLowerCase()] || "Just Chatting",
-    thumbnail: "/api/placeholder/400/225",
-    twitchUrl: member.twitchUrl,
-  }));
+  const vipOfMonth = allVip[0]?.displayName || "MissLyliee";
   
-  // Sélectionner 3 lives au hasard parmi tous les lives en cours
-  const randomLives = getRandomItems(allLives, 3);
+  // Récupérer les vraies données de lives
+  const [lives, setLives] = useState<any[]>([]);
+  
+  useEffect(() => {
+    async function loadLives() {
+      try {
+        // Récupérer les membres actifs
+        const membersResponse = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (membersResponse.ok) {
+          const membersData = await membersResponse.json();
+          const activeMembers = membersData.members || [];
+          const twitchLogins = activeMembers
+            .map((member: any) => member.twitchLogin)
+            .filter(Boolean);
+
+          if (twitchLogins.length > 0) {
+            // Récupérer les streams en cours
+            const userLoginsParam = twitchLogins.join(',');
+            const streamsResponse = await fetch(
+              `/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`,
+              {
+                cache: 'no-store',
+                headers: {
+                  'Cache-Control': 'no-cache',
+                },
+              }
+            );
+
+            if (streamsResponse.ok) {
+              const streamsData = await streamsResponse.json();
+              const liveStreams = (streamsData.streams || [])
+                .filter((stream: any) => stream.type === 'live')
+                .map((stream: any) => {
+                  const member = activeMembers.find(
+                    (m: any) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
+                  );
+                  return {
+                    id: stream.userLogin,
+                    username: member?.displayName || stream.userName,
+                    game: stream.gameName || "Just Chatting",
+                    thumbnail: stream.thumbnailUrl || "/api/placeholder/400/225",
+                    twitchUrl: member?.twitchUrl || `https://www.twitch.tv/${stream.userLogin}`,
+                  };
+                });
+              
+              // Sélectionner 3 lives au hasard
+              setLives(getRandomItems(liveStreams, 3));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des lives:", error);
+      }
+    }
+    loadLives();
+  }, []);
+  
+  const randomLives = lives;
 
   return (
     <div className="space-y-16 pb-16">
@@ -92,19 +171,25 @@ export default function Page() {
         {/* Cartes de stats */}
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
           <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">{stats.totalMembers}</p>
+            <p className="text-4xl font-bold text-white">
+              {loading ? "..." : stats.totalMembers}
+            </p>
             <p className="mt-2 text-sm text-gray-400">membres</p>
           </div>
           <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">{stats.activeThisMonth}</p>
+            <p className="text-4xl font-bold text-white">
+              {loading ? "..." : stats.activeMembers}
+            </p>
             <p className="mt-2 text-sm text-gray-400">actifs ce mois</p>
           </div>
           <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">{stats.livesInProgress}</p>
+            <p className="text-4xl font-bold text-white">
+              {loading ? "..." : stats.livesInProgress}
+            </p>
             <p className="mt-2 text-sm text-gray-400">lives en cours</p>
           </div>
           <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-white">{stats.vipOfMonth}</p>
+            <p className="text-2xl font-bold text-white">{vipOfMonth}</p>
             <p className="mt-2 text-sm text-gray-400">VIP du mois</p>
           </div>
         </div>
@@ -128,6 +213,17 @@ export default function Page() {
               className="card overflow-hidden bg-[#1a1a1d] border border-gray-700 transition-transform hover:scale-[1.02]"
             >
               <div className="relative aspect-video w-full bg-gradient-to-br from-[#9146ff]/20 to-[#5a32b4]/20">
+                {live.thumbnail && (
+                  <img
+                    src={live.thumbnail}
+                    alt={live.username}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                )}
                 <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white">
                   EN DIRECT
                 </div>

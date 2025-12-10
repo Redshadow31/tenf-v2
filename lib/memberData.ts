@@ -3,6 +3,8 @@
 
 import { allMembers } from "./members";
 import { memberRoles, getMemberRole, type MemberRole } from "./memberRoles";
+import fs from "fs";
+import path from "path";
 
 export interface MemberData {
   // Identifiants
@@ -40,37 +42,120 @@ export interface MemberData {
   updatedBy?: string; // ID Discord de l'admin qui a modifié
 }
 
-// Stockage en mémoire (à remplacer par une vraie DB en production)
-// TODO: Migrer vers une base de données (Prisma, MongoDB, etc.)
+// Stockage en mémoire avec persistance dans un fichier JSON
 let memberDataStore: Record<string, MemberData> = {};
+
+// Chemin du fichier de persistance
+const DATA_DIR = path.join(process.cwd(), "data");
+const MEMBERS_DATA_FILE = path.join(DATA_DIR, "members.json");
+
+/**
+ * Charge les données depuis le fichier JSON
+ */
+function loadMemberDataFromFile(): Record<string, MemberData> {
+  try {
+    // Créer le dossier data s'il n'existe pas
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    // Si le fichier existe, le charger
+    if (fs.existsSync(MEMBERS_DATA_FILE)) {
+      const fileContent = fs.readFileSync(MEMBERS_DATA_FILE, "utf-8");
+      const parsed = JSON.parse(fileContent);
+      
+      // Convertir les dates string en objets Date
+      const store: Record<string, MemberData> = {};
+      for (const [key, member] of Object.entries(parsed)) {
+        store[key] = {
+          ...(member as any),
+          createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
+          updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+        };
+      }
+      return store;
+    }
+  } catch (error) {
+    console.error("Erreur lors du chargement des données membres:", error);
+  }
+  return {};
+}
+
+/**
+ * Sauvegarde les données dans le fichier JSON
+ */
+function saveMemberDataToFile(): void {
+  try {
+    // Créer le dossier data s'il n'existe pas
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    // Convertir les dates en string pour la sérialisation JSON
+    const serializableStore: Record<string, any> = {};
+    for (const [key, member] of Object.entries(memberDataStore)) {
+      serializableStore[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+
+    fs.writeFileSync(MEMBERS_DATA_FILE, JSON.stringify(serializableStore, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données membres:", error);
+  }
+}
 
 /**
  * Initialise le store avec les données existantes
  */
 export function initializeMemberData() {
-  // Construire le store à partir des données existantes
+  // Charger les données sauvegardées depuis le fichier
+  const savedData = loadMemberDataFromFile();
+  
+  // Si des données sauvegardées existent, les utiliser
+  if (Object.keys(savedData).length > 0) {
+    memberDataStore = savedData;
+    return;
+  }
+
+  // Sinon, construire le store à partir des données existantes (première initialisation)
   allMembers.forEach((member) => {
     const roleInfo = getMemberRole(member.twitchLogin);
+    const login = member.twitchLogin.toLowerCase();
     
-    memberDataStore[member.twitchLogin.toLowerCase()] = {
-      twitchLogin: member.twitchLogin,
-      displayName: member.displayName,
-      siteUsername: member.displayName, // Par défaut, utiliser le displayName
-      twitchUrl: member.twitchUrl,
-      discordUsername: member.discordUsername,
-      role: roleInfo.role,
-      isVip: roleInfo.isVip,
-      isActive: roleInfo.isActive,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    // Ne pas écraser si le membre existe déjà dans les données sauvegardées
+    if (!memberDataStore[login]) {
+      memberDataStore[login] = {
+        twitchLogin: member.twitchLogin,
+        displayName: member.displayName,
+        siteUsername: member.displayName, // Par défaut, utiliser le displayName
+        twitchUrl: member.twitchUrl,
+        discordUsername: member.discordUsername,
+        role: roleInfo.role,
+        isVip: roleInfo.isVip,
+        isActive: roleInfo.isActive,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
   });
+
+  // Sauvegarder après l'initialisation (seulement si on a créé de nouveaux membres)
+  if (Object.keys(savedData).length === 0 && Object.keys(memberDataStore).length > 0) {
+    saveMemberDataToFile();
+  }
 }
 
-// Initialiser au chargement
-if (typeof window === "undefined") {
+// Variable pour éviter les initialisations multiples
+let isInitialized = false;
+
+// Initialiser au chargement (une seule fois)
+if (typeof window === "undefined" && !isInitialized) {
   // Côté serveur uniquement
   initializeMemberData();
+  isInitialized = true;
 }
 
 /**
@@ -126,6 +211,11 @@ export function updateMemberData(
     updatedBy,
   };
   
+  // Sauvegarder après modification
+  if (typeof window === "undefined") {
+    saveMemberDataToFile();
+  }
+  
   return memberDataStore[login];
 }
 
@@ -145,6 +235,11 @@ export function createMemberData(
     updatedBy: createdBy,
   };
   
+  // Sauvegarder après création
+  if (typeof window === "undefined") {
+    saveMemberDataToFile();
+  }
+  
   return memberDataStore[login];
 }
 
@@ -155,6 +250,12 @@ export function deleteMemberData(twitchLogin: string): boolean {
   const login = twitchLogin.toLowerCase();
   if (memberDataStore[login]) {
     delete memberDataStore[login];
+    
+    // Sauvegarder après suppression
+    if (typeof window === "undefined") {
+      saveMemberDataToFile();
+    }
+    
     return true;
   }
   return false;

@@ -55,7 +55,12 @@ export default function MembresCompletsPage() {
 
   async function fetchMembers() {
     try {
-      const response = await fetch("/api/admin/members");
+      const response = await fetch("/api/admin/members", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (!response.ok) {
         if (response.status === 403) {
           setError("Accès refusé. Cette page est réservée aux fondateurs.");
@@ -83,7 +88,11 @@ export default function MembresCompletsPage() {
     try {
       const response = await fetch("/api/admin/members", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        cache: 'no-store',
+        headers: {
+          "Content-Type": "application/json",
+          'Cache-Control': 'no-cache',
+        },
         body: JSON.stringify(member),
       });
 

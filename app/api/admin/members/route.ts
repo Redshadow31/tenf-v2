@@ -10,6 +10,10 @@ import {
 } from "@/lib/memberData";
 import { logAction } from "@/lib/logAction";
 
+// Désactiver le cache pour cette route - les données doivent toujours être à jour
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Initialiser les données au démarrage du serveur
 let initialized = false;
 if (!initialized) {
@@ -50,12 +54,26 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      return NextResponse.json({ member });
+      const response = NextResponse.json({ member });
+      
+      // Désactiver le cache côté client
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      return response;
     }
 
     // Récupérer tous les membres
     const members = getAllMemberData();
-    return NextResponse.json({ members });
+    const response = NextResponse.json({ members });
+    
+    // Désactiver le cache côté client
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching members:", error);
     return NextResponse.json(

@@ -29,7 +29,13 @@ export default function Page() {
   useEffect(() => {
     async function loadMembers() {
       try {
-        const response = await fetch("/api/members/public");
+        // Désactiver le cache pour toujours récupérer les données les plus récentes
+        const response = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           setActiveMembers(data.members || []);

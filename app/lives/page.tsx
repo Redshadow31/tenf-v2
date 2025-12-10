@@ -40,7 +40,12 @@ export default function LivesPage() {
     async function fetchLiveStreams() {
       try {
         // Récupérer tous les membres actifs depuis l'API publique (même source que la page /membres)
-        const membersResponse = await fetch("/api/members/public");
+        const membersResponse = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (!membersResponse.ok) {
           throw new Error("Failed to fetch members");
         }
