@@ -53,9 +53,26 @@ export default function Page() {
         <h1 className="text-5xl font-bold text-white">
           Communauté d'entraide pour streamers
         </h1>
-        <p className="max-w-3xl text-lg text-gray-300">
-          TENF est une communauté d'entrepreneurs offrant ressources et collaboration, pour améliorer et la collaboration.
-        </p>
+        <div className="max-w-4xl space-y-4 text-lg text-gray-300">
+          <p>
+            TENF est bien plus qu'un simple serveur Discord : c'est une véritable famille de streamers engagés à progresser ensemble.
+          </p>
+          <p>
+            Que tu sois débutant, en développement ou déjà affilié, tu trouveras ici un espace bienveillant où chaque créateur est soutenu, encouragé et valorisé.
+          </p>
+          <p>
+            Notre communauté repose sur trois piliers : entraide, formation et découverte. Grâce à un suivi personnalisé, des retours constructifs, un système d'évaluations transparentes et une équipe de modération formée, TENF accompagne chaque membre vers la réussite.
+          </p>
+          <p>
+            Lives partagés, events communautaires, mentorat, visibilité, accompagnement technique, ambiance chaleureuse : ici, personne ne grandit seul.
+          </p>
+          <p>
+            Rejoins une communauté active, humaine et passionnée, où chaque streamer compte et où ta progression devient un projet collectif.
+          </p>
+          <p className="text-[#9146ff] font-semibold">
+            Bienvenue dans la New Family.
+          </p>
+        </div>
 
         {/* Cartes de stats */}
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
