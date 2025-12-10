@@ -37,6 +37,7 @@ interface Member {
     gameName?: string;
     viewerCount?: number;
   };
+  lastLiveDate?: string; // Date ISO du dernier live
 }
 
 const navLinks = [
@@ -58,6 +59,9 @@ export default function GestionMembresPage() {
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
+  const [sortColumn, setSortColumn] = useState<"nom" | "role" | "lastLive" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -87,6 +91,7 @@ export default function GestionMembresPage() {
   async function loadMembers() {
     try {
       setLoading(true);
+      setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
       
       // Si l'admin est fondateur, charger depuis l'API centralisée
       if (currentAdmin?.isFounder) {
@@ -307,12 +312,94 @@ export default function GestionMembresPage() {
     }
   }
 
-  const filteredMembers = members.filter((member) =>
+  // Fonction pour récupérer les dernières dates de live
+  const fetchLastLiveDates = async (membersToUpdate: Member[]) => {
+    const twitchLogins = membersToUpdate
+      .map(m => m.twitch)
+      .filter(Boolean);
+    
+    if (twitchLogins.length === 0) return membersToUpdate;
+
+    try {
+      const response = await fetch(
+        `/api/twitch/last-streams?logins=${twitchLogins.join(',')}`,
+        { cache: 'no-store' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const lastStreams = data.lastStreams || {};
+        
+        return membersToUpdate.map(member => ({
+          ...member,
+          lastLiveDate: lastStreams[member.twitch.toLowerCase()] || undefined,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching last live dates:', error);
+    }
+    
+    return membersToUpdate;
+  };
+
+  // Filtrer les membres
+  let filteredMembers = members.filter((member) =>
     member.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.twitch.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.discord.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (member.siteUsername && member.siteUsername.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Trier les membres
+  if (sortColumn) {
+    filteredMembers = [...filteredMembers].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case "nom":
+          comparison = a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' });
+          break;
+        case "role":
+          comparison = a.role.localeCompare(b.role, 'fr', { sensitivity: 'base' });
+          break;
+        case "lastLive":
+          const dateA = a.lastLiveDate ? new Date(a.lastLiveDate).getTime() : 0;
+          const dateB = b.lastLiveDate ? new Date(b.lastLiveDate).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+      }
+      
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }
+
+  // Fonction pour gérer le clic sur un en-tête de colonne
+  const handleSort = (column: "nom" | "role" | "lastLive") => {
+    if (sortColumn === column) {
+      // Inverser la direction si on clique sur la même colonne
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Nouvelle colonne, trier par ordre croissant
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  // Récupérer les dernières dates de live après le chargement initial
+  useEffect(() => {
+    if (members.length > 0 && !loading && !lastLiveDatesLoaded) {
+      setLastLiveDatesLoaded(true);
+      fetchLastLiveDates(members).then(updatedMembers => {
+        // Ne mettre à jour que si les dates ont changé
+        const hasNewDates = updatedMembers.some((m, i) => 
+          m.lastLiveDate !== members[i]?.lastLiveDate
+        );
+        if (hasNewDates) {
+          setMembers(updatedMembers);
+        }
+      });
+    }
+  }, [loading]); // Seulement quand le chargement change
 
   const handleToggleStatus = async (memberId: number) => {
     if (!currentAdmin) {
@@ -679,6 +766,31 @@ export default function GestionMembresPage() {
       : "bg-purple-900/20 text-purple-400 border border-purple-900/30";
   };
 
+  const formatLastLiveDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      
+      if (diffDays > 0) {
+        return `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+      } else if (diffHours > 0) {
+        return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+      } else if (diffMinutes > 0) {
+        return `Il y a ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+      } else {
+        return "À l'instant";
+      }
+    } catch (error) {
+      return "-";
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -871,15 +983,52 @@ export default function GestionMembresPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-700">
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">CRÉATEUR</th>
+                  <th 
+                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort("nom")}
+                  >
+                    <div className="flex items-center gap-2">
+                      CRÉATEUR
+                      {sortColumn === "nom" && (
+                        <span className="text-purple-400">
+                          {sortDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   {viewMode === "complet" && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Discord</th>
                     </>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">RÔLE</th>
+                  <th 
+                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort("role")}
+                  >
+                    <div className="flex items-center gap-2">
+                      RÔLE
+                      {sortColumn === "role" && (
+                        <span className="text-purple-400">
+                          {sortDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">STATUT</th>
+                  <th 
+                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort("lastLive")}
+                  >
+                    <div className="flex items-center gap-2">
+                      DERNIER LIVE
+                      {sortColumn === "lastLive" && (
+                        <span className="text-purple-400">
+                          {sortDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   {viewMode === "complet" && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">VIP</th>
@@ -958,6 +1107,9 @@ export default function GestionMembresPage() {
                       >
                         {member.statut}
                       </span>
+                    </td>
+                    <td className="py-4 px-6 text-gray-300 text-sm">
+                      {formatLastLiveDate(member.lastLiveDate)}
                     </td>
                     {viewMode === "complet" && (
                       <>

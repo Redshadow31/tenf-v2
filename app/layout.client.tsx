@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import Header from "@/components/Header";
+import UserSidebar from "@/components/UserSidebar";
 
 type ClientLayoutProps = {
   children: ReactNode;
@@ -69,7 +70,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <div className="min-h-screen bg-[#0e0e10] text-[#e5e5e5]">
       <Header />
-      <main className="mx-auto max-w-7xl px-8 py-6">{children}</main>
+      <div className="flex">
+        <UserSidebar />
+        <main className="flex-1 mx-auto max-w-7xl px-8 py-6">{children}</main>
+      </div>
     </div>
   );
 }
