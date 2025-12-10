@@ -84,11 +84,38 @@ export default function GestionMembresPage() {
       // Récupérer les membres depuis le canal Discord
       const discordResponse = await fetch("/api/discord/channel/members");
       if (!discordResponse.ok) {
-        const errorText = await discordResponse.text();
-        console.error("Erreur lors du chargement des membres depuis Discord:", errorText);
-        throw new Error("Erreur lors du chargement des membres Discord");
+        let errorMessage = "Erreur lors du chargement des membres Discord";
+        try {
+          const errorData = await discordResponse.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+          
+          // Messages d'erreur plus spécifiques
+          if (errorMessage.includes("Discord bot token not configured")) {
+            errorMessage = "Le token du bot Discord n'est pas configuré. Veuillez configurer DISCORD_BOT_TOKEN dans Netlify.";
+          } else if (errorMessage.includes("Failed to fetch Discord messages")) {
+            errorMessage = "Impossible de récupérer les messages Discord. Vérifiez que le bot a accès au canal.";
+          } else if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+            errorMessage = "Token Discord invalide ou expiré. Vérifiez la configuration du bot.";
+          } else if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+            errorMessage = "Le bot n'a pas les permissions nécessaires. Vérifiez les permissions du bot sur le serveur Discord.";
+          }
+        } catch (e) {
+          // Si on ne peut pas parser l'erreur, utiliser le message par défaut
+          console.error("Erreur lors du parsing de l'erreur:", e);
+        }
+        console.error("Erreur lors du chargement des membres depuis Discord:", errorMessage);
+        alert(`Erreur Discord: ${errorMessage}`);
+        setMembers([]); // Afficher une liste vide plutôt que de rester bloqué
+        return;
       }
       const discordData = await discordResponse.json();
+
+      // Vérifier si la réponse contient des membres
+      if (!discordData.members || !Array.isArray(discordData.members)) {
+        console.warn("Aucun membre trouvé dans la réponse Discord");
+        setMembers([]);
+        return;
+      }
 
       // Si l'admin est fondateur, récupérer aussi les données centralisées pour enrichir
       let centralMembers: any[] = [];
@@ -139,6 +166,9 @@ export default function GestionMembresPage() {
       setMembers(mappedMembers);
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur inconnue lors du chargement des membres";
+      alert(`Erreur: ${errorMessage}`);
+      setMembers([]); // Afficher une liste vide plutôt que de rester bloqué
     } finally {
       setLoading(false);
     }
@@ -463,7 +493,16 @@ export default function GestionMembresPage() {
                 setLoading(true);
                 try {
                   const discordResponse = await fetch("/api/discord/channel/members");
-                  if (!discordResponse.ok) throw new Error("Erreur Discord");
+                  if (!discordResponse.ok) {
+                    let errorMessage = "Erreur lors de la synchronisation Discord";
+                    try {
+                      const errorData = await discordResponse.json();
+                      errorMessage = errorData.error || errorData.details || errorMessage;
+                    } catch (e) {
+                      // Ignorer si on ne peut pas parser l'erreur
+                    }
+                    throw new Error(errorMessage);
+                  }
                   const discordData = await discordResponse.json();
 
                   let centralMembers: any[] = [];
