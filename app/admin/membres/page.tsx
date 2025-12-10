@@ -74,10 +74,14 @@ export default function GestionMembresPage() {
       .then((res) => res.json())
       .then((data) => setSafeModeEnabled(data.safeModeEnabled || false))
       .catch(() => setSafeModeEnabled(false));
+  }, []);
 
-    // Charger les membres depuis la base de données centralisée
-    loadMembers();
-  }, [currentAdmin]);
+  // Charger les membres une fois que currentAdmin est défini
+  useEffect(() => {
+    if (currentAdmin !== null) {
+      loadMembers();
+    }
+  }, [currentAdmin?.isFounder]); // Seulement quand le statut fondateur change
 
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
@@ -113,10 +117,10 @@ export default function GestionMembresPage() {
                 description: member.description,
                 customBio: member.customBio,
                 twitchStatus: member.twitchStatus,
-                badges: [],
+                badges: member.badges || [],
                 isVip: member.isVip || false,
-                isModeratorJunior: false,
-                isModeratorMentor: false,
+                isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
+                isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
               };
             });
             
@@ -311,6 +315,8 @@ export default function GestionMembresPage() {
     discord: string;
     twitch: string;
     notesInternes?: string;
+    badges?: string[];
+    isVip?: boolean;
   }) => {
     if (!currentAdmin?.isFounder) {
       alert("Seuls les fondateurs peuvent modifier les membres");
@@ -344,6 +350,8 @@ export default function GestionMembresPage() {
           discordUsername: mergedMember.discord,
           role: mergedMember.role,
           isActive: mergedMember.statut === "Actif",
+          isVip: mergedMember.isVip || false,
+          badges: mergedMember.badges || [],
           description: mergedMember.description,
         }),
       });

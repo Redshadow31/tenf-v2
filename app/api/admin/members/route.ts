@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
       role,
       isVip,
       isActive,
+      badges,
       description,
       customBio,
     } = body;
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
         role: role || "Affilié",
         isVip: isVip || false,
         isActive: isActive !== undefined ? isActive : true,
+        badges: badges || [],
         description,
         customBio,
       },

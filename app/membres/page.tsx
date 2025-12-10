@@ -1,19 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MemberModal from "@/components/MemberModal";
-import { getActiveMembers, getMemberRole } from "@/lib/memberRoles";
 import { getTwitchUser } from "@/lib/twitch";
 
 const filters = ["Tous", "Développement", "Affiliés", "Staff"];
+
+interface PublicMember {
+  twitchLogin: string;
+  twitchUrl: string;
+  displayName: string;
+  role: string;
+  isVip: boolean;
+  badges?: string[];
+  discordId?: string;
+  discordUsername?: string;
+  avatar?: string;
+}
 
 export default function Page() {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeMembers, setActiveMembers] = useState<PublicMember[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Récupérer tous les membres actifs
-  const activeMembers = getActiveMembers();
+  // Charger les membres depuis l'API publique
+  useEffect(() => {
+    async function loadMembers() {
+      try {
+        const response = await fetch("/api/members/public");
+        if (response.ok) {
+          const data = await response.json();
+          setActiveMembers(data.members || []);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des membres:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadMembers();
+  }, []);
 
   const getFilteredMembers = () => {
     if (activeFilter === "Tous") {
@@ -25,8 +53,7 @@ export default function Page() {
       Staff: "Staff",
     };
     return activeMembers.filter((member) => {
-      const role = getMemberRole(member.twitchLogin);
-      return role.role === filterMap[activeFilter];
+      return member.role === filterMap[activeFilter];
     });
   };
 
@@ -51,19 +78,24 @@ export default function Page() {
     }
   };
 
-  const handleMemberClick = async (member: typeof activeMembers[0]) => {
-    const role = getMemberRole(member.twitchLogin);
-    const twitchUser = await getTwitchUser(member.twitchLogin);
+  const handleMemberClick = async (member: PublicMember) => {
+    let avatar = member.avatar;
+    try {
+      const twitchUser = await getTwitchUser(member.twitchLogin);
+      avatar = twitchUser.profile_image_url;
+    } catch (err) {
+      console.error("Erreur lors de la récupération de l'avatar Twitch:", err);
+    }
     
     setSelectedMember({
       id: member.twitchLogin,
       name: member.displayName,
-      role: role.role,
-      avatar: twitchUser.profile_image_url,
+      role: member.role,
+      avatar: avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`,
       twitchLogin: member.twitchLogin,
-      description: `Membre ${role.role} de la communauté TENF.`,
+      description: `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
-      isVip: role.isVip,
+      isVip: member.isVip,
     });
     setIsModalOpen(true);
   };
@@ -93,42 +125,55 @@ export default function Page() {
       </div>
 
       {/* Grille de membres */}
-      <div className="grid grid-cols-3 gap-4 lg:grid-cols-8">
-        {getFilteredMembers().map((member) => {
-          const role = getMemberRole(member.twitchLogin);
-          return (
-            <div
-              key={member.twitchLogin}
-              onClick={() => handleMemberClick(member)}
-              className="card flex cursor-pointer flex-col items-center space-y-4 bg-[#1a1a1d] border border-gray-700 p-4 text-center transition-transform hover:scale-[1.02]"
-            >
-              {/* Avatar avec badge VIP */}
-              <div className="relative">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4]"></div>
-                {role.isVip && (
-                  <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
-                    VIP
-                  </div>
-                )}
-              </div>
-
-              {/* Pseudo */}
-              <div>
-                <h3 className="text-sm font-semibold text-white truncate w-full">{member.displayName}</h3>
-              </div>
-
-              {/* Badge rôle */}
-              <span
-                className={`rounded-lg px-2 py-1 text-xs font-bold ${getBadgeColor(
-                  role.role
-                )}`}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-4 lg:grid-cols-8">
+          {getFilteredMembers().map((member) => {
+            return (
+              <div
+                key={member.twitchLogin}
+                onClick={() => handleMemberClick(member)}
+                className="card flex cursor-pointer flex-col items-center space-y-4 bg-[#1a1a1d] border border-gray-700 p-4 text-center transition-transform hover:scale-[1.02]"
               >
-                {role.role}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                {/* Avatar avec badge VIP */}
+                <div className="relative">
+                  {member.avatar ? (
+                    <img
+                      src={member.avatar}
+                      alt={member.displayName}
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4]"></div>
+                  )}
+                  {member.isVip && (
+                    <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
+                      VIP
+                    </div>
+                  )}
+                </div>
+
+                {/* Pseudo */}
+                <div>
+                  <h3 className="text-sm font-semibold text-white truncate w-full">{member.displayName}</h3>
+                </div>
+
+                {/* Badge rôle */}
+                <span
+                  className={`rounded-lg px-2 py-1 text-xs font-bold ${getBadgeColor(
+                    member.role
+                  )}`}
+                >
+                  {member.role}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modal membre */}
       {selectedMember && (

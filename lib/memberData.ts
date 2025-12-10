@@ -19,6 +19,7 @@ export interface MemberData {
   role: MemberRole;
   isVip: boolean;
   isActive: boolean;
+  badges?: string[]; // Badges personnalisés (ex: "VIP Élite", "Modérateur Junior", etc.)
   
   // Informations Twitch (synchronisées)
   twitchStatus?: {

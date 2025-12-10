@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getActiveMembers, getMemberRole } from "@/lib/memberRoles";
 import { getTwitchUser } from "@/lib/twitch";
 
 interface LiveStream {
@@ -26,6 +25,7 @@ interface LiveMember {
   viewerCount: number;
   thumbnailUrl: string;
   avatar: string;
+  role: string;
 }
 
 const filters = ["Tous", "Affiliés", "Développement"];
@@ -39,10 +39,16 @@ export default function LivesPage() {
   useEffect(() => {
     async function fetchLiveStreams() {
       try {
-        // Récupérer tous les membres actifs (même source que la page /membres)
-        const activeMembers = getActiveMembers();
+        // Récupérer tous les membres actifs depuis l'API publique (même source que la page /membres)
+        const membersResponse = await fetch("/api/members/public");
+        if (!membersResponse.ok) {
+          throw new Error("Failed to fetch members");
+        }
+        const membersData = await membersResponse.json();
+        const activeMembers = membersData.members || [];
+        
         const twitchLogins = activeMembers
-          .map((member) => member.twitchLogin)
+          .map((member: any) => member.twitchLogin)
           .filter(Boolean);
 
         if (twitchLogins.length === 0) {
@@ -68,26 +74,28 @@ export default function LivesPage() {
         const liveStreamsOnly = streams.filter((stream) => stream.type === "live");
 
         // Enrichir les données avec les informations des membres actifs uniquement
-        // On utilise activeMembers au lieu de allMembers pour garantir la synchronisation
+        // On utilise activeMembers depuis l'API publique pour garantir la synchronisation
         const enrichedLives = await Promise.all(
           liveStreamsOnly.map(async (stream) => {
             // Chercher dans les membres actifs uniquement (même logique que /membres)
             const member = activeMembers.find(
-              (m) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
+              (m: any) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
             );
 
             if (!member) {
               return null;
             }
 
-            // Récupérer l'avatar Twitch
-            let avatar = '';
-            try {
-              const twitchUser = await getTwitchUser(member.twitchLogin);
-              avatar = twitchUser.profile_image_url;
-            } catch (err) {
-              console.error(`Error fetching avatar for ${member.twitchLogin}:`, err);
-              avatar = `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`;
+            // Utiliser l'avatar depuis l'API ou récupérer depuis Twitch
+            let avatar = member.avatar || '';
+            if (!avatar) {
+              try {
+                const twitchUser = await getTwitchUser(member.twitchLogin);
+                avatar = twitchUser.profile_image_url;
+              } catch (err) {
+                console.error(`Error fetching avatar for ${member.twitchLogin}:`, err);
+                avatar = `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`;
+              }
             }
 
             return {
@@ -100,6 +108,7 @@ export default function LivesPage() {
                 ?.replace("{width}", "640")
                 ?.replace("{height}", "360") || stream.thumbnailUrl,
               avatar: avatar,
+              role: member.role,
             };
           })
         );
@@ -137,8 +146,7 @@ export default function LivesPage() {
       Développement: "Développement",
     };
     return liveMembers.filter((live) => {
-      const role = getMemberRole(live.twitchLogin);
-      return role.role === filterMap[activeFilter];
+      return live.role === filterMap[activeFilter];
     });
   };
 
@@ -221,7 +229,6 @@ export default function LivesPage() {
       {getFilteredLives().length > 0 ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {getFilteredLives().map((live) => {
-            const role = getMemberRole(live.twitchLogin);
             return (
               <Link
                 key={live.twitchLogin}
@@ -274,10 +281,10 @@ export default function LivesPage() {
                   <div className="mt-3">
                     <span
                       className={`inline-block rounded-lg px-3 py-1 text-xs font-bold ${getRoleBadgeColor(
-                        role.role
+                        live.role
                       )}`}
                     >
-                      {role.role}
+                      {live.role}
                     </span>
                   </div>
                 </div>

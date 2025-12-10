@@ -13,6 +13,8 @@ interface Member {
   discord: string;
   twitch: string;
   notesInternes?: string;
+  badges?: string[];
+  isVip?: boolean;
 }
 
 interface EditMemberModalProps {
@@ -159,6 +161,89 @@ export default function EditMemberModal({
               <option value="Actif">Actif</option>
               <option value="Inactif">Inactif</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Badges
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={badgeInput}
+                  onChange={(e) => setBadgeInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (badgeInput.trim() && !formData.badges?.includes(badgeInput.trim())) {
+                        setFormData({
+                          ...formData,
+                          badges: [...(formData.badges || []), badgeInput.trim()],
+                        });
+                        setBadgeInput("");
+                      }
+                    }
+                  }}
+                  className="flex-1 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  placeholder="Ajouter un badge (ex: VIP Élite, Modérateur Junior...)"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (badgeInput.trim() && !formData.badges?.includes(badgeInput.trim())) {
+                      setFormData({
+                        ...formData,
+                        badges: [...(formData.badges || []), badgeInput.trim()],
+                      });
+                      setBadgeInput("");
+                    }
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Ajouter
+                </button>
+              </div>
+              {formData.badges && formData.badges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.badges.map((badge, index) => (
+                    <span
+                      key={index}
+                      className="bg-purple-600/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-2"
+                    >
+                      {badge}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            badges: formData.badges?.filter((_, i) => i !== index),
+                          });
+                        }}
+                        className="text-purple-300 hover:text-white"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              VIP
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isVip || false}
+                onChange={(e) => setFormData({ ...formData, isVip: e.target.checked })}
+                className="w-4 h-4 text-purple-600 bg-[#0e0e10] border-gray-700 rounded focus:ring-purple-500"
+              />
+              <span className="text-sm text-gray-300">Membre VIP</span>
+            </label>
           </div>
 
           <div>
