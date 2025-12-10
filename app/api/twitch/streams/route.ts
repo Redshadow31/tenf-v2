@@ -68,9 +68,9 @@ async function getTwitchAccessToken(): Promise<string | null> {
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userLogins = searchParams.get('user_logins')?.split(',') || [];
+  const logins = searchParams.get('user_logins')?.split(',') ?? [];
 
-  if (userLogins.length === 0) {
+  if (logins.length === 0) {
     return NextResponse.json(
       { error: 'No user logins provided' },
       { status: 400 }
@@ -97,13 +97,13 @@ export async function GET(request: Request) {
 
   try {
     // L'API Twitch permet jusqu'à 100 utilisateurs par requête
-    const loginsToFetch = userLogins.slice(0, 100);
-    const queryParams = loginsToFetch
-      .map((login) => `user_login=${encodeURIComponent(login.toLowerCase())}`)
+    const loginsToFetch = logins.slice(0, 100);
+    const params = loginsToFetch
+      .map((login) => `user_login=${encodeURIComponent(login.trim().toLowerCase())}`)
       .join('&');
 
     const response = await fetch(
-      `https://api.twitch.tv/helix/streams?${queryParams}`,
+      `https://api.twitch.tv/helix/streams?${params}`,
       {
         headers: {
           'Client-ID': clientId,
@@ -123,12 +123,9 @@ export async function GET(request: Request) {
 
     const data: TwitchStreamsResponse = await response.json();
 
-    // Filtrer uniquement les streams vraiment en live (type === 'live')
-    // L'API Twitch retourne normalement uniquement les streams actifs, mais on double-vérifie
-    const liveStreams = data.data.filter((stream) => stream.type === 'live');
-
     // Formater les données pour l'application
-    const streams = liveStreams.map((stream) => ({
+    // On renvoie directement data.data sans filtrage (Twitch ne retourne que les streams actifs)
+    const streams = data.data.map((stream) => ({
       id: stream.id,
       userId: stream.user_id,
       userLogin: stream.user_login,
@@ -138,9 +135,9 @@ export async function GET(request: Request) {
       viewerCount: stream.viewer_count,
       startedAt: stream.started_at,
       thumbnailUrl: stream.thumbnail_url
-        .replace('{width}', '640')
-        .replace('{height}', '360'),
-      isLive: true, // Tous les streams retournés sont forcément en live
+        ?.replace('{width}', '640')
+        ?.replace('{height}', '360'),
+      type: stream.type,
     }));
 
     return NextResponse.json({ streams });

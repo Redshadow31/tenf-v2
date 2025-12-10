@@ -15,7 +15,7 @@ interface LiveStream {
   viewerCount: number;
   startedAt: string;
   thumbnailUrl: string;
-  isLive: boolean;
+  type: string;
 }
 
 interface LiveMember {
@@ -26,7 +26,6 @@ interface LiveMember {
   viewerCount: number;
   thumbnailUrl: string;
   avatar: string;
-  isLive: boolean;
 }
 
 const filters = ["Tous", "Affiliés", "Développement"];
@@ -65,8 +64,8 @@ export default function LivesPage() {
         const data = await response.json();
         const streams: LiveStream[] = data.streams || [];
 
-        // Filtrer uniquement les streams vraiment en live (double vérification)
-        const liveStreamsOnly = streams.filter((stream) => stream.isLive === true);
+        // Filtrer uniquement les streams vraiment en live
+        const liveStreamsOnly = streams.filter((stream) => stream.type === "live");
 
         // Enrichir les données avec les informations des membres actifs uniquement
         // On utilise activeMembers au lieu de allMembers pour garantir la synchronisation
@@ -97,9 +96,10 @@ export default function LivesPage() {
               displayName: member.displayName,
               game: stream.gameName,
               viewerCount: stream.viewerCount,
-              thumbnailUrl: stream.thumbnailUrl,
+              thumbnailUrl: stream.thumbnailUrl
+                ?.replace("{width}", "640")
+                ?.replace("{height}", "360") || stream.thumbnailUrl,
               avatar: avatar,
-              isLive: true,
             };
           })
         );
