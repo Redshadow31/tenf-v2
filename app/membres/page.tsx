@@ -96,6 +96,7 @@ export default function Page() {
       description: `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
       isVip: member.isVip,
+      badges: member.badges || [],
     });
     setIsModalOpen(true);
   };
