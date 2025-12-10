@@ -22,7 +22,10 @@ export default function UserSidebar() {
           });
           if (response.ok) {
             const data = await response.json();
+            console.log('UserSidebar - Role check result:', data);
             setHasAdminAccess(data.hasAdminAccess || false);
+          } else {
+            console.error('UserSidebar - Role check failed:', response.status, response.statusText);
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
