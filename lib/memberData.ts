@@ -244,17 +244,39 @@ export function initializeMemberData() {
 /**
  * Charge les données depuis le stockage persistant (Blobs ou fichier)
  * À appeler dans les API routes pour s'assurer d'avoir les dernières données
+ * Fusionne les données au lieu de les remplacer pour préserver les modifications en mémoire
  */
 export async function loadMemberDataFromStorage(): Promise<void> {
+  let savedData: Record<string, MemberData> = {};
+  
   if (isNetlify()) {
-    const savedData = await loadMemberDataFromBlob();
-    if (Object.keys(savedData).length > 0) {
-      memberDataStore = savedData;
-    }
+    savedData = await loadMemberDataFromBlob();
   } else {
-    const savedData = loadMemberDataFromFile();
-    if (Object.keys(savedData).length > 0) {
-      memberDataStore = savedData;
+    savedData = loadMemberDataFromFile();
+  }
+  
+  // Fusionner les données sauvegardées avec le store en mémoire
+  // Les données en mémoire (plus récentes) ont priorité
+  if (Object.keys(savedData).length > 0) {
+    // Pour chaque membre sauvegardé, l'ajouter seulement s'il n'existe pas déjà
+    // ou si la version sauvegardée est plus récente
+    for (const [key, savedMember] of Object.entries(savedData)) {
+      const existingMember = memberDataStore[key];
+      
+      if (!existingMember) {
+        // Membre n'existe pas en mémoire, l'ajouter
+        memberDataStore[key] = savedMember;
+      } else {
+        // Membre existe, comparer les dates de mise à jour
+        const savedUpdatedAt = savedMember.updatedAt ? new Date(savedMember.updatedAt).getTime() : 0;
+        const existingUpdatedAt = existingMember.updatedAt ? new Date(existingMember.updatedAt).getTime() : 0;
+        
+        // Si la version sauvegardée est plus récente, l'utiliser
+        if (savedUpdatedAt > existingUpdatedAt) {
+          memberDataStore[key] = savedMember;
+        }
+        // Sinon, garder la version en mémoire (plus récente)
+      }
     }
   }
 }
