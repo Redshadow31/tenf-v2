@@ -2,7 +2,7 @@
 // Toutes les informations des membres sont stockées ici et synchronisées partout
 
 import { allMembers } from "./members";
-import { memberRoles, getMemberRole, type MemberRole } from "./memberRoles";
+import { memberRoles, getMemberRole, getBadgesForMember, type MemberRole } from "./memberRoles";
 import fs from "fs";
 import path from "path";
 
@@ -127,6 +127,9 @@ export function initializeMemberData() {
     
     // Ne pas écraser si le membre existe déjà dans les données sauvegardées
     if (!memberDataStore[login]) {
+      // Déterminer les badges selon les rôles
+      const badges = getBadgesForMember(member.twitchLogin);
+      
       memberDataStore[login] = {
         twitchLogin: member.twitchLogin,
         displayName: member.displayName,
@@ -136,9 +139,20 @@ export function initializeMemberData() {
         role: roleInfo.role,
         isVip: roleInfo.isVip,
         isActive: roleInfo.isActive,
+        badges: badges.length > 0 ? badges : undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+    } else {
+      // Mettre à jour les badges si le membre existe déjà (synchroniser avec les rôles)
+      const badges = getBadgesForMember(member.twitchLogin);
+      if (badges.length > 0) {
+        memberDataStore[login].badges = badges;
+        // Mettre à jour aussi le rôle et VIP si nécessaire
+        memberDataStore[login].role = roleInfo.role;
+        memberDataStore[login].isVip = roleInfo.isVip;
+        memberDataStore[login].updatedAt = new Date();
+      }
     }
   });
 
