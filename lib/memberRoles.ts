@@ -10,20 +10,55 @@ export interface MemberWithRole {
   role: MemberRole;
   isVip: boolean;
   isActive: boolean;
-  twitchLogin?: string; // Optionnel pour le déploiement
+  twitchLogin: string; // Obligatoire
 }
 
 // Mapping des membres avec leurs rôles (mock pour l'instant)
 // TODO: Remplacer par une vraie base de données
 export const memberRoles: Record<string, MemberWithRole> = {
   // Exemples - à compléter avec tous les membres
-  nexou31: { role: "Affilié", isVip: false, isActive: true },
-  clarastonewall: { role: "Affilié", isVip: true, isActive: true },
-  red_shadow_31: { role: "Affilié", isVip: false, isActive: true },
-  yaya_romali: { role: "Développement", isVip: false, isActive: true },
-  misslyliee: { role: "Affilié", isVip: true, isActive: true },
-  jenny31200: { role: "Mentor", isVip: false, isActive: true },
-  loulangegaming: { role: "Développement", isVip: false, isActive: true },
+  nexou31: { 
+    role: "Affilié", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: "nexou31"
+  },
+  clarastonewall: { 
+    role: "Affilié", 
+    isVip: true, 
+    isActive: true,
+    twitchLogin: "clarastonewall"
+  },
+  red_shadow_31: { 
+    role: "Affilié", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: "red_shadow_31"
+  },
+  yaya_romali: { 
+    role: "Développement", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: "yaya_romali"
+  },
+  misslyliee: { 
+    role: "Affilié", 
+    isVip: true, 
+    isActive: true,
+    twitchLogin: "misslyliee"
+  },
+  jenny31200: { 
+    role: "Mentor", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: "jenny31200"
+  },
+  loulangegaming: { 
+    role: "Développement", 
+    isVip: false, 
+    isActive: true,
+    twitchLogin: "loulangegaming"
+  },
   // Par défaut, tous les autres membres sont Affiliés et actifs
 };
 
