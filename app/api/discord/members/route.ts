@@ -112,7 +112,7 @@ export async function GET() {
         return {
           discordId: member.user.id,
           discordUsername: member.user.username,
-          discordNickname: member.nick || member.user.global_name || null,
+          discordNickname: member.nick || member.user.global_name || undefined,
           avatar: member.user.avatar
             ? `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png`
             : `https://cdn.discordapp.com/embed/avatars/${member.user.discriminator && member.user.discriminator !== '0' ? parseInt(member.user.discriminator) % 5 : 0}.png`,
