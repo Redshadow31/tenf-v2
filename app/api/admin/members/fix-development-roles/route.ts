@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Liste des logins Twitch à remettre en "Développement"
+    // Note: Utiliser les logins exacts de lib/members.ts
     const developmentLogins = [
       "jocrm24",
       "gabdeade",
@@ -36,8 +37,8 @@ export async function POST(request: NextRequest) {
       "skarpane", // Skar
       "bear_krys",
       "flofaitdesvideo",
-      "akaioh",
-      "lacosteur",
+      "akaioh_", // Akaioh (avec underscore)
+      "lacosteur___", // Lacøsteur (avec 3 underscores)
       "wapitiroyale",
       "moustagaming93",
       "mechant_karma",
