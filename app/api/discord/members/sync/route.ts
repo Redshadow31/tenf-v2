@@ -121,6 +121,34 @@ export async function POST(request: NextRequest) {
     // Charger les données depuis le stockage persistant
     await loadMemberDataFromStorage();
     
+    // Récupérer les membres depuis le canal Discord pour avoir leurs chaînes Twitch
+    let channelMembers: Map<string, { twitchLogin: string; twitchUrl: string }> = new Map();
+    try {
+      const channelResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/discord/channel/members`,
+        {
+          headers: {
+            Authorization: `Bearer ${DISCORD_BOT_TOKEN}`, // Pas nécessaire mais pour cohérence
+          },
+        }
+      );
+      if (channelResponse.ok) {
+        const channelData = await channelResponse.json();
+        if (channelData.members) {
+          channelData.members.forEach((member: any) => {
+            if (member.discordId && member.twitchLogin && !member.twitchLogin.startsWith('discord_')) {
+              channelMembers.set(member.discordId, {
+                twitchLogin: member.twitchLogin,
+                twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+              });
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[Discord Sync] Impossible de récupérer les membres du canal Discord:', err);
+    }
+    
     const existingMembers = getAllMemberData();
     const existingByDiscordId = new Map(
       existingMembers
@@ -132,6 +160,12 @@ export async function POST(request: NextRequest) {
       existingMembers
         .filter(m => m.discordUsername)
         .map(m => [m.discordUsername!.toLowerCase(), m])
+    );
+    // Index par Twitch login pour trouver les membres même si Discord ID a changé
+    const existingByTwitchLogin = new Map(
+      existingMembers
+        .filter(m => m.twitchLogin && !m.twitchLogin.startsWith('discord_'))
+        .map(m => [m.twitchLogin!.toLowerCase(), m])
     );
 
     let synced = 0;
@@ -211,6 +245,12 @@ export async function POST(request: NextRequest) {
         // Fallback: chercher par nom d'utilisateur Discord (insensible à la casse)
         existing = existingByDiscordUsername.get(discordUsername.toLowerCase());
       }
+      
+      // Si on a une chaîne Twitch depuis le canal Discord, chercher aussi par Twitch login
+      const channelMember = channelMembers.get(discordId);
+      if (!existing && channelMember) {
+        existing = existingByTwitchLogin.get(channelMember.twitchLogin.toLowerCase());
+      }
 
       // En mode preview, ajouter à la liste sans synchroniser
       if (preview) {
@@ -238,7 +278,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Mettre à jour le membre existant
-        // Ne pas écraser le rôle si il a été défini manuellement
+        // PROTECTION: Ne JAMAIS écraser les chaînes Twitch manuelles
         // IMPORTANT: Toujours mettre à jour discordId et discordUsername pour refléter les changements de pseudo
         const updates: any = {
           discordId, // L'ID Discord ne change jamais, c'est l'identifiant principal
@@ -253,6 +293,18 @@ export async function POST(request: NextRequest) {
           updates.role = role;
         }
         
+        // PROTECTION: Ne pas écraser la chaîne Twitch si elle existe déjà et n'est pas un placeholder
+        // Si le membre a une vraie chaîne Twitch (pas discord_xxx), la conserver
+        // Sinon, utiliser la chaîne du canal Discord si disponible
+        if (existing.twitchLogin && !existing.twitchLogin.startsWith('discord_')) {
+          // Le membre a déjà une vraie chaîne Twitch, ne pas l'écraser
+          // Ne pas mettre à jour twitchLogin ni twitchUrl
+        } else if (channelMember) {
+          // Le membre n'a pas de vraie chaîne Twitch, utiliser celle du canal Discord
+          updates.twitchLogin = channelMember.twitchLogin;
+          updates.twitchUrl = channelMember.twitchUrl;
+        }
+        
         await updateMemberData(
           existing.twitchLogin,
           updates,
@@ -260,14 +312,17 @@ export async function POST(request: NextRequest) {
         );
         updated++;
       } else {
-        // Créer un nouveau membre (sans Twitch pour l'instant)
-        // Il faudra lier manuellement via la page de gestion complète
-        const twitchLogin = `discord_${discordId}`; // Placeholder
+        // Créer un nouveau membre
+        // Utiliser la chaîne Twitch du canal Discord si disponible, sinon créer un placeholder
+        const channelMember = channelMembers.get(discordId);
+        const twitchLogin = channelMember?.twitchLogin || `discord_${discordId}`;
+        const twitchUrl = channelMember?.twitchUrl || `https://www.twitch.tv/${twitchLogin}`;
+        
         await createMemberData(
           {
             twitchLogin,
             displayName,
-            twitchUrl: `https://www.twitch.tv/${twitchLogin}`,
+            twitchUrl,
             discordId,
             discordUsername,
             role,

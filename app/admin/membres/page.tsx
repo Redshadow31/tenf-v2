@@ -49,6 +49,7 @@ const navLinks = [
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/statistiques", label: "Statistiques Globales" },
   { href: "/admin/logs", label: "Logs" },
+  { href: "/admin/fusion-doublons", label: "Fusion Doublons" },
 ];
 
 export default function GestionMembresPage() {
