@@ -239,10 +239,11 @@ export async function POST(request: NextRequest) {
 
         // Mettre à jour le membre existant
         // Ne pas écraser le rôle si il a été défini manuellement
+        // IMPORTANT: Toujours mettre à jour discordId et discordUsername pour refléter les changements de pseudo
         const updates: any = {
-          discordId,
-          discordUsername,
-          displayName,
+          discordId, // L'ID Discord ne change jamais, c'est l'identifiant principal
+          discordUsername, // Mettre à jour le username si il a changé
+          displayName, // Mettre à jour le displayName (nickname ou global_name)
           isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
           isActive: true,
         };

@@ -198,15 +198,27 @@ export async function GET() {
     // Parser les messages et créer la liste des membres
     const parsedMembers: Map<string, ParsedMember> = new Map();
     
-    // Créer un index des membres du serveur par nom d'utilisateur (insensible à la casse)
+    // Créer un index des membres du serveur par nom d'utilisateur, nickname et global_name (insensible à la casse)
     const guildMembersByUsername = new Map<string, any>();
+    const guildMembersByNickname = new Map<string, any>();
     guildMembers.forEach((member) => {
       if (member.user && !member.user.bot) {
+        // Indexer par username
         const username = member.user.username.toLowerCase();
         guildMembersByUsername.set(username, member);
-        // Aussi indexer par global_name si présent
+        
+        // Indexer par global_name si présent
         if (member.user.global_name) {
-          guildMembersByUsername.set(member.user.global_name.toLowerCase(), member);
+          const globalName = member.user.global_name.toLowerCase();
+          guildMembersByUsername.set(globalName, member);
+        }
+        
+        // Indexer par nickname (pseudo sur le serveur) si présent
+        if (member.nick) {
+          const nickname = member.nick.toLowerCase();
+          guildMembersByNickname.set(nickname, member);
+          // Aussi ajouter dans guildMembersByUsername pour recherche unifiée
+          guildMembersByUsername.set(nickname, member);
         }
       }
     });
@@ -233,15 +245,32 @@ export async function GET() {
         if (parsed.discordUsername) {
           // Normaliser le pseudo pour la recherche (minuscules, enlever underscores en fin)
           const normalizedSearch = parsed.discordUsername.toLowerCase().replace(/_+$/, '');
+          const searchKey = parsed.discordUsername.toLowerCase();
           
           // Chercher le membre par son pseudo Discord (exact match d'abord)
-          let foundMember = guildMembersByUsername.get(parsed.discordUsername.toLowerCase());
+          let foundMember = guildMembersByUsername.get(searchKey);
           
-          // Si pas trouvé, chercher avec une recherche plus flexible
+          // Si pas trouvé, chercher par nickname
           if (!foundMember) {
-            for (const [username, member] of guildMembersByUsername.entries()) {
-              const normalizedUsername = username.replace(/_+$/, '');
-              if (normalizedUsername === normalizedSearch || username === normalizedSearch) {
+            foundMember = guildMembersByNickname.get(searchKey);
+          }
+          
+          // Si pas trouvé, chercher avec une recherche plus flexible (username, global_name, nickname)
+          if (!foundMember) {
+            for (const [key, member] of guildMembersByUsername.entries()) {
+              const normalizedKey = key.replace(/_+$/, '');
+              if (normalizedKey === normalizedSearch || key === normalizedSearch) {
+                foundMember = member;
+                break;
+              }
+            }
+          }
+          
+          // Si toujours pas trouvé, chercher dans les nicknames
+          if (!foundMember) {
+            for (const [nickname, member] of guildMembersByNickname.entries()) {
+              const normalizedNick = nickname.replace(/_+$/, '');
+              if (normalizedNick === normalizedSearch || nickname === normalizedSearch) {
                 foundMember = member;
                 break;
               }
@@ -251,12 +280,12 @@ export async function GET() {
           if (foundMember) {
             guildMember = foundMember;
             discordId = foundMember.user.id;
-            discordUsername = foundMember.user.username;
+            discordUsername = foundMember.user.username; // Toujours utiliser le username actuel de Discord
             discordNickname = foundMember.nick || foundMember.user.global_name || undefined;
           } else {
             // Si pas trouvé, utiliser le pseudo du texte mais sans ID Discord
             discordUsername = parsed.discordUsername;
-            console.warn(`[Discord Channel] Membre Discord non trouvé: ${parsed.discordUsername} (recherché: ${normalizedSearch})`);
+            console.warn(`[Discord Channel] Membre Discord non trouvé: ${parsed.discordUsername} (recherché: ${normalizedSearch}). Le pseudo a peut-être changé sur Discord.`);
           }
         } else {
           // Si pas de pseudo Discord dans le texte, utiliser l'auteur du message
