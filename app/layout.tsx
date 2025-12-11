@@ -9,6 +9,11 @@ const ClientLayout = dynamic(() => import("./layout.client"), { ssr: false });
 export const metadata: Metadata = {
   title: "TENF V2",
   description: "Plateforme TENF V2 - sombre, moderne, professionnelle",
+  icons: {
+    icon: "/Tenf.png",
+    shortcut: "/Tenf.png",
+    apple: "/Tenf.png",
+  },
 };
 
 type RootLayoutProps = {
