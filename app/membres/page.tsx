@@ -16,6 +16,7 @@ interface PublicMember {
   discordId?: string;
   discordUsername?: string;
   avatar?: string;
+  description?: string;
 }
 
 export default function Page() {
@@ -94,7 +95,7 @@ export default function Page() {
       role: member.role,
       avatar: avatar,
       twitchLogin: member.twitchLogin,
-      description: `Membre ${member.role} de la communauté TENF.`,
+      description: member.description || `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
       isVip: member.isVip,
       vipBadge: member.vipBadge,

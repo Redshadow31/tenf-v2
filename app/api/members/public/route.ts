@@ -3,6 +3,7 @@ import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAll
 import { initializeMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
+import { getMemberDescription } from '@/lib/memberDescriptions';
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,13 @@ export async function GET() {
       // Calculer le badge VIP+N si le membre est VIP
       const vipBadge = member.isVip ? getVipBadgeText(member.twitchLogin) : undefined;
 
+      // Générer la description (personnalisée ou générique)
+      const description = getMemberDescription({
+        description: member.description,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        role: member.role,
+      });
+
       return {
         twitchLogin: member.twitchLogin,
         twitchUrl: member.twitchUrl,
@@ -64,6 +72,7 @@ export async function GET() {
         discordId: member.discordId,
         discordUsername: member.discordUsername,
         avatar: avatar,
+        description: description,
       };
     });
 
