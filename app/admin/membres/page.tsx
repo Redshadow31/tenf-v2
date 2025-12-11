@@ -9,7 +9,7 @@ import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
 import DiscordSyncModal from "@/components/admin/DiscordSyncModal";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
-import { logAction } from "@/lib/logAction";
+// logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 
