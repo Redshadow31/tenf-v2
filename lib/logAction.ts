@@ -1,7 +1,15 @@
 // Système de logging des actions administratives avec persistance
-import fs from "fs";
-import path from "path";
 import { getStore } from "@netlify/blobs";
+
+// Imports Node.js uniquement côté serveur
+let fs: typeof import("fs") | null = null;
+let path: typeof import("path") | null = null;
+
+if (typeof window === "undefined") {
+  // Côté serveur uniquement
+  fs = require("fs");
+  path = require("path");
+}
 
 export interface LogEntry {
   adminId: string;
@@ -17,8 +25,15 @@ export interface LogEntry {
 let logs: LogEntry[] = [];
 
 // Chemin du fichier de persistance (pour développement local)
-const DATA_DIR = path.join(process.cwd(), "data");
-const LOGS_DATA_FILE = path.join(DATA_DIR, "admin-logs.json");
+// Ces constantes seront initialisées côté serveur uniquement
+let DATA_DIR: string = "";
+let LOGS_DATA_FILE: string = "";
+
+if (typeof window === "undefined") {
+  const pathModule = require("path");
+  DATA_DIR = pathModule.join(process.cwd(), "data");
+  LOGS_DATA_FILE = pathModule.join(DATA_DIR, "admin-logs.json");
+}
 
 // Clé pour Netlify Blobs
 const BLOB_STORE_NAME = "tenf-logs";
@@ -83,6 +98,10 @@ async function saveLogsToBlob(): Promise<void> {
  * Charge les logs depuis le fichier JSON
  */
 function loadLogsFromFile(): LogEntry[] {
+  if (!fs || !path) {
+    return [];
+  }
+  
   try {
     // Créer le dossier data s'il n'existe pas
     if (!fs.existsSync(DATA_DIR)) {
@@ -110,6 +129,10 @@ function loadLogsFromFile(): LogEntry[] {
  * Sauvegarde les logs dans le fichier JSON
  */
 function saveLogsToFile(): void {
+  if (!fs || !path) {
+    return;
+  }
+  
   try {
     // Créer le dossier data s'il n'existe pas
     if (!fs.existsSync(DATA_DIR)) {
