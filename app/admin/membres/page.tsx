@@ -7,6 +7,7 @@ import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
+import DiscordSyncModal from "@/components/admin/DiscordSyncModal";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
@@ -64,6 +65,9 @@ export default function GestionMembresPage() {
   const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
   const [showSyncConfirmModal, setShowSyncConfirmModal] = useState(false);
   const [syncPreview, setSyncPreview] = useState<{ totalFetched?: number; skippedBots?: number; skippedNoRole?: number } | null>(null);
+  const [showDiscordSyncModal, setShowDiscordSyncModal] = useState(false);
+  const [discordSyncMembers, setDiscordSyncMembers] = useState<any[]>([]);
+  const [discordSyncLoading, setDiscordSyncLoading] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -1019,17 +1023,12 @@ export default function GestionMembresPage() {
               </div>
             )}
 
-            {/* Bouton de synchronisation complète Discord (pour les fondateurs) */}
+            {/* Bouton d'export des modifications manuelles (pour les fondateurs) */}
             {currentAdmin?.isFounder && (
               <button
                 onClick={async () => {
-                  if (!confirm("Voulez-vous vraiment lancer la synchronisation complète Discord ?\n\nCette action va synchroniser TOUS les membres Discord avec leurs rôles actuels.")) {
-                    return;
-                  }
-                  setLoading(true);
                   try {
-                    const response = await fetch("/api/discord/members/sync", {
-                      method: "POST",
+                    const response = await fetch("/api/admin/members/export-manual", {
                       cache: 'no-store',
                       headers: {
                         'Cache-Control': 'no-cache',
@@ -1037,31 +1036,145 @@ export default function GestionMembresPage() {
                     });
                     const data = await response.json();
                     if (data.success) {
+                      // Télécharger le fichier JSON
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `manual-changes-export-${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      
+                      alert(
+                        `Export terminé !\n\n` +
+                        `Total: ${data.totalManualChanges} membre(s)\n` +
+                        `Fichier téléchargé: ${a.download}`
+                      );
+                    } else {
+                      alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                    }
+                  } catch (error) {
+                    console.error("Erreur lors de l'export:", error);
+                    alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                title="Exporter les modifications manuelles dans un fichier JSON"
+              >
+                📥 Exporter Modifications
+              </button>
+            )}
+
+            {/* Bouton de synchronisation complète Discord (pour les fondateurs) */}
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={async () => {
+                  setDiscordSyncLoading(true);
+                  try {
+                    // Récupérer la liste des membres Discord disponibles
+                    const response = await fetch("/api/discord/members/sync?preview=true", {
+                      method: "POST",
+                      cache: 'no-store',
+                      headers: {
+                        'Cache-Control': 'no-cache',
+                      },
+                    });
+                    const data = await response.json();
+                    if (data.success && data.members) {
+                      // Charger les membres existants pour détecter les modifications manuelles
+                      const existingResponse = await fetch("/api/admin/members", {
+                        cache: 'no-store',
+                        headers: {
+                          'Cache-Control': 'no-cache',
+                        },
+                      });
+                      const existingData = await existingResponse.json();
+                      const existingMembers = existingData.members || [];
+                      const existingByDiscordId = new Map(
+                        existingMembers
+                          .filter((m: any) => m.discordId)
+                          .map((m: any) => [m.discordId, m])
+                      );
+
+                      // Enrichir les membres Discord avec les infos de modifications manuelles
+                      const enrichedMembers = data.members.map((member: any) => {
+                        const existing: any = existingByDiscordId.get(member.discordId);
+                        return {
+                          ...member,
+                          isExisting: !!existing,
+                          hasManualChanges: existing?.roleManuallySet || false,
+                          twitchLogin: existing?.twitchLogin || member.twitchLogin,
+                        };
+                      });
+
+                      setDiscordSyncMembers(enrichedMembers);
+                      setShowDiscordSyncModal(true);
+                    } else {
+                      alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                    }
+                  } catch (error) {
+                    console.error("Erreur lors de la récupération des membres Discord:", error);
+                    alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                  } finally {
+                    setDiscordSyncLoading(false);
+                  }
+                }}
+                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                disabled={discordSyncLoading}
+              >
+                {discordSyncLoading ? "⏳ Chargement..." : "🔄 Sync Discord Complète"}
+              </button>
+            )}
+
+            {/* Modale de synchronisation Discord avec sélection */}
+            {showDiscordSyncModal && (
+              <DiscordSyncModal
+                isOpen={showDiscordSyncModal}
+                onClose={() => {
+                  setShowDiscordSyncModal(false);
+                  setDiscordSyncMembers([]);
+                }}
+                onSync={async (selectedMemberIds: string[]) => {
+                  setDiscordSyncLoading(true);
+                  try {
+                    const response = await fetch("/api/discord/members/sync", {
+                      method: "POST",
+                      cache: 'no-store',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                      },
+                      body: JSON.stringify({ selectedMemberIds }),
+                    });
+                    const data = await response.json();
+                    if (data.success) {
                       const stats = data.stats || {};
                       alert(
-                        `Synchronisation complète terminée !\n\n` +
-                        `Membres récupérés : ${stats.totalFetched || 0}\n` +
-                        `Bots ignorés : ${stats.skippedBots || 0}\n` +
-                        `Sans rôle pertinent : ${stats.skippedNoRole || 0}\n` +
+                        `Synchronisation terminée !\n\n` +
+                        `Membres sélectionnés : ${selectedMemberIds.length}\n` +
                         `Synchronisés : ${stats.synced || 0}\n` +
                         `Créés : ${stats.created || 0}\n` +
-                        `Mis à jour : ${stats.updated || 0}`
+                        `Mis à jour : ${stats.updated || 0}\n` +
+                        `Ignorés (modifications manuelles) : ${stats.skippedManual || 0}`
                       );
+                      setShowDiscordSyncModal(false);
+                      setDiscordSyncMembers([]);
                       await loadMembers();
                     } else {
                       alert(`Erreur: ${data.error || "Erreur inconnue"}`);
                     }
                   } catch (error) {
-                    console.error("Erreur lors de la synchronisation complète:", error);
+                    console.error("Erreur lors de la synchronisation:", error);
                     alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                   } finally {
-                    setLoading(false);
+                    setDiscordSyncLoading(false);
                   }
                 }}
-                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              >
-                🔄 Sync Discord Complète
-              </button>
+                members={discordSyncMembers}
+                loading={discordSyncLoading}
+              />
             )}
 
             {currentAdmin?.isFounder && (

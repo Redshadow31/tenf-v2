@@ -22,6 +22,10 @@ interface DiscordMember {
  * 
  * Query params:
  * - syncAll: si true, synchronise tous les membres même sans rôle pertinent (défaut: false)
+ * - preview: si true, retourne seulement la liste des membres sans synchroniser (défaut: false)
+ * 
+ * Body (optionnel):
+ * - selectedMemberIds: array de Discord IDs des membres à synchroniser (si non fourni, synchronise tous)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,9 +54,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si on doit synchroniser tous les membres (même sans rôle)
+    // Vérifier les paramètres de requête
     const { searchParams } = new URL(request.url);
     const syncAll = searchParams.get('syncAll') === 'true';
+    const preview = searchParams.get('preview') === 'true';
+    
+    // Récupérer la liste des membres sélectionnés depuis le body
+    let selectedMemberIds: Set<string> | null = null;
+    try {
+      const body = await request.json().catch(() => ({}));
+      if (body.selectedMemberIds && Array.isArray(body.selectedMemberIds)) {
+        selectedMemberIds = new Set(body.selectedMemberIds);
+      }
+    } catch (e) {
+      // Pas de body, continuer
+    }
 
     // Récupérer tous les membres du serveur Discord avec pagination
     // L'API Discord limite à 1000 membres par requête, il faut paginer
@@ -123,8 +139,12 @@ export async function POST(request: NextRequest) {
     let updated = 0;
     let skippedBots = 0;
     let skippedNoRole = 0;
+    let skippedManual = 0;
     let roleStats: Record<string, number> = {};
     let roleIdStats: Record<string, number> = {}; // Statistiques par ID de rôle Discord
+
+    // Liste des membres pour le preview
+    const previewMembersList: any[] = [];
 
     // Synchroniser chaque membre Discord
     for (const discordMember of discordMembers) {
@@ -163,11 +183,16 @@ export async function POST(request: NextRequest) {
       const discordUsername = discordMember.user.username;
       const displayName = discordMember.nick || discordMember.user.global_name || discordUsername;
 
+      // Si selectedMemberIds est fourni, ne traiter que les membres sélectionnés
+      if (selectedMemberIds && !selectedMemberIds.has(discordId)) {
+        continue;
+      }
+
       // Compter les rôles pour les statistiques
       roleStats[role] = (roleStats[role] || 0) + 1;
       
       // Log pour les premiers membres synchronisés pour déboguer
-      if (synced < 10) {
+      if (synced < 10 && !preview) {
         const hasDevRole = discordMember.roles.includes(DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT);
         const hasAffilieRole = discordMember.roles.includes(DISCORD_ROLE_IDS.CREATEUR_AFFILIE);
         console.log(`[Discord Sync] Membre ${synced + 1}: ${discordUsername} (${discordId})`, {
@@ -187,7 +212,31 @@ export async function POST(request: NextRequest) {
         existing = existingByDiscordUsername.get(discordUsername.toLowerCase());
       }
 
+      // En mode preview, ajouter à la liste sans synchroniser
+      if (preview) {
+        previewMembersList.push({
+          discordId,
+          discordUsername,
+          displayName,
+          roles: discordMember.roles,
+          siteRole: role,
+          badges,
+          twitchLogin: existing?.twitchLogin,
+          isExisting: !!existing,
+          hasManualChanges: existing?.roleManuallySet || false,
+        });
+        synced++;
+        continue;
+      }
+
       if (existing) {
+        // PROTECTION : Ne JAMAIS écraser les données manuelles
+        if (existing.roleManuallySet) {
+          console.log(`[Discord Sync] Membre ${discordUsername} ignoré - modifications manuelles protégées`);
+          skippedManual++;
+          continue;
+        }
+
         // Mettre à jour le membre existant
         // Ne pas écraser le rôle si il a été défini manuellement
         const updates: any = {
@@ -231,10 +280,26 @@ export async function POST(request: NextRequest) {
       synced++;
     }
 
+    // En mode preview, retourner la liste des membres sans synchroniser
+    if (preview) {
+      return NextResponse.json({
+        success: true,
+        message: `Prévisualisation: ${previewMembersList.length} membres trouvés`,
+        members: previewMembersList,
+        stats: {
+          totalFetched,
+          skippedBots,
+          skippedNoRole,
+          previewCount: previewMembersList.length,
+        },
+      });
+    }
+
     console.log(`[Discord Sync] Statistiques:`);
     console.log(`  - Membres Discord récupérés: ${totalFetched}`);
     console.log(`  - Bots ignorés: ${skippedBots}`);
     console.log(`  - Membres sans rôle pertinent: ${skippedNoRole}`);
+    console.log(`  - Membres ignorés (modifications manuelles): ${skippedManual}`);
     console.log(`  - Membres synchronisés: ${synced}`);
     console.log(`  - Membres créés: ${created}`);
     console.log(`  - Membres mis à jour: ${updated}`);
@@ -261,6 +326,7 @@ export async function POST(request: NextRequest) {
         totalFetched,
         skippedBots,
         skippedNoRole,
+        skippedManual,
         synced,
         created,
         updated,
