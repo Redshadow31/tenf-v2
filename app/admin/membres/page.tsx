@@ -503,13 +503,20 @@ export default function GestionMembresPage() {
         }
       }
 
-      await logAction(
-        currentAdmin.id,
-        currentAdmin.username,
-        newStatus === "Actif" ? "Activation d'un membre" : "Désactivation d'un membre",
-        member.nom,
-        { oldStatus, newStatus }
-      );
+      // Logger l'action via l'API
+      try {
+        await fetch("/api/admin/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: newStatus === "Actif" ? "Activation d'un membre" : "Désactivation d'un membre",
+            target: member.nom,
+            details: { oldStatus, newStatus },
+          }),
+        });
+      } catch (err) {
+        console.error("Erreur lors du logging:", err);
+      }
 
       // Recharger les membres depuis la base de données
       await loadMembers();
@@ -593,28 +600,35 @@ export default function GestionMembresPage() {
         throw new Error(error.error || "Erreur lors de la mise à jour");
       }
 
-      await logAction(
-        currentAdmin.id,
-        currentAdmin.username,
-        "Modification d'un membre",
-        mergedMember.nom,
-        {
-          oldData: {
-            nom: oldMember.nom,
-            role: oldMember.role,
-            statut: oldMember.statut,
-            discord: oldMember.discord,
-            twitch: oldMember.twitch,
-          },
-          newData: {
-            nom: mergedMember.nom,
-            role: mergedMember.role,
-            statut: mergedMember.statut,
-            discord: mergedMember.discord,
-            twitch: mergedMember.twitch,
-          },
-        }
-      );
+      // Logger l'action via l'API
+      try {
+        await fetch("/api/admin/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Modification d'un membre",
+            target: mergedMember.nom,
+            details: {
+              oldData: {
+                nom: oldMember.nom,
+                role: oldMember.role,
+                statut: oldMember.statut,
+                discord: oldMember.discord,
+                twitch: oldMember.twitch,
+              },
+              newData: {
+                nom: mergedMember.nom,
+                role: mergedMember.role,
+                statut: mergedMember.statut,
+                discord: mergedMember.discord,
+                twitch: mergedMember.twitch,
+              },
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Erreur lors du logging:", err);
+      }
 
       setIsEditModalOpen(false);
       setSelectedMember(null);
@@ -668,17 +682,24 @@ export default function GestionMembresPage() {
 
       const data = await response.json();
       
-      await logAction(
-        currentAdmin.id,
-        currentAdmin.username,
-        "Ajout d'un membre",
-        newMember.nom,
-        {
-          twitchLogin: newMember.twitch,
-          role: newMember.role,
-          statut: newMember.statut,
-        }
-      );
+      // Logger l'action via l'API
+      try {
+        await fetch("/api/admin/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Ajout d'un membre",
+            target: newMember.nom,
+            details: {
+              twitchLogin: newMember.twitch,
+              role: newMember.role,
+              statut: newMember.statut,
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Erreur lors du logging:", err);
+      }
 
       // Ajouter à la liste locale
       const addedMember: Member = {
@@ -726,16 +747,23 @@ export default function GestionMembresPage() {
         throw new Error(error.error || "Erreur lors de la suppression");
       }
 
-      await logAction(
-        currentAdmin.id,
-        currentAdmin.username,
-        "Suppression d'un membre",
-        member.nom,
-        {
-          twitchLogin: member.twitch,
-          role: member.role,
-        }
-      );
+      // Logger l'action via l'API
+      try {
+        await fetch("/api/admin/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Suppression d'un membre",
+            target: member.nom,
+            details: {
+              twitchLogin: member.twitch,
+              role: member.role,
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Erreur lors du logging:", err);
+      }
 
       alert("Membre supprimé avec succès");
       // Recharger les membres depuis la base de données
@@ -789,13 +817,20 @@ export default function GestionMembresPage() {
       }
     }
 
-    await logAction(
-      currentAdmin.id,
-      currentAdmin.username,
-      "Import en masse de membres",
-      `${successCount} membres importés`,
-      { successCount, errorCount, errors: errors.slice(0, 10) }
-    );
+    // Logger l'action via l'API
+    try {
+      await fetch("/api/admin/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "Import en masse de membres",
+          target: `${successCount} membres importés`,
+          details: { successCount, errorCount, errors: errors.slice(0, 10) },
+        }),
+      });
+    } catch (err) {
+      console.error("Erreur lors du logging:", err);
+    }
 
     alert(`Import terminé : ${successCount} membres ajoutés, ${errorCount} erreurs`);
     setIsBulkImportOpen(false);
