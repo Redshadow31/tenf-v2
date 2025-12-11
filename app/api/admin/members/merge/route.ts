@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allMembers = getAllMemberData();
+    // Réutiliser allMembers déjà chargé
     const membersToDelete: string[] = [];
     const membersNotFound: string[] = [];
 
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Les données sont déjà chargées pour la vérification de rôle
-    const allMembers = getAllMemberData();
+    // Réutiliser allMembers déjà chargé
 
     // Grouper les membres par Discord ID ou Discord username
     const membersByDiscordId: Record<string, any[]> = {};
