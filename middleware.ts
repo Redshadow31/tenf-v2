@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server";
 
 /**
  * Middleware Next.js pour protéger les routes admin
- * Vérifie les permissions avant d'autoriser l'accès aux pages admin
+ * Vérifie que l'utilisateur est connecté
+ * La vérification des permissions spécifiques se fait dans chaque page
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,16 +22,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Vérifier les permissions admin (basique pour l'instant)
-    // TODO: Vérifier avec la vraie liste d'admins depuis Discord ou une DB
-    // Pour l'instant, on autorise l'accès si l'utilisateur est connecté
-    // Vous devrez implémenter la vérification réelle des rôles Discord ici
-
-    // Exemple de vérification (à adapter selon vos besoins):
-    // const isAdmin = await checkDiscordRole(userId, "Admin");
-    // if (!isAdmin) {
-    //   return NextResponse.redirect(new URL("/unauthorized", request.url));
-    // }
+    // La vérification des permissions spécifiques (Admin, Admin Adjoint, etc.)
+    // se fait dans chaque page admin via l'API /api/user/role
   }
 
   return NextResponse.next();

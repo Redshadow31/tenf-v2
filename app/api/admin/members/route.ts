@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, isFounder } from "@/lib/admin";
+import { getCurrentAdmin, isFounder, hasAdminDashboardAccess } from "@/lib/admin";
 import {
   getAllMemberData,
   getMemberData,
@@ -39,9 +39,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    // Charger les données pour vérifier le rôle dans memberData
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
+    const userMember = allMembers.find(m => m.discordId === admin.id);
+    const userRole = userMember?.role;
+
+    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
+    if (!hasAdminDashboardAccess(admin.id, userRole)) {
       return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
         { status: 403 }
       );
     }

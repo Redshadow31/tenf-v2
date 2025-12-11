@@ -79,8 +79,39 @@ export default function GestionMembresPage() {
     async function loadAdmin() {
       const user = await getDiscordUser();
       if (user) {
-        const founderStatus = isFounder(user.id);
-        setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus });
+        // Vérifier le rôle dans memberData pour savoir si c'est un Admin Adjoint
+        try {
+          const roleResponse = await fetch("/api/user/role");
+          const roleData = await roleResponse.json();
+          
+          // Vérifier que l'utilisateur a accès admin
+          if (!roleData.hasAdminAccess) {
+            // Rediriger vers la page unauthorized
+            window.location.href = "/unauthorized";
+            return;
+          }
+          
+          const isAdminAdjoint = roleData.role === "Admin Adjoint";
+          const founderStatus = isFounder(user.id);
+          // Admin Adjoint a aussi accès complet (lecture)
+          setCurrentAdmin({ 
+            id: user.id, 
+            username: user.username, 
+            isFounder: founderStatus || isAdminAdjoint 
+          });
+        } catch (err) {
+          // Fallback si l'API de rôle ne fonctionne pas
+          const founderStatus = isFounder(user.id);
+          if (!founderStatus) {
+            // Si pas fondateur et API ne fonctionne pas, rediriger
+            window.location.href = "/unauthorized";
+            return;
+          }
+          setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus });
+        }
+      } else {
+        // Pas connecté, rediriger vers login
+        window.location.href = "/auth/login?redirect=/admin/membres";
       }
     }
     loadAdmin();

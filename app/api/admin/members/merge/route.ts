@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDiscordUser } from "@/lib/discord";
-import { canPerformAction, isFounder } from "@/lib/admin";
+import { canPerformAction, isFounder, hasAdminDashboardAccess } from "@/lib/admin";
 import {
   getAllMemberData,
   updateMemberData,
@@ -24,16 +24,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Seuls les fondateurs peuvent fusionner des membres
-    if (!isFounder(admin.id)) {
+    // Charger les données pour vérifier le rôle dans memberData
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
+    const userMember = allMembers.find(m => m.discordId === admin.id);
+    const userRole = userMember?.role;
+
+    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
+    if (!hasAdminDashboardAccess(admin.id, userRole)) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent fusionner des membres." },
+        { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent fusionner des membres." },
         { status: 403 }
       );
     }
 
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
+    // Les données sont déjà chargées pour la vérification de rôle
 
     const body = await request.json();
     const { membersToMerge, mergedData } = body;
@@ -124,17 +129,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Seuls les fondateurs peuvent voir les doublons
-    if (!isFounder(admin.id)) {
+    // Charger les données pour vérifier le rôle dans memberData
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
+    const userMember = allMembers.find(m => m.discordId === admin.id);
+    const userRole = userMember?.role;
+
+    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
+    if (!hasAdminDashboardAccess(admin.id, userRole)) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent voir les doublons." },
+        { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent voir les doublons." },
         { status: 403 }
       );
     }
 
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
-
+    // Les données sont déjà chargées pour la vérification de rôle
     const allMembers = getAllMemberData();
 
     // Grouper les membres par Discord ID ou Discord username
