@@ -426,7 +426,7 @@ export async function createMemberData(
 /**
  * Supprime un membre (fondateurs uniquement)
  */
-export async function deleteMemberData(twitchLogin: string): Promise<boolean> {
+export async function deleteMemberData(twitchLogin: string, deletedBy?: string): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
   if (memberDataStore[login]) {
     delete memberDataStore[login];

@@ -1,0 +1,224 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDiscordUser } from "@/lib/discord";
+import { canPerformAction, isFounder } from "@/lib/admin";
+import {
+  getAllMemberData,
+  updateMemberData,
+  deleteMemberData,
+  loadMemberDataFromStorage,
+} from "@/lib/memberData";
+
+/**
+ * POST - Fusionne plusieurs membres en doublon en un seul
+ * 
+ * Body:
+ * {
+ *   membersToMerge: string[], // Array de twitchLogin des membres à fusionner
+ *   mergedData: MemberData // Données fusionnées à utiliser
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await getDiscordUser();
+    if (!admin) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
+
+    // Seuls les fondateurs peuvent fusionner des membres
+    if (!isFounder(admin.id)) {
+      return NextResponse.json(
+        { error: "Accès refusé. Seuls les fondateurs peuvent fusionner des membres." },
+        { status: 403 }
+      );
+    }
+
+    // Charger les données depuis le stockage
+    await loadMemberDataFromStorage();
+
+    const body = await request.json();
+    const { membersToMerge, mergedData } = body;
+
+    if (!membersToMerge || !Array.isArray(membersToMerge) || membersToMerge.length < 2) {
+      return NextResponse.json(
+        { error: "Au moins 2 membres doivent être fournis pour la fusion" },
+        { status: 400 }
+      );
+    }
+
+    if (!mergedData || !mergedData.twitchLogin) {
+      return NextResponse.json(
+        { error: "Les données fusionnées sont requises" },
+        { status: 400 }
+      );
+    }
+
+    const allMembers = getAllMemberData();
+    const membersToDelete: string[] = [];
+    const membersNotFound: string[] = [];
+
+    // Vérifier que tous les membres existent
+    for (const twitchLogin of membersToMerge) {
+      const member = allMembers.find(
+        (m) => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase()
+      );
+      if (!member) {
+        membersNotFound.push(twitchLogin);
+      }
+    }
+
+    if (membersNotFound.length > 0) {
+      return NextResponse.json(
+        { error: `Membres non trouvés: ${membersNotFound.join(", ")}` },
+        { status: 404 }
+      );
+    }
+
+    // Le membre principal (celui qui sera conservé) est celui avec le twitchLogin de mergedData
+    const primaryTwitchLogin = mergedData.twitchLogin.toLowerCase();
+    const otherMembers = membersToMerge.filter(
+      (login: string) => login.toLowerCase() !== primaryTwitchLogin
+    );
+
+    // Mettre à jour le membre principal avec les données fusionnées
+    await updateMemberData(
+      primaryTwitchLogin,
+      {
+        ...mergedData,
+        twitchLogin: primaryTwitchLogin, // S'assurer que le twitchLogin est correct
+        updatedBy: admin.id,
+        updatedAt: new Date(),
+        // Marquer comme modifié manuellement pour protéger contre les synchronisations
+        roleManuallySet: true,
+      },
+      admin.id
+    );
+
+    // Supprimer les autres membres (doublons)
+    for (const twitchLogin of otherMembers) {
+      await deleteMemberData(twitchLogin.toLowerCase(), admin.id);
+      membersToDelete.push(twitchLogin);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Fusion réussie: ${membersToDelete.length} membre(s) fusionné(s) dans ${primaryTwitchLogin}`,
+      primaryMember: primaryTwitchLogin,
+      deletedMembers: membersToDelete,
+    });
+  } catch (error: any) {
+    console.error("[Merge Members] Erreur:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur lors de la fusion des membres" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET - Détecte les membres en doublon (même Discord ID/username mais Twitch différent)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const admin = await getDiscordUser();
+    if (!admin) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
+
+    // Seuls les fondateurs peuvent voir les doublons
+    if (!isFounder(admin.id)) {
+      return NextResponse.json(
+        { error: "Accès refusé. Seuls les fondateurs peuvent voir les doublons." },
+        { status: 403 }
+      );
+    }
+
+    // Charger les données depuis le stockage
+    await loadMemberDataFromStorage();
+
+    const allMembers = getAllMemberData();
+
+    // Grouper les membres par Discord ID ou Discord username
+    const membersByDiscordId: Record<string, any[]> = {};
+    const membersByDiscordUsername: Record<string, any[]> = {};
+
+    for (const member of allMembers) {
+      // Grouper par Discord ID
+      if (member.discordId) {
+        if (!membersByDiscordId[member.discordId]) {
+          membersByDiscordId[member.discordId] = [];
+        }
+        membersByDiscordId[member.discordId].push(member);
+      }
+
+      // Grouper par Discord username (case-insensitive)
+      if (member.discordUsername) {
+        const normalizedUsername = member.discordUsername.toLowerCase();
+        if (!membersByDiscordUsername[normalizedUsername]) {
+          membersByDiscordUsername[normalizedUsername] = [];
+        }
+        membersByDiscordUsername[normalizedUsername].push(member);
+      }
+    }
+
+    // Détecter les doublons (même Discord mais Twitch différent)
+    const duplicates: Array<{
+      key: string; // Discord ID ou username utilisé pour détecter le doublon
+      type: "discordId" | "discordUsername";
+      members: any[];
+    }> = [];
+
+    // Vérifier les doublons par Discord ID
+    for (const [discordId, members] of Object.entries(membersByDiscordId)) {
+      if (members.length > 1) {
+        // Vérifier si les Twitch logins sont différents
+        const twitchLogins = members.map((m) => m.twitchLogin.toLowerCase());
+        const uniqueTwitchLogins = [...new Set(twitchLogins)];
+        if (uniqueTwitchLogins.length > 1) {
+          duplicates.push({
+            key: discordId,
+            type: "discordId",
+            members: members,
+          });
+        }
+      }
+    }
+
+    // Vérifier les doublons par Discord username (seulement si pas déjà détecté par ID)
+    for (const [discordUsername, members] of Object.entries(membersByDiscordUsername)) {
+      if (members.length > 1) {
+        // Vérifier si les Twitch logins sont différents
+        const twitchLogins = members.map((m) => m.twitchLogin.toLowerCase());
+        const uniqueTwitchLogins = [...new Set(twitchLogins)];
+        if (uniqueTwitchLogins.length > 1) {
+          // Vérifier si ce doublon n'a pas déjà été détecté par Discord ID
+          const alreadyDetected = duplicates.some((dup) =>
+            dup.members.some((m) =>
+              m.discordUsername?.toLowerCase() === discordUsername
+            )
+          );
+          if (!alreadyDetected) {
+            duplicates.push({
+              key: discordUsername,
+              type: "discordUsername",
+              members: members,
+            });
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      duplicates: duplicates,
+      totalDuplicates: duplicates.length,
+      totalMembersInDuplicates: duplicates.reduce((sum, dup) => sum + dup.members.length, 0),
+    });
+  } catch (error: any) {
+    console.error("[Detect Duplicates] Erreur:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur lors de la détection des doublons" },
+      { status: 500 }
+    );
+  }
+}
+

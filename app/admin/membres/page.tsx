@@ -8,6 +8,7 @@ import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
 import DiscordSyncModal from "@/components/admin/DiscordSyncModal";
+import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import { logAction } from "@/lib/logAction";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
@@ -68,6 +69,11 @@ export default function GestionMembresPage() {
   const [showDiscordSyncModal, setShowDiscordSyncModal] = useState(false);
   const [discordSyncMembers, setDiscordSyncMembers] = useState<any[]>([]);
   const [discordSyncLoading, setDiscordSyncLoading] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [membersToMerge, setMembersToMerge] = useState<any[]>([]);
+  const [mergeLoading, setMergeLoading] = useState(false);
+  const [duplicates, setDuplicates] = useState<Array<{ key: string; type: string; members: any[] }>>([]);
+  const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -1178,26 +1184,57 @@ export default function GestionMembresPage() {
             )}
 
             {currentAdmin?.isFounder && (
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch("/api/admin/members/sync-twitch", { method: "POST" });
-                    const data = await response.json();
-                    if (data.success) {
-                      alert(`Synchronisation Twitch terminée : ${data.synced}/${data.total} membres`);
-                      await loadDiscordMembers();
-                    } else {
-                      alert(`Erreur: ${data.error}`);
+              <>
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/admin/members/sync-twitch", { method: "POST" });
+                      const data = await response.json();
+                      if (data.success) {
+                        alert(`Synchronisation Twitch terminée : ${data.synced}/${data.total} membres`);
+                        await loadDiscordMembers();
+                      } else {
+                        alert(`Erreur: ${data.error}`);
+                      }
+                    } catch (err) {
+                      console.error("Error syncing:", err);
+                      alert("Erreur lors de la synchronisation Twitch");
                     }
-                  } catch (err) {
-                    console.error("Error syncing:", err);
-                    alert("Erreur lors de la synchronisation Twitch");
-                  }
-                }}
-                className="bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
-              >
-                🔄 Sync Twitch
-              </button>
+                  }}
+                  className="bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
+                >
+                  🔄 Sync Twitch
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/admin/members/merge");
+                      const data = await response.json();
+                      if (data.success) {
+                        if (data.duplicates && data.duplicates.length > 0) {
+                          setDuplicates(data.duplicates);
+                          setCurrentDuplicateIndex(0);
+                          // Ouvrir la modale avec le premier groupe de doublons
+                          if (data.duplicates[0]?.members) {
+                            setMembersToMerge(data.duplicates[0].members);
+                            setShowMergeModal(true);
+                          }
+                        } else {
+                          alert("Aucun doublon détecté !");
+                        }
+                      } else {
+                        alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                      }
+                    } catch (error) {
+                      console.error("Erreur lors de la détection des doublons:", error);
+                      alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                    }
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  🔗 Détecter les doublons
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1440,6 +1477,88 @@ export default function GestionMembresPage() {
               isVip: selectedMember.isVip,
             }}
             onSave={handleSaveEdit}
+          />
+        )}
+
+        {/* Modal de fusion de membres */}
+        {showMergeModal && membersToMerge.length >= 2 && currentAdmin?.isFounder && (
+          <MergeMemberModal
+            isOpen={showMergeModal}
+            onClose={() => {
+              setShowMergeModal(false);
+              setMembersToMerge([]);
+              setCurrentDuplicateIndex(0);
+            }}
+            members={membersToMerge}
+            allDuplicates={duplicates}
+            currentDuplicateIndex={currentDuplicateIndex}
+            onNextDuplicate={() => {
+              if (currentDuplicateIndex < duplicates.length - 1) {
+                const nextIndex = currentDuplicateIndex + 1;
+                setCurrentDuplicateIndex(nextIndex);
+                if (duplicates[nextIndex]?.members) {
+                  setMembersToMerge(duplicates[nextIndex].members);
+                }
+              }
+            }}
+            onPreviousDuplicate={() => {
+              if (currentDuplicateIndex > 0) {
+                const prevIndex = currentDuplicateIndex - 1;
+                setCurrentDuplicateIndex(prevIndex);
+                if (duplicates[prevIndex]?.members) {
+                  setMembersToMerge(duplicates[prevIndex].members);
+                }
+              }
+            }}
+            onMerge={async (mergedData) => {
+              setMergeLoading(true);
+              try {
+                const response = await fetch("/api/admin/members/merge", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    membersToMerge: membersToMerge.map((m) => m.twitchLogin),
+                    mergedData: mergedData,
+                  }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                  alert(
+                    `Fusion réussie !\n\n` +
+                    `Membre principal: ${data.primaryMember}\n` +
+                    `Membres fusionnés: ${data.deletedMembers.join(", ")}`
+                  );
+                  
+                  // Retirer le doublon fusionné de la liste
+                  const updatedDuplicates = duplicates.filter((_, index) => index !== currentDuplicateIndex);
+                  setDuplicates(updatedDuplicates);
+                  
+                  // Si il reste des doublons, passer au suivant, sinon fermer
+                  if (updatedDuplicates.length > 0) {
+                    if (currentDuplicateIndex >= updatedDuplicates.length) {
+                      setCurrentDuplicateIndex(updatedDuplicates.length - 1);
+                    }
+                    setMembersToMerge(updatedDuplicates[Math.min(currentDuplicateIndex, updatedDuplicates.length - 1)].members);
+                  } else {
+                    setShowMergeModal(false);
+                    setMembersToMerge([]);
+                    setCurrentDuplicateIndex(0);
+                  }
+                  
+                  await loadMembers();
+                } else {
+                  alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                }
+              } catch (error) {
+                console.error("Erreur lors de la fusion:", error);
+                alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+              } finally {
+                setMergeLoading(false);
+              }
+            }}
+            loading={mergeLoading}
           />
         )}
       </div>
