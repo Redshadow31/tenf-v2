@@ -1278,33 +1278,44 @@ export default function GestionMembresPage() {
                   🔄 Sync Twitch
                 </button>
                 <button
+                  onClick={() => {
+                    window.location.href = "/admin/fusion-doublons";
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  🔗 Gérer les doublons
+                </button>
+                <button
                   onClick={async () => {
+                    if (!confirm("Voulez-vous sauvegarder toutes les données des membres de façon durable ?")) {
+                      return;
+                    }
                     try {
-                      const response = await fetch("/api/admin/members/merge");
+                      const response = await fetch("/api/admin/members/save-durable", {
+                        method: "POST",
+                      });
                       const data = await response.json();
                       if (data.success) {
-                        if (data.duplicates && data.duplicates.length > 0) {
-                          setDuplicates(data.duplicates);
-                          setCurrentDuplicateIndex(0);
-                          // Ouvrir la modale avec le premier groupe de doublons
-                          if (data.duplicates[0]?.members) {
-                            setMembersToMerge(data.duplicates[0].members);
-                            setShowMergeModal(true);
-                          }
-                        } else {
-                          alert("Aucun doublon détecté !");
-                        }
+                        alert(
+                          `Sauvegarde réussie !\n\n` +
+                          `Total: ${data.stats.total} membres\n` +
+                          `Avec Discord: ${data.stats.withDiscord}\n` +
+                          `Modifications manuelles: ${data.stats.withManualChanges}\n` +
+                          `Avec description: ${data.stats.withDescription}\n\n` +
+                          `Fichier: ${data.membersFile}\n` +
+                          `Sauvegarde: ${data.backupFile}`
+                        );
                       } else {
                         alert(`Erreur: ${data.error || "Erreur inconnue"}`);
                       }
                     } catch (error) {
-                      console.error("Erreur lors de la détection des doublons:", error);
+                      console.error("Erreur lors de la sauvegarde:", error);
                       alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                     }
                   }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
                 >
-                  🔗 Détecter les doublons
+                  💾 Sauvegarder données
                 </button>
               </>
             )}
