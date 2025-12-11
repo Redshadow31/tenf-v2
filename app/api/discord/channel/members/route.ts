@@ -103,7 +103,7 @@ export async function GET() {
     let totalMessagesFetched = 0;
 
     while (hasMore) {
-      const url = `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?limit=100${before ? `&before=${before}` : ''}`;
+      const url: string = `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?limit=100${before ? `&before=${before}` : ''}`;
       const messagesResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
@@ -163,7 +163,7 @@ export async function GET() {
     let totalMembersFetched = 0;
 
     while (hasMoreMembers) {
-      const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
+      const url: string = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
       const membersResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     let totalFetched = 0;
 
     while (hasMore) {
-      const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
+      const url: string = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
       const membersResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
