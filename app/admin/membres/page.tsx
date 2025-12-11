@@ -62,6 +62,8 @@ export default function GestionMembresPage() {
   const [sortColumn, setSortColumn] = useState<"nom" | "role" | "lastLive" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
+  const [showSyncConfirmModal, setShowSyncConfirmModal] = useState(false);
+  const [syncPreview, setSyncPreview] = useState<{ totalFetched?: number; skippedBots?: number; skippedNoRole?: number } | null>(null);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -242,11 +244,17 @@ export default function GestionMembresPage() {
         }
       }
 
-      // Créer un map des membres par Discord ID
+      // Créer des maps pour fusionner les données
       const centralByDiscordId = new Map(
         centralMembers
           .filter((m: any) => m.discordId)
           .map((m: any) => [m.discordId, m])
+      );
+      
+      // Map par Twitch login pour récupérer les IDs Discord même si pas de discordId dans Discord
+      const centralByTwitchLogin = new Map(
+        centralMembers
+          .map((m: any) => [m.twitchLogin?.toLowerCase(), m])
       );
 
       // Récupérer tous les avatars Twitch en batch depuis l'API publique
@@ -269,7 +277,16 @@ export default function GestionMembresPage() {
 
       // Mapper les membres Discord vers le format Member avec avatars Twitch
       const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-        const centralMember = centralByDiscordId.get(discordMember.discordId);
+        // Chercher le membre centralisé par Discord ID d'abord
+        let centralMember = centralByDiscordId.get(discordMember.discordId);
+        
+        // Si pas trouvé par Discord ID, chercher par Twitch login
+        if (!centralMember && discordMember.twitchLogin) {
+          centralMember = centralByTwitchLogin.get(discordMember.twitchLogin.toLowerCase());
+        }
+        
+        // Utiliser l'ID Discord de la base de données centralisée si disponible, sinon celui de Discord
+        const discordId = centralMember?.discordId || discordMember.discordId;
         
         // Récupérer l'avatar depuis le map (déjà récupéré en batch) ou utiliser Discord
         let avatar = discordMember.avatar; // Fallback Discord
@@ -284,15 +301,15 @@ export default function GestionMembresPage() {
           id: index + 1,
           avatar,
           nom: discordMember.discordNickname || discordMember.discordUsername,
-          role: discordMember.siteRole,
-          statut: "Actif" as MemberStatus,
-          discord: discordMember.discordUsername,
-          discordId: discordMember.discordId,
+          role: centralMember?.role || discordMember.siteRole,
+          statut: (centralMember?.isActive !== false ? "Actif" : "Inactif") as MemberStatus,
+          discord: centralMember?.discordUsername || discordMember.discordUsername,
+          discordId: discordId, // Utiliser l'ID Discord de la base de données si disponible
           twitch: discordMember.twitchLogin || "",
           twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
           siteUsername: centralMember?.siteUsername,
-          badges: discordMember.badges,
-          isVip: discordMember.isVip,
+          badges: centralMember?.badges || discordMember.badges || [],
+          isVip: centralMember?.isVip || discordMember.isVip || false,
           isModeratorJunior: discordMember.isModeratorJunior,
           isModeratorMentor: discordMember.isModeratorMentor,
           description: centralMember?.description,
@@ -843,114 +860,209 @@ export default function GestionMembresPage() {
             
             <button
               onClick={async () => {
-                setLoading(true);
-                try {
-                  const discordResponse = await fetch("/api/discord/channel/members", {
-                    cache: 'no-store',
-                    headers: {
-                      'Cache-Control': 'no-cache',
-                    },
-                  });
-                  if (!discordResponse.ok) {
-                    let errorMessage = "Erreur lors de la synchronisation Discord";
-                    try {
-                      const errorData = await discordResponse.json();
-                      errorMessage = errorData.error || errorData.details || errorMessage;
-                    } catch (e) {
-                      // Ignorer si on ne peut pas parser l'erreur
-                    }
-                    throw new Error(errorMessage);
-                  }
-                  const discordData = await discordResponse.json();
-
-                  let centralMembers: any[] = [];
-                  if (currentAdmin?.isFounder) {
-                    try {
-                      const centralResponse = await fetch("/api/admin/members", {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache',
-            },
-          });
-                      if (centralResponse.ok) {
-                        const centralData = await centralResponse.json();
-                        centralMembers = centralData.members || [];
-                      }
-                    } catch (err) {
-                      console.warn("Impossible de charger les données centralisées:", err);
-                    }
-                  }
-
-                  const centralByDiscordId = new Map(
-                    centralMembers
-                      .filter((m: any) => m.discordId)
-                      .map((m: any) => [m.discordId, m])
-                  );
-
-                  // Récupérer tous les avatars Twitch en batch depuis l'API publique
-                  const publicMembersResponse = await fetch("/api/members/public", {
-                    cache: 'no-store',
-                    headers: {
-                      'Cache-Control': 'no-cache',
-                    },
-                  });
-                  
-                  let avatarMap = new Map<string, string>();
-                  if (publicMembersResponse.ok) {
-                    const publicData = await publicMembersResponse.json();
-                    publicData.members?.forEach((m: any) => {
-                      if (m.avatar) {
-                        avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
-                      }
-                    });
-                  }
-
-                  const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-                    const centralMember = centralByDiscordId.get(discordMember.discordId);
-                    
-                    // Récupérer l'avatar depuis le map (déjà récupéré en batch) ou utiliser Discord
-                    let avatar = discordMember.avatar; // Fallback Discord
-                    if (discordMember.twitchLogin) {
-                      const twitchAvatar = avatarMap.get(discordMember.twitchLogin.toLowerCase());
-                      if (twitchAvatar) {
-                        avatar = twitchAvatar;
-                      }
-                    }
-                    
-                    return {
-                      id: index + 1,
-                      avatar,
-                      nom: discordMember.discordNickname || discordMember.discordUsername,
-                      role: discordMember.siteRole,
-                      statut: "Actif" as MemberStatus,
-                      discord: discordMember.discordUsername,
-                      discordId: discordMember.discordId,
-                      twitch: discordMember.twitchLogin || "",
-                      twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
-                      siteUsername: centralMember?.siteUsername,
-                      badges: discordMember.badges,
-                      isVip: discordMember.isVip,
-                      isModeratorJunior: discordMember.isModeratorJunior,
-                      isModeratorMentor: discordMember.isModeratorMentor,
-                      description: centralMember?.description,
-                      customBio: centralMember?.customBio,
-                      twitchStatus: centralMember?.twitchStatus,
-                    };
-                  });
-
-                  setMembers(mappedMembers);
-                  alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s)`);
-                } catch (error) {
-                  console.error("Erreur lors de la synchronisation:", error);
-                  alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
-                } finally {
-                  setLoading(false);
-                }
+                // Afficher la modale de confirmation
+                setShowSyncConfirmModal(true);
               }}
               className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
             >
               🔄 Synchroniser
             </button>
+
+            {/* Modale de confirmation de synchronisation */}
+            {showSyncConfirmModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-xl font-bold text-white mb-4">Confirmer la synchronisation Discord</h3>
+                  <p className="text-gray-300 mb-6">
+                    Cette action va synchroniser les membres Discord avec la base de données. 
+                    Les rôles seront mis à jour selon les rôles Discord actuels.
+                  </p>
+                  {syncPreview && (
+                    <div className="bg-[#0e0e10] border border-gray-700 rounded p-4 mb-4 text-sm">
+                      <p className="text-gray-400 mb-2">Aperçu de la synchronisation :</p>
+                      <ul className="text-gray-300 space-y-1">
+                        {syncPreview.totalFetched !== undefined && (
+                          <li>• Membres Discord récupérés : {syncPreview.totalFetched}</li>
+                        )}
+                        {syncPreview.skippedBots !== undefined && (
+                          <li>• Bots ignorés : {syncPreview.skippedBots}</li>
+                        )}
+                        {syncPreview.skippedNoRole !== undefined && (
+                          <li>• Membres sans rôle pertinent : {syncPreview.skippedNoRole}</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={() => {
+                        setShowSyncConfirmModal(false);
+                        setSyncPreview(null);
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowSyncConfirmModal(false);
+                        setLoading(true);
+                        try {
+                          const discordResponse = await fetch("/api/discord/channel/members", {
+                            cache: 'no-store',
+                            headers: {
+                              'Cache-Control': 'no-cache',
+                            },
+                          });
+                          if (!discordResponse.ok) {
+                            let errorMessage = "Erreur lors de la synchronisation Discord";
+                            try {
+                              const errorData = await discordResponse.json();
+                              errorMessage = errorData.error || errorData.details || errorMessage;
+                            } catch (e) {
+                              // Ignorer si on ne peut pas parser l'erreur
+                            }
+                            throw new Error(errorMessage);
+                          }
+                          const discordData = await discordResponse.json();
+
+                          let centralMembers: any[] = [];
+                          if (currentAdmin?.isFounder) {
+                            try {
+                              const centralResponse = await fetch("/api/admin/members", {
+                                cache: 'no-store',
+                                headers: {
+                                  'Cache-Control': 'no-cache',
+                                },
+                              });
+                              if (centralResponse.ok) {
+                                const centralData = await centralResponse.json();
+                                centralMembers = centralData.members || [];
+                              }
+                            } catch (err) {
+                              console.warn("Impossible de charger les données centralisées:", err);
+                            }
+                          }
+
+                          const centralByDiscordId = new Map(
+                            centralMembers
+                              .filter((m: any) => m.discordId)
+                              .map((m: any) => [m.discordId, m])
+                          );
+
+                          // Récupérer tous les avatars Twitch en batch depuis l'API publique
+                          const publicMembersResponse = await fetch("/api/members/public", {
+                            cache: 'no-store',
+                            headers: {
+                              'Cache-Control': 'no-cache',
+                            },
+                          });
+                          
+                          let avatarMap = new Map<string, string>();
+                          if (publicMembersResponse.ok) {
+                            const publicData = await publicMembersResponse.json();
+                            publicData.members?.forEach((m: any) => {
+                              if (m.avatar) {
+                                avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
+                              }
+                            });
+                          }
+
+                          const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
+                            const centralMember = centralByDiscordId.get(discordMember.discordId);
+                            
+                            // Récupérer l'avatar depuis le map (déjà récupéré en batch) ou utiliser Discord
+                            let avatar = discordMember.avatar; // Fallback Discord
+                            if (discordMember.twitchLogin) {
+                              const twitchAvatar = avatarMap.get(discordMember.twitchLogin.toLowerCase());
+                              if (twitchAvatar) {
+                                avatar = twitchAvatar;
+                              }
+                            }
+                            
+                            return {
+                              id: index + 1,
+                              avatar,
+                              nom: discordMember.discordNickname || discordMember.discordUsername,
+                              role: discordMember.siteRole,
+                              statut: "Actif" as MemberStatus,
+                              discord: discordMember.discordUsername,
+                              discordId: discordMember.discordId,
+                              twitch: discordMember.twitchLogin || "",
+                              twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+                              siteUsername: centralMember?.siteUsername,
+                              badges: discordMember.badges,
+                              isVip: discordMember.isVip,
+                              isModeratorJunior: discordMember.isModeratorJunior,
+                              isModeratorMentor: discordMember.isModeratorMentor,
+                              description: centralMember?.description,
+                              customBio: centralMember?.customBio,
+                              twitchStatus: centralMember?.twitchStatus,
+                            };
+                          });
+
+                          setMembers(mappedMembers);
+                          alert(`Synchronisation réussie : ${mappedMembers.length} membre(s) trouvé(s)`);
+                        } catch (error) {
+                          console.error("Erreur lors de la synchronisation:", error);
+                          alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="px-4 py-2 bg-[#9146ff] hover:bg-[#5a32b4] text-white rounded-lg transition-colors font-semibold"
+                    >
+                      Valider
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bouton de synchronisation complète Discord (pour les fondateurs) */}
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={async () => {
+                  if (!confirm("Voulez-vous vraiment lancer la synchronisation complète Discord ?\n\nCette action va synchroniser TOUS les membres Discord avec leurs rôles actuels.")) {
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    const response = await fetch("/api/discord/members/sync", {
+                      method: "POST",
+                      cache: 'no-store',
+                      headers: {
+                        'Cache-Control': 'no-cache',
+                      },
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      const stats = data.stats || {};
+                      alert(
+                        `Synchronisation complète terminée !\n\n` +
+                        `Membres récupérés : ${stats.totalFetched || 0}\n` +
+                        `Bots ignorés : ${stats.skippedBots || 0}\n` +
+                        `Sans rôle pertinent : ${stats.skippedNoRole || 0}\n` +
+                        `Synchronisés : ${stats.synced || 0}\n` +
+                        `Créés : ${stats.created || 0}\n` +
+                        `Mis à jour : ${stats.updated || 0}`
+                      );
+                      await loadMembers();
+                    } else {
+                      alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                    }
+                  } catch (error) {
+                    console.error("Erreur lors de la synchronisation complète:", error);
+                    alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                🔄 Sync Discord Complète
+              </button>
+            )}
 
             {currentAdmin?.isFounder && (
               <button

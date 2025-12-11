@@ -19,6 +19,9 @@ interface DiscordMember {
 /**
  * POST - Synchronise les membres Discord avec le système centralisé
  * Réservé aux fondateurs
+ * 
+ * Query params:
+ * - syncAll: si true, synchronise tous les membres même sans rôle pertinent (défaut: false)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -47,25 +50,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Récupérer tous les membres du serveur Discord
-    const membersResponse = await fetch(
-      `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000`,
-      {
+    // Vérifier si on doit synchroniser tous les membres (même sans rôle)
+    const { searchParams } = new URL(request.url);
+    const syncAll = searchParams.get('syncAll') === 'true';
+
+    // Récupérer tous les membres du serveur Discord avec pagination
+    // L'API Discord limite à 1000 membres par requête, il faut paginer
+    const discordMembers: DiscordMember[] = [];
+    let after: string | undefined = undefined;
+    let hasMore = true;
+    let totalFetched = 0;
+
+    while (hasMore) {
+      const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
+      const membersResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
         },
-      }
-    );
+      });
 
-    if (!membersResponse.ok) {
-      const errorText = await membersResponse.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch Discord members', details: errorText },
-        { status: membersResponse.status }
-      );
+      if (!membersResponse.ok) {
+        const errorText = await membersResponse.text();
+        return NextResponse.json(
+          { error: 'Failed to fetch Discord members', details: errorText },
+          { status: membersResponse.status }
+        );
+      }
+
+      const batch: DiscordMember[] = await membersResponse.json();
+      discordMembers.push(...batch);
+      totalFetched += batch.length;
+
+      // Si on a récupéré moins de 1000 membres, on a atteint la fin
+      if (batch.length < 1000) {
+        hasMore = false;
+      } else {
+        // Utiliser l'ID du dernier membre comme cursor pour la pagination
+        after = batch[batch.length - 1].user.id;
+      }
     }
 
-    const discordMembers: DiscordMember[] = await membersResponse.json();
+    console.log(`[Discord Sync] Récupéré ${totalFetched} membres Discord au total`);
+    
+    // Log des premiers membres pour déboguer
+    if (discordMembers.length > 0) {
+      console.log(`[Discord Sync] Exemple de membre (premier):`, {
+        id: discordMembers[0].user.id,
+        username: discordMembers[0].user.username,
+        roles: discordMembers[0].roles,
+        rolesCount: discordMembers[0].roles.length,
+      });
+    }
     
     // Charger les données depuis le stockage persistant
     await loadMemberDataFromStorage();
@@ -76,29 +111,81 @@ export async function POST(request: NextRequest) {
         .filter(m => m.discordId)
         .map(m => [m.discordId!, m])
     );
+    // Créer aussi un index par nom d'utilisateur Discord (fallback si pas d'ID)
+    const existingByDiscordUsername = new Map(
+      existingMembers
+        .filter(m => m.discordUsername)
+        .map(m => [m.discordUsername!.toLowerCase(), m])
+    );
 
     let synced = 0;
     let created = 0;
     let updated = 0;
+    let skippedBots = 0;
+    let skippedNoRole = 0;
+    let roleStats: Record<string, number> = {};
+    let roleIdStats: Record<string, number> = {}; // Statistiques par ID de rôle Discord
 
     // Synchroniser chaque membre Discord
     for (const discordMember of discordMembers) {
       // Filtrer les bots
-      if (discordMember.user.bot) continue;
+      if (discordMember.user.bot) {
+        skippedBots++;
+        continue;
+      }
 
-      // Filtrer les membres qui ont au moins un des rôles recherchés
+      // Compter les rôles Discord pour statistiques
+      discordMember.roles.forEach(roleId => {
+        roleIdStats[roleId] = (roleIdStats[roleId] || 0) + 1;
+      });
+
+      // Filtrer les membres qui ont au moins un des rôles recherchés (sauf si syncAll est activé)
       const hasRelevantRole = discordMember.roles.some(roleId => 
         Object.values(DISCORD_ROLE_IDS).includes(roleId as any)
       );
-      if (!hasRelevantRole) continue;
+      
+      if (!hasRelevantRole && !syncAll) {
+        skippedNoRole++;
+        // Log pour les premiers membres sans rôle pour déboguer
+        if (skippedNoRole <= 5) {
+          console.log(`[Discord Sync] Membre sans rôle pertinent: ${discordMember.user.username} (${discordMember.user.id}), rôles:`, discordMember.roles);
+        }
+        continue;
+      }
+      
+      // Si syncAll est activé et pas de rôle pertinent, utiliser "Affilié" par défaut
+      if (!hasRelevantRole && syncAll) {
+        console.log(`[Discord Sync] Membre sans rôle pertinent mais syncAll activé: ${discordMember.user.username} (${discordMember.user.id})`);
+      }
 
       const { role, badges } = mapDiscordRoleToSiteRole(discordMember.roles);
       const discordId = discordMember.user.id;
       const discordUsername = discordMember.user.username;
       const displayName = discordMember.nick || discordMember.user.global_name || discordUsername;
 
-      // Chercher un membre existant par Discord ID
-      const existing = existingByDiscordId.get(discordId);
+      // Compter les rôles pour les statistiques
+      roleStats[role] = (roleStats[role] || 0) + 1;
+      
+      // Log pour les premiers membres synchronisés pour déboguer
+      if (synced < 10) {
+        const hasDevRole = discordMember.roles.includes(DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT);
+        const hasAffilieRole = discordMember.roles.includes(DISCORD_ROLE_IDS.CREATEUR_AFFILIE);
+        console.log(`[Discord Sync] Membre ${synced + 1}: ${discordUsername} (${discordId})`, {
+          roles: discordMember.roles,
+          mappedRole: role,
+          hasDevRole,
+          hasAffilieRole,
+          hasBothRoles: hasDevRole && hasAffilieRole,
+          devRoleId: DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT,
+        });
+      }
+
+      // Chercher un membre existant par Discord ID d'abord, puis par nom d'utilisateur
+      let existing = existingByDiscordId.get(discordId);
+      if (!existing) {
+        // Fallback: chercher par nom d'utilisateur Discord (insensible à la casse)
+        existing = existingByDiscordUsername.get(discordUsername.toLowerCase());
+      }
 
       if (existing) {
         // Mettre à jour le membre existant
@@ -144,12 +231,41 @@ export async function POST(request: NextRequest) {
       synced++;
     }
 
+    console.log(`[Discord Sync] Statistiques:`);
+    console.log(`  - Membres Discord récupérés: ${totalFetched}`);
+    console.log(`  - Bots ignorés: ${skippedBots}`);
+    console.log(`  - Membres sans rôle pertinent: ${skippedNoRole}`);
+    console.log(`  - Membres synchronisés: ${synced}`);
+    console.log(`  - Membres créés: ${created}`);
+    console.log(`  - Membres mis à jour: ${updated}`);
+    console.log(`  - Répartition par rôle site:`, roleStats);
+    console.log(`  - Répartition par ID rôle Discord (top 10):`, 
+      Object.entries(roleIdStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .reduce((acc, [id, count]) => {
+          const roleName = Object.entries(DISCORD_ROLE_IDS).find(([_, val]) => val === id)?.[0] || id;
+          acc[roleName] = count;
+          return acc;
+        }, {} as Record<string, number>)
+    );
+    console.log(`  - Vérification ID rôle développement:`, {
+      expected: DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT,
+      found: roleIdStats[DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT] || 0,
+    });
+
     return NextResponse.json({
       success: true,
       message: `Synchronisation terminée`,
-      synced,
-      created,
-      updated,
+      stats: {
+        totalFetched,
+        skippedBots,
+        skippedNoRole,
+        synced,
+        created,
+        updated,
+        roleStats,
+      },
     });
   } catch (error) {
     console.error("Error syncing Discord members:", error);

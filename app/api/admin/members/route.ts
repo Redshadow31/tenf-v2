@@ -200,6 +200,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Charger les données depuis le stockage persistant AVANT de récupérer le membre
+    await loadMemberDataFromStorage();
+    
     const existingMember = getMemberData(twitchLogin);
     if (!existingMember) {
       return NextResponse.json(
@@ -207,16 +210,35 @@ export async function PUT(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    // Charger les données depuis le stockage persistant
-    await loadMemberDataFromStorage();
+    
+    // Ne pas écraser discordId ou discordUsername avec des valeurs vides
+    if (updates.discordId === "" || updates.discordId === null) {
+      delete updates.discordId;
+    }
+    if (updates.discordUsername === "" || updates.discordUsername === null) {
+      delete updates.discordUsername;
+    }
     
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     if (updates.role && updates.role !== existingMember.role) {
       updates.roleManuallySet = true;
     }
 
+    // Log pour déboguer
+    console.log(`[Update Member] ${twitchLogin}:`, {
+      existingDiscordId: existingMember.discordId,
+      newDiscordId: updates.discordId,
+      existingDiscordUsername: existingMember.discordUsername,
+      newDiscordUsername: updates.discordUsername,
+    });
+
     const updatedMember = await updateMemberData(twitchLogin, updates, admin.id);
+    
+    // Log après mise à jour
+    console.log(`[Update Member] ${twitchLogin} - Après mise à jour:`, {
+      discordId: updatedMember?.discordId,
+      discordUsername: updatedMember?.discordUsername,
+    });
 
     if (!updatedMember) {
       return NextResponse.json(

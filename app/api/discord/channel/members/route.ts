@@ -66,8 +66,14 @@ function parseMessage(message: string): { discordUsername?: string; twitchLogin?
   const fullTwitchUrl = twitchUrl.startsWith('http') ? twitchUrl : `https://${twitchUrl}`;
 
   // Essayer d'extraire le pseudo Discord (peut être @username ou juste username)
+  // Gérer les cas avec ou sans underscore, avec ou sans @
   const discordMatch = cleaned.match(/(?:@)?([a-zA-Z0-9_]+)[:\s]+(?:https?:\/\/)?(?:www\.)?twitch\.tv/i);
-  const discordUsername = discordMatch ? discordMatch[1] : undefined;
+  let discordUsername = discordMatch ? discordMatch[1] : undefined;
+  
+  // Nettoyer le pseudo Discord (enlever les underscores en fin si présent, normaliser)
+  if (discordUsername) {
+    discordUsername = discordUsername.trim();
+  }
 
   return {
     discordUsername,
@@ -90,26 +96,43 @@ export async function GET() {
       );
     }
 
-    // Récupérer les messages du canal (limite 100, on peut paginer si nécessaire)
-    const messagesResponse = await fetch(
-      `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?limit=100`,
-      {
+    // Récupérer tous les messages du canal avec pagination
+    const messages: DiscordMessage[] = [];
+    let before: string | undefined = undefined;
+    let hasMore = true;
+    let totalMessagesFetched = 0;
+
+    while (hasMore) {
+      const url = `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?limit=100${before ? `&before=${before}` : ''}`;
+      const messagesResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
         },
-      }
-    );
+      });
 
-    if (!messagesResponse.ok) {
-      const errorText = await messagesResponse.text();
-      console.error('Discord Messages API error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to fetch Discord messages', details: errorText },
-        { status: messagesResponse.status }
-      );
+      if (!messagesResponse.ok) {
+        const errorText = await messagesResponse.text();
+        console.error('Discord Messages API error:', errorText);
+        return NextResponse.json(
+          { error: 'Failed to fetch Discord messages', details: errorText },
+          { status: messagesResponse.status }
+        );
+      }
+
+      const batch: DiscordMessage[] = await messagesResponse.json();
+      messages.push(...batch);
+      totalMessagesFetched += batch.length;
+
+      // Si on a récupéré moins de 100 messages, on a atteint la fin
+      if (batch.length < 100) {
+        hasMore = false;
+      } else {
+        // Utiliser l'ID du dernier message comme cursor pour la pagination
+        before = batch[batch.length - 1].id;
+      }
     }
 
-    const messages: DiscordMessage[] = await messagesResponse.json();
+    console.log(`[Discord Channel] Récupéré ${totalMessagesFetched} messages au total`);
 
     // Récupérer les rôles du serveur pour mapper les rôles des membres
     const rolesResponse = await fetch(
@@ -133,82 +156,155 @@ export async function GET() {
     const roles = await rolesResponse.json();
     const roleMap = new Map(roles.map((role: any) => [role.id, role.name]));
 
-    // Récupérer les informations complètes des membres du serveur pour avoir leurs rôles
-    const membersResponse = await fetch(
-      `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000`,
-      {
+    // Récupérer tous les membres du serveur avec pagination pour avoir leurs rôles
+    let guildMembers: Map<string, any> = new Map();
+    let after: string | undefined = undefined;
+    let hasMoreMembers = true;
+    let totalMembersFetched = 0;
+
+    while (hasMoreMembers) {
+      const url = `https://discord.com/api/v10/guilds/${GUILD_ID}/members?limit=1000${after ? `&after=${after}` : ''}`;
+      const membersResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
         },
-      }
-    );
-
-    let guildMembers: Map<string, any> = new Map();
-    if (membersResponse.ok) {
-      const members = await membersResponse.json();
-      members.forEach((member: any) => {
-        // Filtrer les bots
-        if (member.user && member.user.bot) {
-          return;
-        }
-        guildMembers.set(member.user.id, member);
       });
+
+      if (membersResponse.ok) {
+        const batch = await membersResponse.json();
+        batch.forEach((member: any) => {
+          // Filtrer les bots
+          if (member.user && member.user.bot) {
+            return;
+          }
+          guildMembers.set(member.user.id, member);
+        });
+        totalMembersFetched += batch.length;
+
+        // Si on a récupéré moins de 1000 membres, on a atteint la fin
+        if (batch.length < 1000) {
+          hasMoreMembers = false;
+        } else {
+          // Utiliser l'ID du dernier membre comme cursor pour la pagination
+          after = batch[batch.length - 1].user.id;
+        }
+      } else {
+        hasMoreMembers = false;
+      }
     }
+
+    console.log(`[Discord Channel] Récupéré ${totalMembersFetched} membres du serveur au total`);
 
     // Parser les messages et créer la liste des membres
     const parsedMembers: Map<string, ParsedMember> = new Map();
+    
+    // Créer un index des membres du serveur par nom d'utilisateur (insensible à la casse)
+    const guildMembersByUsername = new Map<string, any>();
+    guildMembers.forEach((member) => {
+      if (member.user && !member.user.bot) {
+        const username = member.user.username.toLowerCase();
+        guildMembersByUsername.set(username, member);
+        // Aussi indexer par global_name si présent
+        if (member.user.global_name) {
+          guildMembersByUsername.set(member.user.global_name.toLowerCase(), member);
+        }
+      }
+    });
 
     for (const message of messages) {
       // Ignorer les bots
       if (message.author.bot) continue;
       
-      // Vérifier aussi dans les membres du serveur
-      const guildMember = guildMembers.get(message.author.id);
-      if (guildMember?.user?.bot) continue;
+      // Parser chaque ligne du message pour extraire tous les membres listés
+      const lines = message.content.split('\n').filter(line => line.trim());
+      
+      for (const line of lines) {
+        const parsed = parseMessage(line);
+        if (!parsed || !parsed.twitchLogin) {
+          continue;
+        }
 
-      const parsed = parseMessage(message.content);
-      if (!parsed || !parsed.twitchLogin) {
-        continue;
-      }
+        // Chercher le membre Discord réel par son pseudo (pas l'auteur du message)
+        let guildMember: any = null;
+        let discordId: string | null = null;
+        let discordUsername: string;
+        let discordNickname: string | undefined;
+        
+        if (parsed.discordUsername) {
+          // Normaliser le pseudo pour la recherche (minuscules, enlever underscores en fin)
+          const normalizedSearch = parsed.discordUsername.toLowerCase().replace(/_+$/, '');
+          
+          // Chercher le membre par son pseudo Discord (exact match d'abord)
+          let foundMember = guildMembersByUsername.get(parsed.discordUsername.toLowerCase());
+          
+          // Si pas trouvé, chercher avec une recherche plus flexible
+          if (!foundMember) {
+            for (const [username, member] of guildMembersByUsername.entries()) {
+              const normalizedUsername = username.replace(/_+$/, '');
+              if (normalizedUsername === normalizedSearch || username === normalizedSearch) {
+                foundMember = member;
+                break;
+              }
+            }
+          }
+          
+          if (foundMember) {
+            guildMember = foundMember;
+            discordId = foundMember.user.id;
+            discordUsername = foundMember.user.username;
+            discordNickname = foundMember.nick || foundMember.user.global_name || undefined;
+          } else {
+            // Si pas trouvé, utiliser le pseudo du texte mais sans ID Discord
+            discordUsername = parsed.discordUsername;
+            console.warn(`[Discord Channel] Membre Discord non trouvé: ${parsed.discordUsername} (recherché: ${normalizedSearch})`);
+          }
+        } else {
+          // Si pas de pseudo Discord dans le texte, utiliser l'auteur du message
+          const authorMember = guildMembers.get(message.author.id);
+          if (authorMember && !authorMember.user.bot) {
+            guildMember = authorMember;
+            discordId = message.author.id;
+            discordUsername = message.author.username;
+            discordNickname = authorMember.nick || message.author.global_name || undefined;
+          } else {
+            continue; // Ignorer si on ne peut pas identifier le membre
+          }
+        }
 
-      const discordId = message.author.id;
-      // Utiliser toujours l'auteur du message comme source de vérité pour Discord
-      const discordUsername = message.author.username;
-      const memberRoles = guildMember?.roles || message.member?.roles || [];
+        // Si on n'a pas d'ID Discord, on ne peut pas créer le membre
+        if (!discordId) {
+          continue;
+        }
 
-      // Tous les membres qui ont posté dans ce canal sont considérés comme actifs
-      // On inclut tous les membres, même s'ils n'ont pas de rôle spécifique
+        const memberRoles = guildMember?.roles || [];
+        const { role, badges } = mapDiscordRoleToSiteRole(memberRoles);
 
-      const { role, badges } = mapDiscordRoleToSiteRole(memberRoles);
-      const roleNames = memberRoles
-        .map((roleId: string) => roleMap.get(roleId))
-        .filter(Boolean) as string[];
+        // Utiliser le pseudo Discord du message ou celui de l'auteur
+        const displayName = discordNickname || discordUsername;
 
-      // Utiliser le pseudo Discord du message ou celui de l'auteur
-      const displayName = message.member?.nick || message.author.global_name || message.author.username;
-
-      // Créer ou mettre à jour le membre (on garde le dernier message trouvé pour chaque membre)
-      // Si un membre a plusieurs messages, on garde le plus récent
-      const existingMember = parsedMembers.get(discordId);
-      if (!existingMember || message.id > (existingMember as any).lastMessageId) {
-        parsedMembers.set(discordId, {
-          discordId,
-          discordUsername,
-          discordNickname: displayName !== message.author.username ? displayName : undefined,
-          twitchLogin: parsed.twitchLogin,
-          twitchUrl: parsed.twitchUrl,
-          avatar: message.author.avatar
-            ? `https://cdn.discordapp.com/avatars/${message.author.id}/${message.author.avatar}.png`
-            : `https://cdn.discordapp.com/embed/avatars/${parseInt(message.author.id) % 5}.png`,
-          roles: memberRoles,
-          siteRole: role,
-          badges,
-          isVip: memberRoles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
-          isModeratorJunior: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_JUNIOR),
-          isModeratorMentor: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_MENTOR),
-          isAdminFondateurs: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_FONDATEURS),
-          isAdminAdjoint: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_ADJOINT),
-        } as ParsedMember & { lastMessageId?: string });
+        // Créer ou mettre à jour le membre (on garde le dernier message trouvé pour chaque membre)
+        // Si un membre a plusieurs messages, on garde le plus récent
+        const existingMember = parsedMembers.get(discordId);
+        if (!existingMember || message.id > (existingMember as any).lastMessageId) {
+          parsedMembers.set(discordId, {
+            discordId,
+            discordUsername,
+            discordNickname: displayName !== discordUsername ? displayName : undefined,
+            twitchLogin: parsed.twitchLogin,
+            twitchUrl: parsed.twitchUrl,
+            avatar: guildMember?.user?.avatar
+              ? `https://cdn.discordapp.com/avatars/${guildMember.user.id}/${guildMember.user.avatar}.png`
+              : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordId) % 5}.png`,
+            roles: memberRoles,
+            siteRole: role,
+            badges,
+            isVip: memberRoles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
+            isModeratorJunior: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_JUNIOR),
+            isModeratorMentor: memberRoles.includes(DISCORD_ROLE_IDS.MODERATEUR_MENTOR),
+            isAdminFondateurs: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_FONDATEURS),
+            isAdminAdjoint: memberRoles.includes(DISCORD_ROLE_IDS.ADMIN_ADJOINT),
+          } as ParsedMember & { lastMessageId?: string });
+        }
       }
     }
 

@@ -226,7 +226,9 @@ export function initializeMemberData() {
       const badges = getBadgesForMember(member.twitchLogin);
       if (badges.length > 0) {
         memberDataStore[login].badges = badges;
-        // Mettre à jour aussi le rôle et VIP si nécessaire
+      }
+      // Ne mettre à jour le rôle et VIP que s'ils n'ont pas été définis manuellement
+      if (!memberDataStore[login].roleManuallySet) {
         memberDataStore[login].role = roleInfo.role;
         memberDataStore[login].isVip = roleInfo.isVip;
         memberDataStore[login].updatedAt = new Date();
@@ -272,8 +274,18 @@ export async function loadMemberDataFromStorage(): Promise<void> {
         const existingUpdatedAt = existingMember.updatedAt ? new Date(existingMember.updatedAt).getTime() : 0;
         
         // Si la version sauvegardée est plus récente, l'utiliser
+        // MAIS préserver roleManuallySet et le rôle si il a été défini manuellement
         if (savedUpdatedAt > existingUpdatedAt) {
-          memberDataStore[key] = savedMember;
+          // Si le membre en mémoire a roleManuallySet, préserver le rôle même si la version sauvegardée est plus récente
+          if (existingMember.roleManuallySet && existingMember.role) {
+            memberDataStore[key] = {
+              ...savedMember,
+              role: existingMember.role,
+              roleManuallySet: true,
+            };
+          } else {
+            memberDataStore[key] = savedMember;
+          }
         }
         // Sinon, garder la version en mémoire (plus récente)
       }
