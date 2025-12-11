@@ -102,6 +102,8 @@ export default function GestionMembresPage() {
         } catch (err) {
           // Fallback si l'API de rôle ne fonctionne pas
           const founderStatus = isFounder(user.id);
+          // En fallback, on vérifie seulement les fondateurs (liste hardcodée)
+          // Les Admin et Admin Adjoint devront attendre que l'API fonctionne
           if (!founderStatus) {
             // Si pas fondateur et API ne fonctionne pas, rediriger
             window.location.href = "/unauthorized";

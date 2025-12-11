@@ -53,12 +53,32 @@ export function isAdminAdjoint(discordId: string, memberRole?: string): boolean 
 }
 
 /**
+ * Vérifie si un utilisateur a le rôle "Admin" dans memberData
+ * Cette fonction vérifie dans memberData (nécessite d'être appelée après chargement des données)
+ */
+export function isAdminRole(discordId: string, memberRole?: string): boolean {
+  if (memberRole) {
+    return memberRole === "Admin";
+  }
+  // Si pas de rôle fourni, retourner false (nécessite chargement depuis memberData)
+  return false;
+}
+
+/**
  * Vérifie si un utilisateur a accès au dashboard admin (Fondateur, Admin, ou Admin Adjoint)
  * Cette fonction vérifie dans memberData si nécessaire
  */
 export function hasAdminDashboardAccess(discordId: string, memberRole?: string): boolean {
-  // Fondateurs et Admins ont toujours accès
-  if (isFounder(discordId) || isAdmin(discordId)) {
+  // Fondateurs ont toujours accès
+  if (isFounder(discordId)) {
+    return true;
+  }
+  // Admins (depuis la liste ADMIN_IDS) ont accès
+  if (isAdmin(discordId)) {
+    return true;
+  }
+  // Admin (rôle dans memberData) a aussi accès
+  if (isAdminRole(discordId, memberRole)) {
     return true;
   }
   // Admin Adjoint a aussi accès
