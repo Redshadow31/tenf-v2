@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, isFounder } from "@/lib/admin";
-import { getLogs } from "@/lib/logAction";
+import { getCurrentAdmin, hasAdminDashboardAccess } from "@/lib/admin";
+import { getLogs, initializeLogs } from "@/lib/logAction";
+import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 
 /**
  * Route API pour récupérer les logs administratifs
@@ -8,7 +9,10 @@ import { getLogs } from "@/lib/logAction";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier que l'utilisateur est connecté et est un fondateur
+    // Initialiser les logs
+    await initializeLogs();
+    
+    // Vérifier que l'utilisateur est connecté
     const admin = await getCurrentAdmin();
     
     if (!admin) {
@@ -18,9 +22,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    // Charger les données pour vérifier le rôle dans memberData
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
+    const userMember = allMembers.find(m => m.discordId === admin.id);
+    const userRole = userMember?.role;
+
+    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
+    if (!hasAdminDashboardAccess(admin.id, userRole)) {
       return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
         { status: 403 }
       );
     }

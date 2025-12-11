@@ -82,6 +82,7 @@ export default function GestionSpotlightPage() {
     { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
     { href: "/admin/spotlight", label: "Gestion Spotlight", active: true },
     { href: "/admin/events", label: "Planification Évènements" },
+    { href: "/admin/logs", label: "Logs" },
   ];
 
   return (

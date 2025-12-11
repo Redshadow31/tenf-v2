@@ -180,6 +180,7 @@ export default function PlanificationPage() {
     { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
     { href: "/admin/spotlight", label: "Gestion Spotlight" },
     { href: "/admin/planification", label: "Planification Évènements", active: true },
+    { href: "/admin/logs", label: "Logs" },
   ];
 
   const calendarDays = getDaysInMonth(currentMonth);

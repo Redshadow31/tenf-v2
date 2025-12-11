@@ -157,6 +157,7 @@ const navLinks = [
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/planification", label: "Événements" },
+  { href: "/admin/logs", label: "Logs" },
 ];
 
 export default function DashboardPage() {

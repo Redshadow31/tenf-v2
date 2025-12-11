@@ -48,6 +48,7 @@ const navLinks = [
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/statistiques", label: "Statistiques Globales" },
+  { href: "/admin/logs", label: "Logs" },
 ];
 
 export default function GestionMembresPage() {
@@ -91,13 +92,14 @@ export default function GestionMembresPage() {
             return;
           }
           
+          const isAdminRole = roleData.role === "Admin";
           const isAdminAdjoint = roleData.role === "Admin Adjoint";
           const founderStatus = isFounder(user.id);
-          // Admin Adjoint a aussi accès complet (lecture)
+          // Admin, Admin Adjoint et Fondateurs ont accès complet
           setCurrentAdmin({ 
             id: user.id, 
             username: user.username, 
-            isFounder: founderStatus || isAdminAdjoint 
+            isFounder: founderStatus || isAdminRole || isAdminAdjoint 
           });
         } catch (err) {
           // Fallback si l'API de rôle ne fonctionne pas
@@ -138,7 +140,8 @@ export default function GestionMembresPage() {
       setLoading(true);
       setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
       
-      // Si l'admin est fondateur, charger depuis l'API centralisée
+      // Si l'admin a accès (Fondateur, Admin, ou Admin Adjoint), charger depuis l'API centralisée
+      // L'API centralisée contient les modifications manuelles et est prioritaire
       if (currentAdmin?.isFounder) {
         try {
           const centralResponse = await fetch("/api/admin/members", {

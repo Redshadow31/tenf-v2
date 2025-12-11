@@ -94,6 +94,7 @@ const navLinks = [
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/statistiques", label: "Statistiques Globales", active: true },
+  { href: "/admin/logs", label: "Logs" },
 ];
 
 export default function StatistiquesPage() {
