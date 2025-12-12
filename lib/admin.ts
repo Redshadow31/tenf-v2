@@ -130,7 +130,7 @@ export function canPerformAction(discordId: string, action: "read" | "write", sa
   // En écriture
   if (safeModeEnabled || isSafeModeEnabled()) {
     // En Safe Mode, seuls les fondateurs peuvent modifier
-    return isFounder(discordId);
+    return isNewFounder(discordId);
   }
 
   // En mode normal, tous les modérateurs peuvent modifier
