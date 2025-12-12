@@ -40,10 +40,7 @@ export async function logAdminAction(
     metadata?: Record<string, any>;
   } = {}
 ): Promise<AuditLog> {
-  const store = getStore({
-    name: AUDIT_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(AUDIT_STORE_NAME);
 
   const logId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
@@ -98,10 +95,7 @@ export async function getAuditLogs(
     reverted?: boolean;
   }
 ): Promise<AuditLog[]> {
-  const store = getStore({
-    name: AUDIT_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(AUDIT_STORE_NAME);
 
   const key = monthKey || getMonthKey(new Date());
   const fullKey = `audit-${key}`;
@@ -150,10 +144,7 @@ export async function getAllAuditLogs(
     limit?: number;
   }
 ): Promise<AuditLog[]> {
-  const store = getStore({
-    name: AUDIT_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(AUDIT_STORE_NAME);
 
   try {
     // Récupérer les clés des 12 derniers mois
@@ -219,10 +210,7 @@ export async function revertAction(
   reverterRole: AdminRole,
   reverterUsername?: string
 ): Promise<AuditLog> {
-  const store = getStore({
-    name: AUDIT_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(AUDIT_STORE_NAME);
 
   // Trouver le log original
   const allLogs = await getAllAuditLogs();
