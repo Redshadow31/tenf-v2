@@ -424,13 +424,12 @@ export async function addRaidFait(
   });
 
   if (existingRaid) {
+    // Ne jamais écraser une entrée manuelle
+    if (existingRaid.manual) {
+      console.log(`[RaidStorage] Ignoré: entrée manuelle existante pour ${raider} → ${target}`);
+      return;
+    }
     console.log(`[RaidStorage] Raid déjà existant: ${raider} → ${target} (${date})`);
-    return;
-  }
-
-  // Ne jamais écraser une entrée manuelle
-  if (existingRaid?.manual) {
-    console.log(`[RaidStorage] Ignoré: entrée manuelle existante pour ${raider} → ${target}`);
     return;
   }
 
