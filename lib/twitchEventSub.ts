@@ -28,11 +28,11 @@ export interface TwitchEventSubSubscription {
  * Obtient un token OAuth Twitch via client credentials
  */
 export async function getTwitchOAuthToken(): Promise<string> {
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
-  const CLIENT_SECRET = process.env.TWITCH_APP_CLIENT_SECRET;
+  const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
+  const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    throw new Error('TWITCH_APP_CLIENT_ID et TWITCH_APP_CLIENT_SECRET doivent être configurés');
+    throw new Error('TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET doivent être configurés');
   }
 
   const response = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -60,10 +60,10 @@ export async function getTwitchOAuthToken(): Promise<string> {
  * Récupère toutes les subscriptions EventSub actives
  */
 export async function getEventSubSubscriptions(accessToken: string): Promise<TwitchEventSubSubscription[]> {
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
+  const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
   
   if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID doit être configuré');
+    throw new Error('TWITCH_CLIENT_ID doit être configuré');
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions`, {
@@ -107,10 +107,10 @@ export async function createChannelRaidSubscription(
   webhookUrl: string,
   secret: string
 ): Promise<TwitchEventSubSubscription> {
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
+  const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
   
   if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID doit être configuré');
+    throw new Error('TWITCH_CLIENT_ID doit être configuré');
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions`, {
@@ -150,10 +150,10 @@ export async function deleteEventSubSubscription(
   accessToken: string,
   subscriptionId: string
 ): Promise<void> {
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
+  const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
   
   if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID doit être configuré');
+    throw new Error('TWITCH_CLIENT_ID doit être configuré');
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions?id=${subscriptionId}`, {
