@@ -106,11 +106,24 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Unmatched Raids] Validation manuelle: ${raiderDiscordId} → ${targetDiscordId} (${monthKey})`);
     
-    // Enregistrer le raid validé manuellement dans le bon mois
-    await recordRaidByDiscordId(raiderDiscordId, targetDiscordId, monthKey);
+    try {
+      // Enregistrer le raid validé manuellement dans le bon mois
+      await recordRaidByDiscordId(raiderDiscordId, targetDiscordId, monthKey);
+      console.log(`[Unmatched Raids] Raid enregistré avec succès`);
+    } catch (recordError) {
+      console.error(`[Unmatched Raids] Erreur lors de l'enregistrement du raid:`, recordError);
+      throw new Error(`Erreur lors de l'enregistrement du raid: ${recordError instanceof Error ? recordError.message : 'Erreur inconnue'}`);
+    }
     
-    // Retirer le message de la liste des non reconnus
-    await removeUnmatchedRaid(messageId, monthKey);
+    try {
+      // Retirer le message de la liste des non reconnus
+      await removeUnmatchedRaid(messageId, monthKey);
+      console.log(`[Unmatched Raids] Message retiré de la liste des non reconnus`);
+    } catch (removeError) {
+      console.error(`[Unmatched Raids] Erreur lors de la suppression du message non reconnu:`, removeError);
+      // Ne pas faire échouer la validation si le raid a été enregistré
+      console.warn(`[Unmatched Raids] Le raid a été enregistré mais le message n'a pas pu être retiré de la liste`);
+    }
     
     return NextResponse.json({
       success: true,

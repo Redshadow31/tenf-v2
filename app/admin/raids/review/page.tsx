@@ -296,12 +296,31 @@ export default function RaidsReviewPage() {
         // Recharger les données
         await loadData(selectedMonth);
       } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error}`);
+        let errorMessage = "Erreur inconnue";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || JSON.stringify(error);
+        } catch (e) {
+          const text = await response.text();
+          errorMessage = text || `Erreur HTTP ${response.status}`;
+        }
+        console.error("[Raids Review] Erreur de validation:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          requestBody: {
+            messageId,
+            raiderDiscordId: selection.raider.discordId,
+            targetDiscordId: selection.target.discordId,
+            month: selectedMonth,
+          },
+        });
+        alert(`Erreur: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Erreur lors de la validation:", error);
-      alert("Erreur lors de la validation du raid");
+      const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+      alert(`Erreur lors de la validation du raid: ${errorMessage}`);
     } finally {
       setValidating(prev => {
         const next = new Set(prev);
