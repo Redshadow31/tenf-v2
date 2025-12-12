@@ -126,13 +126,31 @@ export default function RaidsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        const message = 
+        let message = 
           `Scan terminé :\n` +
           `- ${data.messagesScanned || 0} message(s) scanné(s) dans l'historique\n` +
+          `- ${data.messagesWithRaids || 0} message(s) avec raids détectés\n` +
           `- ${data.newRaidsAdded || 0} nouveau(x) raid(s) ajouté(s) en attente\n` +
           `- ${data.raidsValidated || 0} raid(s) validé(s)\n` +
-          `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n` +
-          (data.maxReached ? `\n⚠️ Maximum de messages atteint (5000), le scan a été arrêté.` : '');
+          `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n`;
+        
+        if (data.messagesNotRecognized > 0) {
+          message += `- ${data.messagesNotRecognized} message(s) non reconnus\n`;
+        }
+        
+        if (data.errors && data.errors.length > 0) {
+          message += `\n⚠️ ${data.errors.length} erreur(s) (voir console pour détails)\n`;
+          console.warn('[Raid Scan] Erreurs:', data.errors);
+        }
+        
+        if (data.unrecognizedMessages && data.unrecognizedMessages.length > 0) {
+          console.warn('[Raid Scan] Messages non reconnus:', data.unrecognizedMessages);
+        }
+        
+        if (data.maxReached) {
+          message += `\n⚠️ Maximum de messages atteint (5000), le scan a été arrêté.`;
+        }
+        
         alert(message);
         await loadData(selectedMonth);
       } else {

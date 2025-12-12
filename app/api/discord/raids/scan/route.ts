@@ -52,25 +52,58 @@ export async function POST(request: NextRequest) {
     
     /**
      * Trouve un membre par son nom (displayName, twitchLogin, ou discordUsername)
+     * avec normalisation et recherche flexible
      */
     function findMemberByName(name: string): any | null {
+      if (!name || name.trim().length === 0) {
+        return null;
+      }
+      
+      // Normalisation systématique
       const normalizedName = name.toLowerCase().trim();
       
-      // Chercher par displayName
+      // Chercher par displayName (exact match)
       let member = membersByDisplayName.get(normalizedName);
-      if (member) return member;
+      if (member) {
+        console.log(`[Raid Scan] Membre trouvé par displayName: ${name} → ${member.displayName}`);
+        return member;
+      }
       
-      // Chercher par twitchLogin
+      // Chercher par twitchLogin (exact match)
       member = membersByTwitchLogin.get(normalizedName);
-      if (member) return member;
+      if (member) {
+        console.log(`[Raid Scan] Membre trouvé par twitchLogin: ${name} → ${member.twitchLogin}`);
+        return member;
+      }
       
-      // Chercher par discordUsername
+      // Chercher par discordUsername (exact match)
       member = membersByDiscordUsername.get(normalizedName);
-      if (member) return member;
+      if (member) {
+        console.log(`[Raid Scan] Membre trouvé par discordUsername: ${name} → ${member.discordUsername}`);
+        return member;
+      }
       
-      // Recherche partielle (pour gérer les variations)
+      // Recherche partielle (pour gérer les variations de casse et caractères)
       for (const [key, m] of membersByDisplayName.entries()) {
-        if (key.includes(normalizedName) || normalizedName.includes(key)) {
+        // Comparaison insensible à la casse et aux variations
+        const keyNormalized = key.replace(/[^a-z0-9_]/g, '');
+        const nameNormalized = normalizedName.replace(/[^a-z0-9_]/g, '');
+        
+        if (keyNormalized === nameNormalized || 
+            keyNormalized.includes(nameNormalized) || 
+            nameNormalized.includes(keyNormalized)) {
+          console.log(`[Raid Scan] Membre trouvé par recherche partielle: ${name} → ${m.displayName}`);
+          return m;
+        }
+      }
+      
+      // Recherche dans twitchLogin avec normalisation
+      for (const [key, m] of membersByTwitchLogin.entries()) {
+        const keyNormalized = key.replace(/[^a-z0-9_]/g, '');
+        const nameNormalized = normalizedName.replace(/[^a-z0-9_]/g, '');
+        
+        if (keyNormalized === nameNormalized) {
+          console.log(`[Raid Scan] Membre trouvé par twitchLogin partiel: ${name} → ${m.twitchLogin}`);
           return m;
         }
       }
@@ -135,43 +168,71 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Raid Scan] Scan terminé: ${totalMessagesFetched} messages récupérés au total`);
     
-    // Pattern flexible pour détecter "@Pseudo a raid @Cible" avec variations
-    // Accepte: "@Pseudo a raid @Cible", "@Pseudo ( NomServeur ) a raid @Cible", etc.
-    // Le nom peut être suivi d'espaces, parenthèses, ou autres caractères avant "a raid"
+    // Pattern robuste pour détecter "@Pseudo a raid @Cible" avec variations
+    // Extrait UNIQUEMENT le nom avant la parenthèse (si présente)
+    // Exemples supportés:
+    // - "@Face_BCD ( Capichef ) a raid @Dylow95" → raider: "Face_BCD", target: "Dylow95"
+    // - "@RoiSephiBoo (51/1079 shiny FO) a raid @Cible" → raider: "RoiSephiBoo", target: "Cible"
+    // - "@Darkinsomg a raid @Target" → raider: "Darkinsomg", target: "Target"
     const raidPattern = /@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?\s+a\s+raid\s+@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?/i;
     
     let newRaidsAdded = 0;
     let raidsValidated = 0;
     let raidsRejected = 0;
+    let messagesWithRaids = 0;
+    let messagesNotRecognized = 0;
     const errors: string[] = [];
+    const unrecognizedMessages: string[] = [];
     const pendingRaids = await loadPendingRaids();
     const processedMessageIds = new Set(pendingRaids.map(r => r.messageId));
     
     for (const message of messages) {
       const content = message.content;
+      if (!content || content.trim().length === 0) {
+        continue;
+      }
+      
       const match = content.match(raidPattern);
       
       if (match) {
+        messagesWithRaids++;
         const messageId = message.id;
+        // Extraire uniquement le nom (avant la parenthèse si présente)
         const raiderName = match[1].trim();
         const targetName = match[2].trim();
         
-        // Trouver les membres par leur nom
+        console.log(`[Raid Scan] Message ${messageId}: "${content.substring(0, 100)}..." → raider: "${raiderName}", target: "${targetName}"`);
+        
+        // Trouver les membres par leur nom (avec normalisation)
         const raider = findMemberByName(raiderName);
         const target = findMemberByName(targetName);
         
         if (!raider || !raider.discordId) {
-          errors.push(`Raider non trouvé: ${raiderName} (cherché dans displayName, twitchLogin, discordUsername)`);
+          const errorMsg = `Raider non trouvé: "${raiderName}" (cherché dans displayName, twitchLogin, discordUsername)`;
+          errors.push(errorMsg);
+          unrecognizedMessages.push(`[Raider] ${content.substring(0, 150)}`);
+          console.warn(`[Raid Scan] ${errorMsg}`);
           continue;
         }
         
         if (!target || !target.discordId) {
-          errors.push(`Cible non trouvée: ${targetName} (cherché dans displayName, twitchLogin, discordUsername)`);
+          const errorMsg = `Cible non trouvée: "${targetName}" (cherché dans displayName, twitchLogin, discordUsername)`;
+          errors.push(errorMsg);
+          unrecognizedMessages.push(`[Target] ${content.substring(0, 150)}`);
+          console.warn(`[Raid Scan] ${errorMsg}`);
           continue;
         }
         
+        // Vérifier que raider et target sont correctement assignés
         const raiderDiscordId = raider.discordId;
         const targetDiscordId = target.discordId;
+        
+        if (raiderDiscordId === targetDiscordId) {
+          console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${raiderDiscordId})`);
+          continue;
+        }
+        
+        console.log(`[Raid Scan] Raid valide: ${raider.displayName} (${raiderDiscordId}) → ${target.displayName} (${targetDiscordId})`);
         
         // Vérifier les réactions sur le message
         const reactions = message.reactions || [];
@@ -200,8 +261,11 @@ export async function POST(request: NextRequest) {
                 target.twitchLogin
               );
               newRaidsAdded++;
+              console.log(`[Raid Scan] Raid ajouté en attente: ${messageId}`);
             } catch (error) {
-              errors.push(`Erreur lors de l'ajout du raid en attente: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              const errorMsg = `Erreur lors de l'ajout du raid en attente: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+              errors.push(errorMsg);
+              console.error(`[Raid Scan] ${errorMsg}`, error);
             }
           } else if (hasCheckmark) {
             // Valider immédiatement si ✅ est présent
@@ -215,8 +279,11 @@ export async function POST(request: NextRequest) {
               );
               await validatePendingRaid(messageId);
               raidsValidated++;
+              console.log(`[Raid Scan] Raid validé immédiatement: ${messageId}`);
             } catch (error) {
-              errors.push(`Erreur lors de la validation du raid: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              const errorMsg = `Erreur lors de la validation du raid: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+              errors.push(errorMsg);
+              console.error(`[Raid Scan] ${errorMsg}`, error);
             }
           } else if (hasCross) {
             // Rejeter si ❌ est présent
@@ -230,8 +297,11 @@ export async function POST(request: NextRequest) {
               );
               await rejectPendingRaid(messageId);
               raidsRejected++;
+              console.log(`[Raid Scan] Raid rejeté: ${messageId}`);
             } catch (error) {
-              errors.push(`Erreur lors du rejet du raid: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+              const errorMsg = `Erreur lors du rejet du raid: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+              errors.push(errorMsg);
+              console.error(`[Raid Scan] ${errorMsg}`, error);
             }
           }
         } else {
@@ -243,22 +313,42 @@ export async function POST(request: NextRequest) {
               try {
                 await validatePendingRaid(messageId);
                 raidsValidated++;
+                console.log(`[Raid Scan] Raid validé (réaction changée): ${messageId}`);
               } catch (error) {
-                // Peut-être déjà validé
+                // Peut-être déjà validé, ignorer silencieusement
+                console.log(`[Raid Scan] Raid déjà validé: ${messageId}`);
               }
             } else if (hasCross) {
               // Rejeter si ❌ est présent
               try {
                 await rejectPendingRaid(messageId);
                 raidsRejected++;
+                console.log(`[Raid Scan] Raid rejeté (réaction changée): ${messageId}`);
               } catch (error) {
-                // Peut-être déjà rejeté
+                // Peut-être déjà rejeté, ignorer silencieusement
+                console.log(`[Raid Scan] Raid déjà rejeté: ${messageId}`);
               }
             }
           }
         }
+      } else {
+        // Message non reconnu comme raid - vérifier s'il contient "raid" pour logging
+        if (content.toLowerCase().includes('raid') && content.includes('@')) {
+          messagesNotRecognized++;
+          unrecognizedMessages.push(`[Format non reconnu] ${content.substring(0, 200)}`);
+          console.log(`[Raid Scan] Message non reconnu (contient "raid"): "${content.substring(0, 100)}..."`);
+        }
       }
     }
+    
+    console.log(`[Raid Scan] Résumé final:
+      - Messages scannés: ${totalMessagesFetched}
+      - Messages avec raids détectés: ${messagesWithRaids}
+      - Messages non reconnus: ${messagesNotRecognized}
+      - Raids ajoutés en attente: ${newRaidsAdded}
+      - Raids validés: ${raidsValidated}
+      - Raids rejetés: ${raidsRejected}
+      - Erreurs: ${errors.length}`);
     
     return NextResponse.json({
       success: true,
@@ -267,7 +357,10 @@ export async function POST(request: NextRequest) {
       raidsRejected,
       messagesScanned: totalMessagesFetched,
       totalMessagesInHistory: messages.length,
-      errors: errors.length > 0 ? errors : undefined,
+      messagesWithRaids,
+      messagesNotRecognized,
+      errors: errors.length > 0 ? errors.slice(0, 50) : undefined, // Limiter à 50 erreurs pour éviter des réponses trop grandes
+      unrecognizedMessages: unrecognizedMessages.length > 0 ? unrecognizedMessages.slice(0, 20) : undefined, // Limiter à 20 messages non reconnus
       maxReached: totalMessagesFetched >= MAX_MESSAGES_TO_SCAN,
     });
   } catch (error) {
