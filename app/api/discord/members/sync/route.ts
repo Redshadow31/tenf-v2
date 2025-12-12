@@ -118,7 +118,11 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    // Charger les données depuis le stockage persistant
+    // Charger les données admin et bot séparément
+    const adminData = await loadAdminDataFromStorage();
+    const botData = await loadBotDataFromStorage();
+    
+    // Charger les données fusionnées pour la recherche
     await loadMemberDataFromStorage();
     
     // Récupérer les membres depuis le canal Discord pour avoir leurs chaînes Twitch
