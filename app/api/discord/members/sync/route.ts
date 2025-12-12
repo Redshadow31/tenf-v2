@@ -283,8 +283,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Utiliser la chaîne Twitch du canal Discord si disponible
-      const channelMember = channelMembers.get(discordId);
+      // Utiliser la chaîne Twitch du canal Discord si disponible (channelMember déjà défini plus haut)
       const twitchLogin = channelMember?.twitchLogin || existing?.twitchLogin || `discord_${discordId}`;
       const twitchUrl = channelMember?.twitchUrl || existing?.twitchUrl || `https://www.twitch.tv/${twitchLogin}`;
       
