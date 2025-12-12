@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdmin, hasAdminDashboardAccess } from "@/lib/admin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
+import { getStore } from "@netlify/blobs";
 import fs from "fs";
 import path from "path";
 
 /**
- * POST - Sauvegarde les données des membres de façon durable dans un fichier JSON
+ * Détecte si on est sur Netlify
+ */
+function isNetlify(): boolean {
+  return !!(
+    process.env.NETLIFY ||
+    process.env.NETLIFY_DEV ||
+    process.env.VERCEL === undefined
+  );
+}
+
+/**
+ * POST - Sauvegarde les données des membres de façon durable
+ * Utilise Netlify Blobs en production, système de fichiers en développement local
  * Accessible aux fondateurs, admins et admin adjoints
  */
 export async function POST(request: NextRequest) {
@@ -33,21 +46,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Chemin du fichier de sauvegarde
-    const DATA_DIR = path.join(process.cwd(), 'data');
-    const BACKUP_DIR = path.join(DATA_DIR, 'backups');
-    const MEMBERS_FILE = path.join(DATA_DIR, 'members.json');
-    const timestamp = new Date().toISOString().split('T')[0];
-    const BACKUP_FILE = path.join(BACKUP_DIR, `members-backup-${timestamp}.json`);
-
-    // Créer les dossiers s'ils n'existent pas
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(BACKUP_DIR)) {
-      fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    }
-
     // Charger les données actuelles
     await loadMemberDataFromStorage();
     const memberData = getAllMemberData();
@@ -62,13 +60,65 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Créer une sauvegarde
-    if (Object.keys(serializableData).length > 0) {
-      fs.writeFileSync(BACKUP_FILE, JSON.stringify(serializableData, null, 2), 'utf-8');
-    }
+    const timestamp = new Date().toISOString().split('T')[0];
+    let backupLocation = "";
+    let membersLocation = "";
 
-    // Sauvegarder les données
-    fs.writeFileSync(MEMBERS_FILE, JSON.stringify(serializableData, null, 2), 'utf-8');
+    if (isNetlify()) {
+      // Utiliser Netlify Blobs en production
+      try {
+        const store = getStore("tenf-members");
+        const backupStore = getStore("tenf-members-backups");
+        
+        // Sauvegarder les données principales
+        await store.set("members-data", JSON.stringify(serializableData, null, 2));
+        membersLocation = "Netlify Blobs: tenf-members/members-data";
+        
+        // Créer une sauvegarde avec timestamp
+        const backupKey = `members-backup-${timestamp}`;
+        await backupStore.set(backupKey, JSON.stringify(serializableData, null, 2));
+        backupLocation = `Netlify Blobs: tenf-members-backups/${backupKey}`;
+      } catch (blobError: any) {
+        console.error("[Save Durable] Erreur Netlify Blobs:", blobError);
+        return NextResponse.json(
+          { error: `Erreur lors de la sauvegarde dans Netlify Blobs: ${blobError.message}` },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Utiliser le système de fichiers en développement local
+      try {
+        const DATA_DIR = path.join(process.cwd(), 'data');
+        const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+        const MEMBERS_FILE = path.join(DATA_DIR, 'members.json');
+        const BACKUP_FILE = path.join(BACKUP_DIR, `members-backup-${timestamp}.json`);
+
+        // Créer les dossiers s'ils n'existent pas
+        if (!fs.existsSync(DATA_DIR)) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        if (!fs.existsSync(BACKUP_DIR)) {
+          fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        }
+
+        // Créer une sauvegarde
+        if (Object.keys(serializableData).length > 0) {
+          fs.writeFileSync(BACKUP_FILE, JSON.stringify(serializableData, null, 2), 'utf-8');
+        }
+
+        // Sauvegarder les données
+        fs.writeFileSync(MEMBERS_FILE, JSON.stringify(serializableData, null, 2), 'utf-8');
+        
+        backupLocation = BACKUP_FILE;
+        membersLocation = MEMBERS_FILE;
+      } catch (fileError: any) {
+        console.error("[Save Durable] Erreur système de fichiers:", fileError);
+        return NextResponse.json(
+          { error: `Erreur lors de la sauvegarde dans le système de fichiers: ${fileError.message}` },
+          { status: 500 }
+        );
+      }
+    }
 
     // Statistiques
     const stats = {
@@ -89,10 +139,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Données sauvegardées avec succès`,
+      message: `Données sauvegardées avec succès ${isNetlify() ? 'dans Netlify Blobs' : 'dans le système de fichiers'}`,
       stats,
-      backupFile: BACKUP_FILE,
-      membersFile: MEMBERS_FILE,
+      backupFile: backupLocation,
+      membersFile: membersLocation,
+      environment: isNetlify() ? "production" : "development",
     });
   } catch (error: any) {
     console.error("[Save Durable] Erreur:", error);
