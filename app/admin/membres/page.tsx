@@ -40,11 +40,14 @@ interface Member {
     viewerCount?: number;
   };
   lastLiveDate?: string; // Date ISO du dernier live
+  raidsDone?: number; // Nombre de raids envoyés ce mois
+  raidsReceived?: number; // Nombre de raids reçus ce mois
 }
 
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
   { href: "/admin/membres", label: "Gestion des Membres", active: true },
+  { href: "/admin/raids", label: "Suivi des Raids" },
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/statistiques", label: "Statistiques Globales" },
@@ -139,6 +142,30 @@ export default function GestionMembresPage() {
       setLoading(true);
       setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
       
+      // Charger les stats de raids en parallèle
+      let raidsStats: Record<string, { done: number; received: number }> = {};
+      try {
+        const raidsResponse = await fetch("/api/discord/raids", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (raidsResponse.ok) {
+          const raidsData = await raidsResponse.json();
+          const raids = raidsData.raids || {};
+          // Extraire les stats pour chaque membre
+          for (const [twitchLogin, stats] of Object.entries(raids)) {
+            raidsStats[twitchLogin.toLowerCase()] = {
+              done: (stats as any).done || 0,
+              received: (stats as any).received || 0,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("Impossible de charger les stats de raids:", err);
+      }
+      
       // Si l'admin a accès (Fondateur, Admin, ou Admin Adjoint), charger depuis l'API centralisée
       // L'API centralisée contient les modifications manuelles et est prioritaire
       if (currentAdmin?.isFounder) {
@@ -185,6 +212,9 @@ export default function GestionMembresPage() {
               if (!avatar) {
                 avatar = `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
               }
+              
+              // Récupérer les stats de raids
+              const raidStats = raidsStats[member.twitchLogin.toLowerCase()] || { done: 0, received: 0 };
             
               return {
                 id: index + 1,
@@ -204,6 +234,8 @@ export default function GestionMembresPage() {
                 isVip: member.isVip || false,
                 isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
                 isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
+                raidsDone: raidStats.done,
+                raidsReceived: raidStats.received,
               };
             });
             
@@ -1220,6 +1252,12 @@ export default function GestionMembresPage() {
                       )}
                     </div>
                   </th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
+                    Raids TENF faits
+                  </th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
+                    Raids reçus
+                  </th>
                   {viewMode === "complet" && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">VIP</th>
@@ -1301,6 +1339,16 @@ export default function GestionMembresPage() {
                     </td>
                     <td className="py-4 px-6 text-gray-300 text-sm">
                       {formatLastLiveDate(member.lastLiveDate)}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-white font-semibold">
+                        {member.raidsDone || 0}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-white font-semibold">
+                        {member.raidsReceived || 0}
+                      </span>
                     </td>
                     {viewMode === "complet" && (
                       <>
