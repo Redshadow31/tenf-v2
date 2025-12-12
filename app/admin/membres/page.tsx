@@ -1355,6 +1355,54 @@ export default function GestionMembresPage() {
                             {member.discordId || "-"}
                           </code>
                         </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            {member.twitchId ? (
+                              <>
+                                <code className="text-xs text-green-400 bg-[#0e0e10] px-2 py-1 rounded">
+                                  {member.twitchId}
+                                </code>
+                                <span className="text-green-400 text-xs" title="ID Twitch lié">✅</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs text-gray-500">-</span>
+                                <span className="text-yellow-400 text-xs" title="ID Twitch manquant">⚠️</span>
+                              </>
+                            )}
+                            {member.twitch && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!confirm(`Voulez-vous synchroniser l'ID Twitch pour ${member.twitch} ?`)) {
+                                    return;
+                                  }
+                                  try {
+                                    const response = await fetch('/api/admin/members/sync-twitch-id', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ twitchLogin: member.twitch }),
+                                    });
+                                    const data = await response.json();
+                                    if (response.ok && data.success) {
+                                      alert(`✅ ID Twitch synchronisé avec succès${data.results?.[0]?.twitchId ? `: ${data.results[0].twitchId}` : ''}`);
+                                      window.location.reload();
+                                    } else {
+                                      alert(`❌ Erreur: ${data.error || 'Impossible de synchroniser l\'ID Twitch'}`);
+                                    }
+                                  } catch (error) {
+                                    console.error('Erreur sync Twitch ID:', error);
+                                    alert('❌ Erreur lors de la synchronisation');
+                                  }
+                                }}
+                                className="text-xs text-purple-400 hover:text-purple-300 underline ml-1"
+                                title="Synchroniser l'ID Twitch"
+                              >
+                                🔄
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </>
                     )}
                     <td className="py-4 px-6">
