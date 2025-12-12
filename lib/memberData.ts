@@ -847,21 +847,43 @@ export async function createMemberData(
 }
 
 /**
- * Supprime un membre (DASHBOARD ADMIN - supprime de admin-members-data)
+ * Supprime un membre (DASHBOARD ADMIN - marque comme supprimé dans admin-members-data)
+ * IMPORTANT: Si le membre existe dans botData mais pas dans adminData, on crée une entrée admin
+ * avec isActive: false pour qu'il soit exclu de la fusion
  */
 export async function deleteMemberData(twitchLogin: string, deletedBy?: string): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
   
+  // Charger les données fusionnées pour vérifier si le membre existe
+  await loadMemberDataFromStorage();
+  const existing = memberDataStore[login];
+  
+  if (!existing) {
+    // Membre n'existe pas du tout
+    return false;
+  }
+  
   // Charger les données admin actuelles
   const adminData = await loadAdminDataFromStorage();
   
+  // Si le membre existe dans adminData, le supprimer complètement
   if (adminData[login]) {
     delete adminData[login];
-    await saveAdminData(adminData);
-    return true;
+  } else {
+    // Le membre existe dans botData mais pas dans adminData
+    // Créer une entrée admin avec isActive: false pour l'exclure de la fusion
+    adminData[login] = {
+      ...existing,
+      isActive: false,
+      updatedAt: new Date(),
+      updatedBy: deletedBy || "admin",
+    };
   }
   
-  return false;
+  // Sauvegarder les données admin
+  await saveAdminData(adminData);
+  
+  return true;
 }
 
 /**
