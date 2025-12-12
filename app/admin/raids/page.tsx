@@ -452,6 +452,31 @@ export default function RaidsPage() {
             >
               🔄 Scanner tout l'historique
             </button>
+            <button
+              onClick={async () => {
+                if (!confirm("Voulez-vous synchroniser les raids Twitch EventSub ?\n\nCela va créer ou vérifier la subscription EventSub pour recevoir les raids en direct.")) {
+                  return;
+                }
+                try {
+                  const response = await fetch("/api/twitch/setup-eventsub", {
+                    method: "POST",
+                  });
+                  const data = await response.json();
+                  if (response.ok) {
+                    alert(`✅ ${data.message}\n\nStatus: ${data.subscription}`);
+                  } else {
+                    alert(`❌ Erreur: ${data.error}`);
+                  }
+                } catch (error) {
+                  console.error("Erreur lors de la synchronisation:", error);
+                  alert("Erreur lors de la synchronisation Twitch EventSub");
+                }
+              }}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              title="Synchroniser les raids Twitch EventSub"
+            >
+              🟣 Synchroniser les raids Twitch
+            </button>
           </div>
         </div>
 
