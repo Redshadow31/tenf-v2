@@ -144,3 +144,4 @@ Vous pouvez utiliser des fonctions serverless qui maintiennent une connexion, ma
 
 Si tous ces points sont vérifiés, **votre bot fonctionne correctement**, même s'il apparaît hors ligne ! 🎉
 
+

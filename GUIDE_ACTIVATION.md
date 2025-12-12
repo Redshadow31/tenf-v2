@@ -221,3 +221,4 @@ https://votre-site.netlify.app/api/auth/discord/callback
 ### Erreur OAuth "invalid redirect_uri"
 → Vérifiez que l'URL de callback est bien dans les Redirects Discord
 
+

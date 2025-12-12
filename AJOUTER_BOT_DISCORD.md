@@ -129,3 +129,4 @@ Une fois le bot ajouté :
 2. Testez la page `/vip` sur votre site
 3. Si tout fonctionne, le bot est correctement configuré ! ✅
 
+
