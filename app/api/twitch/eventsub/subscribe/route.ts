@@ -67,25 +67,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Résoudre les IDs Twitch pour les membres qui n'ont pas encore d'ID
+    // Résoudre et cacher les IDs Twitch pour les membres qui n'ont pas encore d'ID
     const membersNeedingId = membersWithTwitch.filter(m => !m.twitchId);
     if (membersNeedingId.length > 0) {
-      console.log(`[EventSub Subscribe] Résolution des IDs pour ${membersNeedingId.length} membres...`);
+      console.log(`[EventSub Subscribe] Résolution et cache des IDs pour ${membersNeedingId.length} membres via Helix API...`);
       const logins = membersNeedingId.map(m => m.twitchLogin!);
-      const idsMap = await getTwitchUserIdsByLogins(logins);
+      await resolveAndCacheTwitchIds(logins, false);
       
-      // Mettre à jour les membres avec les IDs résolus
-      for (const member of membersNeedingId) {
-        const twitchId = idsMap.get(member.twitchLogin!.toLowerCase());
-        if (twitchId) {
-          member.twitchId = twitchId;
-          try {
-            await updateMemberData(member.twitchLogin!, { twitchId }, 'system');
-          } catch (error) {
-            console.error(`[EventSub Subscribe] Erreur sauvegarde ${member.twitchLogin}:`, error);
-          }
+      // Recharger les données pour avoir les IDs mis à jour
+      await loadMemberDataFromStorage();
+      const updatedMembers = getAllMemberData();
+      membersWithTwitch.forEach(m => {
+        const updated = updatedMembers.find(um => um.twitchLogin === m.twitchLogin);
+        if (updated?.twitchId) {
+          m.twitchId = updated.twitchId;
         }
-      }
+      });
     }
 
     // Construire l'URL du webhook
@@ -110,15 +107,11 @@ export async function POST(request: NextRequest) {
 
       // Si l'ID n'est pas encore résolu, essayer de le résoudre maintenant
       if (!broadcasterId) {
-        const resolvedId = await getTwitchUserIdByLogin(member.twitchLogin!);
+        const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
+        const resolvedId = await resolveAndCacheTwitchId(member.twitchLogin!);
         if (resolvedId) {
           broadcasterId = resolvedId;
           member.twitchId = broadcasterId;
-          try {
-            await updateMemberData(member.twitchLogin!, { twitchId: broadcasterId }, 'system');
-          } catch (error) {
-            console.error(`[EventSub Subscribe] Erreur sauvegarde ${member.twitchLogin}:`, error);
-          }
         }
       }
 
