@@ -63,14 +63,56 @@ const MERGED_BLOB_STORE = "tenf-members";
 const MERGED_BLOB_KEY = "members-data"; // Fichier fusionné (généré automatiquement)
 
 /**
- * Détecte si on est sur Netlify
+ * Détecte si on est sur Netlify de façon fiable
+ * Sur Netlify, on doit TOUJOURS utiliser Blobs, jamais le système de fichiers
  */
 function isNetlify(): boolean {
-  return !!(
-    process.env.NETLIFY ||
-    process.env.NETLIFY_DEV ||
-    process.env.VERCEL === undefined
-  );
+  // Vérifier les variables d'environnement Netlify
+  if (process.env.NETLIFY || process.env.NETLIFY_DEV) {
+    return true;
+  }
+  
+  // Vérifier si on est dans un environnement Lambda (Netlify Functions)
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT) {
+    return true;
+  }
+  
+  // Vérifier si on est dans un environnement serverless (Netlify)
+  if (process.env.NETLIFY_FUNCTIONS_VERSION) {
+    return true;
+  }
+  
+  // Si on est dans un environnement Next.js déployé (pas Vercel), c'est probablement Netlify
+  // Mais on vérifie d'abord si on peut accéder à getStore (Netlify Blobs)
+  try {
+    if (typeof window === "undefined") {
+      // Tester si getStore est disponible (Netlify Blobs)
+      const { getStore } = require("@netlify/blobs");
+      if (getStore) {
+        // Si getStore est disponible, on est probablement sur Netlify
+        // Mais on vérifie aussi qu'on n'est pas en développement local avec fichiers
+        const fs = require("fs");
+        const path = require("path");
+        const dataDir = path.join(process.cwd(), "data");
+        // Si le dossier data existe et est accessible, on est en développement local
+        try {
+          if (fs.existsSync(dataDir) && fs.statSync(dataDir).isDirectory()) {
+            // En développement local, on peut utiliser les fichiers
+            return false;
+          }
+        } catch {
+          // Si on ne peut pas accéder au système de fichiers, on est sur Netlify
+          return true;
+        }
+      }
+    }
+  } catch {
+    // Si getStore n'est pas disponible, on n'est pas sur Netlify
+  }
+  
+  // Par défaut, si on n'est pas sur Vercel et qu'on n'a pas de fichiers locaux, on est sur Netlify
+  // Mais on privilégie toujours Blobs si disponible
+  return process.env.VERCEL === undefined;
 }
 
 /**
@@ -381,7 +423,41 @@ export async function loadMemberDataFromStorage(): Promise<void> {
  * Charge uniquement les données admin (pour le dashboard)
  */
 export async function loadAdminDataFromStorage(): Promise<Record<string, MemberData>> {
-  if (isNetlify()) {
+  // Vérifier si on peut utiliser Blobs (Netlify)
+  let useBlobs = false;
+  try {
+    const { getStore } = require("@netlify/blobs");
+    if (getStore) {
+      const testStore = getStore("tenf-admin-members");
+      if (testStore) {
+        useBlobs = true;
+      }
+    }
+  } catch {
+    // getStore non disponible
+  }
+  
+  // Si on n'est pas sur Netlify, vérifier si on peut utiliser les fichiers
+  if (!useBlobs) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const dataDir = path.join(process.cwd(), "data");
+      if (fs.existsSync(dataDir) || fs.existsSync(process.cwd())) {
+        // En développement local, utiliser les fichiers
+        return loadAdminDataFromFile();
+      } else {
+        // Si fichiers non disponibles, forcer Blobs
+        useBlobs = true;
+      }
+    } catch {
+      // Si on ne peut pas accéder au système de fichiers, forcer Blobs
+      useBlobs = true;
+    }
+  }
+  
+  // Sur Netlify ou si fichiers non disponibles, utiliser Blobs
+  if (useBlobs) {
     return await loadAdminDataFromBlob();
   } else {
     return loadAdminDataFromFile();
@@ -392,7 +468,41 @@ export async function loadAdminDataFromStorage(): Promise<Record<string, MemberD
  * Charge uniquement les données bot (pour la synchronisation)
  */
 export async function loadBotDataFromStorage(): Promise<Record<string, MemberData>> {
-  if (isNetlify()) {
+  // Vérifier si on peut utiliser Blobs (Netlify)
+  let useBlobs = false;
+  try {
+    const { getStore } = require("@netlify/blobs");
+    if (getStore) {
+      const testStore = getStore("tenf-bot-members");
+      if (testStore) {
+        useBlobs = true;
+      }
+    }
+  } catch {
+    // getStore non disponible
+  }
+  
+  // Si on n'est pas sur Netlify, vérifier si on peut utiliser les fichiers
+  if (!useBlobs) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const dataDir = path.join(process.cwd(), "data");
+      if (fs.existsSync(dataDir) || fs.existsSync(process.cwd())) {
+        // En développement local, utiliser les fichiers
+        return loadBotDataFromFile();
+      } else {
+        // Si fichiers non disponibles, forcer Blobs
+        useBlobs = true;
+      }
+    } catch {
+      // Si on ne peut pas accéder au système de fichiers, forcer Blobs
+      useBlobs = true;
+    }
+  }
+  
+  // Sur Netlify ou si fichiers non disponibles, utiliser Blobs
+  if (useBlobs) {
     return await loadBotDataFromBlob();
   } else {
     return loadBotDataFromFile();
@@ -401,14 +511,51 @@ export async function loadBotDataFromStorage(): Promise<Record<string, MemberDat
 
 /**
  * Sauvegarde les données admin (appelé uniquement depuis le dashboard)
+ * IMPORTANT: Sur Netlify, on utilise TOUJOURS Blobs, jamais le système de fichiers
  */
 export async function saveAdminData(data: Record<string, MemberData>): Promise<void> {
   if (typeof window === "undefined") {
-    if (isNetlify()) {
+    // Vérifier si on peut utiliser Blobs (Netlify)
+    let useBlobs = false;
+    try {
+      const { getStore } = require("@netlify/blobs");
+      if (getStore) {
+        // Tester si on peut créer un store (on est sur Netlify)
+        const testStore = getStore("tenf-admin-members");
+        if (testStore) {
+          useBlobs = true;
+        }
+      }
+    } catch {
+      // getStore non disponible, on n'est pas sur Netlify
+    }
+    
+    // Si on n'est pas sur Netlify, vérifier si on peut utiliser les fichiers
+    if (!useBlobs) {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const dataDir = path.join(process.cwd(), "data");
+        // Si le dossier data existe et est accessible, on est en développement local
+        if (fs.existsSync(dataDir) || fs.existsSync(process.cwd())) {
+          // En développement local, utiliser les fichiers
+          saveAdminDataToFile(data);
+          await loadMemberDataFromStorage();
+          return;
+        }
+      } catch {
+        // Si on ne peut pas accéder au système de fichiers, forcer Blobs
+        useBlobs = true;
+      }
+    }
+    
+    // Sur Netlify ou si fichiers non disponibles, utiliser Blobs
+    if (useBlobs) {
       await saveAdminDataToBlob(data);
     } else {
       saveAdminDataToFile(data);
     }
+    
     // Recharger et fusionner après sauvegarde
     await loadMemberDataFromStorage();
   }
@@ -416,14 +563,51 @@ export async function saveAdminData(data: Record<string, MemberData>): Promise<v
 
 /**
  * Sauvegarde les données bot (appelé uniquement depuis les scripts de synchronisation)
+ * IMPORTANT: Sur Netlify, on utilise TOUJOURS Blobs, jamais le système de fichiers
  */
 export async function saveBotData(data: Record<string, MemberData>): Promise<void> {
   if (typeof window === "undefined") {
-    if (isNetlify()) {
+    // Vérifier si on peut utiliser Blobs (Netlify)
+    let useBlobs = false;
+    try {
+      const { getStore } = require("@netlify/blobs");
+      if (getStore) {
+        // Tester si on peut créer un store (on est sur Netlify)
+        const testStore = getStore("tenf-bot-members");
+        if (testStore) {
+          useBlobs = true;
+        }
+      }
+    } catch {
+      // getStore non disponible, on n'est pas sur Netlify
+    }
+    
+    // Si on n'est pas sur Netlify, vérifier si on peut utiliser les fichiers
+    if (!useBlobs) {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const dataDir = path.join(process.cwd(), "data");
+        // Si le dossier data existe et est accessible, on est en développement local
+        if (fs.existsSync(dataDir) || fs.existsSync(process.cwd())) {
+          // En développement local, utiliser les fichiers
+          saveBotDataToFile(data);
+          await loadMemberDataFromStorage();
+          return;
+        }
+      } catch {
+        // Si on ne peut pas accéder au système de fichiers, forcer Blobs
+        useBlobs = true;
+      }
+    }
+    
+    // Sur Netlify ou si fichiers non disponibles, utiliser Blobs
+    if (useBlobs) {
       await saveBotDataToBlob(data);
     } else {
       saveBotDataToFile(data);
     }
+    
     // Recharger et fusionner après sauvegarde
     await loadMemberDataFromStorage();
   }
