@@ -91,7 +91,10 @@ export default function TwitchRaidsPage() {
         
         // Grouper les raids faits par membre (uniquement Twitch)
         (data.raidsFaits || []).forEach((raid: any) => {
-          const memberKey = raid.raiderTwitchLogin || raid.raider;
+          // Utiliser raider (qui peut être un Discord ID ou Twitch Login)
+          const memberKey = raid.raider?.toLowerCase() || '';
+          if (!memberKey) return;
+          
           if (!raidsByMember[memberKey]) {
             raidsByMember[memberKey] = {
               done: 0,
@@ -100,16 +103,23 @@ export default function TwitchRaidsPage() {
             };
           }
           raidsByMember[memberKey].done += raid.count || 1;
-          const targetKey = raid.targetTwitchLogin || raid.target;
-          if (!raidsByMember[memberKey].targets[targetKey]) {
-            raidsByMember[memberKey].targets[targetKey] = 0;
+          
+          // Utiliser target (qui peut être un Discord ID ou Twitch Login)
+          const targetKey = raid.target?.toLowerCase() || '';
+          if (targetKey) {
+            if (!raidsByMember[memberKey].targets[targetKey]) {
+              raidsByMember[memberKey].targets[targetKey] = 0;
+            }
+            raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
           }
-          raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
         });
         
         // Grouper les raids reçus par membre (uniquement Twitch)
         (data.raidsRecus || []).forEach((raid: any) => {
-          const memberKey = raid.targetTwitchLogin || raid.target;
+          // Utiliser target (qui peut être un Discord ID ou Twitch Login)
+          const memberKey = raid.target?.toLowerCase() || '';
+          if (!memberKey) return;
+          
           if (!raidsByMember[memberKey]) {
             raidsByMember[memberKey] = {
               done: 0,
@@ -125,22 +135,26 @@ export default function TwitchRaidsPage() {
         // Calculer les stats
         const totalRaidsFaits = data.totalRaidsFaits || 0;
         const totalRaidsRecus = data.totalRaidsRecus || 0;
-        const raidersSet = new Set((data.raidsFaits || []).map((r: any) => r.raiderTwitchLogin || r.raider));
-        const targetsSet = new Set((data.raidsRecus || []).map((r: any) => r.targetTwitchLogin || r.target));
+        const raidersSet = new Set((data.raidsFaits || []).map((r: any) => (r.raider || '').toLowerCase()).filter(Boolean));
+        const targetsSet = new Set((data.raidsRecus || []).map((r: any) => (r.target || '').toLowerCase()).filter(Boolean));
         
         // Top raideur
         const raiderCounts: Record<string, number> = {};
         (data.raidsFaits || []).forEach((r: any) => {
-          const key = r.raiderTwitchLogin || r.raider;
-          raiderCounts[key] = (raiderCounts[key] || 0) + (r.count || 1);
+          const key = (r.raider || '').toLowerCase();
+          if (key) {
+            raiderCounts[key] = (raiderCounts[key] || 0) + (r.count || 1);
+          }
         });
         const topRaider = Object.entries(raiderCounts).sort(([, a], [, b]) => b - a)[0];
         
         // Top cible
         const targetCounts: Record<string, number> = {};
         (data.raidsRecus || []).forEach((r: any) => {
-          const key = r.targetTwitchLogin || r.target;
-          targetCounts[key] = (targetCounts[key] || 0) + 1;
+          const key = (r.target || '').toLowerCase();
+          if (key) {
+            targetCounts[key] = (targetCounts[key] || 0) + 1;
+          }
         });
         const topTarget = Object.entries(targetCounts).sort(([, a], [, b]) => b - a)[0];
         
