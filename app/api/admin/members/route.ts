@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Charger les données pour vérifier le rôle dans memberData
-    await loadMemberDataFromStorage();
+    // Utiliser les données déjà chargées pour vérifier le rôle
     const allMembers = getAllMemberData();
     const userMember = allMembers.find(m => m.discordId === admin.id);
     const userRole = userMember?.role;

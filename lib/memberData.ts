@@ -544,6 +544,7 @@ export function getAllActiveMemberDataFromAllLists(): MemberData[] {
 
 /**
  * Met à jour les données d'un membre (DASHBOARD ADMIN - écrit dans admin-members-data)
+ * IMPORTANT: Cette fonction préserve les données admin existantes et fusionne avec les données bot
  */
 export async function updateMemberData(
   twitchLogin: string,
@@ -552,10 +553,11 @@ export async function updateMemberData(
 ): Promise<MemberData | null> {
   const login = twitchLogin.toLowerCase();
   
-  // Charger les données admin actuelles
+  // Charger les données admin et bot séparément
   const adminData = await loadAdminDataFromStorage();
+  const botData = await loadBotDataFromStorage();
   
-  // Récupérer le membre existant (depuis les données fusionnées)
+  // Charger les données fusionnées pour avoir la vue complète
   await loadMemberDataFromStorage();
   const existing = memberDataStore[login];
   
@@ -563,13 +565,28 @@ export async function updateMemberData(
     return null;
   }
   
-  // Mettre à jour dans les données admin
-  adminData[login] = {
-    ...existing,
-    ...updates,
-    updatedAt: new Date(),
-    updatedBy,
-  };
+  // Si le membre existe déjà dans admin, préserver ses données et fusionner avec les updates
+  // Sinon, créer une nouvelle entrée admin basée sur les données fusionnées
+  const existingAdminMember = adminData[login];
+  
+  if (existingAdminMember) {
+    // Membre existe dans admin : préserver ses données et appliquer les updates
+    adminData[login] = {
+      ...existingAdminMember, // Préserver les données admin existantes
+      ...updates, // Appliquer les nouvelles modifications
+      updatedAt: new Date(),
+      updatedBy,
+    };
+  } else {
+    // Membre n'existe pas dans admin : créer une nouvelle entrée admin
+    // Utiliser les données fusionnées comme base, mais les updates ont priorité
+    adminData[login] = {
+      ...existing, // Base depuis les données fusionnées
+      ...updates, // Appliquer les modifications
+      updatedAt: new Date(),
+      updatedBy,
+    };
+  }
   
   // Sauvegarder les données admin
   await saveAdminData(adminData);
