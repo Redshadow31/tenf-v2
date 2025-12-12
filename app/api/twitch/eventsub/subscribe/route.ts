@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureGlobalChannelRaidSubscription } from '@/lib/twitchEventSub';
+import { ensureGlobalChannelRaidSubscription, getTwitchOAuthToken } from '@/lib/twitchEventSub';
 import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { getBaseUrl } from '@/lib/config';
