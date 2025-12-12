@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, isFounder, hasAdminDashboardAccess } from "@/lib/admin";
+import { getCurrentAdmin as getCurrentAdminLegacy, hasAdminDashboardAccess as hasAdminDashboardAccessLegacy } from "@/lib/admin";
+import { isFounder, hasAdminDashboardAccess, hasPermission } from "@/lib/adminRoles";
 import {
   getAllMemberData,
   getMemberData,
@@ -9,7 +10,7 @@ import {
   initializeMemberData,
   loadMemberDataFromStorage,
 } from "@/lib/memberData";
-import { logAction } from "@/lib/logAction";
+import { getCurrentAdmin, logAction } from "@/lib/adminAuth";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -39,15 +40,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Utiliser les données déjà chargées pour vérifier le rôle
-    const allMembers = getAllMemberData();
-    const userMember = allMembers.find(m => m.discordId === admin.id);
-    const userRole = userMember?.role;
-
-    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id, userRole)) {
+    // Vérifier l'accès avec le nouveau système de rôles
+    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
+        { error: "Accès refusé. Réservé aux administrateurs." },
         { status: 403 }
       );
     }
@@ -156,13 +152,15 @@ export async function POST(request: NextRequest) {
       admin.id
     );
 
-    // Logger l'action
+    // Logger l'action avec le nouveau système d'audit
     await logAction(
-      admin.id,
-      admin.username,
-      "Création d'un membre",
-      displayName,
-      { twitchLogin, role, isVip, isActive }
+      admin,
+      "member.create",
+      "member",
+      {
+        resourceId: twitchLogin,
+        newValue: { displayName, role, isVip, isActive },
+      }
     );
 
     return NextResponse.json({ member: newMember, success: true });

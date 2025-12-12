@@ -2,100 +2,61 @@
 // Note: Les fonctions serveur utilisent cookies() de next/headers
 // Les fonctions client doivent utiliser getDiscordUser() de lib/discord
 
-export type AdminRole = "Modérateur" | "Admin" | "Fondateur";
+// IMPORTANT: Ce fichier est maintenant un wrapper pour compatibilité
+// Le nouveau système de rôles est dans lib/adminRoles.ts
 
-// Liste des fondateurs (IDs Discord) - À configurer selon votre serveur
-const FOUNDER_IDS: string[] = [
-  "333001130705420299", // clarastonewall
-  "535244297214361603", // nexou31
-  "1021398088474169414", // red_shadow_31
-];
+export { 
+  getAdminRole,
+  hasAdminRole,
+  isFounder,
+  hasPermission,
+  canPerformAction,
+  hasAdminDashboardAccess,
+  getUserPermissions,
+  getRoleDisplayName,
+  type AdminRole,
+  type Permission,
+} from "./adminRoles";
 
-// Liste des admins (IDs Discord)
-const ADMIN_IDS: string[] = [
-  // Ajoutez les IDs Discord des admins ici si nécessaire
-  // Exemple: "987654321098765432"
-];
+// Re-export pour compatibilité avec l'ancien code
+export type { AdminRole as LegacyAdminRole } from "./adminRoles";
+
+// Fonctions de compatibilité (dépréciées, utiliser adminRoles.ts)
+import { 
+  getAdminRole as getNewAdminRole,
+  hasAdminRole as hasNewAdminRole,
+  isFounder as isNewFounder,
+} from "./adminRoles";
 
 /**
- * Vérifie si un utilisateur Discord est un fondateur
- */
-export function isFounder(discordId: string): boolean {
-  return FOUNDER_IDS.includes(discordId);
-}
-
-/**
- * Vérifie si un utilisateur Discord est un admin
+ * @deprecated Utiliser getAdminRole de adminRoles.ts
  */
 export function isAdmin(discordId: string): boolean {
-  return ADMIN_IDS.includes(discordId) || isFounder(discordId);
+  const role = getNewAdminRole(discordId);
+  return role === "FOUNDER" || role === "ADMIN_ADJOINT";
 }
 
 /**
- * Vérifie si un utilisateur Discord est un modérateur ou plus
+ * @deprecated Utiliser hasAdminRole de adminRoles.ts
  */
 export function isModerator(discordId: string): boolean {
-  // Pour l'instant, tous les admins sont considérés comme modérateurs
-  // TODO: Ajouter une vraie liste de modérateurs si nécessaire
-  return isAdmin(discordId);
+  return hasNewAdminRole(discordId);
 }
 
 /**
- * Vérifie si un utilisateur Discord est Admin Adjoint
- * Cette fonction vérifie dans memberData (nécessite d'être appelée après chargement des données)
+ * @deprecated Utiliser hasAdminDashboardAccess de adminRoles.ts
  */
 export function isAdminAdjoint(discordId: string, memberRole?: string): boolean {
-  if (memberRole) {
-    return memberRole === "Admin Adjoint";
-  }
-  // Si pas de rôle fourni, retourner false (nécessite chargement depuis memberData)
-  return false;
+  const role = getNewAdminRole(discordId);
+  return role === "ADMIN_ADJOINT";
 }
 
 /**
- * Vérifie si un utilisateur a le rôle "Admin" dans memberData
- * Cette fonction vérifie dans memberData (nécessite d'être appelée après chargement des données)
+ * @deprecated Utiliser hasAdminDashboardAccess de adminRoles.ts
  */
 export function isAdminRole(discordId: string, memberRole?: string): boolean {
-  if (memberRole) {
-    return memberRole === "Admin";
-  }
-  // Si pas de rôle fourni, retourner false (nécessite chargement depuis memberData)
-  return false;
-}
-
-/**
- * Vérifie si un utilisateur a accès au dashboard admin (Fondateur, Admin, ou Admin Adjoint)
- * Cette fonction vérifie dans memberData si nécessaire
- */
-export function hasAdminDashboardAccess(discordId: string, memberRole?: string): boolean {
-  // Fondateurs ont toujours accès
-  if (isFounder(discordId)) {
-    return true;
-  }
-  // Admins (depuis la liste ADMIN_IDS) ont accès
-  if (isAdmin(discordId)) {
-    return true;
-  }
-  // Admin (rôle dans memberData) a aussi accès
-  if (isAdminRole(discordId, memberRole)) {
-    return true;
-  }
-  // Admin Adjoint a aussi accès
-  if (isAdminAdjoint(discordId, memberRole)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Récupère le rôle d'un utilisateur Discord
- */
-export function getAdminRole(discordId: string): AdminRole | null {
-  if (isFounder(discordId)) return "Fondateur";
-  if (isAdmin(discordId)) return "Admin";
-  if (isModerator(discordId)) return "Modérateur";
-  return null;
+  const role = getNewAdminRole(discordId);
+  return role === "ADMIN_ADJOINT";
 }
 
 /**
