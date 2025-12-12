@@ -21,14 +21,27 @@ function findMemberByTwitchIdOrLogin(
   twitchLogin: string,
   allMembers: any[]
 ): any | null {
-  // Chercher d'abord par Twitch ID (si disponible dans les données)
-  // Note: Les membres stockent généralement twitchLogin, pas twitchId
-  // On cherche donc principalement par login
-  const member = allMembers.find(m => 
-    m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
-  );
+  // Chercher d'abord par Twitch ID (si disponible)
+  if (twitchId) {
+    const memberById = allMembers.find(m => 
+      m.twitchId === twitchId
+    );
+    if (memberById) {
+      return memberById;
+    }
+  }
   
-  return member || null;
+  // Sinon chercher par login
+  if (twitchLogin) {
+    const memberByLogin = allMembers.find(m => 
+      m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
+    );
+    if (memberByLogin) {
+      return memberByLogin;
+    }
+  }
+  
+  return null;
 }
 
 /**

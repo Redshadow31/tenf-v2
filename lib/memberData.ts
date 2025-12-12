@@ -10,6 +10,7 @@ import { getStore } from "@netlify/blobs";
 export interface MemberData {
   // Identifiants
   twitchLogin: string; // Login Twitch (ex: nexou31)
+  twitchId?: string; // ID numérique Twitch (ex: 123456789) - résolu automatiquement depuis twitchLogin
   twitchUrl: string; // URL complète de la chaîne Twitch
   discordId?: string; // ID Discord (ex: 535244297214361603)
   discordUsername?: string; // Pseudo Discord (ex: NeXou31)
