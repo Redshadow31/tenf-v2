@@ -41,8 +41,12 @@ export default function TwitchRaidsPage() {
     checked: boolean;
     hasError: boolean;
     errorMessage?: string;
-    activeCount?: number;
-    totalCount?: number;
+    isActive?: boolean;
+    subscription?: {
+      id?: string;
+      monitor?: { login?: string; twitchId?: string };
+    };
+    totalMembers?: number;
   }>({ checked: false, hasError: false });
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function TwitchRaidsPage() {
     }
     loadAdmin();
 
-    // Vérifier le statut des subscriptions EventSub
+    // Vérifier le statut de la souscription globale EventSub
     async function checkSubscriptionStatus() {
       try {
         const response = await fetch("/api/twitch/eventsub/subscribe");
@@ -63,23 +67,24 @@ export default function TwitchRaidsPage() {
           setSubscriptionStatus({
             checked: true,
             hasError: false,
-            activeCount: data.activeSubscriptions || 0,
-            totalCount: data.totalMembers || 0,
+            isActive: data.isActive || false,
+            subscription: data.subscription || undefined,
+            totalMembers: data.totalMembers || 0,
           });
         } else {
           const errorData = await response.json().catch(() => ({}));
           setSubscriptionStatus({
             checked: true,
             hasError: true,
-            errorMessage: errorData.error || "Impossible de vérifier le statut des subscriptions",
+            errorMessage: errorData.error || "Impossible de vérifier le statut de la souscription globale",
           });
         }
       } catch (error) {
-        console.error("[Twitch Raids] Erreur vérification subscriptions:", error);
+        console.error("[Twitch Raids] Erreur vérification subscription:", error);
         setSubscriptionStatus({
           checked: true,
           hasError: true,
-          errorMessage: "Erreur lors de la vérification des subscriptions EventSub",
+          errorMessage: "Erreur lors de la vérification de la souscription globale EventSub",
         });
       }
     }
@@ -391,28 +396,36 @@ export default function TwitchRaidsPage() {
         )}
 
         {/* Info si subscriptions actives */}
-        {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.activeCount !== undefined && (
+        {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.isActive !== undefined && (
           <div className={`mb-6 border rounded-lg p-4 ${
-            subscriptionStatus.activeCount === 0 
+            !subscriptionStatus.isActive
               ? "bg-yellow-900/20 border-yellow-700" 
               : "bg-green-900/20 border-green-700"
           }`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{subscriptionStatus.activeCount === 0 ? "⚠️" : "✅"}</span>
-              <div>
-                <p className={`font-semibold ${
-                  subscriptionStatus.activeCount === 0 ? "text-yellow-400" : "text-green-400"
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">{!subscriptionStatus.isActive ? "⚠️" : "✅"}</span>
+              <div className="flex-1">
+                <p className={`font-semibold mb-1 ${
+                  !subscriptionStatus.isActive ? "text-yellow-400" : "text-green-400"
                 }`}>
-                  {subscriptionStatus.activeCount === 0 
-                    ? "Aucune subscription EventSub active"
-                    : `${subscriptionStatus.activeCount} subscription(s) EventSub active(s)`
+                  {!subscriptionStatus.isActive 
+                    ? "Souscription globale EventSub inactive" 
+                    : "Souscription globale EventSub active"
                   }
                 </p>
-                {subscriptionStatus.totalCount !== undefined && (
-                  <p className="text-gray-400 text-sm mt-1">
-                    {subscriptionStatus.totalCount} membre(s) actif(s) avec login Twitch
+                {subscriptionStatus.subscription?.monitor && (
+                  <p className="text-gray-400 text-sm mb-1">
+                    Monitor: <code className="bg-gray-800 px-1 rounded">{subscriptionStatus.subscription.monitor.login}</code>
                   </p>
                 )}
+                {subscriptionStatus.totalMembers !== undefined && (
+                  <p className="text-gray-400 text-sm">
+                    {subscriptionStatus.totalMembers} membre(s) actif(s) avec login Twitch
+                  </p>
+                )}
+                <p className="text-gray-500 text-xs mt-2">
+                  Tous les raids entre membres TENF sont automatiquement détectés et enregistrés.
+                </p>
               </div>
             </div>
           </div>
@@ -489,7 +502,7 @@ export default function TwitchRaidsPage() {
             </Link>
             <button
               onClick={async () => {
-                if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {
+                if (!confirm("Voulez-vous créer la souscription globale Twitch EventSub ?\n\nCela va créer UNE SEULE souscription globale qui écoute tous les raids entre membres TENF.\n\nNote: Les anciennes souscriptions per-member seront automatiquement supprimées.")) {
                   return;
                 }
                 try {
@@ -498,8 +511,12 @@ export default function TwitchRaidsPage() {
                   });
                   const data = await response.json();
                   if (response.ok) {
-                    const summary = data.summary || {};
-                    alert(`✅ ${data.message}\n\nRésumé:\n- Créées: ${summary.created || 0}\n- Déjà actives: ${summary.alreadyExists || 0}\n- Erreurs: ${summary.errors || 0}\n\nTotal: ${summary.total || 0} membres`);
+                    const subscriptionInfo = data.subscription?.monitor 
+                      ? `\n\nMonitor: ${data.subscription.monitor.login}`
+                      : '';
+                    alert(`✅ ${data.message}${subscriptionInfo}`);
+                    // Recharger le statut
+                    checkSubscriptionStatus();
                   } else {
                     const errorMsg = data.error || 'Erreur inconnue';
                     const detailsMsg = data.message ? `\n\n${data.message}` : '';
@@ -508,13 +525,13 @@ export default function TwitchRaidsPage() {
                   }
                 } catch (error) {
                   console.error("Erreur lors de la synchronisation:", error);
-                  alert("Erreur lors de la création des subscriptions Twitch EventSub\n\nVérifiez que les variables d'environnement sont configurées:\n- TWITCH_EVENTSUB_SECRET\n- TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID\n- TWITCH_CLIENT_SECRET");
+                  alert("Erreur lors de la création de la souscription globale Twitch EventSub\n\nVérifiez que les variables d'environnement sont configurées:\n- TWITCH_EVENTSUB_SECRET\n- TWITCH_APP_CLIENT_ID\n- TWITCH_APP_CLIENT_SECRET");
                 }
               }}
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
               title="Créer les subscriptions Twitch EventSub"
             >
-              🟣 Créer subscriptions EventSub
+              🟣 Synchroniser EventSub
             </button>
           </div>
         </div>

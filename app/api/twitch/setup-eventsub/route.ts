@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureChannelRaidSubscription } from '@/lib/twitchEventSub';
+import { ensureGlobalChannelRaidSubscription } from '@/lib/twitchEventSub';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 
@@ -62,80 +62,69 @@ export async function POST(request: NextRequest) {
     // Construire l'URL du webhook
     const webhookUrl = `${BASE_URL}/api/twitch/eventsub`;
 
-    // Créer des subscriptions pour tous les membres actifs
-    const results: Array<{ login: string; id: string; status: string; error?: string }> = [];
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const member of membersWithTwitch) {
-      let broadcasterId: string | undefined = member.twitchId;
-
-      // Si l'ID n'est pas encore résolu, essayer de le résoudre maintenant
-      if (!broadcasterId) {
-        console.log(`[Twitch EventSub Setup] Résolution de l'ID pour ${member.twitchLogin}...`);
-        const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
-        const resolvedId = await resolveAndCacheTwitchId(member.twitchLogin!);
-        if (resolvedId) {
-          broadcasterId = resolvedId;
-          member.twitchId = broadcasterId;
-          resolvedIds.set(member.twitchLogin!.toLowerCase(), broadcasterId);
-        }
-      }
-
-      if (!broadcasterId) {
-        console.warn(`[Twitch EventSub Setup] ⚠️ Impossible de résoudre l'ID pour ${member.twitchLogin}`);
-        results.push({
-          login: member.twitchLogin!,
-          id: '',
-          status: 'skipped',
-          error: 'ID Twitch non résolu',
-        });
-        errorCount++;
-        continue;
-      }
-
-      try {
-        const result = await ensureChannelRaidSubscription(
-          broadcasterId,
-          webhookUrl,
-          EVENTSUB_SECRET
-        );
-
-        results.push({
-          login: member.twitchLogin!,
-          id: broadcasterId,
-          status: result.created ? 'created' : 'active',
-        });
-
-        if (result.created) {
-          successCount++;
-        }
-      } catch (error) {
-        console.error(`[Twitch EventSub Setup] Erreur pour ${member.twitchLogin}:`, error);
-        results.push({
-          login: member.twitchLogin!,
-          id: broadcasterId,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Erreur inconnue',
-        });
-        errorCount++;
-      }
+    // Sélectionner le premier membre actif comme "monitor" pour la souscription globale
+    // Le handler filtrera tous les raids pour ne garder que ceux entre membres TENF
+    const monitorMember = membersWithTwitch.find(m => m.twitchId) || membersWithTwitch[0];
+    
+    if (!monitorMember) {
+      return NextResponse.json(
+        { error: 'Aucun membre actif avec Twitch trouvé pour monitor' },
+        { status: 400 }
+      );
     }
 
-    // Les IDs résolus ont déjà été sauvegardés individuellement
+    // S'assurer que le membre monitor a un ID Twitch résolu
+    let monitorBroadcasterId = monitorMember.twitchId;
+    if (!monitorBroadcasterId) {
+      console.log(`[Twitch EventSub Setup] Résolution de l'ID pour le monitor ${monitorMember.twitchLogin}...`);
+      const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
+      const resolvedId = await resolveAndCacheTwitchId(monitorMember.twitchLogin!);
+      if (!resolvedId) {
+        return NextResponse.json(
+          { error: `Impossible de résoudre l'ID Twitch pour le monitor ${monitorMember.twitchLogin}` },
+          { status: 500 }
+        );
+      }
+      monitorBroadcasterId = resolvedId;
+    }
 
-    return NextResponse.json({
-      status: 'ok',
-      message: `Subscriptions vérifiées/créées pour ${membersWithTwitch.length} membres`,
-      results,
-      summary: {
-        total: membersWithTwitch.length,
-        success: successCount,
-        alreadyActive: membersWithTwitch.length - successCount - errorCount,
-        errors: errorCount,
-        idsResolved: resolvedIds.size,
-      },
-    });
+    // Créer UNE SEULE souscription globale
+    try {
+      const result = await ensureGlobalChannelRaidSubscription(
+        monitorBroadcasterId,
+        webhookUrl,
+        EVENTSUB_SECRET
+      );
+
+      return NextResponse.json({
+        status: 'ok',
+        message: result.created 
+          ? 'Souscription globale EventSub créée avec succès' 
+          : 'Souscription globale EventSub déjà active',
+        subscription: {
+          id: result.subscription?.id,
+          type: 'global',
+          monitor: {
+            login: monitorMember.twitchLogin,
+            twitchId: monitorBroadcasterId,
+          },
+          created: result.created,
+        },
+        summary: {
+          totalMembers: membersWithTwitch.length,
+          idsResolved: resolvedIds.size,
+        },
+      });
+    } catch (error) {
+      console.error('[Twitch EventSub Setup] Erreur lors de la création de la souscription globale:', error);
+      return NextResponse.json(
+        { 
+          error: `Erreur lors de la configuration: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+          details: error instanceof Error ? error.stack : undefined,
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('[Twitch EventSub Setup] Erreur:', error);
     return NextResponse.json(
@@ -149,12 +138,14 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET - Vérifie le statut des subscriptions EventSub pour tous les membres actifs
+ * GET - Vérifie le statut de la souscription globale EventSub
  */
 export async function GET(request: NextRequest) {
   try {
     const { getTwitchOAuthToken, getEventSubSubscriptions } = await import('@/lib/twitchEventSub');
     const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+    const webhookUrl = `${BASE_URL}/api/twitch/eventsub`;
 
     await loadMemberDataFromStorage();
     const allMembers = getAllMemberData();
@@ -166,35 +157,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         status: 'no_members',
         message: 'Aucun membre actif avec un login Twitch',
-        subscriptions: [],
+        subscription: null,
       });
     }
 
     const accessToken = await getTwitchOAuthToken();
     const subscriptions = await getEventSubSubscriptions(accessToken);
 
-    const results = membersWithTwitch.map(member => {
-      const broadcasterId = member.twitchId;
-      const channelRaidSub = broadcasterId
-        ? subscriptions.find(sub => 
-            sub.type === 'channel.raid' &&
-            sub.condition.to_broadcaster_user_id === broadcasterId
-          )
-        : null;
-
-      return {
-        login: member.twitchLogin,
-        twitchId: broadcasterId || null,
-        status: channelRaidSub ? 'active' : (broadcasterId ? 'missing' : 'id_not_resolved'),
-        subscription: channelRaidSub || null,
-      };
-    });
+    // Chercher la souscription globale channel.raid
+    const globalSubscription = subscriptions.find(sub => 
+      sub.type === 'channel.raid' &&
+      sub.status === 'enabled' &&
+      sub.transport?.callback === webhookUrl
+    );
 
     return NextResponse.json({
       status: 'ok',
+      subscription: globalSubscription ? {
+        id: globalSubscription.id,
+        status: globalSubscription.status,
+        type: 'global',
+        monitorBroadcasterId: globalSubscription.condition.to_broadcaster_user_id,
+        createdAt: globalSubscription.created_at,
+      } : null,
       totalMembers: membersWithTwitch.length,
-      activeSubscriptions: results.filter(r => r.status === 'active').length,
-      subscriptions: results,
+      isActive: !!globalSubscription,
+      message: globalSubscription 
+        ? 'Souscription globale EventSub active' 
+        : 'Aucune souscription globale EventSub trouvée',
     });
   } catch (error) {
     console.error('[Twitch EventSub Setup] Erreur lors de la vérification:', error);

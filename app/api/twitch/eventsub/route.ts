@@ -98,11 +98,46 @@ export async function POST(request: NextRequest) {
         viewers: event.viewers,
       });
 
-      // Sauvegarder le raid (ne pas attendre pour répondre rapidement)
-      saveTwitchRaid(event).catch(error => {
-        console.error('[Twitch EventSub] Erreur lors de la sauvegarde du raid:', error);
-        // Ne pas throw pour répondre rapidement à Twitch
-      });
+      // FILTER: Ne garder que les raids entre membres TENF
+      // Vérifier si les deux broadcasters sont des membres TENF
+      const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
+      await loadMemberDataFromStorage();
+      const allMembers = getAllMemberData();
+
+      const fromMember = allMembers.find(m => 
+        m.isActive && (
+          m.twitchId === event.from_broadcaster_user_id ||
+          m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase()
+        )
+      );
+
+      const toMember = allMembers.find(m => 
+        m.isActive && (
+          m.twitchId === event.to_broadcaster_user_id ||
+          m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase()
+        )
+      );
+
+      // Si les deux membres sont TENF, enregistrer le raid
+      if (fromMember && toMember) {
+        console.log('[Twitch EventSub] ✅ Raid TENF détecté:', {
+          from: fromMember.twitchLogin,
+          to: toMember.twitchLogin,
+        });
+
+        // Sauvegarder le raid (ne pas attendre pour répondre rapidement)
+        saveTwitchRaid(event).catch(error => {
+          console.error('[Twitch EventSub] Erreur lors de la sauvegarde du raid:', error);
+          // Ne pas throw pour répondre rapidement à Twitch
+        });
+      } else {
+        console.log('[Twitch EventSub] ⏭️ Raid ignoré (non TENF):', {
+          from: event.from_broadcaster_user_login,
+          to: event.to_broadcaster_user_login,
+          fromIsTENF: !!fromMember,
+          toIsTENF: !!toMember,
+        });
+      }
 
       // Répondre rapidement à Twitch (200 OK)
       return NextResponse.json({ received: true }, { status: 200 });

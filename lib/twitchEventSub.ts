@@ -145,28 +145,36 @@ export async function getEventSubSubscriptions(accessToken: string): Promise<Twi
 }
 
 /**
- * Vérifie si une subscription channel.raid existe pour un broadcaster
+ * Vérifie si une subscription channel.raid globale existe
+ * (une seule souscription pour tous les raids)
  */
-export async function hasChannelRaidSubscription(
+export async function hasGlobalChannelRaidSubscription(
   accessToken: string,
-  broadcasterId: string
+  webhookUrl: string
 ): Promise<boolean> {
   const subscriptions = await getEventSubSubscriptions(accessToken);
   
   return subscriptions.some(sub => 
     sub.type === 'channel.raid' &&
     sub.status === 'enabled' &&
-    sub.condition.to_broadcaster_user_id === broadcasterId
+    sub.transport?.callback === webhookUrl &&
+    !sub.condition.to_broadcaster_user_id &&
+    !sub.condition.from_broadcaster_user_id
   );
 }
 
 /**
- * Crée une subscription EventSub pour channel.raid
+ * Crée une subscription EventSub globale pour channel.raid
+ * Utilise un broadcaster "monitor" pour écouter tous les raids
  * CRITICAL: Utilise UNIQUEMENT TWITCH_APP_CLIENT_ID
+ * 
+ * Note: Twitch EventSub nécessite un broadcaster_id dans la condition.
+ * On utilise le premier membre actif comme "monitor" pour écouter ses raids entrants.
+ * Dans le handler, on filtre pour ne garder que les raids entre membres TENF.
  */
-export async function createChannelRaidSubscription(
+export async function createGlobalChannelRaidSubscription(
   accessToken: string,
-  broadcasterId: string,
+  monitorBroadcasterId: string,
   webhookUrl: string,
   secret: string
 ): Promise<TwitchEventSubSubscription> {
@@ -186,6 +194,8 @@ export async function createChannelRaidSubscription(
     cachedAppToken = null;
   }
 
+  console.log('[Twitch EventSub] Création d\'une souscription globale channel.raid avec monitor:', monitorBroadcasterId);
+
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions`, {
     method: 'POST',
     headers: {
@@ -197,7 +207,7 @@ export async function createChannelRaidSubscription(
       type: 'channel.raid',
       version: '1',
       condition: {
-        to_broadcaster_user_id: broadcasterId,
+        to_broadcaster_user_id: monitorBroadcasterId,
       },
       transport: {
         method: 'webhook',
@@ -209,7 +219,7 @@ export async function createChannelRaidSubscription(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Erreur création subscription: ${response.status} ${error}`);
+    throw new Error(`Erreur création subscription globale: ${response.status} ${error}`);
   }
 
   const data = await response.json();
@@ -255,29 +265,55 @@ export async function deleteEventSubSubscription(
 }
 
 /**
- * Vérifie et crée une subscription si nécessaire
- * Retourne true si une nouvelle subscription a été créée
+ * Vérifie et crée UNE SEULE subscription globale pour channel.raid
+ * Utilise un broadcaster "monitor" pour écouter tous les raids entrants
+ * Le handler filtrera pour ne garder que les raids entre membres TENF
  */
-export async function ensureChannelRaidSubscription(
-  broadcasterId: string,
+export async function ensureGlobalChannelRaidSubscription(
+  monitorBroadcasterId: string,
   webhookUrl: string,
   secret: string
 ): Promise<{ created: boolean; subscription: TwitchEventSubSubscription | null }> {
   try {
     const accessToken = await getTwitchOAuthToken();
-    const exists = await hasChannelRaidSubscription(accessToken, broadcasterId);
+    
+    // Vérifier si une souscription globale existe déjà
+    const subscriptions = await getEventSubSubscriptions(accessToken);
+    const existingGlobal = subscriptions.find(sub => 
+      sub.type === 'channel.raid' &&
+      sub.status === 'enabled' &&
+      sub.transport?.callback === webhookUrl
+    );
 
-    if (exists) {
-      console.log('[Twitch EventSub] Subscription channel.raid existe déjà');
-      return { created: false, subscription: null };
+    if (existingGlobal) {
+      console.log('[Twitch EventSub] ✅ Souscription globale channel.raid existe déjà:', existingGlobal.id);
+      return { created: false, subscription: existingGlobal };
     }
 
-    console.log('[Twitch EventSub] Création d\'une nouvelle subscription channel.raid');
-    const subscription = await createChannelRaidSubscription(accessToken, broadcasterId, webhookUrl, secret);
+    // Supprimer toutes les anciennes souscriptions per-member
+    console.log('[Twitch EventSub] 🧹 Nettoyage des anciennes souscriptions per-member...');
+    for (const sub of subscriptions) {
+      if (sub.type === 'channel.raid' && sub.status === 'enabled') {
+        try {
+          await deleteEventSubSubscription(accessToken, sub.id);
+          console.log(`[Twitch EventSub] ✅ Ancienne souscription ${sub.id} supprimée`);
+        } catch (error) {
+          console.warn(`[Twitch EventSub] ⚠️ Erreur suppression souscription ${sub.id}:`, error);
+        }
+      }
+    }
+
+    console.log('[Twitch EventSub] 🆕 Création d\'une nouvelle souscription globale channel.raid');
+    const subscription = await createGlobalChannelRaidSubscription(
+      accessToken, 
+      monitorBroadcasterId, 
+      webhookUrl, 
+      secret
+    );
     
     return { created: true, subscription };
   } catch (error) {
-    console.error('[Twitch EventSub] Erreur lors de la vérification/création:', error);
+    console.error('[Twitch EventSub] ❌ Erreur lors de la vérification/création:', error);
     throw error;
   }
 }
