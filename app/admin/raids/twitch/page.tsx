@@ -515,8 +515,8 @@ export default function TwitchRaidsPage() {
                       ? `\n\nMonitor: ${data.subscription.monitor.login}`
                       : '';
                     alert(`✅ ${data.message}${subscriptionInfo}`);
-                    // Recharger le statut
-                    checkSubscriptionStatus();
+                    // Recharger la page pour afficher le nouveau statut
+                    window.location.reload();
                   } else {
                     const errorMsg = data.error || 'Erreur inconnue';
                     const detailsMsg = data.message ? `\n\n${data.message}` : '';
