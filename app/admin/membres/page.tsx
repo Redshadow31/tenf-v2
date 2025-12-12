@@ -612,6 +612,7 @@ export default function GestionMembresPage() {
     discord: string;
     discordId?: string;
     twitch: string;
+    twitchId?: string; // ID Twitch numérique
     notesInternes?: string;
     description?: string;
     badges?: string[];
@@ -634,6 +635,7 @@ export default function GestionMembresPage() {
       discord: updatedMember.discord,
       discordId: updatedMember.discordId,
       twitch: updatedMember.twitch,
+      twitchId: updatedMember.twitchId !== undefined ? updatedMember.twitchId : oldMember.twitchId, // Préserver ou mettre à jour l'ID Twitch
       description: updatedMember.description || oldMember.description,
       notesInternes: updatedMember.notesInternes || oldMember.notesInternes,
       badges: updatedMember.badges || oldMember.badges,
@@ -651,6 +653,7 @@ export default function GestionMembresPage() {
         },
         body: JSON.stringify({
           twitchLogin: mergedMember.twitch,
+          twitchId: mergedMember.twitchId, // Inclure l'ID Twitch
           displayName: mergedMember.nom,
           twitchUrl: mergedMember.twitchUrl || `https://www.twitch.tv/${mergedMember.twitch}`,
           discordId: mergedMember.discordId,
@@ -1534,6 +1537,7 @@ export default function GestionMembresPage() {
               discord: selectedMember.discord,
               discordId: selectedMember.discordId,
               twitch: selectedMember.twitch,
+              twitchId: selectedMember.twitchId, // Ajouter l'ID Twitch
               description: selectedMember.description,
               notesInternes: selectedMember.description,
               badges: selectedMember.badges,

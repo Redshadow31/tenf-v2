@@ -13,6 +13,7 @@ interface Member {
   discord: string;
   discordId?: string;
   twitch: string;
+  twitchId?: string; // ID Twitch numérique
   notesInternes?: string;
   description?: string;
   badges?: string[];
@@ -143,6 +144,57 @@ export default function EditMemberModal({
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
               placeholder="Ex: 535244297214361603"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              ID Twitch (numérique)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={formData.twitchId || ""}
+                onChange={(e) => setFormData({ ...formData, twitchId: e.target.value })}
+                className="flex-1 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                placeholder="Ex: 123456789 (résolu automatiquement)"
+              />
+              {formData.twitch && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm(`Synchroniser l'ID Twitch pour ${formData.twitch} ?`)) return;
+                    try {
+                      const response = await fetch('/api/admin/members/sync-twitch-id', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ twitchLogin: formData.twitch }),
+                      });
+                      const data = await response.json();
+                      if (response.ok && data.success && data.results?.[0]?.twitchId) {
+                        setFormData({ ...formData, twitchId: data.results[0].twitchId });
+                        alert(`✅ ID Twitch synchronisé: ${data.results[0].twitchId}`);
+                      } else {
+                        alert(`❌ ${data.error || 'Impossible de synchroniser l\'ID Twitch'}`);
+                      }
+                    } catch (error) {
+                      console.error('Erreur sync Twitch ID:', error);
+                      alert('❌ Erreur lors de la synchronisation');
+                    }
+                  }}
+                  className="text-sm text-purple-400 hover:text-purple-300 bg-purple-600/20 hover:bg-purple-600/30 px-3 py-2 rounded-lg border border-purple-500/30"
+                  title="Synchroniser depuis Twitch API"
+                >
+                  🔄 Sync
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.twitchId ? (
+                <span className="text-green-400">✅ ID Twitch lié</span>
+              ) : (
+                <span className="text-yellow-400">⚠️ ID manquant - utilisez le bouton Sync pour résoudre automatiquement</span>
+              )}
+            </p>
           </div>
 
           <div>
