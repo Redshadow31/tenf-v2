@@ -299,12 +299,16 @@ export async function POST(request: NextRequest) {
         
         if (raider && target && raider.discordId && target.discordId) {
           // Les deux membres sont trouvés par Discord ID, ajouter automatiquement le raid
-          if (raider.discordId === target.discordId) {
-            console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${raiderDiscordId})`);
+          // À ce point, on sait que raider.discordId et target.discordId existent
+          const finalRaiderId = raider.discordId;
+          const finalTargetId = target.discordId;
+          
+          if (finalRaiderId === finalTargetId) {
+            console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${finalRaiderId})`);
             continue;
           }
           
-          console.log(`[Raid Scan] Raid détecté via Discord ID: ${raider.displayName} (${raiderDiscordId}) → ${target.displayName} (${targetDiscordId})`);
+          console.log(`[Raid Scan] Raid détecté via Discord ID: ${raider.displayName} (${finalRaiderId}) → ${target.displayName} (${finalTargetId})`);
           
           // Vérifier les réactions sur le message
           const reactions = message.reactions || [];
@@ -325,7 +329,7 @@ export async function POST(request: NextRequest) {
             if (hasCheckmark) {
               // Valider immédiatement si ✅ est présent
               try {
-                await recordRaidByDiscordId(raiderDiscordId, targetDiscordId, targetMonthKey);
+                await recordRaidByDiscordId(finalRaiderId, finalTargetId, targetMonthKey);
                 raidsValidated++;
                 console.log(`[Raid Scan] Raid validé automatiquement via Discord ID: ${messageId}`);
               } catch (error) {
@@ -338,8 +342,8 @@ export async function POST(request: NextRequest) {
               try {
                 await addPendingRaid(
                   messageId,
-                  raiderDiscordId,
-                  targetDiscordId,
+                  finalRaiderId,
+                  finalTargetId,
                   raider.twitchLogin,
                   target.twitchLogin
                 );
@@ -448,15 +452,16 @@ export async function POST(request: NextRequest) {
         }
         
         // Vérifier que raider et target sont correctement assignés
-        raiderDiscordId = raider.discordId;
-        targetDiscordId = target.discordId;
+        // À ce point, on sait que raider.discordId et target.discordId existent (vérifiés plus haut)
+        const finalRaiderDiscordId = raider.discordId!;
+        const finalTargetDiscordId = target.discordId!;
         
-        if (raiderDiscordId === targetDiscordId) {
-          console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${raiderDiscordId})`);
+        if (finalRaiderDiscordId === finalTargetDiscordId) {
+          console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${finalRaiderDiscordId})`);
           continue;
         }
         
-        console.log(`[Raid Scan] Raid valide: ${raider.displayName} (${raiderDiscordId}) → ${target.displayName} (${targetDiscordId})`);
+        console.log(`[Raid Scan] Raid valide: ${raider.displayName} (${finalRaiderDiscordId}) → ${target.displayName} (${finalTargetDiscordId})`);
         
         // Vérifier les réactions sur le message
         const reactions = message.reactions || [];
@@ -479,8 +484,8 @@ export async function POST(request: NextRequest) {
             try {
               await addPendingRaid(
                 messageId,
-                raiderDiscordId,
-                targetDiscordId,
+                finalRaiderDiscordId,
+                finalTargetDiscordId,
                 raider.twitchLogin,
                 target.twitchLogin
               );
@@ -496,8 +501,8 @@ export async function POST(request: NextRequest) {
             try {
               await addPendingRaid(
                 messageId,
-                raiderDiscordId,
-                targetDiscordId,
+                finalRaiderDiscordId,
+                finalTargetDiscordId,
                 raider.twitchLogin,
                 target.twitchLogin
               );
@@ -514,8 +519,8 @@ export async function POST(request: NextRequest) {
             try {
               await addPendingRaid(
                 messageId,
-                raiderDiscordId,
-                targetDiscordId,
+                finalRaiderDiscordId,
+                finalTargetDiscordId,
                 raider.twitchLogin,
                 target.twitchLogin
               );
