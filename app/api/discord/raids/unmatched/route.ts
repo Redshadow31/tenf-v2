@@ -44,9 +44,18 @@ export async function GET(request: NextRequest) {
  * Body: { messageId: string, raiderDiscordId: string, targetDiscordId: string, month?: string }
  */
 export async function POST(request: NextRequest) {
+  let messageId: string | undefined;
+  let raiderDiscordId: string | undefined;
+  let targetDiscordId: string | undefined;
+  let month: string | undefined;
+  let monthKey: string | undefined;
+  
   try {
     const body = await request.json();
-    const { messageId, raiderDiscordId, targetDiscordId, month } = body;
+    messageId = body.messageId;
+    raiderDiscordId = body.raiderDiscordId;
+    targetDiscordId = body.targetDiscordId;
+    month = body.month;
     
     if (!messageId || !raiderDiscordId || !targetDiscordId) {
       return NextResponse.json(
@@ -77,7 +86,6 @@ export async function POST(request: NextRequest) {
     }
     
     // Déterminer le monthKey
-    let monthKey: string | undefined;
     if (month) {
       const monthMatch = month.match(/^(\d{4})-(\d{2})$/);
       if (monthMatch) {
@@ -121,11 +129,11 @@ export async function POST(request: NextRequest) {
     console.error("Erreur lors de la validation manuelle du raid:", error);
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Détails de l'erreur:", {
-      messageId,
-      raiderDiscordId,
-      targetDiscordId,
-      month,
-      monthKey,
+      messageId: messageId || "non défini",
+      raiderDiscordId: raiderDiscordId || "non défini",
+      targetDiscordId: targetDiscordId || "non défini",
+      month: month || "non défini",
+      monthKey: monthKey || "non défini",
       error: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
