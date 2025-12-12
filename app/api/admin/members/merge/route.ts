@@ -19,9 +19,16 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getDiscordUser();
+    // Utiliser getCurrentAdmin pour une meilleure vérification
+    let admin = await getCurrentAdmin();
+    
+    // Si getCurrentAdmin ne fonctionne pas (côté client), utiliser getDiscordUser
     if (!admin) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+      const discordUser = await getDiscordUser();
+      if (!discordUser) {
+        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+      }
+      admin = { id: discordUser.id, username: discordUser.username, role: "Admin" as any };
     }
 
     // Charger les données pour vérifier le rôle dans memberData
