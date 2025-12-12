@@ -154,7 +154,8 @@ const topClips = [
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général", active: true },
   { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids" },
+  { href: "/admin/raids", label: "Suivi des Raids Discord" },
+  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/planification", label: "Événements" },

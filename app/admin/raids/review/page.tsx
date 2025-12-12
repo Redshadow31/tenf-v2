@@ -24,7 +24,8 @@ interface Member {
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
   { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids" },
+  { href: "/admin/raids", label: "Suivi des Raids Discord" },
+  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
   { href: "/admin/raids/review", label: "Vérifier les raids non reconnus", active: true },
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },

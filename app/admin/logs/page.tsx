@@ -18,6 +18,8 @@ interface LogEntry {
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
   { href: "/admin/membres", label: "Gestion des Membres" },
+  { href: "/admin/raids", label: "Suivi des Raids Discord" },
+  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/logs", label: "Logs Administratifs", active: true },

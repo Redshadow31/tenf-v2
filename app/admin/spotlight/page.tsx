@@ -79,6 +79,8 @@ export default function GestionSpotlightPage() {
   const navLinks = [
     { href: "/admin/dashboard", label: "Dashboard Général" },
     { href: "/admin/membres", label: "Gestion des Membres" },
+    { href: "/admin/raids", label: "Suivi des Raids Discord" },
+    { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
     { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
     { href: "/admin/spotlight", label: "Gestion Spotlight", active: true },
     { href: "/admin/events", label: "Planification Évènements" },
