@@ -107,7 +107,7 @@ export function isSafeModeEnabled(): boolean {
 }
 
 export function setSafeMode(enabled: boolean, founderId: string): boolean {
-  if (!isFounder(founderId)) {
+  if (!isNewFounder(founderId)) {
     return false; // Seuls les fondateurs peuvent activer/désactiver le Safe Mode
   }
 
