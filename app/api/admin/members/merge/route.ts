@@ -153,71 +153,162 @@ export async function GET(request: NextRequest) {
     // Les données sont déjà chargées pour la vérification de rôle
     // Réutiliser allMembers déjà chargé
 
-    // Grouper les membres par Discord ID ou Discord username
-    const membersByDiscordId: Record<string, any[]> = {};
+    // Grouper les membres par différents critères pour détecter les doublons
+    const membersByDisplayName: Record<string, any[]> = {};
+    const membersByTwitchLogin: Record<string, any[]> = {};
     const membersByDiscordUsername: Record<string, any[]> = {};
+    const membersByDiscordId: Record<string, any[]> = {};
 
     for (const member of allMembers) {
-      // Grouper par Discord ID
+      // Grouper par nom du créateur (displayName) - case-insensitive
+      if (member.displayName) {
+        const normalizedName = member.displayName.toLowerCase().trim();
+        if (normalizedName) {
+          if (!membersByDisplayName[normalizedName]) {
+            membersByDisplayName[normalizedName] = [];
+          }
+          membersByDisplayName[normalizedName].push(member);
+        }
+      }
+
+      // Grouper par pseudo Twitch (twitchLogin) - case-insensitive
+      if (member.twitchLogin) {
+        const normalizedTwitch = member.twitchLogin.toLowerCase();
+        if (!membersByTwitchLogin[normalizedTwitch]) {
+          membersByTwitchLogin[normalizedTwitch] = [];
+        }
+        membersByTwitchLogin[normalizedTwitch].push(member);
+      }
+
+      // Grouper par pseudo Discord (discordUsername) - case-insensitive
+      if (member.discordUsername) {
+        const normalizedUsername = member.discordUsername.toLowerCase().trim();
+        if (normalizedUsername) {
+          if (!membersByDiscordUsername[normalizedUsername]) {
+            membersByDiscordUsername[normalizedUsername] = [];
+          }
+          membersByDiscordUsername[normalizedUsername].push(member);
+        }
+      }
+
+      // Grouper par ID Discord (discordId)
       if (member.discordId) {
         if (!membersByDiscordId[member.discordId]) {
           membersByDiscordId[member.discordId] = [];
         }
         membersByDiscordId[member.discordId].push(member);
       }
-
-      // Grouper par Discord username (case-insensitive)
-      if (member.discordUsername) {
-        const normalizedUsername = member.discordUsername.toLowerCase();
-        if (!membersByDiscordUsername[normalizedUsername]) {
-          membersByDiscordUsername[normalizedUsername] = [];
-        }
-        membersByDiscordUsername[normalizedUsername].push(member);
-      }
     }
 
-    // Détecter les doublons (même Discord mais Twitch différent)
+    // Détecter les doublons selon tous les critères
     const duplicates: Array<{
-      key: string; // Discord ID ou username utilisé pour détecter le doublon
-      type: "discordId" | "discordUsername";
+      key: string; // Critère utilisé pour détecter le doublon
+      type: "displayName" | "twitchLogin" | "discordUsername" | "discordId";
       members: any[];
     }> = [];
 
-    // Vérifier les doublons par Discord ID
-    for (const [discordId, members] of Object.entries(membersByDiscordId)) {
+    // Ensemble pour éviter les doublons déjà détectés
+    const detectedMemberPairs = new Set<string>();
+
+    // Fonction pour créer une clé unique pour un groupe de membres
+    const createMemberGroupKey = (members: any[]): string => {
+      return members
+        .map((m) => m.twitchLogin.toLowerCase())
+        .sort()
+        .join("|");
+    };
+
+    // Fonction pour vérifier si un groupe a déjà été détecté
+    const isAlreadyDetected = (members: any[]): boolean => {
+      const key = createMemberGroupKey(members);
+      return detectedMemberPairs.has(key);
+    };
+
+    // Fonction pour marquer un groupe comme détecté
+    const markAsDetected = (members: any[]): void => {
+      const key = createMemberGroupKey(members);
+      detectedMemberPairs.add(key);
+    };
+
+    // Vérifier les doublons par nom du créateur (displayName)
+    for (const [displayName, members] of Object.entries(membersByDisplayName)) {
       if (members.length > 1) {
-        // Vérifier si les Twitch logins sont différents
-        const twitchLogins = members.map((m) => m.twitchLogin.toLowerCase());
-        const uniqueTwitchLogins = [...new Set(twitchLogins)];
-        if (uniqueTwitchLogins.length > 1) {
-          duplicates.push({
-            key: discordId,
-            type: "discordId",
-            members: members,
-          });
+        // Vérifier si au moins un critère diffère (Twitch, Discord username, ou Discord ID)
+        const uniqueTwitchLogins = [...new Set(members.map((m) => m.twitchLogin?.toLowerCase()).filter(Boolean))];
+        const uniqueDiscordUsernames = [...new Set(members.map((m) => m.discordUsername?.toLowerCase()).filter(Boolean))];
+        const uniqueDiscordIds = [...new Set(members.map((m) => m.discordId).filter(Boolean))];
+        
+        if (uniqueTwitchLogins.length > 1 || uniqueDiscordUsernames.length > 1 || uniqueDiscordIds.length > 1) {
+          if (!isAlreadyDetected(members)) {
+            duplicates.push({
+              key: displayName,
+              type: "displayName",
+              members: members,
+            });
+            markAsDetected(members);
+          }
         }
       }
     }
 
-    // Vérifier les doublons par Discord username (seulement si pas déjà détecté par ID)
+    // Vérifier les doublons par pseudo Twitch (twitchLogin)
+    for (const [twitchLogin, members] of Object.entries(membersByTwitchLogin)) {
+      if (members.length > 1) {
+        // Vérifier si au moins un critère diffère (displayName, Discord username, ou Discord ID)
+        const uniqueDisplayNames = [...new Set(members.map((m) => m.displayName?.toLowerCase().trim()).filter(Boolean))];
+        const uniqueDiscordUsernames = [...new Set(members.map((m) => m.discordUsername?.toLowerCase()).filter(Boolean))];
+        const uniqueDiscordIds = [...new Set(members.map((m) => m.discordId).filter(Boolean))];
+        
+        if (uniqueDisplayNames.length > 1 || uniqueDiscordUsernames.length > 1 || uniqueDiscordIds.length > 1) {
+          if (!isAlreadyDetected(members)) {
+            duplicates.push({
+              key: twitchLogin,
+              type: "twitchLogin",
+              members: members,
+            });
+            markAsDetected(members);
+          }
+        }
+      }
+    }
+
+    // Vérifier les doublons par pseudo Discord (discordUsername)
     for (const [discordUsername, members] of Object.entries(membersByDiscordUsername)) {
       if (members.length > 1) {
-        // Vérifier si les Twitch logins sont différents
-        const twitchLogins = members.map((m) => m.twitchLogin.toLowerCase());
-        const uniqueTwitchLogins = [...new Set(twitchLogins)];
-        if (uniqueTwitchLogins.length > 1) {
-          // Vérifier si ce doublon n'a pas déjà été détecté par Discord ID
-          const alreadyDetected = duplicates.some((dup) =>
-            dup.members.some((m) =>
-              m.discordUsername?.toLowerCase() === discordUsername
-            )
-          );
-          if (!alreadyDetected) {
+        // Vérifier si au moins un critère diffère (displayName, Twitch, ou Discord ID)
+        const uniqueDisplayNames = [...new Set(members.map((m) => m.displayName?.toLowerCase().trim()).filter(Boolean))];
+        const uniqueTwitchLogins = [...new Set(members.map((m) => m.twitchLogin?.toLowerCase()).filter(Boolean))];
+        const uniqueDiscordIds = [...new Set(members.map((m) => m.discordId).filter(Boolean))];
+        
+        if (uniqueDisplayNames.length > 1 || uniqueTwitchLogins.length > 1 || uniqueDiscordIds.length > 1) {
+          if (!isAlreadyDetected(members)) {
             duplicates.push({
               key: discordUsername,
               type: "discordUsername",
               members: members,
             });
+            markAsDetected(members);
+          }
+        }
+      }
+    }
+
+    // Vérifier les doublons par ID Discord (discordId)
+    for (const [discordId, members] of Object.entries(membersByDiscordId)) {
+      if (members.length > 1) {
+        // Vérifier si au moins un critère diffère (displayName, Twitch, ou Discord username)
+        const uniqueDisplayNames = [...new Set(members.map((m) => m.displayName?.toLowerCase().trim()).filter(Boolean))];
+        const uniqueTwitchLogins = [...new Set(members.map((m) => m.twitchLogin?.toLowerCase()).filter(Boolean))];
+        const uniqueDiscordUsernames = [...new Set(members.map((m) => m.discordUsername?.toLowerCase()).filter(Boolean))];
+        
+        if (uniqueDisplayNames.length > 1 || uniqueTwitchLogins.length > 1 || uniqueDiscordUsernames.length > 1) {
+          if (!isAlreadyDetected(members)) {
+            duplicates.push({
+              key: discordId,
+              type: "discordId",
+              members: members,
+            });
+            markAsDetected(members);
           }
         }
       }
