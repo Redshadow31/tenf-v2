@@ -396,14 +396,44 @@ export async function loadMemberDataFromStorage(): Promise<void> {
   let adminData: Record<string, MemberData> = {};
   let botData: Record<string, MemberData> = {};
   
-  if (isNetlify()) {
-    // Charger depuis Netlify Blobs
+  // Vérifier si on peut utiliser Blobs (Netlify)
+  let useBlobs = false;
+  try {
+    const { getStore } = require("@netlify/blobs");
+    if (getStore) {
+      const testStore = getStore("tenf-admin-members");
+      if (testStore) {
+        useBlobs = true;
+      }
+    }
+  } catch {
+    // getStore non disponible
+  }
+  
+  // Si on n'est pas sur Netlify, vérifier si on peut utiliser les fichiers
+  if (!useBlobs) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const dataDir = path.join(process.cwd(), "data");
+      if (fs.existsSync(dataDir) || fs.existsSync(process.cwd())) {
+        // En développement local, utiliser les fichiers
+        adminData = loadAdminDataFromFile();
+        botData = loadBotDataFromFile();
+      } else {
+        // Si fichiers non disponibles, forcer Blobs
+        useBlobs = true;
+      }
+    } catch {
+      // Si on ne peut pas accéder au système de fichiers, forcer Blobs
+      useBlobs = true;
+    }
+  }
+  
+  // Sur Netlify ou si fichiers non disponibles, utiliser Blobs
+  if (useBlobs) {
     adminData = await loadAdminDataFromBlob();
     botData = await loadBotDataFromBlob();
-  } else {
-    // Charger depuis les fichiers locaux
-    adminData = loadAdminDataFromFile();
-    botData = loadBotDataFromFile();
   }
   
   // Fusionner avec priorité admin
@@ -411,7 +441,7 @@ export async function loadMemberDataFromStorage(): Promise<void> {
   
   // Sauvegarder le fichier fusionné (pour lecture rapide)
   if (typeof window === "undefined") {
-    if (isNetlify()) {
+    if (useBlobs) {
       await saveMergedDataToBlob();
     } else {
       saveMergedDataToFile();
