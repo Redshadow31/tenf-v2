@@ -27,6 +27,7 @@ interface PendingRaid {
 
 const RAID_BLOB_STORE = "tenf-raids";
 const PENDING_RAIDS_KEY = "pending-raids"; // Raids en attente de validation
+const UNMATCHED_RAIDS_STORE = "tenf-raids-unmatched"; // Messages non reconnus
 
 /**
  * Obtient la clé Blob pour le mois en cours (format: raids-YYYY-MM)
@@ -436,5 +437,161 @@ export async function hasExcessiveRaidsByDiscordId(discordId: string): Promise<b
   }
   
   return false;
+}
+
+/**
+ * Interface pour les messages non reconnus
+ */
+export interface UnmatchedRaidMessage {
+  id: string;
+  content: string;
+  timestamp: string;
+  reason: "regex_fail" | "unknown_raider" | "unknown_target";
+  messageId?: string; // ID du message Discord
+}
+
+/**
+ * Charge les messages non reconnus pour un mois donné
+ */
+export async function loadUnmatchedRaids(monthKey?: string): Promise<UnmatchedRaidMessage[]> {
+  const key = monthKey ? `${monthKey}-unmatched` : `${getCurrentMonthKey()}-unmatched`;
+  
+  try {
+    let useBlobs = false;
+    try {
+      if (typeof getStore === 'function') {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      }
+    } catch {
+      // Pas sur Netlify
+    }
+    
+    if (!useBlobs && (process.env.NETLIFY || process.env.NETLIFY_DEV)) {
+      try {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      } catch {
+        // Ignorer
+      }
+    }
+    
+    if (useBlobs) {
+      try {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        const data = await store.get(key, { type: "text" });
+        if (data) {
+          return JSON.parse(data);
+        }
+      } catch (error) {
+        console.error(`[Unmatched Raids] Erreur Blobs pour ${key}:`, error);
+      }
+    }
+    
+    // Fallback : fichiers locaux
+    const DATA_DIR = path.join(process.cwd(), "data");
+    const UNMATCHED_FILE = path.join(DATA_DIR, `${key}.json`);
+    if (fs.existsSync(UNMATCHED_FILE)) {
+      const fileContent = fs.readFileSync(UNMATCHED_FILE, "utf-8");
+      return JSON.parse(fileContent);
+    }
+  } catch (error) {
+    console.error(`[Unmatched Raids] Erreur lors du chargement pour ${key}:`, error);
+  }
+  
+  return [];
+}
+
+/**
+ * Sauvegarde les messages non reconnus pour un mois donné
+ */
+export async function saveUnmatchedRaids(
+  messages: UnmatchedRaidMessage[],
+  monthKey?: string
+): Promise<void> {
+  const key = monthKey ? `${monthKey}-unmatched` : `${getCurrentMonthKey()}-unmatched`;
+  
+  try {
+    let useBlobs = false;
+    try {
+      if (typeof getStore === 'function') {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      }
+    } catch {
+      // Pas sur Netlify
+    }
+    
+    if (!useBlobs && (process.env.NETLIFY || process.env.NETLIFY_DEV)) {
+      try {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      } catch {
+        // Ignorer
+      }
+    }
+    
+    if (useBlobs) {
+      try {
+        const store = getStore(UNMATCHED_RAIDS_STORE);
+        await store.set(key, JSON.stringify(messages, null, 2));
+        console.log(`[Unmatched Raids] Sauvegardé dans Blobs: ${key}, ${messages.length} messages`);
+      } catch (error) {
+        console.error(`[Unmatched Raids] Erreur lors de la sauvegarde dans Blobs pour ${key}:`, error);
+        throw error;
+      }
+    }
+    
+    // Toujours sauvegarder aussi en local
+    const DATA_DIR = path.join(process.cwd(), "data");
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const UNMATCHED_FILE = path.join(DATA_DIR, `${key}.json`);
+    fs.writeFileSync(UNMATCHED_FILE, JSON.stringify(messages, null, 2), "utf-8");
+    console.log(`[Unmatched Raids] Sauvegardé en local: ${key}, ${messages.length} messages`);
+  } catch (error) {
+    console.error(`[Unmatched Raids] Erreur lors de la sauvegarde pour ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Ajoute un message non reconnu
+ */
+export async function addUnmatchedRaid(
+  message: UnmatchedRaidMessage,
+  monthKey?: string
+): Promise<void> {
+  const unmatched = await loadUnmatchedRaids(monthKey);
+  
+  // Vérifier si le message n'existe pas déjà
+  const existing = unmatched.find(m => m.id === message.id || m.messageId === message.messageId);
+  if (existing) {
+    return; // Déjà présent
+  }
+  
+  unmatched.push(message);
+  await saveUnmatchedRaids(unmatched, monthKey);
+}
+
+/**
+ * Retire un message non reconnu après validation manuelle
+ */
+export async function removeUnmatchedRaid(
+  messageId: string,
+  monthKey?: string
+): Promise<void> {
+  const unmatched = await loadUnmatchedRaids(monthKey);
+  const filtered = unmatched.filter(m => m.id !== messageId && m.messageId !== messageId);
+  await saveUnmatchedRaids(filtered, monthKey);
 }
 

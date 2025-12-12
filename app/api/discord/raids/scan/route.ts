@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addPendingRaid, validatePendingRaid, rejectPendingRaid, loadPendingRaids } from '@/lib/raids';
+import { addPendingRaid, validatePendingRaid, rejectPendingRaid, loadPendingRaids, addUnmatchedRaid, getCurrentMonthKey, getMonthKey } from '@/lib/raids';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
 const COORDINATION_RAID_CHANNEL_ID = "1278840270753894535";
@@ -10,6 +10,7 @@ const MAX_MESSAGES_TO_SCAN = 5000; // Maximum de messages à scanner (sécurité
 /**
  * POST - Scanne les messages du salon coordination-raid et vérifie les réactions
  * Cette route peut être appelée périodiquement pour synchroniser les raids validés
+ * Query params: ?month=YYYY-MM (optionnel, par défaut mois en cours)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,32 @@ export async function POST(request: NextRequest) {
         { error: 'Discord bot token not configured' },
         { status: 500 }
       );
+    }
+    
+    // Récupérer le paramètre de mois depuis l'URL
+    const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get('month');
+    let targetMonthKey: string | undefined;
+    let targetYear: number | undefined;
+    let targetMonth: number | undefined;
+    
+    if (monthParam) {
+      const monthMatch = monthParam.match(/^(\d{4})-(\d{2})$/);
+      if (monthMatch) {
+        targetYear = parseInt(monthMatch[1]);
+        targetMonth = parseInt(monthMatch[2]);
+        if (targetMonth >= 1 && targetMonth <= 12) {
+          targetMonthKey = getMonthKey(targetYear, targetMonth);
+        }
+      }
+    }
+    
+    // Si pas de mois spécifié, utiliser le mois en cours
+    if (!targetMonthKey) {
+      targetMonthKey = getCurrentMonthKey();
+      const now = new Date();
+      targetYear = now.getFullYear();
+      targetMonth = now.getMonth() + 1;
     }
 
     // Charger les données des membres
@@ -168,6 +195,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Raid Scan] Scan terminé: ${totalMessagesFetched} messages récupérés au total`);
     
+    // Filtrer les messages par mois si un mois cible est spécifié
+    let messagesToProcess = messages;
+    if (targetYear && targetMonth) {
+      messagesToProcess = messages.filter(msg => {
+        try {
+          const msgDate = new Date(msg.timestamp);
+          const msgYear = msgDate.getFullYear();
+          const msgMonth = msgDate.getMonth() + 1;
+          return msgYear === targetYear && msgMonth === targetMonth;
+        } catch {
+          return false;
+        }
+      });
+      console.log(`[Raid Scan] Filtrage par mois ${targetYear}-${String(targetMonth).padStart(2, '0')}: ${messagesToProcess.length} messages sur ${messages.length}`);
+    }
+    
     // Pattern robuste pour détecter "@Pseudo a raid @Cible" avec variations
     // Extrait UNIQUEMENT le nom avant la parenthèse (si présente)
     // Exemples supportés:
@@ -186,7 +229,7 @@ export async function POST(request: NextRequest) {
     const pendingRaids = await loadPendingRaids();
     const processedMessageIds = new Set(pendingRaids.map(r => r.messageId));
     
-    for (const message of messages) {
+    for (const message of messagesToProcess) {
       const content = message.content;
       if (!content || content.trim().length === 0) {
         continue;
@@ -212,6 +255,20 @@ export async function POST(request: NextRequest) {
           errors.push(errorMsg);
           unrecognizedMessages.push(`[Raider] ${content.substring(0, 150)}`);
           console.warn(`[Raid Scan] ${errorMsg}`);
+          
+          // Ajouter dans unmatched pour traitement manuel
+          try {
+            await addUnmatchedRaid({
+              id: message.id,
+              content: content,
+              timestamp: message.timestamp,
+              reason: "unknown_raider",
+              messageId: message.id,
+            }, targetMonthKey);
+            console.log(`[Raid Scan] Message ajouté dans unmatched (raider inconnu): ${message.id}`);
+          } catch (error) {
+            console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+          }
           continue;
         }
         
@@ -220,6 +277,20 @@ export async function POST(request: NextRequest) {
           errors.push(errorMsg);
           unrecognizedMessages.push(`[Target] ${content.substring(0, 150)}`);
           console.warn(`[Raid Scan] ${errorMsg}`);
+          
+          // Ajouter dans unmatched pour traitement manuel
+          try {
+            await addUnmatchedRaid({
+              id: message.id,
+              content: content,
+              timestamp: message.timestamp,
+              reason: "unknown_target",
+              messageId: message.id,
+            }, targetMonthKey);
+            console.log(`[Raid Scan] Message ajouté dans unmatched (cible inconnue): ${message.id}`);
+          } catch (error) {
+            console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+          }
           continue;
         }
         
@@ -337,6 +408,20 @@ export async function POST(request: NextRequest) {
           messagesNotRecognized++;
           unrecognizedMessages.push(`[Format non reconnu] ${content.substring(0, 200)}`);
           console.log(`[Raid Scan] Message non reconnu (contient "raid"): "${content.substring(0, 100)}..."`);
+          
+          // Ajouter dans unmatched pour traitement manuel
+          try {
+            await addUnmatchedRaid({
+              id: message.id,
+              content: content,
+              timestamp: message.timestamp,
+              reason: "regex_fail",
+              messageId: message.id,
+            }, targetMonthKey);
+            console.log(`[Raid Scan] Message ajouté dans unmatched: ${message.id}`);
+          } catch (error) {
+            console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+          }
         }
       }
     }

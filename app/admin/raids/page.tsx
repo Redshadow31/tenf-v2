@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
+import Link from "next/link";
 
 interface RaidStats {
   done: number;
@@ -193,7 +194,7 @@ export default function RaidsPage() {
       <div className="p-8">
         <AdminHeader title="Suivi des Raids" navLinks={navLinks} />
 
-        {/* En-tête avec sélecteur de mois et bouton scan */}
+        {/* En-tête avec sélecteur de mois et boutons */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
@@ -224,12 +225,20 @@ export default function RaidsPage() {
               </select>
             </div>
           </div>
-          <button
-            onClick={scanRaids}
-            className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-          >
-            🔄 Scanner les raids
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/admin/raids/review?month=${selectedMonth}`}
+              className="bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-300 font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              🔧 Vérifier les raids non reconnus
+            </Link>
+            <button
+              onClick={scanRaids}
+              className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              🔄 Scanner les raids
+            </button>
+          </div>
         </div>
 
         {/* Tableau des raids */}
