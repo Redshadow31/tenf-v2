@@ -77,6 +77,17 @@ export async function POST(request: NextRequest) {
           const message: any = await messageResponse.json();
           const content = message.content;
           
+          // Déterminer le mois depuis le timestamp du message
+          let monthKey: string | undefined;
+          try {
+            const { getMonthKey } = await import('@/lib/raids');
+            const msgDate = new Date(message.timestamp);
+            monthKey = getMonthKey(msgDate.getFullYear(), msgDate.getMonth() + 1);
+            console.log(`[Raid Reaction] Mois déterminé depuis timestamp: ${monthKey} (${message.timestamp})`);
+          } catch (error) {
+            console.warn(`[Raid Reaction] Impossible de déterminer le mois depuis le timestamp: ${message.timestamp}`, error);
+          }
+          
           // Pattern flexible pour détecter "@Pseudo a raid @Cible" avec variations
           const raidPattern = /@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?\s+a\s+raid\s+@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?/i;
           const match = content.match(raidPattern);
@@ -151,13 +162,14 @@ export async function POST(request: NextRequest) {
             const raiderDiscordId = raider.discordId;
             const targetDiscordId = target.discordId;
             
-            // Ajouter le raid en attente
+            // Ajouter le raid en attente avec le monthKey
             await addPendingRaid(
               messageId,
               raiderDiscordId,
               targetDiscordId,
               raider?.twitchLogin,
-              target?.twitchLogin
+              target?.twitchLogin,
+              monthKey
             );
             
             // Si c'est une validation immédiate (✅), valider le raid

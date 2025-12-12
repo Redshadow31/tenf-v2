@@ -23,6 +23,7 @@ interface PendingRaid {
   raiderTwitchLogin?: string;
   targetTwitchLogin?: string;
   timestamp: string;
+  monthKey?: string; // Clé du mois pour lequel ce raid doit être enregistré
 }
 
 const RAID_BLOB_STORE = "tenf-raids";
@@ -319,13 +320,19 @@ export async function addPendingRaid(
   raiderDiscordId: string,
   targetDiscordId: string,
   raiderTwitchLogin?: string,
-  targetTwitchLogin?: string
+  targetTwitchLogin?: string,
+  monthKey?: string
 ): Promise<void> {
   const pendingRaids = await loadPendingRaids();
   
   // Vérifier si ce message n'est pas déjà en attente
   const existing = pendingRaids.find(r => r.messageId === messageId);
   if (existing) {
+    // Mettre à jour le monthKey si fourni
+    if (monthKey) {
+      existing.monthKey = monthKey;
+      await savePendingRaids(pendingRaids);
+    }
     return; // Déjà en attente
   }
   
@@ -336,6 +343,7 @@ export async function addPendingRaid(
     raiderTwitchLogin,
     targetTwitchLogin,
     timestamp: new Date().toISOString(),
+    monthKey,
   });
   
   await savePendingRaids(pendingRaids);
@@ -352,8 +360,20 @@ export async function validatePendingRaid(messageId: string): Promise<boolean> {
     return false; // Raid non trouvé
   }
   
+  // Enregistrer le raid validé dans le bon mois (utiliser le monthKey stocké ou déterminer depuis timestamp)
+  let monthKey = raid.monthKey;
+  if (!monthKey && raid.timestamp) {
+    // Déterminer le mois depuis le timestamp du message
+    try {
+      const msgDate = new Date(raid.timestamp);
+      monthKey = getMonthKey(msgDate.getFullYear(), msgDate.getMonth() + 1);
+    } catch (error) {
+      console.warn(`[Raids] Impossible de déterminer le mois depuis le timestamp: ${raid.timestamp}`, error);
+    }
+  }
+  
   // Enregistrer le raid validé
-  await recordRaidByDiscordId(raid.raiderDiscordId, raid.targetDiscordId);
+  await recordRaidByDiscordId(raid.raiderDiscordId, raid.targetDiscordId, monthKey);
   
   // Retirer de la liste des raids en attente
   const updated = pendingRaids.filter(r => r.messageId !== messageId);

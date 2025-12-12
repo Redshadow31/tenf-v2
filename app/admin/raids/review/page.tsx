@@ -260,6 +260,15 @@ export default function RaidsReviewPage() {
       return;
     }
     
+    if (!selection.raider.discordId || !selection.target.discordId) {
+      alert("Erreur: Le raider ou la cible n'a pas d'ID Discord. Veuillez sélectionner des membres valides.");
+      console.error("Membres sélectionnés sans Discord ID:", {
+        raider: selection.raider,
+        target: selection.target,
+      });
+      return;
+    }
+    
     if (selection.raider.discordId === selection.target.discordId) {
       alert("Le raider et la cible ne peuvent pas être la même personne");
       return;

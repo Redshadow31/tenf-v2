@@ -89,8 +89,17 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Enregistrer le raid validé manuellement
-    await recordRaidByDiscordId(raiderDiscordId, targetDiscordId);
+    // Si monthKey n'est pas défini, utiliser le mois en cours
+    if (!monthKey) {
+      const { getCurrentMonthKey } = await import('@/lib/raids');
+      monthKey = getCurrentMonthKey();
+      console.warn(`[Unmatched Raids] MonthKey non défini, utilisation du mois en cours: ${monthKey}`);
+    }
+    
+    console.log(`[Unmatched Raids] Validation manuelle: ${raiderDiscordId} → ${targetDiscordId} (${monthKey})`);
+    
+    // Enregistrer le raid validé manuellement dans le bon mois
+    await recordRaidByDiscordId(raiderDiscordId, targetDiscordId, monthKey);
     
     // Retirer le message de la liste des non reconnus
     await removeUnmatchedRaid(messageId, monthKey);
@@ -110,8 +119,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Erreur lors de la validation manuelle du raid:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+    console.error("Détails de l'erreur:", {
+      messageId,
+      raiderDiscordId,
+      targetDiscordId,
+      month,
+      monthKey,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
-      { error: "Erreur serveur" },
+      { error: `Erreur serveur: ${errorMessage}` },
       { status: 500 }
     );
   }

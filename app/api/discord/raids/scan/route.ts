@@ -345,7 +345,8 @@ export async function POST(request: NextRequest) {
                   finalRaiderId,
                   finalTargetId,
                   raider.twitchLogin,
-                  target.twitchLogin
+                  target.twitchLogin,
+                  targetMonthKey
                 );
                 newRaidsAdded++;
                 console.log(`[Raid Scan] Raid ajouté en attente via Discord ID: ${messageId}`);
@@ -487,7 +488,8 @@ export async function POST(request: NextRequest) {
                 finalRaiderDiscordId,
                 finalTargetDiscordId,
                 raider.twitchLogin,
-                target.twitchLogin
+                target.twitchLogin,
+                targetMonthKey
               );
               newRaidsAdded++;
               console.log(`[Raid Scan] Raid ajouté en attente: ${messageId}`);
@@ -504,7 +506,8 @@ export async function POST(request: NextRequest) {
                 finalRaiderDiscordId,
                 finalTargetDiscordId,
                 raider.twitchLogin,
-                target.twitchLogin
+                target.twitchLogin,
+                targetMonthKey
               );
               await validatePendingRaid(messageId);
               raidsValidated++;
@@ -522,7 +525,8 @@ export async function POST(request: NextRequest) {
                 finalRaiderDiscordId,
                 finalTargetDiscordId,
                 raider.twitchLogin,
-                target.twitchLogin
+                target.twitchLogin,
+                targetMonthKey
               );
               await rejectPendingRaid(messageId);
               raidsRejected++;
