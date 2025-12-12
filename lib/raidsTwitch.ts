@@ -90,9 +90,8 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
     const raider = raiderMember?.twitchLogin?.toLowerCase() || event.from_broadcaster_user_login.toLowerCase();
     const target = targetMember?.twitchLogin?.toLowerCase() || event.to_broadcaster_user_login.toLowerCase();
 
-    // Déterminer le mois actuel
+    // monthKey est déjà défini plus haut, pas besoin de le redéfinir
     const now = new Date();
-    const monthKey = getCurrentMonthKey();
 
     console.log(`[Twitch Raid] Enregistrement: ${raider} → ${target} (${event.viewers} viewers) - ${monthKey}`);
 

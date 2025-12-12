@@ -10,13 +10,15 @@ export {
   hasAdminRole,
   isFounder,
   hasPermission,
-  canPerformAction,
   hasAdminDashboardAccess,
   getUserPermissions,
   getRoleDisplayName,
   type AdminRole,
   type Permission,
 } from "./adminRoles";
+
+// Re-export canPerformAction avec un alias pour éviter les conflits
+export { canPerformAction as canPerformAdminAction } from "./adminRoles";
 
 // Re-export pour compatibilité avec l'ancien code
 export type { AdminRole as LegacyAdminRole } from "./adminRoles";
