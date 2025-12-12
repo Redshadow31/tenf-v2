@@ -128,8 +128,9 @@ export async function POST(request: NextRequest) {
     // Récupérer les membres depuis le canal Discord pour avoir leurs chaînes Twitch
     let channelMembers: Map<string, { twitchLogin: string; twitchUrl: string }> = new Map();
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
       const channelResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/discord/channel/members`,
+        `${baseUrl}/api/discord/channel/members`,
         {
           headers: {
             Authorization: `Bearer ${DISCORD_BOT_TOKEN}`, // Pas nécessaire mais pour cohérence
