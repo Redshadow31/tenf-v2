@@ -536,6 +536,7 @@ export default function TwitchRaidsPage() {
                                       target: String(target || ''),
                                       count: Number(count) || 0,
                                     }))}
+                                  getMemberDisplayName={getMemberDisplayName}
                                 />
                               ) : (
                                 <span className="text-gray-500 text-sm">-</span>
