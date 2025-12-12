@@ -54,6 +54,37 @@ export default function TwitchRaidsPage() {
     }
     loadAdmin();
 
+    // Vérifier le statut des subscriptions EventSub
+    async function checkSubscriptionStatus() {
+      try {
+        const response = await fetch("/api/twitch/eventsub/subscribe");
+        if (response.ok) {
+          const data = await response.json();
+          setSubscriptionStatus({
+            checked: true,
+            hasError: false,
+            activeCount: data.activeSubscriptions || 0,
+            totalCount: data.totalMembers || 0,
+          });
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          setSubscriptionStatus({
+            checked: true,
+            hasError: true,
+            errorMessage: errorData.error || "Impossible de vérifier le statut des subscriptions",
+          });
+        }
+      } catch (error) {
+        console.error("[Twitch Raids] Erreur vérification subscriptions:", error);
+        setSubscriptionStatus({
+          checked: true,
+          hasError: true,
+          errorMessage: "Erreur lors de la vérification des subscriptions EventSub",
+        });
+      }
+    }
+    checkSubscriptionStatus();
+
     // Initialiser le mois actuel
     const now = new Date();
     const year = now.getFullYear();
