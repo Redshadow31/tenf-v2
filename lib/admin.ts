@@ -78,7 +78,8 @@ export async function getCurrentAdmin() {
       return null;
     }
 
-    const role = getAdminRole(userId);
+    // Utiliser la fonction importée depuis adminRoles
+    const role = getNewAdminRole(userId);
     if (!role) {
       return null;
     }
