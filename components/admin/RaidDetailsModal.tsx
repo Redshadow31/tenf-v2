@@ -50,15 +50,29 @@ export default function RaidDetailsModal({
   async function loadDetails() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/discord/raids/details?member=${memberTwitchLogin}&month=${month}`, {
+      const url = `/api/discord/raids/details?member=${encodeURIComponent(memberTwitchLogin)}&month=${encodeURIComponent(month)}`;
+      console.log(`[RaidDetailsModal] Chargement des détails: ${url}`);
+      
+      const response = await fetch(url, {
         cache: 'no-store',
       });
       
       if (response.ok) {
         const data = await response.json();
+        console.log(`[RaidDetailsModal] Données reçues:`, {
+          hasDetails: !!data.details,
+          raidsCount: data.details?.raids?.length || 0,
+          receivedRaidsCount: data.details?.receivedRaids?.length || 0,
+          fullData: data,
+        });
         setDetails(data.details || { raids: [], receivedRaids: [] });
       } else {
-        console.error("Erreur lors du chargement des détails");
+        const errorText = await response.text();
+        console.error("Erreur lors du chargement des détails:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
         setDetails({ raids: [], receivedRaids: [] });
       }
     } catch (error) {
@@ -214,7 +228,15 @@ export default function RaidDetailsModal({
                   </button>
                 </div>
                 {details?.raids.length === 0 ? (
-                  <p className="text-gray-400 text-sm">Aucun raid fait</p>
+                  <div className="text-gray-400 text-sm">
+                    <p>Aucun raid fait</p>
+                    {details && (details as any).hasLegacyData && (
+                      <p className="text-yellow-400 text-xs mt-2">
+                        ⚠️ Les raids de ce membre ont été enregistrés avant l'ajout du système de détails. 
+                        Les dates individuelles ne sont pas disponibles.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="bg-[#0e0e10] border border-gray-800 rounded-lg overflow-hidden">
                     <table className="w-full">
@@ -270,7 +292,15 @@ export default function RaidDetailsModal({
                   Raids reçus ({details?.receivedRaids.length || 0})
                 </h3>
                 {details?.receivedRaids.length === 0 ? (
-                  <p className="text-gray-400 text-sm">Aucun raid reçu</p>
+                  <div className="text-gray-400 text-sm">
+                    <p>Aucun raid reçu</p>
+                    {details && (details as any).hasLegacyData && (
+                      <p className="text-yellow-400 text-xs mt-2">
+                        ⚠️ Les raids de ce membre ont été enregistrés avant l'ajout du système de détails. 
+                        Les dates individuelles ne sont pas disponibles.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="bg-[#0e0e10] border border-gray-800 rounded-lg overflow-hidden">
                     <table className="w-full">
