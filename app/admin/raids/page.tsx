@@ -126,13 +126,14 @@ export default function RaidsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        alert(
+        const message = 
           `Scan terminé :\n` +
+          `- ${data.messagesScanned || 0} message(s) scanné(s) dans l'historique\n` +
           `- ${data.newRaidsAdded || 0} nouveau(x) raid(s) ajouté(s) en attente\n` +
           `- ${data.raidsValidated || 0} raid(s) validé(s)\n` +
           `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n` +
-          `- ${data.messagesScanned || 0} message(s) scanné(s)`
-        );
+          (data.maxReached ? `\n⚠️ Maximum de messages atteint (5000), le scan a été arrêté.` : '');
+        alert(message);
         await loadData(selectedMonth);
       } else {
         const error = await response.json();

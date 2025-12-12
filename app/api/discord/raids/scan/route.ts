@@ -5,6 +5,7 @@ import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 const COORDINATION_RAID_CHANNEL_ID = "1278840270753894535";
 const CHECKMARK_EMOJI = "✅"; // Unicode: U+2705
 const CROSS_EMOJI = "❌"; // Unicode: U+274C
+const MAX_MESSAGES_TO_SCAN = 5000; // Maximum de messages à scanner (sécurité)
 
 /**
  * POST - Scanne les messages du salon coordination-raid et vérifie les réactions
@@ -77,25 +78,62 @@ export async function POST(request: NextRequest) {
       return null;
     }
 
-    // Récupérer les messages récents du salon coordination-raid
-    const messagesResponse = await fetch(
-      `https://discord.com/api/v10/channels/${COORDINATION_RAID_CHANNEL_ID}/messages?limit=100`,
-      {
+    // Récupérer TOUS les messages du salon coordination-raid avec pagination
+    const messages: any[] = [];
+    let before: string | undefined = undefined;
+    let hasMore = true;
+    let totalMessagesFetched = 0;
+
+    console.log(`[Raid Scan] Début du scan avec pagination (max ${MAX_MESSAGES_TO_SCAN} messages)`);
+
+    while (hasMore && totalMessagesFetched < MAX_MESSAGES_TO_SCAN) {
+      const url = `https://discord.com/api/v10/channels/${COORDINATION_RAID_CHANNEL_ID}/messages?limit=100${before ? `&before=${before}` : ''}`;
+      
+      const messagesResponse = await fetch(url, {
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
         },
-      }
-    );
+      });
 
-    if (!messagesResponse.ok) {
-      const errorText = await messagesResponse.text();
-      return NextResponse.json(
-        { error: 'Failed to fetch Discord messages', details: errorText },
-        { status: messagesResponse.status }
-      );
+      if (!messagesResponse.ok) {
+        const errorText = await messagesResponse.text();
+        console.error(`[Raid Scan] Erreur API Discord (batch ${Math.floor(totalMessagesFetched / 100) + 1}):`, errorText);
+        
+        // Si c'est une erreur de rate limit, on arrête mais on retourne ce qu'on a déjà
+        if (messagesResponse.status === 429) {
+          console.warn(`[Raid Scan] Rate limit atteint, arrêt du scan avec ${totalMessagesFetched} messages`);
+          break;
+        }
+        
+        return NextResponse.json(
+          { error: 'Failed to fetch Discord messages', details: errorText },
+          { status: messagesResponse.status }
+        );
+      }
+
+      const batch: any[] = await messagesResponse.json();
+      messages.push(...batch);
+      totalMessagesFetched += batch.length;
+
+      console.log(`[Raid Scan] Batch ${Math.floor(totalMessagesFetched / 100)}: ${batch.length} messages (total: ${totalMessagesFetched})`);
+
+      // Si on a récupéré moins de 100 messages, on a atteint la fin de l'historique
+      if (batch.length < 100) {
+        hasMore = false;
+        console.log(`[Raid Scan] Fin de l'historique atteinte (${batch.length} messages dans le dernier batch)`);
+      } else {
+        // Utiliser l'ID du dernier message comme cursor pour la pagination
+        before = batch[batch.length - 1].id;
+      }
+      
+      // Sécurité : arrêter si on atteint le maximum
+      if (totalMessagesFetched >= MAX_MESSAGES_TO_SCAN) {
+        console.warn(`[Raid Scan] Maximum de ${MAX_MESSAGES_TO_SCAN} messages atteint, arrêt du scan`);
+        hasMore = false;
+      }
     }
 
-    const messages: any[] = await messagesResponse.json();
+    console.log(`[Raid Scan] Scan terminé: ${totalMessagesFetched} messages récupérés au total`);
     
     // Pattern flexible pour détecter "@Pseudo a raid @Cible" avec variations
     // Accepte: "@Pseudo a raid @Cible", "@Pseudo ( NomServeur ) a raid @Cible", etc.
@@ -227,8 +265,10 @@ export async function POST(request: NextRequest) {
       newRaidsAdded,
       raidsValidated,
       raidsRejected,
-      messagesScanned: messages.length,
+      messagesScanned: totalMessagesFetched,
+      totalMessagesInHistory: messages.length,
       errors: errors.length > 0 ? errors : undefined,
+      maxReached: totalMessagesFetched >= MAX_MESSAGES_TO_SCAN,
     });
   } catch (error) {
     console.error("Erreur lors du scan des raids:", error);
