@@ -280,7 +280,21 @@ export async function POST(request: NextRequest) {
         m.twitchLogin === existing.twitchLogin
       ) : null;
       
-      // PROTECTION : Ne JAMAIS écraser les données manuelles
+      // Vérifier si le membre a été supprimé (entrée __deleted_* dans adminData)
+      const isDeleted = Object.keys(adminData).some(key => 
+        key.startsWith("__deleted_") && (
+          key.replace("__deleted_", "") === (existing?.twitchLogin.toLowerCase() || twitchLogin.toLowerCase()) ||
+          (adminMember && key.replace("__deleted_", "") === adminMember.twitchLogin.toLowerCase())
+        )
+      ) || (adminMember && (adminMember as any).deleted === true);
+      
+      // PROTECTION : Ne JAMAIS écraser les données manuelles ou resynchroniser les membres supprimés
+      if (isDeleted) {
+        console.log(`[Discord Sync] Membre ${discordUsername} ignoré - membre supprimé`);
+        skippedManual++;
+        continue;
+      }
+      
       if (adminMember || (existing && existing.roleManuallySet)) {
         console.log(`[Discord Sync] Membre ${discordUsername} ignoré - modifications manuelles protégées`);
         skippedManual++;

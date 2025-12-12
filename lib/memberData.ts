@@ -364,24 +364,57 @@ function mergeAdminAndBotData(
 ): Record<string, MemberData> {
   const merged: Record<string, MemberData> = {};
   
-  // D'abord, ajouter toutes les données bot
+  // Créer une liste des membres supprimés depuis adminData
+  const deletedMembers = new Set<string>();
+  for (const [key, adminMember] of Object.entries(adminData)) {
+    if (key.startsWith("__deleted_")) {
+      // Extraire le login depuis la clé __deleted_<login>
+      const login = key.replace("__deleted_", "");
+      deletedMembers.add(login);
+    } else if ((adminMember as any).deleted === true) {
+      // Membre marqué comme supprimé
+      deletedMembers.add(adminMember.twitchLogin.toLowerCase());
+    }
+  }
+  
+  // D'abord, ajouter toutes les données bot (sauf les membres supprimés)
   for (const [key, botMember] of Object.entries(botData)) {
-    merged[key] = { ...botMember };
+    const login = botMember.twitchLogin.toLowerCase();
+    if (!deletedMembers.has(login)) {
+      merged[login] = { ...botMember };
+    }
   }
   
   // Ensuite, écraser avec les données admin (priorité absolue)
+  // Exclure les entrées de suppression (__deleted_*)
   for (const [key, adminMember] of Object.entries(adminData)) {
-    if (merged[key]) {
+    // Ignorer les entrées de suppression
+    if (key.startsWith("__deleted_")) {
+      continue;
+    }
+    
+    // Ignorer les membres marqués comme supprimés
+    if ((adminMember as any).deleted === true) {
+      continue;
+    }
+    
+    const login = adminMember.twitchLogin.toLowerCase();
+    // Ignorer si le membre est dans la liste des supprimés
+    if (deletedMembers.has(login)) {
+      continue;
+    }
+    
+    if (merged[login]) {
       // Fusionner : admin a priorité sur tous les champs
-      merged[key] = {
-        ...merged[key], // Base bot
+      merged[login] = {
+        ...merged[login], // Base bot
         ...adminMember, // Écraser avec admin (priorité absolue)
         // Préserver certains champs de bot si admin ne les a pas définis
-        twitchStatus: adminMember.twitchStatus || merged[key].twitchStatus,
+        twitchStatus: adminMember.twitchStatus || merged[login].twitchStatus,
       };
     } else {
       // Membre uniquement dans admin
-      merged[key] = { ...adminMember };
+      merged[login] = { ...adminMember };
     }
   }
   
@@ -847,9 +880,11 @@ export async function createMemberData(
 }
 
 /**
- * Supprime un membre (DASHBOARD ADMIN - marque comme supprimé dans admin-members-data)
- * IMPORTANT: Si le membre existe dans botData mais pas dans adminData, on crée une entrée admin
- * avec isActive: false pour qu'il soit exclu de la fusion
+ * Supprime complètement un membre du système (DASHBOARD ADMIN)
+ * - Supprime de adminData
+ * - Supprime de botData
+ * - Crée une entrée de suppression dans adminData pour empêcher la resynchronisation
+ * - Recharge les données fusionnées
  */
 export async function deleteMemberData(twitchLogin: string, deletedBy?: string): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
@@ -863,25 +898,47 @@ export async function deleteMemberData(twitchLogin: string, deletedBy?: string):
     return false;
   }
   
-  // Charger les données admin actuelles
+  // Charger les données admin et bot séparément
   const adminData = await loadAdminDataFromStorage();
+  const botData = await loadBotDataFromStorage();
   
-  // Si le membre existe dans adminData, le supprimer complètement
+  // Supprimer de adminData si présent
   if (adminData[login]) {
     delete adminData[login];
-  } else {
-    // Le membre existe dans botData mais pas dans adminData
-    // Créer une entrée admin avec isActive: false pour l'exclure de la fusion
-    adminData[login] = {
-      ...existing,
-      isActive: false,
-      updatedAt: new Date(),
-      updatedBy: deletedBy || "admin",
-    };
   }
   
-  // Sauvegarder les données admin
+  // Supprimer de botData si présent
+  if (botData[login]) {
+    delete botData[login];
+  }
+  
+  // Créer une entrée de suppression dans adminData pour empêcher la resynchronisation
+  // Cette entrée sera utilisée pour exclure le membre de la fusion et empêcher la resynchronisation Discord
+  adminData[`__deleted_${login}`] = {
+    twitchLogin: login,
+    twitchUrl: existing.twitchUrl || `https://www.twitch.tv/${login}`,
+    displayName: existing.displayName || login,
+    role: existing.role || "Affilié",
+    isVip: false,
+    isActive: false,
+    deleted: true, // Flag spécial pour indiquer que c'est une suppression
+    updatedAt: new Date(),
+    updatedBy: deletedBy || "admin",
+  } as any;
+  
+  // Sauvegarder les données admin (avec l'entrée de suppression)
   await saveAdminData(adminData);
+  
+  // Sauvegarder les données bot (sans le membre supprimé)
+  await saveBotData(botData);
+  
+  // Recharger les données fusionnées pour mettre à jour memberDataStore
+  await loadMemberDataFromStorage();
+  
+  // Vérifier que le membre a bien été supprimé de memberDataStore
+  if (memberDataStore[login]) {
+    console.warn(`[Delete Member] Le membre ${login} est toujours présent dans memberDataStore après suppression`);
+  }
   
   return true;
 }
