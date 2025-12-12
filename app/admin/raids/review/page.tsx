@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import Link from "next/link";
-import { extractDiscordIds } from "@/lib/raidUtils";
+import { extractDiscordIds } from "@/lib/raidUtilsClient";
 
 interface UnmatchedRaidMessage {
   id: string;
