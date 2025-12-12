@@ -82,23 +82,24 @@ export async function POST(request: NextRequest) {
     let errorCount = 0;
 
     for (const member of membersWithTwitch) {
-      let broadcasterId = member.twitchId;
+      let broadcasterId: string | undefined = member.twitchId;
 
       // Si l'ID n'est pas encore résolu, essayer de le résoudre maintenant
       if (!broadcasterId) {
         console.log(`[Twitch EventSub Setup] Résolution de l'ID pour ${member.twitchLogin}...`);
-        broadcasterId = await getTwitchUserIdByLogin(member.twitchLogin!);
+        const resolvedId = await getTwitchUserIdByLogin(member.twitchLogin!);
         
-      if (broadcasterId) {
-        member.twitchId = broadcasterId;
-        resolvedIds.set(member.twitchLogin!.toLowerCase(), broadcasterId);
-        // Sauvegarder l'ID résolu
-        try {
-          await updateMemberData(member.twitchLogin!, { twitchId: broadcasterId }, 'system');
-        } catch (error) {
-          console.error(`[Twitch EventSub Setup] Erreur sauvegarde ${member.twitchLogin}:`, error);
+        if (resolvedId) {
+          broadcasterId = resolvedId;
+          member.twitchId = broadcasterId;
+          resolvedIds.set(member.twitchLogin!.toLowerCase(), broadcasterId);
+          // Sauvegarder l'ID résolu
+          try {
+            await updateMemberData(member.twitchLogin!, { twitchId: broadcasterId }, 'system');
+          } catch (error) {
+            console.error(`[Twitch EventSub Setup] Erreur sauvegarde ${member.twitchLogin}:`, error);
+          }
         }
-      }
       }
 
       if (!broadcasterId) {
