@@ -1,5 +1,5 @@
 // Système centralisé de gestion des données des membres TENF
-// Toutes les informations des membres sont stockées ici et synchronisées partout
+// SÉPARATION ADMIN/BOT : Les modifications manuelles (admin) ont TOUJOURS priorité sur les synchronisations automatiques (bot)
 
 import { allMembers } from "./members";
 import { memberRoles, getMemberRole, getBadgesForMember, type MemberRole } from "./memberRoles";
@@ -45,16 +45,22 @@ export interface MemberData {
   updatedBy?: string; // ID Discord de l'admin qui a modifié
 }
 
-// Stockage en mémoire avec persistance dans un fichier JSON ou Netlify Blobs
+// Stockage en mémoire (fusionné des deux sources)
 let memberDataStore: Record<string, MemberData> = {};
 
-// Chemin du fichier de persistance (pour développement local)
+// Chemins des fichiers de persistance (pour développement local)
 const DATA_DIR = path.join(process.cwd(), "data");
-const MEMBERS_DATA_FILE = path.join(DATA_DIR, "members.json");
+const ADMIN_DATA_FILE = path.join(DATA_DIR, "admin-members.json");
+const BOT_DATA_FILE = path.join(DATA_DIR, "bot-members.json");
+const MEMBERS_DATA_FILE = path.join(DATA_DIR, "members.json"); // Fichier fusionné (lecture seule)
 
-// Clé pour Netlify Blobs
-const BLOB_STORE_NAME = "tenf-members";
-const BLOB_KEY = "members-data";
+// Stores Netlify Blobs
+const ADMIN_BLOB_STORE = "tenf-admin-members";
+const BOT_BLOB_STORE = "tenf-bot-members";
+const ADMIN_BLOB_KEY = "admin-members-data";
+const BOT_BLOB_KEY = "bot-members-data";
+const MERGED_BLOB_STORE = "tenf-members";
+const MERGED_BLOB_KEY = "members-data"; // Fichier fusionné (généré automatiquement)
 
 /**
  * Détecte si on est sur Netlify
@@ -63,26 +69,23 @@ function isNetlify(): boolean {
   return !!(
     process.env.NETLIFY ||
     process.env.NETLIFY_DEV ||
-    process.env.VERCEL === undefined // Si pas Vercel, probablement Netlify
+    process.env.VERCEL === undefined
   );
 }
 
 /**
- * Charge les données depuis Netlify Blobs
+ * Charge les données admin depuis Netlify Blobs
  */
-async function loadMemberDataFromBlob(): Promise<Record<string, MemberData>> {
+async function loadAdminDataFromBlob(): Promise<Record<string, MemberData>> {
   try {
-    const store = getStore(BLOB_STORE_NAME);
-    
-    const data = await store.get(BLOB_KEY, { type: "text" });
+    const store = getStore(ADMIN_BLOB_STORE);
+    const data = await store.get(ADMIN_BLOB_KEY, { type: "text" });
     
     if (!data) {
       return {};
     }
     
     const parsed = JSON.parse(data);
-    
-    // Convertir les dates string en objets Date
     const storeData: Record<string, MemberData> = {};
     for (const [key, member] of Object.entries(parsed)) {
       storeData[key] = {
@@ -94,50 +97,113 @@ async function loadMemberDataFromBlob(): Promise<Record<string, MemberData>> {
     
     return storeData;
   } catch (error) {
-    console.error("Erreur lors du chargement des données depuis Netlify Blobs:", error);
+    console.error("Erreur lors du chargement des données admin depuis Netlify Blobs:", error);
     return {};
   }
 }
 
 /**
- * Sauvegarde les données dans Netlify Blobs
+ * Charge les données bot depuis Netlify Blobs
  */
-async function saveMemberDataToBlob(): Promise<void> {
+async function loadBotDataFromBlob(): Promise<Record<string, MemberData>> {
   try {
-    const store = getStore(BLOB_STORE_NAME);
+    const store = getStore(BOT_BLOB_STORE);
+    const data = await store.get(BOT_BLOB_KEY, { type: "text" });
     
-    // Convertir les dates en string pour la sérialisation JSON
-    const serializableStore: Record<string, any> = {};
-    for (const [key, member] of Object.entries(memberDataStore)) {
-      serializableStore[key] = {
+    if (!data) {
+      return {};
+    }
+    
+    const parsed = JSON.parse(data);
+    const storeData: Record<string, MemberData> = {};
+    for (const [key, member] of Object.entries(parsed)) {
+      storeData[key] = {
+        ...(member as any),
+        createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
+        updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+      };
+    }
+    
+    return storeData;
+  } catch (error) {
+    console.error("Erreur lors du chargement des données bot depuis Netlify Blobs:", error);
+    return {};
+  }
+}
+
+/**
+ * Sauvegarde les données admin dans Netlify Blobs
+ */
+async function saveAdminDataToBlob(data: Record<string, MemberData>): Promise<void> {
+  try {
+    const store = getStore(ADMIN_BLOB_STORE);
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(data)) {
+      serializableData[key] = {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
       };
     }
-    
-    await store.set(BLOB_KEY, JSON.stringify(serializableStore, null, 2));
+    await store.set(ADMIN_BLOB_KEY, JSON.stringify(serializableData, null, 2));
   } catch (error) {
-    console.error("Erreur lors de la sauvegarde des données dans Netlify Blobs:", error);
+    console.error("Erreur lors de la sauvegarde des données admin dans Netlify Blobs:", error);
+    throw error;
   }
 }
 
 /**
- * Charge les données depuis le fichier JSON
+ * Sauvegarde les données bot dans Netlify Blobs
  */
-function loadMemberDataFromFile(): Record<string, MemberData> {
+async function saveBotDataToBlob(data: Record<string, MemberData>): Promise<void> {
   try {
-    // Créer le dossier data s'il n'existe pas
+    const store = getStore(BOT_BLOB_STORE);
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(data)) {
+      serializableData[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+    await store.set(BOT_BLOB_KEY, JSON.stringify(serializableData, null, 2));
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données bot dans Netlify Blobs:", error);
+    throw error;
+  }
+}
+
+/**
+ * Génère et sauvegarde le fichier fusionné dans Netlify Blobs
+ */
+async function saveMergedDataToBlob(): Promise<void> {
+  try {
+    const store = getStore(MERGED_BLOB_STORE);
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(memberDataStore)) {
+      serializableData[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+    await store.set(MERGED_BLOB_KEY, JSON.stringify(serializableData, null, 2));
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données fusionnées dans Netlify Blobs:", error);
+  }
+}
+
+/**
+ * Charge les données admin depuis le fichier JSON (développement local)
+ */
+function loadAdminDataFromFile(): Record<string, MemberData> {
+  try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-
-    // Si le fichier existe, le charger
-    if (fs.existsSync(MEMBERS_DATA_FILE)) {
-      const fileContent = fs.readFileSync(MEMBERS_DATA_FILE, "utf-8");
+    if (fs.existsSync(ADMIN_DATA_FILE)) {
+      const fileContent = fs.readFileSync(ADMIN_DATA_FILE, "utf-8");
       const parsed = JSON.parse(fileContent);
-      
-      // Convertir les dates string en objets Date
       const store: Record<string, MemberData> = {};
       for (const [key, member] of Object.entries(parsed)) {
         store[key] = {
@@ -149,69 +215,247 @@ function loadMemberDataFromFile(): Record<string, MemberData> {
       return store;
     }
   } catch (error) {
-    console.error("Erreur lors du chargement des données membres:", error);
+    console.error("Erreur lors du chargement des données admin:", error);
   }
   return {};
 }
 
 /**
- * Sauvegarde les données dans le fichier JSON
+ * Charge les données bot depuis le fichier JSON (développement local)
  */
-function saveMemberDataToFile(): void {
+function loadBotDataFromFile(): Record<string, MemberData> {
   try {
-    // Créer le dossier data s'il n'existe pas
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+    if (fs.existsSync(BOT_DATA_FILE)) {
+      const fileContent = fs.readFileSync(BOT_DATA_FILE, "utf-8");
+      const parsed = JSON.parse(fileContent);
+      const store: Record<string, MemberData> = {};
+      for (const [key, member] of Object.entries(parsed)) {
+        store[key] = {
+          ...(member as any),
+          createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
+          updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+        };
+      }
+      return store;
+    }
+  } catch (error) {
+    console.error("Erreur lors du chargement des données bot:", error);
+  }
+  return {};
+}
 
-    // Convertir les dates en string pour la sérialisation JSON
-    const serializableStore: Record<string, any> = {};
-    for (const [key, member] of Object.entries(memberDataStore)) {
-      serializableStore[key] = {
+/**
+ * Sauvegarde les données admin dans le fichier JSON (développement local)
+ */
+function saveAdminDataToFile(data: Record<string, MemberData>): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(data)) {
+      serializableData[key] = {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
       };
     }
-
-    fs.writeFileSync(MEMBERS_DATA_FILE, JSON.stringify(serializableStore, null, 2), "utf-8");
+    fs.writeFileSync(ADMIN_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
   } catch (error) {
-    console.error("Erreur lors de la sauvegarde des données membres:", error);
+    console.error("Erreur lors de la sauvegarde des données admin:", error);
+  }
+}
+
+/**
+ * Sauvegarde les données bot dans le fichier JSON (développement local)
+ */
+function saveBotDataToFile(data: Record<string, MemberData>): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(data)) {
+      serializableData[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+    fs.writeFileSync(BOT_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données bot:", error);
+  }
+}
+
+/**
+ * Sauvegarde le fichier fusionné (développement local)
+ */
+function saveMergedDataToFile(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const serializableData: Record<string, any> = {};
+    for (const [key, member] of Object.entries(memberDataStore)) {
+      serializableData[key] = {
+        ...member,
+        createdAt: member.createdAt?.toISOString(),
+        updatedAt: member.updatedAt?.toISOString(),
+      };
+    }
+    fs.writeFileSync(MEMBERS_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des données fusionnées:", error);
+  }
+}
+
+/**
+ * Fusionne les données admin et bot en donnant TOUJOURS priorité aux données admin
+ */
+function mergeAdminAndBotData(
+  adminData: Record<string, MemberData>,
+  botData: Record<string, MemberData>
+): Record<string, MemberData> {
+  const merged: Record<string, MemberData> = {};
+  
+  // D'abord, ajouter toutes les données bot
+  for (const [key, botMember] of Object.entries(botData)) {
+    merged[key] = { ...botMember };
+  }
+  
+  // Ensuite, écraser avec les données admin (priorité absolue)
+  for (const [key, adminMember] of Object.entries(adminData)) {
+    if (merged[key]) {
+      // Fusionner : admin a priorité sur tous les champs
+      merged[key] = {
+        ...merged[key], // Base bot
+        ...adminMember, // Écraser avec admin (priorité absolue)
+        // Préserver certains champs de bot si admin ne les a pas définis
+        twitchStatus: adminMember.twitchStatus || merged[key].twitchStatus,
+      };
+    } else {
+      // Membre uniquement dans admin
+      merged[key] = { ...adminMember };
+    }
+  }
+  
+  return merged;
+}
+
+/**
+ * Charge et fusionne les données depuis le stockage persistant
+ * Les données admin ont TOUJOURS priorité sur les données bot
+ */
+export async function loadMemberDataFromStorage(): Promise<void> {
+  let adminData: Record<string, MemberData> = {};
+  let botData: Record<string, MemberData> = {};
+  
+  if (isNetlify()) {
+    // Charger depuis Netlify Blobs
+    adminData = await loadAdminDataFromBlob();
+    botData = await loadBotDataFromBlob();
+  } else {
+    // Charger depuis les fichiers locaux
+    adminData = loadAdminDataFromFile();
+    botData = loadBotDataFromFile();
+  }
+  
+  // Fusionner avec priorité admin
+  memberDataStore = mergeAdminAndBotData(adminData, botData);
+  
+  // Sauvegarder le fichier fusionné (pour lecture rapide)
+  if (typeof window === "undefined") {
+    if (isNetlify()) {
+      await saveMergedDataToBlob();
+    } else {
+      saveMergedDataToFile();
+    }
+  }
+}
+
+/**
+ * Charge uniquement les données admin (pour le dashboard)
+ */
+export async function loadAdminDataFromStorage(): Promise<Record<string, MemberData>> {
+  if (isNetlify()) {
+    return await loadAdminDataFromBlob();
+  } else {
+    return loadAdminDataFromFile();
+  }
+}
+
+/**
+ * Charge uniquement les données bot (pour la synchronisation)
+ */
+export async function loadBotDataFromStorage(): Promise<Record<string, MemberData>> {
+  if (isNetlify()) {
+    return await loadBotDataFromBlob();
+  } else {
+    return loadBotDataFromFile();
+  }
+}
+
+/**
+ * Sauvegarde les données admin (appelé uniquement depuis le dashboard)
+ */
+export async function saveAdminData(data: Record<string, MemberData>): Promise<void> {
+  if (typeof window === "undefined") {
+    if (isNetlify()) {
+      await saveAdminDataToBlob(data);
+    } else {
+      saveAdminDataToFile(data);
+    }
+    // Recharger et fusionner après sauvegarde
+    await loadMemberDataFromStorage();
+  }
+}
+
+/**
+ * Sauvegarde les données bot (appelé uniquement depuis les scripts de synchronisation)
+ */
+export async function saveBotData(data: Record<string, MemberData>): Promise<void> {
+  if (typeof window === "undefined") {
+    if (isNetlify()) {
+      await saveBotDataToBlob(data);
+    } else {
+      saveBotDataToFile(data);
+    }
+    // Recharger et fusionner après sauvegarde
+    await loadMemberDataFromStorage();
   }
 }
 
 /**
  * Initialise le store avec les données existantes
- * Note: Cette fonction est synchrone pour le chargement initial
- * Les données seront rechargées depuis Blobs lors des appels API
  */
 export function initializeMemberData() {
-  // En développement local, charger depuis le fichier
+  // En développement local, charger depuis les fichiers
   if (!isNetlify()) {
-    const savedData = loadMemberDataFromFile();
+    const adminData = loadAdminDataFromFile();
+    const botData = loadBotDataFromFile();
     
-    // Si des données sauvegardées existent, les utiliser
-    if (Object.keys(savedData).length > 0) {
-      memberDataStore = savedData;
+    if (Object.keys(adminData).length > 0 || Object.keys(botData).length > 0) {
+      memberDataStore = mergeAdminAndBotData(adminData, botData);
       return;
     }
   }
-  // Sur Netlify, on ne charge pas ici (sera chargé à la demande dans les API)
-
+  
   // Sinon, construire le store à partir des données existantes (première initialisation)
   allMembers.forEach((member) => {
     const roleInfo = getMemberRole(member.twitchLogin);
     const login = member.twitchLogin.toLowerCase();
     
-    // Ne pas écraser si le membre existe déjà dans les données sauvegardées
     if (!memberDataStore[login]) {
-      // Déterminer les badges selon les rôles
       const badges = getBadgesForMember(member.twitchLogin);
       
       memberDataStore[login] = {
         twitchLogin: member.twitchLogin,
         displayName: member.displayName,
-        siteUsername: member.displayName, // Par défaut, utiliser le displayName
+        siteUsername: member.displayName,
         twitchUrl: member.twitchUrl,
         discordUsername: member.discordUsername,
         role: roleInfo.role,
@@ -222,12 +466,10 @@ export function initializeMemberData() {
         updatedAt: new Date(),
       };
     } else {
-      // Mettre à jour les badges si le membre existe déjà (synchroniser avec les rôles)
       const badges = getBadgesForMember(member.twitchLogin);
       if (badges.length > 0) {
         memberDataStore[login].badges = badges;
       }
-      // Ne mettre à jour le rôle et VIP que s'ils n'ont pas été définis manuellement
       if (!memberDataStore[login].roleManuallySet) {
         memberDataStore[login].role = roleInfo.role;
         memberDataStore[login].isVip = roleInfo.isVip;
@@ -235,62 +477,6 @@ export function initializeMemberData() {
       }
     }
   });
-
-  // Sauvegarder après l'initialisation (seulement si on a créé de nouveaux membres)
-  // En développement local uniquement
-  if (!isNetlify() && Object.keys(memberDataStore).length > 0) {
-    saveMemberDataToFile();
-  }
-}
-
-/**
- * Charge les données depuis le stockage persistant (Blobs ou fichier)
- * À appeler dans les API routes pour s'assurer d'avoir les dernières données
- * Fusionne les données au lieu de les remplacer pour préserver les modifications en mémoire
- */
-export async function loadMemberDataFromStorage(): Promise<void> {
-  let savedData: Record<string, MemberData> = {};
-  
-  if (isNetlify()) {
-    savedData = await loadMemberDataFromBlob();
-  } else {
-    savedData = loadMemberDataFromFile();
-  }
-  
-  // Fusionner les données sauvegardées avec le store en mémoire
-  // Les données en mémoire (plus récentes) ont priorité
-  if (Object.keys(savedData).length > 0) {
-    // Pour chaque membre sauvegardé, l'ajouter seulement s'il n'existe pas déjà
-    // ou si la version sauvegardée est plus récente
-    for (const [key, savedMember] of Object.entries(savedData)) {
-      const existingMember = memberDataStore[key];
-      
-      if (!existingMember) {
-        // Membre n'existe pas en mémoire, l'ajouter
-        memberDataStore[key] = savedMember;
-      } else {
-        // Membre existe, comparer les dates de mise à jour
-        const savedUpdatedAt = savedMember.updatedAt ? new Date(savedMember.updatedAt).getTime() : 0;
-        const existingUpdatedAt = existingMember.updatedAt ? new Date(existingMember.updatedAt).getTime() : 0;
-        
-        // Si la version sauvegardée est plus récente, l'utiliser
-        // MAIS préserver roleManuallySet et le rôle si il a été défini manuellement
-        if (savedUpdatedAt > existingUpdatedAt) {
-          // Si le membre en mémoire a roleManuallySet, préserver le rôle même si la version sauvegardée est plus récente
-          if (existingMember.roleManuallySet && existingMember.role) {
-            memberDataStore[key] = {
-              ...savedMember,
-              role: existingMember.role,
-              roleManuallySet: true,
-            };
-          } else {
-            memberDataStore[key] = savedMember;
-          }
-        }
-        // Sinon, garder la version en mémoire (plus récente)
-      }
-    }
-  }
 }
 
 // Variable pour éviter les initialisations multiples
@@ -298,7 +484,6 @@ let isInitialized = false;
 
 // Initialiser au chargement (une seule fois)
 if (typeof window === "undefined" && !isInitialized) {
-  // Côté serveur uniquement
   initializeMemberData();
   isInitialized = true;
 }
@@ -345,24 +530,20 @@ export function getMemberDataByList(listId: number): MemberData[] {
 
 /**
  * Récupère tous les membres actifs de toutes les listes (1, 2, et 3 combinées)
- * Inclut aussi les membres sans listId pour la rétrocompatibilité
  */
 export function getAllActiveMemberDataFromAllLists(): MemberData[] {
   return Object.values(memberDataStore).filter(
     (member) => {
       if (!member.isActive) return false;
-      // Inclure les membres avec listId 1, 2, ou 3
       if (member.listId === 1 || member.listId === 2 || member.listId === 3) return true;
-      // Inclure aussi les membres sans listId (rétrocompatibilité)
       if (!member.listId) return true;
-      // Exclure les membres avec un listId invalide
       return false;
     }
   );
 }
 
 /**
- * Met à jour les données d'un membre (fondateurs uniquement)
+ * Met à jour les données d'un membre (DASHBOARD ADMIN - écrit dans admin-members-data)
  */
 export async function updateMemberData(
   twitchLogin: string,
@@ -370,33 +551,34 @@ export async function updateMemberData(
   updatedBy: string
 ): Promise<MemberData | null> {
   const login = twitchLogin.toLowerCase();
+  
+  // Charger les données admin actuelles
+  const adminData = await loadAdminDataFromStorage();
+  
+  // Récupérer le membre existant (depuis les données fusionnées)
+  await loadMemberDataFromStorage();
   const existing = memberDataStore[login];
   
   if (!existing) {
     return null;
   }
   
-  memberDataStore[login] = {
+  // Mettre à jour dans les données admin
+  adminData[login] = {
     ...existing,
     ...updates,
     updatedAt: new Date(),
     updatedBy,
   };
   
-  // Sauvegarder après modification
-  if (typeof window === "undefined") {
-    if (isNetlify()) {
-      await saveMemberDataToBlob();
-    } else {
-      saveMemberDataToFile();
-    }
-  }
+  // Sauvegarder les données admin
+  await saveAdminData(adminData);
   
-  return memberDataStore[login];
+  return adminData[login];
 }
 
 /**
- * Crée un nouveau membre (fondateurs uniquement)
+ * Crée un nouveau membre (DASHBOARD ADMIN - écrit dans admin-members-data)
  */
 export async function createMemberData(
   memberData: Omit<MemberData, "createdAt" | "updatedAt" | "updatedBy">,
@@ -404,49 +586,42 @@ export async function createMemberData(
 ): Promise<MemberData> {
   const login = memberData.twitchLogin.toLowerCase();
   
-  memberDataStore[login] = {
+  // Charger les données admin actuelles
+  const adminData = await loadAdminDataFromStorage();
+  
+  adminData[login] = {
     ...memberData,
     createdAt: new Date(),
     updatedAt: new Date(),
     updatedBy: createdBy,
   };
   
-  // Sauvegarder après création
-  if (typeof window === "undefined") {
-    if (isNetlify()) {
-      await saveMemberDataToBlob();
-    } else {
-      saveMemberDataToFile();
-    }
-  }
+  // Sauvegarder les données admin
+  await saveAdminData(adminData);
   
-  return memberDataStore[login];
+  return adminData[login];
 }
 
 /**
- * Supprime un membre (fondateurs uniquement)
+ * Supprime un membre (DASHBOARD ADMIN - supprime de admin-members-data)
  */
 export async function deleteMemberData(twitchLogin: string, deletedBy?: string): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
-  if (memberDataStore[login]) {
-    delete memberDataStore[login];
-    
-    // Sauvegarder après suppression
-    if (typeof window === "undefined") {
-      if (isNetlify()) {
-        await saveMemberDataToBlob();
-      } else {
-        saveMemberDataToFile();
-      }
-    }
-    
+  
+  // Charger les données admin actuelles
+  const adminData = await loadAdminDataFromStorage();
+  
+  if (adminData[login]) {
+    delete adminData[login];
+    await saveAdminData(adminData);
     return true;
   }
+  
   return false;
 }
 
 /**
- * Met à jour le statut Twitch d'un membre
+ * Met à jour le statut Twitch d'un membre (ne modifie pas les stores, juste en mémoire)
  */
 export function updateTwitchStatus(
   twitchLogin: string,
@@ -460,9 +635,8 @@ export function updateTwitchStatus(
 }
 
 /**
- * Récupère tous les membres avec leurs données complètes
+ * Récupère tous les membres avec leurs données complètes (fusionnées)
  */
 export function getAllMemberData(): MemberData[] {
   return Object.values(memberDataStore);
 }
-

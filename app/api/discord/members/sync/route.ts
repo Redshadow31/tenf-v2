@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, isFounder } from '@/lib/admin';
-import { getAllMemberData, updateMemberData, createMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { getAllMemberData, loadMemberDataFromStorage, loadAdminDataFromStorage, loadBotDataFromStorage, saveBotData, type MemberData } from '@/lib/memberData';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
 
 interface DiscordMember {
@@ -269,68 +269,53 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      if (existing) {
-        // PROTECTION : Ne JAMAIS écraser les données manuelles
-        if (existing.roleManuallySet) {
-          console.log(`[Discord Sync] Membre ${discordUsername} ignoré - modifications manuelles protégées`);
-          skippedManual++;
-          continue;
-        }
+      // Vérifier si le membre existe dans les données admin (modifications manuelles)
+      const adminMember = existing ? Object.values(adminData).find(m => 
+        m.discordId === discordId || 
+        m.discordUsername?.toLowerCase() === discordUsername.toLowerCase() ||
+        m.twitchLogin === existing.twitchLogin
+      ) : null;
+      
+      // PROTECTION : Ne JAMAIS écraser les données manuelles
+      if (adminMember || (existing && existing.roleManuallySet)) {
+        console.log(`[Discord Sync] Membre ${discordUsername} ignoré - modifications manuelles protégées`);
+        skippedManual++;
+        continue;
+      }
 
-        // Mettre à jour le membre existant
-        // PROTECTION: Ne JAMAIS écraser les chaînes Twitch manuelles
-        // IMPORTANT: Toujours mettre à jour discordId et discordUsername pour refléter les changements de pseudo
-        const updates: any = {
-          discordId, // L'ID Discord ne change jamais, c'est l'identifiant principal
-          discordUsername, // Mettre à jour le username si il a changé
-          displayName, // Mettre à jour le displayName (nickname ou global_name)
-          isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
-          isActive: true,
+      // Utiliser la chaîne Twitch du canal Discord si disponible
+      const channelMember = channelMembers.get(discordId);
+      const twitchLogin = channelMember?.twitchLogin || existing?.twitchLogin || `discord_${discordId}`;
+      const twitchUrl = channelMember?.twitchUrl || existing?.twitchUrl || `https://www.twitch.tv/${twitchLogin}`;
+      
+      // Mettre à jour ou créer dans bot-members-data uniquement
+      const botMemberData: MemberData = {
+        twitchLogin,
+        twitchUrl,
+        discordId,
+        discordUsername,
+        displayName,
+        role,
+        isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
+        isActive: true,
+        badges,
+        updatedAt: new Date(),
+        updatedBy: "discord-bot",
+      };
+      
+      if (existing && botData[existing.twitchLogin.toLowerCase()]) {
+        // Mettre à jour le membre existant dans bot-members-data
+        botData[existing.twitchLogin.toLowerCase()] = {
+          ...botData[existing.twitchLogin.toLowerCase()],
+          ...botMemberData,
         };
-        
-        // Ne mettre à jour le rôle que s'il n'a pas été défini manuellement
-        if (!existing.roleManuallySet) {
-          updates.role = role;
-        }
-        
-        // PROTECTION: Ne pas écraser la chaîne Twitch si elle existe déjà et n'est pas un placeholder
-        // Si le membre a une vraie chaîne Twitch (pas discord_xxx), la conserver
-        // Sinon, utiliser la chaîne du canal Discord si disponible
-        if (existing.twitchLogin && !existing.twitchLogin.startsWith('discord_')) {
-          // Le membre a déjà une vraie chaîne Twitch, ne pas l'écraser
-          // Ne pas mettre à jour twitchLogin ni twitchUrl
-        } else if (channelMember) {
-          // Le membre n'a pas de vraie chaîne Twitch, utiliser celle du canal Discord
-          updates.twitchLogin = channelMember.twitchLogin;
-          updates.twitchUrl = channelMember.twitchUrl;
-        }
-        
-        await updateMemberData(
-          existing.twitchLogin,
-          updates,
-          admin.id
-        );
         updated++;
       } else {
-        // Créer un nouveau membre
-        // Utiliser la chaîne Twitch du canal Discord si disponible, sinon créer un placeholder
-        const channelMember = channelMembers.get(discordId);
-        const twitchLogin = channelMember?.twitchLogin || `discord_${discordId}`;
-        const twitchUrl = channelMember?.twitchUrl || `https://www.twitch.tv/${twitchLogin}`;
-        
-        await createMemberData(
-          {
-            twitchLogin,
-            displayName,
-            twitchUrl,
-            discordId,
-            discordUsername,
-            role,
-            isVip: discordMember.roles.includes(DISCORD_ROLE_IDS.VIP_ELITE),
-            isActive: true,
-          },
-          admin.id
-        );
+        // Créer un nouveau membre dans bot-members-data
+        botData[twitchLogin.toLowerCase()] = {
+          ...botMemberData,
+          createdAt: new Date(),
+        };
         created++;
       }
       synced++;
@@ -350,6 +335,9 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+    
+    // Sauvegarder les données bot (seulement si pas en mode preview)
+    await saveBotData(botData);
 
     console.log(`[Discord Sync] Statistiques:`);
     console.log(`  - Membres Discord récupérés: ${totalFetched}`);
