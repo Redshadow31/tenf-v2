@@ -202,57 +202,14 @@ export default function RaidsPage() {
     loadData(newMonth);
   }
 
-  async function scanRaids(scanAllHistory: boolean = false) {
-    try {
-      const url = scanAllHistory 
-        ? "/api/discord/raids/scan"
-        : `/api/discord/raids/scan?month=${selectedMonth}`;
-      
-      const response = await fetch(url, {
-        method: "POST",
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        let message = 
-          `Scan terminé :\n` +
-          `- ${data.messagesInMonth || data.messagesScanned || 0} message(s) du mois scanné(s)\n` +
-          `- ${data.messagesWithRaids || 0} message(s) avec raids détectés\n` +
-          `- ${data.newRaidsAdded || 0} nouveau(x) raid(s) ajouté(s) en attente\n` +
-          `- ${data.raidsValidated || 0} raid(s) validé(s)\n` +
-          `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n`;
-        
-        if (data.messagesNotRecognized > 0) {
-          message += `- ${data.messagesNotRecognized} message(s) non reconnus\n`;
-        }
-        
-        if (data.errors && data.errors.length > 0) {
-          message += `\n⚠️ ${data.errors.length} erreur(s) (voir console pour détails)\n`;
-          console.warn('[Raid Scan] Erreurs:', data.errors);
-        }
-        
-        if (data.unrecognizedMessages && data.unrecognizedMessages.length > 0) {
-          console.warn('[Raid Scan] Messages non reconnus:', data.unrecognizedMessages);
-        }
-        
-        if (data.maxReached) {
-          message += `\n⚠️ Maximum de messages atteint (5000), le scan a été arrêté.`;
-        }
-        
-        alert(message);
-        await loadData(selectedMonth);
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Erreur lors du scan:", error);
-      alert("Erreur lors du scan des raids");
-    }
+  function scanRaids(scanAllHistory: boolean = false) {
+    // Ouvrir le modal de scan (le modal gère le mode de scan)
+    setIsScanModalOpen(true);
+  }
+  
+  function handleScanComplete(results: any) {
+    // Recharger les données après le scan
+    loadData(selectedMonth);
   }
 
   const getMemberDisplayName = (twitchLogin: string): string => {
