@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureChannelRaidSubscription } from '@/lib/twitchEventSub';
-import { loadMemberDataFromStorage, getAllMemberData, updateMemberData } from '@/lib/memberData';
-import { getTwitchUserIdByLogin, getTwitchUserIdsByLogins } from '@/lib/twitchHelpers';
+import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 
 /**
  * POST - Force la synchronisation EventSub (crée la subscription si elle n'existe pas)

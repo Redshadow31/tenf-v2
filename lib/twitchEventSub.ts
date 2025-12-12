@@ -1,4 +1,5 @@
 // Gestion de l'authentification OAuth et des subscriptions Twitch EventSub
+// CRITICAL: Utilise UNIQUEMENT App Access Tokens (TWITCH_APP_CLIENT_ID + TWITCH_APP_CLIENT_SECRET)
 
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 
@@ -24,18 +25,53 @@ export interface TwitchEventSubSubscription {
   created_at: string;
 }
 
+// Cache pour le token d'application avec expiration
+interface CachedAppToken {
+  token: string;
+  expiresAt: number;
+  clientId: string;
+}
+
+let cachedAppToken: CachedAppToken | null = null;
+
 /**
- * Obtient un token OAuth Twitch via client credentials
- * Utilise TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET pour générer le token
- * (utilisé pour créer/gérer les subscriptions EventSub)
+ * Obtient un App Access Token Twitch via client credentials
+ * CRITICAL: Utilise UNIQUEMENT TWITCH_APP_CLIENT_ID et TWITCH_APP_CLIENT_SECRET
+ * Ne JAMAIS utiliser TWITCH_CLIENT_ID pour EventSub
  */
 export async function getTwitchOAuthToken(): Promise<string> {
-  const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
-  const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
+  const APP_CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
+  const APP_CLIENT_SECRET = process.env.TWITCH_APP_CLIENT_SECRET;
 
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    throw new Error('TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET doivent être configurés (pour générer le token OAuth)');
+  // Vérification stricte : refuser si on utilise les mauvaises variables
+  if (process.env.TWITCH_CLIENT_ID && !APP_CLIENT_ID) {
+    throw new Error(
+      'ERREUR CRITIQUE: TWITCH_CLIENT_ID détecté mais TWITCH_APP_CLIENT_ID manquant. ' +
+      'EventSub nécessite UNIQUEMENT TWITCH_APP_CLIENT_ID et TWITCH_APP_CLIENT_SECRET. ' +
+      'Ne JAMAIS utiliser TWITCH_CLIENT_ID pour EventSub.'
+    );
   }
+
+  if (!APP_CLIENT_ID || !APP_CLIENT_SECRET) {
+    throw new Error(
+      'TWITCH_APP_CLIENT_ID et TWITCH_APP_CLIENT_SECRET doivent être configurés pour EventSub. ' +
+      'Ces variables sont OBLIGATOIRES et différentes de TWITCH_CLIENT_ID.'
+    );
+  }
+
+  // Vérifier le cache
+  if (cachedAppToken && cachedAppToken.clientId === APP_CLIENT_ID) {
+    const now = Date.now();
+    // Renouveler 5 minutes avant expiration pour éviter les erreurs
+    if (now < cachedAppToken.expiresAt - 5 * 60 * 1000) {
+      console.log('[Twitch EventSub] ✅ Utilisation du token APP en cache');
+      return cachedAppToken.token;
+    }
+    console.log('[Twitch EventSub] ⚠️ Token APP expiré, renouvellement...');
+  }
+
+  console.log('[Twitch EventSub] 🔑 Génération d\'un nouveau APP ACCESS TOKEN...');
+  console.log('[Twitch EventSub] Source: TWITCH_APP_CLIENT_ID (App Token)');
 
   const response = await fetch('https://id.twitch.tv/oauth2/token', {
     method: 'POST',
@@ -43,36 +79,59 @@ export async function getTwitchOAuthToken(): Promise<string> {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_id: APP_CLIENT_ID,
+      client_secret: APP_CLIENT_SECRET,
       grant_type: 'client_credentials',
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Erreur OAuth Twitch: ${response.status} ${error}`);
+    console.error('[Twitch EventSub] ❌ Erreur génération APP TOKEN:', response.status, error);
+    throw new Error(`Erreur OAuth Twitch (APP TOKEN): ${response.status} ${error}`);
   }
 
   const data: TwitchOAuthToken = await response.json();
+  
+  // Mettre en cache avec expiration
+  const expiresIn = data.expires_in || 3600; // Par défaut 1 heure
+  cachedAppToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (expiresIn - 60) * 1000, // -60s pour marge de sécurité
+    clientId: APP_CLIENT_ID,
+  };
+
+  console.log('[Twitch EventSub] ✅ APP ACCESS TOKEN généré avec succès');
+  console.log(`[Twitch EventSub] Expiration dans ${expiresIn} secondes`);
+  
   return data.access_token;
 }
 
 /**
  * Récupère toutes les subscriptions EventSub actives
+ * CRITICAL: Utilise UNIQUEMENT TWITCH_APP_CLIENT_ID
  */
 export async function getEventSubSubscriptions(accessToken: string): Promise<TwitchEventSubSubscription[]> {
-  // Utiliser TWITCH_APP_CLIENT_ID pour les appels API EventSub (webhook)
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID || process.env.TWITCH_CLIENT_ID;
+  // CRITICAL: Utiliser UNIQUEMENT TWITCH_APP_CLIENT_ID pour EventSub
+  const APP_CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
   
-  if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID doit être configuré');
+  if (!APP_CLIENT_ID) {
+    throw new Error(
+      'TWITCH_APP_CLIENT_ID doit être configuré pour EventSub. ' +
+      'Ne JAMAIS utiliser TWITCH_CLIENT_ID pour EventSub.'
+    );
+  }
+
+  // Vérifier que le token correspond au Client ID
+  if (cachedAppToken && cachedAppToken.clientId !== APP_CLIENT_ID) {
+    console.warn('[Twitch EventSub] ⚠️ Client ID mismatch détecté, régénération du token...');
+    cachedAppToken = null;
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'Client-Id': CLIENT_ID,
+      'Client-Id': APP_CLIENT_ID,
     },
   });
 
@@ -103,6 +162,7 @@ export async function hasChannelRaidSubscription(
 
 /**
  * Crée une subscription EventSub pour channel.raid
+ * CRITICAL: Utilise UNIQUEMENT TWITCH_APP_CLIENT_ID
  */
 export async function createChannelRaidSubscription(
   accessToken: string,
@@ -110,18 +170,27 @@ export async function createChannelRaidSubscription(
   webhookUrl: string,
   secret: string
 ): Promise<TwitchEventSubSubscription> {
-  // Utiliser TWITCH_APP_CLIENT_ID pour les appels API EventSub (webhook)
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID || process.env.TWITCH_CLIENT_ID;
+  // CRITICAL: Utiliser UNIQUEMENT TWITCH_APP_CLIENT_ID pour EventSub
+  const APP_CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
   
-  if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID doit être configuré');
+  if (!APP_CLIENT_ID) {
+    throw new Error(
+      'TWITCH_APP_CLIENT_ID doit être configuré pour EventSub. ' +
+      'Ne JAMAIS utiliser TWITCH_CLIENT_ID pour EventSub.'
+    );
+  }
+
+  // Vérifier que le token correspond au Client ID
+  if (cachedAppToken && cachedAppToken.clientId !== APP_CLIENT_ID) {
+    console.warn('[Twitch EventSub] ⚠️ Client ID mismatch détecté, régénération du token...');
+    cachedAppToken = null;
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'Client-Id': CLIENT_ID,
+      'Client-Id': APP_CLIENT_ID,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -149,23 +218,33 @@ export async function createChannelRaidSubscription(
 
 /**
  * Supprime une subscription EventSub
+ * CRITICAL: Utilise UNIQUEMENT TWITCH_APP_CLIENT_ID
  */
 export async function deleteEventSubSubscription(
   accessToken: string,
   subscriptionId: string
 ): Promise<void> {
-  // Utiliser TWITCH_APP_CLIENT_ID pour les appels API EventSub (webhook)
-  const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID || process.env.TWITCH_CLIENT_ID;
+  // CRITICAL: Utiliser UNIQUEMENT TWITCH_APP_CLIENT_ID pour EventSub
+  const APP_CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID;
   
-  if (!CLIENT_ID) {
-    throw new Error('TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID doit être configuré');
+  if (!APP_CLIENT_ID) {
+    throw new Error(
+      'TWITCH_APP_CLIENT_ID doit être configuré pour EventSub. ' +
+      'Ne JAMAIS utiliser TWITCH_CLIENT_ID pour EventSub.'
+    );
+  }
+
+  // Vérifier que le token correspond au Client ID
+  if (cachedAppToken && cachedAppToken.clientId !== APP_CLIENT_ID) {
+    console.warn('[Twitch EventSub] ⚠️ Client ID mismatch détecté, régénération du token...');
+    cachedAppToken = null;
   }
 
   const response = await fetch(`${TWITCH_API_BASE}/eventsub/subscriptions?id=${subscriptionId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'Client-Id': CLIENT_ID,
+      'Client-Id': APP_CLIENT_ID,
     },
   });
 

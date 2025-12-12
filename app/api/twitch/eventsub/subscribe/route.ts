@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTwitchOAuthToken } from '@/lib/twitchEventSub';
-import { getTwitchUserIdByLogin, getTwitchUserIdsByLogins } from '@/lib/twitchHelpers';
-import { loadMemberDataFromStorage, getAllMemberData, updateMemberData } from '@/lib/memberData';
+import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
+import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { getBaseUrl } from '@/lib/config';
 
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
