@@ -329,7 +329,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await deleteMemberData(twitchLogin);
+    const success = await deleteMemberData(twitchLogin, admin.id);
 
     if (!success) {
       return NextResponse.json(
