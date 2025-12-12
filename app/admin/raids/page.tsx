@@ -29,7 +29,8 @@ export default function RaidsPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -39,15 +40,38 @@ export default function RaidsPage() {
       }
     }
     loadAdmin();
-    loadData();
+    
+    // Initialiser avec le mois en cours
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const currentMonthStr = `${year}-${month}`;
+    setSelectedMonth(currentMonthStr);
+    
+    // Générer la liste des mois disponibles (12 derniers mois)
+    const months: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      months.push(`${y}-${m}`);
+    }
+    setAvailableMonths(months);
+    
+    loadData(currentMonthStr);
   }, []);
 
-  async function loadData() {
+  async function loadData(month?: string) {
     try {
       setLoading(true);
+      const monthToLoad = month || selectedMonth;
       
-      // Charger les raids du mois en cours (avec conversion Discord ID -> Twitch Login)
-      const raidsResponse = await fetch("/api/discord/raids", {
+      // Charger les raids du mois sélectionné (avec conversion Discord ID -> Twitch Login)
+      const raidsUrl = monthToLoad 
+        ? `/api/discord/raids?month=${monthToLoad}`
+        : "/api/discord/raids";
+      
+      const raidsResponse = await fetch(raidsUrl, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
@@ -56,7 +80,14 @@ export default function RaidsPage() {
       
       if (raidsResponse.ok) {
         const raidsData = await raidsResponse.json();
+        console.log("[Raids Page] Données reçues:", {
+          raidsCount: Object.keys(raidsData.raids || {}).length,
+          month: raidsData.month,
+        });
         setRaids(raidsData.raids || {});
+      } else {
+        const error = await raidsResponse.json();
+        console.error("[Raids Page] Erreur API:", error);
       }
       
       // Charger les membres pour avoir les noms d'affichage
@@ -71,17 +102,16 @@ export default function RaidsPage() {
         const membersData = await membersResponse.json();
         setMembers(membersData.members || []);
       }
-      
-      // Définir le mois en cours
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      setCurrentMonth(`${year}-${month}`);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
       setLoading(false);
     }
+  }
+  
+  function handleMonthChange(newMonth: string) {
+    setSelectedMonth(newMonth);
+    loadData(newMonth);
   }
 
   async function scanRaids() {
@@ -103,7 +133,7 @@ export default function RaidsPage() {
           `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n` +
           `- ${data.messagesScanned || 0} message(s) scanné(s)`
         );
-        await loadData();
+        await loadData(selectedMonth);
       } else {
         const error = await response.json();
         alert(`Erreur: ${error.error}`);
@@ -144,15 +174,36 @@ export default function RaidsPage() {
       <div className="p-8">
         <AdminHeader title="Suivi des Raids" navLinks={navLinks} />
 
-        {/* En-tête avec bouton scan */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+        {/* En-tête avec sélecteur de mois et bouton scan */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
-              Raids TENF - {currentMonth}
+              Raids TENF
             </h2>
-            <p className="text-gray-400 text-sm">
-              Statistiques des raids du mois en cours
-            </p>
+            <div className="flex items-center gap-4">
+              <label className="text-gray-400 text-sm">
+                Mois :
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
+              >
+                {availableMonths.map((month) => {
+                  const [year, monthNum] = month.split('-');
+                  const monthNames = [
+                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                  ];
+                  const monthName = monthNames[parseInt(monthNum) - 1];
+                  return (
+                    <option key={month} value={month}>
+                      {monthName} {year}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
           <button
             onClick={scanRaids}

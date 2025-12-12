@@ -53,34 +53,59 @@ export async function loadMonthlyRaids(monthKey?: string): Promise<MonthlyRaids>
   const key = monthKey || getCurrentMonthKey();
   
   try {
-    // Vérifier si on est sur Netlify
+    // Détection dynamique de l'environnement Netlify
     let useBlobs = false;
     try {
-      const store = getStore(RAID_BLOB_STORE);
-      if (store) {
-        useBlobs = true;
+      // Vérifier si getStore est disponible (Netlify)
+      if (typeof getStore === 'function') {
+        const store = getStore(RAID_BLOB_STORE);
+        if (store) {
+          useBlobs = true;
+        }
       }
     } catch {
-      // Pas sur Netlify, utiliser fichiers locaux
+      // Pas sur Netlify
+    }
+    
+    // Vérifier aussi via les variables d'environnement
+    if (!useBlobs && (process.env.NETLIFY || process.env.NETLIFY_DEV)) {
+      try {
+        const store = getStore(RAID_BLOB_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      } catch {
+        // Ignorer
+      }
     }
     
     if (useBlobs) {
-      const store = getStore(RAID_BLOB_STORE);
-      const data = await store.get(key, { type: "text" });
-      if (data) {
-        return JSON.parse(data);
-      }
-    } else {
-      // Développement local : utiliser fichiers
-      const DATA_DIR = path.join(process.cwd(), "data");
-      const RAID_FILE = path.join(DATA_DIR, `${key}.json`);
-      if (fs.existsSync(RAID_FILE)) {
-        const fileContent = fs.readFileSync(RAID_FILE, "utf-8");
-        return JSON.parse(fileContent);
+      try {
+        const store = getStore(RAID_BLOB_STORE);
+        const data = await store.get(key, { type: "text" });
+        if (data) {
+          console.log(`[Raids] Chargé depuis Blobs: ${key}, ${data.length} caractères`);
+          return JSON.parse(data);
+        } else {
+          console.log(`[Raids] Aucune donnée trouvée dans Blobs pour ${key}`);
+        }
+      } catch (error) {
+        console.error(`[Raids] Erreur Blobs pour ${key}:`, error);
       }
     }
+    
+    // Fallback : fichiers locaux (développement)
+    const DATA_DIR = path.join(process.cwd(), "data");
+    const RAID_FILE = path.join(DATA_DIR, `${key}.json`);
+    if (fs.existsSync(RAID_FILE)) {
+      const fileContent = fs.readFileSync(RAID_FILE, "utf-8");
+      console.log(`[Raids] Chargé depuis fichier local: ${key}`);
+      return JSON.parse(fileContent);
+    } else {
+      console.log(`[Raids] Aucun fichier local trouvé pour ${key}`);
+    }
   } catch (error) {
-    console.error(`Erreur lors du chargement des raids pour ${key}:`, error);
+    console.error(`[Raids] Erreur lors du chargement pour ${key}:`, error);
   }
   
   return {};
@@ -161,31 +186,54 @@ export async function saveMonthlyRaids(raids: MonthlyRaids, monthKey?: string): 
   const key = monthKey || getCurrentMonthKey();
   
   try {
-    // Vérifier si on est sur Netlify
+    // Détection dynamique de l'environnement Netlify
     let useBlobs = false;
     try {
-      const store = getStore(RAID_BLOB_STORE);
-      if (store) {
-        useBlobs = true;
+      // Vérifier si getStore est disponible (Netlify)
+      if (typeof getStore === 'function') {
+        const store = getStore(RAID_BLOB_STORE);
+        if (store) {
+          useBlobs = true;
+        }
       }
     } catch {
-      // Pas sur Netlify, utiliser fichiers locaux
+      // Pas sur Netlify
+    }
+    
+    // Vérifier aussi via les variables d'environnement
+    if (!useBlobs && (process.env.NETLIFY || process.env.NETLIFY_DEV)) {
+      try {
+        const store = getStore(RAID_BLOB_STORE);
+        if (store) {
+          useBlobs = true;
+        }
+      } catch {
+        // Ignorer
+      }
     }
     
     if (useBlobs) {
-      const store = getStore(RAID_BLOB_STORE);
-      await store.set(key, JSON.stringify(raids, null, 2));
-    } else {
-      // Développement local : utiliser fichiers
-      const DATA_DIR = path.join(process.cwd(), "data");
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
+      try {
+        const store = getStore(RAID_BLOB_STORE);
+        const jsonData = JSON.stringify(raids, null, 2);
+        await store.set(key, jsonData);
+        console.log(`[Raids] Sauvegardé dans Blobs: ${key}, ${Object.keys(raids).length} membres`);
+      } catch (error) {
+        console.error(`[Raids] Erreur lors de la sauvegarde dans Blobs pour ${key}:`, error);
+        throw error;
       }
-      const RAID_FILE = path.join(DATA_DIR, `${key}.json`);
-      fs.writeFileSync(RAID_FILE, JSON.stringify(raids, null, 2), "utf-8");
     }
+    
+    // Toujours sauvegarder aussi en local (pour backup et développement)
+    const DATA_DIR = path.join(process.cwd(), "data");
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const RAID_FILE = path.join(DATA_DIR, `${key}.json`);
+    fs.writeFileSync(RAID_FILE, JSON.stringify(raids, null, 2), "utf-8");
+    console.log(`[Raids] Sauvegardé en local: ${key}, ${Object.keys(raids).length} membres`);
   } catch (error) {
-    console.error(`Erreur lors de la sauvegarde des raids pour ${key}:`, error);
+    console.error(`[Raids] Erreur lors de la sauvegarde pour ${key}:`, error);
     throw error;
   }
 }

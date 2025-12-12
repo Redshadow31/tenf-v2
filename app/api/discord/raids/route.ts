@@ -4,9 +4,28 @@ import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
 /**
  * GET - Récupère les stats de raids pour le mois en cours avec conversion Discord ID -> Twitch Login
+ * Query params: ?month=YYYY-MM (optionnel, par défaut mois en cours)
  */
 export async function GET(request: NextRequest) {
   try {
+    // Récupérer le paramètre de mois depuis l'URL
+    const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get('month');
+    let monthKey: string | undefined;
+    
+    if (monthParam) {
+      // Valider le format YYYY-MM
+      const monthMatch = monthParam.match(/^(\d{4})-(\d{2})$/);
+      if (monthMatch) {
+        const year = parseInt(monthMatch[1]);
+        const month = parseInt(monthMatch[2]);
+        if (month >= 1 && month <= 12) {
+          const { getMonthKey } = await import('@/lib/raids');
+          monthKey = getMonthKey(year, month);
+        }
+      }
+    }
+    
     // Charger les membres pour la conversion
     await loadMemberDataFromStorage();
     const allMembers = getAllMemberData();
@@ -22,7 +41,10 @@ export async function GET(request: NextRequest) {
     });
     
     // Charger les raids (stockés par Discord ID)
-    const raidsByDiscordId = await getAllRaidStats();
+    const { loadMonthlyRaids } = await import('@/lib/raids');
+    const raidsByDiscordId = await loadMonthlyRaids(monthKey);
+    
+    console.log(`[API Raids] Chargement pour ${monthKey || 'mois en cours'}, ${Object.keys(raidsByDiscordId).length} membres avec raids`);
     
     // Convertir en format avec Twitch Login comme clé pour faciliter l'affichage
     const raidsByTwitchLogin: Record<string, any> = {};
@@ -71,12 +93,16 @@ export async function GET(request: NextRequest) {
     }
     
     // Charger les raids en attente
+    const { loadPendingRaids } = await import('@/lib/raids');
     const pendingRaids = await loadPendingRaids();
+    
+    console.log(`[API Raids] Conversion terminée: ${Object.keys(raidsByTwitchLogin).length} membres avec Twitch login`);
     
     return NextResponse.json({
       raids: raidsByTwitchLogin,
       raidsByDiscordId: raidsByDiscordIdFormatted,
       pendingRaids,
+      month: monthKey || (await import('@/lib/raids')).getMonthKey(new Date().getFullYear(), new Date().getMonth() + 1),
     });
   } catch (error) {
     console.error("Erreur lors de la récupération des raids:", error);
