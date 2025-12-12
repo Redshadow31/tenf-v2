@@ -104,19 +104,44 @@ export async function POST(request: NextRequest) {
       await loadMemberDataFromStorage();
       const allMembers = getAllMemberData();
 
+      // PRIORITÉ: Chercher par twitch_user_id d'abord (obligatoire pour EventSub)
+      // FALLBACK: chercher par twitch_username seulement si ID non trouvé
       const fromMember = allMembers.find(m => 
         m.isActive && (
-          m.twitchId === event.from_broadcaster_user_id ||
-          m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase()
+          (event.from_broadcaster_user_id && m.twitchId === event.from_broadcaster_user_id) ||
+          (!m.twitchId && m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase())
         )
       );
 
       const toMember = allMembers.find(m => 
         m.isActive && (
-          m.twitchId === event.to_broadcaster_user_id ||
-          m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase()
+          (event.to_broadcaster_user_id && m.twitchId === event.to_broadcaster_user_id) ||
+          (!m.twitchId && m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase())
         )
       );
+
+      // Si membres trouvés mais IDs manquants, les mettre à jour automatiquement
+      if (fromMember && event.from_broadcaster_user_id && !fromMember.twitchId) {
+        const { updateMemberData } = await import('@/lib/memberData');
+        try {
+          await updateMemberData(fromMember.twitchLogin, { twitchId: event.from_broadcaster_user_id }, 'system');
+          fromMember.twitchId = event.from_broadcaster_user_id;
+          console.log(`[Twitch EventSub] ✅ twitchId mis à jour pour ${fromMember.twitchLogin}: ${event.from_broadcaster_user_id}`);
+        } catch (error) {
+          console.error(`[Twitch EventSub] ❌ Erreur mise à jour twitchId pour ${fromMember.twitchLogin}:`, error);
+        }
+      }
+
+      if (toMember && event.to_broadcaster_user_id && !toMember.twitchId) {
+        const { updateMemberData } = await import('@/lib/memberData');
+        try {
+          await updateMemberData(toMember.twitchLogin, { twitchId: event.to_broadcaster_user_id }, 'system');
+          toMember.twitchId = event.to_broadcaster_user_id;
+          console.log(`[Twitch EventSub] ✅ twitchId mis à jour pour ${toMember.twitchLogin}: ${event.to_broadcaster_user_id}`);
+        } catch (error) {
+          console.error(`[Twitch EventSub] ❌ Erreur mise à jour twitchId pour ${toMember.twitchLogin}:`, error);
+        }
+      }
 
       // Si les deux membres sont TENF, enregistrer le raid
       if (fromMember && toMember) {

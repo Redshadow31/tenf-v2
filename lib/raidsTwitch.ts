@@ -1,7 +1,7 @@
 // Fonctions utilitaires pour gérer les raids Twitch EventSub
 
 import { addRaidFait, getCurrentMonthKey, getMonthKey } from './raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from './memberData';
+import { loadMemberDataFromStorage, getAllMemberData, updateMemberData } from './memberData';
 import { cacheTwitchId, getCachedTwitchId } from './twitchIdCache';
 import { getTwitchUserIdByLogin } from './twitchHelpers';
 
@@ -17,32 +17,36 @@ export interface TwitchRaidEvent {
 
 /**
  * Trouve un membre par son Twitch ID ou login
+ * PRIORITÉ: twitch_user_id > twitch_username
  */
 function findMemberByTwitchIdOrLogin(
   twitchId: string,
   twitchLogin: string,
   allMembers: any[]
 ): any | null {
-  // Chercher d'abord par Twitch ID (si disponible)
+  // PRIORITÉ 1: Chercher par Twitch ID (MANDATORY pour EventSub)
   if (twitchId) {
     const memberById = allMembers.find(m => 
-      m.twitchId === twitchId
+      m.isActive && m.twitchId === twitchId
     );
     if (memberById) {
+      console.log(`[Twitch Raid] ✅ Membre trouvé par ID: ${twitchId} -> ${memberById.twitchLogin}`);
       return memberById;
     }
   }
   
-  // Sinon chercher par login
+  // FALLBACK: Chercher par login (si ID non trouvé ou non fourni)
   if (twitchLogin) {
     const memberByLogin = allMembers.find(m => 
-      m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
+      m.isActive && m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
     );
     if (memberByLogin) {
+      console.log(`[Twitch Raid] ⚠️ Membre trouvé par login (ID manquant): ${twitchLogin}`);
       return memberByLogin;
     }
   }
   
+  console.log(`[Twitch Raid] ❌ Aucun membre trouvé pour ID: ${twitchId}, Login: ${twitchLogin}`);
   return null;
 }
 
@@ -73,7 +77,7 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
       cachedTargetId = event.to_broadcaster_user_id;
     }
 
-    // Trouver les membres correspondants
+    // Trouver les membres correspondants - PRIORISER twitch_user_id
     const raiderMember = findMemberByTwitchIdOrLogin(
       event.from_broadcaster_user_id,
       event.from_broadcaster_user_login,
@@ -85,6 +89,27 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
       event.to_broadcaster_user_login,
       allMembers
     );
+
+    // Mettre à jour les twitchId des membres si manquants
+    if (raiderMember && event.from_broadcaster_user_id && !raiderMember.twitchId) {
+      console.log(`[Twitch Raid] Mise à jour twitchId pour ${raiderMember.twitchLogin}: ${event.from_broadcaster_user_id}`);
+      try {
+        await updateMemberData(raiderMember.twitchLogin, { twitchId: event.from_broadcaster_user_id }, 'system');
+        raiderMember.twitchId = event.from_broadcaster_user_id;
+      } catch (error) {
+        console.error(`[Twitch Raid] Erreur mise à jour twitchId pour ${raiderMember.twitchLogin}:`, error);
+      }
+    }
+
+    if (targetMember && event.to_broadcaster_user_id && !targetMember.twitchId) {
+      console.log(`[Twitch Raid] Mise à jour twitchId pour ${targetMember.twitchLogin}: ${event.to_broadcaster_user_id}`);
+      try {
+        await updateMemberData(targetMember.twitchLogin, { twitchId: event.to_broadcaster_user_id }, 'system');
+        targetMember.twitchId = event.to_broadcaster_user_id;
+      } catch (error) {
+        console.error(`[Twitch Raid] Erreur mise à jour twitchId pour ${targetMember.twitchLogin}:`, error);
+      }
+    }
 
     // Utiliser le twitchLogin du membre si trouvé, sinon le login de l'event
     const raider = raiderMember?.twitchLogin?.toLowerCase() || event.from_broadcaster_user_login.toLowerCase();

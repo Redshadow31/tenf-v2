@@ -26,6 +26,7 @@ interface Member {
   discordId?: string;
   twitch: string;
   twitchUrl?: string;
+  twitchId?: string; // ID Twitch numérique
   siteUsername?: string;
   notesInternes?: string;
   badges?: string[];
@@ -227,6 +228,7 @@ export default function GestionMembresPage() {
                 discordId: member.discordId,
                 twitch: member.twitchLogin || "",
                 twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+                twitchId: member.twitchId, // Ajouter l'ID Twitch
                 siteUsername: member.siteUsername,
                 description: member.description,
                 customBio: member.customBio,
@@ -385,6 +387,7 @@ export default function GestionMembresPage() {
           discordId: discordId, // Utiliser l'ID Discord de la base de données si disponible
           twitch: discordMember.twitchLogin || "",
           twitchUrl: discordMember.twitchUrl || `https://www.twitch.tv/${discordMember.twitchLogin}`,
+          twitchId: centralMember?.twitchId, // Ajouter l'ID Twitch depuis la base de données
           siteUsername: centralMember?.siteUsername,
           badges: centralMember?.badges || discordMember.badges || [],
           isVip: centralMember?.isVip || discordMember.isVip || false,
@@ -1257,6 +1260,7 @@ export default function GestionMembresPage() {
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Discord</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Twitch</th>
                     </>
                   )}
                   <th 

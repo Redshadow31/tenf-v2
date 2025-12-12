@@ -136,9 +136,26 @@ export async function POST(request: NextRequest) {
     // Charger les données depuis le stockage persistant
     await loadMemberDataFromStorage();
     
+    // Résoudre automatiquement l'ID Twitch si twitchLogin est fourni
+    let twitchId: string | undefined = undefined;
+    if (twitchLogin && twitchLogin.trim() !== '') {
+      try {
+        const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
+        const resolvedId = await resolveAndCacheTwitchId(twitchLogin, false);
+        if (resolvedId) {
+          twitchId = resolvedId;
+          console.log(`[Admin Create Member] ✅ Twitch ID résolu pour ${twitchLogin}: ${twitchId}`);
+        }
+      } catch (error) {
+        console.warn(`[Admin Create Member] ⚠️ Impossible de résoudre Twitch ID pour ${twitchLogin}:`, error);
+        // Ne pas bloquer la création si la résolution échoue
+      }
+    }
+    
     const newMember = await createMemberData(
       {
         twitchLogin,
+        twitchId,
         displayName,
         twitchUrl,
         discordId,
@@ -228,6 +245,35 @@ export async function PUT(request: NextRequest) {
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     if (updates.role && updates.role !== existingMember.role) {
       updates.roleManuallySet = true;
+    }
+
+    // Résoudre automatiquement l'ID Twitch si twitchLogin est modifié et twitchId manquant
+    if (updates.twitchLogin && updates.twitchLogin !== existingMember.twitchLogin && !updates.twitchId && !existingMember.twitchId) {
+      try {
+        const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
+        const resolvedId = await resolveAndCacheTwitchId(updates.twitchLogin, false);
+        if (resolvedId) {
+          updates.twitchId = resolvedId;
+          console.log(`[Admin Update Member] ✅ Twitch ID résolu pour ${updates.twitchLogin}: ${resolvedId}`);
+        }
+      } catch (error) {
+        console.warn(`[Admin Update Member] ⚠️ Impossible de résoudre Twitch ID pour ${updates.twitchLogin}:`, error);
+      }
+    }
+    
+    // Si twitchLogin existe mais twitchId manquant, essayer de le résoudre
+    const loginToCheck = updates.twitchLogin || existingMember.twitchLogin;
+    if (loginToCheck && !updates.twitchId && !existingMember.twitchId) {
+      try {
+        const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
+        const resolvedId = await resolveAndCacheTwitchId(loginToCheck, false);
+        if (resolvedId) {
+          updates.twitchId = resolvedId;
+          console.log(`[Admin Update Member] ✅ Twitch ID résolu pour ${loginToCheck}: ${resolvedId}`);
+        }
+      } catch (error) {
+        console.warn(`[Admin Update Member] ⚠️ Impossible de résoudre Twitch ID pour ${loginToCheck}:`, error);
+      }
     }
 
     // Log pour déboguer
