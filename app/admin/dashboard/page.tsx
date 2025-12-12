@@ -393,32 +393,6 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-300">Soutien</span>
-                  <span className="text-sm font-semibold text-white">988</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-[#9146ff] h-2 rounded-full"
-                    style={{ width: "99%" }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-300">Interactions</span>
-                  <span className="text-sm font-semibold text-white">2.3k</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-[#9146ff] h-2 rounded-full"
-                    style={{ width: "77%" }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Section 2 — Analyses Spotlight & Raids (3 cartes) */}
