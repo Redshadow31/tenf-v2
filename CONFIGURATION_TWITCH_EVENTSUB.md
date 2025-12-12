@@ -6,9 +6,16 @@ Ce document explique comment configurer Twitch EventSub pour recevoir les évén
 
 Ajoutez ces variables dans Netlify :
 
+### Pour générer le token OAuth (création des subscriptions) :
+- `TWITCH_CLIENT_ID` : Client ID de votre application Twitch (pour générer le token OAuth)
+- `TWITCH_CLIENT_SECRET` : Client Secret de votre application Twitch (pour générer le token OAuth)
+
+### Pour le webhook EventSub (réception des raids) :
+- `TWITCH_APP_CLIENT_ID` : Client ID de votre application Twitch (pour les appels API EventSub)
+- `TWITCH_APP_CLIENT_SECRET` : Client Secret de votre application Twitch (pour les appels API EventSub, optionnel si non utilisé)
 - `TWITCH_EVENTSUB_SECRET` : Secret pour vérifier les signatures des webhooks (généré lors de la création de la subscription)
-- `TWITCH_CLIENT_ID` : Client ID de votre application Twitch
-- `TWITCH_CLIENT_SECRET` : Client Secret de votre application Twitch
+
+### Configuration optionnelle :
 - `TWITCH_TARGET_BROADCASTER_ID` : (Optionnel) ID du broadcaster principal TENF si vous voulez filtrer
 
 ## Création de la subscription EventSub
