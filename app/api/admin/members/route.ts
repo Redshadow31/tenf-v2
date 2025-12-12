@@ -103,9 +103,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    // Vérifier les permissions : write pour créer
+    if (!hasPermission(admin.id, "write")) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent créer des membres." },
+        { error: "Accès refusé. Permissions insuffisantes." },
         { status: 403 }
       );
     }
@@ -251,27 +252,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Logger l'action
+    // Logger l'action avec le nouveau système d'audit
     await logAction(
-      admin.id,
-      admin.username,
-      "Modification d'un membre",
-      updatedMember.displayName,
+      admin,
+      "member.update",
+      "member",
       {
-        twitchLogin,
-        changes: updates,
-        oldData: {
+        resourceId: twitchLogin,
+        previousValue: {
           role: existingMember.role,
           isVip: existingMember.isVip,
           isActive: existingMember.isActive,
           description: existingMember.description,
         },
-        newData: {
+        newValue: {
           role: updatedMember.role,
           isVip: updatedMember.isVip,
           isActive: updatedMember.isActive,
           description: updatedMember.description,
         },
+        metadata: { changes: updates },
       }
     );
 
@@ -336,16 +336,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Logger l'action
+    // Logger l'action avec le nouveau système d'audit
     await logAction(
-      admin.id,
-      admin.username,
-      "Suppression d'un membre",
-      member.displayName,
+      admin,
+      "member.delete",
+      "member",
       {
-        twitchLogin,
-        role: member.role,
-        isVip: member.isVip,
+        resourceId: twitchLogin,
+        previousValue: {
+          displayName: member.displayName,
+          role: member.role,
+          isVip: member.isVip,
+        },
       }
     );
 
