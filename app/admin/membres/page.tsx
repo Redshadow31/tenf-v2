@@ -437,12 +437,45 @@ export default function GestionMembresPage() {
   };
 
   // Filtrer les membres
-  let filteredMembers = members.filter((member) =>
-    member.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.twitch.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.discord.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (member.siteUsername && member.siteUsername.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  /**
+   * Fonction de normalisation pour la recherche
+   * Supprime les majuscules, les accents et les espaces inutiles
+   */
+  function normalize(text: string | undefined | null): string {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD") // Décompose les caractères accentués
+      .replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+      .replace(/\s+/g, " ") // Remplace les espaces multiples par un seul
+      .trim(); // Supprime les espaces en début/fin
+  }
+
+  // Filtrer les membres avec recherche multi-champs améliorée
+  let filteredMembers = members;
+  
+  if (searchQuery.trim().length > 0) {
+    const normalizedQuery = normalize(searchQuery);
+    
+    filteredMembers = members.filter((member) => {
+      // Recherche dans tous les champs avec normalisation
+      const normalizedNom = normalize(member.nom);
+      const normalizedTwitch = normalize(member.twitch);
+      const normalizedDiscord = normalize(member.discord);
+      const normalizedSiteUsername = normalize(member.siteUsername);
+      const normalizedDiscordId = member.discordId || "";
+      
+      // Correspondance partielle insensible à la casse et aux accents
+      return (
+        normalizedNom.includes(normalizedQuery) ||
+        normalizedTwitch.includes(normalizedQuery) ||
+        normalizedDiscord.includes(normalizedQuery) ||
+        normalizedSiteUsername.includes(normalizedQuery) ||
+        // Recherche exacte sur l'ID Discord (sans normalisation pour garder la précision)
+        (normalizedDiscordId && normalizedDiscordId.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    });
+  }
 
   // Trier les membres
   if (sortColumn) {
