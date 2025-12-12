@@ -1,97 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recordRaid } from '@/lib/raids';
+import { getAllRaidStats, loadPendingRaids } from '@/lib/raids';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
 /**
- * POST - Enregistre un raid depuis le bot Discord
- * Le bot Discord appelle cette route quand il détecte un message "@user1 a raid @user2"
- * 
- * Body:
- * {
- *   raiderDiscordId: string,
- *   targetDiscordId: string
- * }
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { raiderDiscordId, targetDiscordId } = body;
-    
-    if (!raiderDiscordId || !targetDiscordId) {
-      return NextResponse.json(
-        { error: "raiderDiscordId et targetDiscordId sont requis" },
-        { status: 400 }
-      );
-    }
-    
-    // Charger les données des membres
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Trouver les membres par Discord ID
-    const raider = allMembers.find(m => m.discordId === raiderDiscordId);
-    const target = allMembers.find(m => m.discordId === targetDiscordId);
-    
-    if (!raider) {
-      return NextResponse.json(
-        { error: `Membre non trouvé pour Discord ID: ${raiderDiscordId}` },
-        { status: 404 }
-      );
-    }
-    
-    if (!target) {
-      return NextResponse.json(
-        { error: `Membre non trouvé pour Discord ID: ${targetDiscordId}` },
-        { status: 404 }
-      );
-    }
-    
-    if (!raider.twitchLogin) {
-      return NextResponse.json(
-        { error: `Le raider ${raider.displayName} n'a pas de Twitch login` },
-        { status: 400 }
-      );
-    }
-    
-    if (!target.twitchLogin) {
-      return NextResponse.json(
-        { error: `La cible ${target.displayName} n'a pas de Twitch login` },
-        { status: 400 }
-      );
-    }
-    
-    // Enregistrer le raid
-    await recordRaid(raider.twitchLogin, target.twitchLogin);
-    
-    return NextResponse.json({
-      success: true,
-      raider: {
-        twitchLogin: raider.twitchLogin,
-        displayName: raider.displayName,
-      },
-      target: {
-        twitchLogin: target.twitchLogin,
-        displayName: target.displayName,
-      },
-    });
-  } catch (error) {
-    console.error("Erreur lors de l'enregistrement du raid:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * GET - Récupère les stats de raids pour le mois en cours
+ * GET - Récupère les stats de raids pour le mois en cours avec conversion Discord ID -> Twitch Login
  */
 export async function GET(request: NextRequest) {
   try {
-    const { getAllRaidStats } = await import('@/lib/raids');
-    const raids = await getAllRaidStats();
+    // Charger les membres pour la conversion
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
     
-    return NextResponse.json({ raids });
+    // Créer un map Discord ID -> Twitch Login
+    const discordIdToTwitchLogin = new Map<string, string>();
+    const discordIdToDisplayName = new Map<string, string>();
+    allMembers.forEach(member => {
+      if (member.discordId && member.twitchLogin) {
+        discordIdToTwitchLogin.set(member.discordId, member.twitchLogin.toLowerCase());
+        discordIdToDisplayName.set(member.discordId, member.displayName);
+      }
+    });
+    
+    // Charger les raids (stockés par Discord ID)
+    const raidsByDiscordId = await getAllRaidStats();
+    
+    // Convertir en format avec Twitch Login comme clé pour faciliter l'affichage
+    const raidsByTwitchLogin: Record<string, any> = {};
+    const raidsByDiscordIdFormatted: Record<string, any> = {};
+    
+    for (const [discordId, stats] of Object.entries(raidsByDiscordId)) {
+      const twitchLogin = discordIdToTwitchLogin.get(discordId);
+      const displayName = discordIdToDisplayName.get(discordId);
+      
+      // Format avec Discord ID (pour référence)
+      raidsByDiscordIdFormatted[discordId] = {
+        ...stats,
+        displayName: displayName || discordId,
+        twitchLogin: twitchLogin || null,
+      };
+      
+      // Format avec Twitch Login (pour affichage dans le dashboard)
+      if (twitchLogin) {
+        // Convertir les targets aussi
+        const targetsByTwitchLogin: Record<string, number> = {};
+        for (const [targetDiscordId, count] of Object.entries(stats.targets)) {
+          const targetTwitchLogin = discordIdToTwitchLogin.get(targetDiscordId);
+          const targetDisplayName = discordIdToDisplayName.get(targetDiscordId);
+          if (targetTwitchLogin) {
+            targetsByTwitchLogin[targetTwitchLogin] = count;
+          } else {
+            // Garder le Discord ID si pas de Twitch login
+            targetsByTwitchLogin[targetDiscordId] = count;
+          }
+        }
+        
+        raidsByTwitchLogin[twitchLogin] = {
+          ...stats,
+          targets: targetsByTwitchLogin,
+          displayName,
+          discordId,
+        };
+      } else {
+        // Si pas de Twitch login, garder le Discord ID comme clé
+        raidsByTwitchLogin[discordId] = {
+          ...stats,
+          displayName: displayName || discordId,
+          twitchLogin: null,
+        };
+      }
+    }
+    
+    // Charger les raids en attente
+    const pendingRaids = await loadPendingRaids();
+    
+    return NextResponse.json({
+      raids: raidsByTwitchLogin,
+      raidsByDiscordId: raidsByDiscordIdFormatted,
+      pendingRaids,
+    });
   } catch (error) {
     console.error("Erreur lors de la récupération des raids:", error);
     return NextResponse.json(

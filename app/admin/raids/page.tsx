@@ -46,7 +46,7 @@ export default function RaidsPage() {
     try {
       setLoading(true);
       
-      // Charger les raids du mois en cours
+      // Charger les raids du mois en cours (avec conversion Discord ID -> Twitch Login)
       const raidsResponse = await fetch("/api/discord/raids", {
         cache: 'no-store',
         headers: {
@@ -96,7 +96,13 @@ export default function RaidsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        alert(`Scan terminé : ${data.raidsRecorded} raid(s) enregistré(s)`);
+        alert(
+          `Scan terminé :\n` +
+          `- ${data.newRaidsAdded || 0} nouveau(x) raid(s) ajouté(s) en attente\n` +
+          `- ${data.raidsValidated || 0} raid(s) validé(s)\n` +
+          `- ${data.raidsRejected || 0} raid(s) rejeté(s)\n` +
+          `- ${data.messagesScanned || 0} message(s) scanné(s)`
+        );
         await loadData();
       } else {
         const error = await response.json();

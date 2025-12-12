@@ -1,5 +1,6 @@
 // Système de suivi des raids TENF
 // Stockage dans Netlify Blobs avec format mensuel
+// Les raids sont validés par réaction ✔️ ou ❌ sur les messages Discord
 
 import { getStore } from "@netlify/blobs";
 import fs from "fs";
@@ -8,23 +9,33 @@ import path from "path";
 interface RaidStats {
   done: number; // Nombre de raids envoyés
   received: number; // Nombre de raids reçus
-  targets: Record<string, number>; // Détail des raids vers chaque cible { "twitchLogin": count }
+  targets: Record<string, number>; // Détail des raids vers chaque cible { "discordUserId": count }
 }
 
 interface MonthlyRaids {
-  [twitchLogin: string]: RaidStats;
+  [discordUserId: string]: RaidStats;
+}
+
+interface PendingRaid {
+  messageId: string;
+  raiderDiscordId: string;
+  targetDiscordId: string;
+  raiderTwitchLogin?: string;
+  targetTwitchLogin?: string;
+  timestamp: string;
 }
 
 const RAID_BLOB_STORE = "tenf-raids";
+const PENDING_RAIDS_KEY = "pending-raids"; // Raids en attente de validation
 
 /**
- * Obtient la clé Blob pour le mois en cours (format: monthly-raids-YYYY-MM)
+ * Obtient la clé Blob pour le mois en cours (format: raids-YYYY-MM)
  */
 function getCurrentMonthKey(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-  return `monthly-raids-${year}-${month}`;
+  return `raids-${year}-${month}`;
 }
 
 /**
@@ -32,7 +43,7 @@ function getCurrentMonthKey(): string {
  */
 export function getMonthKey(year: number, month: number): string {
   const monthStr = String(month).padStart(2, "0");
-  return `monthly-raids-${year}-${monthStr}`;
+  return `raids-${year}-${monthStr}`;
 }
 
 /**
@@ -76,6 +87,74 @@ export async function loadMonthlyRaids(monthKey?: string): Promise<MonthlyRaids>
 }
 
 /**
+ * Charge les raids en attente de validation
+ */
+export async function loadPendingRaids(): Promise<PendingRaid[]> {
+  try {
+    let useBlobs = false;
+    try {
+      const store = getStore(RAID_BLOB_STORE);
+      if (store) {
+        useBlobs = true;
+      }
+    } catch {
+      // Pas sur Netlify
+    }
+    
+    if (useBlobs) {
+      const store = getStore(RAID_BLOB_STORE);
+      const data = await store.get(PENDING_RAIDS_KEY, { type: "text" });
+      if (data) {
+        return JSON.parse(data);
+      }
+    } else {
+      const DATA_DIR = path.join(process.cwd(), "data");
+      const PENDING_FILE = path.join(DATA_DIR, `${PENDING_RAIDS_KEY}.json`);
+      if (fs.existsSync(PENDING_FILE)) {
+        const fileContent = fs.readFileSync(PENDING_FILE, "utf-8");
+        return JSON.parse(fileContent);
+      }
+    }
+  } catch (error) {
+    console.error("Erreur lors du chargement des raids en attente:", error);
+  }
+  
+  return [];
+}
+
+/**
+ * Sauvegarde les raids en attente de validation
+ */
+export async function savePendingRaids(raids: PendingRaid[]): Promise<void> {
+  try {
+    let useBlobs = false;
+    try {
+      const store = getStore(RAID_BLOB_STORE);
+      if (store) {
+        useBlobs = true;
+      }
+    } catch {
+      // Pas sur Netlify
+    }
+    
+    if (useBlobs) {
+      const store = getStore(RAID_BLOB_STORE);
+      await store.set(PENDING_RAIDS_KEY, JSON.stringify(raids, null, 2));
+    } else {
+      const DATA_DIR = path.join(process.cwd(), "data");
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      const PENDING_FILE = path.join(DATA_DIR, `${PENDING_RAIDS_KEY}.json`);
+      fs.writeFileSync(PENDING_FILE, JSON.stringify(raids, null, 2), "utf-8");
+    }
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des raids en attente:", error);
+    throw error;
+  }
+}
+
+/**
  * Sauvegarde les raids du mois en cours dans Netlify Blobs
  */
 export async function saveMonthlyRaids(raids: MonthlyRaids, monthKey?: string): Promise<void> {
@@ -112,19 +191,17 @@ export async function saveMonthlyRaids(raids: MonthlyRaids, monthKey?: string): 
 }
 
 /**
- * Enregistre un raid (user1 raid user2)
+ * Enregistre un raid validé (user1 raid user2) par Discord ID
  */
-export async function recordRaid(
-  raiderTwitchLogin: string,
-  targetTwitchLogin: string
+export async function recordRaidByDiscordId(
+  raiderDiscordId: string,
+  targetDiscordId: string
 ): Promise<void> {
   const raids = await loadMonthlyRaids();
-  const raider = raiderTwitchLogin.toLowerCase();
-  const target = targetTwitchLogin.toLowerCase();
   
   // Initialiser les stats du raider si nécessaire
-  if (!raids[raider]) {
-    raids[raider] = {
+  if (!raids[raiderDiscordId]) {
+    raids[raiderDiscordId] = {
       done: 0,
       received: 0,
       targets: {},
@@ -132,8 +209,8 @@ export async function recordRaid(
   }
   
   // Initialiser les stats de la cible si nécessaire
-  if (!raids[target]) {
-    raids[target] = {
+  if (!raids[targetDiscordId]) {
+    raids[targetDiscordId] = {
       done: 0,
       received: 0,
       targets: {},
@@ -141,23 +218,146 @@ export async function recordRaid(
   }
   
   // Incrémenter les compteurs
-  raids[raider].done++;
-  raids[raider].targets[target] = (raids[raider].targets[target] || 0) + 1;
+  raids[raiderDiscordId].done++;
+  raids[raiderDiscordId].targets[targetDiscordId] = (raids[raiderDiscordId].targets[targetDiscordId] || 0) + 1;
   
-  raids[target].received++;
+  raids[targetDiscordId].received++;
   
   // Sauvegarder
   await saveMonthlyRaids(raids);
 }
 
 /**
- * Récupère les stats de raids d'un membre pour le mois en cours
+ * Retire un raid validé précédemment (pour annulation)
  */
-export async function getMemberRaidStats(twitchLogin: string): Promise<RaidStats> {
+export async function removeRaidByDiscordId(
+  raiderDiscordId: string,
+  targetDiscordId: string
+): Promise<void> {
   const raids = await loadMonthlyRaids();
-  const login = twitchLogin.toLowerCase();
   
-  return raids[login] || {
+  if (raids[raiderDiscordId] && raids[raiderDiscordId].done > 0) {
+    raids[raiderDiscordId].done--;
+    if (raids[raiderDiscordId].targets[targetDiscordId] > 0) {
+      raids[raiderDiscordId].targets[targetDiscordId]--;
+      if (raids[raiderDiscordId].targets[targetDiscordId] === 0) {
+        delete raids[raiderDiscordId].targets[targetDiscordId];
+      }
+    }
+  }
+  
+  if (raids[targetDiscordId] && raids[targetDiscordId].received > 0) {
+    raids[targetDiscordId].received--;
+  }
+  
+  // Sauvegarder
+  await saveMonthlyRaids(raids);
+}
+
+/**
+ * Ajoute un raid en attente de validation
+ */
+export async function addPendingRaid(
+  messageId: string,
+  raiderDiscordId: string,
+  targetDiscordId: string,
+  raiderTwitchLogin?: string,
+  targetTwitchLogin?: string
+): Promise<void> {
+  const pendingRaids = await loadPendingRaids();
+  
+  // Vérifier si ce message n'est pas déjà en attente
+  const existing = pendingRaids.find(r => r.messageId === messageId);
+  if (existing) {
+    return; // Déjà en attente
+  }
+  
+  pendingRaids.push({
+    messageId,
+    raiderDiscordId,
+    targetDiscordId,
+    raiderTwitchLogin,
+    targetTwitchLogin,
+    timestamp: new Date().toISOString(),
+  });
+  
+  await savePendingRaids(pendingRaids);
+}
+
+/**
+ * Valide un raid en attente (réaction ✔️)
+ */
+export async function validatePendingRaid(messageId: string): Promise<boolean> {
+  const pendingRaids = await loadPendingRaids();
+  const raid = pendingRaids.find(r => r.messageId === messageId);
+  
+  if (!raid) {
+    return false; // Raid non trouvé
+  }
+  
+  // Enregistrer le raid validé
+  await recordRaidByDiscordId(raid.raiderDiscordId, raid.targetDiscordId);
+  
+  // Retirer de la liste des raids en attente
+  const updated = pendingRaids.filter(r => r.messageId !== messageId);
+  await savePendingRaids(updated);
+  
+  return true;
+}
+
+/**
+ * Rejette un raid en attente (réaction ❌)
+ */
+export async function rejectPendingRaid(messageId: string): Promise<boolean> {
+  const pendingRaids = await loadPendingRaids();
+  const raid = pendingRaids.find(r => r.messageId === messageId);
+  
+  if (!raid) {
+    return false; // Raid non trouvé
+  }
+  
+  // Retirer de la liste des raids en attente
+  const updated = pendingRaids.filter(r => r.messageId !== messageId);
+  await savePendingRaids(updated);
+  
+  // Si le raid avait été validé précédemment, le retirer
+  await removeRaidByDiscordId(raid.raiderDiscordId, raid.targetDiscordId);
+  
+  return true;
+}
+
+/**
+ * Récupère les stats de raids d'un membre par Discord ID pour le mois en cours
+ */
+export async function getMemberRaidStatsByDiscordId(discordId: string): Promise<RaidStats> {
+  const raids = await loadMonthlyRaids();
+  
+  return raids[discordId] || {
+    done: 0,
+    received: 0,
+    targets: {},
+  };
+}
+
+/**
+ * Récupère les stats de raids d'un membre par Twitch Login pour le mois en cours
+ * Nécessite de charger les membres pour faire la conversion
+ */
+export async function getMemberRaidStatsByTwitchLogin(
+  twitchLogin: string,
+  membersMap?: Map<string, string>
+): Promise<RaidStats> {
+  const raids = await loadMonthlyRaids();
+  
+  // Si un map est fourni, chercher le Discord ID
+  if (membersMap) {
+    const discordId = membersMap.get(twitchLogin.toLowerCase());
+    if (discordId && raids[discordId]) {
+      return raids[discordId];
+    }
+  }
+  
+  return {
     done: 0,
     received: 0,
     targets: {},
@@ -172,10 +372,10 @@ export async function getAllRaidStats(): Promise<MonthlyRaids> {
 }
 
 /**
- * Vérifie si un membre a raidé plus de 3 fois la même personne dans le mois
+ * Vérifie si un membre a raidé plus de 3 fois la même personne dans le mois (par Discord ID)
  */
-export async function hasExcessiveRaids(twitchLogin: string): Promise<boolean> {
-  const stats = await getMemberRaidStats(twitchLogin);
+export async function hasExcessiveRaidsByDiscordId(discordId: string): Promise<boolean> {
+  const stats = await getMemberRaidStatsByDiscordId(discordId);
   
   // Vérifier si une cible a été raidée plus de 3 fois
   for (const count of Object.values(stats.targets)) {
