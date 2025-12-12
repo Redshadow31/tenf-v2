@@ -37,6 +37,13 @@ export default function TwitchRaidsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [computedStats, setComputedStats] = useState<any>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    checked: boolean;
+    hasError: boolean;
+    errorMessage?: string;
+    activeCount?: number;
+    totalCount?: number;
+  }>({ checked: false, hasError: false });
 
   useEffect(() => {
     async function loadAdmin() {
@@ -324,6 +331,62 @@ export default function TwitchRaidsPage() {
       <div className="p-8">
         <AdminHeader title="Suivi des Raids Twitch" navLinks={navLinks} />
 
+        {/* Alerte si EventSub non configuré */}
+        {subscriptionStatus.checked && subscriptionStatus.hasError && (
+          <div className="mb-6 bg-red-900/20 border border-red-700 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-400 mb-1">
+                  EventSub non configuré
+                </h3>
+                <p className="text-red-300 text-sm mb-2">
+                  {subscriptionStatus.errorMessage || "Les subscriptions Twitch EventSub ne sont pas configurées."}
+                </p>
+                <p className="text-gray-400 text-xs mb-3">
+                  Vérifiez que les variables d'environnement suivantes sont configurées dans Netlify :
+                </p>
+                <ul className="list-disc list-inside text-gray-400 text-xs space-y-1 mb-3">
+                  <li><code className="bg-gray-800 px-1 rounded">TWITCH_EVENTSUB_SECRET</code></li>
+                  <li><code className="bg-gray-800 px-1 rounded">TWITCH_APP_CLIENT_ID</code> ou <code className="bg-gray-800 px-1 rounded">TWITCH_CLIENT_ID</code></li>
+                  <li><code className="bg-gray-800 px-1 rounded">TWITCH_CLIENT_SECRET</code></li>
+                </ul>
+                <p className="text-gray-400 text-xs">
+                  Cliquez sur "🟣 Créer subscriptions EventSub" pour créer les subscriptions automatiquement.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info si subscriptions actives */}
+        {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.activeCount !== undefined && (
+          <div className={`mb-6 border rounded-lg p-4 ${
+            subscriptionStatus.activeCount === 0 
+              ? "bg-yellow-900/20 border-yellow-700" 
+              : "bg-green-900/20 border-green-700"
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{subscriptionStatus.activeCount === 0 ? "⚠️" : "✅"}</span>
+              <div>
+                <p className={`font-semibold ${
+                  subscriptionStatus.activeCount === 0 ? "text-yellow-400" : "text-green-400"
+                }`}>
+                  {subscriptionStatus.activeCount === 0 
+                    ? "Aucune subscription EventSub active"
+                    : `${subscriptionStatus.activeCount} subscription(s) EventSub active(s)`
+                  }
+                </p>
+                {subscriptionStatus.totalCount !== undefined && (
+                  <p className="text-gray-400 text-sm mt-1">
+                    {subscriptionStatus.totalCount} membre(s) actif(s) avec login Twitch
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* En-tête avec sélecteur de mois */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <div className="flex-1">
@@ -395,28 +458,32 @@ export default function TwitchRaidsPage() {
             </Link>
             <button
               onClick={async () => {
-                if (!confirm("Voulez-vous synchroniser les raids Twitch EventSub ?\n\nCela va créer ou vérifier la subscription EventSub pour recevoir les raids en direct.")) {
+                if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {
                   return;
                 }
                 try {
-                  const response = await fetch("/api/twitch/setup-eventsub", {
+                  const response = await fetch("/api/twitch/eventsub/subscribe", {
                     method: "POST",
                   });
                   const data = await response.json();
                   if (response.ok) {
-                    alert(`✅ ${data.message}\n\nStatus: ${data.subscription}`);
+                    const summary = data.summary || {};
+                    alert(`✅ ${data.message}\n\nRésumé:\n- Créées: ${summary.created || 0}\n- Déjà actives: ${summary.alreadyExists || 0}\n- Erreurs: ${summary.errors || 0}\n\nTotal: ${summary.total || 0} membres`);
                   } else {
-                    alert(`❌ Erreur: ${data.error}`);
+                    const errorMsg = data.error || 'Erreur inconnue';
+                    const detailsMsg = data.message ? `\n\n${data.message}` : '';
+                    const configMsg = data.details ? `\n\n${data.details}` : '';
+                    alert(`❌ Erreur: ${errorMsg}${detailsMsg}${configMsg}`);
                   }
                 } catch (error) {
                   console.error("Erreur lors de la synchronisation:", error);
-                  alert("Erreur lors de la synchronisation Twitch EventSub");
+                  alert("Erreur lors de la création des subscriptions Twitch EventSub\n\nVérifiez que les variables d'environnement sont configurées:\n- TWITCH_EVENTSUB_SECRET\n- TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID\n- TWITCH_CLIENT_SECRET");
                 }
               }}
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              title="Synchroniser les raids Twitch EventSub"
+              title="Créer les subscriptions Twitch EventSub"
             >
-              🟣 Synchroniser EventSub
+              🟣 Créer subscriptions EventSub
             </button>
           </div>
         </div>

@@ -53,9 +53,9 @@ export async function GET(request: NextRequest) {
     const raidsFaits = await loadRaidsFaits(monthKey);
     const raidsRecus = await loadRaidsRecus(monthKey);
 
-    // Filtrer uniquement les raids Twitch
-    const twitchRaidsFaits = raidsFaits.filter(r => r.source === "twitch-live");
-    const twitchRaidsRecus = raidsRecus.filter(r => r.source === "twitch-live");
+    // Filtrer uniquement les raids Twitch (bot = automatique depuis EventSub)
+    const twitchRaidsFaits = raidsFaits.filter(r => r.source === "bot" || r.source === "twitch-live");
+    const twitchRaidsRecus = raidsRecus.filter(r => r.source === "bot" || r.source === "twitch-live");
 
     // Enrichir avec les informations des membres
     const twitchRaidsFaitsFormatted = twitchRaidsFaits.map(raid => {

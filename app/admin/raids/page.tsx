@@ -109,18 +109,18 @@ export default function RaidsPage() {
         
         // Filtrer selon les sources sélectionnées
         const filteredRaidsFaits = (data.raidsFaits || []).filter((raid: any) => {
-          const source = raid.source || (raid.manual ? "manual" : "discord");
-          if (source === "twitch-live") return sourceFilters.twitch;
+          const source = raid.source || (raid.manual ? "admin" : "bot");
+          if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
           if (source === "discord") return sourceFilters.discord;
-          if (source === "manual" || raid.manual) return sourceFilters.manual;
+          if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
           return true; // Par défaut, inclure si source inconnue
         });
         
         const filteredRaidsRecus = (data.raidsRecus || []).filter((raid: any) => {
-          const source = raid.source || (raid.manual ? "manual" : "discord");
-          if (source === "twitch-live") return sourceFilters.twitch;
+          const source = raid.source || (raid.manual ? "admin" : "bot");
+          if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
           if (source === "discord") return sourceFilters.discord;
-          if (source === "manual" || raid.manual) return sourceFilters.manual;
+          if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
           return true;
         });
         
@@ -335,9 +335,9 @@ export default function RaidsPage() {
     
     const breakdown = { discord: 0, twitch: 0, manual: 0 };
     raidsFaits.forEach((raid: any) => {
-      const source = raid.source || (raid.manual ? "manual" : "discord");
-      if (source === "twitch-live") breakdown.twitch += raid.count || 1;
-      else if (source === "manual" || raid.manual) breakdown.manual += raid.count || 1;
+      const source = raid.source || (raid.manual ? "admin" : "bot");
+      if (source === "twitch-live" || source === "bot") breakdown.twitch += raid.count || 1;
+      else if (source === "manual" || source === "admin" || raid.manual) breakdown.manual += raid.count || 1;
       else breakdown.discord += raid.count || 1;
     });
     
@@ -455,28 +455,32 @@ export default function RaidsPage() {
             </button>
             <button
               onClick={async () => {
-                if (!confirm("Voulez-vous synchroniser les raids Twitch EventSub ?\n\nCela va créer ou vérifier la subscription EventSub pour recevoir les raids en direct.")) {
+                if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {
                   return;
                 }
                 try {
-                  const response = await fetch("/api/twitch/setup-eventsub", {
+                  const response = await fetch("/api/twitch/eventsub/subscribe", {
                     method: "POST",
                   });
                   const data = await response.json();
                   if (response.ok) {
-                    alert(`✅ ${data.message}\n\nStatus: ${data.subscription}`);
+                    const summary = data.summary || {};
+                    alert(`✅ ${data.message}\n\nRésumé:\n- Créées: ${summary.created || 0}\n- Déjà actives: ${summary.alreadyExists || 0}\n- Erreurs: ${summary.errors || 0}\n\nTotal: ${summary.total || 0} membres`);
                   } else {
-                    alert(`❌ Erreur: ${data.error}`);
+                    const errorMsg = data.error || 'Erreur inconnue';
+                    const detailsMsg = data.message ? `\n\n${data.message}` : '';
+                    const configMsg = data.details ? `\n\n${data.details}` : '';
+                    alert(`❌ Erreur: ${errorMsg}${detailsMsg}${configMsg}`);
                   }
                 } catch (error) {
                   console.error("Erreur lors de la synchronisation:", error);
-                  alert("Erreur lors de la synchronisation Twitch EventSub");
+                  alert("Erreur lors de la création des subscriptions Twitch EventSub\n\nVérifiez que les variables d'environnement sont configurées:\n- TWITCH_EVENTSUB_SECRET\n- TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID\n- TWITCH_CLIENT_SECRET");
                 }
               }}
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              title="Synchroniser les raids Twitch EventSub"
+              title="Créer les subscriptions Twitch EventSub"
             >
-              🟣 Synchroniser les raids Twitch
+              🟣 Créer subscriptions EventSub
             </button>
           </div>
         </div>

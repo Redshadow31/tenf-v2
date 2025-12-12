@@ -2,6 +2,8 @@
 
 import { addRaidFait, getCurrentMonthKey, getMonthKey } from './raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData } from './memberData';
+import { cacheTwitchId, getCachedTwitchId } from './twitchIdCache';
+import { getTwitchUserIdByLogin } from './twitchHelpers';
 
 export interface TwitchRaidEvent {
   from_broadcaster_user_id: string;
@@ -54,6 +56,23 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
     await loadMemberDataFromStorage();
     const allMembers = getAllMemberData();
 
+    // Mettre en cache les IDs Twitch si nécessaire
+    const monthKey = getCurrentMonthKey();
+    
+    // Vérifier le cache pour le raider
+    let cachedRaiderId = await getCachedTwitchId(event.from_broadcaster_user_login, monthKey);
+    if (!cachedRaiderId && event.from_broadcaster_user_id) {
+      await cacheTwitchId(event.from_broadcaster_user_login, event.from_broadcaster_user_id, monthKey);
+      cachedRaiderId = event.from_broadcaster_user_id;
+    }
+    
+    // Vérifier le cache pour la cible
+    let cachedTargetId = await getCachedTwitchId(event.to_broadcaster_user_login, monthKey);
+    if (!cachedTargetId && event.to_broadcaster_user_id) {
+      await cacheTwitchId(event.to_broadcaster_user_login, event.to_broadcaster_user_id, monthKey);
+      cachedTargetId = event.to_broadcaster_user_id;
+    }
+
     // Trouver les membres correspondants
     const raiderMember = findMemberByTwitchIdOrLogin(
       event.from_broadcaster_user_id,
@@ -77,7 +96,7 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
 
     console.log(`[Twitch Raid] Enregistrement: ${raider} → ${target} (${event.viewers} viewers) - ${monthKey}`);
 
-    // Ajouter le raid avec source "twitch-live"
+    // Ajouter le raid avec source "bot" (automatique depuis Twitch EventSub)
     await addRaidFait(
       monthKey,
       raider,
@@ -85,7 +104,7 @@ export async function saveTwitchRaid(event: TwitchRaidEvent): Promise<void> {
       now.toISOString(),
       false, // manual = false (c'est automatique depuis Twitch)
       undefined, // pas de messageId pour Twitch
-      "twitch-live", // source
+      "bot", // source = bot (automatique)
       event.viewers // nombre de viewers
     );
 
