@@ -388,7 +388,7 @@ export default function TwitchRaidsPage() {
                   <li><code className="bg-gray-800 px-1 rounded">TWITCH_CLIENT_SECRET</code></li>
                 </ul>
                 <p className="text-gray-400 text-xs">
-                  Cliquez sur "🟣 Créer subscriptions EventSub" pour créer les subscriptions automatiquement.
+                  Cliquez sur "🟣 Synchroniser EventSub" pour créer la souscription globale automatiquement.
                 </p>
               </div>
             </div>
