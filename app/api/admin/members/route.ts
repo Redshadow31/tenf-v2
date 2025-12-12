@@ -188,9 +188,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    // Vérifier les permissions : write pour modifier
+    if (!hasPermission(admin.id, "write")) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent modifier les membres." },
+        { error: "Accès refusé. Permissions insuffisantes." },
         { status: 403 }
       );
     }
@@ -299,9 +300,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    // Vérifier les permissions : write pour supprimer
+    if (!hasPermission(admin.id, "write")) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent supprimer des membres." },
+        { error: "Accès refusé. Permissions insuffisantes." },
         { status: 403 }
       );
     }
