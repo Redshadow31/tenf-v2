@@ -32,7 +32,7 @@ const UNMATCHED_RAIDS_STORE = "tenf-raids-unmatched"; // Messages non reconnus
 /**
  * Obtient la clé Blob pour le mois en cours (format: raids-YYYY-MM)
  */
-function getCurrentMonthKey(): string {
+export function getCurrentMonthKey(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
