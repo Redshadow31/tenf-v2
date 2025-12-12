@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const userRole = userMember?.role;
 
     // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id, userRole)) {
+    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
         { status: 403 }

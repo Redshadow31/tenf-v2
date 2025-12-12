@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const userRole = userMember?.role;
 
     // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id, userRole)) {
+    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent fusionner des membres." },
         { status: 403 }
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     const userRole = userMember?.role;
 
     // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id, userRole)) {
+    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent voir les doublons." },
         { status: 403 }

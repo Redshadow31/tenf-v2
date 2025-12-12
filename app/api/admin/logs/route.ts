@@ -22,16 +22,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Charger les données pour vérifier le rôle dans memberData
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    const userMember = allMembers.find(m => m.discordId === admin.id);
-    const userRole = userMember?.role;
-
-    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id, userRole)) {
+    // Vérifier l'accès avec le nouveau système de rôles
+    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
+        { error: "Accès refusé. Réservé aux administrateurs." },
         { status: 403 }
       );
     }
