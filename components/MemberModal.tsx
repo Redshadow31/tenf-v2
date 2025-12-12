@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 type MemberModalProps = {
@@ -12,6 +12,7 @@ type MemberModalProps = {
     twitchLogin: string;
     description?: string;
     twitchUrl?: string;
+    discordId?: string;
     socials?: {
       discord?: string;
       instagram?: string;
@@ -32,6 +33,13 @@ export default function MemberModal({
   onClose,
   isAdmin = false,
 }: MemberModalProps) {
+  const [discordStats, setDiscordStats] = useState<{
+    messages: number;
+    voiceMinutes: number;
+    rank: number;
+  } | null>(null);
+  const [loadingDiscordStats, setLoadingDiscordStats] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -42,6 +50,43 @@ export default function MemberModal({
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
+
+  // Charger les stats Discord si le membre a un discordId
+  useEffect(() => {
+    if (isOpen && member.discordId) {
+      async function loadDiscordStats() {
+        setLoadingDiscordStats(true);
+        try {
+          const response = await fetch('/api/statbot/data', {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const memberStats = data.members?.find((m: any) => m.discordId === member.discordId);
+            if (memberStats) {
+              setDiscordStats({
+                messages: memberStats.messages || 0,
+                voiceMinutes: memberStats.voiceMinutes || 0,
+                rank: memberStats.rank || 0,
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des stats Discord:', error);
+        } finally {
+          setLoadingDiscordStats(false);
+        }
+      }
+      
+      loadDiscordStats();
+    } else {
+      setDiscordStats(null);
+    }
+  }, [isOpen, member.discordId]);
 
   if (!isOpen) return null;
 
@@ -152,6 +197,45 @@ export default function MemberModal({
               Voir sur Twitch
             </Link>
           </div>
+
+          {/* Statistiques Discord du mois */}
+          {member.discordId && (
+            <div className="w-full space-y-3">
+              <h3 className="text-lg font-semibold text-white">
+                Activité Discord (ce mois-ci)
+              </h3>
+              {loadingDiscordStats ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#5865F2]"></div>
+                </div>
+              ) : discordStats ? (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
+                    <div className="text-xs text-gray-400 mb-1">Messages</div>
+                    <div className="text-xl font-bold text-[#5865F2]">
+                      {discordStats.messages.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
+                    <div className="text-xs text-gray-400 mb-1">Temps vocal</div>
+                    <div className="text-xl font-bold text-[#5865F2]">
+                      {Math.round(discordStats.voiceMinutes / 60)}h
+                    </div>
+                  </div>
+                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
+                    <div className="text-xs text-gray-400 mb-1">Rang</div>
+                    <div className="text-xl font-bold text-[#5865F2]">
+                      #{discordStats.rank}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 text-center py-4">
+                  Aucune donnée disponible pour ce mois
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Autres réseaux sociaux */}
           <div className="w-full space-y-3">

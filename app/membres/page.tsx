@@ -97,6 +97,7 @@ export default function Page() {
       twitchLogin: member.twitchLogin,
       description: member.description || `Membre ${member.role} de la communauté TENF.`,
       twitchUrl: member.twitchUrl,
+      discordId: member.discordId,
       isVip: member.isVip,
       vipBadge: member.vipBadge,
       badges: member.badges || [],
