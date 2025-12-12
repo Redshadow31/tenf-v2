@@ -138,15 +138,34 @@ export async function POST(request: NextRequest) {
       return null;
     }
 
-    // Récupérer TOUS les messages du salon coordination-raid avec pagination
+    // Calculer les dates de début et fin du mois cible
+    let startOfMonth: Date | undefined;
+    let endOfMonth: Date | undefined;
+    
+    if (targetYear && targetMonth) {
+      startOfMonth = new Date(targetYear, targetMonth - 1, 1, 0, 0, 0, 0);
+      endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999); // Dernier jour du mois
+      console.log(`[Raid Scan] Scan du mois ${targetYear}-${String(targetMonth).padStart(2, '0')}: ${startOfMonth.toISOString()} → ${endOfMonth.toISOString()}`);
+    } else {
+      // Si pas de mois spécifié, utiliser le mois en cours
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      startOfMonth = new Date(year, month - 1, 1, 0, 0, 0, 0);
+      endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+      console.log(`[Raid Scan] Scan du mois en cours: ${startOfMonth.toISOString()} → ${endOfMonth.toISOString()}`);
+    }
+    
+    // Récupérer uniquement les messages du mois cible avec pagination optimisée
     const messages: any[] = [];
     let before: string | undefined = undefined;
     let hasMore = true;
     let totalMessagesFetched = 0;
+    let reachedStartOfMonth = false;
 
-    console.log(`[Raid Scan] Début du scan avec pagination (max ${MAX_MESSAGES_TO_SCAN} messages)`);
+    console.log(`[Raid Scan] Début du scan optimisé pour le mois sélectionné`);
 
-    while (hasMore && totalMessagesFetched < MAX_MESSAGES_TO_SCAN) {
+    while (hasMore && !reachedStartOfMonth && totalMessagesFetched < MAX_MESSAGES_TO_SCAN) {
       const url = `https://discord.com/api/v10/channels/${COORDINATION_RAID_CHANNEL_ID}/messages?limit=100${before ? `&before=${before}` : ''}`;
       
       const messagesResponse = await fetch(url, {
@@ -172,15 +191,49 @@ export async function POST(request: NextRequest) {
       }
 
       const batch: any[] = await messagesResponse.json();
-      messages.push(...batch);
+      
+      if (batch.length === 0) {
+        hasMore = false;
+        break;
+      }
+      
+      // Filtrer les messages du mois cible et vérifier si on a dépassé le début du mois
+      let oldestMessageInBatch: Date | null = null;
+      
+      for (const msg of batch) {
+        try {
+          const msgDate = new Date(msg.timestamp);
+          
+          // Garder la date du message le plus ancien du batch
+          if (!oldestMessageInBatch || msgDate < oldestMessageInBatch) {
+            oldestMessageInBatch = msgDate;
+          }
+          
+          // Si le message est dans la plage du mois, l'ajouter
+          if (msgDate >= startOfMonth! && msgDate <= endOfMonth!) {
+            messages.push(msg);
+          } else if (msgDate < startOfMonth!) {
+            // Si on atteint un message antérieur au début du mois, arrêter
+            reachedStartOfMonth = true;
+            console.log(`[Raid Scan] Message antérieur au début du mois détecté: ${msgDate.toISOString()} < ${startOfMonth!.toISOString()}`);
+          }
+        } catch (error) {
+          console.warn(`[Raid Scan] Erreur lors du parsing de la date du message ${msg.id}:`, error);
+        }
+      }
+      
       totalMessagesFetched += batch.length;
 
-      console.log(`[Raid Scan] Batch ${Math.floor(totalMessagesFetched / 100)}: ${batch.length} messages (total: ${totalMessagesFetched})`);
+      console.log(`[Raid Scan] Batch ${Math.floor(totalMessagesFetched / 100)}: ${batch.length} messages, ${messages.length} dans le mois (total récupérés: ${totalMessagesFetched})`);
 
       // Si on a récupéré moins de 100 messages, on a atteint la fin de l'historique
       if (batch.length < 100) {
         hasMore = false;
         console.log(`[Raid Scan] Fin de l'historique atteinte (${batch.length} messages dans le dernier batch)`);
+      } else if (oldestMessageInBatch && oldestMessageInBatch < startOfMonth!) {
+        // Si le message le plus ancien du batch est antérieur au début du mois, arrêter
+        reachedStartOfMonth = true;
+        console.log(`[Raid Scan] Arrêt: message le plus ancien du batch (${oldestMessageInBatch.toISOString()}) est antérieur au début du mois`);
       } else {
         // Utiliser l'ID du dernier message comme cursor pour la pagination
         before = batch[batch.length - 1].id;
@@ -193,23 +246,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Raid Scan] Scan terminé: ${totalMessagesFetched} messages récupérés au total`);
+    console.log(`[Raid Scan] Scan terminé: ${messages.length} messages du mois sur ${totalMessagesFetched} messages scannés`);
     
-    // Filtrer les messages par mois si un mois cible est spécifié
-    let messagesToProcess = messages;
-    if (targetYear && targetMonth) {
-      messagesToProcess = messages.filter(msg => {
-        try {
-          const msgDate = new Date(msg.timestamp);
-          const msgYear = msgDate.getFullYear();
-          const msgMonth = msgDate.getMonth() + 1;
-          return msgYear === targetYear && msgMonth === targetMonth;
-        } catch {
-          return false;
-        }
-      });
-      console.log(`[Raid Scan] Filtrage par mois ${targetYear}-${String(targetMonth).padStart(2, '0')}: ${messagesToProcess.length} messages sur ${messages.length}`);
-    }
+    // Utiliser directement les messages filtrés
+    const messagesToProcess = messages;
     
     // Pattern robuste pour détecter "@Pseudo a raid @Cible" avec variations
     // Extrait UNIQUEMENT le nom avant la parenthèse (si présente)
@@ -441,12 +481,13 @@ export async function POST(request: NextRequest) {
       raidsValidated,
       raidsRejected,
       messagesScanned: totalMessagesFetched,
-      totalMessagesInHistory: messages.length,
+      messagesInMonth: messagesToProcess.length,
       messagesWithRaids,
       messagesNotRecognized,
       errors: errors.length > 0 ? errors.slice(0, 50) : undefined, // Limiter à 50 erreurs pour éviter des réponses trop grandes
       unrecognizedMessages: unrecognizedMessages.length > 0 ? unrecognizedMessages.slice(0, 20) : undefined, // Limiter à 20 messages non reconnus
       maxReached: totalMessagesFetched >= MAX_MESSAGES_TO_SCAN,
+      month: targetMonthKey || getCurrentMonthKey(),
     });
   } catch (error) {
     console.error("Erreur lors du scan des raids:", error);

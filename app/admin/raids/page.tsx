@@ -115,9 +115,13 @@ export default function RaidsPage() {
     loadData(newMonth);
   }
 
-  async function scanRaids() {
+  async function scanRaids(scanAllHistory: boolean = false) {
     try {
-      const response = await fetch("/api/discord/raids/scan", {
+      const url = scanAllHistory 
+        ? "/api/discord/raids/scan"
+        : `/api/discord/raids/scan?month=${selectedMonth}`;
+      
+      const response = await fetch(url, {
         method: "POST",
         cache: 'no-store',
         headers: {
@@ -129,7 +133,7 @@ export default function RaidsPage() {
         const data = await response.json();
         let message = 
           `Scan terminé :\n` +
-          `- ${data.messagesScanned || 0} message(s) scanné(s) dans l'historique\n` +
+          `- ${data.messagesInMonth || data.messagesScanned || 0} message(s) du mois scanné(s)\n` +
           `- ${data.messagesWithRaids || 0} message(s) avec raids détectés\n` +
           `- ${data.newRaidsAdded || 0} nouveau(x) raid(s) ajouté(s) en attente\n` +
           `- ${data.raidsValidated || 0} raid(s) validé(s)\n` +
@@ -233,10 +237,18 @@ export default function RaidsPage() {
               🔧 Vérifier les raids non reconnus
             </Link>
             <button
-              onClick={scanRaids}
+              onClick={() => scanRaids(false)}
               className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              title={`Scanner uniquement le mois ${selectedMonth}`}
             >
-              🔄 Scanner les raids
+              ⚡ Scanner ce mois uniquement
+            </button>
+            <button
+              onClick={() => scanRaids(true)}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              title="Scanner tout l'historique (peut être long)"
+            >
+              🔄 Scanner tout l'historique
             </button>
           </div>
         </div>

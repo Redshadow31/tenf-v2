@@ -22,7 +22,7 @@ Ce guide explique comment activer toutes les fonctionnalités de l'application.
 ### Pour l'authentification des utilisateurs
 
 1. **Aller sur le Discord Developer Portal**
-   - https://discord.com/developers/applications
+   - https://discord.com/developers/applicaations
    - Cliquez sur "New Application"
    - Nommez-la (ex: "TENF V2")
 
