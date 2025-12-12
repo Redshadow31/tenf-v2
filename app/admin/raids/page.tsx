@@ -9,6 +9,7 @@ import { computeRaidStats, ComputedRaidStats } from "@/lib/computeRaidStats";
 import RaidStatsCard from "@/components/RaidStatsCard";
 import RaidCharts from "@/components/RaidCharts";
 import RaidAlertBadge from "@/components/RaidAlertBadge";
+import RaidDetailsModal from "@/components/admin/RaidDetailsModal";
 
 export interface RaidStats {
   done: number;
@@ -38,6 +39,8 @@ export default function RaidsPage() {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [unmatched, setUnmatched] = useState<any[]>([]);
   const [computedStats, setComputedStats] = useState<ComputedRaidStats | null>(null);
+  const [selectedMember, setSelectedMember] = useState<{ twitchLogin: string; displayName: string } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -308,9 +311,6 @@ export default function RaidsPage() {
                     Raids reçus
                   </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Détail des raids
-                  </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
                     Alertes
                   </th>
                 </tr>
@@ -318,7 +318,7 @@ export default function RaidsPage() {
               <tbody>
                 {Object.entries(raids).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-gray-400">
+                    <td colSpan={4} className="py-8 text-center text-gray-400">
                       Aucun raid enregistré pour ce mois
                     </td>
                   </tr>
@@ -340,14 +340,24 @@ export default function RaidsPage() {
                           }`}
                         >
                           <td className="py-4 px-6">
-                            <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedMember({
+                                  twitchLogin,
+                                  displayName: getMemberDisplayName(twitchLogin),
+                                });
+                                setIsModalOpen(true);
+                              }}
+                              className="flex items-center gap-2 hover:text-[#9146ff] transition-colors cursor-pointer"
+                            >
                               <span className="font-semibold text-white">
                                 {getMemberDisplayName(twitchLogin)}
                               </span>
                               <span className="text-gray-500 text-sm">
                                 ({twitchLogin})
                               </span>
-                            </div>
+                              <span className="text-gray-600 text-xs">👁️</span>
+                            </button>
                           </td>
                           <td className="py-4 px-6">
                             <span className="text-white font-semibold">
@@ -358,23 +368,6 @@ export default function RaidsPage() {
                             <span className="text-white font-semibold">
                               {stats.received}
                             </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(stats.targets).map(([target, count]) => (
-                                <span
-                                  key={target}
-                                  className={`px-2 py-1 rounded text-xs font-semibold ${
-                                    count >= 3
-                                      ? "bg-red-900/30 text-red-300 border border-red-700"
-                                      : "bg-gray-700 text-gray-300"
-                                  }`}
-                                  title={`${count} raid(s) vers ${getMemberDisplayName(target)}`}
-                                >
-                                  {getMemberDisplayName(target)}: {count}
-                                </span>
-                              ))}
-                            </div>
                           </td>
                           <td className="py-4 px-6">
                             {memberAlerts.length > 0 ? (
@@ -394,6 +387,22 @@ export default function RaidsPage() {
             </table>
           </div>
         </div>
+
+        {/* Modal des détails des raids */}
+        {selectedMember && (
+          <RaidDetailsModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedMember(null);
+            }}
+            memberTwitchLogin={selectedMember.twitchLogin}
+            memberDisplayName={selectedMember.displayName}
+            month={selectedMonth}
+            getMemberDisplayName={getMemberDisplayName}
+            onRefresh={() => loadData(selectedMonth)}
+          />
+        )}
       </div>
     </div>
   );

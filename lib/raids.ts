@@ -6,10 +6,19 @@ import { getStore } from "@netlify/blobs";
 import fs from "fs";
 import path from "path";
 
+interface RaidEntry {
+  targetDiscordId: string; // ID Discord de la cible
+  timestamp: string; // Date ISO du raid
+  source: "discord" | "manual"; // Source du raid (Discord ou manuel)
+  messageId?: string; // ID du message Discord (si source = "discord")
+}
+
 interface RaidStats {
   done: number; // Nombre de raids envoyés
   received: number; // Nombre de raids reçus
   targets: Record<string, number>; // Détail des raids vers chaque cible { "discordUserId": count }
+  raids: RaidEntry[]; // Liste des raids individuels avec dates (pour les raids faits)
+  receivedRaids: RaidEntry[]; // Liste des raids reçus avec dates
 }
 
 interface MonthlyRaids {
@@ -29,6 +38,21 @@ interface PendingRaid {
 const RAID_BLOB_STORE = "tenf-raids";
 const PENDING_RAIDS_KEY = "pending-raids"; // Raids en attente de validation
 const UNMATCHED_RAIDS_STORE = "tenf-raids-unmatched"; // Messages non reconnus
+
+/**
+ * Migre les anciennes données de raids pour ajouter les tableaux raids/receivedRaids
+ */
+function migrateRaidData(data: MonthlyRaids): MonthlyRaids {
+  for (const [discordId, stats] of Object.entries(data)) {
+    if (!stats.raids) {
+      stats.raids = [];
+    }
+    if (!stats.receivedRaids) {
+      stats.receivedRaids = [];
+    }
+  }
+  return data;
+}
 
 /**
  * Obtient la clé Blob pour le mois en cours (format: raids-YYYY-MM)
@@ -87,7 +111,9 @@ export async function loadMonthlyRaids(monthKey?: string): Promise<MonthlyRaids>
         const data = await store.get(key, { type: "text" });
         if (data) {
           console.log(`[Raids] Chargé depuis Blobs: ${key}, ${data.length} caractères`);
-          return JSON.parse(data);
+          const parsed = JSON.parse(data);
+          // Migrer les anciennes données si nécessaire
+          return migrateRaidData(parsed);
         } else {
           console.log(`[Raids] Aucune donnée trouvée dans Blobs pour ${key}`);
         }
@@ -102,7 +128,9 @@ export async function loadMonthlyRaids(monthKey?: string): Promise<MonthlyRaids>
     if (fs.existsSync(RAID_FILE)) {
       const fileContent = fs.readFileSync(RAID_FILE, "utf-8");
       console.log(`[Raids] Chargé depuis fichier local: ${key}`);
-      return JSON.parse(fileContent);
+      const parsed = JSON.parse(fileContent);
+      // Migrer les anciennes données si nécessaire
+      return migrateRaidData(parsed);
     } else {
       console.log(`[Raids] Aucun fichier local trouvé pour ${key}`);
     }
@@ -260,6 +288,8 @@ export async function recordRaidByDiscordId(
       done: 0,
       received: 0,
       targets: {},
+      raids: [],
+      receivedRaids: [],
     };
   }
   
@@ -269,20 +299,68 @@ export async function recordRaidByDiscordId(
       done: 0,
       received: 0,
       targets: {},
+      raids: [],
+      receivedRaids: [],
     };
   }
   
+  // S'assurer que les tableaux existent (pour compatibilité avec anciennes données)
+  if (!raids[raiderDiscordId].raids) {
+    raids[raiderDiscordId].raids = [];
+  }
+  if (!raids[targetDiscordId].receivedRaids) {
+    raids[targetDiscordId].receivedRaids = [];
+  }
+  
   // Incrémenter les compteurs (ne pas écraser, additionner)
+  const raiderDoneBefore = raids[raiderDiscordId].done;
+  const targetReceivedBefore = raids[targetDiscordId].received;
+  
+  // Créer l'entrée de raid avec la date actuelle
+  const raidEntry: RaidEntry = {
+    targetDiscordId,
+    timestamp: new Date().toISOString(),
+    source: "discord",
+  };
+  
   raids[raiderDiscordId].done++;
   raids[raiderDiscordId].targets[targetDiscordId] = (raids[raiderDiscordId].targets[targetDiscordId] || 0) + 1;
+  raids[raiderDiscordId].raids.push(raidEntry);
+  
+  // Créer l'entrée de raid reçu pour la cible
+  const receivedRaidEntry: RaidEntry = {
+    targetDiscordId: raiderDiscordId, // Pour la cible, le "target" est le raider
+    timestamp: new Date().toISOString(),
+    source: "discord",
+  };
   
   raids[targetDiscordId].received++;
+  raids[targetDiscordId].receivedRaids.push(receivedRaidEntry);
   
   const monthStr = monthKey || getCurrentMonthKey();
   console.log(`[Raids] Raid enregistré: ${raiderDiscordId} → ${targetDiscordId} (${monthStr})`);
+  console.log(`[Raids] Compteurs: Raider ${raiderDiscordId}: ${raiderDoneBefore} → ${raids[raiderDiscordId].done} (done)`);
+  console.log(`[Raids] Compteurs: Cible ${targetDiscordId}: ${targetReceivedBefore} → ${raids[targetDiscordId].received} (received)`);
   
   // Sauvegarder
   await saveMonthlyRaids(raids, monthKey);
+  
+  // Vérification après sauvegarde
+  const savedRaids = await loadMonthlyRaids(monthKey);
+  const savedRaiderStats = savedRaids[raiderDiscordId];
+  const savedTargetStats = savedRaids[targetDiscordId];
+  
+  if (savedRaiderStats && savedRaiderStats.done === raids[raiderDiscordId].done) {
+    console.log(`[Raids] ✅ Vérification OK: Raider ${raiderDiscordId} a bien ${savedRaiderStats.done} raids faits`);
+  } else {
+    console.error(`[Raids] ❌ ERREUR: Raider ${raiderDiscordId} - attendu: ${raids[raiderDiscordId].done}, sauvegardé: ${savedRaiderStats?.done || 0}`);
+  }
+  
+  if (savedTargetStats && savedTargetStats.received === raids[targetDiscordId].received) {
+    console.log(`[Raids] ✅ Vérification OK: Cible ${targetDiscordId} a bien ${savedTargetStats.received} raids reçus`);
+  } else {
+    console.error(`[Raids] ❌ ERREUR: Cible ${targetDiscordId} - attendu: ${raids[targetDiscordId].received}, sauvegardé: ${savedTargetStats?.received || 0}`);
+  }
 }
 
 /**
