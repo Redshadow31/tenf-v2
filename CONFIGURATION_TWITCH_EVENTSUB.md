@@ -15,8 +15,8 @@ Ajoutez ces variables dans Netlify :
 - `TWITCH_APP_CLIENT_SECRET` : Client Secret de votre application Twitch (pour les appels API EventSub, optionnel si non utilisé)
 - `TWITCH_EVENTSUB_SECRET` : Secret pour vérifier les signatures des webhooks (généré lors de la création de la subscription)
 
-### Configuration optionnelle :
-- `TWITCH_TARGET_BROADCASTER_ID` : (Optionnel) ID du broadcaster principal TENF si vous voulez filtrer
+### Note importante :
+- **`TWITCH_TARGET_BROADCASTER_ID` n'est plus nécessaire** : Le système résout automatiquement les IDs Twitch depuis les logins des membres actifs stockés dans la base de données.
 
 ## Création de la subscription EventSub
 
