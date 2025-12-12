@@ -487,10 +487,23 @@ export async function rejectPendingRaid(messageId: string): Promise<boolean> {
 export async function getMemberRaidStatsByDiscordId(discordId: string): Promise<RaidStats> {
   const raids = await loadMonthlyRaids();
   
-  return raids[discordId] || {
+  if (raids[discordId]) {
+    // S'assurer que les tableaux existent (pour compatibilité)
+    if (!raids[discordId].raids) {
+      raids[discordId].raids = [];
+    }
+    if (!raids[discordId].receivedRaids) {
+      raids[discordId].receivedRaids = [];
+    }
+    return raids[discordId];
+  }
+  
+  return {
     done: 0,
     received: 0,
     targets: {},
+    raids: [],
+    receivedRaids: [],
   };
 }
 
@@ -508,6 +521,13 @@ export async function getMemberRaidStatsByTwitchLogin(
   if (membersMap) {
     const discordId = membersMap.get(twitchLogin.toLowerCase());
     if (discordId && raids[discordId]) {
+      // S'assurer que les tableaux existent (pour compatibilité)
+      if (!raids[discordId].raids) {
+        raids[discordId].raids = [];
+      }
+      if (!raids[discordId].receivedRaids) {
+        raids[discordId].receivedRaids = [];
+      }
       return raids[discordId];
     }
   }
@@ -516,6 +536,8 @@ export async function getMemberRaidStatsByTwitchLogin(
     done: 0,
     received: 0,
     targets: {},
+    raids: [],
+    receivedRaids: [],
   };
 }
 
