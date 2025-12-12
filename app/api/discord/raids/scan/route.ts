@@ -27,11 +27,55 @@ export async function POST(request: NextRequest) {
     
     // Créer un index des membres par Discord ID
     const membersByDiscordId = new Map<string, any>();
+    // Créer un index par displayName (insensible à la casse)
+    const membersByDisplayName = new Map<string, any>();
+    // Créer un index par twitchLogin (insensible à la casse)
+    const membersByTwitchLogin = new Map<string, any>();
+    // Créer un index par discordUsername (insensible à la casse)
+    const membersByDiscordUsername = new Map<string, any>();
+    
     allMembers.forEach(member => {
       if (member.discordId) {
         membersByDiscordId.set(member.discordId, member);
       }
+      if (member.displayName) {
+        membersByDisplayName.set(member.displayName.toLowerCase(), member);
+      }
+      if (member.twitchLogin) {
+        membersByTwitchLogin.set(member.twitchLogin.toLowerCase(), member);
+      }
+      if (member.discordUsername) {
+        membersByDiscordUsername.set(member.discordUsername.toLowerCase(), member);
+      }
     });
+    
+    /**
+     * Trouve un membre par son nom (displayName, twitchLogin, ou discordUsername)
+     */
+    function findMemberByName(name: string): any | null {
+      const normalizedName = name.toLowerCase().trim();
+      
+      // Chercher par displayName
+      let member = membersByDisplayName.get(normalizedName);
+      if (member) return member;
+      
+      // Chercher par twitchLogin
+      member = membersByTwitchLogin.get(normalizedName);
+      if (member) return member;
+      
+      // Chercher par discordUsername
+      member = membersByDiscordUsername.get(normalizedName);
+      if (member) return member;
+      
+      // Recherche partielle (pour gérer les variations)
+      for (const [key, m] of membersByDisplayName.entries()) {
+        if (key.includes(normalizedName) || normalizedName.includes(key)) {
+          return m;
+        }
+      }
+      
+      return null;
+    }
 
     // Récupérer les messages récents du salon coordination-raid
     const messagesResponse = await fetch(
@@ -53,8 +97,10 @@ export async function POST(request: NextRequest) {
 
     const messages: any[] = await messagesResponse.json();
     
-    // Pattern pour détecter "@user1 a raid @user2"
-    const raidPattern = /<@(\d+)>\s+a\s+raid\s+<@(\d+)>/i;
+    // Pattern flexible pour détecter "@Pseudo a raid @Cible" avec variations
+    // Accepte: "@Pseudo a raid @Cible", "@Pseudo ( NomServeur ) a raid @Cible", etc.
+    // Le nom peut être suivi d'espaces, parenthèses, ou autres caractères avant "a raid"
+    const raidPattern = /@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?\s+a\s+raid\s+@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?/i;
     
     let newRaidsAdded = 0;
     let raidsValidated = 0;
@@ -69,22 +115,25 @@ export async function POST(request: NextRequest) {
       
       if (match) {
         const messageId = message.id;
-        const raiderDiscordId = match[1];
-        const targetDiscordId = match[2];
+        const raiderName = match[1].trim();
+        const targetName = match[2].trim();
         
-        // Trouver les membres
-        const raider = membersByDiscordId.get(raiderDiscordId);
-        const target = membersByDiscordId.get(targetDiscordId);
+        // Trouver les membres par leur nom
+        const raider = findMemberByName(raiderName);
+        const target = findMemberByName(targetName);
         
-        if (!raider) {
-          errors.push(`Raider non trouvé: ${raiderDiscordId}`);
+        if (!raider || !raider.discordId) {
+          errors.push(`Raider non trouvé: ${raiderName} (cherché dans displayName, twitchLogin, discordUsername)`);
           continue;
         }
         
-        if (!target) {
-          errors.push(`Cible non trouvée: ${targetDiscordId}`);
+        if (!target || !target.discordId) {
+          errors.push(`Cible non trouvée: ${targetName} (cherché dans displayName, twitchLogin, discordUsername)`);
           continue;
         }
+        
+        const raiderDiscordId = raider.discordId;
+        const targetDiscordId = target.discordId;
         
         // Vérifier les réactions sur le message
         const reactions = message.reactions || [];

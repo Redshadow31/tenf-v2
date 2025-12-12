@@ -77,20 +77,79 @@ export async function POST(request: NextRequest) {
           const message: any = await messageResponse.json();
           const content = message.content;
           
-          // Pattern pour détecter "@user1 a raid @user2"
-          const raidPattern = /<@(\d+)>\s+a\s+raid\s+<@(\d+)>/i;
+          // Pattern flexible pour détecter "@Pseudo a raid @Cible" avec variations
+          const raidPattern = /@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?\s+a\s+raid\s+@([A-Za-z0-9_]+)(?:\s*\([^)]*\))?/i;
           const match = content.match(raidPattern);
           
           if (match) {
-            const raiderDiscordId = match[1];
-            const targetDiscordId = match[2];
+            const raiderName = match[1].trim();
+            const targetName = match[2].trim();
             
             // Charger les membres pour obtenir les Twitch logins
             await loadMemberDataFromStorage();
             const allMembers = getAllMemberData();
             
-            const raider = allMembers.find(m => m.discordId === raiderDiscordId);
-            const target = allMembers.find(m => m.discordId === targetDiscordId);
+            // Créer des index pour la recherche
+            const membersByDisplayName = new Map<string, any>();
+            const membersByTwitchLogin = new Map<string, any>();
+            const membersByDiscordUsername = new Map<string, any>();
+            
+            allMembers.forEach(member => {
+              if (member.displayName) {
+                membersByDisplayName.set(member.displayName.toLowerCase(), member);
+              }
+              if (member.twitchLogin) {
+                membersByTwitchLogin.set(member.twitchLogin.toLowerCase(), member);
+              }
+              if (member.discordUsername) {
+                membersByDiscordUsername.set(member.discordUsername.toLowerCase(), member);
+              }
+            });
+            
+            /**
+             * Trouve un membre par son nom
+             */
+            function findMemberByName(name: string): any | null {
+              const normalizedName = name.toLowerCase().trim();
+              
+              let member = membersByDisplayName.get(normalizedName);
+              if (member) return member;
+              
+              member = membersByTwitchLogin.get(normalizedName);
+              if (member) return member;
+              
+              member = membersByDiscordUsername.get(normalizedName);
+              if (member) return member;
+              
+              // Recherche partielle
+              for (const [key, m] of membersByDisplayName.entries()) {
+                if (key.includes(normalizedName) || normalizedName.includes(key)) {
+                  return m;
+                }
+              }
+              
+              return null;
+            }
+            
+            const raider = findMemberByName(raiderName);
+            const target = findMemberByName(targetName);
+            
+            if (!raider || !raider.discordId) {
+              return NextResponse.json(
+                { error: `Raider non trouvé: ${raiderName}` },
+                { status: 404 }
+              );
+            }
+            
+            if (!target || !target.discordId) {
+              return NextResponse.json(
+                { error: `Cible non trouvée: ${targetName}` },
+                { status: 404 }
+              );
+            }
+            
+            const raiderDiscordId = raider.discordId;
+            const targetDiscordId = target.discordId;
             
             // Ajouter le raid en attente
             await addPendingRaid(
