@@ -50,6 +50,10 @@ export function computeRaidStats(
   const alerts: RaidAlert[] = [];
 
   // Parcourir tous les raids
+  const membersWithOnlyDone: string[] = [];
+  const membersWithOnlyReceived: string[] = [];
+  const membersWithMismatch: Array<{ login: string; done: number; received: number }> = [];
+  
   for (const [twitchLogin, stats] of Object.entries(raids)) {
     // Compter les raids faits
     totalDone += stats.done;
@@ -65,6 +69,15 @@ export function computeRaidStats(
       targetCounts[twitchLogin] = stats.received;
     }
 
+    // Détecter les incohérences potentielles
+    if (stats.done > 0 && stats.received === 0) {
+      membersWithOnlyDone.push(twitchLogin);
+    }
+    if (stats.received > 0 && stats.done === 0) {
+      membersWithOnlyReceived.push(twitchLogin);
+    }
+    // Note: Il est normal qu'un membre ait fait des raids sans en recevoir, et vice versa
+
     // Vérifier les alertes (3+ raids vers la même cible)
     for (const [targetLogin, count] of Object.entries(stats.targets)) {
       if (count >= 3) {
@@ -75,6 +88,20 @@ export function computeRaidStats(
         });
       }
     }
+  }
+  
+  // Log de vérification
+  const difference = Math.abs(totalDone - totalReceived);
+  if (difference > 0) {
+    console.warn(`[Raid Stats] Écart détecté: ${totalDone} raids faits vs ${totalReceived} raids reçus (différence: ${difference})`);
+    if (membersWithOnlyDone.length > 0) {
+      console.warn(`[Raid Stats] Membres avec seulement des raids faits: ${membersWithOnlyDone.length}`);
+    }
+    if (membersWithOnlyReceived.length > 0) {
+      console.warn(`[Raid Stats] Membres avec seulement des raids reçus: ${membersWithOnlyReceived.length}`);
+    }
+  } else {
+    console.log(`[Raid Stats] ✅ Totaux cohérents: ${totalDone} raids faits = ${totalReceived} raids reçus`);
   }
 
   // Trouver le top raideur

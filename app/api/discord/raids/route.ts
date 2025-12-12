@@ -46,9 +46,19 @@ export async function GET(request: NextRequest) {
     
     console.log(`[API Raids] Chargement pour ${monthKey || 'mois en cours'}, ${Object.keys(raidsByDiscordId).length} membres avec raids`);
     
+    // Calculer les totaux avant conversion pour vérification
+    let totalDoneBeforeConversion = 0;
+    let totalReceivedBeforeConversion = 0;
+    for (const [discordId, stats] of Object.entries(raidsByDiscordId)) {
+      totalDoneBeforeConversion += stats.done || 0;
+      totalReceivedBeforeConversion += stats.received || 0;
+    }
+    console.log(`[API Raids] Totaux avant conversion: ${totalDoneBeforeConversion} faits, ${totalReceivedBeforeConversion} reçus`);
+    
     // Convertir en format avec Twitch Login comme clé pour faciliter l'affichage
     const raidsByTwitchLogin: Record<string, any> = {};
     const raidsByDiscordIdFormatted: Record<string, any> = {};
+    const membersWithoutTwitchLogin: string[] = [];
     
     for (const [discordId, stats] of Object.entries(raidsByDiscordId)) {
       const twitchLogin = discordIdToTwitchLogin.get(discordId);
@@ -84,12 +94,32 @@ export async function GET(request: NextRequest) {
         };
       } else {
         // Si pas de Twitch login, garder le Discord ID comme clé
+        membersWithoutTwitchLogin.push(discordId);
         raidsByTwitchLogin[discordId] = {
           ...stats,
           displayName: displayName || discordId,
           twitchLogin: null,
         };
       }
+    }
+    
+    // Calculer les totaux après conversion pour vérification
+    let totalDoneAfterConversion = 0;
+    let totalReceivedAfterConversion = 0;
+    for (const [key, stats] of Object.entries(raidsByTwitchLogin)) {
+      totalDoneAfterConversion += stats.done || 0;
+      totalReceivedAfterConversion += stats.received || 0;
+    }
+    console.log(`[API Raids] Totaux après conversion: ${totalDoneAfterConversion} faits, ${totalReceivedAfterConversion} reçus`);
+    if (membersWithoutTwitchLogin.length > 0) {
+      console.warn(`[API Raids] ${membersWithoutTwitchLogin.length} membres sans Twitch Login (utilisant Discord ID):`, membersWithoutTwitchLogin.slice(0, 5));
+    }
+    
+    // Vérifier la cohérence
+    if (totalDoneBeforeConversion !== totalDoneAfterConversion || totalReceivedBeforeConversion !== totalReceivedAfterConversion) {
+      console.error(`[API Raids] ⚠️ INCOHÉRENCE DÉTECTÉE lors de la conversion!`);
+      console.error(`[API Raids] Avant: ${totalDoneBeforeConversion} faits, ${totalReceivedBeforeConversion} reçus`);
+      console.error(`[API Raids] Après: ${totalDoneAfterConversion} faits, ${totalReceivedAfterConversion} reçus`);
     }
     
     // Charger les raids en attente
