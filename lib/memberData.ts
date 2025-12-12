@@ -596,6 +596,7 @@ export async function updateMemberData(
 
 /**
  * Crée un nouveau membre (DASHBOARD ADMIN - écrit dans admin-members-data)
+ * Vérifie d'abord si le membre existe déjà pour éviter les doublons
  */
 export async function createMemberData(
   memberData: Omit<MemberData, "createdAt" | "updatedAt" | "updatedBy">,
@@ -606,12 +607,24 @@ export async function createMemberData(
   // Charger les données admin actuelles
   const adminData = await loadAdminDataFromStorage();
   
-  adminData[login] = {
-    ...memberData,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    updatedBy: createdBy,
-  };
+  // Vérifier si le membre existe déjà dans admin
+  if (adminData[login]) {
+    // Membre existe déjà : mettre à jour au lieu de créer
+    adminData[login] = {
+      ...adminData[login],
+      ...memberData,
+      updatedAt: new Date(),
+      updatedBy: createdBy,
+    };
+  } else {
+    // Nouveau membre : créer
+    adminData[login] = {
+      ...memberData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: createdBy,
+    };
+  }
   
   // Sauvegarder les données admin
   await saveAdminData(adminData);
