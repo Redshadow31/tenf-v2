@@ -70,29 +70,61 @@ export default function TwitchRaidsPage() {
   async function loadData(month?: string) {
     try {
       setLoading(true);
-      const monthToLoad = month || selectedMonth;
+      const monthToLoad = month || selectedMonth || '';
+      
+      if (!monthToLoad) {
+        console.warn("[Twitch Raids] Aucun mois sélectionné");
+        setRaids({});
+        setComputedStats(null);
+        setLoading(false);
+        return;
+      }
       
       // Charger uniquement les raids Twitch depuis l'API
-      const dataResponse = await fetch(
-        `/api/raids/twitch?month=${monthToLoad}`,
-        {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
+      let data: any = null;
+      try {
+        const dataResponse = await fetch(
+          `/api/raids/twitch?month=${monthToLoad}`,
+          {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          }
+        );
+        
+        if (dataResponse.ok) {
+          try {
+            data = await dataResponse.json();
+          } catch (jsonError) {
+            console.error("[Twitch Raids] Erreur parsing JSON:", jsonError);
+            data = null;
+          }
+        } else {
+          // Si l'API retourne une erreur, on continue avec des données vides
+          console.warn("[Twitch Raids] API retourne une erreur:", dataResponse.status);
+          try {
+            const errorData = await dataResponse.json().catch(() => ({}));
+            console.warn("[Twitch Raids] Détails erreur:", errorData);
+          } catch (e) {
+            // Ignorer les erreurs de parsing
+          }
         }
-      );
+      } catch (fetchError) {
+        console.error("[Twitch Raids] Erreur fetch:", fetchError);
+        data = null;
+      }
       
-      if (dataResponse.ok) {
-        const data = await dataResponse.json();
-        
-        // Convertir les données au format attendu par le dashboard
-        const raidsByMember: Record<string, any> = {};
-        
-        // Grouper les raids faits par membre (uniquement Twitch)
-        (data.raidsFaits || []).forEach((raid: any) => {
+      // Convertir les données au format attendu par le dashboard
+      const raidsByMember: Record<string, any> = {};
+      
+      // Grouper les raids faits par membre (uniquement Twitch)
+      if (data?.raidsFaits && Array.isArray(data.raidsFaits)) {
+        data.raidsFaits.forEach((raid: any) => {
+          if (!raid || typeof raid !== 'object') return;
+          
           // Utiliser raider (qui peut être un Discord ID ou Twitch Login)
-          const memberKey = raid.raider?.toLowerCase() || '';
+          const memberKey = raid.raider?.toLowerCase?.() || '';
           if (!memberKey) return;
           
           if (!raidsByMember[memberKey]) {
@@ -102,22 +134,29 @@ export default function TwitchRaidsPage() {
               targets: {},
             };
           }
-          raidsByMember[memberKey].done += raid.count || 1;
+          raidsByMember[memberKey].done += Number(raid.count) || 1;
           
           // Utiliser target (qui peut être un Discord ID ou Twitch Login)
-          const targetKey = raid.target?.toLowerCase() || '';
+          const targetKey = raid.target?.toLowerCase?.() || '';
           if (targetKey) {
+            if (!raidsByMember[memberKey].targets) {
+              raidsByMember[memberKey].targets = {};
+            }
             if (!raidsByMember[memberKey].targets[targetKey]) {
               raidsByMember[memberKey].targets[targetKey] = 0;
             }
-            raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
+            raidsByMember[memberKey].targets[targetKey] += Number(raid.count) || 1;
           }
         });
-        
-        // Grouper les raids reçus par membre (uniquement Twitch)
-        (data.raidsRecus || []).forEach((raid: any) => {
+      }
+      
+      // Grouper les raids reçus par membre (uniquement Twitch)
+      if (data?.raidsRecus && Array.isArray(data.raidsRecus)) {
+        data.raidsRecus.forEach((raid: any) => {
+          if (!raid || typeof raid !== 'object') return;
+          
           // Utiliser target (qui peut être un Discord ID ou Twitch Login)
-          const memberKey = raid.target?.toLowerCase() || '';
+          const memberKey = raid.target?.toLowerCase?.() || '';
           if (!memberKey) return;
           
           if (!raidsByMember[memberKey]) {
@@ -129,70 +168,98 @@ export default function TwitchRaidsPage() {
           }
           raidsByMember[memberKey].received += 1;
         });
-        
-        setRaids(raidsByMember);
-        
-        // Calculer les stats
-        const totalRaidsFaits = data.totalRaidsFaits || 0;
-        const totalRaidsRecus = data.totalRaidsRecus || 0;
-        const raidersSet = new Set((data.raidsFaits || []).map((r: any) => (r.raider || '').toLowerCase()).filter(Boolean));
-        const targetsSet = new Set((data.raidsRecus || []).map((r: any) => (r.target || '').toLowerCase()).filter(Boolean));
-        
-        // Top raideur
-        const raiderCounts: Record<string, number> = {};
-        (data.raidsFaits || []).forEach((r: any) => {
-          const key = (r.raider || '').toLowerCase();
-          if (key) {
-            raiderCounts[key] = (raiderCounts[key] || 0) + (r.count || 1);
-          }
-        });
-        const topRaider = Object.entries(raiderCounts).sort(([, a], [, b]) => b - a)[0];
-        
-        // Top cible
-        const targetCounts: Record<string, number> = {};
-        (data.raidsRecus || []).forEach((r: any) => {
-          const key = (r.target || '').toLowerCase();
-          if (key) {
-            targetCounts[key] = (targetCounts[key] || 0) + 1;
-          }
-        });
-        const topTarget = Object.entries(targetCounts).sort(([, a], [, b]) => b - a)[0];
-        
-        setComputedStats({
-          totalDone: totalRaidsFaits,
-          totalReceived: totalRaidsRecus,
-          unmatchedCount: 0,
-          activeRaidersCount: raidersSet.size,
-          uniqueTargetsCount: targetsSet.size,
-          topRaider: topRaider ? {
-            name: topRaider[0],
-            count: topRaider[1],
-          } : null,
-          topTarget: topTarget ? {
-            name: topTarget[0],
-            count: topTarget[1],
-          } : null,
-          alerts: [], // Les alertes seront calculées depuis les données
-        });
-      } else {
-        const error = await dataResponse.json();
-        console.error("[Twitch Raids Page] Erreur API:", error);
       }
       
-      // Charger les membres pour avoir les noms d'affichage
-      const membersResponse = await fetch("/api/members/public", {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
+      setRaids(raidsByMember);
+      
+      // Calculer les stats avec vérifications défensives
+      const totalRaidsFaits = Number(data?.totalRaidsFaits) || 0;
+      const totalRaidsRecus = Number(data?.totalRaidsRecus) || 0;
+      
+      const raidsFaitsArray = Array.isArray(data?.raidsFaits) ? data.raidsFaits : [];
+      const raidsRecusArray = Array.isArray(data?.raidsRecus) ? data.raidsRecus : [];
+      
+      const raidersSet = new Set(
+        raidsFaitsArray
+          .map((r: any) => (r?.raider || '').toLowerCase?.())
+          .filter((key: string) => key && typeof key === 'string')
+      );
+      const targetsSet = new Set(
+        raidsRecusArray
+          .map((r: any) => (r?.target || '').toLowerCase?.())
+          .filter((key: string) => key && typeof key === 'string')
+      );
+      
+      // Top raideur
+      const raiderCounts: Record<string, number> = {};
+      raidsFaitsArray.forEach((r: any) => {
+        if (!r || typeof r !== 'object') return;
+        const key = (r.raider || '').toLowerCase?.();
+        if (key && typeof key === 'string') {
+          raiderCounts[key] = (raiderCounts[key] || 0) + (Number(r.count) || 1);
+        }
+      });
+      const topRaider = Object.entries(raiderCounts).sort(([, a], [, b]) => b - a)[0] || null;
+      
+      // Top cible
+      const targetCounts: Record<string, number> = {};
+      raidsRecusArray.forEach((r: any) => {
+        if (!r || typeof r !== 'object') return;
+        const key = (r.target || '').toLowerCase?.();
+        if (key && typeof key === 'string') {
+          targetCounts[key] = (targetCounts[key] || 0) + 1;
+        }
+      });
+      const topTarget = Object.entries(targetCounts).sort(([, a], [, b]) => b - a)[0] || null;
+      
+      setComputedStats({
+        totalDone: totalRaidsFaits,
+        totalReceived: totalRaidsRecus,
+        unmatchedCount: 0,
+        activeRaidersCount: raidersSet.size,
+        uniqueTargetsCount: targetsSet.size,
+        topRaider: topRaider ? {
+          name: String(topRaider[0] || ''),
+          count: Number(topRaider[1]) || 0,
+        } : null,
+        topTarget: topTarget ? {
+          name: String(topTarget[0] || ''),
+          count: Number(topTarget[1]) || 0,
+        } : null,
+        alerts: [], // Les alertes seront calculées depuis les données
       });
       
-      if (membersResponse.ok) {
-        const membersData = await membersResponse.json();
-        setMembers(membersData.members || []);
+      // Charger les membres pour avoir les noms d'affichage
+      try {
+        const membersResponse = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (membersResponse.ok) {
+          try {
+            const membersData = await membersResponse.json();
+            setMembers(Array.isArray(membersData?.members) ? membersData.members : []);
+          } catch (jsonError) {
+            console.error("[Twitch Raids] Erreur parsing membres JSON:", jsonError);
+            setMembers([]);
+          }
+        } else {
+          console.warn("[Twitch Raids] Erreur chargement membres:", membersResponse.status);
+          setMembers([]);
+        }
+      } catch (membersError) {
+        console.error("[Twitch Raids] Erreur fetch membres:", membersError);
+        setMembers([]);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des données:", error);
+      console.error("[Twitch Raids] Erreur générale lors du chargement:", error);
+      // En cas d'erreur, on initialise avec des valeurs vides
+      setRaids({});
+      setComputedStats(null);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -204,16 +271,40 @@ export default function TwitchRaidsPage() {
   }
 
   const getMemberDisplayName = (twitchLogin: string): string => {
-    const member = members.find(m => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase());
-    return member?.displayName || twitchLogin;
+    if (!twitchLogin || typeof twitchLogin !== 'string') {
+      return 'Membre inconnu';
+    }
+    
+    try {
+      const member = Array.isArray(members) 
+        ? members.find(m => m?.twitchLogin?.toLowerCase?.() === twitchLogin.toLowerCase())
+        : null;
+      return member?.displayName || twitchLogin;
+    } catch (error) {
+      console.error("[Twitch Raids] Erreur getMemberDisplayName:", error);
+      return twitchLogin;
+    }
   };
 
-  const hasExcessiveRaids = (stats: RaidStats): boolean => {
-    for (const count of Object.values(stats.targets)) {
-      if (count > 3) {
-        return true;
-      }
+  const hasExcessiveRaids = (stats: RaidStats | null | undefined): boolean => {
+    if (!stats || typeof stats !== 'object') {
+      return false;
     }
+    
+    if (!stats.targets || typeof stats.targets !== 'object') {
+      return false;
+    }
+    
+    try {
+      for (const count of Object.values(stats.targets)) {
+        if (Number(count) > 3) {
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("[Twitch Raids] Erreur hasExcessiveRaids:", error);
+    }
+    
     return false;
   };
 
@@ -244,23 +335,54 @@ export default function TwitchRaidsPage() {
                 Mois :
               </label>
               <select
-                value={selectedMonth}
-                onChange={(e) => handleMonthChange(e.target.value)}
+                value={selectedMonth || ''}
+                onChange={(e) => {
+                  const newMonth = e.target.value;
+                  if (newMonth) {
+                    handleMonthChange(newMonth);
+                  }
+                }}
                 className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
               >
-                {availableMonths.map((month) => {
-                  const [year, monthNum] = month.split('-');
-                  const monthNames = [
-                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-                  ];
-                  const monthName = monthNames[parseInt(monthNum) - 1];
-                  return (
-                    <option key={month} value={month}>
-                      {monthName} {year}
-                    </option>
-                  );
-                })}
+                {Array.isArray(availableMonths) && availableMonths.length > 0 ? (
+                  availableMonths.map((month) => {
+                    if (!month || typeof month !== 'string') return null;
+                    
+                    try {
+                      const parts = month.split('-');
+                      if (parts.length !== 2) return null;
+                      
+                      const year = parts[0] || '';
+                      const monthNum = parts[1] || '';
+                      const monthIndex = parseInt(monthNum, 10);
+                      
+                      if (isNaN(monthIndex) || monthIndex < 1 || monthIndex > 12) {
+                        return null;
+                      }
+                      
+                      const monthNames = [
+                        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                      ];
+                      const monthName = monthNames[monthIndex - 1] || month;
+                      
+                      return (
+                        <option key={month} value={month}>
+                          {monthName} {year}
+                        </option>
+                      );
+                    } catch (error) {
+                      console.error("[Twitch Raids] Erreur formatage mois:", error);
+                      return (
+                        <option key={month} value={month}>
+                          {month}
+                        </option>
+                      );
+                    }
+                  }).filter(Boolean)
+                ) : (
+                  <option value="">Aucun mois disponible</option>
+                )}
               </select>
             </div>
           </div>
@@ -300,17 +422,29 @@ export default function TwitchRaidsPage() {
         </div>
 
         {/* Statistiques des raids */}
-        {computedStats && (
+        {computedStats && selectedMonth ? (
           <RaidStatsCard
             stats={computedStats}
             month={selectedMonth}
             getMemberDisplayName={getMemberDisplayName}
           />
+        ) : !loading && (
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-6">
+            <p className="text-gray-400 text-center">
+              Aucune statistique disponible pour ce mois
+            </p>
+          </div>
         )}
 
         {/* Graphiques */}
-        {Object.keys(raids).length > 0 && (
+        {!loading && raids && typeof raids === 'object' && Object.keys(raids).length > 0 ? (
           <RaidCharts raids={raids} getMemberDisplayName={getMemberDisplayName} />
+        ) : !loading && (
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-6">
+            <p className="text-gray-400 text-center">
+              Aucun graphique disponible (pas de données)
+            </p>
+          </div>
         )}
 
         {/* Tableau des raids */}
@@ -334,64 +468,87 @@ export default function TwitchRaidsPage() {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(raids).length === 0 ? (
+                {!raids || typeof raids !== 'object' || Object.keys(raids).length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-gray-400">
-                      Aucun raid Twitch enregistré pour ce mois
+                      {loading ? 'Chargement...' : 'Aucun raid Twitch enregistré pour ce mois'}
                     </td>
                   </tr>
                 ) : (
                   Object.entries(raids)
-                    .sort((a, b) => b[1].done - a[1].done)
-                    .map(([twitchLogin, stats]) => {
-                      const excessive = hasExcessiveRaids(stats);
-                      
-                      return (
-                        <tr
-                          key={twitchLogin}
-                          className={`border-b border-gray-700 hover:bg-gray-800/50 transition-colors ${
-                            excessive ? "bg-red-900/20" : ""
-                          }`}
-                        >
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white">
-                                {getMemberDisplayName(twitchLogin)}
-                              </span>
-                              <span className="text-gray-500 text-sm">
-                                ({twitchLogin})
-                              </span>
-                              <span className="text-purple-400 text-xs">🟣 Twitch</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="text-white font-semibold">
-                              {stats.done}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="text-white font-semibold">
-                              {stats.received}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            {excessive ? (
-                              <RaidAlertBadge
-                                alerts={Object.entries(stats.targets)
-                                  .filter(([, count]) => count > 3)
-                                  .map(([target, count]) => ({
-                                    raider: twitchLogin,
-                                    target,
-                                    count: count as number,
-                                  }))}
-                              />
-                            ) : (
-                              <span className="text-gray-500 text-sm">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
+                    .filter(([key, value]) => key && value && typeof value === 'object')
+                    .sort((a, b) => {
+                      try {
+                        const aDone = Number(a[1]?.done) || 0;
+                        const bDone = Number(b[1]?.done) || 0;
+                        return bDone - aDone;
+                      } catch (error) {
+                        console.error("[Twitch Raids] Erreur tri:", error);
+                        return 0;
+                      }
                     })
+                    .map(([twitchLogin, stats]) => {
+                      if (!twitchLogin || !stats || typeof stats !== 'object') {
+                        return null;
+                      }
+                      
+                      try {
+                        const excessive = hasExcessiveRaids(stats);
+                        const done = Number(stats.done) || 0;
+                        const received = Number(stats.received) || 0;
+                        const targets = stats.targets && typeof stats.targets === 'object' ? stats.targets : {};
+                        
+                        return (
+                          <tr
+                            key={twitchLogin}
+                            className={`border-b border-gray-700 hover:bg-gray-800/50 transition-colors ${
+                              excessive ? "bg-red-900/20" : ""
+                            }`}
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-white">
+                                  {getMemberDisplayName(twitchLogin)}
+                                </span>
+                                <span className="text-gray-500 text-sm">
+                                  ({twitchLogin})
+                                </span>
+                                <span className="text-purple-400 text-xs">🟣 Twitch</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className="text-white font-semibold">
+                                {done}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className="text-white font-semibold">
+                                {received}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              {excessive && targets ? (
+                                <RaidAlertBadge
+                                  alerts={Object.entries(targets)
+                                    .filter(([, count]) => Number(count) > 3)
+                                    .map(([target, count]) => ({
+                                      raider: String(twitchLogin || ''),
+                                      target: String(target || ''),
+                                      count: Number(count) || 0,
+                                    }))}
+                                />
+                              ) : (
+                                <span className="text-gray-500 text-sm">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      } catch (error) {
+                        console.error("[Twitch Raids] Erreur rendu ligne:", error);
+                        return null;
+                      }
+                    })
+                    .filter(Boolean)
                 )}
               </tbody>
             </table>
