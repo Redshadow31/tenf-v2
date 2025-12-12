@@ -10,6 +10,7 @@ import RaidStatsCard from "@/components/RaidStatsCard";
 import RaidCharts from "@/components/RaidCharts";
 import RaidAlertBadge from "@/components/RaidAlertBadge";
 import RaidDetailsModal from "@/components/admin/RaidDetailsModal";
+import RaidScanModal from "@/components/admin/RaidScanModal";
 
 export interface RaidStats {
   done: number;
@@ -41,6 +42,8 @@ export default function RaidsPage() {
   const [computedStats, setComputedStats] = useState<ComputedRaidStats | null>(null);
   const [selectedMember, setSelectedMember] = useState<{ twitchLogin: string; displayName: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -76,28 +79,80 @@ export default function RaidsPage() {
       setLoading(true);
       const monthToLoad = month || selectedMonth;
       
-      // Charger les raids du mois sélectionné (avec conversion Discord ID -> Twitch Login)
-      const raidsUrl = monthToLoad 
-        ? `/api/discord/raids?month=${monthToLoad}`
-        : "/api/discord/raids";
-      
-      const raidsResponse = await fetch(raidsUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
+      // Charger les données depuis la nouvelle API v2
+      const dataResponse = await fetch(
+        `/api/discord/raids/data-v2?month=${monthToLoad}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        }
+      );
       
       let raidsData: any = { raids: {} };
-      if (raidsResponse.ok) {
-        raidsData = await raidsResponse.json();
-        console.log("[Raids Page] Données reçues:", {
-          raidsCount: Object.keys(raidsData.raids || {}).length,
-          month: raidsData.month,
+      if (dataResponse.ok) {
+        const data = await dataResponse.json();
+        
+        // Convertir les données au format attendu par le dashboard
+        const raidsByMember: Record<string, any> = {};
+        
+        // Grouper les raids faits par membre
+        (data.raidsFaits || []).forEach((raid: any) => {
+          const memberKey = raid.raiderTwitchLogin || raid.raider;
+          if (!raidsByMember[memberKey]) {
+            raidsByMember[memberKey] = {
+              done: 0,
+              received: 0,
+              targets: {},
+            };
+          }
+          raidsByMember[memberKey].done += raid.count || 1;
+          const targetKey = raid.targetTwitchLogin || raid.target;
+          if (!raidsByMember[memberKey].targets[targetKey]) {
+            raidsByMember[memberKey].targets[targetKey] = 0;
+          }
+          raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
         });
-        setRaids(raidsData.raids || {});
+        
+        // Grouper les raids reçus par membre
+        (data.raidsRecus || []).forEach((raid: any) => {
+          const memberKey = raid.targetTwitchLogin || raid.target;
+          if (!raidsByMember[memberKey]) {
+            raidsByMember[memberKey] = {
+              done: 0,
+              received: 0,
+              targets: {},
+            };
+          }
+          raidsByMember[memberKey].received += 1;
+        });
+        
+        setRaids(raidsByMember);
+        
+        // Mettre à jour les stats
+        setComputedStats({
+          totalDone: data.stats?.totalRaidsFaits || 0,
+          totalReceived: data.stats?.totalRaidsRecus || 0,
+          unmatchedCount: 0, // Sera mis à jour plus bas
+          activeRaidersCount: data.stats?.activeRaiders || 0,
+          uniqueTargetsCount: data.stats?.uniqueTargets || 0,
+          topRaider: data.stats?.topRaider ? {
+            name: data.stats.topRaider.twitchLogin,
+            count: data.stats.topRaider.count,
+          } : null,
+          topTarget: data.stats?.topTarget ? {
+            name: data.stats.topTarget.twitchLogin,
+            count: data.stats.topTarget.count,
+          } : null,
+          alerts: (data.alerts || []).map((alert: any) => ({
+            raider: alert.raiderTwitchLogin || alert.raider,
+            target: alert.targetTwitchLogin || alert.target,
+            count: alert.count,
+          })),
+        });
       } else {
-        const error = await raidsResponse.json();
+        const error = await dataResponse.json();
         console.error("[Raids Page] Erreur API:", error);
       }
       
@@ -128,9 +183,13 @@ export default function RaidsPage() {
         setUnmatched(unmatchedData.unmatched || []);
       }
 
-      // Calculer les statistiques
-      const stats = computeRaidStats(raidsData.raids || {}, unmatchedData.unmatched || []);
-      setComputedStats(stats);
+      // Mettre à jour le compteur unmatched dans les stats
+      if (unmatchedData.unmatched) {
+        setComputedStats(prev => prev ? {
+          ...prev,
+          unmatchedCount: unmatchedData.unmatched.length,
+        } : null);
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
@@ -403,6 +462,14 @@ export default function RaidsPage() {
             onRefresh={() => loadData(selectedMonth)}
           />
         )}
+
+        {/* Modal de scan */}
+        <RaidScanModal
+          isOpen={isScanModalOpen}
+          onClose={() => setIsScanModalOpen(false)}
+          month={selectedMonth}
+          onScanComplete={handleScanComplete}
+        />
       </div>
     </div>
   );
