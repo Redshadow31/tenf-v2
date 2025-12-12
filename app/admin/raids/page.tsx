@@ -44,6 +44,12 @@ export default function RaidsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [sourceFilters, setSourceFilters] = useState({
+    discord: true,
+    twitch: true,
+    manual: true,
+  });
+  const [rawRaidsData, setRawRaidsData] = useState<any>(null); // Stocker les données brutes pour le filtrage
 
   useEffect(() => {
     async function loadAdmin() {
@@ -97,8 +103,28 @@ export default function RaidsPage() {
         // Convertir les données au format attendu par le dashboard
         const raidsByMember: Record<string, any> = {};
         
-        // Grouper les raids faits par membre
-        (data.raidsFaits || []).forEach((raid: any) => {
+        // Stocker les données brutes pour le filtrage
+        setRawRaidsData(data);
+        
+        // Filtrer selon les sources sélectionnées
+        const filteredRaidsFaits = (data.raidsFaits || []).filter((raid: any) => {
+          const source = raid.source || (raid.manual ? "manual" : "discord");
+          if (source === "twitch-live") return sourceFilters.twitch;
+          if (source === "discord") return sourceFilters.discord;
+          if (source === "manual" || raid.manual) return sourceFilters.manual;
+          return true; // Par défaut, inclure si source inconnue
+        });
+        
+        const filteredRaidsRecus = (data.raidsRecus || []).filter((raid: any) => {
+          const source = raid.source || (raid.manual ? "manual" : "discord");
+          if (source === "twitch-live") return sourceFilters.twitch;
+          if (source === "discord") return sourceFilters.discord;
+          if (source === "manual" || raid.manual) return sourceFilters.manual;
+          return true;
+        });
+        
+        // Grouper les raids faits par membre (après filtrage)
+        filteredRaidsFaits.forEach((raid: any) => {
           const memberKey = raid.raiderTwitchLogin || raid.raider;
           if (!raidsByMember[memberKey]) {
             raidsByMember[memberKey] = {
@@ -115,8 +141,8 @@ export default function RaidsPage() {
           raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
         });
         
-        // Grouper les raids reçus par membre
-        (data.raidsRecus || []).forEach((raid: any) => {
+        // Grouper les raids reçus par membre (après filtrage)
+        filteredRaidsRecus.forEach((raid: any) => {
           const memberKey = raid.targetTwitchLogin || raid.target;
           if (!raidsByMember[memberKey]) {
             raidsByMember[memberKey] = {
@@ -201,6 +227,87 @@ export default function RaidsPage() {
     setSelectedMonth(newMonth);
     loadData(newMonth);
   }
+  
+  function handleSourceFilterChange(source: 'discord' | 'twitch' | 'manual') {
+    const newFilters = {
+      ...sourceFilters,
+      [source]: !sourceFilters[source],
+    };
+    setSourceFilters(newFilters);
+    
+    // Recalculer avec les nouveaux filtres
+    if (rawRaidsData) {
+      const filteredRaidsFaits = (rawRaidsData.raidsFaits || []).filter((raid: any) => {
+        const raidSource = raid.source || (raid.manual ? "manual" : "discord");
+        if (raidSource === "twitch-live") return newFilters.twitch;
+        if (raidSource === "discord") return newFilters.discord;
+        if (raidSource === "manual" || raid.manual) return newFilters.manual;
+        return true;
+      });
+      
+      const filteredRaidsRecus = (rawRaidsData.raidsRecus || []).filter((raid: any) => {
+        const raidSource = raid.source || (raid.manual ? "manual" : "discord");
+        if (raidSource === "twitch-live") return newFilters.twitch;
+        if (raidSource === "discord") return newFilters.discord;
+        if (raidSource === "manual" || raid.manual) return newFilters.manual;
+        return true;
+      });
+      
+      // Recalculer les stats
+      const raidsByMember: Record<string, any> = {};
+      filteredRaidsFaits.forEach((raid: any) => {
+        const memberKey = raid.raiderTwitchLogin || raid.raider;
+        if (!raidsByMember[memberKey]) {
+          raidsByMember[memberKey] = { done: 0, received: 0, targets: {} };
+        }
+        raidsByMember[memberKey].done += raid.count || 1;
+        const targetKey = raid.targetTwitchLogin || raid.target;
+        if (!raidsByMember[memberKey].targets[targetKey]) {
+          raidsByMember[memberKey].targets[targetKey] = 0;
+        }
+        raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
+      });
+      
+      filteredRaidsRecus.forEach((raid: any) => {
+        const memberKey = raid.targetTwitchLogin || raid.target;
+        if (!raidsByMember[memberKey]) {
+          raidsByMember[memberKey] = { done: 0, received: 0, targets: {} };
+        }
+        raidsByMember[memberKey].received += 1;
+      });
+      
+      setRaids(raidsByMember);
+      
+      const totalRaidsFaits = filteredRaidsFaits.reduce((sum: number, r: any) => sum + (r.count || 1), 0);
+      const totalRaidsRecus = filteredRaidsRecus.length;
+      const raidersSet = new Set(filteredRaidsFaits.map((r: any) => r.raiderTwitchLogin || r.raider));
+      const targetsSet = new Set(filteredRaidsRecus.map((r: any) => r.targetTwitchLogin || r.target));
+      
+      const raiderCounts: Record<string, number> = {};
+      filteredRaidsFaits.forEach((r: any) => {
+        const key = r.raiderTwitchLogin || r.raider;
+        raiderCounts[key] = (raiderCounts[key] || 0) + (r.count || 1);
+      });
+      const topRaider = Object.entries(raiderCounts).sort(([, a], [, b]) => b - a)[0];
+      
+      const targetCounts: Record<string, number> = {};
+      filteredRaidsRecus.forEach((r: any) => {
+        const key = r.targetTwitchLogin || r.target;
+        targetCounts[key] = (targetCounts[key] || 0) + 1;
+      });
+      const topTarget = Object.entries(targetCounts).sort(([, a], [, b]) => b - a)[0];
+      
+      setComputedStats(prev => prev ? {
+        ...prev,
+        totalDone: totalRaidsFaits,
+        totalReceived: totalRaidsRecus,
+        activeRaidersCount: raidersSet.size,
+        uniqueTargetsCount: targetsSet.size,
+        topRaider: topRaider ? { name: topRaider[0], count: topRaider[1] } : null,
+        topTarget: topTarget ? { name: topTarget[0], count: topTarget[1] } : null,
+      } : null);
+    }
+  }
 
   function scanRaids(scanAllHistory: boolean = false) {
     // Ouvrir le modal de scan (le modal gère le mode de scan)
@@ -215,6 +322,25 @@ export default function RaidsPage() {
   const getMemberDisplayName = (twitchLogin: string): string => {
     const member = members.find(m => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase());
     return member?.displayName || twitchLogin;
+  };
+  
+  // Fonction pour obtenir la répartition des sources pour un membre
+  const getMemberSourceBreakdown = (twitchLogin: string): { discord: number; twitch: number; manual: number } => {
+    if (!rawRaidsData) return { discord: 0, twitch: 0, manual: 0 };
+    
+    const raidsFaits = (rawRaidsData.raidsFaits || []).filter((r: any) => 
+      (r.raiderTwitchLogin || r.raider).toLowerCase() === twitchLogin.toLowerCase()
+    );
+    
+    const breakdown = { discord: 0, twitch: 0, manual: 0 };
+    raidsFaits.forEach((raid: any) => {
+      const source = raid.source || (raid.manual ? "manual" : "discord");
+      if (source === "twitch-live") breakdown.twitch += raid.count || 1;
+      else if (source === "manual" || raid.manual) breakdown.manual += raid.count || 1;
+      else breakdown.discord += raid.count || 1;
+    });
+    
+    return breakdown;
   };
 
   const hasExcessiveRaids = (stats: RaidStats): boolean => {
@@ -271,6 +397,38 @@ export default function RaidsPage() {
                   );
                 })}
               </select>
+              
+              {/* Filtres de source */}
+              <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-700">
+                <span className="text-gray-400 text-sm">Sources :</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sourceFilters.discord}
+                    onChange={() => handleSourceFilterChange('discord')}
+                    className="w-4 h-4 text-[#9146ff] rounded"
+                  />
+                  <span className="text-gray-300 text-sm">Discord</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sourceFilters.twitch}
+                    onChange={() => handleSourceFilterChange('twitch')}
+                    className="w-4 h-4 text-[#9146ff] rounded"
+                  />
+                  <span className="text-gray-300 text-sm">Twitch</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sourceFilters.manual}
+                    onChange={() => handleSourceFilterChange('manual')}
+                    className="w-4 h-4 text-[#9146ff] rounded"
+                  />
+                  <span className="text-gray-300 text-sm">Manuel</span>
+                </label>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -376,9 +534,26 @@ export default function RaidsPage() {
                             </button>
                           </td>
                           <td className="py-4 px-6">
-                            <span className="text-white font-semibold">
-                              {stats.done}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-semibold">
+                                {stats.done}
+                              </span>
+                              {(() => {
+                                const breakdown = getMemberSourceBreakdown(twitchLogin);
+                                const sources: string[] = [];
+                                if (breakdown.discord > 0) sources.push(`Discord: ${breakdown.discord}`);
+                                if (breakdown.twitch > 0) sources.push(`Twitch: ${breakdown.twitch}`);
+                                if (breakdown.manual > 0) sources.push(`Manuel: ${breakdown.manual}`);
+                                if (sources.length > 0) {
+                                  return (
+                                    <span className="text-xs text-gray-500" title={sources.join(', ')}>
+                                      ({sources.length > 1 ? 'mixte' : sources[0].split(':')[0]})
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                           </td>
                           <td className="py-4 px-6">
                             <span className="text-white font-semibold">

@@ -15,7 +15,9 @@ export interface RaidFait {
   date: string; // ISO timestamp
   count: number; // Nombre de raids (par défaut 1)
   manual: boolean; // true si modifié par un admin
+  source?: "discord" | "twitch-live" | "manual"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
+  viewers?: number; // Nombre de viewers (si source Twitch)
 }
 
 export interface RaidRecu {
@@ -23,7 +25,9 @@ export interface RaidRecu {
   raider: string; // Discord ID ou Twitch Login
   date: string; // ISO timestamp
   manual: boolean; // true si modifié par un admin
+  source?: "discord" | "twitch-live" | "manual"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
+  viewers?: number; // Nombre de viewers (si source Twitch)
 }
 
 export interface RaidAlert {
@@ -32,6 +36,7 @@ export interface RaidAlert {
   count: number; // Nombre de raids répétés
   type: "repetition"; // Type d'alerte
   manual: boolean; // true si modifié par un admin
+  source?: "discord" | "twitch-live" | "manual"; // Source de l'alerte
 }
 
 // ============================================
@@ -359,12 +364,21 @@ export async function recalculateAlerts(monthKey: string): Promise<void> {
           a => a.raider === raider && a.target === target
         );
         
+        // Déterminer la source de l'alerte (basée sur les raids)
+        const raidsForAlert = raidsFaits.filter(
+          r => r.raider === raider && r.target === target
+        );
+        const sources = raidsForAlert.map(r => r.source || "discord");
+        const primarySource = sources.includes("twitch-live") ? "twitch-live" : 
+                             sources.includes("manual") ? "manual" : "discord";
+        
         alerts.push({
           raider,
           target,
           count,
           type: "repetition",
           manual: existingAlert?.manual || false,
+          source: existingAlert?.source || primarySource,
         });
       }
     }
@@ -386,13 +400,37 @@ export async function addRaidFait(
   target: string,
   date: string,
   manual: boolean = false,
-  messageId?: string
+  messageId?: string,
+  source?: "discord" | "twitch-live" | "manual",
+  viewers?: number
 ): Promise<void> {
   const raids = await loadRaidsFaits(monthKey);
   
   // Vérifier si le raid existe déjà (éviter les doublons)
-  if (raidExists(raids, raider, target, date)) {
+  // Pour Twitch, on tolère un écart de quelques secondes pour éviter les doublons
+  const existingRaid = raids.find(r => {
+    if (r.raider === raider && r.target === target) {
+      if (source === "twitch-live") {
+        // Pour Twitch, vérifier si la date est très proche (moins de 5 secondes)
+        const raidDate = new Date(r.date);
+        const newDate = new Date(date);
+        const diffSeconds = Math.abs((newDate.getTime() - raidDate.getTime()) / 1000);
+        return diffSeconds < 5;
+      } else {
+        return r.date === date;
+      }
+    }
+    return false;
+  });
+
+  if (existingRaid) {
     console.log(`[RaidStorage] Raid déjà existant: ${raider} → ${target} (${date})`);
+    return;
+  }
+
+  // Ne jamais écraser une entrée manuelle
+  if (existingRaid?.manual) {
+    console.log(`[RaidStorage] Ignoré: entrée manuelle existante pour ${raider} → ${target}`);
     return;
   }
 
@@ -402,7 +440,9 @@ export async function addRaidFait(
     date,
     count: 1,
     manual,
+    source: source || (manual ? "manual" : "discord"),
     messageId,
+    viewers,
   });
 
   await saveRaidsFaits(monthKey, raids);
@@ -414,7 +454,9 @@ export async function addRaidFait(
     raider,
     date,
     manual,
+    source: source || (manual ? "manual" : "discord"),
     messageId,
+    viewers,
   });
   await saveRaidsRecus(monthKey, raidsRecus);
 
@@ -431,7 +473,9 @@ export async function addRaidRecu(
   raider: string,
   date: string,
   manual: boolean = false,
-  messageId?: string
+  messageId?: string,
+  source?: "discord" | "twitch-live" | "manual",
+  viewers?: number
 ): Promise<void> {
   const raids = await loadRaidsRecus(monthKey);
   
@@ -450,7 +494,9 @@ export async function addRaidRecu(
     raider,
     date,
     manual,
+    source: source || (manual ? "manual" : "discord"),
     messageId,
+    viewers,
   });
 
   await saveRaidsRecus(monthKey, raids);

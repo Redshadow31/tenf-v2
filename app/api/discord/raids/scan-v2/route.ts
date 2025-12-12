@@ -148,7 +148,8 @@ export async function POST(request: NextRequest) {
             targetId,
             messageDate.toISOString(),
             false, // manual = false (c'est le bot qui l'ajoute)
-            message.id
+            message.id,
+            "discord" // source
           );
           newRaidsAdded++;
         } catch (error) {

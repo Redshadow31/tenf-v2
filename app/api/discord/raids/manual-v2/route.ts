@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Ajouter le raid (manual = true)
-    await addRaidFait(monthKey, raiderId, targetId, date, true);
+    await addRaidFait(monthKey, raiderId, targetId, date, true, undefined, "manual");
 
     return NextResponse.json({
       success: true,
