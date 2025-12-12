@@ -55,8 +55,11 @@ export async function GET() {
     // Charger les données depuis le stockage persistant (Blobs ou fichier)
     await loadMemberDataFromStorage();
     
-    // 2. Compter les membres actifs depuis toutes les listes (1, 2, 3) du système centralisé
-    const activeMembers = getAllActiveMemberDataFromAllLists();
+    // 2. Compter le nombre total de membres depuis la gestion des membres (tous les membres, pas seulement les listes)
+    const { getAllMemberData } = await import('@/lib/memberData');
+    const allMembers = getAllMemberData();
+    // Filtrer uniquement les membres actifs (isActive === true)
+    const activeMembers = allMembers.filter(member => member.isActive === true);
     const activeMembersCount = activeMembers.length;
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)
