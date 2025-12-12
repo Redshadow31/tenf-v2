@@ -19,16 +19,28 @@ export async function GET(request: NextRequest) {
     
     const normalizedQuery = query.toLowerCase().trim();
     
+    // Fonction de normalisation pour la recherche
+    const normalize = (text: string | undefined | null): string => {
+      if (!text) return "";
+      return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    };
+    
     // Filtrer les membres qui correspondent à la recherche
     const matches = allMembers
       .filter(member => {
-        const displayName = (member.displayName || '').toLowerCase();
-        const twitchLogin = (member.twitchLogin || '').toLowerCase();
-        const discordUsername = (member.discordUsername || '').toLowerCase();
+        const displayName = normalize(member.displayName);
+        const twitchLogin = normalize(member.twitchLogin);
+        const discordUsername = normalize(member.discordUsername);
+        const discordId = member.discordId || '';
         
         return displayName.includes(normalizedQuery) ||
                twitchLogin.includes(normalizedQuery) ||
-               discordUsername.includes(normalizedQuery);
+               discordUsername.includes(normalizedQuery) ||
+               discordId.includes(query); // Discord ID sans normalisation
       })
       .slice(0, 20) // Limiter à 20 résultats
       .map(member => ({

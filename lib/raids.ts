@@ -242,12 +242,16 @@ export async function saveMonthlyRaids(raids: MonthlyRaids, monthKey?: string): 
 /**
  * Enregistre un raid validé (user1 raid user2) par Discord ID
  * Ne fusionne pas, incrémente simplement les compteurs
+ * @param raiderDiscordId ID Discord du raideur
+ * @param targetDiscordId ID Discord de la cible
+ * @param monthKey Clé du mois (optionnel, par défaut mois en cours)
  */
 export async function recordRaidByDiscordId(
   raiderDiscordId: string,
-  targetDiscordId: string
+  targetDiscordId: string,
+  monthKey?: string
 ): Promise<void> {
-  const raids = await loadMonthlyRaids();
+  const raids = await loadMonthlyRaids(monthKey);
   
   // Initialiser les stats du raider si nécessaire
   if (!raids[raiderDiscordId]) {
@@ -273,10 +277,11 @@ export async function recordRaidByDiscordId(
   
   raids[targetDiscordId].received++;
   
-  console.log(`[Raids] Raid enregistré: ${raiderDiscordId} → ${targetDiscordId} (mois en cours)`);
+  const monthStr = monthKey || getCurrentMonthKey();
+  console.log(`[Raids] Raid enregistré: ${raiderDiscordId} → ${targetDiscordId} (${monthStr})`);
   
   // Sauvegarder
-  await saveMonthlyRaids(raids);
+  await saveMonthlyRaids(raids, monthKey);
 }
 
 /**

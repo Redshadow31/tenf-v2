@@ -5,14 +5,18 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
 import Link from "next/link";
+import { computeRaidStats, ComputedRaidStats } from "@/lib/computeRaidStats";
+import RaidStatsCard from "@/components/RaidStatsCard";
+import RaidCharts from "@/components/RaidCharts";
+import RaidAlertBadge from "@/components/RaidAlertBadge";
 
-interface RaidStats {
+export interface RaidStats {
   done: number;
   received: number;
   targets: Record<string, number>;
 }
 
-interface MonthlyRaids {
+export interface MonthlyRaids {
   [twitchLogin: string]: RaidStats;
 }
 
@@ -32,6 +36,8 @@ export default function RaidsPage() {
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [unmatched, setUnmatched] = useState<any[]>([]);
+  const [computedStats, setComputedStats] = useState<ComputedRaidStats | null>(null);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -79,8 +85,9 @@ export default function RaidsPage() {
         },
       });
       
+      let raidsData: any = { raids: {} };
       if (raidsResponse.ok) {
-        const raidsData = await raidsResponse.json();
+        raidsData = await raidsResponse.json();
         console.log("[Raids Page] Données reçues:", {
           raidsCount: Object.keys(raidsData.raids || {}).length,
           month: raidsData.month,
@@ -103,6 +110,24 @@ export default function RaidsPage() {
         const membersData = await membersResponse.json();
         setMembers(membersData.members || []);
       }
+
+      // Charger les raids non reconnus pour les statistiques
+      let unmatchedData: any = { unmatched: [] };
+      const unmatchedResponse = await fetch(`/api/discord/raids/unmatched?month=${monthToLoad}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (unmatchedResponse.ok) {
+        unmatchedData = await unmatchedResponse.json();
+        setUnmatched(unmatchedData.unmatched || []);
+      }
+
+      // Calculer les statistiques
+      const stats = computeRaidStats(raidsData.raids || {}, unmatchedData.unmatched || []);
+      setComputedStats(stats);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
@@ -253,6 +278,20 @@ export default function RaidsPage() {
           </div>
         </div>
 
+        {/* Statistiques des raids */}
+        {computedStats && (
+          <RaidStatsCard
+            stats={computedStats}
+            month={selectedMonth}
+            getMemberDisplayName={getMemberDisplayName}
+          />
+        )}
+
+        {/* Graphiques */}
+        {Object.keys(raids).length > 0 && (
+          <RaidCharts raids={raids} getMemberDisplayName={getMemberDisplayName} />
+        )}
+
         {/* Tableau des raids */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -271,12 +310,15 @@ export default function RaidsPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
                     Détail des raids
                   </th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
+                    Alertes
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(raids).length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-gray-400">
+                    <td colSpan={5} className="py-8 text-center text-gray-400">
                       Aucun raid enregistré pour ce mois
                     </td>
                   </tr>
@@ -284,7 +326,12 @@ export default function RaidsPage() {
                   Object.entries(raids)
                     .sort((a, b) => b[1].done - a[1].done)
                     .map(([twitchLogin, stats]) => {
+                      // Trouver les alertes pour ce membre
+                      const memberAlerts = computedStats?.alerts.filter(
+                        (alert) => alert.raider === twitchLogin
+                      ) || [];
                       const excessive = hasExcessiveRaids(stats);
+                      
                       return (
                         <tr
                           key={twitchLogin}
@@ -294,11 +341,6 @@ export default function RaidsPage() {
                         >
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-2">
-                              {excessive && (
-                                <span className="text-red-400" title="Plus de 3 raids vers la même personne">
-                                  ⚠️
-                                </span>
-                              )}
                               <span className="font-semibold text-white">
                                 {getMemberDisplayName(twitchLogin)}
                               </span>
@@ -323,7 +365,7 @@ export default function RaidsPage() {
                                 <span
                                   key={target}
                                   className={`px-2 py-1 rounded text-xs font-semibold ${
-                                    count > 3
+                                    count >= 3
                                       ? "bg-red-900/30 text-red-300 border border-red-700"
                                       : "bg-gray-700 text-gray-300"
                                   }`}
@@ -333,6 +375,16 @@ export default function RaidsPage() {
                                 </span>
                               ))}
                             </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            {memberAlerts.length > 0 ? (
+                              <RaidAlertBadge
+                                alerts={memberAlerts}
+                                getMemberDisplayName={getMemberDisplayName}
+                              />
+                            ) : (
+                              <span className="text-gray-500 text-xs">—</span>
+                            )}
                           </td>
                         </tr>
                       );

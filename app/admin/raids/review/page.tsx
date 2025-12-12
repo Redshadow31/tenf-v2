@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import Link from "next/link";
+import { extractDiscordIds } from "@/lib/raidUtils";
 
 interface UnmatchedRaidMessage {
   id: string;
@@ -38,9 +39,59 @@ export default function RaidsReviewPage() {
   const [validating, setValidating] = useState<Set<string>>(new Set());
   const [searchResults, setSearchResults] = useState<Record<string, Member[]>>({});
   const [selectedMembers, setSelectedMembers] = useState<Record<string, { raider?: Member; target?: Member }>>({});
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
   const searchTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
+    // Charger la liste complète des membres
+    async function loadAllMembers() {
+      try {
+        setMembersLoading(true);
+        const response = await fetch("/api/admin/members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const members = (data.members || []).map((m: any) => ({
+            discordId: m.discordId || '',
+            displayName: m.displayName || m.twitchLogin || '',
+            twitchLogin: m.twitchLogin || '',
+            discordUsername: m.discordUsername || m.discordName || '',
+          }));
+          setAllMembers(members);
+        } else {
+          console.error("[Raids Review] Erreur lors du chargement des membres:", await response.text());
+          // Fallback: essayer l'API publique
+          try {
+            const publicResponse = await fetch("/api/members/public", {
+              cache: 'no-store',
+            });
+            if (publicResponse.ok) {
+              const publicData = await publicResponse.json();
+              const members = (publicData.members || []).map((m: any) => ({
+                discordId: m.discordId || '',
+                displayName: m.displayName || m.twitchLogin || '',
+                twitchLogin: m.twitchLogin || '',
+                discordUsername: m.discordUsername || '',
+              }));
+              setAllMembers(members);
+            }
+          } catch (err) {
+            console.error("[Raids Review] Erreur fallback membres:", err);
+          }
+        }
+      } catch (error) {
+        console.error("[Raids Review] Erreur lors du chargement des membres:", error);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    
     // Initialiser avec le mois en cours
     const now = new Date();
     const year = now.getFullYear();
@@ -58,7 +109,10 @@ export default function RaidsReviewPage() {
     }
     setAvailableMonths(months);
     
-    loadData(currentMonthStr);
+    // Charger d'abord les membres, puis les données (pour le pré-remplissage)
+    loadAllMembers().then(() => {
+      loadData(currentMonthStr);
+    });
   }, []);
 
   async function loadData(month?: string) {
@@ -75,9 +129,41 @@ export default function RaidsReviewPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setUnmatched(data.unmatched || []);
-        // Réinitialiser les sélections
-        setSelectedMembers({});
+        const unmatchedData = data.unmatched || [];
+        setUnmatched(unmatchedData);
+        
+        // Pré-remplir automatiquement les champs si des IDs Discord sont trouvés
+        // ATTENTION: Cette fonction doit être appelée APRÈS le chargement des membres
+        const autoSelections: Record<string, { raider?: Member; target?: Member }> = {};
+        
+        if (allMembers.length > 0) {
+          for (const message of unmatchedData) {
+            const discordIds = extractDiscordIds(message.content);
+            
+            if (discordIds.length >= 2) {
+              // Trouver les membres correspondants
+              const raiderId = discordIds[0];
+              const targetId = discordIds[1];
+              
+              const raider = allMembers.find(m => m.discordId === raiderId);
+              const target = allMembers.find(m => m.discordId === targetId);
+              
+              if (raider && target) {
+                autoSelections[message.id] = { raider, target };
+                console.log(`[Raids Review] Pré-remplissage automatique pour ${message.id}: ${raider.displayName} → ${target.displayName}`);
+              }
+            } else if (discordIds.length === 1) {
+              // Un seul ID trouvé, essayer de le placer comme raider
+              const raider = allMembers.find(m => m.discordId === discordIds[0]);
+              if (raider) {
+                autoSelections[message.id] = { raider };
+                console.log(`[Raids Review] Pré-remplissage partiel (raider) pour ${message.id}: ${raider.displayName}`);
+              }
+            }
+          }
+        }
+        
+        setSelectedMembers(autoSelections);
         setSearchResults({});
       } else {
         const error = await response.json();
@@ -92,35 +178,52 @@ export default function RaidsReviewPage() {
   
   function handleMonthChange(newMonth: string) {
     setSelectedMonth(newMonth);
+    // Recharger les données avec le nouveau mois
     loadData(newMonth);
   }
 
-  async function searchMembers(query: string, field: 'raider' | 'target', messageId: string) {
+  // Fonction de normalisation pour la recherche
+  function normalize(text: string | undefined | null): string {
+    if (!text) return "";
+    return text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function searchMembers(query: string, field: 'raider' | 'target', messageId: string) {
     // Annuler la recherche précédente
     if (searchTimeouts.current[`${messageId}-${field}`]) {
       clearTimeout(searchTimeouts.current[`${messageId}-${field}`]);
     }
     
-    if (query.length < 2) {
+    if (query.length === 0) {
       setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: [] }));
       return;
     }
     
-    // Délai pour éviter trop de requêtes
-    searchTimeouts.current[`${messageId}-${field}`] = setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/members/search?q=${encodeURIComponent(query)}`, {
-          cache: 'no-store',
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: data.members || [] }));
-        }
-      } catch (error) {
-        console.error("Erreur lors de la recherche:", error);
-      }
-    }, 300);
+    // Délai pour éviter trop de recherches
+    searchTimeouts.current[`${messageId}-${field}`] = setTimeout(() => {
+      const normalizedQuery = normalize(query);
+      
+      // Recherche locale dans allMembers
+      const matches = allMembers
+        .filter(member => {
+          const displayName = normalize(member.displayName);
+          const twitchLogin = normalize(member.twitchLogin);
+          const discordUsername = normalize(member.discordUsername);
+          const discordId = member.discordId || '';
+          
+          return displayName.includes(normalizedQuery) ||
+                 twitchLogin.includes(normalizedQuery) ||
+                 discordUsername.includes(normalizedQuery) ||
+                 discordId.includes(query); // Discord ID sans normalisation
+        })
+        .slice(0, 20); // Limiter à 20 résultats
+      
+      setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: matches }));
+    }, 200);
   }
 
   function selectMember(member: Member, field: 'raider' | 'target', messageId: string) {
@@ -235,12 +338,14 @@ export default function RaidsReviewPage() {
     }
   }
 
-  if (loading) {
+  if (loading || membersLoading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des messages non reconnus...</p>
+          <p className="text-gray-400">
+            {membersLoading ? "Chargement des membres..." : "Chargement des messages non reconnus..."}
+          </p>
         </div>
       </div>
     );
@@ -290,6 +395,15 @@ export default function RaidsReviewPage() {
           </div>
         </div>
 
+        {/* Avertissement si les membres ne sont pas chargés */}
+        {!membersLoading && allMembers.length === 0 && (
+          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 mb-4">
+            <p className="text-yellow-300 text-sm">
+              ⚠️ Impossible de charger la liste des membres. Les champs d'autocomplétion ne fonctionneront pas.
+            </p>
+          </div>
+        )}
+
         {/* Liste des messages non reconnus */}
         {unmatched.length === 0 ? (
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
@@ -336,7 +450,7 @@ export default function RaidsReviewPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Rechercher un membre..."
+                        placeholder={membersLoading ? "Chargement des membres..." : "Rechercher un membre..."}
                         value={selection.raider?.displayName || selection.raider?.twitchLogin || ''}
                         onChange={(e) => {
                           const query = e.target.value;
@@ -345,11 +459,13 @@ export default function RaidsReviewPage() {
                               ...prev,
                               [message.id]: { ...prev[message.id], raider: undefined },
                             }));
+                            setSearchResults(prev => ({ ...prev, [`${message.id}-raider`]: [] }));
+                          } else {
+                            searchMembers(query, 'raider', message.id);
                           }
-                          searchMembers(query, 'raider', message.id);
                         }}
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
-                        disabled={isValidating}
+                        disabled={isValidating || membersLoading || allMembers.length === 0}
                       />
                       {raiderResults.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -363,6 +479,7 @@ export default function RaidsReviewPage() {
                               <div className="font-semibold text-white">{member.displayName}</div>
                               <div className="text-gray-400 text-xs">
                                 {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
+                                {member.discordId && ` • ID: ${member.discordId}`}
                               </div>
                             </button>
                           ))}
@@ -377,7 +494,7 @@ export default function RaidsReviewPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Rechercher un membre..."
+                        placeholder={membersLoading ? "Chargement des membres..." : "Rechercher un membre..."}
                         value={selection.target?.displayName || selection.target?.twitchLogin || ''}
                         onChange={(e) => {
                           const query = e.target.value;
@@ -386,11 +503,13 @@ export default function RaidsReviewPage() {
                               ...prev,
                               [message.id]: { ...prev[message.id], target: undefined },
                             }));
+                            setSearchResults(prev => ({ ...prev, [`${message.id}-target`]: [] }));
+                          } else {
+                            searchMembers(query, 'target', message.id);
                           }
-                          searchMembers(query, 'target', message.id);
                         }}
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
-                        disabled={isValidating}
+                        disabled={isValidating || membersLoading || allMembers.length === 0}
                       />
                       {targetResults.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -404,6 +523,7 @@ export default function RaidsReviewPage() {
                               <div className="font-semibold text-white">{member.displayName}</div>
                               <div className="text-gray-400 text-xs">
                                 {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
+                                {member.discordId && ` • ID: ${member.discordId}`}
                               </div>
                             </button>
                           ))}

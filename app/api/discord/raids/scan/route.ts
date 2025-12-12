@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addPendingRaid, validatePendingRaid, rejectPendingRaid, loadPendingRaids, addUnmatchedRaid, getCurrentMonthKey, getMonthKey } from '@/lib/raids';
+import { addPendingRaid, validatePendingRaid, rejectPendingRaid, loadPendingRaids, addUnmatchedRaid, getCurrentMonthKey, getMonthKey, recordRaidByDiscordId } from '@/lib/raids';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { extractDiscordIds, findMembersByDiscordIds } from '@/lib/raidUtils';
 
 const COORDINATION_RAID_CHANNEL_ID = "1278840270753894535";
 const CHECKMARK_EMOJI = "✅"; // Unicode: U+2705
@@ -275,20 +276,132 @@ export async function POST(request: NextRequest) {
         continue;
       }
       
+      const messageId = message.id;
+      
+      // ÉTAPE 1: Essayer d'extraire les IDs Discord directement du message
+      const discordIds = extractDiscordIds(content);
+      let raiderDiscordId: string | null = null;
+      let targetDiscordId: string | null = null;
+      let raider: any = null;
+      let target: any = null;
+      
+      if (discordIds.length >= 2) {
+        // On a au moins 2 IDs Discord, essayer de les associer automatiquement
+        raiderDiscordId = discordIds[0];
+        targetDiscordId = discordIds[1];
+        
+        console.log(`[Raid Scan] IDs Discord extraits du message ${messageId}: raider=${raiderDiscordId}, target=${targetDiscordId}`);
+        
+        // Trouver les membres par Discord ID
+        const membersMap = await findMembersByDiscordIds([raiderDiscordId, targetDiscordId]);
+        raider = membersMap.get(raiderDiscordId);
+        target = membersMap.get(targetDiscordId);
+        
+        if (raider && target && raider.discordId && target.discordId) {
+          // Les deux membres sont trouvés par Discord ID, ajouter automatiquement le raid
+          if (raider.discordId === target.discordId) {
+            console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${raiderDiscordId})`);
+            continue;
+          }
+          
+          console.log(`[Raid Scan] Raid détecté via Discord ID: ${raider.displayName} (${raiderDiscordId}) → ${target.displayName} (${targetDiscordId})`);
+          
+          // Vérifier les réactions sur le message
+          const reactions = message.reactions || [];
+          let hasCheckmark = false;
+          let hasCross = false;
+          
+          for (const reaction of reactions) {
+            const emoji = reaction.emoji.name || reaction.emoji;
+            if (emoji === CHECKMARK_EMOJI || emoji === "✅") {
+              hasCheckmark = true;
+            } else if (emoji === CROSS_EMOJI || emoji === "❌") {
+              hasCross = true;
+            }
+          }
+          
+          // Si le message n'a pas encore été traité
+          if (!processedMessageIds.has(messageId)) {
+            if (hasCheckmark) {
+              // Valider immédiatement si ✅ est présent
+              try {
+                await recordRaidByDiscordId(raiderDiscordId, targetDiscordId, targetMonthKey);
+                raidsValidated++;
+                console.log(`[Raid Scan] Raid validé automatiquement via Discord ID: ${messageId}`);
+              } catch (error) {
+                const errorMsg = `Erreur lors de la validation automatique du raid: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+                errors.push(errorMsg);
+                console.error(`[Raid Scan] ${errorMsg}`, error);
+              }
+            } else if (!hasCross) {
+              // Ajouter en attente si pas de réaction ❌
+              try {
+                await addPendingRaid(
+                  messageId,
+                  raiderDiscordId,
+                  targetDiscordId,
+                  raider.twitchLogin,
+                  target.twitchLogin
+                );
+                newRaidsAdded++;
+                console.log(`[Raid Scan] Raid ajouté en attente via Discord ID: ${messageId}`);
+              } catch (error) {
+                const errorMsg = `Erreur lors de l'ajout du raid en attente: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+                errors.push(errorMsg);
+                console.error(`[Raid Scan] ${errorMsg}`, error);
+              }
+            } else {
+              // Rejeter si ❌ est présent
+              raidsRejected++;
+              console.log(`[Raid Scan] Raid rejeté (réaction ❌): ${messageId}`);
+            }
+          } else {
+            // Message déjà traité, vérifier si les réactions ont changé
+            const existingRaid = pendingRaids.find(r => r.messageId === messageId);
+            if (existingRaid) {
+              if (hasCheckmark && !hasCross) {
+                // Valider si ✅ est maintenant présent
+                try {
+                  await validatePendingRaid(messageId);
+                  raidsValidated++;
+                  console.log(`[Raid Scan] Raid validé (réaction changée): ${messageId}`);
+                } catch (error) {
+                  console.log(`[Raid Scan] Raid déjà validé: ${messageId}`);
+                }
+              } else if (hasCross) {
+                // Rejeter si ❌ est présent
+                try {
+                  await rejectPendingRaid(messageId);
+                  raidsRejected++;
+                  console.log(`[Raid Scan] Raid rejeté (réaction changée): ${messageId}`);
+                } catch (error) {
+                  console.log(`[Raid Scan] Raid déjà rejeté: ${messageId}`);
+                }
+              }
+            }
+          }
+          
+          messagesWithRaids++;
+          continue; // Message traité, passer au suivant
+        }
+      }
+      
+      // ÉTAPE 2: Si pas d'IDs Discord ou membres non trouvés, essayer le regex classique
       const match = content.match(raidPattern);
       
       if (match) {
         messagesWithRaids++;
-        const messageId = message.id;
         // Extraire uniquement le nom (avant la parenthèse si présente)
         const raiderName = match[1].trim();
         const targetName = match[2].trim();
         
         console.log(`[Raid Scan] Message ${messageId}: "${content.substring(0, 100)}..." → raider: "${raiderName}", target: "${targetName}"`);
         
-        // Trouver les membres par leur nom (avec normalisation)
-        const raider = findMemberByName(raiderName);
-        const target = findMemberByName(targetName);
+        // Si on n'a pas déjà trouvé les membres via Discord ID, chercher par nom
+        if (!raider || !target) {
+          raider = findMemberByName(raiderName);
+          target = findMemberByName(targetName);
+        }
         
         if (!raider || !raider.discordId) {
           const errorMsg = `Raider non trouvé: "${raiderName}" (cherché dans displayName, twitchLogin, discordUsername)`;
@@ -335,8 +448,8 @@ export async function POST(request: NextRequest) {
         }
         
         // Vérifier que raider et target sont correctement assignés
-        const raiderDiscordId = raider.discordId;
-        const targetDiscordId = target.discordId;
+        raiderDiscordId = raider.discordId;
+        targetDiscordId = target.discordId;
         
         if (raiderDiscordId === targetDiscordId) {
           console.warn(`[Raid Scan] Raid ignoré: raider et cible sont identiques (${raiderDiscordId})`);
@@ -445,22 +558,43 @@ export async function POST(request: NextRequest) {
       } else {
         // Message non reconnu comme raid - vérifier s'il contient "raid" pour logging
         if (content.toLowerCase().includes('raid') && content.includes('@')) {
-          messagesNotRecognized++;
-          unrecognizedMessages.push(`[Format non reconnu] ${content.substring(0, 200)}`);
-          console.log(`[Raid Scan] Message non reconnu (contient "raid"): "${content.substring(0, 100)}..."`);
-          
-          // Ajouter dans unmatched pour traitement manuel
-          try {
-            await addUnmatchedRaid({
-              id: message.id,
-              content: content,
-              timestamp: message.timestamp,
-              reason: "regex_fail",
-              messageId: message.id,
-            }, targetMonthKey);
-            console.log(`[Raid Scan] Message ajouté dans unmatched: ${message.id}`);
-          } catch (error) {
-            console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+          // Si on a des IDs Discord mais qu'on n'a pas pu les associer, c'est différent
+          if (discordIds.length > 0 && discordIds.length < 2) {
+            // Un seul ID Discord trouvé, ou aucun membre associé
+            messagesNotRecognized++;
+            unrecognizedMessages.push(`[ID Discord partiel] ${content.substring(0, 200)}`);
+            console.log(`[Raid Scan] Message avec ID Discord partiel: "${content.substring(0, 100)}..." (${discordIds.length} ID(s) trouvé(s))`);
+            
+            try {
+              await addUnmatchedRaid({
+                id: message.id,
+                content: content,
+                timestamp: message.timestamp,
+                reason: discordIds.length === 1 ? "unknown_target" : "unknown_raider",
+                messageId: message.id,
+              }, targetMonthKey);
+              console.log(`[Raid Scan] Message ajouté dans unmatched (ID Discord partiel): ${message.id}`);
+            } catch (error) {
+              console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+            }
+          } else if (discordIds.length === 0) {
+            // Aucun ID Discord trouvé
+            messagesNotRecognized++;
+            unrecognizedMessages.push(`[Format non reconnu] ${content.substring(0, 200)}`);
+            console.log(`[Raid Scan] Message non reconnu (contient "raid"): "${content.substring(0, 100)}..."`);
+            
+            try {
+              await addUnmatchedRaid({
+                id: message.id,
+                content: content,
+                timestamp: message.timestamp,
+                reason: "regex_fail",
+                messageId: message.id,
+              }, targetMonthKey);
+              console.log(`[Raid Scan] Message ajouté dans unmatched: ${message.id}`);
+            } catch (error) {
+              console.error(`[Raid Scan] Erreur lors de l'ajout dans unmatched:`, error);
+            }
           }
         }
       }
