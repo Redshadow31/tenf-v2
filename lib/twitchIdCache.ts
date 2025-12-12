@@ -18,10 +18,7 @@ interface TwitchIdCache {
  * Charge le cache des IDs Twitch pour le mois actuel
  */
 export async function loadTwitchIdCache(monthKey?: string): Promise<TwitchIdCache> {
-  const store = getStore({
-    name: CACHE_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(CACHE_STORE_NAME);
 
   const key = monthKey || getCurrentMonthKey();
   const cacheKey = `${CACHE_KEY_PREFIX}-${key}`;
@@ -42,10 +39,7 @@ export async function saveTwitchIdCache(
   cache: TwitchIdCache,
   monthKey?: string
 ): Promise<void> {
-  const store = getStore({
-    name: CACHE_STORE_NAME,
-    consistency: "strong",
-  });
+  const store = getStore(CACHE_STORE_NAME);
 
   const key = monthKey || getCurrentMonthKey();
   const cacheKey = `${CACHE_KEY_PREFIX}-${key}`;
