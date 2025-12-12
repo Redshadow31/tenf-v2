@@ -66,8 +66,6 @@ export default function GestionMembresPage() {
   const [sortColumn, setSortColumn] = useState<"nom" | "role" | "lastLive" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
-  const [showSyncConfirmModal, setShowSyncConfirmModal] = useState(false);
-  const [syncPreview, setSyncPreview] = useState<{ totalFetched?: number; skippedBots?: number; skippedNoRole?: number } | null>(null);
   const [showDiscordSyncModal, setShowDiscordSyncModal] = useState(false);
   const [discordSyncMembers, setDiscordSyncMembers] = useState<any[]>([]);
   const [discordSyncLoading, setDiscordSyncLoading] = useState(false);
@@ -1258,26 +1256,6 @@ export default function GestionMembresPage() {
             {currentAdmin?.isFounder && (
               <>
                 <button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch("/api/admin/members/sync-twitch", { method: "POST" });
-                      const data = await response.json();
-                      if (data.success) {
-                        alert(`Synchronisation Twitch terminée : ${data.synced}/${data.total} membres`);
-                        await loadDiscordMembers();
-                      } else {
-                        alert(`Erreur: ${data.error}`);
-                      }
-                    } catch (err) {
-                      console.error("Error syncing:", err);
-                      alert("Erreur lors de la synchronisation Twitch");
-                    }
-                  }}
-                  className="bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
-                >
-                  🔄 Sync Twitch
-                </button>
-                <button
                   onClick={() => {
                     window.location.href = "/admin/fusion-doublons";
                   }}
@@ -1319,6 +1297,35 @@ export default function GestionMembresPage() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Encadré de statistiques des membres */}
+        <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">👥</span>
+            <div className="flex-1">
+              <h3 className="text-white font-semibold mb-1">Statistiques des membres</h3>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                <span>
+                  <span className="text-white font-semibold">{members.length}</span> membre{members.length > 1 ? 's' : ''} au total
+                </span>
+                {members.length > 0 && (
+                  <>
+                    <span>
+                      <span className="text-green-400 font-semibold">
+                        {members.filter(m => m.statut === "Actif").length}
+                      </span> actif{members.filter(m => m.statut === "Actif").length > 1 ? 's' : ''}
+                    </span>
+                    <span>
+                      <span className="text-red-400 font-semibold">
+                        {members.filter(m => m.statut === "Inactif").length}
+                      </span> inactif{members.filter(m => m.statut === "Inactif").length > 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
