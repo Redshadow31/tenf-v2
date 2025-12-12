@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import Link from "next/link";
@@ -37,11 +37,12 @@ export default function RaidsReviewPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [validating, setValidating] = useState<Set<string>>(new Set());
-  const [searchResults, setSearchResults] = useState<Record<string, Member[]>>({});
   const [selectedMembers, setSelectedMembers] = useState<Record<string, { raider?: Member; target?: Member }>>({});
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
-  const searchTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  // États de recherche séparés pour chaque champ (messageId-field)
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
+  const [showResults, setShowResults] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Charger la liste complète des membres
@@ -164,7 +165,17 @@ export default function RaidsReviewPage() {
         }
         
         setSelectedMembers(autoSelections);
-        setSearchResults({});
+        // Initialiser les searchQueries pour les membres pré-remplis
+        const initialQueries: Record<string, string> = {};
+        for (const [msgId, selection] of Object.entries(autoSelections)) {
+          if (selection.raider) {
+            initialQueries[`${msgId}-raider`] = selection.raider.displayName || selection.raider.twitchLogin || '';
+          }
+          if (selection.target) {
+            initialQueries[`${msgId}-target`] = selection.target.displayName || selection.target.twitchLogin || '';
+          }
+        }
+        setSearchQueries(initialQueries);
       } else {
         const error = await response.json();
         console.error("[Raids Review] Erreur API:", error);
@@ -182,51 +193,47 @@ export default function RaidsReviewPage() {
     loadData(newMonth);
   }
 
-  // Fonction de normalisation pour la recherche
+  // Fonction de normalisation pour la recherche (identique à /admin/membres)
   function normalize(text: string | undefined | null): string {
     if (!text) return "";
     return text
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
-      .trim();
+      .normalize("NFD") // Décompose les caractères accentués
+      .replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+      .replace(/\s+/g, " ") // Remplace les espaces multiples par un seul
+      .trim(); // Supprime les espaces en début/fin
   }
 
-  function searchMembers(query: string, field: 'raider' | 'target', messageId: string) {
-    // Annuler la recherche précédente
-    if (searchTimeouts.current[`${messageId}-${field}`]) {
-      clearTimeout(searchTimeouts.current[`${messageId}-${field}`]);
+  // Fonction de filtrage des membres (identique à /admin/membres)
+  function filterMembers(query: string): Member[] {
+    if (!query || query.trim().length === 0) {
+      return [];
     }
     
-    if (query.length === 0) {
-      setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: [] }));
-      return;
-    }
+    const normalizedQuery = normalize(query);
     
-    // Délai pour éviter trop de recherches
-    searchTimeouts.current[`${messageId}-${field}`] = setTimeout(() => {
-      const normalizedQuery = normalize(query);
+    return allMembers.filter((member) => {
+      // Recherche dans tous les champs avec normalisation
+      const normalizedDisplayName = normalize(member.displayName);
+      const normalizedTwitchLogin = normalize(member.twitchLogin);
+      const normalizedDiscordUsername = normalize(member.discordUsername);
+      const discordId = member.discordId || "";
       
-      // Recherche locale dans allMembers
-      const matches = allMembers
-        .filter(member => {
-          const displayName = normalize(member.displayName);
-          const twitchLogin = normalize(member.twitchLogin);
-          const discordUsername = normalize(member.discordUsername);
-          const discordId = member.discordId || '';
-          
-          return displayName.includes(normalizedQuery) ||
-                 twitchLogin.includes(normalizedQuery) ||
-                 discordUsername.includes(normalizedQuery) ||
-                 discordId.includes(query); // Discord ID sans normalisation
-        })
-        .slice(0, 20); // Limiter à 20 résultats
-      
-      setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: matches }));
-    }, 200);
+      // Correspondance partielle insensible à la casse et aux accents
+      return (
+        normalizedDisplayName.includes(normalizedQuery) ||
+        normalizedTwitchLogin.includes(normalizedQuery) ||
+        normalizedDiscordUsername.includes(normalizedQuery) ||
+        // Recherche exacte sur l'ID Discord (sans normalisation pour garder la précision)
+        (discordId && discordId.toLowerCase().includes(query.toLowerCase()))
+      );
+    });
   }
 
   function selectMember(member: Member, field: 'raider' | 'target', messageId: string) {
+    const fieldKey = `${messageId}-${field}`;
+    
+    // Mettre à jour le membre sélectionné
     setSelectedMembers(prev => ({
       ...prev,
       [messageId]: {
@@ -234,8 +241,15 @@ export default function RaidsReviewPage() {
         [field]: member,
       },
     }));
+    
+    // Mettre à jour la valeur de recherche avec le nom du membre sélectionné
+    setSearchQueries(prev => ({
+      ...prev,
+      [fieldKey]: member.displayName || member.twitchLogin || '',
+    }));
+    
     // Fermer les résultats de recherche
-    setSearchResults(prev => ({ ...prev, [`${messageId}-${field}`]: [] }));
+    setShowResults(prev => ({ ...prev, [fieldKey]: false }));
   }
 
   async function validateRaid(messageId: string) {
@@ -415,8 +429,6 @@ export default function RaidsReviewPage() {
           <div className="space-y-4">
             {unmatched.map((message) => {
               const selection = selectedMembers[message.id] || {};
-              const raiderResults = searchResults[`${message.id}-raider`] || [];
-              const targetResults = searchResults[`${message.id}-target`] || [];
               const isValidating = validating.has(message.id);
               
               return (
@@ -451,40 +463,67 @@ export default function RaidsReviewPage() {
                       <input
                         type="text"
                         placeholder={membersLoading ? "Chargement des membres..." : "Rechercher un membre..."}
-                        value={selection.raider?.displayName || selection.raider?.twitchLogin || ''}
+                        value={searchQueries[`${message.id}-raider`] || ''}
                         onChange={(e) => {
+                          const fieldKey = `${message.id}-raider`;
                           const query = e.target.value;
-                          if (query.length === 0) {
+                          
+                          // Mettre à jour la valeur de recherche
+                          setSearchQueries(prev => ({ ...prev, [fieldKey]: query }));
+                          
+                          // Afficher les résultats si la requête n'est pas vide
+                          setShowResults(prev => ({ ...prev, [fieldKey]: query.trim().length > 0 }));
+                          
+                          // Si la requête est vide, réinitialiser la sélection
+                          if (query.trim().length === 0) {
                             setSelectedMembers(prev => ({
                               ...prev,
                               [message.id]: { ...prev[message.id], raider: undefined },
                             }));
-                            setSearchResults(prev => ({ ...prev, [`${message.id}-raider`]: [] }));
-                          } else {
-                            searchMembers(query, 'raider', message.id);
                           }
+                        }}
+                        onFocus={() => {
+                          const fieldKey = `${message.id}-raider`;
+                          const query = searchQueries[fieldKey] || '';
+                          if (query.trim().length > 0) {
+                            setShowResults(prev => ({ ...prev, [fieldKey]: true }));
+                          }
+                        }}
+                        onBlur={() => {
+                          // Délai pour permettre le clic sur un résultat
+                          setTimeout(() => {
+                            setShowResults(prev => ({ ...prev, [`${message.id}-raider`]: false }));
+                          }, 200);
                         }}
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
                         disabled={isValidating || membersLoading || allMembers.length === 0}
                       />
-                      {raiderResults.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {raiderResults.map((member) => (
-                            <button
-                              key={member.discordId}
-                              type="button"
-                              onClick={() => selectMember(member, 'raider', message.id)}
-                              className="w-full text-left px-4 py-2 hover:bg-[#0e0e10] text-sm"
-                            >
-                              <div className="font-semibold text-white">{member.displayName}</div>
-                              <div className="text-gray-400 text-xs">
-                                {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
-                                {member.discordId && ` • ID: ${member.discordId}`}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {showResults[`${message.id}-raider`] && (() => {
+                        const query = searchQueries[`${message.id}-raider`] || '';
+                        const results = filterMembers(query);
+                        return results.length > 0 ? (
+                          <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                            {results.map((member) => (
+                              <button
+                                key={member.discordId}
+                                type="button"
+                                onClick={() => selectMember(member, 'raider', message.id)}
+                                className="w-full text-left px-4 py-2 hover:bg-[#0e0e10] text-sm transition-colors"
+                              >
+                                <div className="font-semibold text-white">{member.displayName}</div>
+                                <div className="text-gray-400 text-xs">
+                                  {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
+                                  {member.discordId && ` • ID: ${member.discordId}`}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : query.trim().length > 0 ? (
+                          <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg p-4">
+                            <div className="text-gray-400 text-sm text-center">Aucun membre trouvé</div>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
 
                     {/* Target */}
@@ -495,40 +534,67 @@ export default function RaidsReviewPage() {
                       <input
                         type="text"
                         placeholder={membersLoading ? "Chargement des membres..." : "Rechercher un membre..."}
-                        value={selection.target?.displayName || selection.target?.twitchLogin || ''}
+                        value={searchQueries[`${message.id}-target`] || ''}
                         onChange={(e) => {
+                          const fieldKey = `${message.id}-target`;
                           const query = e.target.value;
-                          if (query.length === 0) {
+                          
+                          // Mettre à jour la valeur de recherche
+                          setSearchQueries(prev => ({ ...prev, [fieldKey]: query }));
+                          
+                          // Afficher les résultats si la requête n'est pas vide
+                          setShowResults(prev => ({ ...prev, [fieldKey]: query.trim().length > 0 }));
+                          
+                          // Si la requête est vide, réinitialiser la sélection
+                          if (query.trim().length === 0) {
                             setSelectedMembers(prev => ({
                               ...prev,
                               [message.id]: { ...prev[message.id], target: undefined },
                             }));
-                            setSearchResults(prev => ({ ...prev, [`${message.id}-target`]: [] }));
-                          } else {
-                            searchMembers(query, 'target', message.id);
                           }
+                        }}
+                        onFocus={() => {
+                          const fieldKey = `${message.id}-target`;
+                          const query = searchQueries[fieldKey] || '';
+                          if (query.trim().length > 0) {
+                            setShowResults(prev => ({ ...prev, [fieldKey]: true }));
+                          }
+                        }}
+                        onBlur={() => {
+                          // Délai pour permettre le clic sur un résultat
+                          setTimeout(() => {
+                            setShowResults(prev => ({ ...prev, [`${message.id}-target`]: false }));
+                          }, 200);
                         }}
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
                         disabled={isValidating || membersLoading || allMembers.length === 0}
                       />
-                      {targetResults.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {targetResults.map((member) => (
-                            <button
-                              key={member.discordId}
-                              type="button"
-                              onClick={() => selectMember(member, 'target', message.id)}
-                              className="w-full text-left px-4 py-2 hover:bg-[#0e0e10] text-sm"
-                            >
-                              <div className="font-semibold text-white">{member.displayName}</div>
-                              <div className="text-gray-400 text-xs">
-                                {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
-                                {member.discordId && ` • ID: ${member.discordId}`}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {showResults[`${message.id}-target`] && (() => {
+                        const query = searchQueries[`${message.id}-target`] || '';
+                        const results = filterMembers(query);
+                        return results.length > 0 ? (
+                          <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                            {results.map((member) => (
+                              <button
+                                key={member.discordId}
+                                type="button"
+                                onClick={() => selectMember(member, 'target', message.id)}
+                                className="w-full text-left px-4 py-2 hover:bg-[#0e0e10] text-sm transition-colors"
+                              >
+                                <div className="font-semibold text-white">{member.displayName}</div>
+                                <div className="text-gray-400 text-xs">
+                                  {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
+                                  {member.discordId && ` • ID: ${member.discordId}`}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : query.trim().length > 0 ? (
+                          <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg p-4">
+                            <div className="text-gray-400 text-sm text-center">Aucun membre trouvé</div>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
