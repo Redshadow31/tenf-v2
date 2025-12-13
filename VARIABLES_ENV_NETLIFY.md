@@ -29,6 +29,18 @@ D'après votre configuration actuelle, vous avez :
 - **Où l'utiliser** : `app/api/vip-members/route.ts`
 - **Note** : Nécessaire uniquement si vous voulez récupérer les membres VIP depuis Discord
 
+### 4. **STATBOT_API_KEY** (OBLIGATOIRE pour les statistiques Discord)
+- **Description** : Clé API Statbot pour récupérer les statistiques Discord (messages, heures vocales)
+- **Valeur** : `NTM1MjQ0ODU3ODkxODgwOTcw.e8Z98EEvaTs3UcWIvx66SgHBvzQ6H71koh9ui396uAA`
+- **Où l'utiliser** : `netlify/functions/statbot-fetch.ts`
+- **Note** : Nécessaire pour le bouton "Récupérer les données Statbot" dans le dashboard
+
+### 5. **STATBOT_SERVER_ID** (OBLIGATOIRE pour les statistiques Discord)
+- **Description** : ID du serveur Discord pour Statbot
+- **Valeur** : `535244857891880970`
+- **Où l'utiliser** : `netlify/functions/statbot-fetch.ts`
+- **Note** : Nécessaire pour le bouton "Récupérer les données Statbot" dans le dashboard
+
 ## 🔧 Configuration complète recommandée
 
 Ajoutez ces variables dans Netlify → Site settings → Environment variables :
@@ -43,6 +55,8 @@ NEXTAUTH_URL=https://teamnewfamily.netlify.app
 TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
 TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
 DISCORD_BOT_TOKEN=votre_bot_token_ici (optionnel)
+STATBOT_API_KEY=NTM1MjQ0ODU3ODkxODgwOTcw.e8Z98EEvaTs3UcWIvx66SgHBvzQ6H71koh9ui396uAA
+STATBOT_SERVER_ID=535244857891880970
 ```
 
 ## ✅ Vérification Discord Developer Portal
