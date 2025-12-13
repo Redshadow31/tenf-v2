@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getDiscordUser } from "@/lib/discord";
-import { hasAdminDashboardAccess } from "@/lib/admin";
+import { hasAdminDashboardAccess, isFounder } from "@/lib/admin";
 import Link from "next/link";
 import { computeRaidStats, ComputedRaidStats } from "@/lib/computeRaidStats";
 import RaidStatsCard from "@/components/RaidStatsCard";
@@ -25,7 +25,7 @@ export default function RaidsPage() {
   const [raids, setRaids] = useState<MonthlyRaids>({});
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [unmatched, setUnmatched] = useState<any[]>([]);
@@ -43,7 +43,8 @@ export default function RaidsPage() {
     async function loadAdmin() {
       const user = await getDiscordUser();
       if (user) {
-        setCurrentAdmin({ id: user.id, username: user.username });
+        const founderStatus = isFounder(user.id);
+        setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus });
       }
     }
     loadAdmin();
@@ -426,6 +427,35 @@ export default function RaidsPage() {
             >
               🔧 Vérifier les raids non reconnus
             </Link>
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={async () => {
+                  const confirmMessage = `⚠️ ATTENTION : Cette action est irréversible !\n\nVoulez-vous supprimer TOUS les raids manuels pour le mois ${selectedMonth} ?\n\nCela supprimera uniquement les raids avec source="manual".\n\nLes raids EventSub ne seront pas affectés.`;
+                  if (!confirm(confirmMessage)) {
+                    return;
+                  }
+                  try {
+                    const response = await fetch(`/api/discord/raids/delete-manual?month=${selectedMonth}`, {
+                      method: "DELETE",
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                      alert(`✅ ${data.message}\n\n- Raids faits supprimés: ${data.deleted.raidsFaits}\n- Raids reçus supprimés: ${data.deleted.raidsRecus}\n- Total: ${data.deleted.total}`);
+                      loadData(selectedMonth);
+                    } else {
+                      alert(`❌ Erreur: ${data.error || 'Erreur inconnue'}`);
+                    }
+                  } catch (error) {
+                    console.error("Erreur lors de la suppression:", error);
+                    alert("❌ Erreur lors de la suppression des raids manuels");
+                  }
+                }}
+                className="bg-red-600/20 hover:bg-red-600/30 text-red-300 font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                title="Supprimer tous les raids manuels du mois (Fondateurs uniquement)"
+              >
+                🗑️ Supprimer tous les raids manuels
+              </button>
+            )}
             <button
               onClick={async () => {
                 if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {

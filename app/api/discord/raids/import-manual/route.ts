@@ -9,7 +9,7 @@ import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
 /**
  * POST - Importe plusieurs raids manuellement en une seule fois
- * Body: { month: string, raids: Array<{ raider: string, target: string }> }
+ * Body: { month: string, raids: Array<{ raider: string, target: string, date?: string }> }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -66,12 +66,10 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     };
 
-    const now = new Date().toISOString();
-
     // Traiter chaque raid
     for (let i = 0; i < raids.length; i++) {
       const raid = raids[i];
-      const { raider, target } = raid;
+      const { raider, target, date } = raid;
 
       if (!raider || !target) {
         results.failed++;
@@ -96,8 +94,11 @@ export async function POST(request: NextRequest) {
         const raiderId = raiderMember?.discordId || raider;
         const targetId = targetMember?.discordId || target;
 
-        // Ajouter le raid avec source="manual"
-        await addRaidFait(monthKey, raiderId, targetId, now, true, undefined, "manual");
+        // Utiliser la date fournie ou la date actuelle
+        const raidDate = date || new Date().toISOString();
+
+        // Ajouter le raid avec source="manual" et la date spécifiée
+        await addRaidFait(monthKey, raiderId, targetId, raidDate, true, undefined, "manual");
 
         results.success++;
       } catch (error) {
