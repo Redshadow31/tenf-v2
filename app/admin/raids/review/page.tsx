@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import Link from "next/link";
 import { extractDiscordIds } from "@/lib/raidUtilsClient";
@@ -388,9 +387,8 @@ export default function RaidsReviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <AdminHeader title="Vérifier les raids non reconnus" navLinks={navLinks} />
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Vérifier les raids non reconnus</h1>
 
         {/* En-tête avec sélecteur de mois */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder, getAdminRole, getRoleDisplayName } from "@/lib/adminRoles";
 import Link from "next/link";
@@ -165,9 +164,8 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <AdminHeader title="Audit Logs (Founders Only)" navLinks={navLinks} />
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Audit Logs (Founders Only)</h1>
 
         {/* Filtres */}
         <div className="mb-6 bg-[#1a1a1d] rounded-lg p-4">

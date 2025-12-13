@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
 import Link from "next/link";
