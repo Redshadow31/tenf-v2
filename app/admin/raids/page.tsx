@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
 import Link from "next/link";
@@ -355,7 +354,6 @@ export default function RaidsPage() {
   }
 
   return (
-    <>
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
 
@@ -624,7 +622,6 @@ export default function RaidsPage() {
         />
       </div>
     </div>
-    </>
   );
 }
 
