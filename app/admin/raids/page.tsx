@@ -354,7 +354,8 @@ export default function RaidsPage() {
   }
 
   return (
-    <div className="text-white">
+    <>
+      <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
 
       {/* En-tête avec sélecteur de mois et boutons */}
@@ -622,6 +623,7 @@ export default function RaidsPage() {
         />
       </div>
     </div>
+    </>
   );
 }
 
