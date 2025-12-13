@@ -9,7 +9,7 @@ import { getCurrentAdmin, isFounder } from '@/lib/admin';
 export async function DELETE(request: NextRequest) {
   try {
     // Vérifier les permissions (fondateurs uniquement)
-    const admin = await getCurrentAdmin(request);
+    const admin = await getCurrentAdmin();
     if (!admin || !isFounder(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent supprimer tous les raids non reconnus." },
