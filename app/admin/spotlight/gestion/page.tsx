@@ -300,6 +300,38 @@ export default function GestionSpotlightPage() {
     }
   }
 
+  async function handleCancelSpotlight() {
+    if (!spotlight) return;
+
+    const confirmCancel = confirm(
+      "Êtes-vous sûr de vouloir annuler ce spotlight ? Toutes les données non enregistrées seront perdues."
+    );
+
+    if (!confirmCancel) return;
+
+    try {
+      setSaving(true);
+      const response = await fetch('/api/spotlight/active', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+
+      if (response.ok) {
+        alert("Spotlight annulé avec succès");
+        await loadData();
+      } else {
+        const error = await response.json();
+        alert(`Erreur: ${error.error || 'Impossible d\'annuler le spotlight'}`);
+      }
+    } catch (error) {
+      console.error("Erreur annulation spotlight:", error);
+      alert("Erreur lors de l'annulation du spotlight");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function handleSliderChange(id: string, value: number) {
     setEvaluation((prev) =>
       prev.map((crit) => (crit.id === id ? { ...crit, value } : crit))
