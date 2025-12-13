@@ -456,6 +456,39 @@ export default function RaidsPage() {
                 🗑️ Supprimer tous les raids manuels
               </button>
             )}
+            
+            {/* Bouton pour supprimer tous les raids non reconnus (Fondateurs uniquement) */}
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`Êtes-vous sûr de vouloir supprimer TOUS les raids non reconnus du mois ${selectedMonth} ?\n\nCette action est irréversible.`)) {
+                    return;
+                  }
+                  
+                  try {
+                    const response = await fetch(`/api/discord/raids/unmatched/delete-all?month=${selectedMonth}`, {
+                      method: "DELETE",
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                      alert(`✅ ${data.deleted || 0} raid(s) non reconnu(s) supprimé(s) avec succès !`);
+                      // Recharger les données
+                      loadData(selectedMonth);
+                    } else {
+                      alert(`❌ Erreur : ${data.error || "Erreur inconnue"}`);
+                    }
+                  } catch (error) {
+                    alert(`❌ Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+                  }
+                }}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                title="Supprimer tous les raids non reconnus du mois (Fondateurs uniquement)"
+              >
+                🗑️ Supprimer tous les raids non reconnus
+              </button>
+            )}
             <button
               onClick={async () => {
                 if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {
