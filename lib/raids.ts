@@ -676,14 +676,26 @@ export async function saveUnmatchedRaids(
       }
     }
     
-    // Toujours sauvegarder aussi en local
-    const DATA_DIR = path.join(process.cwd(), "data");
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    // Sauvegarder aussi en local (uniquement si pas sur Netlify)
+    if (!useBlobs && !process.env.NETLIFY && !process.env.NETLIFY_DEV) {
+      try {
+        const DATA_DIR = path.join(process.cwd(), "data");
+        if (!fs.existsSync(DATA_DIR)) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        const UNMATCHED_FILE = path.join(DATA_DIR, `${key}.json`);
+        fs.writeFileSync(UNMATCHED_FILE, JSON.stringify(messages, null, 2), "utf-8");
+        console.log(`[Unmatched Raids] Sauvegardé en local: ${key}, ${messages.length} messages`);
+      } catch (error) {
+        console.error(`[Unmatched Raids] Erreur lors de la sauvegarde en local pour ${key}:`, error);
+        // Ne pas faire échouer la sauvegarde si on est sur Netlify et que Blobs a réussi
+        if (useBlobs) {
+          // Sur Netlify, on ignore l'erreur de sauvegarde locale
+          return;
+        }
+        throw error;
+      }
     }
-    const UNMATCHED_FILE = path.join(DATA_DIR, `${key}.json`);
-    fs.writeFileSync(UNMATCHED_FILE, JSON.stringify(messages, null, 2), "utf-8");
-    console.log(`[Unmatched Raids] Sauvegardé en local: ${key}, ${messages.length} messages`);
   } catch (error) {
     console.error(`[Unmatched Raids] Erreur lors de la sauvegarde pour ${key}:`, error);
     throw error;
