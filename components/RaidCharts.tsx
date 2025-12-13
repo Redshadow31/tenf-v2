@@ -29,21 +29,24 @@ const COLORS = [
 ];
 
 export default function RaidCharts({ raids, getMemberDisplayName }: RaidChartsProps) {
-  // Préparer les données pour le graphique donut (raids faits)
-  const donutData = Object.entries(raids)
+  // Préparer toutes les données pour calculer le total réel
+  const allRaidsData = Object.entries(raids)
     .map(([twitchLogin, stats]) => ({
       name: getMemberDisplayName(twitchLogin),
       value: stats.done,
       twitchLogin,
     }))
-    .filter((item) => item.value > 0)
+    .filter((item) => item.value > 0);
+
+  // Calculer le total réel de tous les raids (pas seulement les top 10)
+  const totalDone = allRaidsData.reduce((sum, item) => sum + item.value, 0);
+
+  // Prendre seulement les top 10 pour l'affichage
+  const donutData = allRaidsData
     .sort((a, b) => b.value - a.value)
     .slice(0, 10); // Top 10 seulement pour la lisibilité
 
-  // Calculer le total pour les pourcentages
-  const totalDone = donutData.reduce((sum, item) => sum + item.value, 0);
-
-  // Ajouter les pourcentages
+  // Ajouter les pourcentages basés sur le total réel
   const donutDataWithPercent = donutData.map((item) => ({
     ...item,
     percent: totalDone > 0 ? ((item.value / totalDone) * 100).toFixed(1) : "0",
