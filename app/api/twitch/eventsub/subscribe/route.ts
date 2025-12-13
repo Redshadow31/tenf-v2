@@ -194,6 +194,27 @@ export async function GET(request: NextRequest) {
     const accessToken = await getTwitchOAuthToken();
     const subscriptions = await getEventSubSubscriptions(accessToken);
 
+    // Statistiques détaillées des subscriptions
+    const totalSubscriptions = subscriptions.length;
+    const activeSubscriptions = subscriptions.filter(sub => sub.status === 'enabled');
+    const activeCount = activeSubscriptions.length;
+    
+    const channelRaidSubscriptions = subscriptions.filter(sub => sub.type === 'channel.raid');
+    const channelRaidCount = channelRaidSubscriptions.length;
+    const channelRaidActive = channelRaidSubscriptions.filter(sub => sub.status === 'enabled');
+    const channelRaidActiveCount = channelRaidActive.length;
+    
+    // Vérifier les conditions from_broadcaster_user_id et to_broadcaster_user_id
+    const subscriptionsWithFrom = channelRaidSubscriptions.filter(sub => 
+      sub.condition?.from_broadcaster_user_id
+    );
+    const subscriptionsWithTo = channelRaidSubscriptions.filter(sub => 
+      sub.condition?.to_broadcaster_user_id
+    );
+    
+    // Vérifier si on a atteint la limite de 100 subscriptions (BLOQUANT)
+    const isBlocking = totalSubscriptions >= 100;
+
     // Chercher la souscription globale channel.raid
     const globalSubscription = subscriptions.find(sub => 
       sub.type === 'channel.raid' &&
@@ -215,6 +236,27 @@ export async function GET(request: NextRequest) {
       message: globalSubscription 
         ? 'Souscription globale EventSub active' 
         : 'Aucune souscription globale EventSub trouvée',
+      // Statistiques détaillées
+      statistics: {
+        totalSubscriptions,
+        activeSubscriptions: activeCount,
+        channelRaidCount,
+        channelRaidActive: channelRaidActiveCount,
+        isBlocking,
+        hasFromBroadcaster: subscriptionsWithFrom.length > 0,
+        hasToBroadcaster: subscriptionsWithTo.length > 0,
+        fromBroadcasterCount: subscriptionsWithFrom.length,
+        toBroadcasterCount: subscriptionsWithTo.length,
+      },
+      // Détails des subscriptions channel.raid
+      channelRaidDetails: channelRaidSubscriptions.map(sub => ({
+        id: sub.id,
+        status: sub.status,
+        from_broadcaster_user_id: sub.condition?.from_broadcaster_user_id || null,
+        to_broadcaster_user_id: sub.condition?.to_broadcaster_user_id || null,
+        callback: sub.transport?.callback,
+        createdAt: sub.created_at,
+      })),
     });
   } catch (error) {
     console.error('[EventSub Subscribe] Erreur lors de la vérification:', error);

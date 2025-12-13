@@ -37,6 +37,25 @@ export default function TwitchRaidsPage() {
       monitor?: { login?: string; twitchId?: string };
     };
     totalMembers?: number;
+    statistics?: {
+      totalSubscriptions: number;
+      activeSubscriptions?: number;
+      channelRaidCount: number;
+      channelRaidActive?: number;
+      isBlocking: boolean;
+      hasFromBroadcaster: boolean;
+      hasToBroadcaster: boolean;
+      fromBroadcasterCount: number;
+      toBroadcasterCount: number;
+    };
+    channelRaidDetails?: Array<{
+      id: string;
+      status: string;
+      from_broadcaster_user_id: string | null;
+      to_broadcaster_user_id: string | null;
+      callback: string | undefined;
+      createdAt: string;
+    }>;
   }>({ checked: false, hasError: false });
 
   useEffect(() => {
@@ -60,6 +79,8 @@ export default function TwitchRaidsPage() {
             isActive: data.isActive || false,
             subscription: data.subscription || undefined,
             totalMembers: data.totalMembers || 0,
+            statistics: data.statistics || undefined,
+            channelRaidDetails: data.channelRaidDetails || undefined,
           });
         } else {
           const errorData = await response.json().catch(() => ({}));
@@ -417,6 +438,79 @@ export default function TwitchRaidsPage() {
                 </p>
               </div>
             </div>
+        </div>
+      )}
+
+      {/* Statistiques détaillées des subscriptions EventSub */}
+      {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.statistics && (
+        <div className={`mb-6 border rounded-lg p-4 ${
+          subscriptionStatus.statistics.isBlocking
+            ? "bg-red-900/20 border-red-700"
+            : "bg-blue-900/20 border-blue-700"
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">{subscriptionStatus.statistics.isBlocking ? "🚨" : "📊"}</span>
+            <div className="flex-1">
+              <h3 className={`font-semibold mb-2 ${
+                subscriptionStatus.statistics.isBlocking ? "text-red-400" : "text-blue-400"
+              }`}>
+                {subscriptionStatus.statistics.isBlocking 
+                  ? "⚠️ LIMITE ATTEINTE - 100 subscriptions détectées (BLOQUANT)" 
+                  : "Statistiques EventSub"}
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between bg-gray-800/50 rounded p-3 mb-3 border-2 border-[#9146ff]">
+                  <span className="text-white font-bold text-lg">1️⃣ Subscriptions EventSub ACTIVES:</span>
+                  <span className="font-bold text-3xl text-[#9146ff]">{subscriptionStatus.statistics.activeSubscriptions || subscriptionStatus.statistics.totalSubscriptions}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Total subscriptions (tous statuts):</span>
+                  <span className="font-semibold text-white">{subscriptionStatus.statistics.totalSubscriptions}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Subscriptions channel.raid:</span>
+                  <span className="font-semibold text-white">{subscriptionStatus.statistics.channelRaidCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Avec from_broadcaster_user_id:</span>
+                  <span className={`font-semibold ${
+                    subscriptionStatus.statistics.hasFromBroadcaster ? "text-yellow-400" : "text-gray-400"
+                  }`}>
+                    {subscriptionStatus.statistics.fromBroadcasterCount} {subscriptionStatus.statistics.hasFromBroadcaster ? "✅" : "❌"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Avec to_broadcaster_user_id:</span>
+                  <span className={`font-semibold ${
+                    subscriptionStatus.statistics.hasToBroadcaster ? "text-yellow-400" : "text-gray-400"
+                  }`}>
+                    {subscriptionStatus.statistics.toBroadcasterCount} {subscriptionStatus.statistics.hasToBroadcaster ? "✅" : "❌"}
+                  </span>
+                </div>
+              </div>
+              {subscriptionStatus.channelRaidDetails && subscriptionStatus.channelRaidDetails.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <h4 className="text-xs font-semibold text-gray-400 mb-2">Détails des subscriptions channel.raid:</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {subscriptionStatus.channelRaidDetails.map((sub, idx) => (
+                      <div key={sub.id} className="text-xs bg-gray-800/50 rounded p-2">
+                        <div className="font-mono text-gray-300">#{idx + 1} - {sub.id.substring(0, 8)}...</div>
+                        <div className="text-gray-400 mt-1">
+                          Status: <span className={sub.status === 'enabled' ? 'text-green-400' : 'text-yellow-400'}>{sub.status}</span>
+                        </div>
+                        {sub.from_broadcaster_user_id && (
+                          <div className="text-gray-400">from: {sub.from_broadcaster_user_id}</div>
+                        )}
+                        {sub.to_broadcaster_user_id && (
+                          <div className="text-gray-400">to: {sub.to_broadcaster_user_id}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
