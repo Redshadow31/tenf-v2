@@ -18,6 +18,8 @@ export interface RaidFait {
   source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
   viewers?: number; // Nombre de viewers (si source Twitch)
+  countFrom?: boolean; // Flag de traçabilité : raid fait compté (pour import manuel)
+  countTo?: boolean; // Flag de traçabilité : raid reçu compté (pour import manuel)
 }
 
 export interface RaidRecu {
@@ -28,6 +30,8 @@ export interface RaidRecu {
   source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
   viewers?: number; // Nombre de viewers (si source Twitch)
+  countFrom?: boolean; // Flag de traçabilité : raid fait compté (pour import manuel)
+  countTo?: boolean; // Flag de traçabilité : raid reçu compté (pour import manuel)
 }
 
 export interface RaidAlert {
@@ -458,6 +462,8 @@ export async function addRaidFait(
     source: source || (manual ? "manual" : "twitch-live"),
     messageId,
     viewers,
+    countFrom: true, // Par défaut, un raid fait est toujours compté
+    countTo: undefined, // Non applicable pour un raid fait
   });
 
   await saveRaidsFaits(monthKey, raids);
@@ -472,6 +478,8 @@ export async function addRaidFait(
     source: source || (manual ? "manual" : "twitch-live"),
     messageId,
     viewers,
+    countFrom: undefined, // Non applicable pour un raid reçu
+    countTo: true, // Par défaut, un raid reçu est toujours compté
   });
   await saveRaidsRecus(monthKey, raidsRecus);
 
@@ -512,6 +520,8 @@ export async function addRaidRecu(
     source: source || (manual ? "admin" : "bot"),
     messageId,
     viewers,
+    countFrom: undefined, // Non applicable pour un raid reçu
+    countTo: true, // Par défaut, un raid reçu est toujours compté
   });
 
   await saveRaidsRecus(monthKey, raids);

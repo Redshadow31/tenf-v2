@@ -18,6 +18,8 @@ interface DetectedRaid {
     displayName: string;
     twitchLogin: string;
   };
+  countFrom: boolean; // Compter le raid fait (pour le raider)
+  countTo: boolean; // Compter le raid reçu (pour la cible)
 }
 
 interface Member {
@@ -247,6 +249,10 @@ export default function RaidImportModal({
               target: targetMember ? targetMember.displayName : target,
             },
           }));
+          
+          // Initialiser countFrom et countTo selon si les membres sont reconnus
+          raids[raids.length - 1].countFrom = !!raiderMember;
+          raids[raids.length - 1].countTo = !!targetMember;
         }
       }
 
@@ -276,6 +282,8 @@ export default function RaidImportModal({
           displayName: member.displayName,
           twitchLogin: member.twitchLogin,
         },
+        // Activer automatiquement countFrom quand un raider est sélectionné
+        countFrom: true,
       };
     } else {
       updatedRaids[raidIndex] = {
@@ -285,6 +293,8 @@ export default function RaidImportModal({
           displayName: member.displayName,
           twitchLogin: member.twitchLogin,
         },
+        // Activer automatiquement countTo quand une cible est sélectionnée
+        countTo: true,
       };
     }
     setDetectedRaids(updatedRaids);
@@ -315,11 +325,15 @@ export default function RaidImportModal({
       updatedRaids[raidIndex] = {
         ...raid,
         raiderMember: undefined,
+        // Désactiver countFrom quand le raider est supprimé
+        countFrom: false,
       };
     } else {
       updatedRaids[raidIndex] = {
         ...raid,
         targetMember: undefined,
+        // Désactiver countTo quand la cible est supprimée
+        countTo: false,
       };
     }
     setDetectedRaids(updatedRaids);
@@ -463,10 +477,19 @@ export default function RaidImportModal({
       return;
     }
 
-    // Vérifier que tous les raids ont des membres reconnus ou sélectionnés
-    const invalidRaids = detectedRaids.filter(r => !r.raiderMember || !r.targetMember);
+    // Vérifier qu'au moins un côté (raider ou cible) est activé pour chaque raid
+    const invalidRaids = detectedRaids.filter(r => !r.countFrom && !r.countTo);
     if (invalidRaids.length > 0) {
-      setError(`${invalidRaids.length} raid(s) nécessitent une sélection manuelle de membre`);
+      setError(`${invalidRaids.length} raid(s) doivent avoir au moins "Compter le raid fait" ou "Compter le raid reçu" activé`);
+      return;
+    }
+
+    // Vérifier que les membres sont sélectionnés pour les raids activés
+    const missingMembers = detectedRaids.filter(r => 
+      (r.countFrom && !r.raiderMember) || (r.countTo && !r.targetMember)
+    );
+    if (missingMembers.length > 0) {
+      setError(`${missingMembers.length} raid(s) nécessitent une sélection manuelle de membre pour les options activées`);
       return;
     }
 
@@ -482,11 +505,15 @@ export default function RaidImportModal({
         },
         body: JSON.stringify({
           month,
-          raids: detectedRaids.map(r => ({
-            raider: r.raiderMember!.discordId || r.raiderMember!.twitchLogin,
-            target: r.targetMember!.discordId || r.targetMember!.twitchLogin,
-            date: r.date,
-          })),
+          raids: detectedRaids
+            .filter(r => r.countFrom || r.countTo) // Ne garder que les raids avec au moins une option activée
+            .map(r => ({
+              raider: r.countFrom && r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : null,
+              target: r.countTo && r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : null,
+              date: r.date,
+              countFrom: r.countFrom,
+              countTo: r.countTo,
+            })),
         }),
       });
 
@@ -496,7 +523,8 @@ export default function RaidImportModal({
         throw new Error(data.error || "Erreur lors de l'enregistrement");
       }
 
-      setSuccess(`${detectedRaids.length} raid(s) enregistré(s) avec succès !`);
+      const savedCount = detectedRaids.filter(r => r.countFrom || r.countTo).length;
+      setSuccess(`${savedCount} raid(s) enregistré(s) avec succès !`);
       
       setTimeout(() => {
         setInputText("");
@@ -610,6 +638,8 @@ export default function RaidImportModal({
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Date/Heure</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Raider</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Cible</th>
+                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter fait</th>
+                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter reçu</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Statut</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Texte original</th>
                       </tr>
@@ -635,12 +665,48 @@ export default function RaidImportModal({
                             <td className="py-2 px-3">
                               {renderMemberSelector('target', idx, raid)}
                             </td>
+                            <td className="py-2 px-3 text-center">
+                              <label className="flex items-center justify-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={raid.countFrom}
+                                  onChange={(e) => {
+                                    const updatedRaids = [...detectedRaids];
+                                    updatedRaids[idx] = { ...raid, countFrom: e.target.checked };
+                                    setDetectedRaids(updatedRaids);
+                                  }}
+                                  disabled={!raid.raiderMember || saving}
+                                  className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
+                                />
+                              </label>
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              <label className="flex items-center justify-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={raid.countTo}
+                                  onChange={(e) => {
+                                    const updatedRaids = [...detectedRaids];
+                                    updatedRaids[idx] = { ...raid, countTo: e.target.checked };
+                                    setDetectedRaids(updatedRaids);
+                                  }}
+                                  disabled={!raid.targetMember || saving}
+                                  className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
+                                />
+                              </label>
+                            </td>
                             <td className="py-2 px-3">
-                              {statusOk ? (
-                                <span className="text-green-400 text-xs">✅ OK</span>
-                              ) : (
-                                <span className="text-yellow-400 text-xs">⚠️ À corriger</span>
-                              )}
+                              {(() => {
+                                const hasValidFrom = raid.countFrom && raid.raiderMember;
+                                const hasValidTo = raid.countTo && raid.targetMember;
+                                if (hasValidFrom && hasValidTo) {
+                                  return <span className="text-green-400 text-xs">✅ OK</span>;
+                                } else if (hasValidFrom || hasValidTo) {
+                                  return <span className="text-blue-400 text-xs">⚠️ Partiel</span>;
+                                } else {
+                                  return <span className="text-yellow-400 text-xs">⚠️ À corriger</span>;
+                                }
+                              })()}
                             </td>
                             <td className="py-2 px-3 text-gray-400 text-xs font-mono truncate max-w-xs">
                               {raid.originalText}

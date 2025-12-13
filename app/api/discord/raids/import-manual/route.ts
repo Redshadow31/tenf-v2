@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   addRaidFait,
+  addRaidRecu,
+  loadRaidsFaits,
+  saveRaidsFaits,
+  loadRaidsRecus,
+  saveRaidsRecus,
   recalculateAlerts,
   getMonthKey,
   getCurrentMonthKey,
@@ -69,42 +74,116 @@ export async function POST(request: NextRequest) {
     // Traiter chaque raid
     for (let i = 0; i < raids.length; i++) {
       const raid = raids[i];
-      const { raider, target, date } = raid;
+      const { raider, target, date, countFrom = true, countTo = true } = raid;
 
-      if (!raider || !target) {
+      // Vérifier qu'au moins un côté est activé
+      if (!countFrom && !countTo) {
         results.failed++;
-        results.errors.push(`Raid #${i + 1}: raider ou target manquant`);
+        results.errors.push(`Raid #${i + 1}: au moins countFrom ou countTo doit être activé`);
+        continue;
+      }
+
+      // Vérifier que les membres sont fournis pour les options activées
+      if (countFrom && !raider) {
+        results.failed++;
+        results.errors.push(`Raid #${i + 1}: raider requis si countFrom est activé`);
+        continue;
+      }
+
+      if (countTo && !target) {
+        results.failed++;
+        results.errors.push(`Raid #${i + 1}: target requis si countTo est activé`);
         continue;
       }
 
       try {
-        // Chercher les membres par Twitch Login ou Discord ID
-        const raiderMember = memberMap.get(raider.toLowerCase()) || 
-                            allMembers.find(m => 
-                              m.twitchLogin?.toLowerCase() === raider.toLowerCase() ||
-                              m.discordId === raider
-                            );
-        const targetMember = memberMap.get(target.toLowerCase()) || 
-                            allMembers.find(m => 
-                              m.twitchLogin?.toLowerCase() === target.toLowerCase() ||
-                              m.discordId === target
-                            );
+        // Utiliser la date fournie ou la date actuelle
+        const raidDate = date || new Date().toISOString();
+
+        // Chercher les membres
+        const raiderMember = raider ? (memberMap.get(raider.toLowerCase()) || 
+                          allMembers.find(m => 
+                            m.twitchLogin?.toLowerCase() === raider.toLowerCase() ||
+                            m.discordId === raider
+                          )) : null;
+        const targetMember = target ? (memberMap.get(target.toLowerCase()) || 
+                          allMembers.find(m => 
+                            m.twitchLogin?.toLowerCase() === target.toLowerCase() ||
+                            m.discordId === target
+                          )) : null;
 
         // Utiliser Discord ID si disponible, sinon utiliser le Twitch Login
         const raiderId = raiderMember?.discordId || raider;
         const targetId = targetMember?.discordId || target;
 
-        // Utiliser la date fournie ou la date actuelle
-        const raidDate = date || new Date().toISOString();
+        // Traiter le raid fait (countFrom)
+        if (countFrom && raider) {
+          // Pour le raid fait, on a besoin d'une cible (même si countTo est false)
+          // On utilise la cible fournie, ou le raider comme fallback
+          const effectiveTargetId = targetId || raiderId;
+          
+          await addRaidFait(monthKey, raiderId, effectiveTargetId, raidDate, true, undefined, "manual");
+          
+          // Mettre à jour les flags countFrom et countTo dans le raid fait créé
+          const raidsFaits = await loadRaidsFaits(monthKey);
+          const lastRaid = raidsFaits.find(
+            r => r.raider === raiderId && r.target === effectiveTargetId && r.date === raidDate
+          );
+          if (lastRaid) {
+            lastRaid.countFrom = countFrom;
+            lastRaid.countTo = countTo;
+            await saveRaidsFaits(monthKey, raidsFaits);
+          }
+          
+          // Si countTo est false, supprimer le raid reçu créé automatiquement par addRaidFait
+          if (!countTo && target) {
+            const raidsRecus = await loadRaidsRecus(monthKey);
+            const indexToRemove = raidsRecus.findIndex(
+              r => r.target === targetId && r.raider === raiderId && r.date === raidDate
+            );
+            if (indexToRemove !== -1) {
+              raidsRecus.splice(indexToRemove, 1);
+              await saveRaidsRecus(monthKey, raidsRecus);
+            }
+          } else if (countTo && target) {
+            // Mettre à jour les flags dans le raid reçu créé automatiquement
+            const raidsRecus = await loadRaidsRecus(monthKey);
+            const receivedRaid = raidsRecus.find(
+              r => r.target === targetId && r.raider === raiderId && r.date === raidDate
+            );
+            if (receivedRaid) {
+              receivedRaid.countFrom = countFrom;
+              receivedRaid.countTo = countTo;
+              await saveRaidsRecus(monthKey, raidsRecus);
+            }
+          }
+        }
 
-        // Ajouter le raid avec source="manual" et la date spécifiée
-        await addRaidFait(monthKey, raiderId, targetId, raidDate, true, undefined, "manual");
+        // Traiter le raid reçu (countTo)
+        if (countTo && target && !countFrom) {
+          // Si countFrom est false, on doit créer uniquement le raid reçu
+          // Pour le raid reçu, on a besoin d'un raider (même si countFrom est false)
+          // On utilise le raider fourni, ou la cible comme fallback
+          const effectiveRaiderId = raiderId || targetId;
+          await addRaidRecu(monthKey, targetId, effectiveRaiderId, raidDate, true, undefined, "manual");
+          
+          // Mettre à jour les flags countFrom et countTo dans le raid reçu créé
+          const raidsRecus = await loadRaidsRecus(monthKey);
+          const receivedRaid = raidsRecus.find(
+            r => r.target === targetId && r.raider === effectiveRaiderId && r.date === raidDate
+          );
+          if (receivedRaid) {
+            receivedRaid.countFrom = countFrom;
+            receivedRaid.countTo = countTo;
+            await saveRaidsRecus(monthKey, raidsRecus);
+          }
+        }
 
         results.success++;
       } catch (error) {
         results.failed++;
         results.errors.push(
-          `Raid #${i + 1} (@${raider} → @${target}): ${error instanceof Error ? error.message : "Erreur inconnue"}`
+          `Raid #${i + 1} (${countFrom ? `fait: @${raider}` : ''}${countFrom && countTo ? ' / ' : ''}${countTo ? `reçu: @${target}` : ''}): ${error instanceof Error ? error.message : "Erreur inconnue"}`
         );
       }
     }
