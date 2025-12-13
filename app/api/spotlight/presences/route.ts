@@ -52,6 +52,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Vérifier que le spotlight n'est pas annulé
+    if (spotlight.status === 'cancelled') {
+      return NextResponse.json(
+        { error: 'Ce spotlight a été annulé' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { twitchLogin, displayName } = body;
 
@@ -91,6 +99,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
         { status: 404 }
+      );
+    }
+
+    // Vérifier que le spotlight n'est pas annulé
+    if (spotlight.status === 'cancelled') {
+      return NextResponse.json(
+        { error: 'Ce spotlight a été annulé' },
+        { status: 400 }
       );
     }
 
