@@ -136,8 +136,14 @@ async function saveToBlobs(monthKey: string, filename: string, content: string):
 
 /**
  * Charge un fichier depuis le système de fichiers local
+ * Ne fait rien si on est sur Netlify (utilise uniquement Blobs)
  */
 function loadFromFile(filePath: string): string | null {
+  // Ne pas essayer de lire en local sur Netlify
+  if (isNetlify()) {
+    return null;
+  }
+
   try {
     if (fs.existsSync(filePath)) {
       return fs.readFileSync(filePath, "utf-8");
@@ -150,8 +156,14 @@ function loadFromFile(filePath: string): string | null {
 
 /**
  * Sauvegarde un fichier dans le système de fichiers local
+ * Ne fait rien si on est sur Netlify (utilise uniquement Blobs)
  */
 function saveToFile(filePath: string, content: string): void {
+  // Ne pas essayer de sauvegarder en local sur Netlify
+  if (isNetlify()) {
+    return;
+  }
+
   try {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
@@ -273,12 +285,14 @@ export async function saveRaidsFaits(monthKey: string, raids: RaidFait[]): Promi
   const filename = "raids-faits.json";
   const content = JSON.stringify(raids, null, 2);
 
-  // Sauvegarder dans Blobs
+  // Sauvegarder dans Blobs (toujours)
   await saveToBlobs(monthKey, filename, content);
 
-  // Sauvegarder aussi en local (fallback)
-  const filePath = getFilePath(monthKey, filename);
-  saveToFile(filePath, content);
+  // Sauvegarder aussi en local (uniquement si pas sur Netlify)
+  if (!isNetlify()) {
+    const filePath = getFilePath(monthKey, filename);
+    saveToFile(filePath, content);
+  }
 }
 
 /**
@@ -288,12 +302,14 @@ export async function saveRaidsRecus(monthKey: string, raids: RaidRecu[]): Promi
   const filename = "raids-recus.json";
   const content = JSON.stringify(raids, null, 2);
 
-  // Sauvegarder dans Blobs
+  // Sauvegarder dans Blobs (toujours)
   await saveToBlobs(monthKey, filename, content);
 
-  // Sauvegarder aussi en local (fallback)
-  const filePath = getFilePath(monthKey, filename);
-  saveToFile(filePath, content);
+  // Sauvegarder aussi en local (uniquement si pas sur Netlify)
+  if (!isNetlify()) {
+    const filePath = getFilePath(monthKey, filename);
+    saveToFile(filePath, content);
+  }
 }
 
 /**
@@ -303,12 +319,14 @@ export async function saveAlerts(monthKey: string, alerts: RaidAlert[]): Promise
   const filename = "alerts.json";
   const content = JSON.stringify(alerts, null, 2);
 
-  // Sauvegarder dans Blobs
+  // Sauvegarder dans Blobs (toujours)
   await saveToBlobs(monthKey, filename, content);
 
-  // Sauvegarder aussi en local (fallback)
-  const filePath = getFilePath(monthKey, filename);
-  saveToFile(filePath, content);
+  // Sauvegarder aussi en local (uniquement si pas sur Netlify)
+  if (!isNetlify()) {
+    const filePath = getFilePath(monthKey, filename);
+    saveToFile(filePath, content);
+  }
 }
 
 // ============================================
