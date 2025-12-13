@@ -413,6 +413,13 @@ export default function RaidsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              title="Importer des raids manuellement depuis du texte"
+            >
+              📥 Importer des raids manuellement
+            </button>
             <Link
               href={`/admin/raids/review?month=${selectedMonth}`}
               className="bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-300 font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
