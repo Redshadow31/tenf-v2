@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveSpotlight, createActiveSpotlight, getSpotlightData } from '@/lib/spotlightStorage';
 import { getDiscordUser } from '@/lib/discord';
 import { hasAdminDashboardAccess } from '@/lib/admin';
+import { getMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
 /**
  * GET - Récupère le spotlight actif
@@ -62,9 +63,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Vérifier que le login Twitch correspond à un membre enregistré
+    await loadMemberDataFromStorage();
+    const member = getMemberData(streamerTwitchLogin.trim().toLowerCase());
+    
+    if (!member) {
+      // Essayer aussi avec getAllMemberData pour être sûr
+      const allMembers = getAllMemberData();
+      const foundMember = allMembers.find(
+        m => m.twitchLogin.toLowerCase() === streamerTwitchLogin.trim().toLowerCase()
+      );
+      
+      if (!foundMember) {
+        return NextResponse.json(
+          { 
+            error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré. Veuillez vérifier le nom de la chaîne dans la page Gestion Membres.` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Utiliser le displayName du membre si disponible
+    const finalDisplayName = member?.displayName || streamerDisplayName || streamerTwitchLogin;
+
     const spotlight = await createActiveSpotlight(
-      streamerTwitchLogin,
-      streamerDisplayName,
+      streamerTwitchLogin.trim().toLowerCase(),
+      finalDisplayName,
       user.id,
       user.username,
       user.id

@@ -53,6 +53,8 @@ export default function GestionSpotlightPage() {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showStreamerModal, setShowStreamerModal] = useState(false);
+  const [streamerSearch, setStreamerSearch] = useState("");
 
   useEffect(() => {
     loadData();
@@ -143,8 +145,12 @@ export default function GestionSpotlightPage() {
   }
 
   async function handleLaunchSpotlight() {
-    const streamerLogin = prompt("Entrez le Twitch login du streamer:");
-    if (!streamerLogin) return;
+    setShowStreamerModal(true);
+  }
+
+  async function handleSelectStreamer(twitchLogin: string, displayName: string) {
+    setShowStreamerModal(false);
+    setStreamerSearch("");
 
     try {
       setSaving(true);
@@ -152,8 +158,8 @@ export default function GestionSpotlightPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          streamerTwitchLogin: streamerLogin.trim(),
-          streamerDisplayName: streamerLogin.trim(),
+          streamerTwitchLogin: twitchLogin,
+          streamerDisplayName: displayName,
         }),
       });
 
@@ -285,6 +291,14 @@ export default function GestionSpotlightPage() {
       member.twitchLogin.toLowerCase().includes(query) ||
       member.displayName.toLowerCase().includes(query) ||
       (member.role && member.role.toLowerCase().includes(query))
+    );
+  });
+
+  const filteredStreamers = allMembers.filter((member) => {
+    const query = streamerSearch.toLowerCase();
+    return (
+      member.twitchLogin.toLowerCase().includes(query) ||
+      member.displayName.toLowerCase().includes(query)
     );
   });
 
@@ -655,6 +669,100 @@ export default function GestionSpotlightPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de sélection du streamer */}
+      {showStreamerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => {
+            setShowStreamerModal(false);
+            setStreamerSearch("");
+          }}
+        >
+          <div
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">
+                Sélectionner le streamer
+              </h2>
+              <button
+                onClick={() => {
+                  setShowStreamerModal(false);
+                  setStreamerSearch("");
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Rechercher un membre par nom ou Twitch login..."
+                  value={streamerSearch}
+                  onChange={(e) => setStreamerSearch(e.target.value)}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredStreamers.length > 0 ? (
+                filteredStreamers.map((member) => (
+                  <button
+                    key={member.twitchLogin}
+                    onClick={() => handleSelectStreamer(member.twitchLogin, member.displayName)}
+                    className="w-full flex items-center gap-3 p-3 bg-[#0e0e10] border border-gray-700 rounded-lg hover:border-[#9146ff] hover:bg-[#9146ff]/10 transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold flex-shrink-0">
+                      {member.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-semibold">{member.displayName}</p>
+                      <p className="text-sm text-gray-400">@{member.twitchLogin}</p>
+                    </div>
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                ))
+              ) : (
+                <p className="text-gray-400 text-center py-8">
+                  Aucun membre trouvé
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
