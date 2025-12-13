@@ -58,7 +58,6 @@ export default function GestionSpotlightPage() {
   const [saving, setSaving] = useState(false);
   const [isFounderUser, setIsFounderUser] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
-  const [streamerSearch, setStreamerSearch] = useState("");
   const [showStreamerModal, setShowStreamerModal] = useState(false);
   const [streamerSearch, setStreamerSearch] = useState("");
 
