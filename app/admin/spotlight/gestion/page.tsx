@@ -424,13 +424,41 @@ export default function GestionSpotlightPage() {
                 <p className="text-white font-semibold">
                   {spotlight.streamerDisplayName || spotlight.streamerTwitchLogin}
                 </p>
-                {timeRemaining && (
+                {timeRemaining && spotlight.status === 'active' && (
                   <>
                     <p className="text-sm text-gray-400 mt-4">Temps restant</p>
                     <p className="text-lg font-bold text-[#9146ff]">
                       {timeRemaining}
                     </p>
                   </>
+                )}
+                {spotlight.status === 'cancelled' && (
+                  <p className="text-sm text-red-400 mt-4 font-semibold">
+                    ⚠️ Spotlight annulé
+                  </p>
+                )}
+                {spotlight.status === 'completed' && (
+                  <p className="text-sm text-green-400 mt-4 font-semibold">
+                    ✓ Spotlight terminé
+                  </p>
+                )}
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Modérateur</p>
+                  <p className="text-white">{spotlight.moderatorUsername}</p>
+                </div>
+                {spotlight.status !== 'cancelled' && (
+                  <button
+                    onClick={handleCancelSpotlight}
+                    disabled={saving}
+                    className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {saving ? "Annulation..." : "Annuler le spotlight"}
+                  </button>
+                )}
+                {spotlight.status === 'cancelled' && (
+                  <p className="text-sm text-gray-400 mt-4 text-center">
+                    Ce spotlight a été annulé
+                  </p>
                 )}
               </div>
             )}
