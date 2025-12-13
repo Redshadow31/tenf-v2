@@ -47,30 +47,16 @@ export default function RaidDetailsModal({
     }
   }, [isOpen, memberTwitchLogin, month]);
 
-  // Fonction pour obtenir la date de ce matin (minuit)
-  function getTodayMorning(): Date {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  }
-
   // Fonction pour filtrer les raids selon les critères
-  // - Ne garder que les raids manuels
-  // - Ne garder que ceux ajoutés depuis ce matin
+  // - Ne garder que les raids manuels (exclure Twitch EventSub)
   // - Supprimer les doublons (même cible/raider + même timestamp arrondi à la minute)
   function filterRaids(raids: RaidEntry[]): RaidEntry[] {
-    const todayMorning = getTodayMorning();
     const seen = new Set<string>();
     
     return raids
       // 1. Ne garder que les raids manuels (exclure Twitch EventSub)
       .filter(raid => raid.source === "manual")
-      // 2. Ne garder que ceux ajoutés depuis ce matin
-      .filter(raid => {
-        const raidDate = new Date(raid.timestamp);
-        return raidDate >= todayMorning;
-      })
-      // 3. Supprimer les doublons basés sur targetDiscordId + timestamp (arrondi à la minute)
+      // 2. Supprimer les doublons basés sur targetDiscordId + timestamp (arrondi à la minute)
       .filter(raid => {
         const date = new Date(raid.timestamp);
         date.setSeconds(0, 0);
