@@ -91,52 +91,17 @@ export default function FollowHubPage() {
       </div>
 
       {/* Message fonctionnalité à venir */}
-      <div className="bg-[#1a1a1d] border border-yellow-500/30 rounded-lg p-6 mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-2xl">🚧</span>
-          <h2 className="text-xl font-semibold text-yellow-400">Fonctionnalité à venir</h2>
+      <div className="bg-[#1a1a1d] border border-yellow-500/30 rounded-lg p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-3xl">🚧</span>
+          <h2 className="text-2xl font-semibold text-yellow-400">Fonctionnalité à venir</h2>
         </div>
-        <p className="text-gray-400">
+        <p className="text-gray-400 mb-4">
           Cette section est en cours de développement. L'architecture est en place et prête pour l'implémentation future du suivi automatique des follows.
         </p>
-      </div>
-
-      {/* Liste des membres du staff */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {STAFF_MEMBERS.map((member) => (
-          <Link
-            key={member.slug}
-            href={`/admin/follow/${member.slug}`}
-            className="group bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 hover:border-[#9146ff] transition-all hover:shadow-lg hover:shadow-[#9146ff]/20"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-[#9146ff] to-[#5a32b4] text-white font-bold text-lg">
-                {member.displayName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-[#9146ff] transition-colors">
-                  Follow de {member.displayName}
-                </h3>
-                <p className="text-sm text-gray-400">
-                  Suivi des follows
-                </p>
-              </div>
-              <svg
-                className="w-5 h-5 text-gray-400 group-hover:text-[#9146ff] transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </div>
-          </Link>
-        ))}
+        <p className="text-gray-500 text-sm">
+          Utilisez le menu de navigation à gauche pour accéder aux pages individuelles de suivi des follows par membre du staff.
+        </p>
       </div>
     </div>
   );

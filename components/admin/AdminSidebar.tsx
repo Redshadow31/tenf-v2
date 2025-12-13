@@ -53,6 +53,88 @@ const navItems: NavItem[] = [
     href: "/admin/follow",
     label: "Suivi Follow",
     icon: "👁️",
+    children: [
+      {
+        href: "/admin/follow",
+        label: "Hub",
+      },
+      {
+        href: "/admin/follow/red",
+        label: "Follow de Red",
+      },
+      {
+        href: "/admin/follow/clara",
+        label: "Follow de Clara",
+      },
+      {
+        href: "/admin/follow/nexou",
+        label: "Follow de Nexou",
+      },
+      {
+        href: "/admin/follow/tabs",
+        label: "Follow de Tabs",
+      },
+      {
+        href: "/admin/follow/nangel",
+        label: "Follow de Nangel",
+      },
+      {
+        href: "/admin/follow/jenny",
+        label: "Follow de Jenny",
+      },
+      {
+        href: "/admin/follow/selena",
+        label: "Follow de Selena",
+      },
+      {
+        href: "/admin/follow/dark",
+        label: "Follow de Dark",
+      },
+      {
+        href: "/admin/follow/yaya",
+        label: "Follow de Yaya",
+      },
+      {
+        href: "/admin/follow/rubby",
+        label: "Follow de Rubby",
+      },
+      {
+        href: "/admin/follow/livio",
+        label: "Follow de Livio",
+      },
+      {
+        href: "/admin/follow/rebelle",
+        label: "Follow de Rebelle",
+      },
+      {
+        href: "/admin/follow/sigurdson",
+        label: "Follow de Sigurdson",
+      },
+      {
+        href: "/admin/follow/nico",
+        label: "Follow de Nico",
+      },
+      {
+        href: "/admin/follow/willy",
+        label: "Follow de Willy",
+      },
+      {
+        href: "/admin/follow/b1nx",
+        label: "Follow de B1nx",
+      },
+      {
+        href: "/admin/follow/spydy",
+        label: "Follow de Spydy",
+      },
+      {
+        href: "/admin/follow/simon",
+        label: "Follow de Simon",
+      },
+      {
+        href: "/admin/follow/zylkao",
+        label: "Follow de Zylkao",
+      },
+    ],
   },
   {
     href: "/admin/evaluations",
@@ -121,6 +203,9 @@ export default function AdminSidebar() {
           if (child.href === "/admin/spotlight") {
             return pathname?.startsWith("/admin/spotlight") ?? false;
           }
+          if (child.href === "/admin/follow") {
+            return pathname?.startsWith("/admin/follow") ?? false;
+          }
           return pathname === child.href;
         });
         if (isOnChildPage) {
@@ -140,6 +225,9 @@ export default function AdminSidebar() {
     }
     if (href === "/admin/spotlight") {
       return pathname?.startsWith("/admin/spotlight") ?? false;
+    }
+    if (href === "/admin/follow") {
+      return pathname === "/admin/follow" || pathname?.startsWith("/admin/follow/") ?? false;
     }
     return pathname === href;
   }
