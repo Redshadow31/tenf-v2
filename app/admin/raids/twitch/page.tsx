@@ -359,7 +359,7 @@ export default function TwitchRaidsPage() {
       {/* Alerte si EventSub non configuré */}
       {subscriptionStatus.checked && subscriptionStatus.hasError && (
         <div className="mb-6 bg-red-900/20 border border-red-700 rounded-lg p-4">
-            <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
                 <h3 className="font-semibold text-red-400 mb-1">
@@ -381,8 +381,6 @@ export default function TwitchRaidsPage() {
                 </p>
               </div>
             </div>
-          </div>
-          </div>
         </div>
       )}
 
@@ -419,7 +417,6 @@ export default function TwitchRaidsPage() {
                 </p>
               </div>
             </div>
-          </div>
         </div>
       )}
 
@@ -557,8 +554,8 @@ export default function TwitchRaidsPage() {
       {/* Tableau des raids */}
       <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
+          <table className="w-full">
+            <thead>
                 <tr className="border-b border-gray-700">
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
                     Membre
@@ -658,9 +655,8 @@ export default function TwitchRaidsPage() {
                     })
                     .filter(Boolean)
                 )}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

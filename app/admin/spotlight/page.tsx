@@ -328,7 +328,6 @@ export default function GestionSpotlightPage() {
                 </button>
               </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
