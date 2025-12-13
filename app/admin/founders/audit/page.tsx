@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder, getAdminRole, getRoleDisplayName } from "@/lib/adminRoles";
 import Link from "next/link";

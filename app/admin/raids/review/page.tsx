@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { getDiscordUser } from "@/lib/discord";
 import Link from "next/link";
 import { extractDiscordIds } from "@/lib/raidUtilsClient";
