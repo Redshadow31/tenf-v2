@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getActiveSpotlight, createActiveSpotlight, getSpotlightData } from '@/lib/spotlightStorage';
+import { getDiscordUser } from '@/lib/discord';
+import { hasAdminDashboardAccess } from '@/lib/admin';
+
+/**
+ * GET - Récupère le spotlight actif
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getDiscordUser();
+    if (!user || !hasAdminDashboardAccess(user.id)) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const spotlight = await getActiveSpotlight();
+    
+    if (!spotlight) {
+      return NextResponse.json({ spotlight: null });
+    }
+
+    // Récupérer les données complètes
+    const data = await getSpotlightData(spotlight.id);
+    
+    return NextResponse.json({ spotlight: data });
+  } catch (error) {
+    console.error('[Spotlight API] Erreur GET:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST - Lance un nouveau spotlight
+ * Body: { streamerTwitchLogin: string, streamerDisplayName?: string }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getDiscordUser();
+    if (!user || !hasAdminDashboardAccess(user.id)) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    // Vérifier qu'il n'y a pas déjà un spotlight actif
+    const existing = await getActiveSpotlight();
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Un spotlight est déjà en cours' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const { streamerTwitchLogin, streamerDisplayName } = body;
+
+    if (!streamerTwitchLogin) {
+      return NextResponse.json(
+        { error: 'streamerTwitchLogin est requis' },
+        { status: 400 }
+      );
+    }
+
+    const spotlight = await createActiveSpotlight(
+      streamerTwitchLogin,
+      streamerDisplayName,
+      user.id,
+      user.username,
+      user.id
+    );
+
+    return NextResponse.json({ spotlight });
+  } catch (error) {
+    console.error('[Spotlight API] Erreur POST:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH - Met à jour le statut du spotlight
+ * Body: { status: 'active' | 'completed' | 'cancelled' }
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await getDiscordUser();
+    if (!user || !hasAdminDashboardAccess(user.id)) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const spotlight = await getActiveSpotlight();
+    if (!spotlight) {
+      return NextResponse.json(
+        { error: 'Aucun spotlight actif' },
+        { status: 404 }
+      );
+    }
+
+    const body = await request.json();
+    const { status } = body;
+
+    if (!status || !['active', 'completed', 'cancelled'].includes(status)) {
+      return NextResponse.json(
+        { error: 'status invalide' },
+        { status: 400 }
+      );
+    }
+
+    const { saveActiveSpotlight } = await import('@/lib/spotlightStorage');
+    const updated = { ...spotlight, status };
+    await saveActiveSpotlight(updated);
+
+    return NextResponse.json({ spotlight: updated });
+  } catch (error) {
+    console.error('[Spotlight API] Erreur PATCH:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
+}
+
