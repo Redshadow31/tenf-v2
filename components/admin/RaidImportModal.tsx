@@ -527,9 +527,10 @@ export default function RaidImportModal({
       }
 
       const obsoleteCount = detectedRaids.filter(r => r.obsolete).length;
-      const ignoredCount = detectedRaids.filter(r => !r.obsolete && !r.countFrom && !r.countTo).length;
-      const totalIgnored = obsoleteCount + ignoredCount;
-      setSuccess(`${raidsToSave.length} raid(s) enregistré(s) avec succès !${totalIgnored > 0 ? ` (${obsoleteCount > 0 ? `${obsoleteCount} obsolète(s), ` : ''}${ignoredCount > 0 ? `${ignoredCount} ignoré(s)` : ''})` : ''}`);
+      const fullyIgnoredCount = detectedRaids.filter(r => !r.obsolete && r.ignoreRaider && r.ignoreTarget).length;
+      const partialIgnoredCount = detectedRaids.filter(r => !r.obsolete && (r.ignoreRaider || r.ignoreTarget) && !(r.ignoreRaider && r.ignoreTarget)).length;
+      const totalIgnored = obsoleteCount + fullyIgnoredCount;
+      setSuccess(`${raidsToSave.length} raid(s) enregistré(s) avec succès !${totalIgnored > 0 ? ` (${obsoleteCount > 0 ? `${obsoleteCount} obsolète(s), ` : ''}${fullyIgnoredCount > 0 ? `${fullyIgnoredCount} complètement ignoré(s), ` : ''}${partialIgnoredCount > 0 ? `${partialIgnoredCount} partiellement ignoré(s)` : ''})` : ''}`);
       
       setTimeout(() => {
         setInputText("");
