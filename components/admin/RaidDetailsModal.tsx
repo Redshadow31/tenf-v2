@@ -47,6 +47,46 @@ export default function RaidDetailsModal({
     }
   }, [isOpen, memberTwitchLogin, month]);
 
+  // Fonction pour obtenir la date de ce matin (minuit)
+  function getTodayMorning(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }
+
+  // Fonction pour filtrer les raids selon les critères
+  // - Ne garder que les raids manuels
+  // - Ne garder que ceux ajoutés depuis ce matin
+  // - Supprimer les doublons (même cible/raider + même timestamp arrondi à la minute)
+  function filterRaids(raids: RaidEntry[]): RaidEntry[] {
+    const todayMorning = getTodayMorning();
+    const seen = new Set<string>();
+    
+    return raids
+      // 1. Ne garder que les raids manuels (exclure Twitch EventSub)
+      .filter(raid => raid.source === "manual")
+      // 2. Ne garder que ceux ajoutés depuis ce matin
+      .filter(raid => {
+        const raidDate = new Date(raid.timestamp);
+        return raidDate >= todayMorning;
+      })
+      // 3. Supprimer les doublons basés sur targetDiscordId + timestamp (arrondi à la minute)
+      .filter(raid => {
+        const date = new Date(raid.timestamp);
+        date.setSeconds(0, 0);
+        // Pour les raids faits: targetDiscordId = cible
+        // Pour les raids reçus: targetDiscordId = raider
+        const key = `${raid.targetDiscordId}-${date.toISOString()}`;
+        
+        if (seen.has(key)) {
+          return false; // Doublon, on ignore
+        }
+        
+        seen.add(key);
+        return true; // Premier occurrence, on garde
+      });
+  }
+
   async function loadDetails() {
     try {
       setLoading(true);
@@ -59,13 +99,25 @@ export default function RaidDetailsModal({
       
       if (response.ok) {
         const data = await response.json();
-        console.log(`[RaidDetailsModal] Données reçues:`, {
+        console.log(`[RaidDetailsModal] Données brutes reçues:`, {
           hasDetails: !!data.details,
           raidsCount: data.details?.raids?.length || 0,
           receivedRaidsCount: data.details?.receivedRaids?.length || 0,
-          fullData: data,
         });
-        setDetails(data.details || { raids: [], receivedRaids: [] });
+        
+        // Filtrer les raids selon les critères
+        const filteredRaids = filterRaids(data.details?.raids || []);
+        const filteredReceivedRaids = filterRaids(data.details?.receivedRaids || []);
+        
+        console.log(`[RaidDetailsModal] Données filtrées:`, {
+          raidsCount: filteredRaids.length,
+          receivedRaidsCount: filteredReceivedRaids.length,
+        });
+        
+        setDetails({
+          raids: filteredRaids,
+          receivedRaids: filteredReceivedRaids,
+        });
       } else {
         const errorText = await response.text();
         console.error("Erreur lors du chargement des détails:", {

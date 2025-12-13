@@ -9,7 +9,7 @@ import path from "path";
 interface RaidEntry {
   targetDiscordId: string; // ID Discord de la cible
   timestamp: string; // Date ISO du raid
-  source: "discord" | "manual"; // Source du raid (Discord ou manuel)
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source du raid
   messageId?: string; // ID du message Discord (si source = "discord")
 }
 
