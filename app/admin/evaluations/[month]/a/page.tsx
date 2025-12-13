@@ -3,17 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminHeader from "@/components/admin/AdminHeader";
 import SpotlightModal from "@/components/admin/evaluations/SpotlightModal";
 import EventModal from "@/components/admin/evaluations/EventModal";
-
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/evaluations", label: "Évaluations", active: true },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs" },
-];
 
 interface SpotlightEvaluation {
   id: string;
@@ -163,8 +154,8 @@ export default function SectionAPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white p-6">
-        <AdminHeader title={`Section A - Présence Active`} navLinks={navLinks} />
+      <div className="text-white">
+        <h1 className="text-4xl font-bold text-white mb-4">Section A - Présence Active</h1>
         <div className="text-center py-12">
           <p className="text-gray-400">Chargement...</p>
         </div>
@@ -174,8 +165,8 @@ export default function SectionAPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white p-6">
-        <AdminHeader title={`Section A - Présence Active`} navLinks={navLinks} />
+      <div className="text-white">
+        <h1 className="text-4xl font-bold text-white mb-4">Section A - Présence Active</h1>
         <div className="text-center py-12">
           <p className="text-red-400">Erreur de chargement des données</p>
         </div>
@@ -184,11 +175,12 @@ export default function SectionAPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-6">
-      <AdminHeader 
-        title={`Section A - Présence Active - ${formatMonthLabel(monthKey)}`} 
-        navLinks={navLinks} 
-      />
+    <div className="text-white">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white mb-4">
+          Section A - Présence Active - {formatMonthLabel(monthKey)}
+        </h1>
+      </div>
 
       <div className="mb-6">
         <Link

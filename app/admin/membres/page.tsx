@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import AdminHeader from "@/components/admin/AdminHeader";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
@@ -45,17 +44,6 @@ interface Member {
   raidsReceived?: number; // Nombre de raids reçus ce mois
 }
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres", active: true },
-  { href: "/admin/raids", label: "Suivi des Raids Discord" },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/statistiques", label: "Statistiques Globales" },
-  { href: "/admin/logs", label: "Logs" },
-  { href: "/admin/fusion-doublons", label: "Fusion Doublons" },
-];
 
 export default function GestionMembresPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -974,7 +962,7 @@ export default function GestionMembresPage() {
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
       <div className="p-8">
-        <AdminHeader title="Gestion des Membres" navLinks={navLinks} />
+        <h1 className="text-4xl font-bold text-white mb-8">Gestion des Membres</h1>
 
         {/* Barre de recherche et actions */}
         <div className="mb-6 flex items-center gap-4 flex-wrap">

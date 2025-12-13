@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import AdminHeader from "@/components/admin/AdminHeader";
 import {
   LineChart,
   Line,
@@ -151,16 +150,6 @@ const topClips = [
   },
 ];
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général", active: true },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord" },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/planification", label: "Événements" },
-  { href: "/admin/logs", label: "Logs" },
-];
 
 export default function DashboardPage() {
   const [discordGrowthData, setDiscordGrowthData] = useState(defaultDiscordGrowthData);
@@ -229,9 +218,8 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <AdminHeader title="Dashboard Général" navLinks={navLinks} />
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Dashboard Général</h1>
 
         {/* Section 1 — Statistiques globales (3 cartes) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

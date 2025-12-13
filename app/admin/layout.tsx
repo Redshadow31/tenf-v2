@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -6,9 +9,11 @@ type AdminLayoutProps = {
 
 export default function Layout({ children }: AdminLayoutProps) {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold">Admin</h1>
-      <section className="mt-4">{children}</section>
-    </main>
+    <div className="min-h-screen bg-[#0e0e10] flex">
+      <AdminSidebar />
+      <main className="flex-1 p-6 overflow-auto">
+        {children}
+      </main>
+    </div>
   );
 }

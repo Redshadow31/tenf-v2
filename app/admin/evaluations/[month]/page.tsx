@@ -3,17 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminHeader from "@/components/admin/AdminHeader";
-
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord" },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-  { href: "/admin/evaluations", label: "Évaluations", active: true },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs" },
-];
 
 export default function EvaluationMonthPage() {
   const params = useParams();
@@ -108,11 +97,12 @@ export default function EvaluationMonthPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-6">
-      <AdminHeader 
-        title={`Évaluations Mensuelles - ${formatMonthLabel(currentMonth)}`} 
-        navLinks={navLinks} 
-      />
+    <div className="text-white">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white mb-4">
+          Évaluations Mensuelles - {formatMonthLabel(currentMonth)}
+        </h1>
+      </div>
 
       {/* Navigation mensuelle */}
       <div className="mb-8 flex items-center justify-between bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
