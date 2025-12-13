@@ -388,7 +388,7 @@ export default function RaidsReviewPage() {
 
       {/* En-tête avec sélecteur de mois */}
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex-1">
+        <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
               Messages non reconnus
             </h2>

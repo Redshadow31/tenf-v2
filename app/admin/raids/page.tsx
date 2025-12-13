@@ -360,7 +360,7 @@ export default function RaidsPage() {
 
       {/* En-tête avec sélecteur de mois et boutons */}
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex-1">
+        <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
               Raids TENF
             </h2>
