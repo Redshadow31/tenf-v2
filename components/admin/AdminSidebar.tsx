@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface NavItem {
   href: string;
@@ -103,6 +104,32 @@ const navItems: NavItem[] = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
+
+  // Ouvrir automatiquement les menus parents si on est sur une de leurs pages enfants
+  useEffect(() => {
+    const newOpenMenus = new Set<string>();
+    navItems.forEach((item) => {
+      if (item.children) {
+        const isOnChildPage = item.children.some(child => {
+          if (child.href === "/admin/evaluations") {
+            return pathname?.startsWith("/admin/evaluations") ?? false;
+          }
+          if (child.href === "/admin/raids") {
+            return pathname?.startsWith("/admin/raids") ?? false;
+          }
+          if (child.href === "/admin/spotlight") {
+            return pathname?.startsWith("/admin/spotlight") ?? false;
+          }
+          return pathname === child.href;
+        });
+        if (isOnChildPage) {
+          newOpenMenus.add(item.href);
+        }
+      }
+    });
+    setOpenMenus(newOpenMenus);
+  }, [pathname]);
 
   function isActive(href: string): boolean {
     if (href === "/admin/evaluations") {
@@ -125,6 +152,18 @@ export default function AdminSidebar() {
     return false;
   }
 
+  function toggleMenu(href: string) {
+    setOpenMenus((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(href)) {
+        newSet.delete(href);
+      } else {
+        newSet.add(href);
+      }
+      return newSet;
+    });
+  }
+
   return (
     <div className="w-64 bg-[#1a1a1d] border-r border-gray-700 min-h-screen p-4">
       <div className="mb-8">
@@ -141,25 +180,53 @@ export default function AdminSidebar() {
           const active = isActive(item.href);
           const parentActive = isParentActive(item);
           const hasChildren = item.children && item.children.length > 0;
+          const isMenuOpen = openMenus.has(item.href);
 
           return (
             <div key={item.href}>
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  active
-                    ? "bg-[#9146ff] text-white"
-                    : parentActive
-                    ? "bg-[#252529] text-gray-200"
-                    : "text-gray-300 hover:bg-[#252529] hover:text-white"
-                }`}
-              >
-                {item.icon && <span className="text-xl">{item.icon}</span>}
-                <span className="font-medium">{item.label}</span>
-              </Link>
+              {hasChildren ? (
+                <button
+                  onClick={() => toggleMenu(item.href)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    active
+                      ? "bg-[#9146ff] text-white"
+                      : parentActive
+                      ? "bg-[#252529] text-gray-200"
+                      : "text-gray-300 hover:bg-[#252529] hover:text-white"
+                  }`}
+                >
+                  {item.icon && <span className="text-xl">{item.icon}</span>}
+                  <span className="font-medium flex-1 text-left">{item.label}</span>
+                  <svg
+                    className={`w-5 h-5 transition-transform ${isMenuOpen ? "rotate-90" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    active
+                      ? "bg-[#9146ff] text-white"
+                      : "text-gray-300 hover:bg-[#252529] hover:text-white"
+                  }`}
+                >
+                  {item.icon && <span className="text-xl">{item.icon}</span>}
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              )}
 
               {/* Sous-menu pour les éléments avec children */}
-              {hasChildren && parentActive && (
+              {hasChildren && isMenuOpen && (
                 <div className="ml-4 mt-2 space-y-1">
                   {item.children?.map((child) => {
                     const childActive = isActive(child.href);
