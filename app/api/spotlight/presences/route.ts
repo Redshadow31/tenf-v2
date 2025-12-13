@@ -136,4 +136,66 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+/**
+ * DELETE - Supprime une présence
+ * Body: { twitchLogin: string }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const spotlight = await getActiveSpotlight();
+    if (!spotlight) {
+      return NextResponse.json(
+        { error: 'Aucun spotlight actif' },
+        { status: 404 }
+      );
+    }
+
+    // Vérifier que le spotlight n'est pas annulé
+    if (spotlight.status === 'cancelled') {
+      return NextResponse.json(
+        { error: 'Ce spotlight a été annulé' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const { twitchLogin } = body;
+
+    if (!twitchLogin) {
+      return NextResponse.json(
+        { error: 'twitchLogin est requis' },
+        { status: 400 }
+      );
+    }
+
+    // Récupérer les présences actuelles
+    const presences = await getSpotlightPresences(spotlight.id);
+    
+    // Filtrer pour supprimer la présence
+    const updatedPresences = presences.filter(
+      p => p.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
+    );
+
+    // Sauvegarder les présences mises à jour
+    await saveSpotlightPresences(spotlight.id, updatedPresences);
+
+    return NextResponse.json({ 
+      success: true, 
+      presences: updatedPresences,
+      message: 'Présence supprimée avec succès' 
+    });
+  } catch (error) {
+    console.error('[Spotlight Presences API] Erreur DELETE:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
+}
+
 

@@ -221,6 +221,25 @@ export default function GestionSpotlightPage() {
     }
   }
 
+  async function handleRemovePresence(twitchLogin: string) {
+    if (!spotlight) return;
+
+    try {
+      const response = await fetch('/api/spotlight/presences', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ twitchLogin }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPresences(data.presences || []);
+      }
+    } catch (error) {
+      console.error("Erreur suppression présence:", error);
+    }
+  }
+
   async function handleSavePresences() {
     if (!spotlight) return;
 
