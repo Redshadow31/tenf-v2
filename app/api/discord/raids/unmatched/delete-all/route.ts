@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadUnmatchedRaids, saveUnmatchedRaids, getMonthKey, getCurrentMonthKey } from '@/lib/raids';
-import { hasPermission } from '@/lib/auth';
+import { getCurrentAdmin, isFounder } from '@/lib/admin';
 
 /**
  * DELETE - Supprime tous les raids non reconnus pour un mois donné
@@ -9,8 +9,8 @@ import { hasPermission } from '@/lib/auth';
 export async function DELETE(request: NextRequest) {
   try {
     // Vérifier les permissions (fondateurs uniquement)
-    const session = await hasPermission(request, ['founder']);
-    if (!session) {
+    const admin = await getCurrentAdmin(request);
+    if (!admin || !isFounder(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent supprimer tous les raids non reconnus." },
         { status: 403 }
