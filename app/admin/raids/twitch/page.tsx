@@ -343,18 +343,21 @@ export default function TwitchRaidsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des raids Twitch...</p>
+      <>
+        <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
+            <p className="text-gray-400">Chargement des raids Twitch...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="text-white">
-      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids Twitch</h1>
+    <>
+      <div className="text-white">
+        <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids Twitch</h1>
 
         {/* Alerte si EventSub non configuré */}
         {subscriptionStatus.checked && subscriptionStatus.hasError && (
@@ -661,6 +664,7 @@ export default function TwitchRaidsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
