@@ -125,22 +125,19 @@ export async function POST(
     );
 
     // Valider et formater les membres
-    const validatedMembers: MemberFollowValidation[] = members
-      .map((m: any) => {
-        const member = memberMap.get(m.twitchLogin.toLowerCase());
-        if (!member) {
-          return null;
-        }
-
-        return {
+    const validatedMembers: MemberFollowValidation[] = [];
+    for (const m of members) {
+      const member = memberMap.get(m.twitchLogin.toLowerCase());
+      if (member) {
+        validatedMembers.push({
           twitchLogin: member.twitchLogin,
           displayName: member.displayName || member.twitchLogin,
           role: member.role,
           status: m.status as FollowStatus,
           validatedAt: new Date().toISOString(),
-        };
-      })
-      .filter((m): m is MemberFollowValidation => m !== null);
+        });
+      }
+    }
 
     // Créer ou mettre à jour la validation
     const validation: StaffFollowValidation = {
