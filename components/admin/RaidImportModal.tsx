@@ -246,6 +246,9 @@ export default function RaidImportModal({
               displayName: targetMember.displayName,
               twitchLogin: targetMember.twitchLogin,
             } : undefined,
+            // Par défaut : ON si membre reconnu, OFF si non reconnu
+            countFrom: !!raiderMember,
+            countTo: !!targetMember,
           });
 
           // Initialiser les recherches (utiliser l'index réel)
@@ -257,10 +260,6 @@ export default function RaidImportModal({
               target: targetMember ? targetMember.displayName : target,
             },
           }));
-          
-          // Initialiser countFrom et countTo selon si les membres sont reconnus
-          raids[raids.length - 1].countFrom = !!raiderMember;
-          raids[raids.length - 1].countTo = !!targetMember;
         }
       }
 
