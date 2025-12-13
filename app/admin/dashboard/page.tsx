@@ -223,13 +223,53 @@ export default function DashboardPage() {
 
       {/* Section 1 — Statistiques globales (3 cartes) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Activité Twitch */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Activité Twitch
-            </h3>
+        {/* Activité Twitch */}
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">
+            Activité Twitch
+          </h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={twitchActivityData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey="month"
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickLine={false}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1a1a1d",
+                  border: "1px solid #2a2a2d",
+                  borderRadius: "8px",
+                  color: "#fff",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#9146ff"
+                strokeWidth={2}
+                dot={{ fill: "#9146ff", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Croissance Discord */}
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">
+            Croissance Discord
+          </h3>
+          {loadingDiscordData ? (
+            <div className="flex items-center justify-center h-[200px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
+            </div>
+          ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={twitchActivityData}>
+              <LineChart data={discordGrowthData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="month"
@@ -245,60 +285,20 @@ export default function DashboardPage() {
                     borderRadius: "8px",
                     color: "#fff",
                   }}
+                  formatter={(value: any) => [value, 'Membres']}
                 />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#9146ff"
+                  stroke="#10b981"
                   strokeWidth={2}
-                  dot={{ fill: "#9146ff", r: 4 }}
+                  dot={{ fill: "#10b981", r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
-
-          {/* Croissance Discord */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Croissance Discord
-            </h3>
-            {loadingDiscordData ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={discordGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis
-                    dataKey="month"
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1a1a1d",
-                      border: "1px solid #2a2a2d",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                    formatter={(value: any) => [value, 'Membres']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ fill: "#10b981", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          )}
+        </div>
 
           {/* Activité Discord du mois */}
           <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
