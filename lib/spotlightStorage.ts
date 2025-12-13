@@ -80,16 +80,26 @@ export async function getActiveSpotlight(): Promise<ActiveSpotlight | null> {
     if (isNetlify()) {
       const store = getStore(SPOTLIGHT_STORE_NAME);
       const data = await store.get('active.json', { type: 'json' });
-      if (data && data.status === 'active') {
-        // Vérifier si le spotlight est toujours actif (pas expiré)
-        const endsAt = new Date(data.endsAt);
-        const now = new Date();
-        if (now > endsAt) {
-          // Le spotlight a expiré, le marquer comme complété
-          await saveActiveSpotlight({ ...data, status: 'completed' });
-          return null;
+      if (data) {
+        // Si le spotlight est annulé, on le retourne quand même pour permettre l'affichage
+        if (data.status === 'cancelled') {
+          return data as ActiveSpotlight;
         }
-        return data as ActiveSpotlight;
+        // Si le spotlight est actif, vérifier s'il n'a pas expiré
+        if (data.status === 'active') {
+          const endsAt = new Date(data.endsAt);
+          const now = new Date();
+          if (now > endsAt) {
+            // Le spotlight a expiré, le marquer comme complété
+            await saveActiveSpotlight({ ...data, status: 'completed' });
+            return { ...data, status: 'completed' } as ActiveSpotlight;
+          }
+          return data as ActiveSpotlight;
+        }
+        // Si le spotlight est complété, on le retourne aussi
+        if (data.status === 'completed') {
+          return data as ActiveSpotlight;
+        }
       }
       return null;
     } else {
