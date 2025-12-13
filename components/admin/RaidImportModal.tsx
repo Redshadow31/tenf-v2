@@ -522,8 +522,8 @@ export default function RaidImportModal({
         throw new Error(data.error || "Erreur lors de l'enregistrement");
       }
 
-      const savedCount = detectedRaids.filter(r => r.countFrom || r.countTo).length;
-      setSuccess(`${savedCount} raid(s) enregistré(s) avec succès !`);
+      const ignoredCount = detectedRaids.length - raidsToSave.length;
+      setSuccess(`${raidsToSave.length} raid(s) enregistré(s) avec succès !${ignoredCount > 0 ? ` (${ignoredCount} raid(s) ignoré(s))` : ''}`);
       
       setTimeout(() => {
         setInputText("");
