@@ -317,10 +317,11 @@ export async function recordRaidByDiscordId(
   const targetReceivedBefore = raids[targetDiscordId].received;
   
   // Créer l'entrée de raid avec la date actuelle
+  // Utiliser "manual" au lieu de "discord" car ces raids sont validés manuellement
   const raidEntry: RaidEntry = {
     targetDiscordId,
     timestamp: new Date().toISOString(),
-    source: "discord",
+    source: "manual",
   };
   
   raids[raiderDiscordId].done++;
@@ -331,7 +332,7 @@ export async function recordRaidByDiscordId(
   const receivedRaidEntry: RaidEntry = {
     targetDiscordId: raiderDiscordId, // Pour la cible, le "target" est le raider
     timestamp: new Date().toISOString(),
-    source: "discord",
+    source: "manual",
   };
   
   raids[targetDiscordId].received++;

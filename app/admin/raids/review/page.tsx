@@ -18,6 +18,18 @@ interface ParsedRaid {
   isValid: boolean;
 }
 
+interface Member {
+  discordId: string;
+  displayName: string;
+  twitchLogin: string;
+  discordUsername?: string;
+}
+
+interface SelectedMembers {
+  raider?: Member;
+  target?: Member;
+}
+
 export default function RaidsReviewPage() {
   const [unmatched, setUnmatched] = useState<UnmatchedRaidMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,11 +38,63 @@ export default function RaidsReviewPage() {
   const [validating, setValidating] = useState<Set<string>>(new Set());
   const [parsedRaids, setParsedRaids] = useState<Record<string, ParsedRaid>>({});
   const [textInputs, setTextInputs] = useState<Record<string, string>>({});
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [selectedMembers, setSelectedMembers] = useState<Record<string, SelectedMembers>>({});
+  const [searchQueries, setSearchQueries] = useState<Record<string, { raider: string; target: string }>>({});
+  const [showResults, setShowResults] = useState<Record<string, { raider: boolean; target: boolean }>>({});
 
   // Regex pour détecter les raids : @Raider a raid @Cible ou @Raider à raid @Cible
   const RAID_PATTERN = /@([^\s@]+)\s+(?:a|à)\s+raid\s+@([^\s@]+)/giu;
 
   useEffect(() => {
+    // Charger la liste complète des membres
+    async function loadAllMembers() {
+      try {
+        setMembersLoading(true);
+        const response = await fetch("/api/admin/members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const members = (data.members || []).map((m: any) => ({
+            discordId: m.discordId || '',
+            displayName: m.displayName || m.twitchLogin || '',
+            twitchLogin: m.twitchLogin || '',
+            discordUsername: m.discordUsername || m.discordName || '',
+          }));
+          setAllMembers(members);
+        } else {
+          // Fallback: essayer l'API publique
+          try {
+            const publicResponse = await fetch("/api/members/public", {
+              cache: 'no-store',
+            });
+            if (publicResponse.ok) {
+              const publicData = await publicResponse.json();
+              const members = (publicData.members || []).map((m: any) => ({
+                discordId: m.discordId || '',
+                displayName: m.displayName || m.twitchLogin || '',
+                twitchLogin: m.twitchLogin || '',
+                discordUsername: m.discordUsername || '',
+              }));
+              setAllMembers(members);
+            }
+          } catch (err) {
+            console.error("[Raids Review] Erreur fallback membres:", err);
+          }
+        }
+      } catch (error) {
+        console.error("[Raids Review] Erreur lors du chargement des membres:", error);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+
     // Initialiser avec le mois en cours
     const now = new Date();
     const year = now.getFullYear();
@@ -48,7 +112,10 @@ export default function RaidsReviewPage() {
     }
     setAvailableMonths(months);
     
-    loadData(currentMonthStr);
+    // Charger d'abord les membres, puis les données
+    loadAllMembers().then(() => {
+      loadData(currentMonthStr);
+    });
   }, []);
 
   async function loadData(month?: string) {
@@ -71,6 +138,8 @@ export default function RaidsReviewPage() {
         // Initialiser les textareas avec le contenu original
         const initialInputs: Record<string, string> = {};
         const initialParsed: Record<string, ParsedRaid> = {};
+        const initialSearches: Record<string, { raider: string; target: string }> = {};
+        const initialSelections: Record<string, SelectedMembers> = {};
         
         for (const message of unmatchedData) {
           initialInputs[message.id] = message.content;
@@ -78,11 +147,36 @@ export default function RaidsReviewPage() {
           const parsed = parseRaidFromText(message.content);
           if (parsed) {
             initialParsed[message.id] = parsed;
+            // Essayer de trouver automatiquement les membres
+            const raiderMember = allMembers.find(m => 
+              m.twitchLogin?.toLowerCase() === parsed.raider.toLowerCase() ||
+              m.discordId === parsed.raider
+            );
+            const targetMember = allMembers.find(m => 
+              m.twitchLogin?.toLowerCase() === parsed.target.toLowerCase() ||
+              m.discordId === parsed.target
+            );
+            
+            if (raiderMember) {
+              initialSelections[message.id] = { ...initialSelections[message.id], raider: raiderMember };
+              initialSearches[message.id] = { ...initialSearches[message.id], raider: raiderMember.displayName || raiderMember.twitchLogin };
+            } else {
+              initialSearches[message.id] = { ...initialSearches[message.id], raider: parsed.raider };
+            }
+            
+            if (targetMember) {
+              initialSelections[message.id] = { ...initialSelections[message.id], target: targetMember };
+              initialSearches[message.id] = { ...initialSearches[message.id], target: targetMember.displayName || targetMember.twitchLogin };
+            } else {
+              initialSearches[message.id] = { ...initialSearches[message.id], target: parsed.target };
+            }
           }
         }
         
         setTextInputs(initialInputs);
         setParsedRaids(initialParsed);
+        setSearchQueries(initialSearches);
+        setSelectedMembers(initialSelections);
       } else {
         const error = await response.json();
         console.error("[Raids Review] Erreur API:", error);
@@ -136,6 +230,32 @@ export default function RaidsReviewPage() {
         ...prev,
         [messageId]: parsed,
       }));
+      
+      // Essayer de trouver automatiquement les membres
+      const raiderMember = allMembers.find(m => 
+        m.twitchLogin?.toLowerCase() === parsed.raider.toLowerCase() ||
+        m.discordId === parsed.raider
+      );
+      const targetMember = allMembers.find(m => 
+        m.twitchLogin?.toLowerCase() === parsed.target.toLowerCase() ||
+        m.discordId === parsed.target
+      );
+      
+      setSelectedMembers(prev => ({
+        ...prev,
+        [messageId]: {
+          raider: raiderMember,
+          target: targetMember,
+        },
+      }));
+      
+      setSearchQueries(prev => ({
+        ...prev,
+        [messageId]: {
+          raider: raiderMember ? (raiderMember.displayName || raiderMember.twitchLogin) : parsed.raider,
+          target: targetMember ? (targetMember.displayName || targetMember.twitchLogin) : parsed.target,
+        },
+      }));
     } else {
       // Supprimer le parsing si invalide
       setParsedRaids(prev => {
@@ -146,47 +266,114 @@ export default function RaidsReviewPage() {
     }
   }
 
+  // Fonction de normalisation pour la recherche
+  function normalize(text: string | undefined | null): string {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Fonction de filtrage des membres
+  function filterMembers(query: string): Member[] {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+    
+    const normalizedQuery = normalize(query);
+    
+    return allMembers.filter((member) => {
+      const normalizedDisplayName = normalize(member.displayName);
+      const normalizedTwitchLogin = normalize(member.twitchLogin);
+      const normalizedDiscordUsername = normalize(member.discordUsername);
+      const discordId = member.discordId || "";
+      
+      return (
+        normalizedDisplayName.includes(normalizedQuery) ||
+        normalizedTwitchLogin.includes(normalizedQuery) ||
+        normalizedDiscordUsername.includes(normalizedQuery) ||
+        (discordId && discordId.toLowerCase().includes(query.toLowerCase()))
+      );
+    });
+  }
+
+  function selectMember(member: Member, field: 'raider' | 'target', messageId: string) {
+    setSelectedMembers(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        [field]: member,
+      },
+    }));
+    
+    setSearchQueries(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        [field]: member.displayName || member.twitchLogin || '',
+      },
+    }));
+    
+    setShowResults(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        [field]: false,
+      },
+    }));
+  }
+
+  function clearMember(field: 'raider' | 'target', messageId: string) {
+    setSelectedMembers(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        [field]: undefined,
+      },
+    }));
+    
+    const parsed = parsedRaids[messageId];
+    if (parsed) {
+      setSearchQueries(prev => ({
+        ...prev,
+        [messageId]: {
+          ...prev[messageId],
+          [field]: field === 'raider' ? parsed.raider : parsed.target,
+        },
+      }));
+    }
+  }
+
   async function validateRaid(messageId: string) {
     const parsed = parsedRaids[messageId];
+    const selection = selectedMembers[messageId];
     
     if (!parsed || !parsed.isValid) {
       alert("Veuillez coller un message de raid au format : @Raider a raid @Cible");
       return;
     }
     
+    if (!selection?.raider || !selection?.target) {
+      alert("Veuillez sélectionner un raider et une cible depuis la liste des membres");
+      return;
+    }
+    
+    if (!selection.raider.discordId || !selection.target.discordId) {
+      alert("Erreur: Le raider ou la cible n'a pas d'ID Discord. Veuillez sélectionner des membres valides.");
+      return;
+    }
+    
+    if (selection.raider.discordId === selection.target.discordId) {
+      alert("Le raider et la cible ne peuvent pas être la même personne");
+      return;
+    }
+    
     setValidating(prev => new Set(prev).add(messageId));
     
     try {
-      // Charger les membres pour convertir Twitch Login en Discord ID
-      const membersResponse = await fetch("/api/admin/members", {
-        cache: 'no-store',
-      });
-      
-      let raiderId = parsed.raider;
-      let targetId = parsed.target;
-      
-      if (membersResponse.ok) {
-        const membersData = await membersResponse.json();
-        const allMembers = membersData.members || [];
-        
-        // Chercher les membres par Twitch Login ou Discord ID
-        const raiderMember = allMembers.find((m: any) => 
-          m.twitchLogin?.toLowerCase() === parsed.raider.toLowerCase() ||
-          m.discordId === parsed.raider
-        );
-        const targetMember = allMembers.find((m: any) => 
-          m.twitchLogin?.toLowerCase() === parsed.target.toLowerCase() ||
-          m.discordId === parsed.target
-        );
-        
-        if (raiderMember?.discordId) {
-          raiderId = raiderMember.discordId;
-        }
-        if (targetMember?.discordId) {
-          targetId = targetMember.discordId;
-        }
-      }
-      
       const response = await fetch("/api/discord/raids/unmatched", {
         method: "POST",
         headers: {
@@ -194,8 +381,8 @@ export default function RaidsReviewPage() {
         },
         body: JSON.stringify({
           messageId,
-          raiderDiscordId: raiderId,
-          targetDiscordId: targetId,
+          raiderDiscordId: selection.raider.discordId,
+          targetDiscordId: selection.target.discordId,
           month: selectedMonth,
         }),
       });
@@ -279,12 +466,124 @@ export default function RaidsReviewPage() {
     }
   }
 
-  if (loading) {
+  function renderMemberSelector(field: 'raider' | 'target', messageId: string, parsed: ParsedRaid | null, isValidating: boolean) {
+    const selection = selectedMembers[messageId];
+    const searchQuery = searchQueries[messageId]?.[field] || '';
+    const showResult = showResults[messageId]?.[field] || false;
+    const selectedMember = selection?.[field];
+    const fieldLabel = field === 'raider' ? 'Raider' : 'Cible';
+    const placeholder = parsed ? (field === 'raider' ? parsed.raider : parsed.target) : `Rechercher un membre...`;
+    
+    return (
+      <div className="relative">
+        <label className="block text-sm font-semibold text-gray-300 mb-2">
+          {fieldLabel}
+        </label>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder={placeholder}
+              value={searchQuery}
+              onChange={(e) => {
+                const query = e.target.value;
+                setSearchQueries(prev => ({
+                  ...prev,
+                  [messageId]: {
+                    ...prev[messageId],
+                    [field]: query,
+                  },
+                }));
+                
+                if (query.trim().length > 0) {
+                  setShowResults(prev => ({
+                    ...prev,
+                    [messageId]: {
+                      ...prev[messageId],
+                      [field]: true,
+                    },
+                  }));
+                } else {
+                  clearMember(field, messageId);
+                }
+              }}
+              onFocus={() => {
+                if (searchQuery.trim().length > 0) {
+                  setShowResults(prev => ({
+                    ...prev,
+                    [messageId]: {
+                      ...prev[messageId],
+                      [field]: true,
+                    },
+                  }));
+                }
+              }}
+              onBlur={() => {
+                setTimeout(() => {
+                  setShowResults(prev => ({
+                    ...prev,
+                    [messageId]: {
+                      ...prev[messageId],
+                      [field]: false,
+                    },
+                  }));
+                }, 200);
+              }}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
+              disabled={isValidating || membersLoading || !parsed}
+            />
+            {showResult && (() => {
+              const results = filterMembers(searchQuery);
+              return results.length > 0 ? (
+                <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {results.map((member) => (
+                    <button
+                      key={member.discordId}
+                      type="button"
+                      onClick={() => selectMember(member, field, messageId)}
+                      className="w-full text-left px-4 py-2 hover:bg-[#0e0e10] text-sm transition-colors"
+                    >
+                      <div className="font-semibold text-white">{member.displayName}</div>
+                      <div className="text-gray-400 text-xs">
+                        {member.twitchLogin} {member.discordUsername && `• ${member.discordUsername}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : searchQuery.trim().length > 0 ? (
+                <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg p-4">
+                  <div className="text-gray-400 text-sm text-center">Aucun membre trouvé</div>
+                </div>
+              ) : null;
+            })()}
+          </div>
+          {selectedMember && (
+            <button
+              onClick={() => clearMember(field, messageId)}
+              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-2 rounded-lg text-sm transition-colors"
+              title="Supprimer la sélection"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {selectedMember && (
+          <div className="mt-2 text-xs text-green-400">
+            ✅ Sélectionné : {selectedMember.displayName} ({selectedMember.twitchLogin})
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (loading || membersLoading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des messages non reconnus...</p>
+          <p className="text-gray-400">
+            {membersLoading ? "Chargement des membres..." : "Chargement des messages non reconnus..."}
+          </p>
         </div>
       </div>
     );
@@ -341,8 +640,10 @@ export default function RaidsReviewPage() {
           </p>
           <ol className="text-xs text-blue-400 list-decimal list-inside space-y-1">
             <li>Collez le message de raid dans le champ texte ci-dessous</li>
-            <li>Le format attendu est : <code className="bg-blue-900/50 px-1 rounded">@Raider a raid @Cible</code> ou <code className="bg-blue-900/50 px-1 rounded">@Raider à raid @Cible</code></li>
+            <li>Le format attendu est : <code className="bg-blue-900/50 px-1 rounded">@Raider a raid @Cible</code></li>
             <li>Le système détectera automatiquement le raider et la cible</li>
+            <li>Recherchez et sélectionnez les membres correspondants dans les listes</li>
+            <li>Si un membre n'est pas trouvé, vous pouvez le supprimer (bouton ✕) ou laisser vide</li>
             <li>Cliquez sur "✅ Valider le raid" pour enregistrer</li>
           </ol>
         </div>
@@ -360,6 +661,7 @@ export default function RaidsReviewPage() {
               const parsed = parsedRaids[message.id];
               const isValidating = validating.has(message.id);
               const textValue = textInputs[message.id] || message.content;
+              const selection = selectedMembers[message.id];
               
               return (
                 <div
@@ -397,18 +699,12 @@ export default function RaidsReviewPage() {
                   {/* Aperçu du parsing */}
                   {parsed && parsed.isValid ? (
                     <div className="bg-green-900/20 border border-green-700 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-green-300 mb-2">
+                      <p className="text-sm text-green-300 mb-3">
                         ✅ Raid détecté :
                       </p>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-400">Raider :</span>
-                          <span className="ml-2 text-white font-semibold">{parsed.raider}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Cible :</span>
-                          <span className="ml-2 text-white font-semibold">{parsed.target}</span>
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {renderMemberSelector('raider', message.id, parsed, isValidating)}
+                        {renderMemberSelector('target', message.id, parsed, isValidating)}
                       </div>
                     </div>
                   ) : textValue.trim() ? (
@@ -423,7 +719,7 @@ export default function RaidsReviewPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => validateRaid(message.id)}
-                      disabled={!parsed || !parsed.isValid || isValidating}
+                      disabled={!parsed || !parsed.isValid || !selection?.raider || !selection?.target || isValidating}
                       className="bg-[#9146ff] hover:bg-[#5a32b4] disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
                     >
                       {isValidating ? "Validation..." : "✅ Valider le raid"}

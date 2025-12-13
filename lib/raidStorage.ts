@@ -407,30 +407,28 @@ export async function addRaidFait(
   const raids = await loadRaidsFaits(monthKey);
   
   // Vérifier si le raid existe déjà (éviter les doublons)
+  // Pour les raids manuels, on permet les doublons (même raider→target) car ils peuvent être légitimes
   // Pour Twitch, on tolère un écart de quelques secondes pour éviter les doublons
-  const existingRaid = raids.find(r => {
-    if (r.raider === raider && r.target === target) {
-      if (source === "twitch-live") {
-        // Pour Twitch, vérifier si la date est très proche (moins de 5 secondes)
-        const raidDate = new Date(r.date);
-        const newDate = new Date(date);
-        const diffSeconds = Math.abs((newDate.getTime() - raidDate.getTime()) / 1000);
-        return diffSeconds < 5;
-      } else {
-        return r.date === date;
+  if (source !== "manual" && !manual) {
+    const existingRaid = raids.find(r => {
+      if (r.raider === raider && r.target === target) {
+        if (source === "twitch-live") {
+          // Pour Twitch, vérifier si la date est très proche (moins de 5 secondes)
+          const raidDate = new Date(r.date);
+          const newDate = new Date(date);
+          const diffSeconds = Math.abs((newDate.getTime() - raidDate.getTime()) / 1000);
+          return diffSeconds < 5;
+        } else {
+          return r.date === date;
+        }
       }
-    }
-    return false;
-  });
+      return false;
+    });
 
-  if (existingRaid) {
-    // Ne jamais écraser une entrée manuelle
-    if (existingRaid.manual) {
-      console.log(`[RaidStorage] Ignoré: entrée manuelle existante pour ${raider} → ${target}`);
+    if (existingRaid) {
+      console.log(`[RaidStorage] Raid déjà existant: ${raider} → ${target} (${date})`);
       return;
     }
-    console.log(`[RaidStorage] Raid déjà existant: ${raider} → ${target} (${date})`);
-    return;
   }
 
   raids.push({
@@ -453,7 +451,7 @@ export async function addRaidFait(
     raider,
     date,
     manual,
-    source: source || (manual ? "admin" : "bot"),
+    source: source || (manual ? "manual" : "twitch-live"),
     messageId,
     viewers,
   });
