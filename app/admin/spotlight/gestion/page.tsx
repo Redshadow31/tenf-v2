@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getDiscordUser } from "@/lib/discord";
+import { isFounder } from "@/lib/admin";
+import ManualSpotlightModal from "@/components/admin/ManualSpotlightModal";
 
 interface ActiveSpotlight {
   id: string;
@@ -53,13 +56,19 @@ export default function GestionSpotlightPage() {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isFounderUser, setIsFounderUser] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [streamerSearch, setStreamerSearch] = useState("");
   const [showStreamerModal, setShowStreamerModal] = useState(false);
   const [streamerSearch, setStreamerSearch] = useState("");
 
   useEffect(() => {
     loadData();
     loadMembers();
-    
+    checkFounderStatus();
+  }, []);
+
+  useEffect(() => {
     // Timer pour mettre à jour le temps restant
     const interval = setInterval(() => {
       updateTimeRemaining();
@@ -67,6 +76,18 @@ export default function GestionSpotlightPage() {
 
     return () => clearInterval(interval);
   }, [spotlight]);
+
+  async function checkFounderStatus() {
+    try {
+      const user = await getDiscordUser();
+      if (user) {
+        const founderStatus = isFounder(user.id);
+        setIsFounderUser(founderStatus);
+      }
+    } catch (error) {
+      console.error("Erreur vérification fondateur:", error);
+    }
+  }
 
   async function loadData() {
     try {
@@ -133,7 +154,8 @@ export default function GestionSpotlightPage() {
 
     if (diff <= 0) {
       setTimeRemaining("Terminé");
-      loadData();
+      // Ne pas recharger automatiquement pour éviter les boucles
+      // Le rechargement sera fait manuellement si nécessaire
       return;
     }
 
@@ -332,8 +354,20 @@ export default function GestionSpotlightPage() {
         >
           ← Retour au hub Spotlight
         </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">Gestion Spotlight</h1>
-        <p className="text-gray-400">Créer et gérer les spotlights</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Gestion Spotlight</h1>
+            <p className="text-gray-400">Créer et gérer les spotlights</p>
+          </div>
+          {isFounderUser && (
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              Ajouter un spotlight manuellement
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grille principale - 3 colonnes */}
@@ -762,6 +796,18 @@ export default function GestionSpotlightPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal d'ajout manuel */}
+      {showManualModal && (
+        <ManualSpotlightModal
+          isOpen={showManualModal}
+          onClose={() => setShowManualModal(false)}
+          onSuccess={() => {
+            setShowManualModal(false);
+            loadData(); // Recharger les données
+          }}
+        />
       )}
     </div>
   );
