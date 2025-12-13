@@ -51,52 +51,50 @@ export async function GET(
       }
     }
 
-    // Récupérer aussi les spotlights actifs/complétés depuis le stockage
+    // Récupérer aussi le spotlight actif/complété depuis le stockage (si présent)
     const SPOTLIGHT_STORE_NAME = 'tenf-spotlights';
     const isNetlify = typeof getStore === 'function' || 
                       !!process.env.NETLIFY || 
                       !!process.env.NETLIFY_DEV;
 
     if (isNetlify) {
-      const store = getStore(SPOTLIGHT_STORE_NAME);
-      // Lister tous les dossiers de spotlights
-      const list = await store.list();
-      
-      for (const item of list) {
-        if (item.key === 'active.json') continue;
+      try {
+        const store = getStore(SPOTLIGHT_STORE_NAME);
+        const activeData = await store.get('active.json', { type: 'json' });
         
-        // Essayer de charger le spotlight
-        try {
-          const spotlightData = await store.get(`${item.key.split('/')[0]}/presences.json`, { type: 'json' });
-          if (spotlightData && Array.isArray(spotlightData)) {
-            const isPresent = spotlightData.some(
-              (p: any) => p.twitchLogin.toLowerCase() === twitchLogin
+        if (activeData) {
+          const isStreamer = activeData.streamerTwitchLogin?.toLowerCase() === twitchLogin;
+          
+          // Vérifier les présences
+          try {
+            const presences = await store.get(`${activeData.id}/presences.json`, { type: 'json' });
+            const isPresent = presences && Array.isArray(presences) && presences.some(
+              (p: any) => p.twitchLogin?.toLowerCase() === twitchLogin
             );
             
-            if (isPresent) {
-              // Charger les données complètes du spotlight
-              const activeData = await store.get('active.json', { type: 'json' });
-              if (activeData && activeData.id === item.key.split('/')[0]) {
-                const evaluation = await store.get(`${item.key.split('/')[0]}/evaluation.json`, { type: 'json' });
-                allSpotlights.push({
-                  id: activeData.id,
-                  date: activeData.startedAt.split('T')[0],
-                  streamerTwitchLogin: activeData.streamerTwitchLogin,
-                  moderatorUsername: activeData.moderatorUsername,
-                  members: spotlightData.map((p: any) => ({
-                    twitchLogin: p.twitchLogin,
-                    present: true,
-                  })),
-                  role: activeData.streamerTwitchLogin.toLowerCase() === twitchLogin ? 'streamer' : 'present',
-                  status: activeData.status,
-                  evaluation: evaluation || null,
-                });
-              }
+            if (isStreamer || isPresent) {
+              const evaluation = await store.get(`${activeData.id}/evaluation.json`, { type: 'json' }).catch(() => null);
+              
+              allSpotlights.push({
+                id: activeData.id,
+                date: activeData.startedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+                streamerTwitchLogin: activeData.streamerTwitchLogin,
+                moderatorUsername: activeData.moderatorUsername || 'Unknown',
+                members: (presences || []).map((p: any) => ({
+                  twitchLogin: p.twitchLogin,
+                  present: true,
+                })),
+                role: isStreamer ? 'streamer' : 'present',
+                status: activeData.status,
+                evaluation: evaluation || null,
+              });
             }
+          } catch (error) {
+            // Ignorer les erreurs de lecture des présences
           }
-        } catch (error) {
-          // Ignorer les erreurs de lecture
         }
+      } catch (error) {
+        // Ignorer les erreurs de lecture du spotlight actif
       }
     }
 
