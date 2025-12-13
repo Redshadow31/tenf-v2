@@ -146,26 +146,17 @@ export async function getAllFollowValidationsForMonth(
       const store = getStore(STORE_NAME);
       const list = await store.list({ prefix: `${month}/` });
       
-      // Itérer sur les blobs
-      let cursor: string | undefined;
-      do {
-        const result = cursor 
-          ? await store.list({ prefix: `${month}/`, cursor })
-          : list;
-        
-        for (const item of result.blobs) {
-          try {
-            const data = await store.get(item.key, { type: 'json' });
-            if (data) {
-              validations.push(data as StaffFollowValidation);
-            }
-          } catch (error) {
-            console.error(`[FollowStorage] Erreur lecture ${item.key}:`, error);
+      // Lire tous les blobs en une seule fois
+      for (const item of list.blobs) {
+        try {
+          const data = await store.get(item.key, { type: 'json' });
+          if (data) {
+            validations.push(data as StaffFollowValidation);
           }
+        } catch (error) {
+          console.error(`[FollowStorage] Erreur lecture ${item.key}:`, error);
         }
-        
-        cursor = result.cursor;
-      } while (cursor);
+      }
     } else {
       const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
       if (fs.existsSync(dataDir)) {
