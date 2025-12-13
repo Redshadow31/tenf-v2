@@ -58,7 +58,7 @@ export default function AuditPage() {
   }, []);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && isFounder(currentUser.id)) {
       loadLogs();
     }
   }, [currentUser]);
