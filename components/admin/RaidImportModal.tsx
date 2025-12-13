@@ -484,15 +484,14 @@ export default function RaidImportModal({
       return;
     }
 
-    // Vérifier qu'au moins un côté (raider ou cible) est activé pour chaque raid
-    const invalidRaids = detectedRaids.filter(r => !r.countFrom && !r.countTo);
-    if (invalidRaids.length > 0) {
-      setError(`${invalidRaids.length} raid(s) doivent avoir au moins "Compter le raid fait" ou "Compter le raid reçu" activé`);
+    // Filtrer les raids qui ont au moins une option activée
+    // Les raids avec les deux checkboxes décochées seront ignorés (non enregistrés)
+    const raidsToSave = detectedRaids.filter(r => r.countFrom || r.countTo);
+    
+    if (raidsToSave.length === 0) {
+      setError("Aucun raid à enregistrer. Activez au moins une checkbox pour au moins un raid.");
       return;
     }
-
-    // Note: On permet l'enregistrement même si un membre n'est pas reconnu
-    // Le pseudo brut sera utilisé comme identifiant dans ce cas
 
     setSaving(true);
     setError(null);
@@ -506,9 +505,7 @@ export default function RaidImportModal({
         },
         body: JSON.stringify({
           month,
-          raids: detectedRaids
-            .filter(r => r.countFrom || r.countTo) // Ne garder que les raids avec au moins une option activée
-            .map(r => ({
+          raids: raidsToSave.map(r => ({
               // Utiliser le membre reconnu si disponible, sinon le pseudo brut
               raider: r.countFrom ? (r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : r.raider) : null,
               target: r.countTo ? (r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : r.target) : null,
