@@ -250,6 +250,8 @@ export default function RaidImportModal({
             // Par défaut : ON si membre reconnu, OFF si non reconnu
             countFrom: !!raiderMember,
             countTo: !!targetMember,
+            // Marquer comme obsolète si aucun des deux membres n'est reconnu
+            obsolete: !raiderMember && !targetMember,
           });
 
           // Initialiser les recherches (utiliser l'index réel)
