@@ -509,13 +509,13 @@ export default function RaidImportModal({
         body: JSON.stringify({
           month,
           raids: raidsToSave.map(r => ({
-              // Utiliser le membre reconnu si disponible, sinon le pseudo brut
-              // Ne pas inclure si ignoré
-              raider: !r.ignoreRaider ? (r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : r.raider) : null,
-              target: !r.ignoreTarget ? (r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : r.target) : null,
+              // Utiliser le membre sélectionné (celui avec la coche verte) pour l'enregistrement
+              // Ne pas inclure si ignoré ou si aucun membre n'est sélectionné
+              raider: !r.ignoreRaider && r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : null,
+              target: !r.ignoreTarget && r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : null,
               date: r.date,
-              countFrom: !r.ignoreRaider,
-              countTo: !r.ignoreTarget,
+              countFrom: !r.ignoreRaider && !!r.raiderMember,
+              countTo: !r.ignoreTarget && !!r.targetMember,
             })),
         }),
       });
@@ -644,10 +644,7 @@ export default function RaidImportModal({
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Date/Heure</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Raider</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Cible</th>
-                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter fait</th>
-                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter reçu</th>
-                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Ignorer</th>
-                        <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Statut</th>
+                        <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Résultats</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Texte original</th>
                       </tr>
                     </thead>
@@ -672,84 +669,53 @@ export default function RaidImportModal({
                             <td className="py-2 px-3">
                               {renderMemberSelector('target', idx, raid)}
                             </td>
-                            <td className="py-2 px-3 text-center">
-                              <label className="flex items-center justify-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={raid.ignoreRaider || false}
-                                  onChange={(e) => {
-                                    const updatedRaids = [...detectedRaids];
-                                    updatedRaids[idx] = { ...raid, ignoreRaider: e.target.checked };
-                                    setDetectedRaids(updatedRaids);
-                                  }}
-                                  disabled={saving || raid.obsolete}
-                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
-                                  title="Ignorer le raider (ne comptera pas dans les raids faits)"
-                                />
-                              </label>
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              <label className="flex items-center justify-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={raid.ignoreTarget || false}
-                                  onChange={(e) => {
-                                    const updatedRaids = [...detectedRaids];
-                                    updatedRaids[idx] = { ...raid, ignoreTarget: e.target.checked };
-                                    setDetectedRaids(updatedRaids);
-                                  }}
-                                  disabled={saving || raid.obsolete}
-                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
-                                  title="Ignorer la cible (ne comptera pas dans les raids reçus)"
-                                />
-                              </label>
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              <label className="flex items-center justify-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={raid.obsolete || false}
-                                  onChange={(e) => {
-                                    const updatedRaids = [...detectedRaids];
-                                    updatedRaids[idx] = { 
-                                      ...raid, 
-                                      obsolete: e.target.checked,
-                                      // Ignorer les deux côtés si obsolète
-                                      ignoreRaider: e.target.checked ? true : raid.ignoreRaider,
-                                      ignoreTarget: e.target.checked ? true : raid.ignoreTarget,
-                                    };
-                                    setDetectedRaids(updatedRaids);
-                                  }}
-                                  disabled={saving}
-                                  className="w-4 h-4 text-red-500 rounded focus:ring-red-500"
-                                  title="Ignorer complètement ce raid (ne sera pas enregistré)"
-                                />
-                              </label>
-                            </td>
                             <td className="py-2 px-3">
-                              {(() => {
-                                if (raid.obsolete) {
-                                  return <span className="text-gray-500 text-xs">🚫 Obsolète</span>;
-                                }
-                                
-                                const raiderIgnored = raid.ignoreRaider;
-                                const targetIgnored = raid.ignoreTarget;
-                                const bothIgnored = raiderIgnored && targetIgnored;
-                                const hasRaider = !!raid.raiderMember;
-                                const hasTarget = !!raid.targetMember;
-                                
-                                if (bothIgnored) {
-                                  return <span className="text-gray-500 text-xs">🚫 Ignoré</span>;
-                                } else if (raiderIgnored || targetIgnored) {
-                                  return <span className="text-orange-400 text-xs">⚠️ Partiel</span>;
-                                } else if (hasRaider && hasTarget) {
-                                  return <span className="text-green-400 text-xs">✅ OK</span>;
-                                } else if (hasRaider || hasTarget) {
-                                  return <span className="text-blue-400 text-xs">⚠️ Partiel</span>;
-                                } else {
-                                  return <span className="text-yellow-400 text-xs">⚠️ À corriger</span>;
-                                }
-                              })()}
+                              <div className="space-y-2">
+                                {/* Ligne 1: Raid fait */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400">Raid fait :</span>
+                                  <span className="text-xs text-white font-medium">
+                                    {raid.raiderMember ? raid.raiderMember.displayName : (raid.ignoreRaider ? <span className="text-gray-500 italic">Ignoré</span> : raid.raider)}
+                                  </span>
+                                  <label className="flex items-center cursor-pointer ml-auto">
+                                    <input
+                                      type="checkbox"
+                                      checked={raid.ignoreRaider || false}
+                                      onChange={(e) => {
+                                        const updatedRaids = [...detectedRaids];
+                                        updatedRaids[idx] = { ...raid, ignoreRaider: e.target.checked };
+                                        setDetectedRaids(updatedRaids);
+                                      }}
+                                      disabled={saving || raid.obsolete}
+                                      className="w-3 h-3 text-orange-500 rounded focus:ring-orange-500"
+                                      title="Ignorer ce raid fait"
+                                    />
+                                    <span className="text-xs text-gray-500 ml-1">Ignorer</span>
+                                  </label>
+                                </div>
+                                {/* Ligne 2: Raid reçu */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400">Raid reçu :</span>
+                                  <span className="text-xs text-white font-medium">
+                                    {raid.targetMember ? raid.targetMember.displayName : (raid.ignoreTarget ? <span className="text-gray-500 italic">Ignoré</span> : raid.target)}
+                                  </span>
+                                  <label className="flex items-center cursor-pointer ml-auto">
+                                    <input
+                                      type="checkbox"
+                                      checked={raid.ignoreTarget || false}
+                                      onChange={(e) => {
+                                        const updatedRaids = [...detectedRaids];
+                                        updatedRaids[idx] = { ...raid, ignoreTarget: e.target.checked };
+                                        setDetectedRaids(updatedRaids);
+                                      }}
+                                      disabled={saving || raid.obsolete}
+                                      className="w-3 h-3 text-orange-500 rounded focus:ring-orange-500"
+                                      title="Ignorer ce raid reçu"
+                                    />
+                                    <span className="text-xs text-gray-500 ml-1">Ignorer</span>
+                                  </label>
+                                </div>
+                              </div>
                             </td>
                             <td className="py-2 px-3 text-gray-400 text-xs font-mono truncate max-w-xs">
                               {raid.originalText}
