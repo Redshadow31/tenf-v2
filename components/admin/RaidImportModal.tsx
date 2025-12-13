@@ -20,6 +20,7 @@ interface DetectedRaid {
   };
   countFrom: boolean; // Compter le raid fait (pour le raider)
   countTo: boolean; // Compter le raid reçu (pour la cible)
+  obsolete?: boolean; // Marquer comme obsolète (ignoré, ne sera pas enregistré)
 }
 
 interface Member {
@@ -484,12 +485,18 @@ export default function RaidImportModal({
       return;
     }
 
-    // Filtrer les raids qui ont au moins une option activée
-    // Les raids avec les deux checkboxes décochées seront ignorés (non enregistrés)
-    const raidsToSave = detectedRaids.filter(r => r.countFrom || r.countTo);
+    // Filtrer les raids qui ont au moins une option activée et qui ne sont pas obsolètes
+    // Les raids avec les deux checkboxes décochées ou marqués comme obsolètes seront ignorés (non enregistrés)
+    const raidsToSave = detectedRaids.filter(r => !r.obsolete && (r.countFrom || r.countTo));
     
     if (raidsToSave.length === 0) {
-      setError("Aucun raid à enregistrer. Activez au moins une checkbox pour au moins un raid.");
+      const obsoleteCount = detectedRaids.filter(r => r.obsolete).length;
+      const ignoredCount = detectedRaids.filter(r => !r.obsolete && !r.countFrom && !r.countTo).length;
+      if (obsoleteCount > 0 || ignoredCount > 0) {
+        setError(`Aucun raid à enregistrer. ${obsoleteCount > 0 ? `${obsoleteCount} raid(s) marqué(s) comme obsolète(s). ` : ''}${ignoredCount > 0 ? `${ignoredCount} raid(s) ignoré(s) (deux checkboxes décochées). ` : ''}Activez au moins une checkbox pour au moins un raid non obsolète.`);
+      } else {
+        setError("Aucun raid à enregistrer. Activez au moins une checkbox pour au moins un raid.");
+      }
       return;
     }
 
@@ -522,8 +529,10 @@ export default function RaidImportModal({
         throw new Error(data.error || "Erreur lors de l'enregistrement");
       }
 
-      const ignoredCount = detectedRaids.length - raidsToSave.length;
-      setSuccess(`${raidsToSave.length} raid(s) enregistré(s) avec succès !${ignoredCount > 0 ? ` (${ignoredCount} raid(s) ignoré(s))` : ''}`);
+      const obsoleteCount = detectedRaids.filter(r => r.obsolete).length;
+      const ignoredCount = detectedRaids.filter(r => !r.obsolete && !r.countFrom && !r.countTo).length;
+      const totalIgnored = obsoleteCount + ignoredCount;
+      setSuccess(`${raidsToSave.length} raid(s) enregistré(s) avec succès !${totalIgnored > 0 ? ` (${obsoleteCount > 0 ? `${obsoleteCount} obsolète(s), ` : ''}${ignoredCount > 0 ? `${ignoredCount} ignoré(s)` : ''})` : ''}`);
       
       setTimeout(() => {
         setInputText("");
@@ -639,6 +648,7 @@ export default function RaidImportModal({
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Cible</th>
                         <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter fait</th>
                         <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Compter reçu</th>
+                        <th className="text-center py-2 px-3 text-gray-300 font-semibold text-xs">Ignorer</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Statut</th>
                         <th className="text-left py-2 px-3 text-gray-300 font-semibold text-xs">Texte original</th>
                       </tr>
@@ -653,7 +663,7 @@ export default function RaidImportModal({
                           <tr
                             key={idx}
                             className={`border-t border-gray-700 hover:bg-gray-800/30 ${
-                              !statusOk ? "bg-yellow-900/10" : ""
+                              raid.obsolete ? "bg-gray-800/50 opacity-60" : !statusOk ? "bg-yellow-900/10" : ""
                             }`}
                           >
                             <td className="py-2 px-3 text-gray-400 text-xs">{raid.lineNumber}</td>
@@ -690,14 +700,40 @@ export default function RaidImportModal({
                                     updatedRaids[idx] = { ...raid, countTo: e.target.checked };
                                     setDetectedRaids(updatedRaids);
                                   }}
-                                  disabled={saving}
+                                  disabled={saving || raid.obsolete}
                                   className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
                                   title={!raid.targetMember ? "Membre non reconnu - le pseudo brut sera utilisé" : ""}
                                 />
                               </label>
                             </td>
+                            <td className="py-2 px-3 text-center">
+                              <label className="flex items-center justify-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={raid.obsolete || false}
+                                  onChange={(e) => {
+                                    const updatedRaids = [...detectedRaids];
+                                    updatedRaids[idx] = { 
+                                      ...raid, 
+                                      obsolete: e.target.checked,
+                                      // Désactiver les autres checkboxes si obsolète
+                                      countFrom: e.target.checked ? false : raid.countFrom,
+                                      countTo: e.target.checked ? false : raid.countTo,
+                                    };
+                                    setDetectedRaids(updatedRaids);
+                                  }}
+                                  disabled={saving}
+                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+                                  title="Marquer ce raid comme obsolète (ne sera pas enregistré)"
+                                />
+                              </label>
+                            </td>
                             <td className="py-2 px-3">
                               {(() => {
+                                if (raid.obsolete) {
+                                  return <span className="text-gray-500 text-xs">🚫 Obsolète</span>;
+                                }
+                                
                                 const hasValidFrom = raid.countFrom && raid.raiderMember;
                                 const hasValidTo = raid.countTo && raid.targetMember;
                                 const hasFromWithoutMember = raid.countFrom && !raid.raiderMember;
