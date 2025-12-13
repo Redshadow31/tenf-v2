@@ -494,7 +494,7 @@ export default function GestionSpotlightPage() {
                   presences.map((presence, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-3 p-3 bg-[#0e0e10] rounded-lg border border-gray-700 hover:border-[#9146ff]/50 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-[#0e0e10] rounded-lg border border-gray-700 hover:border-[#9146ff]/50 transition-colors group"
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold flex-shrink-0">
                         {(presence.displayName || presence.twitchLogin).charAt(0).toUpperCase()}
@@ -502,19 +502,26 @@ export default function GestionSpotlightPage() {
                       <span className="flex-1 text-white font-medium">
                         {presence.displayName || presence.twitchLogin}
                       </span>
-                      <svg
-                        className="w-5 h-5 text-gray-400 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={() => handleRemovePresence(presence.twitchLogin)}
+                        disabled={saving || spotlight.status === 'cancelled'}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/20 disabled:opacity-0 disabled:cursor-not-allowed"
+                        title="Supprimer de la liste"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   ))
                 ) : (
