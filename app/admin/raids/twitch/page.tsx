@@ -581,7 +581,7 @@ export default function TwitchRaidsPage() {
               href={`/admin/raids?month=${selectedMonth}`}
               className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
             >
-              ← Retour aux raids Discord
+              ← Retour aux raids
             </Link>
             <button
               onClick={async () => {

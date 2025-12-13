@@ -49,7 +49,7 @@ const navItems: NavItem[] = [
     children: [
       {
         href: "/admin/raids",
-        label: "Raids Discord",
+        label: "Suivi des Raids",
       },
       {
         href: "/admin/raids/twitch",

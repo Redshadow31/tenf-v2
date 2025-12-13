@@ -47,9 +47,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Charger les données
-    const raidsFaits = await loadRaidsFaits(monthKey);
-    const raidsRecus = await loadRaidsRecus(monthKey);
-    const alerts = await loadAlerts(monthKey);
+    let raidsFaits = await loadRaidsFaits(monthKey);
+    let raidsRecus = await loadRaidsRecus(monthKey);
+    let alerts = await loadAlerts(monthKey);
+    
+    // Filtrer les raids Discord (ne garder que twitch-live et manual)
+    raidsFaits = raidsFaits.filter(raid => raid.source !== "discord");
+    raidsRecus = raidsRecus.filter(raid => raid.source !== "discord");
+    alerts = alerts.filter(alert => alert.source !== "discord");
 
     // Convertir les Discord IDs en Twitch Logins pour l'affichage
     const raidsFaitsFormatted = raidsFaits.map(raid => ({

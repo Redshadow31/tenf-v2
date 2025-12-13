@@ -64,7 +64,7 @@ export function filterNavLinks(
 export const defaultAdminNavLinks: NavLink[] = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
   { href: "/admin/membres", label: "Gestion des Membres", requiredPermission: "read" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord", requiredPermission: "read" },
+  { href: "/admin/raids", label: "Suivi des Raids", requiredPermission: "read" },
   { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch", requiredPermission: "read" },
   { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle", requiredPermission: "read" },
   { href: "/admin/spotlight", label: "Gestion Spotlight", requiredPermission: "read" },

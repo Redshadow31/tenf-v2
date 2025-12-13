@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 interface RaidEntry {
   targetDiscordId: string;
   timestamp: string;
-  source: "discord" | "manual";
+  source: "twitch-live" | "manual";
   messageId?: string;
 }
 
@@ -266,7 +266,7 @@ export default function RaidDetailsModal({
                                     ? "bg-yellow-900/30 text-yellow-300"
                                     : "bg-blue-900/30 text-blue-300"
                                 }`}>
-                                  {raid.source === "manual" ? "Manuel" : "Discord"}
+                                  {raid.source === "manual" ? "Manuel" : "Twitch EventSub"}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-right">
@@ -331,7 +331,7 @@ export default function RaidDetailsModal({
                                     ? "bg-yellow-900/30 text-yellow-300"
                                     : "bg-blue-900/30 text-blue-300"
                                 }`}>
-                                  {raid.source === "manual" ? "Manuel" : "Discord"}
+                                  {raid.source === "manual" ? "Manuel" : "Twitch EventSub"}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-right">

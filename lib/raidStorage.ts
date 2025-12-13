@@ -368,9 +368,9 @@ export async function recalculateAlerts(monthKey: string): Promise<void> {
         const raidsForAlert = raidsFaits.filter(
           r => r.raider === raider && r.target === target
         );
-        const sources = raidsForAlert.map(r => r.source || "discord");
+        const sources = raidsForAlert.map(r => r.source || "twitch-live");
         const primarySource = sources.includes("twitch-live") ? "twitch-live" : 
-                             sources.includes("manual") ? "manual" : "discord";
+                             sources.includes("manual") ? "manual" : "twitch-live";
         
         alerts.push({
           raider,
@@ -439,7 +439,7 @@ export async function addRaidFait(
     date,
     count: 1,
     manual,
-    source: source || (manual ? "manual" : "discord"),
+    source: source || (manual ? "manual" : "twitch-live"),
     messageId,
     viewers,
   });
