@@ -1,37 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
-
-interface StaffMember {
-  slug: string;
-  name: string;
-  displayName: string;
-}
-
-const STAFF_MEMBERS: StaffMember[] = [
-  { slug: "red", name: "Red", displayName: "Red" },
-  { slug: "clara", name: "Clara", displayName: "Clara" },
-  { slug: "nexou", name: "Nexou", displayName: "Nexou" },
-  { slug: "tabs", name: "Tabs", displayName: "Tabs" },
-  { slug: "nangel", name: "Nangel", displayName: "Nangel" },
-  { slug: "jenny", name: "Jenny", displayName: "Jenny" },
-  { slug: "selena", name: "Selena", displayName: "Selena" },
-  { slug: "dark", name: "Dark", displayName: "Dark" },
-  { slug: "yaya", name: "Yaya", displayName: "Yaya" },
-  { slug: "rubby", name: "Rubby", displayName: "Rubby" },
-  { slug: "livio", name: "Livio", displayName: "Livio" },
-  { slug: "rebelle", name: "Rebelle", displayName: "Rebelle" },
-  { slug: "sigurdson", name: "Sigurdson", displayName: "Sigurdson" },
-  { slug: "nico", name: "Nico", displayName: "Nico" },
-  { slug: "willy", name: "Willy", displayName: "Willy" },
-  { slug: "b1nx", name: "B1nx", displayName: "B1nx" },
-  { slug: "spydy", name: "Spydy", displayName: "Spydy" },
-  { slug: "simon", name: "Simon", displayName: "Simon" },
-  { slug: "zylkao", name: "Zylkao", displayName: "Zylkao" },
-];
 
 export default function FollowHubPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
