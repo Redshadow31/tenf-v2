@@ -25,6 +25,28 @@ const navItems: NavItem[] = [
     href: "/admin/spotlight",
     label: "Spotlight",
     icon: "⭐",
+    children: [
+      {
+        href: "/admin/spotlight",
+        label: "Hub",
+      },
+      {
+        href: "/admin/spotlight/gestion",
+        label: "Gestion",
+      },
+      {
+        href: "/admin/spotlight/membres",
+        label: "Données individuelles",
+      },
+      {
+        href: "/admin/spotlight/presence",
+        label: "Présence",
+      },
+      {
+        href: "/admin/spotlight/evaluation",
+        label: "Évaluation streamer",
+      },
+    ],
   },
   {
     href: "/admin/follow",
@@ -88,6 +110,9 @@ export default function AdminSidebar() {
     }
     if (href === "/admin/raids") {
       return pathname?.startsWith("/admin/raids") ?? false;
+    }
+    if (href === "/admin/spotlight") {
+      return pathname?.startsWith("/admin/spotlight") ?? false;
     }
     return pathname === href;
   }
