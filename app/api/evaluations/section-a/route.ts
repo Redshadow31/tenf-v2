@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Month key invalide' }, { status: 400 });
     }
 
-    const existingData = await loadSectionAData(month) || {
+    const loadedData = await loadSectionAData(month);
+    const existingData: SectionAData = loadedData || {
       month,
       spotlights: [],
       events: [],
