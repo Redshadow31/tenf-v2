@@ -45,7 +45,14 @@ export default function RaidsReviewPage() {
   const [showResults, setShowResults] = useState<Record<string, { raider: boolean; target: boolean }>>({});
 
   // Regex pour détecter les raids : @Raider a raid @Cible ou @Raider à raid @Cible
-  const RAID_PATTERN = /@([^\s@]+)\s+(?:a|à)\s+raid\s+@([^\s@]+)/giu;
+  // Capture les pseudos avec espaces, Unicode, et ignore les annotations entre parenthèses
+  const RAID_PATTERN = /@(.+?)\s+(?:a|à)\s+raid\s+@([^\n(]+)/giu;
+  
+  // Fonction pour nettoyer un pseudo en supprimant les annotations entre parenthèses
+  function cleanPseudo(pseudo: string): string {
+    // Supprimer le contenu entre parenthèses (y compris les parenthèses)
+    return pseudo.replace(/\s*\([^)]*\)/g, '').trim();
+  }
 
   useEffect(() => {
     // Charger la liste complète des membres
@@ -201,8 +208,9 @@ export default function RaidsReviewPage() {
     const match = RAID_PATTERN.exec(text.trim());
     
     if (match) {
-      const raider = match[1].trim();
-      const target = match[2].trim();
+      // Nettoyer les pseudos capturés en supprimant les annotations entre parenthèses
+      const raider = cleanPseudo(match[1].trim());
+      const target = cleanPseudo(match[2].trim());
       
       if (raider && target && raider.length > 0 && target.length > 0 && raider.toLowerCase() !== target.toLowerCase()) {
         return {
