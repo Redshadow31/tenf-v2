@@ -355,6 +355,7 @@ export default function RaidsPage() {
   }
 
   return (
+    <>
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
 
