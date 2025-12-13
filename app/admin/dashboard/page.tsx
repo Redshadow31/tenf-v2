@@ -300,87 +300,87 @@ export default function DashboardPage() {
           )}
         </div>
 
-          {/* Activité Discord du mois */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Activité Discord du mois
-            </h3>
-            {loadingDiscordStats ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
-              </div>
-            ) : discordStats ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-[#0e0e10] rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Messages</div>
-                    <div className="text-2xl font-bold text-[#5865F2]">
-                      {discordStats.totalMessages.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-[#0e0e10] rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Heures vocales</div>
-                    <div className="text-2xl font-bold text-[#5865F2]">
-                      {discordStats.totalVoiceHours.toFixed(1)}
-                    </div>
+        {/* Activité Discord du mois */}
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">
+            Activité Discord du mois
+          </h3>
+          {loadingDiscordStats ? (
+            <div className="flex items-center justify-center h-[200px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
+            </div>
+          ) : discordStats ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-[#0e0e10] rounded-lg p-3">
+                  <div className="text-xs text-gray-400 mb-1">Messages</div>
+                  <div className="text-2xl font-bold text-[#5865F2]">
+                    {discordStats.totalMessages.toLocaleString()}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs</div>
-                  <div className="space-y-2">
-                    {discordStats.topMembers.length > 0 ? (
-                      discordStats.topMembers.map((member, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500">#{member.rank}</span>
-                            <span className="text-white">{member.displayName}</span>
-                          </div>
-                          <div className="flex items-center gap-4 text-gray-400">
-                            <span>{member.messages} msgs</span>
-                            <span>{Math.round(member.voiceMinutes / 60)}h</span>
-                          </div>
+                <div className="bg-[#0e0e10] rounded-lg p-3">
+                  <div className="text-xs text-gray-400 mb-1">Heures vocales</div>
+                  <div className="text-2xl font-bold text-[#5865F2]">
+                    {discordStats.totalVoiceHours.toFixed(1)}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs</div>
+                <div className="space-y-2">
+                  {discordStats.topMembers.length > 0 ? (
+                    discordStats.topMembers.map((member, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500">#{member.rank}</span>
+                          <span className="text-white">{member.displayName}</span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-gray-500 text-center py-2">
-                        Aucune donnée disponible
+                        <div className="flex items-center gap-4 text-gray-400">
+                          <span>{member.messages} msgs</span>
+                          <span>{Math.round(member.voiceMinutes / 60)}h</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-gray-700">
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Voulez-vous récupérer les données Statbot maintenant ?')) {
-                        return;
-                      }
-                      try {
-                        const response = await fetch('/api/statbot/fetch', { method: 'POST' });
-                        const data = await response.json();
-                        if (response.ok) {
-                          alert(`✅ ${data.message || 'Données récupérées avec succès'}`);
-                          // Recharger les stats
-                          window.location.reload();
-                        } else {
-                          alert(`❌ Erreur: ${data.error || 'Erreur inconnue'}`);
-                        }
-                      } catch (error) {
-                        console.error('Erreur:', error);
-                        alert('Erreur lors de la récupération des données');
-                      }
-                    }}
-                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                  >
-                    🔄 Récupérer les données Statbot
-                  </button>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 text-center py-2">
+                      Aucune donnée disponible
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="text-sm text-gray-500 text-center py-8">
-                Aucune donnée disponible pour ce mois
+              <div className="pt-2 border-t border-gray-700">
+                <button
+                  onClick={async () => {
+                    if (!confirm('Voulez-vous récupérer les données Statbot maintenant ?')) {
+                      return;
+                    }
+                    try {
+                      const response = await fetch('/api/statbot/fetch', { method: 'POST' });
+                      const data = await response.json();
+                      if (response.ok) {
+                        alert(`✅ ${data.message || 'Données récupérées avec succès'}`);
+                        // Recharger les stats
+                        window.location.reload();
+                      } else {
+                        alert(`❌ Erreur: ${data.error || 'Erreur inconnue'}`);
+                      }
+                    } catch (error) {
+                      console.error('Erreur:', error);
+                      alert('Erreur lors de la récupération des données');
+                    }
+                  }}
+                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
+                  🔄 Récupérer les données Statbot
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500 text-center py-8">
+              Aucune donnée disponible pour ce mois
+            </div>
+          )}
+        </div>
         </div>
 
         {/* Section 2 — Analyses Spotlight & Raids (3 cartes) */}
