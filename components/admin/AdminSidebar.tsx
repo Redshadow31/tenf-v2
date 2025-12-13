@@ -227,7 +227,7 @@ export default function AdminSidebar() {
       return pathname?.startsWith("/admin/spotlight") ?? false;
     }
     if (href === "/admin/follow") {
-      return pathname === "/admin/follow" || pathname?.startsWith("/admin/follow/") ?? false;
+      return pathname === "/admin/follow" || (pathname?.startsWith("/admin/follow/") ?? false);
     }
     return pathname === href;
   }
