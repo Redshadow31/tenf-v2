@@ -82,38 +82,53 @@ export async function GET(request: NextRequest) {
       status: 'evaluated' | 'not_evaluated';
     }> = [];
 
+    // Récupérer le store une seule fois
+    let store: any = null;
+    if (isNetlify) {
+      try {
+        store = getStore('tenf-spotlights');
+      } catch (error) {
+        console.error('[Spotlight Evaluations] Erreur initialisation store:', error);
+      }
+    }
+
     for (const spotlight of spotlights) {
       let evaluation: SpotlightEvaluation | null = null;
       
-      if (isNetlify) {
+      // Récupérer l'évaluation depuis le stockage spotlight
+      if (store) {
         try {
-          const store = getStore('tenf-spotlights');
           const evalData = await store.get(`${spotlight.id}/evaluation.json`, { type: 'json' }).catch(() => null);
           
           if (evalData) {
-            evaluation = evalData;
+            evaluation = {
+              spotlightId: spotlight.id,
+              streamerTwitchLogin: evalData.streamerTwitchLogin || spotlight.streamerTwitchLogin,
+              criteria: evalData.criteria || [],
+              totalScore: evalData.totalScore || 0,
+              maxScore: evalData.maxScore || 0,
+              moderatorComments: evalData.moderatorComments || '',
+              evaluatedAt: evalData.evaluatedAt || spotlight.validatedAt || spotlight.createdAt,
+              evaluatedBy: evalData.evaluatedBy || spotlight.moderatorDiscordId,
+            };
           }
         } catch (error) {
-          // Ignorer les erreurs
+          console.error(`[Spotlight Evaluations] Erreur récupération évaluation ${spotlight.id}:`, error);
         }
       }
 
-      // Calculer la durée si on a les dates
+      // Calculer la durée si on a les dates depuis le spotlight actif
       let duration: string | undefined;
-      if (spotlight.createdAt) {
-        // Essayer de récupérer les dates depuis le spotlight actif
+      if (store) {
         try {
-          if (isNetlify) {
-            const store = getStore('tenf-spotlights');
-            const activeData = await store.get('active.json', { type: 'json' }).catch(() => null);
-            if (activeData && activeData.id === spotlight.id) {
-              const start = new Date(activeData.startedAt);
-              const end = new Date(activeData.endsAt);
-              const diffMs = end.getTime() - start.getTime();
-              const hours = Math.floor(diffMs / (1000 * 60 * 60));
-              const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-              duration = `${hours}h ${minutes}m`;
-            }
+          const activeData = await store.get('active.json', { type: 'json' }).catch(() => null);
+          if (activeData && activeData.id === spotlight.id && activeData.startedAt && activeData.endsAt) {
+            const start = new Date(activeData.startedAt);
+            const end = new Date(activeData.endsAt);
+            const diffMs = end.getTime() - start.getTime();
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            duration = `${hours}h ${minutes}m`;
           }
         } catch (error) {
           // Ignorer
