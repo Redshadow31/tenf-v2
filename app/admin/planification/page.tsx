@@ -499,6 +499,7 @@ export default function PlanificationPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

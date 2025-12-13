@@ -624,6 +624,7 @@ export default function RaidsPage() {
         />
       </div>
     </div>
+    </>
   );
 }
 

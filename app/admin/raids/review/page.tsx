@@ -639,6 +639,7 @@ export default function RaidsReviewPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
