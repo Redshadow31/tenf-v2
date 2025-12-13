@@ -22,10 +22,6 @@ export interface MonthlyRaids {
   [twitchLogin: string]: RaidStats;
 }
 
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs" },
-];
-
 export default function RaidsPage() {
   const [raids, setRaids] = useState<MonthlyRaids>({});
   const [members, setMembers] = useState<any[]>([]);

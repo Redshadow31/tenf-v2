@@ -20,10 +20,6 @@ interface Member {
   discordUsername?: string;
 }
 
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs" },
-];
-
 export default function RaidsReviewPage() {
   const [unmatched, setUnmatched] = useState<UnmatchedRaidMessage[]>([]);
   const [loading, setLoading] = useState(true);

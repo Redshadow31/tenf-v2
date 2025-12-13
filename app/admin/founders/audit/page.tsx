@@ -167,8 +167,8 @@ export default function AuditPage() {
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Audit Logs (Founders Only)</h1>
 
-        {/* Filtres */}
-        <div className="mb-6 bg-[#1a1a1d] rounded-lg p-4">
+      {/* Filtres */}
+      <div className="mb-6 bg-[#1a1a1d] rounded-lg p-4">
           <h3 className="text-lg font-semibold mb-4">Filtres</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>

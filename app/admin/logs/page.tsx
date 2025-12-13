@@ -82,7 +82,7 @@ export default function AdminLogsPage() {
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Logs Administratifs</h1>
 
-        {/* Tableau des logs */}
+      {/* Tableau des logs */}
         <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
           <h2 className="text-lg font-semibold text-white mb-4">
             Historique des actions administratives ({logs.length} entrées)
