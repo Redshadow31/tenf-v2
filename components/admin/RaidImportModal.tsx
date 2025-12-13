@@ -776,7 +776,7 @@ export default function RaidImportModal({
           </button>
           <button
             onClick={saveRaids}
-            disabled={saving || detectedRaids.length === 0 || detectedRaids.some(r => !r.raiderMember || !r.targetMember)}
+            disabled={saving || detectedRaids.length === 0}
             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Enregistrement..." : `Enregistrer ${detectedRaids.length > 0 ? `(${detectedRaids.length})` : ""}`}
