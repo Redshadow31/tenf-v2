@@ -429,14 +429,34 @@ export default function GestionSpotlightPage() {
             <h2 className="text-xl font-semibold text-white mb-4">
               Démarrer un Spotlight
             </h2>
-            {!spotlight ? (
-              <button
-                onClick={handleLaunchSpotlight}
-                disabled={saving}
-                className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {saving ? "Lancement..." : "Lancer un Spotlight"}
-              </button>
+            {!spotlight || spotlight.status === 'cancelled' || spotlight.status === 'completed' ? (
+              <div className="space-y-4">
+                {spotlight && (spotlight.status === 'cancelled' || spotlight.status === 'completed') && (
+                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-gray-400 mb-1">Spotlight précédent</p>
+                    <p className="text-white font-semibold mb-1">
+                      {spotlight.streamerDisplayName || spotlight.streamerTwitchLogin}
+                    </p>
+                    {spotlight.status === 'cancelled' && (
+                      <p className="text-sm text-red-400 font-semibold">
+                        ⚠️ Annulé
+                      </p>
+                    )}
+                    {spotlight.status === 'completed' && (
+                      <p className="text-sm text-green-400 font-semibold">
+                        ✓ Terminé
+                      </p>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={handleLaunchSpotlight}
+                  disabled={saving}
+                  className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Lancement..." : "Lancer un Spotlight"}
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-gray-400">Streamer</p>
@@ -451,34 +471,17 @@ export default function GestionSpotlightPage() {
                     </p>
                   </>
                 )}
-                {spotlight.status === 'cancelled' && (
-                  <p className="text-sm text-red-400 mt-4 font-semibold">
-                    ⚠️ Spotlight annulé
-                  </p>
-                )}
-                {spotlight.status === 'completed' && (
-                  <p className="text-sm text-green-400 mt-4 font-semibold">
-                    ✓ Spotlight terminé
-                  </p>
-                )}
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Modérateur</p>
                   <p className="text-white">{spotlight.moderatorUsername}</p>
                 </div>
-                {spotlight.status !== 'cancelled' && (
-                  <button
-                    onClick={handleCancelSpotlight}
-                    disabled={saving}
-                    className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {saving ? "Annulation..." : "Annuler le spotlight"}
-                  </button>
-                )}
-                {spotlight.status === 'cancelled' && (
-                  <p className="text-sm text-gray-400 mt-4 text-center">
-                    Ce spotlight a été annulé
-                  </p>
-                )}
+                <button
+                  onClick={handleCancelSpotlight}
+                  disabled={saving}
+                  className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Annulation..." : "Annuler le spotlight"}
+                </button>
               </div>
             )}
           </div>
@@ -543,7 +546,7 @@ export default function GestionSpotlightPage() {
           )}
 
           {/* Évaluation Spotlight */}
-          {spotlight && (
+          {spotlight && spotlight.status === 'active' && (
             <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-white mb-6">
                 Évaluation Spotlight
@@ -612,7 +615,7 @@ export default function GestionSpotlightPage() {
 
         {/* COLONNE CENTRALE */}
         <div>
-          {spotlight ? (
+          {spotlight && spotlight.status === 'active' ? (
             <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-white mb-6">
                 Présence Spotlight
@@ -753,7 +756,7 @@ export default function GestionSpotlightPage() {
         </div>
 
         {/* COLONNE DROITE */}
-        {spotlight && (
+        {spotlight && spotlight.status === 'active' && (
           <div>
             <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-white mb-6">
