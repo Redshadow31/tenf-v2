@@ -32,7 +32,7 @@ Toutes les variables d'environnement nécessaires sont maintenant configurées s
 
 ### 3. **DISCORD_BOT_TOKEN** (Optionnel mais recommandé) ✅ Configuré
 - **Description** : Token du bot Discord pour récupérer les membres VIP
-- **Valeur** : `MTQ0Nzk4MDI2NDY0MTc5NDEwOA.GUFW4r.Y5yQRUF1AM8GfbKC_12H92C1FwLq1zyV8Aerew`
+- **Valeur** : `[Configuré sur Netlify - non affiché pour sécurité]`
 - **Où l'utiliser** : `app/api/vip-members/route.ts`
 - **Note** : Nécessaire uniquement si vous voulez récupérer les membres VIP depuis Discord
 
@@ -61,7 +61,7 @@ NEXTAUTH_SECRET=tenfSuperSecretKey2025
 NEXTAUTH_URL=https://teamnewfamily.netlify.app
 TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
 TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
-DISCORD_BOT_TOKEN=MTQ0Nzk4MDI2NDY0MTc5NDEwOA.GUFW4r.Y5yQRUF1AM8GfbKC_12H92C1FwLq1zyV8Aerew
+DISCORD_BOT_TOKEN=[votre_bot_token_ici]
 STATBOT_API_KEY=NTM1MjQ0ODU3ODkxODgwOTcw.e8Z98EEvaTs3UcWIvx66SgHBvzQ6H71koh9ui396uAA
 STATBOT_SERVER_ID=535244857891880970
 ```
