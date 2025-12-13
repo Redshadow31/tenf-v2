@@ -80,8 +80,8 @@ export default function GestionSpotlightPage() {
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Gestion Spotlight</h1>
 
-        {/* Grille principale - 3 colonnes */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Grille principale - 3 colonnes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* COLONNE GAUCHE */}
           <div className="space-y-6">
             {/* Démarrer un Spotlight */}

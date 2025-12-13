@@ -343,25 +343,22 @@ export default function TwitchRaidsPage() {
 
   if (loading) {
     return (
-      <>
-        <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-            <p className="text-gray-400">Chargement des raids Twitch...</p>
-          </div>
+      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
+          <p className="text-gray-400">Chargement des raids Twitch...</p>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="text-white">
-        <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids Twitch</h1>
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids Twitch</h1>
 
-        {/* Alerte si EventSub non configuré */}
-        {subscriptionStatus.checked && subscriptionStatus.hasError && (
-          <div className="mb-6 bg-red-900/20 border border-red-700 rounded-lg p-4">
+      {/* Alerte si EventSub non configuré */}
+      {subscriptionStatus.checked && subscriptionStatus.hasError && (
+        <div className="mb-6 bg-red-900/20 border border-red-700 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
@@ -385,11 +382,13 @@ export default function TwitchRaidsPage() {
               </div>
             </div>
           </div>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* Info si subscriptions actives */}
-        {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.isActive !== undefined && (
-          <div className={`mb-6 border rounded-lg p-4 ${
+      {/* Info si subscriptions actives */}
+      {subscriptionStatus.checked && !subscriptionStatus.hasError && subscriptionStatus.isActive !== undefined && (
+        <div className={`mb-6 border rounded-lg p-4 ${
             !subscriptionStatus.isActive
               ? "bg-yellow-900/20 border-yellow-700" 
               : "bg-green-900/20 border-green-700"
@@ -421,10 +420,11 @@ export default function TwitchRaidsPage() {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* En-tête avec sélecteur de mois */}
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+      {/* En-tête avec sélecteur de mois */}
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
               Raids Twitch TENF (EventSub)
@@ -528,8 +528,8 @@ export default function TwitchRaidsPage() {
           </div>
         </div>
 
-        {/* Statistiques des raids */}
-        {computedStats && selectedMonth ? (
+      {/* Statistiques des raids */}
+      {computedStats && selectedMonth ? (
           <RaidStatsCard
             stats={computedStats}
             month={selectedMonth}
@@ -541,10 +541,10 @@ export default function TwitchRaidsPage() {
               Aucune statistique disponible pour ce mois
             </p>
           </div>
-        )}
+      )}
 
-        {/* Graphiques */}
-        {!loading && raids && typeof raids === 'object' && Object.keys(raids).length > 0 ? (
+      {/* Graphiques */}
+      {!loading && raids && typeof raids === 'object' && Object.keys(raids).length > 0 ? (
           <RaidCharts raids={raids} getMemberDisplayName={getMemberDisplayName} />
         ) : !loading && (
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-6">
@@ -552,11 +552,11 @@ export default function TwitchRaidsPage() {
               Aucun graphique disponible (pas de données)
             </p>
           </div>
-        )}
+      )}
 
-        {/* Tableau des raids */}
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
+      {/* Tableau des raids */}
+      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-700">
@@ -664,7 +664,6 @@ export default function TwitchRaidsPage() {
         </div>
       </div>
     </div>
-    </>
   );
 }
 
