@@ -358,8 +358,8 @@ export default function RaidsPage() {
     <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
 
-        {/* En-tête avec sélecteur de mois et boutons */}
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+      {/* En-tête avec sélecteur de mois et boutons */}
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
               Raids TENF
