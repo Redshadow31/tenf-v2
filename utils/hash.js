@@ -8,3 +8,4 @@ console.log("Voici ton hash sécurisé :");
 console.log(hash);
 
 
+

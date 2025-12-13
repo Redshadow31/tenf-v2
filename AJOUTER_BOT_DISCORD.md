@@ -130,3 +130,4 @@ Une fois le bot ajouté :
 3. Si tout fonctionne, le bot est correctement configuré ! ✅
 
 
+

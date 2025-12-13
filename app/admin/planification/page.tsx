@@ -177,7 +177,8 @@ export default function PlanificationPage() {
   const calendarDays = getDaysInMonth(currentMonth);
 
   return (
-    <div className="text-white">
+    <>
+      <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Planification Événements</h1>
 
       {/* Grille principale - 2 colonnes */}
@@ -497,7 +498,7 @@ export default function PlanificationPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

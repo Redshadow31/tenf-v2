@@ -165,11 +165,12 @@ export default function AuditPage() {
   }
 
   if (!currentUser || !isFounder(currentUser.id)) {
-    return null; // Redirection en cours
+    return null;
   }
 
   return (
-    <div className="text-white">
+    <>
+      <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Audit Logs (Founders Only)</h1>
 
       {/* Filtres */}
@@ -332,7 +333,7 @@ export default function AuditPage() {
           Total: {logs.length} log(s)
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
