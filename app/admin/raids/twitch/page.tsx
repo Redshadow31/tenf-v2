@@ -9,15 +9,6 @@ import RaidStatsCard from "@/components/RaidStatsCard";
 import RaidCharts from "@/components/RaidCharts";
 import RaidAlertBadge from "@/components/RaidAlertBadge";
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord" },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch", active: true },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs" },
-];
 
 export interface RaidStats {
   done: number;
@@ -363,9 +354,8 @@ export default function TwitchRaidsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <AdminHeader title="Suivi des Raids Twitch" navLinks={navLinks} />
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids Twitch</h1>
 
         {/* Alerte si EventSub non configuré */}
         {subscriptionStatus.checked && subscriptionStatus.hasError && (

@@ -22,12 +22,6 @@ export interface MonthlyRaids {
   [twitchLogin: string]: RaidStats;
 }
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord", active: true },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
   { href: "/admin/spotlight", label: "Gestion Spotlight" },
   { href: "/admin/logs", label: "Logs" },
 ];
@@ -365,9 +359,8 @@ export default function RaidsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <AdminHeader title="Suivi des Raids" navLinks={navLinks} />
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
 
         {/* En-tête avec sélecteur de mois et boutons */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">

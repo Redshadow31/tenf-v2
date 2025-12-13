@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { getCurrentAdmin } from "@/lib/admin";
 
 interface LogEntry {
@@ -15,15 +14,6 @@ interface LogEntry {
   ipAddress?: string;
 }
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids Discord" },
-  { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
-  { href: "/admin/spotlight", label: "Gestion Spotlight" },
-  { href: "/admin/logs", label: "Logs Administratifs", active: true },
-];
 
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);

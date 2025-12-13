@@ -6,12 +6,6 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder, getAdminRole, getRoleDisplayName } from "@/lib/adminRoles";
 import Link from "next/link";
 
-const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard Général" },
-  { href: "/admin/membres", label: "Gestion des Membres" },
-  { href: "/admin/raids", label: "Suivi des Raids" },
-  { href: "/admin/founders/audit", label: "Audit Logs", active: true },
-];
 
 interface AuditLog {
   id: string;

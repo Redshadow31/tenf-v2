@@ -76,39 +76,9 @@ export default function GestionSpotlightPage() {
     alert("Ajouté au rapport mensuel");
   };
 
-  const navLinks = [
-    { href: "/admin/dashboard", label: "Dashboard Général" },
-    { href: "/admin/membres", label: "Gestion des Membres" },
-    { href: "/admin/raids", label: "Suivi des Raids Discord" },
-    { href: "/admin/raids/twitch", label: "Suivi des Raids Twitch" },
-    { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
-    { href: "/admin/spotlight", label: "Gestion Spotlight", active: true },
-    { href: "/admin/events", label: "Planification Évènements" },
-    { href: "/admin/logs", label: "Logs" },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        {/* Header avec navigation */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-6">Gestion Spotlight</h1>
-          <div className="flex flex-wrap gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  link.active
-                    ? "bg-[#9146ff] text-white"
-                    : "bg-[#1a1a1d] text-gray-300 hover:bg-[#252529] hover:text-white border border-gray-700"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
+    <div className="text-white">
+      <h1 className="text-4xl font-bold text-white mb-8">Gestion Spotlight</h1>
 
         {/* Grille principale - 3 colonnes */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
