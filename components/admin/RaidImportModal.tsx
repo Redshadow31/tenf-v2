@@ -18,9 +18,9 @@ interface DetectedRaid {
     displayName: string;
     twitchLogin: string;
   };
-  countFrom: boolean; // Compter le raid fait (pour le raider)
-  countTo: boolean; // Compter le raid reçu (pour la cible)
-  obsolete?: boolean; // Marquer comme obsolète (ignoré, ne sera pas enregistré)
+  ignoreRaider: boolean; // Ignorer le raider (ne pas compter le raid fait)
+  ignoreTarget: boolean; // Ignorer la cible (ne pas compter le raid reçu)
+  obsolete?: boolean; // Marquer comme obsolète (ignoré complètement, ne sera pas enregistré)
 }
 
 interface Member {
@@ -247,9 +247,9 @@ export default function RaidImportModal({
               displayName: targetMember.displayName,
               twitchLogin: targetMember.twitchLogin,
             } : undefined,
-            // Par défaut : ON si membre reconnu, OFF si non reconnu
-            countFrom: !!raiderMember,
-            countTo: !!targetMember,
+            // Par défaut : rien n'est ignoré (tout est compté)
+            ignoreRaider: false,
+            ignoreTarget: false,
             // Marquer comme obsolète si aucun des deux membres n'est reconnu
             obsolete: !raiderMember && !targetMember,
           });
@@ -292,8 +292,8 @@ export default function RaidImportModal({
           displayName: member.displayName,
           twitchLogin: member.twitchLogin,
         },
-        // Activer automatiquement countFrom quand un raider est sélectionné
-        countFrom: true,
+        // Ne pas ignorer le raider quand un membre est sélectionné
+        ignoreRaider: false,
       };
     } else {
       updatedRaids[raidIndex] = {
@@ -303,8 +303,8 @@ export default function RaidImportModal({
           displayName: member.displayName,
           twitchLogin: member.twitchLogin,
         },
-        // Activer automatiquement countTo quand une cible est sélectionnée
-        countTo: true,
+        // Ne pas ignorer la cible quand un membre est sélectionné
+        ignoreTarget: false,
       };
     }
     setDetectedRaids(updatedRaids);
@@ -335,15 +335,15 @@ export default function RaidImportModal({
       updatedRaids[raidIndex] = {
         ...raid,
         raiderMember: undefined,
-        // Désactiver countFrom quand le raider est supprimé
-        countFrom: false,
+        // Ignorer le raider quand le membre est supprimé
+        ignoreRaider: true,
       };
     } else {
       updatedRaids[raidIndex] = {
         ...raid,
         targetMember: undefined,
-        // Désactiver countTo quand la cible est supprimée
-        countTo: false,
+        // Ignorer la cible quand le membre est supprimé
+        ignoreTarget: true,
       };
     }
     setDetectedRaids(updatedRaids);
@@ -487,20 +487,14 @@ export default function RaidImportModal({
       return;
     }
 
-    // Filtrer les raids qui ont au moins une option activée et qui ne sont pas obsolètes
-    // Les raids avec les deux checkboxes décochées ou marqués comme obsolètes seront ignorés (non enregistrés)
-    const raidsToSave = detectedRaids.filter(r => !r.obsolete && (r.countFrom || r.countTo));
+    // Filtrer les raids qui ne sont pas obsolètes et qui ont au moins un côté non ignoré
+    // Les raids obsolètes ou avec les deux côtés ignorés ne seront pas enregistrés
+    const raidsToSave = detectedRaids.filter(r => 
+      !r.obsolete && (!r.ignoreRaider || !r.ignoreTarget)
+    );
     
-    if (raidsToSave.length === 0) {
-      const obsoleteCount = detectedRaids.filter(r => r.obsolete).length;
-      const ignoredCount = detectedRaids.filter(r => !r.obsolete && !r.countFrom && !r.countTo).length;
-      if (obsoleteCount > 0 || ignoredCount > 0) {
-        setError(`Aucun raid à enregistrer. ${obsoleteCount > 0 ? `${obsoleteCount} raid(s) marqué(s) comme obsolète(s). ` : ''}${ignoredCount > 0 ? `${ignoredCount} raid(s) ignoré(s) (deux checkboxes décochées). ` : ''}Activez au moins une checkbox pour au moins un raid non obsolète.`);
-      } else {
-        setError("Aucun raid à enregistrer. Activez au moins une checkbox pour au moins un raid.");
-      }
-      return;
-    }
+    // Ne pas bloquer la validation même si tous les raids sont ignorés
+    // L'utilisateur peut vouloir simplement nettoyer la liste
 
     setSaving(true);
     setError(null);
@@ -516,11 +510,12 @@ export default function RaidImportModal({
           month,
           raids: raidsToSave.map(r => ({
               // Utiliser le membre reconnu si disponible, sinon le pseudo brut
-              raider: r.countFrom ? (r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : r.raider) : null,
-              target: r.countTo ? (r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : r.target) : null,
+              // Ne pas inclure si ignoré
+              raider: !r.ignoreRaider ? (r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : r.raider) : null,
+              target: !r.ignoreTarget ? (r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : r.target) : null,
               date: r.date,
-              countFrom: r.countFrom,
-              countTo: r.countTo,
+              countFrom: !r.ignoreRaider,
+              countTo: !r.ignoreTarget,
             })),
         }),
       });
@@ -680,15 +675,15 @@ export default function RaidImportModal({
                               <label className="flex items-center justify-center cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={raid.countFrom}
+                                  checked={raid.ignoreRaider || false}
                                   onChange={(e) => {
                                     const updatedRaids = [...detectedRaids];
-                                    updatedRaids[idx] = { ...raid, countFrom: e.target.checked };
+                                    updatedRaids[idx] = { ...raid, ignoreRaider: e.target.checked };
                                     setDetectedRaids(updatedRaids);
                                   }}
-                                  disabled={saving}
-                                  className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
-                                  title={!raid.raiderMember ? "Membre non reconnu - le pseudo brut sera utilisé" : ""}
+                                  disabled={saving || raid.obsolete}
+                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+                                  title="Ignorer le raider (ne comptera pas dans les raids faits)"
                                 />
                               </label>
                             </td>
@@ -696,15 +691,15 @@ export default function RaidImportModal({
                               <label className="flex items-center justify-center cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={raid.countTo}
+                                  checked={raid.ignoreTarget || false}
                                   onChange={(e) => {
                                     const updatedRaids = [...detectedRaids];
-                                    updatedRaids[idx] = { ...raid, countTo: e.target.checked };
+                                    updatedRaids[idx] = { ...raid, ignoreTarget: e.target.checked };
                                     setDetectedRaids(updatedRaids);
                                   }}
                                   disabled={saving || raid.obsolete}
-                                  className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
-                                  title={!raid.targetMember ? "Membre non reconnu - le pseudo brut sera utilisé" : ""}
+                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+                                  title="Ignorer la cible (ne comptera pas dans les raids reçus)"
                                 />
                               </label>
                             </td>
@@ -718,15 +713,15 @@ export default function RaidImportModal({
                                     updatedRaids[idx] = { 
                                       ...raid, 
                                       obsolete: e.target.checked,
-                                      // Désactiver les autres checkboxes si obsolète
-                                      countFrom: e.target.checked ? false : raid.countFrom,
-                                      countTo: e.target.checked ? false : raid.countTo,
+                                      // Ignorer les deux côtés si obsolète
+                                      ignoreRaider: e.target.checked ? true : raid.ignoreRaider,
+                                      ignoreTarget: e.target.checked ? true : raid.ignoreTarget,
                                     };
                                     setDetectedRaids(updatedRaids);
                                   }}
                                   disabled={saving}
-                                  className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
-                                  title="Marquer ce raid comme obsolète (ne sera pas enregistré)"
+                                  className="w-4 h-4 text-red-500 rounded focus:ring-red-500"
+                                  title="Ignorer complètement ce raid (ne sera pas enregistré)"
                                 />
                               </label>
                             </td>
@@ -736,17 +731,20 @@ export default function RaidImportModal({
                                   return <span className="text-gray-500 text-xs">🚫 Obsolète</span>;
                                 }
                                 
-                                const hasValidFrom = raid.countFrom && raid.raiderMember;
-                                const hasValidTo = raid.countTo && raid.targetMember;
-                                const hasFromWithoutMember = raid.countFrom && !raid.raiderMember;
-                                const hasToWithoutMember = raid.countTo && !raid.targetMember;
+                                const raiderIgnored = raid.ignoreRaider;
+                                const targetIgnored = raid.ignoreTarget;
+                                const bothIgnored = raiderIgnored && targetIgnored;
+                                const hasRaider = !!raid.raiderMember;
+                                const hasTarget = !!raid.targetMember;
                                 
-                                if (hasValidFrom && hasValidTo) {
+                                if (bothIgnored) {
+                                  return <span className="text-gray-500 text-xs">🚫 Ignoré</span>;
+                                } else if (raiderIgnored || targetIgnored) {
+                                  return <span className="text-orange-400 text-xs">⚠️ Partiel</span>;
+                                } else if (hasRaider && hasTarget) {
                                   return <span className="text-green-400 text-xs">✅ OK</span>;
-                                } else if (hasValidFrom || hasValidTo) {
+                                } else if (hasRaider || hasTarget) {
                                   return <span className="text-blue-400 text-xs">⚠️ Partiel</span>;
-                                } else if (hasFromWithoutMember || hasToWithoutMember) {
-                                  return <span className="text-orange-400 text-xs">⚠️ Membre ignoré</span>;
                                 } else {
                                   return <span className="text-yellow-400 text-xs">⚠️ À corriger</span>;
                                 }
