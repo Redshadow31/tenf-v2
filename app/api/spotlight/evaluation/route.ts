@@ -4,16 +4,15 @@ import {
   getSpotlightEvaluation, 
   saveSpotlightEvaluation 
 } from '@/lib/spotlightStorage';
-import { getDiscordUser } from '@/lib/discord';
-import { hasAdminDashboardAccess } from '@/lib/admin';
+import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 
 /**
  * GET - Récupère l'évaluation du spotlight actif
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -39,8 +38,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
       maxScore,
       moderatorComments: moderatorComments || '',
       evaluatedAt: new Date().toISOString(),
-      evaluatedBy: user.id,
+      evaluatedBy: admin.id,
     };
 
     await saveSpotlightEvaluation(evaluation);

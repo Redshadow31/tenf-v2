@@ -5,16 +5,15 @@ import {
   saveSpotlightPresences,
   addSpotlightPresence 
 } from '@/lib/spotlightStorage';
-import { getDiscordUser } from '@/lib/discord';
-import { hasAdminDashboardAccess } from '@/lib/admin';
+import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 
 /**
  * GET - Récupère les présences du spotlight actif
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -40,8 +39,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -63,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await addSpotlightPresence(spotlight.id, twitchLogin, displayName, user.id);
+    await addSpotlightPresence(spotlight.id, twitchLogin, displayName, admin.id);
 
     const presences = await getSpotlightPresences(spotlight.id);
     return NextResponse.json({ presences });
@@ -82,8 +81,8 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

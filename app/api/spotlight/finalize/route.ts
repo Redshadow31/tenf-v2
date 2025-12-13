@@ -6,8 +6,7 @@ import {
   saveActiveSpotlight 
 } from '@/lib/spotlightStorage';
 import { loadSectionAData, saveSectionAData } from '@/lib/evaluationStorage';
-import { getDiscordUser } from '@/lib/discord';
-import { hasAdminDashboardAccess } from '@/lib/admin';
+import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 
 /**
  * POST - Finalise un spotlight et l'intègre dans le système d'évaluation mensuelle
@@ -15,8 +14,8 @@ import { hasAdminDashboardAccess } from '@/lib/admin';
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveSpotlight, createActiveSpotlight, getSpotlightData } from '@/lib/spotlightStorage';
-import { getDiscordUser } from '@/lib/discord';
-import { hasAdminDashboardAccess } from '@/lib/admin';
+import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { getMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { cookies } from 'next/headers';
 
 /**
  * GET - Récupère le spotlight actif
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -87,12 +87,15 @@ export async function POST(request: NextRequest) {
     // Utiliser le displayName du membre si disponible
     const finalDisplayName = member?.displayName || streamerDisplayName || streamerTwitchLogin;
 
+    const cookieStore = cookies();
+    const username = cookieStore.get('discord_username')?.value || admin.username;
+
     const spotlight = await createActiveSpotlight(
       streamerTwitchLogin.trim().toLowerCase(),
       finalDisplayName,
-      user.id,
-      user.username,
-      user.id
+      admin.id,
+      username,
+      admin.id
     );
 
     return NextResponse.json({ spotlight });
@@ -111,8 +114,8 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
-    if (!user || !hasAdminDashboardAccess(user.id)) {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
