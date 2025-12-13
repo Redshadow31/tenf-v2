@@ -492,14 +492,8 @@ export default function RaidImportModal({
       return;
     }
 
-    // Vérifier que les membres sont sélectionnés pour les raids activés
-    const missingMembers = detectedRaids.filter(r => 
-      (r.countFrom && !r.raiderMember) || (r.countTo && !r.targetMember)
-    );
-    if (missingMembers.length > 0) {
-      setError(`${missingMembers.length} raid(s) nécessitent une sélection manuelle de membre pour les options activées`);
-      return;
-    }
+    // Note: On permet l'enregistrement même si un membre n'est pas reconnu
+    // Le pseudo brut sera utilisé comme identifiant dans ce cas
 
     setSaving(true);
     setError(null);
@@ -516,8 +510,9 @@ export default function RaidImportModal({
           raids: detectedRaids
             .filter(r => r.countFrom || r.countTo) // Ne garder que les raids avec au moins une option activée
             .map(r => ({
-              raider: r.countFrom && r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : null,
-              target: r.countTo && r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : null,
+              // Utiliser le membre reconnu si disponible, sinon le pseudo brut
+              raider: r.countFrom ? (r.raiderMember ? (r.raiderMember.discordId || r.raiderMember.twitchLogin) : r.raider) : null,
+              target: r.countTo ? (r.targetMember ? (r.targetMember.discordId || r.targetMember.twitchLogin) : r.target) : null,
               date: r.date,
               countFrom: r.countFrom,
               countTo: r.countTo,
@@ -683,8 +678,9 @@ export default function RaidImportModal({
                                     updatedRaids[idx] = { ...raid, countFrom: e.target.checked };
                                     setDetectedRaids(updatedRaids);
                                   }}
-                                  disabled={!raid.raiderMember || saving}
+                                  disabled={saving}
                                   className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
+                                  title={!raid.raiderMember ? "Membre non reconnu - le pseudo brut sera utilisé" : ""}
                                 />
                               </label>
                             </td>
@@ -698,8 +694,9 @@ export default function RaidImportModal({
                                     updatedRaids[idx] = { ...raid, countTo: e.target.checked };
                                     setDetectedRaids(updatedRaids);
                                   }}
-                                  disabled={!raid.targetMember || saving}
+                                  disabled={saving}
                                   className="w-4 h-4 text-[#9146ff] rounded focus:ring-[#9146ff]"
+                                  title={!raid.targetMember ? "Membre non reconnu - le pseudo brut sera utilisé" : ""}
                                 />
                               </label>
                             </td>
@@ -707,10 +704,15 @@ export default function RaidImportModal({
                               {(() => {
                                 const hasValidFrom = raid.countFrom && raid.raiderMember;
                                 const hasValidTo = raid.countTo && raid.targetMember;
+                                const hasFromWithoutMember = raid.countFrom && !raid.raiderMember;
+                                const hasToWithoutMember = raid.countTo && !raid.targetMember;
+                                
                                 if (hasValidFrom && hasValidTo) {
                                   return <span className="text-green-400 text-xs">✅ OK</span>;
                                 } else if (hasValidFrom || hasValidTo) {
                                   return <span className="text-blue-400 text-xs">⚠️ Partiel</span>;
+                                } else if (hasFromWithoutMember || hasToWithoutMember) {
+                                  return <span className="text-orange-400 text-xs">⚠️ Membre ignoré</span>;
                                 } else {
                                   return <span className="text-yellow-400 text-xs">⚠️ À corriger</span>;
                                 }
