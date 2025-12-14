@@ -103,10 +103,16 @@ export default function GestionSpotlightPage() {
           if (data.spotlight.evaluation) {
             setEvaluation(data.spotlight.evaluation.criteria || DEFAULT_CRITERIA);
             setModeratorComments(data.spotlight.evaluation.moderatorComments || "");
+          } else {
+            // Nouveau spotlight : réinitialiser l'évaluation
+            setEvaluation(DEFAULT_CRITERIA);
+            setModeratorComments("");
           }
         } else {
           setSpotlight(null);
           setPresences([]);
+          setEvaluation(DEFAULT_CRITERIA);
+          setModeratorComments("");
         }
       }
     } catch (error) {
