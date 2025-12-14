@@ -60,12 +60,38 @@ export default function GestionSpotlightPage() {
   const [showManualModal, setShowManualModal] = useState(false);
   const [showStreamerModal, setShowStreamerModal] = useState(false);
   const [streamerSearch, setStreamerSearch] = useState("");
+  const [selectedModerator, setSelectedModerator] = useState<{ discordId: string; username: string } | null>(null);
+  const [staffMembers, setStaffMembers] = useState<Array<{ discordId: string; discordUsername: string; displayName: string; role: string }>>([]);
 
   useEffect(() => {
     loadData();
     loadMembers();
     checkFounderStatus();
+    loadStaffMembers();
   }, []);
+
+  async function loadStaffMembers() {
+    try {
+      const response = await fetch('/api/admin/staff', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        setStaffMembers(data.staff || []);
+        // Définir le modérateur par défaut comme l'utilisateur actuel
+        const user = await getDiscordUser();
+        if (user && data.staff) {
+          const currentUser = data.staff.find((s: any) => s.discordId === user.id);
+          if (currentUser) {
+            setSelectedModerator({
+              discordId: currentUser.discordId,
+              username: currentUser.discordUsername || currentUser.displayName,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Erreur chargement staff:", error);
+    }
+  }
 
   useEffect(() => {
     // Timer pour mettre à jour le temps restant
@@ -176,6 +202,11 @@ export default function GestionSpotlightPage() {
   }
 
   async function handleSelectStreamer(twitchLogin: string, displayName: string) {
+    if (!selectedModerator) {
+      alert("Veuillez sélectionner un modérateur évaluateur");
+      return;
+    }
+
     setShowStreamerModal(false);
     setStreamerSearch("");
 
@@ -187,6 +218,8 @@ export default function GestionSpotlightPage() {
         body: JSON.stringify({ 
           streamerTwitchLogin: twitchLogin,
           streamerDisplayName: displayName,
+          moderatorDiscordId: selectedModerator.discordId,
+          moderatorUsername: selectedModerator.username,
         }),
       });
 
@@ -212,6 +245,7 @@ export default function GestionSpotlightPage() {
     }
 
     try {
+      setSaving(true);
       const response = await fetch('/api/spotlight/presences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -221,9 +255,16 @@ export default function GestionSpotlightPage() {
       if (response.ok) {
         const data = await response.json();
         setPresences(data.presences || []);
+      } else {
+        const errorData = await response.json();
+        console.error("Erreur ajout présence:", errorData.error);
+        alert(`Erreur: ${errorData.error || 'Impossible d\'ajouter la présence'}`);
       }
     } catch (error) {
       console.error("Erreur ajout présence:", error);
+      alert("Erreur lors de l'ajout de la présence");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -231,6 +272,7 @@ export default function GestionSpotlightPage() {
     if (!spotlight) return;
 
     try {
+      setSaving(true);
       const response = await fetch('/api/spotlight/presences', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -240,9 +282,16 @@ export default function GestionSpotlightPage() {
       if (response.ok) {
         const data = await response.json();
         setPresences(data.presences || []);
+      } else {
+        const errorData = await response.json();
+        console.error("Erreur suppression présence:", errorData.error);
+        alert(`Erreur: ${errorData.error || 'Impossible de supprimer la présence'}`);
       }
     } catch (error) {
       console.error("Erreur suppression présence:", error);
+      alert("Erreur lors de la suppression de la présence");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -512,9 +561,15 @@ export default function GestionSpotlightPage() {
                         {presence.displayName || presence.twitchLogin}
                       </span>
                       <button
-                        onClick={() => handleRemovePresence(presence.twitchLogin)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          if (!saving && spotlight.status !== 'cancelled') {
+                            handleRemovePresence(presence.twitchLogin);
+                          }
+                        }}
                         disabled={saving || spotlight.status === 'cancelled'}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/20 disabled:opacity-0 disabled:cursor-not-allowed"
+                        className="opacity-70 hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                         title="Supprimer de la liste"
                       >
                         <svg
@@ -702,13 +757,20 @@ export default function GestionSpotlightPage() {
                             </td>
                             <td className="py-3 px-4">
                               <button
-                                onClick={() => handleAddPresence(member.twitchLogin, member.displayName)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  if (!isPresent && !saving) {
+                                    handleAddPresence(member.twitchLogin, member.displayName);
+                                  }
+                                }}
                                 disabled={isPresent || saving}
                                 className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
                                   isPresent
                                     ? "bg-[#9146ff] text-white cursor-not-allowed"
-                                    : "bg-gray-700 text-gray-400 hover:bg-[#9146ff] hover:text-white"
+                                    : "bg-gray-700 text-gray-400 hover:bg-[#9146ff] hover:text-white cursor-pointer"
                                 }`}
+                                title={isPresent ? "Déjà présent" : "Ajouter aux présents"}
                               >
                                 {isPresent && (
                                   <svg
@@ -722,6 +784,21 @@ export default function GestionSpotlightPage() {
                                       strokeLinejoin="round"
                                       strokeWidth={2}
                                       d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                )}
+                                {!isPresent && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 4v16m8-8H4"
                                     />
                                   </svg>
                                 )}
@@ -746,7 +823,7 @@ export default function GestionSpotlightPage() {
                 disabled={saving || presences.length === 0}
                 className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? "Enregistrement..." : "ajouter aux presents"}
+                {saving ? "Enregistrement..." : "Enregistrer les présences"}
               </button>
             </div>
           ) : (
@@ -813,7 +890,7 @@ export default function GestionSpotlightPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">
-                Sélectionner le streamer
+                Lancer un Spotlight
               </h2>
               <button
                 onClick={() => {
@@ -826,7 +903,42 @@ export default function GestionSpotlightPage() {
               </button>
             </div>
 
+            {/* Sélection du modérateur évaluateur */}
+            <div className="mb-6 p-4 bg-[#0e0e10] border border-gray-700 rounded-lg">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                Modérateur évaluateur
+              </label>
+              <select
+                value={selectedModerator?.discordId || ""}
+                onChange={(e) => {
+                  const moderator = staffMembers.find(s => s.discordId === e.target.value);
+                  if (moderator) {
+                    setSelectedModerator({
+                      discordId: moderator.discordId,
+                      username: moderator.discordUsername || moderator.displayName,
+                    });
+                  }
+                }}
+                className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+              >
+                <option value="">Sélectionner un modérateur...</option>
+                {staffMembers.map((staff) => (
+                  <option key={staff.discordId} value={staff.discordId}>
+                    {staff.displayName} ({staff.role.replace(/_/g, ' ')})
+                  </option>
+                ))}
+              </select>
+              {selectedModerator && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Modérateur sélectionné : {selectedModerator.username}
+                </p>
+              )}
+            </div>
+
             <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                Sélectionner le streamer
+              </label>
               <div className="relative">
                 <svg
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"

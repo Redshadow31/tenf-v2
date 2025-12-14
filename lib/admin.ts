@@ -13,6 +13,7 @@ export {
   hasAdminDashboardAccess,
   getUserPermissions,
   getRoleDisplayName,
+  getAllAdminIds,
   type AdminRole,
   type Permission,
 } from "./adminRoles";

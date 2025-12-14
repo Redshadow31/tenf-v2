@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { streamerTwitchLogin, streamerDisplayName } = body;
+    const { streamerTwitchLogin, streamerDisplayName, moderatorDiscordId, moderatorUsername } = body;
 
     if (!streamerTwitchLogin) {
       return NextResponse.json(
@@ -62,6 +62,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Vérifier que le modérateur est fourni ou utiliser l'admin actuel
+    const finalModeratorDiscordId = moderatorDiscordId || admin.id;
+    const finalModeratorUsername = moderatorUsername || admin.username;
 
     // Vérifier que le login Twitch correspond à un membre enregistré
     await loadMemberDataFromStorage();
@@ -87,14 +91,11 @@ export async function POST(request: NextRequest) {
     // Utiliser le displayName du membre si disponible
     const finalDisplayName = member?.displayName || streamerDisplayName || streamerTwitchLogin;
 
-    const cookieStore = cookies();
-    const username = cookieStore.get('discord_username')?.value || admin.username;
-
     const spotlight = await createActiveSpotlight(
       streamerTwitchLogin.trim().toLowerCase(),
       finalDisplayName,
-      admin.id,
-      username,
+      finalModeratorDiscordId,
+      finalModeratorUsername,
       admin.id
     );
 

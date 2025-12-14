@@ -49,10 +49,13 @@ export default function ManualSpotlightModal({
   const [includeEvaluation, setIncludeEvaluation] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [staffMembers, setStaffMembers] = useState<Array<{ discordId: string; discordUsername: string; displayName: string; role: string }>>([]);
+  const [selectedModerator, setSelectedModerator] = useState<{ discordId: string; username: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       loadMembers();
+      loadStaffMembers();
       // Initialiser avec la date d'aujourd'hui
       const now = new Date();
       const dateStr = now.toISOString().split('T')[0];
@@ -65,6 +68,30 @@ export default function ManualSpotlightModal({
       setEndTime(end.toTimeString().slice(0, 5));
     }
   }, [isOpen]);
+
+  async function loadStaffMembers() {
+    try {
+      const response = await fetch('/api/admin/staff', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        setStaffMembers(data.staff || []);
+        // Définir le modérateur par défaut comme l'utilisateur actuel
+        const { getDiscordUser } = await import('@/lib/discord');
+        const user = await getDiscordUser();
+        if (user && data.staff) {
+          const currentUser = data.staff.find((s: any) => s.discordId === user.id);
+          if (currentUser) {
+            setSelectedModerator({
+              discordId: currentUser.discordId,
+              username: currentUser.discordUsername || currentUser.displayName,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Erreur chargement staff:", error);
+    }
+  }
 
   async function loadMembers() {
     try {
@@ -154,6 +181,8 @@ export default function ManualSpotlightModal({
           streamerDisplayName: selectedStreamer.displayName,
           startedAt: startDateTime.toISOString(),
           endsAt: endDateTime.toISOString(),
+          moderatorDiscordId: selectedModerator.discordId,
+          moderatorUsername: selectedModerator.username,
           presences: selectedPresences.map(p => ({
             twitchLogin: p.twitchLogin,
             displayName: p.displayName,

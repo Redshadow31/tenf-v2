@@ -142,3 +142,15 @@ export function getRoleDisplayName(role: AdminRole): string {
   return names[role];
 }
 
+/**
+ * Récupère tous les IDs Discord des admins/staff
+ */
+export function getAllAdminIds(): string[] {
+  return [
+    ...FOUNDERS,
+    ...ADMINS_ADJOINTS,
+    ...MODOS_MENTORS,
+    ...MODOS_JUNIORS,
+  ];
+}
+
