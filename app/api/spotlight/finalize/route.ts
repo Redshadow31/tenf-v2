@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const monthParam = body.month;
 
-    // Déterminer le mois
+    // Déterminer le mois - utiliser la date du spotlight si aucun mois n'est fourni
     let monthKey: string;
     if (monthParam) {
       const monthMatch = monthParam.match(/^(\d{4})-(\d{2})$/);
@@ -51,9 +51,10 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
+      // Utiliser la date du spotlight pour déterminer le mois
+      const spotlightDate = new Date(spotlight.startedAt);
+      const year = spotlightDate.getFullYear();
+      const month = String(spotlightDate.getMonth() + 1).padStart(2, '0');
       monthKey = `${year}-${month}`;
     }
 
