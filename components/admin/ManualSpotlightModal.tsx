@@ -147,6 +147,11 @@ export default function ManualSpotlightModal({
       return;
     }
 
+    if (!selectedModerator) {
+      setError("Veuillez sélectionner un modérateur évaluateur");
+      return;
+    }
+
     if (!startDate || !startTime) {
       setError("Veuillez renseigner la date et l'heure de début");
       return;
