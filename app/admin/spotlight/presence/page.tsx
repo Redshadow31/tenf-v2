@@ -138,15 +138,25 @@ export default function PresenceSpotlightPage() {
     return options;
   }
 
-  const filteredMembers = monthlyData?.members.filter(member => {
-    const matchesSearch = 
-      member.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.twitchLogin.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = roleFilter === "all" || member.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
-  }) || [];
+  // Filtrer seulement les membres qui ont au moins une présence
+  const membersWithPresences = monthlyData?.members.filter(member => member.presences > 0) || [];
+  
+  const filteredMembers = membersWithPresences
+    .filter(member => {
+      const matchesSearch = 
+        member.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.twitchLogin.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === "all" || member.role === roleFilter;
+      
+      return matchesSearch && matchesRole;
+    })
+    .sort((a, b) => {
+      // Trier par ordre alphabétique
+      const nameA = a.displayName.toLowerCase();
+      const nameB = b.displayName.toLowerCase();
+      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+    });
 
   const uniqueRoles = Array.from(new Set(monthlyData?.members.map(m => m.role) || [])).sort();
 
@@ -384,10 +394,10 @@ export default function PresenceSpotlightPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center text-white">
-                      {member.totalSpotlights}
+                      {monthlyData.totalSpotlights}
                     </td>
                     <td className="py-3 px-4 text-center text-white">
-                      {member.presences}
+                      {member.presences}/{monthlyData?.totalSpotlights || 0}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span

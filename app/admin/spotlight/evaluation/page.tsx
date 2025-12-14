@@ -502,49 +502,80 @@ export default function EvaluationSpotlightPage() {
                   </div>
                 )}
 
-                {/* Évaluations par membre */}
+                {/* Résumé des présences */}
                 {selectedSpotlight.members && selectedSpotlight.members.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-white mb-4">
-                      Évaluations par membre
+                      Résumé du spotlight
                     </h3>
-                    <div className="space-y-3">
-                      {selectedSpotlight.members
-                        .filter(m => m.present)
-                        .map((member, idx) => (
-                          <div key={idx} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold">
-                                  {member.twitchLogin.charAt(0).toUpperCase()}
+                    
+                    {/* Statistiques */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                        <p className="text-sm text-gray-400 mb-1">Présents</p>
+                        <p className="text-2xl font-bold text-green-400">
+                          {selectedSpotlight.members.filter(m => m.present).length}
+                        </p>
+                      </div>
+                      <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                        <p className="text-sm text-gray-400 mb-1">Total membres actifs</p>
+                        <p className="text-2xl font-bold text-white">
+                          {selectedSpotlight.members.length}
+                        </p>
+                      </div>
+                      <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                        <p className="text-sm text-gray-400 mb-1">Taux d'engagement</p>
+                        <p className="text-2xl font-bold text-[#9146ff]">
+                          {selectedSpotlight.members.length > 0
+                            ? Math.round((selectedSpotlight.members.filter(m => m.present).length / selectedSpotlight.members.length) * 100)
+                            : 0}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Liste des présents */}
+                    <div className="mb-4">
+                      <h4 className="text-md font-semibold text-white mb-3">
+                        Liste des membres présents ({selectedSpotlight.members.filter(m => m.present).length})
+                      </h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {selectedSpotlight.members
+                          .filter(m => m.present)
+                          .sort((a, b) => {
+                            // Trier par ordre alphabétique
+                            const nameA = a.twitchLogin.toLowerCase();
+                            const nameB = b.twitchLogin.toLowerCase();
+                            return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+                          })
+                          .map((member, idx) => (
+                            <div key={idx} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-sm">
+                                    {member.twitchLogin.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="text-white font-medium">{member.twitchLogin}</p>
+                                    {member.note !== undefined && (
+                                      <p className="text-xs text-yellow-400">Note: {member.note}/20</p>
+                                    )}
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-white font-semibold">{member.twitchLogin}</p>
-                                  <p className="text-xs text-green-400">Présent</p>
-                                </div>
+                                <span className="text-xs text-green-400">✓ Présent</span>
                               </div>
-                              {member.note !== undefined && (
-                                <span className="inline-block px-3 py-1 rounded-full text-sm font-bold text-yellow-400 bg-yellow-500/20 border border-yellow-500/30">
-                                  Note: {member.note}/20
-                                </span>
+                              {member.comment && (
+                                <div className="mt-2 pt-2 border-t border-gray-700">
+                                  <p className="text-xs text-gray-400">Commentaire: {member.comment}</p>
+                                </div>
                               )}
                             </div>
-                            {member.comment && (
-                              <div className="mt-3 pt-3 border-t border-gray-700">
-                                <p className="text-sm text-gray-400 mb-1">Commentaire :</p>
-                                <p className="text-white text-sm whitespace-pre-wrap">{member.comment}</p>
-                              </div>
-                            )}
-                            {member.note === undefined && !member.comment && (
-                              <p className="text-sm text-gray-500 italic">Aucune évaluation individuelle</p>
-                            )}
-                          </div>
-                        ))}
-                      {selectedSpotlight.members.filter(m => m.present).length === 0 && (
-                        <p className="text-gray-400 text-center py-4">
-                          Aucun membre présent pour ce spotlight
-                        </p>
-                      )}
+                          ))}
+                        {selectedSpotlight.members.filter(m => m.present).length === 0 && (
+                          <p className="text-gray-400 text-center py-4">
+                            Aucun membre présent pour ce spotlight
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

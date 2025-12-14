@@ -361,7 +361,13 @@ export default function GestionSpotlightPage() {
 
       if (response.ok) {
         alert("Spotlight ajouté au rapport mensuel avec succès");
-        await loadData();
+        // Réinitialiser complètement la page pour lancer un nouveau spotlight
+        setSpotlight(null);
+        setPresences([]);
+        setEvaluation(DEFAULT_CRITERIA);
+        setModeratorComments("");
+        setTimeRemaining("");
+        await loadData(); // Recharger pour s'assurer que tout est à jour
       } else {
         const error = await response.json();
         alert(`Erreur: ${error.error || 'Impossible d\'ajouter au rapport mensuel'}`);
