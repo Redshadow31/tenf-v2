@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    // Vérifier qu'il n'y a pas déjà un spotlight actif
+    // Vérifier qu'il n'y a pas déjà un spotlight actif (pas annulé ni complété)
     const existing = await getActiveSpotlight();
-    if (existing) {
+    if (existing && existing.status === 'active') {
       return NextResponse.json(
         { error: 'Un spotlight est déjà en cours' },
         { status: 400 }
