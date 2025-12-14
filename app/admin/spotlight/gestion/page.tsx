@@ -602,7 +602,6 @@ export default function GestionSpotlightPage() {
                       </button>
                     </div>
                     ))
-                  )
                 ) : (
                   <p className="text-gray-400 text-sm text-center py-4">
                     Aucun membre ajouté pour le moment
