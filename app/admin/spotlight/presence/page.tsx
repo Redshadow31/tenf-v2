@@ -394,7 +394,7 @@ export default function PresenceSpotlightPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center text-white">
-                      {monthlyData.totalSpotlights}
+                      {monthlyData?.totalSpotlights || 0}
                     </td>
                     <td className="py-3 px-4 text-center text-white">
                       {member.presences}/{monthlyData?.totalSpotlights || 0}
