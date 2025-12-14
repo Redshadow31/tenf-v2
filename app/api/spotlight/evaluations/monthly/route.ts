@@ -80,6 +80,12 @@ export async function GET(request: NextRequest) {
       duration?: string;
       evaluation: SpotlightEvaluation | null;
       status: 'evaluated' | 'not_evaluated';
+      members?: Array<{
+        twitchLogin: string;
+        present: boolean;
+        note?: number;
+        comment?: string;
+      }>;
     }> = [];
 
     // Récupérer le store une seule fois
@@ -144,6 +150,7 @@ export async function GET(request: NextRequest) {
         evaluation,
         status: evaluation ? 'evaluated' : 'not_evaluated',
         duration,
+        members: spotlight.members || [], // Inclure les évaluations individuelles des membres
       });
     }
 
