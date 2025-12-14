@@ -412,14 +412,21 @@ export default function GestionSpotlightPage() {
     );
   }
 
-  const filteredMembers = allMembers.filter((member) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      member.twitchLogin.toLowerCase().includes(query) ||
-      member.displayName.toLowerCase().includes(query) ||
-      (member.role && member.role.toLowerCase().includes(query))
-    );
-  });
+  const filteredMembers = allMembers
+    .filter((member) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        member.twitchLogin.toLowerCase().includes(query) ||
+        member.displayName.toLowerCase().includes(query) ||
+        (member.role && member.role.toLowerCase().includes(query))
+      );
+    })
+    .sort((a, b) => {
+      // Trier par displayName en ordre alphabétique
+      const nameA = (a.displayName || a.twitchLogin).toLowerCase();
+      const nameB = (b.displayName || b.twitchLogin).toLowerCase();
+      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+    });
 
   const filteredStreamers = allMembers.filter((member) => {
     const query = streamerSearch.toLowerCase();
@@ -549,7 +556,14 @@ export default function GestionSpotlightPage() {
               </h2>
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {presences.length > 0 ? (
-                  presences.map((presence, idx) => (
+                  [...presences]
+                    .sort((a, b) => {
+                      // Trier par displayName en ordre alphabétique
+                      const nameA = (a.displayName || a.twitchLogin).toLowerCase();
+                      const nameB = (b.displayName || b.twitchLogin).toLowerCase();
+                      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+                    })
+                    .map((presence, idx) => (
                     <div
                       key={idx}
                       className="flex items-center gap-3 p-3 bg-[#0e0e10] rounded-lg border border-gray-700 hover:border-[#9146ff]/50 transition-colors group"
@@ -587,7 +601,8 @@ export default function GestionSpotlightPage() {
                         </svg>
                       </button>
                     </div>
-                  ))
+                    ))
+                  )
                 ) : (
                   <p className="text-gray-400 text-sm text-center py-4">
                     Aucun membre ajouté pour le moment

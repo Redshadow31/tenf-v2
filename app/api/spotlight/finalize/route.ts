@@ -72,6 +72,24 @@ export async function POST(request: NextRequest) {
       lastUpdated: new Date().toISOString(),
     };
 
+    // Charger tous les membres actifs pour inclure les absents
+    const { getAllMemberData, loadMemberDataFromStorage } = await import('@/lib/memberData');
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData().filter(m => m.isActive !== false);
+    
+    // Créer un Set des membres présents pour vérification rapide
+    const presentMembersSet = new Set(
+      presences.map(p => p.twitchLogin.toLowerCase())
+    );
+
+    // Créer la liste complète des membres (présents et absents)
+    const allMembersList = allMembers.map(member => ({
+      twitchLogin: member.twitchLogin,
+      present: presentMembersSet.has(member.twitchLogin.toLowerCase()),
+      note: undefined,
+      comment: undefined,
+    }));
+
     // Créer l'entrée SpotlightEvaluation
     const spotlightEvaluation = {
       id: spotlight.id,
@@ -79,12 +97,7 @@ export async function POST(request: NextRequest) {
       streamerTwitchLogin: spotlight.streamerTwitchLogin,
       moderatorDiscordId: spotlight.moderatorDiscordId,
       moderatorUsername: spotlight.moderatorUsername,
-      members: presences.map(p => ({
-        twitchLogin: p.twitchLogin,
-        present: true,
-        note: undefined,
-        comment: undefined,
-      })),
+      members: allMembersList,
       validated: true,
       validatedAt: new Date().toISOString(),
       createdAt: spotlight.createdAt,
