@@ -175,6 +175,9 @@ export default function ManualSpotlightModal({
       return;
     }
 
+    // TypeScript guard: selectedModerator ne peut pas être null ici
+    const moderator = selectedModerator;
+
     try {
       setSaving(true);
 
@@ -186,8 +189,8 @@ export default function ManualSpotlightModal({
           streamerDisplayName: selectedStreamer.displayName,
           startedAt: startDateTime.toISOString(),
           endsAt: endDateTime.toISOString(),
-          moderatorDiscordId: selectedModerator.discordId,
-          moderatorUsername: selectedModerator.username,
+          moderatorDiscordId: moderator.discordId,
+          moderatorUsername: moderator.username,
           presences: selectedPresences.map(p => ({
             twitchLogin: p.twitchLogin,
             displayName: p.displayName,
