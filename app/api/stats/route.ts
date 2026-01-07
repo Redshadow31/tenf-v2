@@ -59,41 +59,77 @@ export async function GET() {
     const { getAllMemberData } = await import('@/lib/memberData');
     const allMembers = getAllMemberData();
     // Filtrer uniquement les membres actifs (même logique que la page admin : isActive !== false)
-    const activeMembers = allMembers.filter(member => member.isActive !== false);
+    // Un membre est actif si isActive est true ou undefined (par défaut actif)
+    const activeMembers = allMembers.filter(member => {
+      // Si isActive est explicitement false, le membre est inactif
+      // Sinon (true ou undefined), le membre est actif
+      return member.isActive !== false;
+    });
     const activeMembersCount = activeMembers.length;
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)
     let livesCount = 0;
     try {
-      const twitchLogins = activeMembers
-        .map(member => member.twitchLogin)
-        .filter(Boolean);
-
-      if (twitchLogins.length > 0) {
-        // Utiliser directement la logique de l'API Twitch
+      // Utiliser les twitchId si disponibles, sinon utiliser twitchLogin
+      const membersWithTwitch = activeMembers.filter(member => member.twitchLogin || member.twitchId);
+      
+      if (membersWithTwitch.length > 0) {
         const accessToken = await getTwitchAccessToken();
         if (accessToken) {
-          // Récupérer les IDs utilisateurs depuis les logins
-          const userLogins = twitchLogins.slice(0, 100); // Limite API Twitch
-          const userLoginsParam = userLogins.map(l => `login=${l}`).join('&');
+          // Essayer d'abord avec les twitchId si disponibles
+          const membersWithId = membersWithTwitch.filter(m => m.twitchId);
+          const membersWithoutId = membersWithTwitch.filter(m => !m.twitchId);
           
-          const usersResponse = await fetch(
-            `https://api.twitch.tv/helix/users?${userLoginsParam}`,
-            {
-              headers: {
-                'Client-ID': process.env.TWITCH_CLIENT_ID || '',
-                'Authorization': `Bearer ${accessToken}`,
-              },
+          let allUserIds: string[] = [];
+          
+          // Utiliser les IDs Twitch déjà stockés
+          if (membersWithId.length > 0) {
+            allUserIds = membersWithId
+              .map(m => m.twitchId)
+              .filter(Boolean) as string[];
+          }
+          
+          // Pour les membres sans ID, récupérer les IDs depuis les logins
+          if (membersWithoutId.length > 0) {
+            const twitchLogins = membersWithoutId
+              .map(member => member.twitchLogin)
+              .filter(Boolean)
+              .slice(0, 100); // Limite API Twitch pour les logins
+            
+            if (twitchLogins.length > 0) {
+              // Construire correctement la requête avec login (pour /helix/users)
+              // L'API Twitch /helix/users utilise "login" et non "user_login"
+              const userLoginsParam = twitchLogins.map(l => `login=${encodeURIComponent(l.trim().toLowerCase())}`).join('&');
+              
+              const usersResponse = await fetch(
+                `https://api.twitch.tv/helix/users?${userLoginsParam}`,
+                {
+                  headers: {
+                    'Client-ID': process.env.TWITCH_CLIENT_ID || '',
+                    'Authorization': `Bearer ${accessToken}`,
+                  },
+                }
+              );
+
+              if (usersResponse.ok) {
+                const usersData = await usersResponse.json();
+                const userIdsFromLogins = (usersData.data || []).map((user: any) => user.id);
+                allUserIds = [...allUserIds, ...userIdsFromLogins];
+              }
             }
-          );
+          }
 
-          if (usersResponse.ok) {
-            const usersData = await usersResponse.json();
-            const userIds = (usersData.data || []).map((user: any) => user.id);
-
-            if (userIds.length > 0) {
-              // Récupérer les streams en cours
-              const userIdsParam = userIds.map((id: string) => `user_id=${id}`).join('&');
+          // Récupérer les streams en cours pour tous les IDs
+          if (allUserIds.length > 0) {
+            // L'API Twitch accepte jusqu'à 100 user_id par requête
+            const batches = [];
+            for (let i = 0; i < allUserIds.length; i += 100) {
+              batches.push(allUserIds.slice(i, i + 100));
+            }
+            
+            let totalLives = 0;
+            for (const batch of batches) {
+              const userIdsParam = batch.map((id: string) => `user_id=${id}`).join('&');
               const streamsResponse = await fetch(
                 `https://api.twitch.tv/helix/streams?${userIdsParam}`,
                 {
@@ -107,9 +143,10 @@ export async function GET() {
               if (streamsResponse.ok) {
                 const streamsData = await streamsResponse.json();
                 const liveStreams = (streamsData.data || []).filter((stream: any) => stream.type === 'live');
-                livesCount = liveStreams.length;
+                totalLives += liveStreams.length;
               }
             }
+            livesCount = totalLives;
           }
         }
       }

@@ -27,6 +27,7 @@ interface Member {
     changedBy: string;
     reason?: string;
   }>;
+  parrain?: string; // Pseudo/nom du membre parrain
 }
 
 interface EditMemberModalProps {
@@ -46,6 +47,9 @@ export default function EditMemberModal({
   const [badgeInput, setBadgeInput] = useState("");
   const [showRoleHistory, setShowRoleHistory] = useState(false);
   const [roleChangeReason, setRoleChangeReason] = useState("");
+  const [availableMembers, setAvailableMembers] = useState<Array<{ nom: string; twitch: string }>>([]);
+  const [parrainSuggestions, setParrainSuggestions] = useState<string[]>([]);
+  const [showParrainSuggestions, setShowParrainSuggestions] = useState(false);
   const originalRole = member.role;
 
   useEffect(() => {
@@ -53,8 +57,56 @@ export default function EditMemberModal({
       setFormData(member);
       setBadgeInput("");
       setRoleChangeReason("");
+      // Charger la liste des membres actifs pour l'autocomplétion
+      loadAvailableMembers();
     }
   }, [isOpen, member]);
+
+  const loadAvailableMembers = async () => {
+    try {
+      const response = await fetch("/api/members/public", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const members = (data.members || [])
+          .filter((m: any) => m.displayName && m.displayName !== member.nom) // Exclure le membre lui-même
+          .map((m: any) => ({
+            nom: m.displayName,
+            twitch: m.twitchLogin || "",
+          }));
+        setAvailableMembers(members);
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des membres:", error);
+    }
+  };
+
+  const handleParrainInputChange = (value: string) => {
+    setFormData({ ...formData, parrain: value });
+    if (value.trim().length > 0) {
+      const filtered = availableMembers
+        .filter(m => 
+          m.nom.toLowerCase().includes(value.toLowerCase()) ||
+          m.twitch.toLowerCase().includes(value.toLowerCase())
+        )
+        .map(m => m.nom)
+        .slice(0, 10); // Limiter à 10 suggestions
+      setParrainSuggestions(filtered);
+      setShowParrainSuggestions(true);
+    } else {
+      setParrainSuggestions([]);
+      setShowParrainSuggestions(false);
+    }
+  };
+
+  const selectParrain = (parrainName: string) => {
+    setFormData({ ...formData, parrain: parrainName });
+    setShowParrainSuggestions(false);
+  };
 
   if (!isOpen) return null;
 
@@ -452,6 +504,44 @@ export default function EditMemberModal({
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Date de la réunion d'intégration validée
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Parrain / Marraine
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.parrain || ""}
+                        onChange={(e) => handleParrainInputChange(e.target.value)}
+                        onFocus={() => {
+                          if (formData.parrain) {
+                            handleParrainInputChange(formData.parrain);
+                          }
+                        }}
+                        onBlur={() => {
+                          // Délai pour permettre le clic sur une suggestion
+                          setTimeout(() => setShowParrainSuggestions(false), 200);
+                        }}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                        placeholder="Rechercher un membre..."
+                      />
+                      {showParrainSuggestions && parrainSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {parrainSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => selectParrain(suggestion)}
+                              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-600/20 transition-colors"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Membre qui a parrainé ce membre dans TENF
                       </p>
                     </div>
                   </div>

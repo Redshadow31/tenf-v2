@@ -54,6 +54,7 @@ export interface MemberData {
     changedBy: string; // ID Discord ou "admin"
     reason?: string;
   }>;
+  parrain?: string; // Pseudo/nom du membre parrain
 }
 
 // Stockage en mémoire (fusionné des deux sources)

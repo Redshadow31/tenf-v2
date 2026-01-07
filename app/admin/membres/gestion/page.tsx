@@ -51,6 +51,7 @@ interface Member {
     changedBy: string;
     reason?: string;
   }>;
+  parrain?: string; // Pseudo/nom du membre parrain
 }
 
 
@@ -399,6 +400,7 @@ export default function GestionMembresPage() {
           createdAt: centralMember?.createdAt ? (typeof centralMember.createdAt === 'string' ? centralMember.createdAt : new Date(centralMember.createdAt).toISOString()) : undefined,
           integrationDate: centralMember?.integrationDate ? (typeof centralMember.integrationDate === 'string' ? centralMember.integrationDate : new Date(centralMember.integrationDate).toISOString()) : undefined,
           roleHistory: centralMember?.roleHistory || [],
+          parrain: centralMember?.parrain,
         };
       });
 
@@ -622,6 +624,7 @@ export default function GestionMembresPage() {
     isVip?: boolean;
     createdAt?: string;
     integrationDate?: string;
+    parrain?: string;
     roleHistory?: Array<{
       fromRole: string;
       toRole: string;
@@ -655,6 +658,7 @@ export default function GestionMembresPage() {
       isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
       createdAt: updatedMember.createdAt || oldMember.createdAt,
       integrationDate: updatedMember.integrationDate || oldMember.integrationDate,
+      parrain: updatedMember.parrain !== undefined ? updatedMember.parrain : oldMember.parrain,
       roleHistory: updatedMember.roleHistory || oldMember.roleHistory,
     };
 
@@ -681,6 +685,7 @@ export default function GestionMembresPage() {
             description: mergedMember.description,
             createdAt: mergedMember.createdAt,
             integrationDate: mergedMember.integrationDate,
+            parrain: mergedMember.parrain,
             roleChangeReason: updatedMember.roleChangeReason,
           }),
       });
@@ -1326,6 +1331,7 @@ export default function GestionMembresPage() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">STATUT</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">MEMBRE DEPUIS</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">INTÉGRATION</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">PARRAIN</th>
                   <th 
                     className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
                     onClick={() => handleSort("lastLive")}
@@ -1487,6 +1493,9 @@ export default function GestionMembresPage() {
                       )}
                     </td>
                     <td className="py-4 px-6 text-gray-300 text-sm">
+                      {member.parrain || "—"}
+                    </td>
+                    <td className="py-4 px-6 text-gray-300 text-sm">
                       {formatLastLiveDate(member.lastLiveDate)}
                     </td>
                     <td className="py-4 px-6">
@@ -1605,6 +1614,7 @@ export default function GestionMembresPage() {
               createdAt: selectedMember.createdAt,
               integrationDate: selectedMember.integrationDate,
               roleHistory: selectedMember.roleHistory,
+              parrain: selectedMember.parrain,
             }}
             onSave={handleSaveEdit}
           />
