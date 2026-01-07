@@ -85,6 +85,7 @@ export default function FollowMemberPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showWizebotImport, setShowWizebotImport] = useState(false);
+  const [twitchConnected, setTwitchConnected] = useState<boolean | null>(null);
 
   const memberName = STAFF_MEMBERS[slug] || slug;
   const isRed = slug === 'red';
@@ -99,6 +100,43 @@ export default function FollowMemberPage() {
       loadData();
     }
   }, [monthKey, hasAccess]);
+
+  useEffect(() => {
+    if (isRed && hasAccess) {
+      checkTwitchConnection();
+    }
+  }, [isRed, hasAccess]);
+
+  // Vérifier les paramètres d'URL pour les messages de succès/erreur
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('success') === 'twitch_connected') {
+        setSyncMessage({
+          type: 'success',
+          text: 'Compte Twitch connecté avec succès !',
+        });
+        setTwitchConnected(true);
+        // Nettoyer l'URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('error')) {
+        const error = params.get('error');
+        let errorMessage = 'Erreur lors de la connexion Twitch';
+        if (error === 'oauth_error') {
+          errorMessage = 'Erreur lors de l\'autorisation Twitch';
+        } else if (error === 'token_exchange_failed') {
+          errorMessage = 'Erreur lors de l\'échange du token';
+        }
+        setSyncMessage({
+          type: 'error',
+          text: errorMessage,
+        });
+        setTwitchConnected(false);
+        // Nettoyer l'URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
 
   function initializeMonth() {
     const now = new Date();
@@ -179,6 +217,25 @@ export default function FollowMemberPage() {
     }
   }
 
+  async function checkTwitchConnection() {
+    try {
+      const response = await fetch('/api/auth/twitch/red/status', {
+        cache: 'no-store',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTwitchConnected(data.connected);
+      }
+    } catch (error) {
+      console.error("Erreur vérification connexion Twitch:", error);
+      setTwitchConnected(false);
+    }
+  }
+
+  async function handleConnectTwitch() {
+    window.location.href = '/api/auth/twitch/red/start';
+  }
+
   async function handleSyncFromTwitch() {
     if (!isRed) return;
     
@@ -212,6 +269,10 @@ export default function FollowMemberPage() {
           text: `Synchronisation réussie : ${data.totalFollowed} membres TENF suivis par Red`,
         });
       } else {
+        // Si requiresAuth est true, mettre à jour le statut de connexion
+        if (data.requiresAuth) {
+          setTwitchConnected(false);
+        }
         setSyncMessage({
           type: 'error',
           text: data.error || 'Erreur lors de la synchronisation',
@@ -382,31 +443,49 @@ export default function FollowMemberPage() {
 
       {/* Boutons de synchronisation et import (uniquement pour Red) */}
       {isRed && (
-        <div className="mb-6 flex flex-wrap gap-4">
-          <button
-            onClick={handleSyncFromTwitch}
-            disabled={syncing}
-            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {syncing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Synchronisation...
-              </>
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap gap-4 items-center">
+            {twitchConnected === false ? (
+              <button
+                onClick={handleConnectTwitch}
+                className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+              >
+                🔐 Connecter Twitch (Red)
+              </button>
+            ) : twitchConnected === true ? (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-2 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 font-semibold">
+                  ✅ Twitch connecté
+                </span>
+                <button
+                  onClick={handleSyncFromTwitch}
+                  disabled={syncing}
+                  className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {syncing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Synchronisation...
+                    </>
+                  ) : (
+                    <>
+                      🔄 Synchroniser depuis Twitch (Red)
+                    </>
+                  )}
+                </button>
+              </div>
             ) : (
-              <>
-                🔄 Synchroniser depuis Twitch (Red)
-              </>
+              <div className="text-gray-400">Vérification de la connexion Twitch...</div>
             )}
-          </button>
-          <button
-            onClick={() => setShowWizebotImport(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
-          >
-            📋 Importer followers (Wizebot)
-          </button>
+            <button
+              onClick={() => setShowWizebotImport(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+            >
+              📋 Importer followers (Wizebot)
+            </button>
+          </div>
           {syncMessage && (
-            <div className={`mt-2 p-3 rounded-lg ${
+            <div className={`p-3 rounded-lg ${
               syncMessage.type === 'success' 
                 ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
                 : 'bg-red-500/20 text-red-300 border border-red-500/30'

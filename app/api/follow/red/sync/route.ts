@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/admin';
 import { loadMemberDataFromStorage, getMemberData } from '@/lib/memberData';
+import { getValidTwitchToken } from '@/lib/twitchOAuth';
 
 /**
  * POST - Synchronise les follows de Red depuis Twitch
@@ -83,16 +84,16 @@ export async function POST() {
 
     // Récupérer les follows de Red (chaînes que Red suit)
     // L'API Twitch /helix/users/follows nécessite un token OAuth utilisateur
-    // On peut utiliser un token OAuth stocké en variable d'environnement
-    const redOAuthToken = process.env.TWITCH_RED_OAUTH_TOKEN;
+    // Récupérer le token OAuth stocké pour Red
+    const redOAuthToken = await getValidTwitchToken('red');
     
     if (!redOAuthToken) {
       return NextResponse.json(
         { 
-          error: "Token OAuth de Red non configuré. Veuillez configurer TWITCH_RED_OAUTH_TOKEN.",
-          note: "Pour obtenir un token OAuth, Red doit autoriser l'application Twitch."
+          error: "Token OAuth de Red non disponible. Veuillez connecter votre compte Twitch.",
+          requiresAuth: true,
         },
-        { status: 500 }
+        { status: 401 }
       );
     }
 
