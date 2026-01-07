@@ -42,6 +42,10 @@ const navItems: NavItem[] = [
         href: "/admin/membres/synchronisation",
         label: "Synchronisation",
       },
+      {
+        href: "/admin/membres/historique",
+        label: "Historique",
+      },
     ],
   },
   {

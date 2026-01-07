@@ -871,6 +871,75 @@ export async function updateMemberData(
       },
     ];
     updates.roleHistory = roleHistory;
+    
+    // Enregistrer l'événement role_changed
+    try {
+      const { recordMemberEvent } = await import('@/lib/memberEvents');
+      await recordMemberEvent(login, 'role_changed', {
+        source: 'manual',
+        actor: updatedBy || 'admin',
+        payload: {
+          fromRole: existing.role,
+          toRole: updates.role,
+          reason: (updates as any).roleChangeReason,
+        },
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de l\'événement role_changed:', error);
+    }
+  }
+  
+  // Enregistrer l'événement integration_validated si la date d'intégration est ajoutée/modifiée
+  if (updates.integrationDate !== undefined) {
+    const hadIntegrationDate = existingAdminMember?.integrationDate || existing?.integrationDate;
+    const hasNewIntegrationDate = updates.integrationDate !== null && updates.integrationDate !== undefined;
+    
+    // Si on passe de "pas de date" à "une date", ou si la date change
+    if ((!hadIntegrationDate && hasNewIntegrationDate) || 
+        (hadIntegrationDate && hasNewIntegrationDate && 
+         new Date(updates.integrationDate).getTime() !== new Date(hadIntegrationDate).getTime())) {
+      try {
+        const { recordMemberEvent } = await import('@/lib/memberEvents');
+        await recordMemberEvent(login, 'integration_validated', {
+          source: 'manual',
+          actor: updatedBy || 'admin',
+          payload: {
+            date: updates.integrationDate instanceof Date 
+              ? updates.integrationDate.toISOString() 
+              : updates.integrationDate,
+            previousDate: hadIntegrationDate 
+              ? (hadIntegrationDate instanceof Date ? hadIntegrationDate.toISOString() : hadIntegrationDate)
+              : null,
+          },
+        });
+      } catch (error) {
+        console.error('Erreur lors de l\'enregistrement de l\'événement integration_validated:', error);
+      }
+    }
+  }
+  
+  // Enregistrer l'événement manual_note_updated si les notes internes changent
+  // Note: On ne stocke pas les notes internes dans MemberData, donc on vérifie si elles sont dans updates
+  if ((updates as any).notesInternes !== undefined) {
+    const previousNotes = (existingAdminMember as any)?.notesInternes || (existing as any)?.notesInternes;
+    const newNotes = (updates as any).notesInternes;
+    
+    if (previousNotes !== newNotes) {
+      try {
+        const { recordMemberEvent } = await import('@/lib/memberEvents');
+        await recordMemberEvent(login, 'manual_note_updated', {
+          source: 'manual',
+          actor: updatedBy || 'admin',
+          payload: {
+            // Ne pas stocker le contenu des notes pour la confidentialité, juste indiquer qu'elles ont changé
+            hasNotes: !!newNotes,
+            notesLength: newNotes ? newNotes.length : 0,
+          },
+        });
+      } catch (error) {
+        console.error('Erreur lors de l\'enregistrement de l\'événement manual_note_updated:', error);
+      }
+    }
   }
 
   if (existingAdminMember) {

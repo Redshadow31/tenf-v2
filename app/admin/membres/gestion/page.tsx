@@ -8,6 +8,7 @@ import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
 import DiscordSyncModal from "@/components/admin/DiscordSyncModal";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
+import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
@@ -77,6 +78,7 @@ export default function GestionMembresPage() {
   const [mergeLoading, setMergeLoading] = useState(false);
   const [duplicates, setDuplicates] = useState<Array<{ key: string; type: string; members: any[] }>>([]);
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
+  const [showMemberHistory, setShowMemberHistory] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -1539,6 +1541,16 @@ export default function GestionMembresPage() {
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setShowMemberHistory(true);
+                          }}
+                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-blue-600/20 text-blue-300 hover:bg-blue-600/30"
+                          title="Voir l'historique"
+                        >
+                          📜 Historique
+                        </button>
+                        <button
                           onClick={() => handleToggleStatus(member.id)}
                           className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                             member.statut === "Actif"
@@ -1617,6 +1629,19 @@ export default function GestionMembresPage() {
               parrain: selectedMember.parrain,
             }}
             onSave={handleSaveEdit}
+          />
+        )}
+
+        {/* Modal d'historique du membre */}
+        {showMemberHistory && selectedMember && (
+          <MemberHistoryModal
+            isOpen={showMemberHistory}
+            onClose={() => {
+              setShowMemberHistory(false);
+              setSelectedMember(null);
+            }}
+            memberId={selectedMember.twitch}
+            memberName={selectedMember.nom}
           />
         )}
 

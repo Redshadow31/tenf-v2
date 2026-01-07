@@ -155,6 +155,25 @@ export async function POST(request: NextRequest) {
           console.error('[Twitch EventSub] Erreur lors de la sauvegarde du raid:', error);
           // Ne pas throw pour répondre rapidement à Twitch
         });
+        
+        // Enregistrer l'événement raid pour l'historique (ne pas attendre)
+        (async () => {
+          try {
+            const { recordMemberEvent } = await import('@/lib/memberEvents');
+            // Enregistrer pour le membre qui fait le raid
+            await recordMemberEvent(fromMember.twitchLogin, 'raid', {
+              source: 'twitch_eventsub',
+              payload: {
+                raider: fromMember.twitchLogin,
+                target: toMember.twitchLogin,
+                viewers: event.viewers,
+                datetime: new Date().toISOString(),
+              },
+            });
+          } catch (error) {
+            console.error('[Twitch EventSub] Erreur lors de l\'enregistrement de l\'événement raid:', error);
+          }
+        })();
       } else {
         console.log('[Twitch EventSub] ⏭️ Raid ignoré (non TENF):', {
           from: event.from_broadcaster_user_login,
