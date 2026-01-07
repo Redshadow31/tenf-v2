@@ -1,0 +1,244 @@
+"use client";
+
+import { useState } from "react";
+import { X } from "lucide-react";
+import {
+  parseDiscordEngagementTSV,
+  type EngagementParseResult,
+  type EngagementRow,
+} from "@/lib/discordEngagement";
+
+interface DiscordEngagementImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onImport: (rows: EngagementRow[]) => void;
+  title: string;
+  membersMap: Map<string, { discordId: string; displayName: string; twitchLogin: string }>;
+  existingData?: Record<string, { value: number }>; // Pour prévisualiser les valeurs existantes
+}
+
+export default function DiscordEngagementImportModal({
+  isOpen,
+  onClose,
+  onImport,
+  title,
+  membersMap,
+  existingData = {},
+}: DiscordEngagementImportModalProps) {
+  const [text, setText] = useState("");
+  const [parseResult, setParseResult] = useState<EngagementParseResult | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleAnalyze = () => {
+    if (!text.trim()) {
+      alert("Veuillez coller des données dans le champ texte");
+      return;
+    }
+
+    const result = parseDiscordEngagementTSV(text, membersMap);
+    setParseResult(result);
+  };
+
+  const handleApply = () => {
+    if (!parseResult || parseResult.rows.length === 0) {
+      alert("Aucune donnée valide à importer");
+      return;
+    }
+
+    setIsApplying(true);
+    try {
+      onImport(parseResult.rows);
+      setText("");
+      setParseResult(null);
+      onClose();
+    } catch (error) {
+      console.error("Erreur lors de l'import:", error);
+      alert("Erreur lors de l'import des données");
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Info */}
+          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+            <p className="text-blue-200 text-sm">
+              Seuls les membres TENF actifs (présents sur le site) sont comptabilisés.
+              Les autres lignes sont ignorées.
+            </p>
+            <p className="text-blue-300 text-xs mt-2">
+              Format attendu : RANG (tab) PSEUDO (tab) DISCORD_ID (tab) VALEUR
+            </p>
+          </div>
+
+          {/* Textarea */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Coller les données :
+            </label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full h-48 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] font-mono text-sm"
+              placeholder="1&#9;frostyquinn94&#9;477791879866351623&#9;1683&#10;2&#9;facebcd&#9;1297107200623513645&#9;1477"
+            />
+          </div>
+
+          {/* Bouton Analyser */}
+          <div>
+            <button
+              onClick={handleAnalyze}
+              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+            >
+              Analyser
+            </button>
+          </div>
+
+          {/* Résultats de l'analyse */}
+          {parseResult && (
+            <div className="space-y-4">
+              {/* Résumé */}
+              <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-white mb-3">Résultat de l'analyse</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">Total lignes</p>
+                    <p className="text-white font-semibold">{parseResult.totalLines}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Matchés TENF</p>
+                    <p className="text-green-400 font-semibold">{parseResult.matched}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Ignorés (non-membres)</p>
+                    <p className="text-yellow-400 font-semibold">{parseResult.ignoredNotMember.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Erreurs</p>
+                    <p className="text-red-400 font-semibold">{parseResult.errors.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Membres TENF détectés */}
+              {parseResult.rows.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 mb-2">
+                    Membres TENF détectés ({parseResult.rows.length})
+                  </h3>
+                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#0a0a0c] sticky top-0">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-gray-300">Pseudo importé</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Membre TENF</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Valeur</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parseResult.rows.map((row, idx) => {
+                            const member = membersMap.get(row.matchedMemberId || '');
+                            return (
+                              <tr key={idx} className="border-t border-gray-700">
+                                <td className="px-4 py-2 text-gray-300">{row.pseudo}</td>
+                                <td className="px-4 py-2 text-white">
+                                  {member?.displayName || row.matchedMemberId}
+                                </td>
+                                <td className="px-4 py-2 text-gray-300">{row.value}</td>
+                                <td className="px-4 py-2">
+                                  <span className="text-green-400 text-xs">✓ Matché</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Lignes ignorées */}
+              {parseResult.ignoredNotMember.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 mb-2">
+                    Lignes ignorées (hors TENF) ({parseResult.ignoredNotMember.length})
+                  </h3>
+                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 max-h-32 overflow-y-auto">
+                    <div className="flex flex-wrap gap-2">
+                      {parseResult.ignoredNotMember.map((pseudo, idx) => (
+                        <span key={idx} className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
+                          {pseudo}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Erreurs */}
+              {parseResult.errors.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-red-400 mb-2">
+                    Erreurs de parsing ({parseResult.errors.length})
+                  </h3>
+                  <div className="bg-[#0e0e10] border border-red-700 rounded-lg p-4 max-h-32 overflow-y-auto">
+                    <div className="space-y-1">
+                      {parseResult.errors.slice(0, 10).map((error, idx) => (
+                        <div key={idx} className="text-xs text-red-400">
+                          Ligne {error.line}: {error.reason}
+                        </div>
+                      ))}
+                      {parseResult.errors.length > 10 && (
+                        <div className="text-xs text-gray-500">
+                          ... et {parseResult.errors.length - 10} autres erreurs
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-700 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={!parseResult || parseResult.rows.length === 0 || isApplying}
+            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isApplying ? "Application..." : "Appliquer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
