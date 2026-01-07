@@ -620,6 +620,7 @@ export default function GestionMembresPage() {
     description?: string;
     badges?: string[];
     isVip?: boolean;
+    createdAt?: string;
     integrationDate?: string;
     roleHistory?: Array<{
       fromRole: string;
@@ -652,6 +653,7 @@ export default function GestionMembresPage() {
       notesInternes: updatedMember.notesInternes || oldMember.notesInternes,
       badges: updatedMember.badges || oldMember.badges,
       isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
+      createdAt: updatedMember.createdAt || oldMember.createdAt,
       integrationDate: updatedMember.integrationDate || oldMember.integrationDate,
       roleHistory: updatedMember.roleHistory || oldMember.roleHistory,
     };
@@ -677,6 +679,7 @@ export default function GestionMembresPage() {
             isVip: mergedMember.isVip || false,
             badges: mergedMember.badges || [],
             description: mergedMember.description,
+            createdAt: mergedMember.createdAt,
             integrationDate: mergedMember.integrationDate,
             roleChangeReason: updatedMember.roleChangeReason,
           }),
@@ -1599,6 +1602,7 @@ export default function GestionMembresPage() {
               notesInternes: selectedMember.description,
               badges: selectedMember.badges,
               isVip: selectedMember.isVip,
+              createdAt: selectedMember.createdAt,
               integrationDate: selectedMember.integrationDate,
               roleHistory: selectedMember.roleHistory,
             }}

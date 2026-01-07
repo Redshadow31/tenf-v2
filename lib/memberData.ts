@@ -847,12 +847,17 @@ export async function updateMemberData(
   // Sinon, créer une nouvelle entrée admin basée sur les données fusionnées
   const existingAdminMember = adminData[login];
   
-  // Créer createdAt automatiquement si absent
-  if (!existingAdminMember?.createdAt && !existing?.createdAt) {
-    if (!updates.createdAt) {
+  // Créer createdAt automatiquement si absent (seulement si l'utilisateur ne le modifie pas manuellement)
+  if (updates.createdAt === undefined) {
+    // Si createdAt n'est pas dans les updates, créer automatiquement seulement si absent
+    if (!existingAdminMember?.createdAt && !existing?.createdAt) {
       updates.createdAt = new Date();
     }
+  } else if (updates.createdAt === null || updates.createdAt === "") {
+    // Si l'utilisateur supprime la date, ne pas créer automatiquement
+    updates.createdAt = undefined;
   }
+  // Si updates.createdAt est défini (modification manuelle), on le garde tel quel
 
   // Gérer l'historique des rôles si le rôle change
   let roleHistory = existingAdminMember?.roleHistory || existing?.roleHistory || [];

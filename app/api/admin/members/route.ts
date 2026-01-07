@@ -242,6 +242,15 @@ export async function PUT(request: NextRequest) {
       delete updates.discordUsername;
     }
     
+    // Gérer createdAt (convertir string ISO en Date si nécessaire)
+    if (updates.createdAt !== undefined) {
+      if (updates.createdAt === "" || updates.createdAt === null) {
+        updates.createdAt = undefined;
+      } else if (typeof updates.createdAt === 'string') {
+        updates.createdAt = new Date(updates.createdAt);
+      }
+    }
+    
     // Gérer integrationDate (convertir string ISO en Date si nécessaire)
     if (updates.integrationDate !== undefined) {
       if (updates.integrationDate === "" || updates.integrationDate === null) {

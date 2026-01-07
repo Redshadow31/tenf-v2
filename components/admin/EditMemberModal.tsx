@@ -18,6 +18,7 @@ interface Member {
   description?: string;
   badges?: string[];
   isVip?: boolean;
+  createdAt?: string; // Date ISO de création (membre depuis)
   integrationDate?: string; // Date ISO d'intégration
   roleHistory?: Array<{
     fromRole: string;
@@ -367,6 +368,27 @@ export default function EditMemberModal({
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 min-h-[100px]"
               placeholder="Description publique du streamer..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Date de création (membre depuis)
+            </label>
+            <input
+              type="date"
+              value={formData.createdAt ? formData.createdAt.split('T')[0] : ""}
+              onChange={(e) => {
+                const dateValue = e.target.value;
+                setFormData({
+                  ...formData,
+                  createdAt: dateValue ? new Date(dateValue).toISOString() : undefined,
+                });
+              }}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Date d'ajout du membre dans TENF V2 (utilisée pour "membre depuis X")
+            </p>
           </div>
 
           <div>
