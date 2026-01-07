@@ -260,6 +260,14 @@ export async function PUT(request: NextRequest) {
       }
     }
     
+    // Gérer parrain (string, peut être vide pour supprimer)
+    if (updates.parrain !== undefined) {
+      if (updates.parrain === "" || updates.parrain === null) {
+        updates.parrain = undefined;
+      }
+      // Sinon, garder la valeur string telle quelle
+    }
+    
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     // La gestion de roleHistory est faite automatiquement dans updateMemberData
     if (updates.role && updates.role !== existingMember.role) {
@@ -303,6 +311,8 @@ export async function PUT(request: NextRequest) {
       newDiscordId: updates.discordId,
       existingDiscordUsername: existingMember.discordUsername,
       newDiscordUsername: updates.discordUsername,
+      existingParrain: existingMember.parrain,
+      newParrain: updates.parrain,
     });
 
     const updatedMember = await updateMemberData(twitchLogin, updates, admin.id);
@@ -311,6 +321,7 @@ export async function PUT(request: NextRequest) {
     console.log(`[Update Member] ${twitchLogin} - Après mise à jour:`, {
       discordId: updatedMember?.discordId,
       discordUsername: updatedMember?.discordUsername,
+      parrain: updatedMember?.parrain,
     });
 
     if (!updatedMember) {
