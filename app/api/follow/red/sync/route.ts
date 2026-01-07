@@ -102,7 +102,7 @@ export async function POST() {
     let hasMore = true;
 
     while (hasMore) {
-      const followsUrl = cursor
+      const followsUrl: string = cursor
         ? `https://api.twitch.tv/helix/users/follows?from_id=${redTwitchId}&first=100&after=${cursor}`
         : `https://api.twitch.tv/helix/users/follows?from_id=${redTwitchId}&first=100`;
       
