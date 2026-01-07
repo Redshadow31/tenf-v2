@@ -688,6 +688,17 @@ export default function FollowMemberPage() {
           onImportComplete={loadData}
         />
       )}
+
+      {/* Modal import Following */}
+      {showFollowingImport && (
+        <FollowImportFollowingModal
+          isOpen={showFollowingImport}
+          onClose={() => setShowFollowingImport(false)}
+          monthKey={monthKey}
+          staffSlug={slug}
+          onImportComplete={loadData}
+        />
+      )}
     </div>
   );
 }
