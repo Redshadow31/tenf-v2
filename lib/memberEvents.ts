@@ -232,6 +232,8 @@ export function formatEventSummary(event: MemberEvent): string {
       return `Notes internes mises à jour`;
     case 'raid':
       return `Raid: ${event.payload?.raider || 'N/A'} → ${event.payload?.target || 'N/A'}`;
+    case 'follow_import_wizebot':
+      return `Import Wizebot: Follow détecté${event.payload?.followedAt ? ` le ${new Date(event.payload.followedAt).toLocaleDateString('fr-FR')}` : ''}`;
     default:
       return event.type;
   }

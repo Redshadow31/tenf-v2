@@ -133,9 +133,35 @@ export async function POST(
           twitchLogin: member.twitchLogin,
           displayName: member.displayName || member.twitchLogin,
           role: member.role,
-          status: m.status as FollowStatus,
+          status: (m.status || (m.jeSuis ? 'followed' : 'not_followed')) as FollowStatus, // Compatibilité
           validatedAt: new Date().toISOString(),
+          jeSuis: m.jeSuis ?? false,
+          meSuit: m.meSuit ?? null,
         });
+      }
+    }
+
+    // Calculer les stats
+    const totalJeSuis = validatedMembers.filter(m => m.jeSuis === true).length;
+    const totalRetour = validatedMembers.filter(m => m.jeSuis === true && m.meSuit === true).length;
+    const tauxRetour = totalJeSuis > 0
+      ? Math.round((totalRetour / totalJeSuis) * 100 * 10) / 10
+      : 0;
+
+    // Récupérer les IDs Twitch et Discord du staff si disponible (pour Red)
+    let staffTwitchId: string | undefined;
+    let staffDiscordId: string | undefined;
+    
+    if (staffSlug === 'red') {
+      const { getMemberData } = await import('@/lib/memberData');
+      const redLogins = ['red', 'redshadow31', 'redshadow'];
+      for (const login of redLogins) {
+        const redMember = getMemberData(login);
+        if (redMember) {
+          staffTwitchId = redMember.twitchId;
+          staffDiscordId = redMember.discordId;
+          break;
+        }
       }
     }
 
@@ -148,6 +174,14 @@ export async function POST(
       moderatorComments: moderatorComments || '',
       validatedAt: new Date().toISOString(),
       validatedBy: admin.id,
+      staffTwitchId,
+      staffDiscordId,
+      stats: {
+        totalMembers: validatedMembers.length,
+        totalJeSuis,
+        totalRetour,
+        tauxRetour,
+      },
     };
 
     await saveStaffFollowValidation(validation);

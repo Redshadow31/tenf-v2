@@ -15,8 +15,11 @@ export interface MemberFollowValidation {
   twitchLogin: string;
   displayName: string;
   role?: string;
-  status: FollowStatus;
+  status: FollowStatus; // Ancien champ, conservé pour compatibilité
   validatedAt: string; // ISO timestamp
+  // Nouveaux champs pour le suivi amélioré
+  jeSuis?: boolean; // Le staff suit ce membre
+  meSuit?: boolean | null; // Ce membre suit le staff (null = inconnu)
 }
 
 export interface StaffFollowValidation {
@@ -27,6 +30,16 @@ export interface StaffFollowValidation {
   moderatorComments?: string;
   validatedAt: string; // ISO timestamp
   validatedBy: string; // Discord ID
+  // Nouvelles métadonnées pour Red
+  staffTwitchId?: string;
+  staffDiscordId?: string;
+  // Stats agrégées
+  stats?: {
+    totalMembers: number;
+    totalJeSuis: number; // Nombre de membres que le staff suit
+    totalRetour: number; // Nombre de follows retour (jeSuis=true ET meSuit=true)
+    tauxRetour: number; // Pourcentage de retour (totalRetour / totalJeSuis * 100)
+  };
 }
 
 // ============================================
@@ -202,7 +215,11 @@ export function calculateFollowStats(validation: StaffFollowValidation): {
   followedCount: number;
   notFollowedCount: number;
   unknownCount: number;
-  followRate: number; // Pourcentage
+  followRate: number; // Pourcentage (ancien calcul)
+  // Nouvelles stats
+  totalJeSuis: number; // Nombre de membres que le staff suit
+  totalRetour: number; // Nombre de follows retour (jeSuis=true ET meSuit=true)
+  tauxRetour: number; // Pourcentage de retour (totalRetour / totalJeSuis * 100)
 } {
   const totalMembers = validation.members.length;
   const followedCount = validation.members.filter(m => m.status === 'followed').length;
@@ -213,12 +230,22 @@ export function calculateFollowStats(validation: StaffFollowValidation): {
     ? Math.round((followedCount / totalMembers) * 100 * 10) / 10 
     : 0;
   
+  // Nouvelles stats basées sur jeSuis et meSuit
+  const totalJeSuis = validation.members.filter(m => m.jeSuis === true).length;
+  const totalRetour = validation.members.filter(m => m.jeSuis === true && m.meSuit === true).length;
+  const tauxRetour = totalJeSuis > 0
+    ? Math.round((totalRetour / totalJeSuis) * 100 * 10) / 10
+    : 0;
+  
   return {
     totalMembers,
     followedCount,
     notFollowedCount,
     unknownCount,
     followRate,
+    totalJeSuis,
+    totalRetour,
+    tauxRetour,
   };
 }
 

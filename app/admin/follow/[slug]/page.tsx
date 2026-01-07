@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
+import WizebotImportModal from "@/components/admin/WizebotImportModal";
 
 const STAFF_MEMBERS: Record<string, string> = {
   red: "Red",
@@ -42,6 +43,8 @@ interface MemberFollow {
   displayName: string;
   role?: string;
   status: FollowStatus;
+  jeSuis?: boolean; // Le staff suit ce membre
+  meSuit?: boolean | null; // Ce membre suit le staff (null = inconnu)
 }
 
 interface Validation {
@@ -54,10 +57,18 @@ interface Validation {
     role?: string;
     status: FollowStatus;
     validatedAt: string;
+    jeSuis?: boolean;
+    meSuit?: boolean | null;
   }>;
   moderatorComments?: string;
   validatedAt: string;
   validatedBy: string;
+  stats?: {
+    totalMembers: number;
+    totalJeSuis: number;
+    totalRetour: number;
+    tauxRetour: number;
+  };
 }
 
 export default function FollowMemberPage() {
@@ -66,13 +77,17 @@ export default function FollowMemberPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
-  const [memberFollows, setMemberFollows] = useState<Record<string, FollowStatus>>({});
+  const [memberFollows, setMemberFollows] = useState<Record<string, { jeSuis: boolean; meSuit: boolean | null }>>({});
   const [moderatorComments, setModeratorComments] = useState("");
   const [monthKey, setMonthKey] = useState("");
   const [validation, setValidation] = useState<Validation | null>(null);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showWizebotImport, setShowWizebotImport] = useState(false);
 
   const memberName = STAFF_MEMBERS[slug] || slug;
+  const isRed = slug === 'red';
 
   useEffect(() => {
     initializeMonth();
@@ -129,9 +144,9 @@ export default function FollowMemberPage() {
         setMembers(activeMembers);
         
         // Initialiser les statuts follow
-        const initialFollows: Record<string, FollowStatus> = {};
+        const initialFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
         activeMembers.forEach((m: Member) => {
-          initialFollows[m.twitchLogin] = 'unknown';
+          initialFollows[m.twitchLogin] = { jeSuis: false, meSuit: null };
         });
         setMemberFollows(initialFollows);
       }
@@ -147,9 +162,12 @@ export default function FollowMemberPage() {
           setModeratorComments(validationData.validation.moderatorComments || '');
           
           // Charger les statuts depuis la validation
-          const follows: Record<string, FollowStatus> = {};
+          const follows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
           validationData.validation.members.forEach((m: any) => {
-            follows[m.twitchLogin] = m.status;
+            follows[m.twitchLogin] = {
+              jeSuis: m.jeSuis ?? (m.status === 'followed'), // Compatibilité avec ancien format
+              meSuit: m.meSuit ?? null,
+            };
           });
           setMemberFollows(follows);
         }
@@ -161,10 +179,72 @@ export default function FollowMemberPage() {
     }
   }
 
-  function handleStatusChange(twitchLogin: string, status: FollowStatus) {
+  async function handleSyncFromTwitch() {
+    if (!isRed) return;
+    
+    try {
+      setSyncing(true);
+      setSyncMessage(null);
+      
+      const response = await fetch('/api/follow/red/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Mettre à jour les statuts "Je suis" pour les membres suivis
+        const followedLogins = new Set((data.followedLogins || []).map((l: string) => l.toLowerCase()));
+        setMemberFollows(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(login => {
+            updated[login] = {
+              ...updated[login],
+              jeSuis: followedLogins.has(login.toLowerCase()),
+            };
+          });
+          return updated;
+        });
+        
+        setSyncMessage({
+          type: 'success',
+          text: `Synchronisation réussie : ${data.totalFollowed} membres TENF suivis par Red`,
+        });
+      } else {
+        setSyncMessage({
+          type: 'error',
+          text: data.error || 'Erreur lors de la synchronisation',
+        });
+      }
+    } catch (error) {
+      console.error("Erreur synchronisation:", error);
+      setSyncMessage({
+        type: 'error',
+        text: 'Erreur lors de la synchronisation',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function handleJeSuisChange(twitchLogin: string, value: boolean) {
     setMemberFollows(prev => ({
       ...prev,
-      [twitchLogin]: status,
+      [twitchLogin]: {
+        ...prev[twitchLogin],
+        jeSuis: value,
+      },
+    }));
+  }
+
+  function handleMeSuitChange(twitchLogin: string, value: boolean | null) {
+    setMemberFollows(prev => ({
+      ...prev,
+      [twitchLogin]: {
+        ...prev[twitchLogin],
+        meSuit: value,
+      },
     }));
   }
 
@@ -178,7 +258,9 @@ export default function FollowMemberPage() {
         twitchLogin: m.twitchLogin,
         displayName: m.displayName,
         role: m.role,
-        status: memberFollows[m.twitchLogin] || 'unknown',
+        status: memberFollows[m.twitchLogin]?.jeSuis ? 'followed' : 'not_followed', // Compatibilité
+        jeSuis: memberFollows[m.twitchLogin]?.jeSuis ?? false,
+        meSuit: memberFollows[m.twitchLogin]?.meSuit ?? null,
       }));
 
       const response = await fetch(`/api/follow/validations/${monthKey}/${slug}`, {
@@ -232,11 +314,10 @@ export default function FollowMemberPage() {
 
   // Calculer les statistiques
   const totalMembers = members.length;
-  const followedCount = Object.values(memberFollows).filter(s => s === 'followed').length;
-  const notFollowedCount = Object.values(memberFollows).filter(s => s === 'not_followed').length;
-  const unknownCount = Object.values(memberFollows).filter(s => s === 'unknown').length;
-  const followRate = totalMembers > 0 
-    ? Math.round((followedCount / totalMembers) * 100 * 10) / 10 
+  const totalJeSuis = Object.values(memberFollows).filter(f => f.jeSuis === true).length;
+  const totalRetour = Object.values(memberFollows).filter(f => f.jeSuis === true && f.meSuit === true).length;
+  const tauxRetour = totalJeSuis > 0 
+    ? Math.round((totalRetour / totalJeSuis) * 100 * 10) / 10 
     : 0;
 
   if (loading && !validation) {
@@ -299,15 +380,54 @@ export default function FollowMemberPage() {
         </div>
       </div>
 
+      {/* Boutons de synchronisation et import (uniquement pour Red) */}
+      {isRed && (
+        <div className="mb-6 flex flex-wrap gap-4">
+          <button
+            onClick={handleSyncFromTwitch}
+            disabled={syncing}
+            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {syncing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Synchronisation...
+              </>
+            ) : (
+              <>
+                🔄 Synchroniser depuis Twitch (Red)
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setShowWizebotImport(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+          >
+            📋 Importer followers (Wizebot)
+          </button>
+          {syncMessage && (
+            <div className={`mt-2 p-3 rounded-lg ${
+              syncMessage.type === 'success' 
+                ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                : 'bg-red-500/20 text-red-300 border border-red-500/30'
+            }`}>
+              {syncMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
           <p className="text-sm text-gray-400 mb-2">Taux de follow retour</p>
-          <p className="text-3xl font-bold text-[#9146ff]">{followRate}%</p>
+          <p className="text-3xl font-bold text-[#9146ff]">{tauxRetour}%</p>
+          <p className="text-xs text-gray-500 mt-1">Basé sur {totalJeSuis} membres suivis</p>
         </div>
         <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
           <p className="text-sm text-gray-400 mb-2">Nombre de follows retour</p>
-          <p className="text-3xl font-bold text-green-400">{followedCount}</p>
+          <p className="text-3xl font-bold text-green-400">{totalRetour}</p>
+          <p className="text-xs text-gray-500 mt-1">Sur {totalJeSuis} suivis</p>
         </div>
         <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
           <p className="text-sm text-gray-400 mb-2">Total membres</p>
@@ -331,7 +451,10 @@ export default function FollowMemberPage() {
                   Rôle
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Statut follow
+                  Je suis
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
+                  Me suit
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
                   Date de validation
@@ -341,7 +464,7 @@ export default function FollowMemberPage() {
             <tbody>
               {members.length > 0 ? (
                 members.map((member) => {
-                  const status = memberFollows[member.twitchLogin] || 'unknown';
+                  const follow = memberFollows[member.twitchLogin] || { jeSuis: false, meSuit: null };
                   const validationMember = validation?.members.find(m => m.twitchLogin === member.twitchLogin);
                   
                   return (
@@ -363,15 +486,43 @@ export default function FollowMemberPage() {
                         {member.role || "—"}
                       </td>
                       <td className="py-3 px-4">
-                        <select
-                          value={status}
-                          onChange={(e) => handleStatusChange(member.twitchLogin, e.target.value as FollowStatus)}
-                          className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-[#9146ff]"
+                        <button
+                          onClick={() => handleJeSuisChange(member.twitchLogin, !follow.jeSuis)}
+                          className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                            follow.jeSuis
+                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          }`}
+                          title={follow.jeSuis ? "Red suit ce membre" : "Red ne suit pas ce membre"}
                         >
-                          <option value="unknown">Inconnu</option>
-                          <option value="followed">Suivi</option>
-                          <option value="not_followed">Non suivi</option>
-                        </select>
+                          {follow.jeSuis ? '✅' : '❌'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const nextValue = follow.meSuit === true ? false : follow.meSuit === false ? null : true;
+                              handleMeSuitChange(member.twitchLogin, nextValue);
+                            }}
+                            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                              follow.meSuit === true
+                                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                : follow.meSuit === false
+                                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                            }`}
+                            title={
+                              follow.meSuit === true 
+                                ? "Ce membre suit Red" 
+                                : follow.meSuit === false 
+                                ? "Ce membre ne suit pas Red" 
+                                : "Inconnu"
+                            }
+                          >
+                            {follow.meSuit === true ? '✅' : follow.meSuit === false ? '❌' : '?'}
+                          </button>
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">
                         {validationMember?.validatedAt
@@ -383,7 +534,7 @@ export default function FollowMemberPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-gray-400">
+                  <td colSpan={5} className="py-12 text-center text-gray-400">
                     Aucun membre trouvé
                   </td>
                 </tr>
@@ -416,7 +567,7 @@ export default function FollowMemberPage() {
           disabled={saving}
           className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
         >
-          {saving ? "Enregistrement..." : "Valider l'analyse"}
+          {saving ? "Enregistrement..." : "✅ Enregistrer / Valider les stats"}
         </button>
       </div>
 
@@ -427,6 +578,17 @@ export default function FollowMemberPage() {
             Dernière validation : {new Date(validation.validatedAt).toLocaleString('fr-FR')}
           </p>
         </div>
+      )}
+
+      {/* Modal import Wizebot */}
+      {showWizebotImport && (
+        <WizebotImportModal
+          isOpen={showWizebotImport}
+          onClose={() => setShowWizebotImport(false)}
+          monthKey={monthKey}
+          staffSlug={slug}
+          onImportComplete={loadData}
+        />
       )}
     </div>
   );

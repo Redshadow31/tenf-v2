@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllEvents, getMemberEvents } from '@/lib/memberEvents';
+import { getAllEvents, getMemberEvents, recordMemberEvent } from '@/lib/memberEvents';
 import { getCurrentAdmin } from '@/lib/admin';
 
 /**
@@ -36,6 +36,46 @@ export async function GET(request: Request) {
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Error fetching member events:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST - Enregistre un nouvel événement
+ */
+export async function POST(request: Request) {
+  try {
+    // Vérifier l'authentification
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Non authentifié" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { memberId, type, source, actor, payload } = body;
+
+    if (!memberId || !type) {
+      return NextResponse.json(
+        { error: "memberId et type sont requis" },
+        { status: 400 }
+      );
+    }
+
+    const event = await recordMemberEvent(memberId, type, {
+      source: source || 'manual',
+      actor: actor || admin.id,
+      payload,
+    });
+
+    return NextResponse.json({ success: true, event });
+  } catch (error) {
+    console.error('Error recording member event:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

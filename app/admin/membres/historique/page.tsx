@@ -109,6 +109,8 @@ export default function MembresHistoriquePage() {
         return `Notes internes mises à jour`;
       case 'raid':
         return `Raid: ${event.payload?.raider || 'N/A'} → ${event.payload?.target || 'N/A'}`;
+      case 'follow_import_wizebot':
+        return `Import Wizebot: Follow détecté${event.payload?.followedAt ? ` le ${new Date(event.payload.followedAt).toLocaleDateString('fr-FR')}` : ''}`;
       default:
         return event.type;
     }
@@ -124,6 +126,8 @@ export default function MembresHistoriquePage() {
         return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
       case 'raid':
         return 'bg-[#9146ff]/20 text-[#9146ff] border-[#9146ff]/30';
+      case 'follow_import_wizebot':
+        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
       default:
         return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
     }
@@ -203,6 +207,7 @@ export default function MembresHistoriquePage() {
               <option value="integration_validated">Intégration validée</option>
               <option value="manual_note_updated">Notes mises à jour</option>
               <option value="raid">Raid</option>
+              <option value="follow_import_wizebot">Import Wizebot</option>
             </select>
           </div>
           <div>
