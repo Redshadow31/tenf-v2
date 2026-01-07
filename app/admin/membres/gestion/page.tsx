@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History } from "lucide-react";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
@@ -1045,23 +1046,35 @@ export default function GestionMembresPage() {
               <>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
-                  ➕ Ajouter une chaîne
+                  <Plus className="w-4 h-4" />
+                  Ajouter une chaîne
                 </button>
                 <button
                   onClick={() => setIsBulkImportOpen(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
-                  ­ƒôÑ Import en masse
+                  <Upload className="w-4 h-4" />
+                  Import en masse
                 </button>
               </>
             )}
             <button
               onClick={() => setViewMode(viewMode === "simple" ? "complet" : "simple")}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
             >
-              {viewMode === "simple" ? "­ƒôè Vue complète" : "­ƒôï Vue simple"}
+              {viewMode === "simple" ? (
+                <>
+                  <LayoutGrid className="w-4 h-4" />
+                  Vue complète
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Vue simple
+                </>
+              )}
             </button>
 
             {/* Bouton d'export des modifications manuelles (pour les fondateurs) */}
@@ -1101,10 +1114,11 @@ export default function GestionMembresPage() {
                     alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 title="Exporter les modifications manuelles dans un fichier JSON"
               >
-                ­ƒôÑ Exporter Modifications
+                <Download className="w-4 h-4" />
+                Exporter Modifications
               </button>
             )}
 
@@ -1162,10 +1176,11 @@ export default function GestionMembresPage() {
                     setDiscordSyncLoading(false);
                   }
                 }}
-                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 disabled={discordSyncLoading}
               >
-                {discordSyncLoading ? "⏳ Chargement..." : "🔄 Sync Discord Complète"}
+                <RefreshCw className={`w-4 h-4 ${discordSyncLoading ? 'animate-spin' : ''}`} />
+                {discordSyncLoading ? "Chargement..." : "Sync Discord Complète"}
               </button>
             )}
 
@@ -1224,9 +1239,10 @@ export default function GestionMembresPage() {
                   onClick={() => {
                     window.location.href = "/admin/fusion-doublons";
                   }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
-                  ­ƒöù Gérer les doublons
+                  <Copy className="w-4 h-4" />
+                  Gérer les doublons
                 </button>
                 <button
                   onClick={async () => {
@@ -1256,9 +1272,10 @@ export default function GestionMembresPage() {
                       alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
-                  ­ƒÆ¥ Sauvegarder données
+                  <Save className="w-4 h-4" />
+                  Sauvegarder données
                 </button>
               </>
             )}
@@ -1268,7 +1285,7 @@ export default function GestionMembresPage() {
         {/* Encadré de statistiques des membres */}
         <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">­ƒæÑ</span>
+            <Users className="w-6 h-6 text-[#9146ff]" />
             <div className="flex-1">
               <h3 className="text-white font-semibold mb-1">Statistiques des membres</h3>
               <div className="flex flex-wrap gap-4 text-sm text-gray-300">
@@ -1308,7 +1325,7 @@ export default function GestionMembresPage() {
                       CRÉATEUR
                       {sortColumn === "nom" && (
                         <span className="text-purple-400">
-                          {sortDirection === "asc" ? "Ôåæ" : "Ôåô"}
+                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                       )}
                     </div>
@@ -1328,7 +1345,7 @@ export default function GestionMembresPage() {
                       RÔLE
                       {sortColumn === "role" && (
                         <span className="text-purple-400">
-                          {sortDirection === "asc" ? "Ôåæ" : "Ôåô"}
+                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                       )}
                     </div>
@@ -1345,7 +1362,7 @@ export default function GestionMembresPage() {
                       DERNIER LIVE
                       {sortColumn === "lastLive" && (
                         <span className="text-purple-400">
-                          {sortDirection === "asc" ? "Ôåæ" : "Ôåô"}
+                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                       )}
                     </div>
@@ -1422,12 +1439,12 @@ export default function GestionMembresPage() {
                                 <code className="text-xs text-green-400 bg-[#0e0e10] px-2 py-1 rounded">
                                   {member.twitchId}
                                 </code>
-                                <span className="text-green-400 text-xs" title="ID Twitch lié">✅</span>
+                                <CheckCircle2 className="w-4 h-4 text-green-400" title="ID Twitch lié" />
                               </>
                             ) : (
                               <>
                                 <span className="text-xs text-gray-500">-</span>
-                                <span className="text-yellow-400 text-xs" title="ID Twitch manquant">ÔÜá´©Å</span>
+                                <AlertCircle className="w-4 h-4 text-yellow-400" title="ID Twitch manquant" />
                               </>
                             )}
                             {member.twitch && (
@@ -1445,7 +1462,7 @@ export default function GestionMembresPage() {
                                     });
                                     const data = await response.json();
                                     if (response.ok && data.success) {
-                                      alert(`✅ ID Twitch synchronisé avec succès${data.results?.[0]?.twitchId ? `: ${data.results[0].twitchId}` : ''}`);
+                                      alert(`ID Twitch synchronisé avec succès${data.results?.[0]?.twitchId ? `: ${data.results[0].twitchId}` : ''}`);
                                       window.location.reload();
                                     } else {
                                       alert(`ÔØî Erreur: ${data.error || 'Impossible de synchroniser l\'ID Twitch'}`);
@@ -1455,10 +1472,11 @@ export default function GestionMembresPage() {
                                     alert('ÔØî Erreur lors de la synchronisation');
                                   }
                                 }}
-                                className="text-xs text-purple-400 hover:text-purple-300 underline ml-1"
+                                className="text-xs text-purple-400 hover:text-purple-300 underline ml-1 flex items-center gap-1"
                                 title="Synchroniser l'ID Twitch"
                               >
-                                ­ƒöä
+                                <RefreshCw className="w-3 h-3" />
+                                Sync
                               </button>
                             )}
                           </div>
@@ -1488,12 +1506,14 @@ export default function GestionMembresPage() {
                     </td>
                     <td className="py-4 px-6">
                       {member.integrationDate ? (
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
-                          ✅ Oui
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Oui
                         </span>
                       ) : (
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
-                          ❌ Non
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                          <XCircle className="w-3 h-3" />
+                          Non
                         </span>
                       )}
                     </td>
@@ -1548,10 +1568,11 @@ export default function GestionMembresPage() {
                             setSelectedMember(member);
                             setShowMemberHistory(true);
                           }}
-                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-blue-600/20 text-blue-300 hover:bg-blue-600/30"
+                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 flex items-center gap-1"
                           title="Voir l'historique"
                         >
-                          📜 Historique
+                          <History className="w-3 h-3" />
+                          Historique
                         </button>
                         <button
                           onClick={() => handleToggleStatus(member.id)}
