@@ -6,6 +6,9 @@ import fs from 'fs';
 import path from 'path';
 import { MemberEngagement } from './discordEngagement';
 
+// Réexporter MemberEngagement pour faciliter les imports
+export type { MemberEngagement } from './discordEngagement';
+
 const STORE_NAME = 'tenf-discord-engagement';
 
 export interface DiscordEngagementData {
