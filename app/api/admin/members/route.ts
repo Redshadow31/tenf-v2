@@ -242,10 +242,22 @@ export async function PUT(request: NextRequest) {
       delete updates.discordUsername;
     }
     
+    // Gérer integrationDate (convertir string ISO en Date si nécessaire)
+    if (updates.integrationDate !== undefined) {
+      if (updates.integrationDate === "" || updates.integrationDate === null) {
+        updates.integrationDate = undefined;
+      } else if (typeof updates.integrationDate === 'string') {
+        updates.integrationDate = new Date(updates.integrationDate);
+      }
+    }
+    
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
+    // La gestion de roleHistory est faite automatiquement dans updateMemberData
     if (updates.role && updates.role !== existingMember.role) {
       updates.roleManuallySet = true;
     }
+    
+    // roleChangeReason sera utilisé par updateMemberData pour créer l'entrée roleHistory
 
     // Résoudre automatiquement l'ID Twitch si twitchLogin est modifié et twitchId manquant
     if (updates.twitchLogin && updates.twitchLogin !== existingMember.twitchLogin && !updates.twitchId && !existingMember.twitchId) {

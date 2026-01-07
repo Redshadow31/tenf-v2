@@ -18,6 +18,14 @@ interface Member {
   description?: string;
   badges?: string[];
   isVip?: boolean;
+  integrationDate?: string; // Date ISO d'intégration
+  roleHistory?: Array<{
+    fromRole: string;
+    toRole: string;
+    changedAt: string;
+    changedBy: string;
+    reason?: string;
+  }>;
 }
 
 interface EditMemberModalProps {
@@ -35,11 +43,15 @@ export default function EditMemberModal({
 }: EditMemberModalProps) {
   const [formData, setFormData] = useState<Member>(member);
   const [badgeInput, setBadgeInput] = useState("");
+  const [showRoleHistory, setShowRoleHistory] = useState(false);
+  const [roleChangeReason, setRoleChangeReason] = useState("");
+  const originalRole = member.role;
 
   useEffect(() => {
     if (isOpen) {
       setFormData(member);
       setBadgeInput("");
+      setRoleChangeReason("");
     }
   }, [isOpen, member]);
 
@@ -47,7 +59,12 @@ export default function EditMemberModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Si le rôle a changé, ajouter roleChangeReason aux données
+    const dataToSave = { ...formData };
+    if (formData.role !== originalRole) {
+      (dataToSave as any).roleChangeReason = roleChangeReason || undefined;
+    }
+    onSave(dataToSave);
   };
 
   return (
@@ -198,9 +215,20 @@ export default function EditMemberModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Rôle
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-300">
+                Rôle
+              </label>
+              {formData.roleHistory && formData.roleHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowRoleHistory(true)}
+                  className="text-xs text-purple-400 hover:text-purple-300 underline"
+                >
+                  📜 Historique des rôles
+                </button>
+              )}
+            </div>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as MemberRole })}
@@ -214,6 +242,20 @@ export default function EditMemberModal({
               <option value="Admin Adjoint">Admin Adjoint</option>
               <option value="Créateur Junior">Créateur Junior</option>
             </select>
+            {formData.role !== originalRole && (
+              <div className="mt-2">
+                <label className="block text-xs text-gray-400 mb-1">
+                  Raison du changement de rôle (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={roleChangeReason}
+                  onChange={(e) => setRoleChangeReason(e.target.value)}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  placeholder="Ex: Promotion, changement de fonction..."
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -329,6 +371,27 @@ export default function EditMemberModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Date d'intégration
+            </label>
+            <input
+              type="date"
+              value={formData.integrationDate ? formData.integrationDate.split('T')[0] : ""}
+              onChange={(e) => {
+                const dateValue = e.target.value;
+                setFormData({
+                  ...formData,
+                  integrationDate: dateValue ? new Date(dateValue).toISOString() : undefined,
+                });
+              }}
+              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Date de la réunion d'intégration validée
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
               Notes internes
             </label>
             <textarea
@@ -355,6 +418,80 @@ export default function EditMemberModal({
             </button>
           </div>
         </form>
+
+        {/* Modal Historique des rôles */}
+        {showRoleHistory && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setShowRoleHistory(false)}
+          >
+            <div
+              className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">Historique des rôles</h3>
+                <button
+                  onClick={() => setShowRoleHistory(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              {formData.roleHistory && formData.roleHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {formData.roleHistory.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="text-white font-semibold">
+                            {entry.fromRole} → {entry.toRole}
+                          </div>
+                          <div className="text-sm text-gray-400 mt-1">
+                            {new Date(entry.changedAt).toLocaleDateString('fr-FR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        <span className="text-gray-500">Modifié par:</span> {entry.changedBy}
+                      </div>
+                      {entry.reason && (
+                        <div className="text-sm text-gray-400 mt-2 italic">
+                          Raison: {entry.reason}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  Aucun historique de changement de rôle
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

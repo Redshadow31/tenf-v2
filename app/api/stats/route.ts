@@ -58,8 +58,8 @@ export async function GET() {
     // 2. Compter le nombre total de membres depuis la gestion des membres (tous les membres, pas seulement les listes)
     const { getAllMemberData } = await import('@/lib/memberData');
     const allMembers = getAllMemberData();
-    // Filtrer uniquement les membres actifs (isActive === true)
-    const activeMembers = allMembers.filter(member => member.isActive === true);
+    // Filtrer uniquement les membres actifs (même logique que la page admin : isActive !== false)
+    const activeMembers = allMembers.filter(member => member.isActive !== false);
     const activeMembersCount = activeMembers.length;
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)

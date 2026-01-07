@@ -21,6 +21,28 @@ const navItems: NavItem[] = [
     href: "/admin/membres",
     label: "Membres",
     icon: "👥",
+    children: [
+      {
+        href: "/admin/membres",
+        label: "Hub",
+      },
+      {
+        href: "/admin/membres/gestion",
+        label: "Gestion",
+      },
+      {
+        href: "/admin/membres/erreurs",
+        label: "Erreurs & incohérences",
+      },
+      {
+        href: "/admin/membres/incomplets",
+        label: "Comptes incomplets",
+      },
+      {
+        href: "/admin/membres/synchronisation",
+        label: "Synchronisation",
+      },
+    ],
   },
   {
     href: "/admin/spotlight",
@@ -206,6 +228,9 @@ export default function AdminSidebar() {
           if (child.href === "/admin/follow") {
             return pathname?.startsWith("/admin/follow") ?? false;
           }
+          if (child.href === "/admin/membres") {
+            return pathname?.startsWith("/admin/membres") ?? false;
+          }
           return pathname === child.href;
         });
         if (isOnChildPage) {
@@ -228,6 +253,9 @@ export default function AdminSidebar() {
     }
     if (href === "/admin/follow") {
       return pathname === "/admin/follow" || (pathname?.startsWith("/admin/follow/") ?? false);
+    }
+    if (href === "/admin/membres") {
+      return pathname === "/admin/membres" || (pathname?.startsWith("/admin/membres/") ?? false);
     }
     return pathname === href;
   }

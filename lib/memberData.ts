@@ -44,6 +44,16 @@ export interface MemberData {
   createdAt?: Date;
   updatedAt?: Date;
   updatedBy?: string; // ID Discord de l'admin qui a modifié
+  
+  // Suivi staff
+  integrationDate?: Date; // Date de réunion d'intégration validée
+  roleHistory?: Array<{
+    fromRole: string;
+    toRole: string;
+    changedAt: string; // ISO date string
+    changedBy: string; // ID Discord ou "admin"
+    reason?: string;
+  }>;
 }
 
 // Stockage en mémoire (fusionné des deux sources)
@@ -135,6 +145,8 @@ async function loadAdminDataFromBlob(): Promise<Record<string, MemberData>> {
         ...(member as any),
         createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
         updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+        integrationDate: (member as any).integrationDate ? new Date((member as any).integrationDate) : undefined,
+        roleHistory: (member as any).roleHistory || [],
       };
     }
     
@@ -164,6 +176,8 @@ async function loadBotDataFromBlob(): Promise<Record<string, MemberData>> {
         ...(member as any),
         createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
         updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+        integrationDate: (member as any).integrationDate ? new Date((member as any).integrationDate) : undefined,
+        roleHistory: (member as any).roleHistory || [],
       };
     }
     
@@ -186,6 +200,8 @@ async function saveAdminDataToBlob(data: Record<string, MemberData>): Promise<vo
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     await store.set(ADMIN_BLOB_KEY, JSON.stringify(serializableData, null, 2));
@@ -207,6 +223,8 @@ async function saveBotDataToBlob(data: Record<string, MemberData>): Promise<void
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     await store.set(BOT_BLOB_KEY, JSON.stringify(serializableData, null, 2));
@@ -228,6 +246,8 @@ async function saveMergedDataToBlob(): Promise<void> {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     await store.set(MERGED_BLOB_KEY, JSON.stringify(serializableData, null, 2));
@@ -253,6 +273,8 @@ function loadAdminDataFromFile(): Record<string, MemberData> {
           ...(member as any),
           createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
           updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+          integrationDate: (member as any).integrationDate ? new Date((member as any).integrationDate) : undefined,
+          roleHistory: (member as any).roleHistory || [],
         };
       }
       return store;
@@ -280,6 +302,8 @@ function loadBotDataFromFile(): Record<string, MemberData> {
           ...(member as any),
           createdAt: (member as any).createdAt ? new Date((member as any).createdAt) : undefined,
           updatedAt: (member as any).updatedAt ? new Date((member as any).updatedAt) : undefined,
+          integrationDate: (member as any).integrationDate ? new Date((member as any).integrationDate) : undefined,
+          roleHistory: (member as any).roleHistory || [],
         };
       }
       return store;
@@ -304,6 +328,8 @@ function saveAdminDataToFile(data: Record<string, MemberData>): void {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     fs.writeFileSync(ADMIN_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
@@ -326,6 +352,8 @@ function saveBotDataToFile(data: Record<string, MemberData>): void {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     fs.writeFileSync(BOT_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
@@ -348,6 +376,8 @@ function saveMergedDataToFile(): void {
         ...member,
         createdAt: member.createdAt?.toISOString(),
         updatedAt: member.updatedAt?.toISOString(),
+        integrationDate: member.integrationDate?.toISOString(),
+        roleHistory: member.roleHistory, // Déjà en format JSON (array d'objets)
       };
     }
     fs.writeFileSync(MEMBERS_DATA_FILE, JSON.stringify(serializableData, null, 2), "utf-8");
@@ -817,11 +847,35 @@ export async function updateMemberData(
   // Sinon, créer une nouvelle entrée admin basée sur les données fusionnées
   const existingAdminMember = adminData[login];
   
+  // Créer createdAt automatiquement si absent
+  if (!existingAdminMember?.createdAt && !existing?.createdAt) {
+    if (!updates.createdAt) {
+      updates.createdAt = new Date();
+    }
+  }
+
+  // Gérer l'historique des rôles si le rôle change
+  let roleHistory = existingAdminMember?.roleHistory || existing?.roleHistory || [];
+  if (updates.role && existing.role && updates.role !== existing.role) {
+    roleHistory = [
+      ...roleHistory,
+      {
+        fromRole: existing.role,
+        toRole: updates.role,
+        changedAt: new Date().toISOString(),
+        changedBy: updatedBy || "admin",
+        reason: (updates as any).roleChangeReason,
+      },
+    ];
+    updates.roleHistory = roleHistory;
+  }
+
   if (existingAdminMember) {
     // Membre existe dans admin : préserver ses données et appliquer les updates
     adminData[login] = {
       ...existingAdminMember, // Préserver les données admin existantes
       ...updates, // Appliquer les nouvelles modifications
+      roleHistory: updates.roleHistory || existingAdminMember.roleHistory,
       updatedAt: new Date(),
       updatedBy,
     };
@@ -831,6 +885,7 @@ export async function updateMemberData(
     adminData[login] = {
       ...existing, // Base depuis les données fusionnées
       ...updates, // Appliquer les modifications
+      roleHistory: updates.roleHistory || existing.roleHistory,
       updatedAt: new Date(),
       updatedBy,
     };
