@@ -12,6 +12,7 @@
   "dependencies": {
     "@netlify/blobs": "^4.2.0",
     "bcryptjs": "^2.4.3",
+    "lucide-react": "^0.263.1",
     "next": "^14.2.5",
     "next-auth": "^4.24.13",
     "react": "^18.3.1",
