@@ -853,11 +853,8 @@ export async function updateMemberData(
     if (!existingAdminMember?.createdAt && !existing?.createdAt) {
       updates.createdAt = new Date();
     }
-  } else if (updates.createdAt === null || updates.createdAt === "") {
-    // Si l'utilisateur supprime la date, ne pas créer automatiquement
-    updates.createdAt = undefined;
   }
-  // Si updates.createdAt est défini (modification manuelle), on le garde tel quel
+  // Si updates.createdAt est défini (modification manuelle), on le garde tel quel (déjà un Date)
 
   // Gérer l'historique des rôles si le rôle change
   let roleHistory = existingAdminMember?.roleHistory || existing?.roleHistory || [];
