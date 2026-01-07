@@ -56,23 +56,46 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres depuis la gestion des membres (tous les membres, pas seulement les listes)
-    const { getAllMemberData } = await import('@/lib/memberData');
-    const allMembers = getAllMemberData();
+    // Utiliser l'API publique pour récupérer les membres actifs (plus fiable)
+    let activeMembersCount = 0;
+    let activeMembers: any[] = [];
     
-    // Debug: logger le nombre de membres récupérés
-    console.log(`[Stats API] Total members from getAllMemberData: ${allMembers.length}`);
-    
-    // Filtrer uniquement les membres actifs (même logique que la page admin : isActive !== false)
-    // Un membre est actif si isActive est true ou undefined (par défaut actif)
-    const activeMembers = allMembers.filter(member => {
-      // Si isActive est explicitement false, le membre est inactif
-      // Sinon (true ou undefined), le membre est actif
-      return member.isActive !== false;
-    });
-    const activeMembersCount = activeMembers.length;
-    
-    // Debug: logger le nombre de membres actifs
-    console.log(`[Stats API] Active members count: ${activeMembersCount}`);
+    try {
+      // Utiliser l'API interne pour récupérer les membres
+      const { getAllMemberData } = await import('@/lib/memberData');
+      const allMembers = getAllMemberData();
+      
+      // Debug: logger le nombre de membres récupérés
+      console.log(`[Stats API] Total members from getAllMemberData: ${allMembers.length}`);
+      
+      // Filtrer uniquement les membres actifs (même logique que la page admin : isActive !== false)
+      // Un membre est actif si isActive est true ou undefined (par défaut actif)
+      activeMembers = allMembers.filter(member => {
+        // Si isActive est explicitement false, le membre est inactif
+        // Sinon (true ou undefined), le membre est actif
+        return member.isActive !== false;
+      });
+      activeMembersCount = activeMembers.length;
+      
+      // Debug: logger le nombre de membres actifs
+      console.log(`[Stats API] Active members count: ${activeMembersCount}`);
+      
+      // Si aucun membre trouvé, essayer via l'API publique comme fallback
+      if (activeMembersCount === 0) {
+        console.log('[Stats API] No members from getAllMemberData, trying public API as fallback');
+        const publicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/members/public`, {
+          cache: 'no-store',
+        });
+        if (publicResponse.ok) {
+          const publicData = await publicResponse.json();
+          activeMembers = publicData.members || [];
+          activeMembersCount = activeMembers.length;
+          console.log(`[Stats API] Active members from public API: ${activeMembersCount}`);
+        }
+      }
+    } catch (error) {
+      console.error('[Stats API] Error getting active members:', error);
+    }
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)
     let livesCount = 0;
