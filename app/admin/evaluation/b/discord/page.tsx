@@ -418,7 +418,7 @@ export default function EvaluationBDiscordPage() {
           <p className="text-3xl font-bold text-[#9146ff]">{stats.avgScore}/5</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Membres scorés (>0)</p>
+          <p className="text-sm text-gray-400 mb-2">Membres scorés (&gt;0)</p>
           <p className="text-3xl font-bold text-white">{stats.scoredCount}/{stats.totalMembers}</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
