@@ -80,18 +80,14 @@ export async function GET() {
       // Debug: logger le nombre de membres actifs
       console.log(`[Stats API] Active members count: ${activeMembersCount}`);
       
-      // Si aucun membre trouvé, essayer via l'API publique comme fallback
+      // Si aucun membre trouvé, essayer via getAllActiveMemberData comme fallback
       if (activeMembersCount === 0) {
-        console.log('[Stats API] No members from getAllMemberData, trying public API as fallback');
-        const publicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/members/public`, {
-          cache: 'no-store',
-        });
-        if (publicResponse.ok) {
-          const publicData = await publicResponse.json();
-          activeMembers = publicData.members || [];
-          activeMembersCount = activeMembers.length;
-          console.log(`[Stats API] Active members from public API: ${activeMembersCount}`);
-        }
+        console.log('[Stats API] No members from getAllMemberData, trying getAllActiveMemberData as fallback');
+        const { getAllActiveMemberData } = await import('@/lib/memberData');
+        const activeMemberData = getAllActiveMemberData();
+        activeMembers = activeMemberData;
+        activeMembersCount = activeMemberData.length;
+        console.log(`[Stats API] Active members from getAllActiveMemberData: ${activeMembersCount}`);
       }
     } catch (error) {
       console.error('[Stats API] Error getting active members:', error);
