@@ -882,6 +882,10 @@ export async function updateMemberData(
       updatedAt: new Date(),
       updatedBy,
     };
+    // Log pour vérifier que parrain est bien inclus
+    if (updates.parrain !== undefined) {
+      console.log(`[updateMemberData] Parrain sauvegardé pour ${login}:`, updates.parrain);
+    }
   } else {
     // Membre n'existe pas dans admin : créer une nouvelle entrée admin
     // Utiliser les données fusionnées comme base, mais les updates ont priorité
@@ -892,6 +896,10 @@ export async function updateMemberData(
       updatedAt: new Date(),
       updatedBy,
     };
+    // Log pour vérifier que parrain est bien inclus
+    if (updates.parrain !== undefined) {
+      console.log(`[updateMemberData] Parrain sauvegardé pour ${login}:`, updates.parrain);
+    }
   }
   
   // Sauvegarder les données admin
