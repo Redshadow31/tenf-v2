@@ -269,9 +269,11 @@ export default function EvaluationBDiscordPage() {
     }
     
     // Mettre à jour avec les données importées
+    // IMPORTANT: Les valeurs importées sont en heures décimales, on les convertit en minutes
     for (const row of rows) {
       if (row.matchedMemberId && newData[row.matchedMemberId]) {
-        newData[row.matchedMemberId].nbVocalMinutes = row.value;
+        // Convertir heures décimales en minutes (multiplier par 60)
+        newData[row.matchedMemberId].nbVocalMinutes = row.value * 60;
       }
     }
     

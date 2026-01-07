@@ -85,6 +85,7 @@ export default function DiscordEngagementImportModal({
             </p>
             <p className="text-blue-300 text-xs mt-2">
               Format attendu : RANG (tab) PSEUDO (tab) DISCORD_ID (tab) VALEUR
+              {title.includes("vocaux") && " (en heures décimales)"}
             </p>
           </div>
 
