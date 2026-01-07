@@ -58,6 +58,10 @@ export async function GET() {
     // 2. Compter le nombre total de membres depuis la gestion des membres (tous les membres, pas seulement les listes)
     const { getAllMemberData } = await import('@/lib/memberData');
     const allMembers = getAllMemberData();
+    
+    // Debug: logger le nombre de membres récupérés
+    console.log(`[Stats API] Total members from getAllMemberData: ${allMembers.length}`);
+    
     // Filtrer uniquement les membres actifs (même logique que la page admin : isActive !== false)
     // Un membre est actif si isActive est true ou undefined (par défaut actif)
     const activeMembers = allMembers.filter(member => {
@@ -66,6 +70,9 @@ export async function GET() {
       return member.isActive !== false;
     });
     const activeMembersCount = activeMembers.length;
+    
+    // Debug: logger le nombre de membres actifs
+    console.log(`[Stats API] Active members count: ${activeMembersCount}`);
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)
     let livesCount = 0;
@@ -73,9 +80,14 @@ export async function GET() {
       // Utiliser les twitchId si disponibles, sinon utiliser twitchLogin
       const membersWithTwitch = activeMembers.filter(member => member.twitchLogin || member.twitchId);
       
+      console.log(`[Stats API] Members with Twitch: ${membersWithTwitch.length}`);
+      
       if (membersWithTwitch.length > 0) {
         const accessToken = await getTwitchAccessToken();
-        if (accessToken) {
+        if (!accessToken) {
+          console.error('[Stats API] Failed to get Twitch access token');
+        } else {
+          console.log('[Stats API] Twitch access token obtained');
           // Essayer d'abord avec les twitchId si disponibles
           const membersWithId = membersWithTwitch.filter(m => m.twitchId);
           const membersWithoutId = membersWithTwitch.filter(m => !m.twitchId);
@@ -147,11 +159,16 @@ export async function GET() {
               }
             }
             livesCount = totalLives;
+            console.log(`[Stats API] Total lives in progress: ${livesCount}`);
+          } else {
+            console.log('[Stats API] No user IDs to check for streams');
           }
         }
+      } else {
+        console.log('[Stats API] No access token or no members with Twitch');
       }
     } catch (error) {
-      console.error('Error fetching live streams count:', error);
+      console.error('[Stats API] Error fetching live streams count:', error);
     }
 
     return NextResponse.json({
