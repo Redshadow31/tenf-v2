@@ -1439,12 +1439,16 @@ export default function GestionMembresPage() {
                                 <code className="text-xs text-green-400 bg-[#0e0e10] px-2 py-1 rounded">
                                   {member.twitchId}
                                 </code>
-                                <CheckCircle2 className="w-4 h-4 text-green-400" title="ID Twitch lié" />
+                                <span title="ID Twitch lié">
+                                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                </span>
                               </>
                             ) : (
                               <>
                                 <span className="text-xs text-gray-500">-</span>
-                                <AlertCircle className="w-4 h-4 text-yellow-400" title="ID Twitch manquant" />
+                                <span title="ID Twitch manquant">
+                                  <AlertCircle className="w-4 h-4 text-yellow-400" />
+                                </span>
                               </>
                             )}
                             {member.twitch && (
