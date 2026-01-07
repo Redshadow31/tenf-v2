@@ -163,6 +163,57 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    href: "/admin/evaluation",
+    label: "Évaluation Mensuelle",
+    icon: "📊",
+    children: [
+      {
+        href: "/admin/evaluation",
+        label: "Hub",
+      },
+      {
+        href: "/admin/evaluation/a",
+        label: "A. Présence Active",
+        children: [
+          {
+            href: "/admin/evaluation/a/spotlights",
+            label: "Spotlights",
+          },
+          {
+            href: "/admin/evaluation/a/raids",
+            label: "Raids",
+          },
+        ],
+      },
+      {
+        href: "/admin/evaluation/b",
+        label: "B. Engagement Communautaire",
+        children: [
+          {
+            href: "/admin/evaluation/b/discord",
+            label: "Discord",
+          },
+          {
+            href: "/admin/evaluation/b/events-serveur",
+            label: "Events serveur",
+          },
+        ],
+      },
+      {
+        href: "/admin/evaluation/c",
+        label: "C. Follow",
+      },
+      {
+        href: "/admin/evaluation/d",
+        label: "D. Synthèse & Bonus",
+      },
+      {
+        href: "/admin/evaluation/result",
+        label: "Résultat Final",
+      },
+    ],
+  },
+  {
     href: "/admin/evaluations",
     label: "Évaluation Mensuelle",
     icon: "📝",

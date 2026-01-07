@@ -674,7 +674,7 @@ export default function GestionMembresPage() {
           'Cache-Control': 'no-cache',
         },
           body: JSON.stringify({
-            twitchLogin: mergedMember.twitch,
+            twitchLogin: mergedMember.twitch, // Nouveau pseudo (peut avoir changé)
             twitchId: mergedMember.twitchId, // Inclure l'ID Twitch
             displayName: mergedMember.nom,
             twitchUrl: mergedMember.twitchUrl || `https://www.twitch.tv/${mergedMember.twitch}`,
@@ -689,6 +689,9 @@ export default function GestionMembresPage() {
             integrationDate: mergedMember.integrationDate,
             parrain: mergedMember.parrain,
             roleChangeReason: updatedMember.roleChangeReason,
+            // Identifiants stables pour identifier le membre (important si le pseudo change)
+            originalDiscordId: oldMember.discordId, // ID Discord original (stable)
+            originalTwitchId: oldMember.twitchId, // ID Twitch original (stable)
           }),
       });
 

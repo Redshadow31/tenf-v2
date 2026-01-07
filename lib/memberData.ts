@@ -768,11 +768,55 @@ if (typeof window === "undefined" && !isInitialized) {
 }
 
 /**
- * Récupère toutes les données d'un membre
+ * Récupère toutes les données d'un membre par son login Twitch
  */
 export function getMemberData(twitchLogin: string): MemberData | null {
   const login = twitchLogin.toLowerCase();
   return memberDataStore[login] || null;
+}
+
+/**
+ * Trouve un membre par son identifiant stable (discordId ou twitchId en priorité)
+ */
+export function findMemberByIdentifier(options: {
+  discordId?: string;
+  twitchId?: string;
+  twitchLogin?: string;
+}): MemberData | null {
+  // Priorité 1: Chercher par discordId (le plus stable)
+  if (options.discordId) {
+    const found = Object.values(memberDataStore).find(
+      m => m.discordId === options.discordId
+    );
+    if (found) {
+      console.log(`[findMemberByIdentifier] Trouvé par discordId: ${options.discordId}`);
+      return found;
+    }
+  }
+
+  // Priorité 2: Chercher par twitchId (stable aussi)
+  if (options.twitchId) {
+    const found = Object.values(memberDataStore).find(
+      m => m.twitchId === options.twitchId
+    );
+    if (found) {
+      console.log(`[findMemberByIdentifier] Trouvé par twitchId: ${options.twitchId}`);
+      return found;
+    }
+  }
+
+  // Priorité 3: Chercher par twitchLogin (peut changer)
+  if (options.twitchLogin) {
+    const login = options.twitchLogin.toLowerCase();
+    const found = memberDataStore[login];
+    if (found) {
+      console.log(`[findMemberByIdentifier] Trouvé par twitchLogin: ${login}`);
+      return found;
+    }
+  }
+
+  console.warn(`[findMemberByIdentifier] Membre non trouvé avec:`, options);
+  return null;
 }
 
 /**
@@ -824,29 +868,48 @@ export function getAllActiveMemberDataFromAllLists(): MemberData[] {
 /**
  * Met à jour les données d'un membre (DASHBOARD ADMIN - écrit dans admin-members-data)
  * IMPORTANT: Cette fonction préserve les données admin existantes et fusionne avec les données bot
+ * 
+ * @param identifier - Identifiant du membre (peut être twitchLogin, discordId, ou twitchId)
+ * @param updates - Mises à jour à appliquer
+ * @param updatedBy - ID Discord de l'admin qui fait la modification
  */
 export async function updateMemberData(
-  twitchLogin: string,
+  identifier: string | { discordId?: string; twitchId?: string; twitchLogin?: string },
   updates: Partial<MemberData>,
   updatedBy: string
 ): Promise<MemberData | null> {
-  const login = twitchLogin.toLowerCase();
-  
   // Charger les données admin et bot séparément
   const adminData = await loadAdminDataFromStorage();
   const botData = await loadBotDataFromStorage();
   
   // Charger les données fusionnées pour avoir la vue complète
   await loadMemberDataFromStorage();
-  const existing = memberDataStore[login];
   
-  if (!existing) {
+  // Identifier le membre existant
+  let existing: MemberData | null = null;
+  let existingLogin: string | null = null;
+  let existingAdminMember: MemberData | undefined;
+
+  if (typeof identifier === 'string') {
+    // Mode legacy: identifier est un twitchLogin
+    existingLogin = identifier.toLowerCase();
+    existing = memberDataStore[existingLogin] || null;
+    existingAdminMember = adminData[existingLogin];
+  } else {
+    // Mode nouveau: identifier est un objet avec discordId/twitchId/twitchLogin
+    existing = findMemberByIdentifier(identifier);
+    if (existing) {
+      existingLogin = existing.twitchLogin.toLowerCase();
+      existingAdminMember = adminData[existingLogin];
+    }
+  }
+
+  if (!existing || !existingLogin) {
+    console.error(`[updateMemberData] Membre non trouvé avec identifiant:`, identifier);
     return null;
   }
-  
-  // Si le membre existe déjà dans admin, préserver ses données et fusionner avec les updates
-  // Sinon, créer une nouvelle entrée admin basée sur les données fusionnées
-  const existingAdminMember = adminData[login];
+
+  console.log(`[updateMemberData] Mise à jour membre id=${existingLogin} (discordId: ${existing.discordId}, twitchId: ${existing.twitchId})`);
   
   // Créer createdAt automatiquement si absent (seulement si l'utilisateur ne le modifie pas manuellement)
   if (updates.createdAt === undefined) {
@@ -872,10 +935,12 @@ export async function updateMemberData(
     ];
     updates.roleHistory = roleHistory;
     
-    // Enregistrer l'événement role_changed
+    // Enregistrer l'événement role_changed (utiliser discordId ou twitchId si disponible pour l'identifiant du membre)
     try {
       const { recordMemberEvent } = await import('@/lib/memberEvents');
-      await recordMemberEvent(login, 'role_changed', {
+      // Utiliser discordId en priorité pour l'identifiant stable, sinon twitchLogin
+      const memberIdentifier = existing.discordId || existing.twitchId || existingLogin;
+      await recordMemberEvent(memberIdentifier, 'role_changed', {
         source: 'manual',
         actor: updatedBy || 'admin',
         payload: {
@@ -900,7 +965,9 @@ export async function updateMemberData(
          new Date(updates.integrationDate).getTime() !== new Date(hadIntegrationDate).getTime())) {
       try {
         const { recordMemberEvent } = await import('@/lib/memberEvents');
-        await recordMemberEvent(login, 'integration_validated', {
+        // Utiliser discordId en priorité pour l'identifiant stable, sinon twitchLogin
+        const memberIdentifier = existing.discordId || existing.twitchId || existingLogin;
+        await recordMemberEvent(memberIdentifier, 'integration_validated', {
           source: 'manual',
           actor: updatedBy || 'admin',
           payload: {
@@ -927,7 +994,9 @@ export async function updateMemberData(
     if (previousNotes !== newNotes) {
       try {
         const { recordMemberEvent } = await import('@/lib/memberEvents');
-        await recordMemberEvent(login, 'manual_note_updated', {
+        // Utiliser discordId en priorité pour l'identifiant stable, sinon twitchLogin
+        const memberIdentifier = existing.discordId || existing.twitchId || existingLogin;
+        await recordMemberEvent(memberIdentifier, 'manual_note_updated', {
           source: 'manual',
           actor: updatedBy || 'admin',
           payload: {
@@ -942,39 +1011,52 @@ export async function updateMemberData(
     }
   }
 
-  if (existingAdminMember) {
-    // Membre existe dans admin : préserver ses données et appliquer les updates
-    adminData[login] = {
-      ...existingAdminMember, // Préserver les données admin existantes
-      ...updates, // Appliquer les nouvelles modifications
-      roleHistory: updates.roleHistory || existingAdminMember.roleHistory,
-      updatedAt: new Date(),
-      updatedBy,
-    };
-    // Log pour vérifier que parrain est bien inclus
-    if (updates.parrain !== undefined) {
-      console.log(`[updateMemberData] Parrain sauvegardé pour ${login}:`, updates.parrain);
-    }
-  } else {
-    // Membre n'existe pas dans admin : créer une nouvelle entrée admin
-    // Utiliser les données fusionnées comme base, mais les updates ont priorité
-    adminData[login] = {
-      ...existing, // Base depuis les données fusionnées
-      ...updates, // Appliquer les modifications
-      roleHistory: updates.roleHistory || existing.roleHistory,
-      updatedAt: new Date(),
-      updatedBy,
-    };
-    // Log pour vérifier que parrain est bien inclus
-    if (updates.parrain !== undefined) {
-      console.log(`[updateMemberData] Parrain sauvegardé pour ${login}:`, updates.parrain);
-    }
+  // Si le twitchLogin change, on doit mettre à jour la clé dans le store
+  const newTwitchLogin = updates.twitchLogin || existing.twitchLogin;
+  const newLogin = newTwitchLogin.toLowerCase();
+  const loginChanged = newLogin !== existingLogin;
+
+  // Préparer les données mises à jour
+  const updatedMemberData: MemberData = existingAdminMember 
+    ? {
+        ...existingAdminMember, // Préserver les données admin existantes
+        ...updates, // Appliquer les nouvelles modifications
+        roleHistory: updates.roleHistory || existingAdminMember.roleHistory,
+        updatedAt: new Date(),
+        updatedBy,
+      }
+    : {
+        ...existing, // Base depuis les données fusionnées
+        ...updates, // Appliquer les modifications
+        roleHistory: updates.roleHistory || existing.roleHistory,
+        updatedAt: new Date(),
+        updatedBy,
+      };
+
+  // Log pour vérifier que parrain est bien inclus
+  if (updates.parrain !== undefined) {
+    console.log(`[updateMemberData] Parrain sauvegardé pour ${newLogin}:`, updates.parrain);
   }
+
+  // Si le login a changé, supprimer l'ancienne entrée et créer la nouvelle
+  if (loginChanged) {
+    console.log(`[updateMemberData] Login changé: ${existingLogin} → ${newLogin}, mise à jour de la clé`);
+    delete adminData[existingLogin];
+    delete memberDataStore[existingLogin];
+  }
+
+  // Sauvegarder avec la nouvelle clé (ou l'ancienne si pas changé)
+  adminData[newLogin] = updatedMemberData;
+  memberDataStore[newLogin] = updatedMemberData;
   
   // Sauvegarder les données admin
   await saveAdminData(adminData);
   
-  return adminData[login];
+  // Mettre à jour le store fusionné
+  await saveMergedData();
+  
+  console.log(`[updateMemberData] ✅ Membre mis à jour avec succès (clé: ${newLogin})`);
+  return adminData[newLogin];
 }
 
 /**

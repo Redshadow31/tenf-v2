@@ -214,25 +214,51 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { twitchLogin, ...updates } = body;
-
-    if (!twitchLogin) {
-      return NextResponse.json(
-        { error: "twitchLogin est requis" },
-        { status: 400 }
-      );
-    }
+    const { 
+      twitchLogin, 
+      memberId, // Identifiant stable (discordId) 
+      originalDiscordId, // discordId original pour identifier le membre
+      originalTwitchId, // twitchId original pour identifier le membre
+      ...updates 
+    } = body;
 
     // Charger les données depuis le stockage persistant AVANT de récupérer le membre
     await loadMemberDataFromStorage();
     
-    const existingMember = getMemberData(twitchLogin);
+    // Identifier le membre par son identifiant stable (discordId ou twitchId) en priorité
+    const { findMemberByIdentifier } = await import('@/lib/memberData');
+    let existingMember: any = null;
+    
+    if (originalDiscordId || originalTwitchId) {
+      // Chercher par identifiant stable (priorité)
+      existingMember = findMemberByIdentifier({
+        discordId: originalDiscordId,
+        twitchId: originalTwitchId,
+        twitchLogin: twitchLogin, // Fallback si les IDs ne sont pas disponibles
+      });
+      console.log(`[Update Member API] Recherche par identifiant stable - discordId: ${originalDiscordId}, twitchId: ${originalTwitchId}`);
+    } else if (twitchLogin) {
+      // Fallback: chercher par twitchLogin (mode legacy)
+      existingMember = getMemberData(twitchLogin);
+      console.log(`[Update Member API] Recherche par twitchLogin (legacy): ${twitchLogin}`);
+    }
+    
     if (!existingMember) {
+      console.error(`[Update Member API] ❌ Membre non trouvé avec:`, {
+        twitchLogin,
+        originalDiscordId,
+        originalTwitchId,
+      });
       return NextResponse.json(
         { error: "Membre non trouvé" },
         { status: 404 }
       );
     }
+
+    console.log(`[Update Member API] ✅ Membre trouvé: id=${existingMember.twitchLogin} (discordId: ${existingMember.discordId}, twitchId: ${existingMember.twitchId})`);
+    
+    // Récupérer le login original pour la mise à jour
+    const originalLogin = existingMember.twitchLogin.toLowerCase();
     
     // Ne pas écraser discordId ou discordUsername avec des valeurs vides
     if (updates.discordId === "" || updates.discordId === null) {
@@ -305,22 +331,31 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Préparer l'identifiant pour updateMemberData (utiliser identifiant stable si disponible)
+    const memberIdentifier = originalDiscordId || originalTwitchId
+      ? { discordId: originalDiscordId, twitchId: originalTwitchId, twitchLogin: twitchLogin }
+      : twitchLogin;
+
     // Log pour déboguer
-    console.log(`[Update Member] ${twitchLogin}:`, {
+    console.log(`[Update Member API] ${originalLogin}:`, {
+      identifier: memberIdentifier,
       existingDiscordId: existingMember.discordId,
       newDiscordId: updates.discordId,
       existingDiscordUsername: existingMember.discordUsername,
       newDiscordUsername: updates.discordUsername,
+      existingTwitchLogin: existingMember.twitchLogin,
+      newTwitchLogin: updates.twitchLogin || twitchLogin,
       existingParrain: existingMember.parrain,
       newParrain: updates.parrain,
     });
 
-    const updatedMember = await updateMemberData(twitchLogin, updates, admin.id);
+    const updatedMember = await updateMemberData(memberIdentifier, updates, admin.id);
     
     // Log après mise à jour
-    console.log(`[Update Member] ${twitchLogin} - Après mise à jour:`, {
+    console.log(`[Update Member API] ✅ Après mise à jour:`, {
       discordId: updatedMember?.discordId,
       discordUsername: updatedMember?.discordUsername,
+      twitchLogin: updatedMember?.twitchLogin,
       parrain: updatedMember?.parrain,
     });
 
