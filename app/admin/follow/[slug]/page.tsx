@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
 import WizebotImportModal from "@/components/admin/WizebotImportModal";
+import FollowImportFollowingModal from "@/components/admin/FollowImportFollowingModal";
 
 const STAFF_MEMBERS: Record<string, string> = {
   red: "Red",
@@ -85,6 +86,7 @@ export default function FollowMemberPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showWizebotImport, setShowWizebotImport] = useState(false);
+  const [showFollowingImport, setShowFollowingImport] = useState(false);
   const [twitchConnected, setTwitchConnected] = useState<boolean | null>(null);
 
   const memberName = STAFF_MEMBERS[slug] || slug;
@@ -483,6 +485,12 @@ export default function FollowMemberPage() {
             >
               📋 Importer followers (Wizebot)
             </button>
+            <button
+              onClick={() => setShowFollowingImport(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+            >
+              📥 Importer following (Je suis)
+            </button>
           </div>
           {syncMessage && (
             <div className={`p-3 rounded-lg ${
@@ -664,6 +672,17 @@ export default function FollowMemberPage() {
         <WizebotImportModal
           isOpen={showWizebotImport}
           onClose={() => setShowWizebotImport(false)}
+          monthKey={monthKey}
+          staffSlug={slug}
+          onImportComplete={loadData}
+        />
+      )}
+
+      {/* Modal import Following */}
+      {showFollowingImport && (
+        <FollowImportFollowingModal
+          isOpen={showFollowingImport}
+          onClose={() => setShowFollowingImport(false)}
           monthKey={monthKey}
           staffSlug={slug}
           onImportComplete={loadData}
