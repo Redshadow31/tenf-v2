@@ -73,6 +73,7 @@ export async function GET() {
         discordUsername: member.discordUsername,
         avatar: avatar,
         description: description,
+        createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
       };
     });
 
