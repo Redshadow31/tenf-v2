@@ -1052,8 +1052,8 @@ export async function updateMemberData(
   // Sauvegarder les données admin
   await saveAdminData(adminData);
   
-  // Mettre à jour le store fusionné
-  await saveMergedData();
+  // Mettre à jour le store fusionné en mémoire (les données fusionnées seront régénérées au prochain loadMemberDataFromStorage)
+  memberDataStore[newLogin] = updatedMemberData;
   
   console.log(`[updateMemberData] ✅ Membre mis à jour avec succès (clé: ${newLogin})`);
   return adminData[newLogin];
