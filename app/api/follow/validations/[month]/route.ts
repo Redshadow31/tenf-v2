@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { listStaffFollowValidations } from '@/lib/followStorage';
+
+/**
+ * GET - Récupère toutes les validations de follow pour un mois donné
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { month: string } }
+) {
+  try {
+    const admin = await getCurrentAdmin();
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const { month } = params;
+
+    // Vérifier le format du mois
+    if (!month.match(/^\d{4}-\d{2}$/)) {
+      return NextResponse.json(
+        { error: 'Format de mois invalide (attendu: YYYY-MM)' },
+        { status: 400 }
+      );
+    }
+
+    const validations = await listStaffFollowValidations(month);
+
+    return NextResponse.json({
+      month,
+      totalSheets: validations.length,
+      validations,
+    });
+  } catch (error) {
+    console.error('[Follow Validations API] Erreur GET:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+

@@ -197,6 +197,104 @@ export async function getAllFollowValidationsForMonth(
 }
 
 /**
+ * Type souple pour supporter plusieurs formats de stockage
+ */
+export type StaffFollowValidationAny = {
+  month?: string;
+  staffSlug?: string;
+  savedAt?: string;
+  // Format A (simple) : liste de logins qui "me suivent"
+  follows?: string[];
+  // Format B : map par membre avec booléens (Je suis / Me suit)
+  members?: Record<string, { iFollow?: boolean; followsMe?: boolean }>;
+  // Format C : rows/tableau
+  rows?: Array<{
+    login?: string;
+    user?: string;
+    iFollow?: boolean;
+    followsMe?: boolean;
+    meSuit?: boolean;
+  }>;
+  // Format D : structure actuelle avec members array
+  membersArray?: Array<{
+    twitchLogin: string;
+    displayName: string;
+    role?: string;
+    status?: FollowStatus;
+    validatedAt?: string;
+    jeSuis?: boolean;
+    meSuit?: boolean | null;
+  }>;
+  // On tolère d'autres champs
+  [key: string]: any;
+};
+
+/**
+ * Liste toutes les validations de follow pour un mois donné
+ * Supporte plusieurs formats de stockage
+ */
+export async function listStaffFollowValidations(month: string): Promise<StaffFollowValidationAny[]> {
+  try {
+    const validations: StaffFollowValidationAny[] = [];
+    
+    if (isNetlify()) {
+      const store = getStore(STORE_NAME);
+      const prefix = `${month}/`;
+      const list = await store.list({ prefix });
+      
+      for (const item of list.blobs ?? []) {
+        try {
+          const data = await store.get(item.key, { type: 'json' });
+          if (data) {
+            // Convertir le format StaffFollowValidation en format souple
+            const flexible: StaffFollowValidationAny = {
+              ...data,
+              month: (data as any).month || month,
+              staffSlug: (data as any).staffSlug,
+              savedAt: (data as any).validatedAt,
+              // Si c'est le format actuel avec members array, on le garde
+              membersArray: (data as any).members,
+            };
+            validations.push(flexible);
+          }
+        } catch (error) {
+          console.error(`[FollowStorage] Erreur lecture ${item.key}:`, error);
+        }
+      }
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
+      if (fs.existsSync(dataDir)) {
+        const files = fs.readdirSync(dataDir);
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            try {
+              const filePath = path.join(dataDir, file);
+              const content = fs.readFileSync(filePath, 'utf-8');
+              const data = JSON.parse(content);
+              const flexible: StaffFollowValidationAny = {
+                ...data,
+                month: data.month || month,
+                staffSlug: data.staffSlug,
+                savedAt: data.validatedAt,
+                membersArray: data.members,
+              };
+              validations.push(flexible);
+            } catch (error) {
+              console.error(`[FollowStorage] Erreur lecture ${file}:`, error);
+            }
+          }
+        }
+      }
+    }
+    
+    return validations;
+  } catch (error) {
+    console.error(`[FollowStorage] Erreur listing validations pour ${month}:`, error);
+    return [];
+  }
+}
+
+/**
  * Vérifie si une validation est obsolète (plus de 30 jours)
  */
 export function isValidationObsolete(validatedAt: string): boolean {
