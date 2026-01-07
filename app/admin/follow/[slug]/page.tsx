@@ -443,7 +443,7 @@ export default function FollowMemberPage() {
         </div>
       </div>
 
-      {/* Boutons de synchronisation et import (uniquement pour Red) */}
+      {/* Boutons de synchronisation Twitch (uniquement pour Red) */}
       {isRed && (
         <div className="mb-6 space-y-4">
           <div className="flex flex-wrap gap-4 items-center">
@@ -479,18 +479,6 @@ export default function FollowMemberPage() {
             ) : (
               <div className="text-gray-400">Vérification de la connexion Twitch...</div>
             )}
-            <button
-              onClick={() => setShowWizebotImport(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
-            >
-              📋 Importer followers (Wizebot)
-            </button>
-            <button
-              onClick={() => setShowFollowingImport(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
-            >
-              📥 Importer following (Je suis)
-            </button>
           </div>
           {syncMessage && (
             <div className={`p-3 rounded-lg ${
@@ -503,6 +491,24 @@ export default function FollowMemberPage() {
           )}
         </div>
       )}
+
+      {/* Boutons d'import manuel (tous les membres du staff) */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <button
+            onClick={() => setShowWizebotImport(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+          >
+            📋 Importer followers (Wizebot)
+          </button>
+          <button
+            onClick={() => setShowFollowingImport(true)}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+          >
+            📥 Importer following (Je suis)
+          </button>
+        </div>
+      </div>
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
