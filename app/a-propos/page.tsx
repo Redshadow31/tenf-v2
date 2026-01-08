@@ -1,3 +1,5 @@
+"use client";
+
 export default function Page() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
