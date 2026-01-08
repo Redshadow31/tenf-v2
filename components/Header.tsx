@@ -13,6 +13,7 @@ const publicLinks = [
   { href: "/integration", label: "Intégration" },
   { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
+  { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
 ];
 
 // Composant pour afficher les icônes de réseaux sociaux
@@ -99,16 +100,6 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-
-        {/* Bouton Rejoindre le serveur - Toujours visible à droite */}
-        <Link
-          href="https://discord.gg/tenf"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg bg-[#9146ff] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5a32b4]"
-        >
-          Rejoindre le serveur
-        </Link>
       </div>
     </header>
   );
