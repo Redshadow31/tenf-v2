@@ -772,3 +772,113 @@ export async function isMonthMigrated(monthKey: string): Promise<boolean> {
   return raidsFaits.length > 0;
 }
 
+// ============================================
+// RAIDS IGNORÉS
+// ============================================
+
+export interface IgnoredRaid {
+  raiderNormalized: string; // Handle normalisé du raider
+  targetNormalized: string; // Handle normalisé de la cible
+  rawText: string; // Texte original du raid
+  month: string; // Mois (YYYY-MM)
+  ignoredAt: string; // ISO timestamp
+  ignoredBy?: string; // ID Discord de l'admin qui a ignoré
+}
+
+/**
+ * Charge les raids ignorés pour un mois donné
+ */
+export async function loadIgnoredRaids(monthKey: string): Promise<IgnoredRaid[]> {
+  try {
+    const filename = "ignored-raids.json";
+    
+    if (isNetlify()) {
+      const store = getStore(RAID_STORE_NAME);
+      const key = `${monthKey}/${filename}`;
+      const data = await store.get(key, { type: 'json' }).catch(() => null);
+      return data || [];
+    } else {
+      const filePath = getFilePath(monthKey, filename);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(content);
+      }
+      return [];
+    }
+  } catch (error) {
+    console.error(`[RaidStorage] Erreur chargement raids ignorés pour ${monthKey}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Sauvegarde les raids ignorés pour un mois donné
+ */
+export async function saveIgnoredRaids(monthKey: string, ignored: IgnoredRaid[]): Promise<void> {
+  try {
+    const filename = "ignored-raids.json";
+    
+    if (isNetlify()) {
+      const store = getStore(RAID_STORE_NAME);
+      const key = `${monthKey}/${filename}`;
+      await store.set(key, JSON.stringify(ignored, null, 2));
+    } else {
+      const monthDir = getMonthFolderPath(monthKey);
+      if (!fs.existsSync(monthDir)) {
+        fs.mkdirSync(monthDir, { recursive: true });
+      }
+      const filePath = getFilePath(monthKey, filename);
+      fs.writeFileSync(filePath, JSON.stringify(ignored, null, 2), 'utf-8');
+    }
+  } catch (error) {
+    console.error(`[RaidStorage] Erreur sauvegarde raids ignorés pour ${monthKey}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Ajoute un raid ignoré
+ */
+export async function addIgnoredRaid(
+  monthKey: string,
+  raiderNormalized: string,
+  targetNormalized: string,
+  rawText: string,
+  ignoredBy?: string
+): Promise<void> {
+  const ignored = await loadIgnoredRaids(monthKey);
+  
+  // Vérifier si déjà ignoré (éviter les doublons)
+  const exists = ignored.some(
+    r => r.raiderNormalized === raiderNormalized && 
+         r.targetNormalized === targetNormalized
+  );
+  
+  if (!exists) {
+    ignored.push({
+      raiderNormalized,
+      targetNormalized,
+      rawText,
+      month: monthKey,
+      ignoredAt: new Date().toISOString(),
+      ignoredBy,
+    });
+    await saveIgnoredRaids(monthKey, ignored);
+  }
+}
+
+/**
+ * Vérifie si un raid est ignoré
+ */
+export async function isRaidIgnored(
+  monthKey: string,
+  raiderNormalized: string,
+  targetNormalized: string
+): Promise<boolean> {
+  const ignored = await loadIgnoredRaids(monthKey);
+  return ignored.some(
+    r => r.raiderNormalized === raiderNormalized && 
+         r.targetNormalized === targetNormalized
+  );
+}
+
