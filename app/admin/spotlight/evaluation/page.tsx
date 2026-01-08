@@ -51,6 +51,9 @@ export default function EvaluationSpotlightPage() {
   const [monthlyData, setMonthlyData] = useState<MonthlyEvaluations | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSpotlight, setSelectedSpotlight] = useState<SpotlightData | null>(null);
+  const [editingEvaluation, setEditingEvaluation] = useState<SpotlightEvaluation | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [searchStreamer, setSearchStreamer] = useState("");
   const [searchModerator, setSearchModerator] = useState("");
   const [sortBy, setSortBy] = useState<'date' | 'score'>('date');
@@ -354,10 +357,16 @@ export default function EvaluationSpotlightPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
-                          onClick={() => setSelectedSpotlight(spotlight)}
+                          onClick={() => {
+                            setSelectedSpotlight(spotlight);
+                            if (spotlight.evaluation) {
+                              setEditingEvaluation({ ...spotlight.evaluation });
+                              setIsEditing(false);
+                            }
+                          }}
                           className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors"
                         >
-                          Détails
+                          {spotlight.evaluation ? "Modifier" : "Détails"}
                         </button>
                       </td>
                     </tr>
@@ -381,11 +390,91 @@ export default function EvaluationSpotlightPage() {
         )}
       </div>
 
-      {/* Modal détails spotlight */}
+  const handleStartEdit = () => {
+    if (selectedSpotlight?.evaluation) {
+      setEditingEvaluation({ ...selectedSpotlight.evaluation });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (selectedSpotlight?.evaluation) {
+      setEditingEvaluation({ ...selectedSpotlight.evaluation });
+    }
+  };
+
+  const handleSaveEvaluation = async () => {
+    if (!selectedSpotlight || !editingEvaluation) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/spotlight/evaluation/${selectedSpotlight.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          criteria: editingEvaluation.criteria,
+          moderatorComments: editingEvaluation.moderatorComments,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Mettre à jour les données locales
+        setSelectedSpotlight({
+          ...selectedSpotlight,
+          evaluation: data.evaluation,
+          status: 'evaluated',
+        });
+        setIsEditing(false);
+        // Recharger les données mensuelles
+        await loadMonthlyData();
+        alert('✅ Évaluation mise à jour avec succès');
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible de sauvegarder'}`);
+      }
+    } catch (error) {
+      console.error("Erreur sauvegarde évaluation:", error);
+      alert('❌ Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCriteriaChange = (criteriaId: string, value: number) => {
+    if (!editingEvaluation) return;
+    
+    setEditingEvaluation({
+      ...editingEvaluation,
+      criteria: editingEvaluation.criteria.map(crit => 
+        crit.id === criteriaId 
+          ? { ...crit, value: Math.max(0, Math.min(crit.maxValue, value)) }
+          : crit
+      ),
+    });
+  };
+
+  const handleCommentsChange = (comments: string) => {
+    if (!editingEvaluation) return;
+    
+    setEditingEvaluation({
+      ...editingEvaluation,
+      moderatorComments: comments,
+    });
+  };
+
+      {/* Modal détails/édition spotlight */}
       {selectedSpotlight && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setSelectedSpotlight(null)}
+          onClick={() => {
+            if (!isEditing) {
+              setSelectedSpotlight(null);
+              setIsEditing(false);
+              setEditingEvaluation(null);
+            }
+          }}
         >
           <div
             className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
@@ -393,10 +482,14 @@ export default function EvaluationSpotlightPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">
-                Détail du spotlight
+                {isEditing ? 'Modifier l\'évaluation' : 'Détail du spotlight'}
               </h2>
               <button
-                onClick={() => setSelectedSpotlight(null)}
+                onClick={() => {
+                  setSelectedSpotlight(null);
+                  setIsEditing(false);
+                  setEditingEvaluation(null);
+                }}
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 ✕
