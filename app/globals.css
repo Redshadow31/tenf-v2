@@ -18,17 +18,24 @@
 }
 
 [data-theme="light"] {
-  /* Mode clair - Violet pâle avec texte noir/violet foncé */
-  --color-bg: #faf5ff;
-  --color-text: #1a1a1d;
-  --color-primary: #7c3aed;
-  --color-primary-dark: #5a32b4;
-  --color-card: #ffffff;
-  --color-card-hover: #f3e8ff;
-  --color-border: rgba(124, 58, 237, 0.15);
-  --color-text-secondary: #6b7280;
-  --color-sidebar-bg: #ffffff;
-  --color-sidebar-border: rgba(124, 58, 237, 0.2);
+  /* Mode clair - Nuances de violet pâle avec texte noir/violet foncé */
+  --color-bg: #faf5ff;                    /* Violet très pâle pour le fond principal */
+  --color-text: #1a1a1d;                  /* Noir pour le texte principal */
+  --color-primary: #7c3aed;               /* Violet moyen pour les accents */
+  --color-primary-dark: #6d28d9;          /* Violet foncé pour hover */
+  --color-card: #ffffff;                  /* Blanc pur pour les cartes */
+  --color-card-hover: #f3e8ff;            /* Violet très pâle pour hover */
+  --color-card-alt: #faf5ff;              /* Violet pâle alternatif */
+  --color-border: rgba(124, 58, 237, 0.2); /* Bordure violette subtile */
+  --color-border-light: rgba(124, 58, 237, 0.1); /* Bordure très subtile */
+  --color-text-secondary: #6b7280;        /* Gris pour texte secondaire */
+  --color-text-muted: #9ca3af;            /* Gris clair pour texte atténué */
+  --color-sidebar-bg: #ffffff;            /* Blanc pour sidebar */
+  --color-sidebar-border: rgba(124, 58, 237, 0.25); /* Bordure sidebar */
+  --color-surface: #f3e8ff;               /* Surface violette très pâle */
+  --color-surface-hover: #ede9fe;         /* Surface hover */
+  --color-accent-light: #e9d5ff;          /* Accent violet clair */
+  --color-accent-medium: #ddd6fe;         /* Accent violet moyen */
 }
 
 * {

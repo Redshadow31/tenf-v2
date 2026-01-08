@@ -129,10 +129,10 @@ export default function Page() {
     <div className="space-y-16 pb-16">
       {/* SECTION 1 — HERO */}
       <section className="flex flex-col items-center justify-center space-y-8 py-16 text-center">
-        <h1 className="text-5xl font-bold text-white">
+        <h1 className="text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
           Communauté d'entraide pour streamers
         </h1>
-        <div className="max-w-4xl space-y-4 text-lg text-gray-300">
+        <div className="max-w-4xl space-y-4 text-lg" style={{ color: 'var(--color-text-secondary)' }}>
           <p>
             TENF est bien plus qu'un simple serveur Discord : c'est une véritable famille de streamers engagés à progresser ensemble.
           </p>
@@ -148,7 +148,7 @@ export default function Page() {
           <p>
             Rejoins une communauté active, humaine et passionnée, où chaque streamer compte et où ta progression devient un projet collectif.
           </p>
-          <p className="text-[#9146ff] font-semibold">
+          <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
             Bienvenue dans la New Family.
           </p>
         </div>
@@ -159,38 +159,45 @@ export default function Page() {
             href="https://discord.gg/tenf"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg bg-[#9146ff] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#5a32b4]"
+            className="rounded-lg px-6 py-3 text-base font-semibold text-white transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
           >
             Rejoindre le serveur
           </Link>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             Rejoins plus de 170 créateurs déjà engagés dans l'aventure TENF.
           </p>
         </div>
 
         {/* Cartes de stats */}
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
-          <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">
+          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
               {loading ? "..." : stats.totalMembers}
             </p>
-            <p className="mt-2 text-sm text-gray-400">membres</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>membres</p>
           </div>
-          <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">
+          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
               {loading ? "..." : stats.activeMembers}
             </p>
-            <p className="mt-2 text-sm text-gray-400">actifs ce mois</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>actifs ce mois</p>
           </div>
-          <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-4xl font-bold text-white">
+          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
               {loading ? "..." : stats.livesInProgress}
             </p>
-            <p className="mt-2 text-sm text-gray-400">lives en cours</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>lives en cours</p>
           </div>
-          <div className="card bg-[#1a1a1d] border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-white">{vipOfMonth}</p>
-            <p className="mt-2 text-sm text-gray-400">VIP du mois</p>
+          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{vipOfMonth}</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>VIP du mois</p>
           </div>
         </div>
       </section>
@@ -198,10 +205,17 @@ export default function Page() {
       {/* SECTION 2 — LIVES EN STREAMING */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-white">Lives en streaming</h2>
+          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en streaming</h2>
           <Link
             href="/lives"
-            className="text-sm font-medium text-white hover:text-[#9146ff] transition-colors"
+            className="text-sm font-medium transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+            }}
           >
             Voir plus →
           </Link>
@@ -210,9 +224,10 @@ export default function Page() {
           {randomLives.map((live) => (
             <div
               key={live.id}
-              className="card overflow-hidden bg-[#1a1a1d] border border-gray-700 transition-transform hover:scale-[1.02]"
+              className="card overflow-hidden border transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
-              <div className="relative aspect-video w-full bg-gradient-to-br from-[#9146ff]/20 to-[#5a32b4]/20">
+              <div className="relative aspect-video w-full" style={{ background: 'linear-gradient(to bottom right, var(--color-accent-light), var(--color-accent-medium))' }}>
                 {live.thumbnail && (
                   <img
                     src={live.thumbnail}
@@ -229,13 +244,20 @@ export default function Page() {
                 </div>
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-white">{live.username}</h3>
-                <p className="mt-1 text-sm text-gray-400">{live.game}</p>
+                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{live.username}</h3>
+                <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{live.game}</p>
                 <Link
                   href={live.twitchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 block w-full rounded-lg bg-[#9146ff] px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#5a32b4]"
+                  className="mt-4 block w-full rounded-lg px-4 py-2 text-center text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+                  }}
                 >
                   Regarder
                 </Link>
@@ -248,10 +270,17 @@ export default function Page() {
       {/* SECTION 3 — VIPs DU MOIS */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-white">VIPs du mois</h2>
+          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>VIPs du mois</h2>
           <Link
             href="/vip"
-            className="text-sm font-medium text-white hover:text-[#9146ff] transition-colors"
+            className="text-sm font-medium transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+            }}
           >
             Voir plus →
           </Link>
@@ -260,16 +289,17 @@ export default function Page() {
           {randomVip.map((vip) => (
             <div
               key={vip.twitchLogin}
-              className="card flex flex-col items-center space-y-4 bg-[#1a1a1d] border border-gray-700 p-6 text-center transition-transform hover:scale-[1.02]"
+              className="card flex flex-col items-center space-y-4 border p-6 text-center transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
               <div className="relative">
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4]"></div>
-                <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
+                <div className="h-20 w-20 rounded-full" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}></div>
+                <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
                   VIP
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-white">{vip.displayName}</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{vip.displayName}</h3>
               </div>
             </div>
           ))}

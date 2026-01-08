@@ -56,22 +56,22 @@ export default function Page() {
     return events.filter((event) => event.category === activeFilter);
   };
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category: string): string => {
     switch (category) {
       case "Spotlight":
-        return "bg-[#9146ff]";
+        return "#9146ff";
       case "Soirée Film":
-        return "bg-blue-500";
+        return "#3b82f6";
       case "Formation":
-        return "bg-green-500";
+        return "#10b981";
       case "Jeux communautaire":
-        return "bg-amber-500";
+        return "#f59e0b";
       case "Apéro":
-        return "bg-purple-500";
+        return "#a855f7";
       case "Organisation Aventura 2026":
-        return "bg-pink-500";
+        return "#ec4899";
       default:
-        return "bg-gray-700";
+        return "var(--color-primary)";
     }
   };
 
@@ -164,7 +164,7 @@ export default function Page() {
   return (
     <div className="space-y-8">
       {/* Titre */}
-      <h1 className="text-3xl font-bold text-white">Événements</h1>
+      <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Événements</h1>
 
       {/* Filtres */}
       <div className="flex flex-wrap gap-3">
@@ -172,11 +172,23 @@ export default function Page() {
           <button
             key={category}
             onClick={() => setActiveFilter(activeFilter === category ? null : category)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-all ${
-              activeFilter === category
-                ? getCategoryColor(category)
-                : "bg-[#1a1a1d] border border-gray-700 hover:border-[#9146ff]/50"
-            }`}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-all border"
+            style={{
+              backgroundColor: activeFilter === category ? getCategoryColor(category) : 'var(--color-card)',
+              borderColor: activeFilter === category ? 'transparent' : 'var(--color-border)',
+            }}
+            onMouseEnter={(e) => {
+              if (activeFilter !== category) {
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.opacity = '0.8';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeFilter !== category) {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.opacity = '1';
+              }
+            }}
           >
             {category}
           </button>
@@ -184,13 +196,22 @@ export default function Page() {
       </div>
 
       {/* Calendrier */}
-      <div className="card bg-[#1a1a1d] border border-gray-700 p-6">
+      <div className="card border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
         {/* En-tête du calendrier */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="rounded-lg bg-[#0e0e10] p-2 text-gray-400 hover:text-white transition-colors"
+              className="rounded-lg p-2 transition-colors"
+              style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-text)';
+                e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+              }}
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -198,13 +219,22 @@ export default function Page() {
             </button>
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="rounded-lg bg-[#0e0e10] p-2 text-gray-400 hover:text-white transition-colors"
+              className="rounded-lg p-2 transition-colors"
+              style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-text)';
+                e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+              }}
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
-            <span className="text-lg font-semibold text-white">
+            <span className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
               {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </span>
           </div>
@@ -213,7 +243,7 @@ export default function Page() {
         {/* Jours de la semaine */}
         <div className="mb-4 grid grid-cols-7 gap-2">
           {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-400">
+            <div key={day} className="text-center text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
               {day}
             </div>
           ))}
@@ -227,22 +257,31 @@ export default function Page() {
               <div
                 key={index}
                 className={`min-h-[80px] rounded-lg border p-2 transition-colors ${
-                  date
-                    ? event
-                      ? "cursor-pointer border-gray-600 bg-[#0e0e10] hover:bg-[#1a1a1d]"
-                      : "border-gray-800 bg-[#0e0e10]"
-                    : "border-transparent"
+                  date && event ? "cursor-pointer" : ""
                 }`}
+                style={{
+                  backgroundColor: date ? (event ? 'var(--color-surface)' : 'var(--color-bg)') : 'transparent',
+                  borderColor: date ? (event ? 'var(--color-border)' : 'var(--color-border-light)') : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (date && event) {
+                    e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (date && event) {
+                    e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                  }
+                }}
                 onClick={() => event && handleEventClick(event)}
               >
                 {date && (
                   <>
-                    <div className="mb-1 text-sm text-gray-400">{date.getDate()}</div>
+                    <div className="mb-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{date.getDate()}</div>
                     {event && (
                       <div
-                        className={`rounded px-2 py-1 text-xs font-bold text-white ${getCategoryColor(
-                          event.category
-                        )}`}
+                        className="rounded px-2 py-1 text-xs font-bold text-white"
+                        style={{ backgroundColor: getCategoryColor(event.category) }}
                       >
                         {event.title}
                       </div>
@@ -273,14 +312,14 @@ export default function Page() {
 
       {loading && (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
-          <p className="text-gray-400 mt-4">Chargement des événements...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
+          <p className="mt-4" style={{ color: 'var(--color-text-secondary)' }}>Chargement des événements...</p>
         </div>
       )}
 
       {!loading && events.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-400">Aucun événement disponible pour le moment.</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Aucun événement disponible pour le moment.</p>
         </div>
       )}
     </div>
