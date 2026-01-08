@@ -60,41 +60,22 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres actifs
-    // Utiliser getAllActiveMemberDataFromAllLists() pour les membres enregistrés dans le système
-    let activeMembers = getAllActiveMemberDataFromAllLists();
-    let activeMembersCount = activeMembers.length;
+    // Utiliser allMembers comme source de vérité (membres enregistrés dans le site)
+    // C'est la liste complète des membres TENF enregistrés
+    const activeMembersCount = allMembers.length;
     
-    // Si aucun membre trouvé dans le store, utiliser allMembers comme source de vérité (membres enregistrés dans le site)
-    if (activeMembersCount === 0) {
-      console.log(`[Stats API] No members in store, using allMembers as source of truth`);
-      activeMembersCount = allMembers.length;
-      // Créer une structure similaire pour les lives avec les logins Twitch
-      activeMembers = allMembers.map(m => ({
-        twitchLogin: m.twitchLogin,
-        twitchId: undefined,
-        twitchUrl: m.twitchUrl,
-        displayName: m.displayName,
-        role: 'Affilié' as const,
-        isVip: false,
-        isActive: true,
-        listId: undefined,
-      }));
-    }
+    // Pour les lives, utiliser les logins Twitch de allMembers
+    const twitchLoginsForLives = allMembers.map(m => m.twitchLogin).filter(Boolean);
     
     // Debug: logger le nombre de membres actifs
-    console.log(`[Stats API] Active members count: ${activeMembersCount}`);
+    console.log(`[Stats API] Active members count (from allMembers): ${activeMembersCount}`);
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
     try {
-      // Récupérer les logins Twitch des membres actifs
-      const twitchLogins = activeMembers
-        .map(member => member.twitchLogin)
-        .filter(Boolean) as string[];
+      console.log(`[Stats API] Members with Twitch: ${twitchLoginsForLives.length}`);
       
-      console.log(`[Stats API] Members with Twitch: ${twitchLogins.length}`);
-      
-      if (twitchLogins.length > 0) {
+      if (twitchLoginsForLives.length > 0) {
         const accessToken = await getTwitchAccessToken();
         if (!accessToken) {
           console.error('[Stats API] Failed to get Twitch access token');
@@ -107,8 +88,8 @@ export async function GET() {
             const BATCH_SIZE = 99;
             let totalLives = 0;
             
-            for (let i = 0; i < twitchLogins.length; i += BATCH_SIZE) {
-              const batch = twitchLogins.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < twitchLoginsForLives.length; i += BATCH_SIZE) {
+              const batch = twitchLoginsForLives.slice(i, i + BATCH_SIZE);
               
               const params = batch
                 .map((login) => `user_login=${encodeURIComponent(login.trim().toLowerCase())}`)
