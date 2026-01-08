@@ -27,11 +27,12 @@ export interface Integration {
 export interface IntegrationRegistration {
   id: string;
   integrationId: string;
-  twitchLogin: string;
-  displayName: string;
-  email?: string; // Email pour les inscriptions libres
+  twitchLogin: string; // Pseudo Twitch (extrait du lien)
+  twitchChannelUrl: string; // Lien de chaîne Twitch (obligatoire)
+  displayName: string; // Pseudo Discord (obligatoire)
   discordId?: string;
-  discordUsername?: string;
+  discordUsername?: string; // Pseudo Discord (obligatoire, stocké aussi ici)
+  parrain?: string; // Parrain TENF (personne qui a invité)
   registeredAt: string; // ISO timestamp
   notes?: string; // Notes optionnelles de l'utilisateur
 }
@@ -203,18 +204,20 @@ export async function saveRegistrations(integrationId: string, registrations: In
 
 export async function registerForIntegration(integrationId: string, registration: {
   twitchLogin: string;
-  displayName: string;
-  email?: string;
+  twitchChannelUrl: string;
+  displayName: string; // Pseudo Discord
   discordId?: string;
   discordUsername?: string;
+  parrain?: string;
   notes?: string;
 }): Promise<IntegrationRegistration> {
   const registrations = await loadRegistrations(integrationId);
   
-  // Vérifier si déjà inscrit (par email, twitchLogin, ou discordId)
+  // Vérifier si déjà inscrit (par twitchChannelUrl, twitchLogin, ou discordId)
   const existing = registrations.find(r => {
-    // Vérifier par email si fourni
-    if (registration.email && r.email && r.email.toLowerCase() === registration.email.toLowerCase()) {
+    // Vérifier par lien de chaîne Twitch
+    if (r.twitchChannelUrl && registration.twitchChannelUrl && 
+        r.twitchChannelUrl.toLowerCase() === registration.twitchChannelUrl.toLowerCase()) {
       return true;
     }
     // Vérifier par twitchLogin
@@ -223,6 +226,11 @@ export async function registerForIntegration(integrationId: string, registration
     }
     // Vérifier par discordId si fourni
     if (registration.discordId && r.discordId && r.discordId === registration.discordId) {
+      return true;
+    }
+    // Vérifier par pseudo Discord
+    if (registration.displayName && r.displayName && 
+        r.displayName.toLowerCase() === registration.displayName.toLowerCase()) {
       return true;
     }
     return false;

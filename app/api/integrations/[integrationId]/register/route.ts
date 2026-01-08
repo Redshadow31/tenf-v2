@@ -38,68 +38,74 @@ export async function POST(
     const discordUserId = cookieStore.get('discord_user_id')?.value;
     const discordUsername = cookieStore.get('discord_username')?.value;
     
-    // MODE 1: Utilisateur connecté Discord (inscription automatique)
-    if (discordUserId) {
-      try {
-        await loadMemberDataFromStorage();
-        const member = findMemberByIdentifier({ discordId: discordUserId });
-        
-        if (member) {
-          // Membre trouvé dans la base : inscription automatique
-          const registration = await registerForIntegration(integrationId, {
-            twitchLogin: member.twitchLogin,
-            displayName: member.displayName || member.twitchLogin,
-            discordId: member.discordId,
-            discordUsername: member.discordUsername || discordUsername,
-            notes: body.notes || undefined,
-          });
-          
-          return NextResponse.json({ 
-            registration,
-            success: true,
-            message: 'Inscription réussie !' 
-          });
+    // Fonction pour extraire le pseudo Twitch d'un lien de chaîne
+    const extractTwitchLogin = (url: string): string | null => {
+      if (!url) return null;
+      const patterns = [
+        /twitch\.tv\/([a-zA-Z0-9_]+)/i,
+        /^([a-zA-Z0-9_]+)$/, // Juste le pseudo
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+          return match[1].toLowerCase();
         }
-      } catch (error) {
-        // Si erreur, continuer avec le mode formulaire libre
-        console.error('[Integration Registration] Erreur mode connecté:', error);
       }
-    }
-    
-    // MODE 2: Formulaire libre (pour personnes non membres)
+      return null;
+    };
+
+    // Validation des champs requis (même pour les utilisateurs connectés)
     const { 
-      displayName, 
-      email, 
-      twitchLogin, 
-      discordUsername: formDiscordUsername,
+      discordUsername: formDiscordUsername, 
+      twitchChannelUrl,
+      parrain,
       notes 
     } = body;
     
-    // Validation des champs requis pour le formulaire libre
-    if (!displayName || !email) {
+    // Validation des champs obligatoires
+    if (!formDiscordUsername) {
       return NextResponse.json(
-        { error: 'Le nom et l\'email sont requis pour l\'inscription' },
+        { error: 'Le pseudo Discord est requis' },
         { status: 400 }
       );
     }
     
-    // Validation email basique
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!twitchChannelUrl) {
       return NextResponse.json(
-        { error: 'Format d\'email invalide' },
+        { error: 'Le lien de chaîne Twitch est requis' },
         { status: 400 }
       );
     }
     
-    // S'inscrire avec les données du formulaire libre
-    // Utiliser email comme identifiant unique si pas de twitchLogin
+    if (!parrain) {
+      return NextResponse.json(
+        { error: 'Le parrain TENF est requis' },
+        { status: 400 }
+      );
+    }
+    
+    // Extraire le pseudo Twitch du lien
+    const twitchLogin = extractTwitchLogin(twitchChannelUrl);
+    if (!twitchLogin) {
+      return NextResponse.json(
+        { error: 'Format de lien Twitch invalide. Utilisez un lien du type https://www.twitch.tv/pseudo ou juste le pseudo' },
+        { status: 400 }
+      );
+    }
+    
+    // Normaliser le lien Twitch
+    const normalizedTwitchUrl = twitchChannelUrl.startsWith('http') 
+      ? twitchChannelUrl 
+      : `https://www.twitch.tv/${twitchLogin}`;
+    
+    // S'inscrire avec les données du formulaire (même si connecté Discord, on utilise les données du formulaire)
     const registration = await registerForIntegration(integrationId, {
-      twitchLogin: twitchLogin || email.toLowerCase().split('@')[0], // Utiliser email si pas de Twitch
-      displayName: displayName,
-      email: email, // Stocker l'email pour les inscriptions libres
-      discordId: discordUserId || undefined, // Si connecté Discord mais pas dans la base
-      discordUsername: formDiscordUsername || discordUsername || undefined,
+      twitchLogin: twitchLogin,
+      twitchChannelUrl: normalizedTwitchUrl,
+      displayName: formDiscordUsername, // Pseudo Discord
+      discordId: discordUserId || undefined,
+      discordUsername: formDiscordUsername,
+      parrain: parrain,
       notes: notes || undefined,
     });
     

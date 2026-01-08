@@ -75,10 +75,9 @@ export default function Page() {
   };
 
   const handleRegister = async (formData?: {
-    displayName: string;
-    email: string;
-    twitchLogin?: string;
-    discordUsername?: string;
+    discordUsername: string;
+    twitchChannelUrl: string;
+    parrain: string;
     notes?: string;
   }) => {
     if (!selectedIntegration) return;
