@@ -145,6 +145,80 @@ export default function EvaluationSpotlightPage() {
   const uniqueStreamers = Array.from(new Set(monthlyData?.spotlights.map(s => s.streamerTwitchLogin) || [])).sort();
   const uniqueModerators = Array.from(new Set(monthlyData?.spotlights.map(s => s.moderatorUsername) || [])).sort();
 
+  const handleStartEdit = () => {
+    if (selectedSpotlight?.evaluation) {
+      setEditingEvaluation({ ...selectedSpotlight.evaluation });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (selectedSpotlight?.evaluation) {
+      setEditingEvaluation({ ...selectedSpotlight.evaluation });
+    }
+  };
+
+  const handleSaveEvaluation = async () => {
+    if (!selectedSpotlight || !editingEvaluation) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/spotlight/evaluation/${selectedSpotlight.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          criteria: editingEvaluation.criteria,
+          moderatorComments: editingEvaluation.moderatorComments,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Mettre à jour les données locales
+        setSelectedSpotlight({
+          ...selectedSpotlight,
+          evaluation: data.evaluation,
+          status: 'evaluated',
+        });
+        setIsEditing(false);
+        // Recharger les données mensuelles
+        await loadMonthlyData();
+        alert('✅ Évaluation mise à jour avec succès');
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible de sauvegarder'}`);
+      }
+    } catch (error) {
+      console.error("Erreur sauvegarde évaluation:", error);
+      alert('❌ Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCriteriaChange = (criteriaId: string, value: number) => {
+    if (!editingEvaluation) return;
+    
+    setEditingEvaluation({
+      ...editingEvaluation,
+      criteria: editingEvaluation.criteria.map(crit => 
+        crit.id === criteriaId 
+          ? { ...crit, value: Math.max(0, Math.min(crit.maxValue, value)) }
+          : crit
+      ),
+    });
+  };
+
+  const handleCommentsChange = (comments: string) => {
+    if (!editingEvaluation) return;
+    
+    setEditingEvaluation({
+      ...editingEvaluation,
+      moderatorComments: comments,
+    });
+  };
+
   if (loading) {
     return (
       <div className="text-white">
@@ -361,8 +435,10 @@ export default function EvaluationSpotlightPage() {
                             setSelectedSpotlight(spotlight);
                             if (spotlight.evaluation) {
                               setEditingEvaluation({ ...spotlight.evaluation });
-                              setIsEditing(false);
+                            } else {
+                              setEditingEvaluation(null);
                             }
+                            setIsEditing(false);
                           }}
                           className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors"
                         >
@@ -389,80 +465,6 @@ export default function EvaluationSpotlightPage() {
           </div>
         )}
       </div>
-
-  const handleStartEdit = () => {
-    if (selectedSpotlight?.evaluation) {
-      setEditingEvaluation({ ...selectedSpotlight.evaluation });
-      setIsEditing(true);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    if (selectedSpotlight?.evaluation) {
-      setEditingEvaluation({ ...selectedSpotlight.evaluation });
-    }
-  };
-
-  const handleSaveEvaluation = async () => {
-    if (!selectedSpotlight || !editingEvaluation) return;
-
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/spotlight/evaluation/${selectedSpotlight.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          criteria: editingEvaluation.criteria,
-          moderatorComments: editingEvaluation.moderatorComments,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Mettre à jour les données locales
-        setSelectedSpotlight({
-          ...selectedSpotlight,
-          evaluation: data.evaluation,
-          status: 'evaluated',
-        });
-        setIsEditing(false);
-        // Recharger les données mensuelles
-        await loadMonthlyData();
-        alert('✅ Évaluation mise à jour avec succès');
-      } else {
-        const error = await response.json();
-        alert(`❌ Erreur: ${error.error || 'Impossible de sauvegarder'}`);
-      }
-    } catch (error) {
-      console.error("Erreur sauvegarde évaluation:", error);
-      alert('❌ Erreur lors de la sauvegarde');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCriteriaChange = (criteriaId: string, value: number) => {
-    if (!editingEvaluation) return;
-    
-    setEditingEvaluation({
-      ...editingEvaluation,
-      criteria: editingEvaluation.criteria.map(crit => 
-        crit.id === criteriaId 
-          ? { ...crit, value: Math.max(0, Math.min(crit.maxValue, value)) }
-          : crit
-      ),
-    });
-  };
-
-  const handleCommentsChange = (comments: string) => {
-    if (!editingEvaluation) return;
-    
-    setEditingEvaluation({
-      ...editingEvaluation,
-      moderatorComments: comments,
-    });
-  };
 
       {/* Modal détails/édition spotlight */}
       {selectedSpotlight && (
@@ -537,28 +539,58 @@ export default function EvaluationSpotlightPage() {
             {selectedSpotlight.evaluation ? (
               <>
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Évaluation du spotlight
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      Évaluation du spotlight
+                    </h3>
+                    {!isEditing && (
+                      <button
+                        onClick={handleStartEdit}
+                        className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors px-3 py-1 border border-[#9146ff] rounded-lg"
+                      >
+                        ✏️ Modifier
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-4">
-                    {selectedSpotlight.evaluation.criteria.map((crit) => (
-                      <div key={crit.id} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-sm font-medium text-gray-300">
-                            {crit.label}
-                          </label>
-                          <span className="text-sm text-purple-400 font-semibold">
-                            {crit.value}/{crit.maxValue}
-                          </span>
+                    {(isEditing && editingEvaluation ? editingEvaluation : selectedSpotlight.evaluation).criteria.map((crit) => {
+                      const currentValue = isEditing && editingEvaluation
+                        ? editingEvaluation.criteria.find(c => c.id === crit.id)?.value ?? crit.value
+                        : crit.value;
+                      
+                      return (
+                        <div key={crit.id} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-gray-300">
+                              {crit.label}
+                            </label>
+                            {isEditing ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={crit.maxValue}
+                                  value={currentValue}
+                                  onChange={(e) => handleCriteriaChange(crit.id, parseInt(e.target.value) || 0)}
+                                  className="w-20 bg-[#1a1a1d] border border-gray-600 rounded px-2 py-1 text-white text-sm text-right"
+                                />
+                                <span className="text-sm text-gray-400">/{crit.maxValue}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-purple-400 font-semibold">
+                                {crit.value}/{crit.maxValue}
+                              </span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-[#9146ff] h-2 rounded-full transition-all"
+                              style={{ width: `${(currentValue / crit.maxValue) * 100}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-[#9146ff] h-2 rounded-full transition-all"
-                            style={{ width: `${(crit.value / crit.maxValue) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="mt-4 bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                     <div className="flex items-center justify-between">
@@ -566,21 +598,31 @@ export default function EvaluationSpotlightPage() {
                         Note finale
                       </p>
                       <p className="text-2xl font-bold text-yellow-400">
-                        {selectedSpotlight.evaluation.totalScore}/{selectedSpotlight.evaluation.maxScore}
+                        {isEditing && editingEvaluation
+                          ? `${editingEvaluation.criteria.reduce((sum, c) => sum + c.value, 0)}/${editingEvaluation.criteria.reduce((sum, c) => sum + c.maxValue, 0)}`
+                          : `${selectedSpotlight.evaluation.totalScore}/${selectedSpotlight.evaluation.maxScore}`
+                        }
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Commentaire */}
-                {selectedSpotlight.evaluation.moderatorComments && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                      Commentaire du modérateur
-                    </h3>
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    Commentaire du modérateur
+                  </h3>
+                  {isEditing ? (
+                    <textarea
+                      value={editingEvaluation?.moderatorComments || ''}
+                      onChange={(e) => handleCommentsChange(e.target.value)}
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg p-4 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] min-h-[120px]"
+                      placeholder="Ajouter un commentaire..."
+                    />
+                  ) : (
                     <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                       <p className="text-white whitespace-pre-wrap">
-                        {selectedSpotlight.evaluation.moderatorComments}
+                        {selectedSpotlight.evaluation.moderatorComments || '(Aucun commentaire)'}
                       </p>
                       <p className="text-sm text-gray-400 mt-4">
                         Évalué le {new Date(selectedSpotlight.evaluation.evaluatedAt).toLocaleString('fr-FR', {
@@ -592,6 +634,26 @@ export default function EvaluationSpotlightPage() {
                         })}
                       </p>
                     </div>
+                  )}
+                </div>
+
+                {/* Boutons d'action */}
+                {isEditing && (
+                  <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-700">
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={saving}
+                      className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleSaveEvaluation}
+                      disabled={saving}
+                      className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {saving ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
                   </div>
                 )}
 
