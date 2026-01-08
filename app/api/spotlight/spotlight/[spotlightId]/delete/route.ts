@@ -29,17 +29,18 @@ export async function DELETE(
     await deleteAllSpotlightData(spotlightId);
 
     // 2. Supprimer le spotlight de la section A (évaluation mensuelle)
-    // Chercher dans les mois récents
+    // Chercher dans les mois récents (12 derniers mois pour être sûr)
     const now = new Date();
     const monthsToCheck: string[] = [];
     
-    // Générer les 3 derniers mois à vérifier
-    for (let i = 0; i < 3; i++) {
+    // Générer les 12 derniers mois à vérifier
+    for (let i = 0; i < 12; i++) {
       const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
     }
 
     let deletedFromSectionA = false;
+    const deletedMonths: string[] = [];
 
     for (const month of monthsToCheck) {
       const sectionAData = await loadSectionAData(month);
@@ -52,7 +53,8 @@ export async function DELETE(
           sectionAData.lastUpdated = new Date().toISOString();
           await saveSectionAData(sectionAData);
           deletedFromSectionA = true;
-          break; // Sortir de la boucle une fois trouvé
+          deletedMonths.push(month);
+          // Continuer à chercher dans les autres mois (au cas où il serait dans plusieurs mois)
         }
       }
     }
@@ -61,6 +63,7 @@ export async function DELETE(
       success: true, 
       message: 'Spotlight supprimé avec succès',
       deletedFromSectionA,
+      deletedMonths: deletedMonths.length > 0 ? deletedMonths : undefined,
     });
   } catch (error) {
     console.error('[Spotlight Delete API] Erreur DELETE:', error);
