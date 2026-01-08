@@ -13,7 +13,14 @@ type Event = {
   location?: string;
 };
 
-const categories = ["Spotlight", "Soirées communautaires", "Ateliers créateurs", "Aventura 2025"];
+const categories = [
+  "Spotlight",
+  "Soirée Film",
+  "Formation",
+  "Jeux communautaire",
+  "Apéro",
+  "Organisation Aventura 2026",
+];
 
 export default function Page() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -53,10 +60,16 @@ export default function Page() {
     switch (category) {
       case "Spotlight":
         return "bg-[#9146ff]";
-      case "Soirées communautaires":
-        return "bg-blue-600";
-      case "Ateliers créateurs":
-        return "bg-amber-700";
+      case "Soirée Film":
+        return "bg-blue-500";
+      case "Formation":
+        return "bg-green-500";
+      case "Jeux communautaire":
+        return "bg-amber-500";
+      case "Apéro":
+        return "bg-purple-500";
+      case "Organisation Aventura 2026":
+        return "bg-pink-500";
       default:
         return "bg-gray-700";
     }
