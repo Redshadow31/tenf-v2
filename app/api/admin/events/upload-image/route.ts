@@ -39,9 +39,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir le fichier en buffer
+    // Convertir le fichier en ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
     // Générer un nom de fichier unique
     const timestamp = Date.now();
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Stocker dans Netlify Blobs
     const store = getStore('tenf-events-images');
-    await store.set(fileName, buffer, {
+    await store.set(fileName, arrayBuffer, {
       metadata: {
         contentType: file.type,
         originalName: file.name,
