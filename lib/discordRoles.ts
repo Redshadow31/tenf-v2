@@ -51,7 +51,7 @@ function getHighestRole(discordRoleIds: string[]): string | null {
  * Pour les doubles rôles ou plus, on prend le rôle le plus haut dans la hiérarchie
  */
 export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
-  role: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
   badges: string[];
 } {
   const highestRoleId = getHighestRole(discordRoleIds);
@@ -62,7 +62,7 @@ export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
     return { role: "Affilié", badges };
   }
 
-  let mainRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" = "Affilié";
+  let mainRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" = "Affilié";
 
   switch (highestRoleId) {
     case DISCORD_ROLE_IDS.ADMIN_FONDATEURS:
@@ -75,7 +75,7 @@ export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
       mainRole = "Mentor";
       break;
     case DISCORD_ROLE_IDS.MODERATEUR_JUNIOR:
-      mainRole = "Staff";
+      mainRole = "Modérateur Junior";
       break;
     case DISCORD_ROLE_IDS.VIP_ELITE:
       // VIP Élite peut être un badge, mais si c'est le rôle le plus haut, on le traite comme badge seulement
