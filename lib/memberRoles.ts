@@ -3,7 +3,7 @@
 
 import { allMembers } from "./members";
 
-export type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+export type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
 export type MemberStatus = "active" | "inactive" | "vip";
 
 export interface MemberWithRole {
@@ -59,7 +59,7 @@ function getRoleForMember(login: string): MemberRole {
     return "Mentor";
   }
   if (MODOS_JUNIORS.includes(lowerLogin)) {
-    return "Staff";
+    return "Modérateur Junior";
   }
   
   return "Affilié";

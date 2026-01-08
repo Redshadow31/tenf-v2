@@ -50,14 +50,49 @@ export default function Page() {
     loadMembers();
   }, []);
 
+  // Fonction pour déterminer si un membre appartient à la catégorie "Staff"
+  const isStaffCategory = (role: string): boolean => {
+    return role === "Admin" || role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
+  };
+
+  // Fonction pour obtenir l'ordre de tri des rôles Staff
+  const getStaffRoleOrder = (role: string): number => {
+    switch (role) {
+      case "Admin": return 1;
+      case "Admin Adjoint": return 2;
+      case "Mentor": return 3;
+      case "Modérateur Junior": return 4;
+      default: return 999;
+    }
+  };
+
   const getFilteredMembers = () => {
     if (activeFilter === "Tous") {
-      return activeMembers;
+      // Trier tous les membres : Staff d'abord (dans l'ordre), puis les autres
+      return [...activeMembers].sort((a, b) => {
+        const aIsStaff = isStaffCategory(a.role);
+        const bIsStaff = isStaffCategory(b.role);
+        
+        if (aIsStaff && bIsStaff) {
+          // Les deux sont Staff, trier par ordre de hiérarchie
+          return getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role);
+        }
+        if (aIsStaff && !bIsStaff) return -1; // Staff avant les autres
+        if (!aIsStaff && bIsStaff) return 1;  // Staff avant les autres
+        return 0; // Même catégorie, ordre original
+      });
     }
+    
+    if (activeFilter === "Staff") {
+      // Filtrer et trier les membres Staff
+      return activeMembers
+        .filter((member) => isStaffCategory(member.role))
+        .sort((a, b) => getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role));
+    }
+    
     const filterMap: Record<string, string> = {
       Développement: "Développement",
       Affiliés: "Affilié",
-      Staff: "Staff",
     };
     return activeMembers.filter((member) => {
       return member.role === filterMap[activeFilter];
@@ -66,7 +101,7 @@ export default function Page() {
 
   const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
     switch (role) {
-      case "Staff":
+      case "Modérateur Junior":
         return { bg: 'var(--color-primary)', text: 'white' };
       case "Développement":
         return { bg: 'var(--color-primary-dark)', text: 'white' };

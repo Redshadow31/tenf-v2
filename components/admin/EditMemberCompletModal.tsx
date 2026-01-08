@@ -130,7 +130,7 @@ export default function EditMemberCompletModal({
             >
               <option value="Affilié">Affilié</option>
               <option value="Développement">Développement</option>
-              <option value="Staff">Staff</option>
+              <option value="Modérateur Junior">Modérateur Junior</option>
               <option value="Mentor">Mentor</option>
               <option value="Admin">Admin</option>
             </select>

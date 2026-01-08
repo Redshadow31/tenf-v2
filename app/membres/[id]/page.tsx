@@ -6,9 +6,12 @@ type MemberPageProps = {
 };
 
 const roleBadgeClass: Record<string, string> = {
-  Staff: "bg-[#9146ff] text-white",
+  "Modérateur Junior": "bg-[#9146ff] text-white",
   "Développement": "bg-[#5a32b4] text-white",
   Affilié: "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30",
+  Mentor: "bg-gray-700 text-white",
+  Admin: "bg-gray-700 text-white",
+  "Admin Adjoint": "bg-gray-700 text-white",
 };
 
 export default async function MemberPage({ params }: MemberPageProps) {

@@ -92,7 +92,7 @@ export default function MemberModal({
 
   const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
     switch (role) {
-      case "Staff":
+      case "Modérateur Junior":
         return { bg: 'var(--color-primary)', text: 'white' };
       case "Développement":
         return { bg: 'var(--color-primary-dark)', text: 'white' };

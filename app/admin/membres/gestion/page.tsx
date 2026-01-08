@@ -14,7 +14,7 @@ import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 
-type MemberRole = "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
 type MemberStatus = "Actif" | "Inactif";
 
 interface Member {
@@ -941,7 +941,7 @@ export default function GestionMembresPage() {
 
   const getRoleBadgeColor = (role: MemberRole) => {
     switch (role) {
-      case "Staff":
+      case "Modérateur Junior":
         return "bg-gray-700 text-white";
       case "Développement":
         return "bg-gray-700 text-white";
