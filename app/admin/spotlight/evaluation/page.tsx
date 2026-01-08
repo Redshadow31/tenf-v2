@@ -286,19 +286,31 @@ export default function EvaluationSpotlightPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Mettre à jour les données locales
-        setSelectedSpotlight({
-          ...selectedSpotlight,
-          date: data.spotlight.date,
-          duration: (data.spotlight as any).duration || editingDuration,
-        });
-        setIsEditingInfo(false);
-        // Recharger les données mensuelles
+        
+        // Si le spotlight a été déplacé vers un autre mois, changer le mois sélectionné
+        if (data.moved && data.newMonth) {
+          setMonthKey(data.newMonth);
+          // Fermer le modal car le spotlight sera dans un autre mois
+          setSelectedSpotlight(null);
+          setIsEditingInfo(false);
+          setIsEditingEvaluation(false);
+          setEditingEvaluation(null);
+        } else {
+          // Mettre à jour les données locales
+          setSelectedSpotlight({
+            ...selectedSpotlight,
+            date: data.spotlight.date,
+            duration: (data.spotlight as any).duration || editingDuration,
+          });
+          setIsEditingInfo(false);
+        }
+        
+        // Recharger les données mensuelles (le useEffect se chargera de recharger si le mois a changé)
         await loadMonthlyData();
         
         // Afficher un message approprié selon si le spotlight a été déplacé
         if (data.moved) {
-          alert(`✅ Spotlight mis à jour et déplacé de ${data.oldMonth} vers ${data.newMonth}`);
+          alert(`✅ Spotlight mis à jour et déplacé de ${data.oldMonth} vers ${data.newMonth}\n\nLe spotlight apparaîtra maintenant dans le mois ${data.newMonth}.`);
         } else {
           alert('✅ Informations du spotlight mises à jour avec succès');
         }

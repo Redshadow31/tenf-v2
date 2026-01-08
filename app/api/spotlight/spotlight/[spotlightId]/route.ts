@@ -29,12 +29,12 @@ export async function PUT(
     const { date, duration, startedAt, endsAt } = body;
 
     // Charger les données de section A pour trouver le mois
-    // On cherche dans les 12 derniers mois pour être sûr de trouver le spotlight
+    // On cherche dans les 24 derniers mois pour être sûr de trouver le spotlight
     const now = new Date();
     const monthsToCheck: string[] = [];
     
-    // Générer les 12 derniers mois à vérifier
-    for (let i = 0; i < 12; i++) {
+    // Générer les 24 derniers mois à vérifier
+    for (let i = 0; i < 24; i++) {
       const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
     }
@@ -100,12 +100,8 @@ export async function PUT(
 
     // Si le mois a changé, déplacer le spotlight
     if (newMonthKey && newMonthKey !== oldMonthKey) {
-      // 1. Supprimer du mois ancien
-      oldSectionAData.spotlights.splice(spotlightIndex, 1);
-      oldSectionAData.lastUpdated = new Date().toISOString();
-      await saveSectionAData(oldSectionAData);
-
-      // 2. Ajouter au nouveau mois
+      // IMPORTANT: Ajouter d'abord au nouveau mois pour éviter la perte de données
+      // 1. Ajouter au nouveau mois
       let newSectionAData = await loadSectionAData(newMonthKey);
       if (!newSectionAData) {
         // Créer les données du mois si elles n'existent pas
@@ -129,7 +125,26 @@ export async function PUT(
       }
       
       newSectionAData.lastUpdated = new Date().toISOString();
+      
+      // Sauvegarder le nouveau mois AVANT de supprimer l'ancien
       await saveSectionAData(newSectionAData);
+      
+      // Vérifier que la sauvegarde a réussi en rechargeant
+      const verifyNewData = await loadSectionAData(newMonthKey);
+      if (!verifyNewData || !verifyNewData.spotlights.find(s => s.id === spotlightId)) {
+        console.error(`[Spotlight Update] ERREUR: Le spotlight ${spotlightId} n'a pas été correctement ajouté au mois ${newMonthKey}`);
+        return NextResponse.json(
+          { error: 'Erreur lors de l\'ajout au nouveau mois. Le spotlight n\'a pas été supprimé de l\'ancien mois.' },
+          { status: 500 }
+        );
+      }
+
+      // 2. Supprimer du mois ancien (seulement si l'ajout au nouveau mois a réussi)
+      oldSectionAData.spotlights.splice(spotlightIndex, 1);
+      oldSectionAData.lastUpdated = new Date().toISOString();
+      await saveSectionAData(oldSectionAData);
+      
+      console.log(`[Spotlight Update] Spotlight ${spotlightId} (${spotlightToMove.streamerTwitchLogin}) déplacé de ${oldMonthKey} vers ${newMonthKey}`);
     } else {
       // Même mois, juste mettre à jour
       oldSectionAData.spotlights[spotlightIndex] = spotlightToMove;
@@ -178,11 +193,11 @@ export async function GET(
       );
     }
 
-    // Chercher le spotlight dans les mois récents
+    // Chercher le spotlight dans les 24 derniers mois
     const now = new Date();
     const monthsToCheck: string[] = [];
     
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 24; i++) {
       const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
     }
