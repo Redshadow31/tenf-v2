@@ -118,27 +118,44 @@ export async function POST(
       );
     }
 
-    // Récupérer tous les membres TENF pour validation
+    // Récupérer tous les membres TENF pour validation (pour enrichir les données)
     const allMembers = getAllMemberData();
     const memberMap = new Map(
       allMembers.map(m => [m.twitchLogin.toLowerCase(), m])
     );
 
     // Valider et formater les membres
+    // IMPORTANT: On enregistre TOUS les membres envoyés, même s'ils ne sont pas dans getAllMemberData()
+    // Cela permet de ne pas perdre de données si un membre est ajouté/supprimé entre deux sauvegardes
     const validatedMembers: MemberFollowValidation[] = [];
+    const processedLogins = new Set<string>(); // Pour éviter les doublons
+    
     for (const m of members) {
-      const member = memberMap.get(m.twitchLogin.toLowerCase());
-      if (member) {
-        validatedMembers.push({
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName || member.twitchLogin,
-          role: member.role,
-          status: (m.status || (m.jeSuis ? 'followed' : 'not_followed')) as FollowStatus, // Compatibilité
-          validatedAt: new Date().toISOString(),
-          jeSuis: m.jeSuis ?? false,
-          meSuit: m.meSuit ?? null,
-        });
+      // Normaliser le login pour éviter les doublons
+      const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+      if (!normalizedLogin || processedLogins.has(normalizedLogin)) {
+        console.warn(`[Follow Validations] Membre ignoré (login vide ou doublon): ${m.twitchLogin}`);
+        continue;
       }
+      processedLogins.add(normalizedLogin);
+      
+      // Chercher dans la base pour enrichir les données, mais utiliser les données envoyées si non trouvé
+      const member = memberMap.get(normalizedLogin);
+      
+      validatedMembers.push({
+        twitchLogin: member?.twitchLogin || m.twitchLogin, // Utiliser le login de la base si disponible, sinon celui envoyé
+        displayName: member?.displayName || m.displayName || m.twitchLogin,
+        role: member?.role || m.role,
+        status: (m.status || (m.jeSuis ? 'followed' : 'not_followed')) as FollowStatus, // Compatibilité
+        validatedAt: new Date().toISOString(),
+        jeSuis: m.jeSuis ?? false,
+        meSuit: m.meSuit ?? null,
+      });
+    }
+    
+    // Log pour debug si des membres ont été ignorés
+    if (members.length !== validatedMembers.length) {
+      console.warn(`[Follow Validations] ${members.length - validatedMembers.length} membres ignorés sur ${members.length} envoyés`);
     }
 
     // Calculer les stats

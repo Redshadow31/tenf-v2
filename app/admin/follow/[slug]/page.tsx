@@ -317,14 +317,23 @@ export default function FollowMemberPage() {
     try {
       setSaving(true);
       
-      const memberFollowsArray: MemberFollow[] = members.map(m => ({
-        twitchLogin: m.twitchLogin,
-        displayName: m.displayName,
-        role: m.role,
-        status: memberFollows[m.twitchLogin]?.jeSuis ? 'followed' : 'not_followed', // Compatibilité
-        jeSuis: memberFollows[m.twitchLogin]?.jeSuis ?? false,
-        meSuit: memberFollows[m.twitchLogin]?.meSuit ?? null,
-      }));
+      // S'assurer que tous les membres sont inclus, même ceux sans données de follow
+      const memberFollowsArray: MemberFollow[] = members.map(m => {
+        const followData = memberFollows[m.twitchLogin] || { jeSuis: false, meSuit: null };
+        return {
+          twitchLogin: m.twitchLogin,
+          displayName: m.displayName,
+          role: m.role,
+          status: followData.jeSuis ? 'followed' : 'not_followed', // Compatibilité
+          jeSuis: followData.jeSuis ?? false,
+          meSuit: followData.meSuit ?? null,
+        };
+      });
+
+      // Vérifier qu'on a bien tous les membres
+      if (memberFollowsArray.length !== members.length) {
+        console.warn(`[Follow Validation] Nombre de membres différent: ${memberFollowsArray.length} vs ${members.length}`);
+      }
 
       const response = await fetch(`/api/follow/validations/${monthKey}/${slug}`, {
         method: 'POST',
@@ -338,10 +347,20 @@ export default function FollowMemberPage() {
       if (response.ok) {
         const data = await response.json();
         setValidation(data.validation);
-        alert("Validation enregistrée avec succès");
+        
+        // Vérifier que tous les membres ont été enregistrés
+        const savedCount = data.validation?.members?.length || 0;
+        if (savedCount !== memberFollowsArray.length) {
+          console.warn(`[Follow Validation] Attention: ${savedCount} membres enregistrés sur ${memberFollowsArray.length} envoyés`);
+          alert(`Validation enregistrée avec succès (${savedCount}/${memberFollowsArray.length} membres)`);
+        } else {
+          alert("Validation enregistrée avec succès");
+        }
+        
         await loadData();
       } else {
         const error = await response.json();
+        console.error('[Follow Validation] Erreur API:', error);
         alert(`Erreur: ${error.error || 'Impossible d\'enregistrer la validation'}`);
       }
     } catch (error) {
