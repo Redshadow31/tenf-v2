@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Upload, X, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Edit, Trash2, Copy } from "lucide-react";
 
 interface CategoryConfig {
   value: string;
@@ -151,6 +151,37 @@ export default function PlanificationPage() {
       imageUrl: null,
     });
     setImagePreview(null);
+  };
+
+  const handleDuplicate = (integration: any) => {
+    // Convertir la date ISO et ajouter 7 jours pour suggérer une nouvelle date
+    const dateObj = new Date(integration.date);
+    dateObj.setDate(dateObj.getDate() + 7);
+    
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const dateTimeLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    // Préremplir le formulaire avec les données de l'intégration
+    setEditingIntegration(null); // Pas en mode édition
+    setIsEditMode(false); // Mode création
+    setFormData({
+      title: integration.title || "",
+      description: integration.description || "",
+      category: integration.category || "Intégration standard",
+      date: dateTimeLocal, // Nouvelle date (+7 jours par défaut)
+      location: integration.location || "",
+      isPublished: false, // Par défaut non publiée pour laisser le choix
+      image: null,
+      imageUrl: integration.image || null, // Conserver l'image
+    });
+    setImagePreview(integration.image || null);
+    
+    // Faire défiler vers le formulaire
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (integrationId: string) => {
@@ -539,6 +570,13 @@ export default function PlanificationPage() {
                         title="Modifier"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDuplicate(integration)}
+                        className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                        title="Dupliquer (nouvelle date)"
+                      >
+                        <Copy className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(integration.id)}
