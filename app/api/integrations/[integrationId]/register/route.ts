@@ -5,6 +5,9 @@ import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberD
 
 /**
  * POST - Inscription à une intégration
+ * Accepte deux modes :
+ * 1. Utilisateur connecté Discord (inscription automatique avec données de la base)
+ * 2. Formulaire libre (pour personnes non encore membres du système)
  */
 export async function POST(
   request: NextRequest,
@@ -13,7 +16,6 @@ export async function POST(
   try {
     const { integrationId } = params;
     const body = await request.json();
-    const { notes } = body;
     
     // Vérifier que l'intégration existe et est publiée
     const integration = await getIntegration(integrationId);
@@ -31,37 +33,73 @@ export async function POST(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté depuis les cookies
+    // Récupérer l'utilisateur Discord connecté depuis les cookies (optionnel)
     const cookieStore = cookies();
     const discordUserId = cookieStore.get('discord_user_id')?.value;
     const discordUsername = cookieStore.get('discord_username')?.value;
-    const discordAvatar = cookieStore.get('discord_avatar')?.value;
     
-    if (!discordUserId) {
+    // MODE 1: Utilisateur connecté Discord (inscription automatique)
+    if (discordUserId) {
+      try {
+        await loadMemberDataFromStorage();
+        const member = findMemberByIdentifier({ discordId: discordUserId });
+        
+        if (member) {
+          // Membre trouvé dans la base : inscription automatique
+          const registration = await registerForIntegration(integrationId, {
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName || member.twitchLogin,
+            discordId: member.discordId,
+            discordUsername: member.discordUsername || discordUsername,
+            notes: body.notes || undefined,
+          });
+          
+          return NextResponse.json({ 
+            registration,
+            success: true,
+            message: 'Inscription réussie !' 
+          });
+        }
+      } catch (error) {
+        // Si erreur, continuer avec le mode formulaire libre
+        console.error('[Integration Registration] Erreur mode connecté:', error);
+      }
+    }
+    
+    // MODE 2: Formulaire libre (pour personnes non membres)
+    const { 
+      displayName, 
+      email, 
+      twitchLogin, 
+      discordUsername: formDiscordUsername,
+      notes 
+    } = body;
+    
+    // Validation des champs requis pour le formulaire libre
+    if (!displayName || !email) {
       return NextResponse.json(
-        { error: 'Vous devez être connecté pour vous inscrire' },
-        { status: 401 }
+        { error: 'Le nom et l\'email sont requis pour l\'inscription' },
+        { status: 400 }
       );
     }
     
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
-    
-    // Récupérer les données du membre depuis la base par Discord ID
-    const member = findMemberByIdentifier({ discordId: discordUserId });
-    if (!member) {
+    // Validation email basique
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Membre non trouvé dans la base de données' },
-        { status: 404 }
+        { error: 'Format d\'email invalide' },
+        { status: 400 }
       );
     }
     
-    // S'inscrire à l'intégration
+    // S'inscrire avec les données du formulaire libre
+    // Utiliser email comme identifiant unique si pas de twitchLogin
     const registration = await registerForIntegration(integrationId, {
-      twitchLogin: member.twitchLogin,
-      displayName: member.displayName || member.twitchLogin,
-      discordId: member.discordId,
-      discordUsername: member.discordUsername || discordUsername,
+      twitchLogin: twitchLogin || email.toLowerCase().split('@')[0], // Utiliser email si pas de Twitch
+      displayName: displayName,
+      email: email, // Stocker l'email pour les inscriptions libres
+      discordId: discordUserId || undefined, // Si connecté Discord mais pas dans la base
+      discordUsername: formDiscordUsername || discordUsername || undefined,
       notes: notes || undefined,
     });
     

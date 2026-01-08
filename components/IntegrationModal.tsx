@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type IntegrationModalProps = {
   integration: {
@@ -14,7 +14,14 @@ type IntegrationModalProps = {
   };
   isOpen: boolean;
   onClose: () => void;
-  onRegister: () => void;
+  onRegister: (formData?: {
+    displayName: string;
+    email: string;
+    twitchLogin?: string;
+    discordUsername?: string;
+    notes?: string;
+  }) => void;
+  isLoading?: boolean;
 };
 
 export default function IntegrationModal({
@@ -22,7 +29,17 @@ export default function IntegrationModal({
   isOpen,
   onClose,
   onRegister,
+  isLoading = false,
 }: IntegrationModalProps) {
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    displayName: "",
+    email: "",
+    twitchLogin: "",
+    discordUsername: "",
+    notes: "",
+  });
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -33,6 +50,34 @@ export default function IntegrationModal({
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    // Réinitialiser le formulaire quand le modal s'ouvre
+    if (isOpen) {
+      setShowForm(false);
+      setFormData({
+        displayName: "",
+        email: "",
+        twitchLogin: "",
+        discordUsername: "",
+        notes: "",
+      });
+    }
+  }, [isOpen]);
+
+  const handleSubmitForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.displayName || !formData.email) {
+      alert("Veuillez remplir au moins le nom et l'email");
+      return;
+    }
+    onRegister(formData);
+  };
+
+  const handleQuickRegister = () => {
+    // Tentative d'inscription rapide (sans formulaire)
+    onRegister();
+  };
 
   if (!isOpen) return null;
 
@@ -176,13 +221,110 @@ export default function IntegrationModal({
             </div>
           )}
 
-          {/* Bouton s'inscrire */}
-          <button
-            onClick={onRegister}
-            className="w-full rounded-lg bg-[#9146ff] px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#5a32b4]"
-          >
-            S'inscrire à l'intégration
-          </button>
+          {/* Formulaire d'inscription ou bouton rapide */}
+          {!showForm ? (
+            <div className="space-y-3">
+              <button
+                onClick={handleQuickRegister}
+                disabled={isLoading}
+                className="w-full rounded-lg bg-[#9146ff] px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#5a32b4] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Inscription..." : "S'inscrire rapidement (si connecté Discord)"}
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full rounded-lg bg-[#1a1a1d] border border-gray-700 px-6 py-3 text-sm font-medium text-gray-300 transition-colors hover:bg-[#252529] hover:text-white"
+              >
+                Ou remplir le formulaire d'inscription
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitForm} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Nom / Pseudo * <span className="text-gray-500 text-xs">(affiché sur le site)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                  required
+                  placeholder="Votre nom ou pseudo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Email * <span className="text-gray-500 text-xs">(pour vous contacter)</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                  required
+                  placeholder="votre.email@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Pseudo Twitch <span className="text-gray-500 text-xs">(optionnel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.twitchLogin}
+                  onChange={(e) => setFormData({ ...formData, twitchLogin: e.target.value })}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                  placeholder="Votre pseudo Twitch"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Pseudo Discord <span className="text-gray-500 text-xs">(optionnel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.discordUsername}
+                  onChange={(e) => setFormData({ ...formData, discordUsername: e.target.value })}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                  placeholder="Votre pseudo Discord"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Notes <span className="text-gray-500 text-xs">(optionnel)</span>
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                  placeholder="Informations complémentaires..."
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="flex-1 rounded-lg bg-[#1a1a1d] border border-gray-700 px-6 py-3 text-sm font-medium text-gray-300 transition-colors hover:bg-[#252529] hover:text-white"
+                >
+                  Retour
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !formData.displayName || !formData.email}
+                  className="flex-1 rounded-lg bg-[#9146ff] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#5a32b4] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? "Inscription..." : "S'inscrire"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

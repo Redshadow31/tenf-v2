@@ -27,6 +27,7 @@ export default function Page() {
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Charger les intégrations depuis l'API
   useEffect(() => {
@@ -73,16 +74,22 @@ export default function Page() {
     setIsModalOpen(true);
   };
 
-  const handleRegister = async () => {
+  const handleRegister = async (formData?: {
+    displayName: string;
+    email: string;
+    twitchLogin?: string;
+    discordUsername?: string;
+    notes?: string;
+  }) => {
     if (!selectedIntegration) return;
     
     try {
-      // TODO: Créer l'API /api/integrations/[id]/register
+      setIsRegistering(true);
       const response = await fetch(`/api/integrations/${selectedIntegration.id}/register`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(formData || {}),
       });
       
       if (response.ok) {
@@ -100,6 +107,8 @@ export default function Page() {
     } catch (error) {
       console.error('Erreur inscription:', error);
       alert('❌ Erreur lors de l\'inscription');
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -262,6 +271,7 @@ export default function Page() {
             setSelectedIntegration(null);
           }}
           onRegister={handleRegister}
+          isLoading={isRegistering}
         />
       )}
 

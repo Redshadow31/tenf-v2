@@ -29,6 +29,7 @@ export interface IntegrationRegistration {
   integrationId: string;
   twitchLogin: string;
   displayName: string;
+  email?: string; // Email pour les inscriptions libres
   discordId?: string;
   discordUsername?: string;
   registeredAt: string; // ISO timestamp
@@ -203,14 +204,30 @@ export async function saveRegistrations(integrationId: string, registrations: In
 export async function registerForIntegration(integrationId: string, registration: {
   twitchLogin: string;
   displayName: string;
+  email?: string;
   discordId?: string;
   discordUsername?: string;
   notes?: string;
 }): Promise<IntegrationRegistration> {
   const registrations = await loadRegistrations(integrationId);
   
-  // Vérifier si déjà inscrit
-  const existing = registrations.find(r => r.twitchLogin.toLowerCase() === registration.twitchLogin.toLowerCase());
+  // Vérifier si déjà inscrit (par email, twitchLogin, ou discordId)
+  const existing = registrations.find(r => {
+    // Vérifier par email si fourni
+    if (registration.email && r.email && r.email.toLowerCase() === registration.email.toLowerCase()) {
+      return true;
+    }
+    // Vérifier par twitchLogin
+    if (r.twitchLogin.toLowerCase() === registration.twitchLogin.toLowerCase()) {
+      return true;
+    }
+    // Vérifier par discordId si fourni
+    if (registration.discordId && r.discordId && r.discordId === registration.discordId) {
+      return true;
+    }
+    return false;
+  });
+  
   if (existing) {
     throw new Error('Vous êtes déjà inscrit à cette intégration');
   }
