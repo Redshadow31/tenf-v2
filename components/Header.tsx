@@ -53,23 +53,24 @@ function SocialIcon({ icon }: { icon: string }) {
 
 export default function Header() {
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b backdrop-blur" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 gap-4">
         {/* Logo TENF et icônes réseaux sociaux */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <TENFLogo showTagline={true} size="xl" />
           
           {/* Icônes réseaux sociaux */}
-          <div className="flex items-center gap-2 ml-2">
+          <div className="hidden sm:flex items-center gap-1.5 ml-1">
             {socialLinks.map((social) => (
               <div key={social.icon} className="relative group">
                 <a
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
+                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
                   style={{ color: 'var(--color-text-secondary)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.color = 'var(--color-primary)';
@@ -100,13 +101,13 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Navigation - Centrée */}
-        <nav className="hidden items-center gap-8 text-[15px] font-medium md:flex">
+        {/* Navigation - Desktop */}
+        <nav className="hidden xl:flex items-center gap-4 text-sm font-medium flex-nowrap flex-1 justify-center min-w-0">
           {publicLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="relative transition-colors"
+              className="relative transition-colors whitespace-nowrap flex-shrink-0"
               style={{ color: 'var(--color-text-secondary)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--color-primary)';
@@ -131,11 +132,62 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Bouton de changement de thème */}
-        <div className="flex items-center">
+        {/* Navigation - Mobile/Tablet (menu hamburger) */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-primary)';
+              e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+            aria-label="Menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* Bouton de changement de thème */}
           <ThemeToggle />
         </div>
       </div>
+
+      {/* Menu mobile déroulant */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+          <nav className="px-4 py-3 flex flex-col gap-2">
+            {publicLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                style={{ color: 'var(--color-text-secondary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
