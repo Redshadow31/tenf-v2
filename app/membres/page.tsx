@@ -64,24 +64,24 @@ export default function Page() {
     });
   };
 
-  const getBadgeColor = (role: string) => {
+  const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
     switch (role) {
       case "Staff":
-        return "bg-[#9146ff] text-white";
+        return { bg: 'var(--color-primary)', text: 'white' };
       case "Développement":
-        return "bg-[#5a32b4] text-white";
+        return { bg: 'var(--color-primary-dark)', text: 'white' };
       case "Affilié":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       case "Mentor":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin Adjoint":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Créateur Junior":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       default:
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
     }
   };
 
@@ -109,7 +109,7 @@ export default function Page() {
     <div className="space-y-8">
       {/* Titre de page */}
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-white">Membres Actifs</h1>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Membres Actifs</h1>
       </div>
 
       {/* Barre de filtres */}
@@ -118,11 +118,23 @@ export default function Page() {
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-              activeFilter === filter
-                ? "bg-[#9146ff] text-white"
-                : "bg-[#1a1a1d] text-white border border-gray-700 hover:border-[#9146ff]/50"
-            }`}
+            className="rounded-lg px-4 py-2 text-sm font-medium transition-all border text-white"
+            style={{
+              backgroundColor: activeFilter === filter ? 'var(--color-primary)' : 'var(--color-card)',
+              borderColor: activeFilter === filter ? 'transparent' : 'var(--color-border)',
+            }}
+            onMouseEnter={(e) => {
+              if (activeFilter !== filter) {
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.opacity = '0.8';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeFilter !== filter) {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.opacity = '1';
+              }
+            }}
           >
             {filter}
           </button>
@@ -132,7 +144,7 @@ export default function Page() {
       {/* Grille de membres */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 lg:grid-cols-8">
@@ -141,7 +153,8 @@ export default function Page() {
               <div
                 key={member.twitchLogin}
                 onClick={() => handleMemberClick(member)}
-                className="card flex cursor-pointer flex-col items-center space-y-4 bg-[#1a1a1d] border border-gray-700 p-4 text-center transition-transform hover:scale-[1.02]"
+                className="card flex cursor-pointer flex-col items-center space-y-4 border p-4 text-center transition-transform hover:scale-[1.02]"
+                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
               >
                 {/* Avatar avec badge VIP */}
                 <div className="relative">
@@ -159,12 +172,13 @@ export default function Page() {
                     />
                   ) : null}
                   <div 
-                    className={`h-16 w-16 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-lg ${member.avatar ? 'hidden' : ''}`}
+                    className={`h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-lg ${member.avatar ? 'hidden' : ''}`}
+                    style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}
                   >
                     {member.displayName.charAt(0).toUpperCase()}
                   </div>
                   {member.isVip && (
-                    <div className="absolute -bottom-1 -right-1 rounded-full bg-[#9146ff] px-2 py-0.5 text-xs font-bold text-white">
+                    <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
                       {member.vipBadge || "VIP"}
                     </div>
                   )}
@@ -172,14 +186,17 @@ export default function Page() {
 
                 {/* Pseudo */}
                 <div>
-                  <h3 className="text-sm font-semibold text-white truncate w-full">{member.displayName}</h3>
+                  <h3 className="text-sm font-semibold truncate w-full" style={{ color: 'var(--color-text)' }}>{member.displayName}</h3>
                 </div>
 
                 {/* Badge rôle */}
                 <span
-                  className={`rounded-lg px-2 py-1 text-xs font-bold ${getBadgeColor(
-                    member.role
-                  )}`}
+                  className="rounded-lg px-2 py-1 text-xs font-bold"
+                  style={{
+                    backgroundColor: getBadgeColor(member.role).bg,
+                    color: getBadgeColor(member.role).text,
+                    border: getBadgeColor(member.role).border ? `1px solid ${getBadgeColor(member.role).border}` : 'none',
+                  }}
                 >
                   {member.role}
                 </span>

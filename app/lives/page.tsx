@@ -175,22 +175,22 @@ export default function LivesPage() {
     });
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
     switch (role) {
       case "Affilié":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       case "Développement":
-        return "bg-[#5a32b4] text-white";
+        return { bg: 'var(--color-primary-dark)', text: 'white' };
       case "Mentor":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin Adjoint":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Créateur Junior":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       default:
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
     }
   };
 
@@ -216,9 +216,9 @@ export default function LivesPage() {
   if (loading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold text-white">Lives en direct</h1>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en direct</h1>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-white text-xl">Chargement des lives...</div>
+          <div className="text-xl" style={{ color: 'var(--color-text)' }}>Chargement des lives...</div>
         </div>
       </div>
     );
@@ -227,9 +227,9 @@ export default function LivesPage() {
   if (error) {
     return (
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold text-white">Lives en direct</h1>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en direct</h1>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-red-400 text-xl">Erreur: {error}</div>
+          <div className="text-xl" style={{ color: '#ef4444' }}>Erreur: {error}</div>
         </div>
       </div>
     );
@@ -239,22 +239,39 @@ export default function LivesPage() {
     <div className="space-y-8">
       {/* Titre et bouton filtre jeu */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Lives en direct</h1>
-        <div className="text-sm text-gray-400">
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en direct</h1>
+        <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {liveMembers.length} {liveMembers.length > 1 ? "streamers" : "streamer"} en live
         </div>
       </div>
 
       {/* Filtre déroulant */}
       <div className="flex items-center gap-3">
-        <label htmlFor="game-filter" className="text-sm text-gray-400">
+        <label htmlFor="game-filter" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           Filtrer par jeu:
         </label>
         <select
           id="game-filter"
           value={activeFilter}
           onChange={(e) => setActiveFilter(e.target.value)}
-          className="rounded-lg bg-[#1a1a1d] border border-gray-700 text-white px-4 py-2 text-sm font-medium transition-all hover:border-[#9146ff]/50 focus:border-[#9146ff] focus:outline-none"
+          className="rounded-lg border px-4 py-2 text-sm font-medium transition-all focus:outline-none"
+          style={{ 
+            backgroundColor: 'var(--color-card)', 
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border)';
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border)';
+          }}
         >
           <option value="Tous">Tous</option>
           {availableGames.map((game) => (
@@ -276,12 +293,19 @@ export default function LivesPage() {
             return (
               <div
                 key={live.twitchLogin}
-                className="card overflow-hidden bg-[#1a1a1d] border border-gray-700 transition-all duration-300 hover:border-[#9146ff]/50 group"
-                onMouseEnter={() => setHoveredStream(live.twitchLogin)}
-                onMouseLeave={() => setHoveredStream(null)}
+                className="card overflow-hidden transition-all duration-300 group"
+                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+                onMouseEnter={(e) => {
+                  setHoveredStream(live.twitchLogin);
+                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  setHoveredStream(null);
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                }}
               >
                 {/* Thumbnail avec vidéo dynamique et zoom */}
-                <div className="relative aspect-video w-full bg-gradient-to-br from-[#9146ff]/20 to-[#5a32b4]/20 overflow-hidden">
+                <div className="relative aspect-video w-full overflow-hidden" style={{ background: 'linear-gradient(to bottom right, var(--color-accent-light), var(--color-accent-medium))' }}>
                   {/* Thumbnail de base */}
                   <img
                     src={live.thumbnailUrl}
@@ -357,15 +381,22 @@ export default function LivesPage() {
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">{live.displayName}</h3>
-                        <p className="text-sm text-gray-400 truncate">{live.game}</p>
+                        <h3 className="font-semibold truncate" style={{ color: 'var(--color-text)' }}>{live.displayName}</h3>
+                        <p className="text-sm truncate" style={{ color: 'var(--color-text-secondary)' }}>{live.game}</p>
                       </div>
                     </div>
                     <Link
                       href={live.twitchUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg bg-[#9146ff] hover:bg-[#5a32b4] text-white px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0"
+                      className="rounded-lg text-white px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+                      }}
                     >
                       Regarder
                     </Link>
@@ -374,9 +405,12 @@ export default function LivesPage() {
                   {/* Badge rôle */}
                   <div className="mt-3">
                     <span
-                      className={`inline-block rounded-lg px-3 py-1 text-xs font-bold ${getRoleBadgeColor(
-                        live.role
-                      )}`}
+                      className="inline-block rounded-lg px-3 py-1 text-xs font-bold"
+                      style={{
+                        backgroundColor: getRoleBadgeColor(live.role).bg,
+                        color: getRoleBadgeColor(live.role).text,
+                        border: getRoleBadgeColor(live.role).border ? `1px solid ${getRoleBadgeColor(live.role).border}` : 'none',
+                      }}
                     >
                       {live.role}
                     </span>
@@ -388,10 +422,10 @@ export default function LivesPage() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-gray-400 text-lg">
+          <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
             Aucun streamer en live pour le moment.
           </p>
-          <p className="text-gray-500 text-sm mt-2">
+          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
             Les lives seront affichés automatiquement lorsqu'ils commenceront à streamer.
           </p>
         </div>

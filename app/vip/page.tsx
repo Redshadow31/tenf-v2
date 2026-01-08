@@ -51,7 +51,7 @@ export default function VipPage() {
     return (
       <main className="p-6 min-h-screen">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-white text-xl">Chargement des VIP...</div>
+          <div className="text-xl" style={{ color: 'var(--color-text)' }}>Chargement des VIP...</div>
         </div>
       </main>
     );
@@ -61,7 +61,7 @@ export default function VipPage() {
     return (
       <main className="p-6 min-h-screen">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-red-400 text-xl">Erreur: {error}</div>
+          <div className="text-xl" style={{ color: '#ef4444' }}>Erreur: {error}</div>
         </div>
       </main>
     );
@@ -71,7 +71,7 @@ export default function VipPage() {
     <main className="p-6 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Titre */}
-        <h1 className="text-4xl font-bold text-white">VIP du mois</h1>
+        <h1 className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>VIP du mois</h1>
 
         {/* Grille des VIP */}
         {vipMembers.length > 0 ? (
@@ -79,7 +79,14 @@ export default function VipPage() {
             {vipMembers.map((member) => (
               <div
                 key={member.discordId}
-                className="flex flex-col items-center space-y-2 bg-[#1a1a1d] border border-gray-700 p-4 rounded-lg hover:border-[#9146ff]/50 transition-colors"
+                className="flex flex-col items-center space-y-2 border p-4 rounded-lg transition-colors"
+                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                }}
               >
                 {/* Avatar */}
                 <div className="relative">
@@ -97,13 +104,13 @@ export default function VipPage() {
                       }
                     }}
                   />
-                  <div className="absolute -bottom-1 -right-1 rounded-full bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
+                  <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
                     {member.vipBadge || "VIP"}
                   </div>
                 </div>
 
                 {/* Nom */}
-                <h3 className="text-sm font-semibold text-white text-center">
+                <h3 className="text-sm font-semibold text-center" style={{ color: 'var(--color-text)' }}>
                   {member.displayName}
                 </h3>
               </div>
@@ -111,10 +118,10 @@ export default function VipPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">
+            <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
               Aucun VIP Elite trouvé pour le moment.
             </p>
-            <p className="text-gray-500 text-sm mt-2">
+            <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
               Les membres VIP Elite sont gérés depuis le dashboard administrateur.
             </p>
           </div>
@@ -124,19 +131,40 @@ export default function VipPage() {
         <div className="grid grid-cols-3 gap-4 mt-8">
           <Link
             href="/vip/interviews"
-            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            className="text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
           >
             Interviews vidéo
           </Link>
           <Link
             href="/vip/historique"
-            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            className="text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
           >
             Historique
           </Link>
           <Link
             href="/vip/clips"
-            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            className="text-white font-semibold py-4 px-6 rounded-lg text-center transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
           >
             Clips
           </Link>
