@@ -52,8 +52,13 @@ export default function EvaluationSpotlightPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSpotlight, setSelectedSpotlight] = useState<SpotlightData | null>(null);
   const [editingEvaluation, setEditingEvaluation] = useState<SpotlightEvaluation | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingEvaluation, setIsEditingEvaluation] = useState(false);
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingDate, setEditingDate] = useState("");
+  const [editingDuration, setEditingDuration] = useState("");
+  const [editingStartedAt, setEditingStartedAt] = useState("");
+  const [editingEndsAt, setEditingEndsAt] = useState("");
   const [searchStreamer, setSearchStreamer] = useState("");
   const [searchModerator, setSearchModerator] = useState("");
   const [sortBy, setSortBy] = useState<'date' | 'score'>('date');
@@ -148,12 +153,12 @@ export default function EvaluationSpotlightPage() {
   const handleStartEdit = () => {
     if (selectedSpotlight?.evaluation) {
       setEditingEvaluation({ ...selectedSpotlight.evaluation });
-      setIsEditing(true);
+      setIsEditingEvaluation(true);
     }
   };
 
   const handleCancelEdit = () => {
-    setIsEditing(false);
+    setIsEditingEvaluation(false);
     if (selectedSpotlight?.evaluation) {
       setEditingEvaluation({ ...selectedSpotlight.evaluation });
     }
@@ -181,7 +186,7 @@ export default function EvaluationSpotlightPage() {
           evaluation: data.evaluation,
           status: 'evaluated',
         });
-        setIsEditing(false);
+        setIsEditingEvaluation(false);
         // Recharger les données mensuelles
         await loadMonthlyData();
         alert('✅ Évaluation mise à jour avec succès');
@@ -217,6 +222,59 @@ export default function EvaluationSpotlightPage() {
       ...editingEvaluation,
       moderatorComments: comments,
     });
+  };
+
+  const handleSaveSpotlightData = async () => {
+    if (!selectedSpotlight) return;
+
+    setSaving(true);
+    try {
+      const updateData: any = {};
+      
+      if (editingDate) {
+        updateData.date = editingDate;
+      }
+      
+      if (editingDuration) {
+        updateData.duration = editingDuration;
+      }
+      
+      if (editingStartedAt) {
+        updateData.startedAt = editingStartedAt;
+      }
+      
+      if (editingEndsAt) {
+        updateData.endsAt = editingEndsAt;
+      }
+
+      const response = await fetch(`/api/spotlight/spotlight/${selectedSpotlight.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Mettre à jour les données locales
+        setSelectedSpotlight({
+          ...selectedSpotlight,
+          date: data.spotlight.date,
+          duration: (data.spotlight as any).duration || editingDuration,
+        });
+        setIsEditingInfo(false);
+        // Recharger les données mensuelles
+        await loadMonthlyData();
+        alert('✅ Informations du spotlight mises à jour avec succès');
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible de sauvegarder'}`);
+      }
+    } catch (error) {
+      console.error("Erreur sauvegarde données spotlight:", error);
+      alert('❌ Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -438,7 +496,14 @@ export default function EvaluationSpotlightPage() {
                             } else {
                               setEditingEvaluation(null);
                             }
-                            setIsEditing(false);
+                            setIsEditingEvaluation(false);
+                            setIsEditingInfo(false);
+                            // Initialiser les champs de date et durée
+                            setEditingDate(spotlight.date.split('T')[0] || spotlight.date);
+                            setEditingDuration(spotlight.duration || "");
+                            // Les startedAt/endsAt ne sont pas dans SpotlightData, on les laisse vides
+                            setEditingStartedAt("");
+                            setEditingEndsAt("");
                           }}
                           className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors"
                         >
@@ -471,9 +536,10 @@ export default function EvaluationSpotlightPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => {
-            if (!isEditing) {
+            if (!isEditingEvaluation && !isEditingInfo) {
               setSelectedSpotlight(null);
-              setIsEditing(false);
+              setIsEditingEvaluation(false);
+              setIsEditingInfo(false);
               setEditingEvaluation(null);
             }
           }}
@@ -484,12 +550,13 @@ export default function EvaluationSpotlightPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">
-                {isEditing ? 'Modifier l\'évaluation' : 'Détail du spotlight'}
+                {isEditingEvaluation || isEditingInfo ? 'Modifier le spotlight' : 'Détail du spotlight'}
               </h2>
               <button
                 onClick={() => {
                   setSelectedSpotlight(null);
-                  setIsEditing(false);
+                  setIsEditingEvaluation(false);
+                  setIsEditingInfo(false);
                   setEditingEvaluation(null);
                 }}
                 className="text-gray-400 hover:text-white transition-colors"
@@ -500,9 +567,28 @@ export default function EvaluationSpotlightPage() {
 
             {/* Informations générales */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Informations générales
-              </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      Informations générales
+                    </h3>
+                    {!isEditingInfo && (
+                      <button
+                        onClick={() => {
+                          setIsEditingInfo(true);
+                          // Initialiser les champs si pas déjà fait
+                          if (!editingDate) {
+                            setEditingDate(selectedSpotlight.date.split('T')[0] || selectedSpotlight.date);
+                          }
+                          if (!editingDuration) {
+                            setEditingDuration(selectedSpotlight.duration || "");
+                          }
+                        }}
+                        className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors px-3 py-1 border border-[#9146ff] rounded-lg"
+                      >
+                        ✏️ Modifier
+                      </button>
+                    )}
+                  </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-400 mb-1">Streamer</p>
@@ -512,19 +598,38 @@ export default function EvaluationSpotlightPage() {
                 </div>
                 <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-400 mb-1">Date</p>
-                  <p className="text-white font-semibold">
-                    {new Date(selectedSpotlight.date).toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </p>
+                  {isEditingInfo ? (
+                    <input
+                      type="date"
+                      value={editingDate}
+                      onChange={(e) => setEditingDate(e.target.value)}
+                      className="w-full bg-[#1a1a1d] border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
+                    />
+                  ) : (
+                    <p className="text-white font-semibold">
+                      {new Date(selectedSpotlight.date).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-400 mb-1">Durée</p>
-                  <p className="text-white font-semibold">
-                    {selectedSpotlight.duration || "N/A"}
-                  </p>
+                  {isEditingInfo ? (
+                    <input
+                      type="text"
+                      value={editingDuration}
+                      onChange={(e) => setEditingDuration(e.target.value)}
+                      placeholder="ex: 2h 30m"
+                      className="w-full bg-[#1a1a1d] border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#9146ff]"
+                    />
+                  ) : (
+                    <p className="text-white font-semibold">
+                      {selectedSpotlight.duration || "N/A"}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-400 mb-1">Modérateur</p>
@@ -533,6 +638,31 @@ export default function EvaluationSpotlightPage() {
                   </p>
                 </div>
               </div>
+              
+              {/* Boutons d'action pour les informations générales */}
+              {isEditingInfo && (
+                <div className="flex items-center justify-end gap-4 pt-4 mt-4 border-t border-gray-700">
+                  <button
+                    onClick={() => {
+                      setIsEditingInfo(false);
+                      // Réinitialiser les champs
+                      setEditingDate(selectedSpotlight.date.split('T')[0] || selectedSpotlight.date);
+                      setEditingDuration(selectedSpotlight.duration || "");
+                    }}
+                    disabled={saving}
+                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleSaveSpotlightData}
+                    disabled={saving}
+                    className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Évaluation */}
@@ -543,7 +673,7 @@ export default function EvaluationSpotlightPage() {
                     <h3 className="text-lg font-semibold text-white">
                       Évaluation du spotlight
                     </h3>
-                    {!isEditing && (
+                    {!isEditingEvaluation && (
                       <button
                         onClick={handleStartEdit}
                         className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors px-3 py-1 border border-[#9146ff] rounded-lg"
@@ -553,8 +683,8 @@ export default function EvaluationSpotlightPage() {
                     )}
                   </div>
                   <div className="space-y-4">
-                    {(isEditing && editingEvaluation ? editingEvaluation : selectedSpotlight.evaluation).criteria.map((crit) => {
-                      const currentValue = isEditing && editingEvaluation
+                    {(isEditingEvaluation && editingEvaluation ? editingEvaluation : selectedSpotlight.evaluation).criteria.map((crit) => {
+                      const currentValue = isEditingEvaluation && editingEvaluation
                         ? editingEvaluation.criteria.find(c => c.id === crit.id)?.value ?? crit.value
                         : crit.value;
                       
@@ -564,7 +694,7 @@ export default function EvaluationSpotlightPage() {
                             <label className="text-sm font-medium text-gray-300">
                               {crit.label}
                             </label>
-                            {isEditing ? (
+                            {isEditingEvaluation ? (
                               <div className="flex items-center gap-2">
                                 <input
                                   type="number"
@@ -598,7 +728,7 @@ export default function EvaluationSpotlightPage() {
                         Note finale
                       </p>
                       <p className="text-2xl font-bold text-yellow-400">
-                        {isEditing && editingEvaluation
+                        {isEditingEvaluation && editingEvaluation
                           ? `${editingEvaluation.criteria.reduce((sum, c) => sum + c.value, 0)}/${editingEvaluation.criteria.reduce((sum, c) => sum + c.maxValue, 0)}`
                           : `${selectedSpotlight.evaluation.totalScore}/${selectedSpotlight.evaluation.maxScore}`
                         }
@@ -612,7 +742,7 @@ export default function EvaluationSpotlightPage() {
                   <h3 className="text-lg font-semibold text-white mb-4">
                     Commentaire du modérateur
                   </h3>
-                  {isEditing ? (
+                  {isEditingEvaluation ? (
                     <textarea
                       value={editingEvaluation?.moderatorComments || ''}
                       onChange={(e) => handleCommentsChange(e.target.value)}
@@ -638,7 +768,7 @@ export default function EvaluationSpotlightPage() {
                 </div>
 
                 {/* Boutons d'action */}
-                {isEditing && (
+                {isEditingEvaluation && (
                   <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-700">
                     <button
                       onClick={handleCancelEdit}
