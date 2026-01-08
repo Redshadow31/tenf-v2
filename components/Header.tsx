@@ -8,7 +8,7 @@ const publicLinks = [
   { href: "/membres", label: "Membres" },
   { href: "/lives", label: "Lives" },
   { href: "/events", label: "Événements" },
-  { href: "/spotlight", label: "Spotlight" },
+  { href: "/integration", label: "Intégration" },
   { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
 ];
