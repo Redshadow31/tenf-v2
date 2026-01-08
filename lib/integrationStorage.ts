@@ -35,6 +35,7 @@ export interface IntegrationRegistration {
   parrain?: string; // Parrain TENF (personne qui a invité)
   registeredAt: string; // ISO timestamp
   notes?: string; // Notes optionnelles de l'utilisateur
+  present?: boolean; // Présence à la réunion (true = présent, false = absent, undefined = non défini)
 }
 
 // ============================================

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { X, Users } from "lucide-react";
+import { X, Users, Plus, Save } from "lucide-react";
 type Integration = {
   id: string;
   title: string;
@@ -23,6 +23,7 @@ type IntegrationRegistration = {
   parrain?: string;
   registeredAt: string;
   notes?: string;
+  present?: boolean;
 };
 
 export default function InscriptionPage() {
@@ -32,6 +33,15 @@ export default function InscriptionPage() {
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [selectedRegistrations, setSelectedRegistrations] = useState<IntegrationRegistration[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newMember, setNewMember] = useState({
+    discordUsername: "",
+    twitchChannelUrl: "",
+    parrain: "",
+    notes: "",
+  });
+  const [presences, setPresences] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadData();
@@ -79,8 +89,122 @@ export default function InscriptionPage() {
 
   const handleOpenModal = (integration: Integration) => {
     setSelectedIntegration(integration);
-    setSelectedRegistrations(allRegistrations[integration.id] || []);
+    const registrations = allRegistrations[integration.id] || [];
+    setSelectedRegistrations(registrations);
+    
+    // Initialiser les présences depuis les données existantes
+    const presencesMap: Record<string, boolean> = {};
+    registrations.forEach(reg => {
+      if (reg.present !== undefined) {
+        presencesMap[reg.id] = reg.present;
+      }
+    });
+    setPresences(presencesMap);
+    
     setIsModalOpen(true);
+    setShowAddForm(false);
+  };
+
+  const handlePresenceChange = (registrationId: string, present: boolean) => {
+    setPresences(prev => ({
+      ...prev,
+      [registrationId]: present,
+    }));
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedIntegration) return;
+    
+    if (!newMember.discordUsername || !newMember.twitchChannelUrl || !newMember.parrain) {
+      alert("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await fetch(`/api/admin/integrations/${selectedIntegration.id}/registrations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newMember }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert("✅ Membre ajouté avec succès !");
+        setNewMember({ discordUsername: "", twitchChannelUrl: "", parrain: "", notes: "" });
+        setShowAddForm(false);
+        // Recharger les données
+        await loadData();
+        // Réouvrir le modal avec les nouvelles données
+        if (selectedIntegration) {
+          const regResponse = await fetch(`/api/admin/integrations/${selectedIntegration.id}/registrations`, {
+            cache: 'no-store',
+          });
+          if (regResponse.ok) {
+            const regData = await regResponse.json();
+            const updatedRegistrations = regData.registrations || [];
+            setSelectedRegistrations(updatedRegistrations);
+            
+            // Initialiser les présences (nouveau membre est présent par défaut)
+            const updatedPresences: Record<string, boolean> = { ...presences };
+            updatedRegistrations.forEach((reg: IntegrationRegistration) => {
+              if (reg.present !== undefined) {
+                updatedPresences[reg.id] = reg.present;
+              } else if (data.registration && reg.id === data.registration.id) {
+                // Nouveau membre ajouté = présent par défaut
+                updatedPresences[reg.id] = true;
+              }
+            });
+            setPresences(updatedPresences);
+          }
+        }
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible d\'ajouter le membre'}`);
+      }
+    } catch (error) {
+      console.error('Erreur ajout membre:', error);
+      alert('❌ Erreur lors de l\'ajout du membre');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSavePresences = async () => {
+    if (!selectedIntegration) return;
+
+    try {
+      setSaving(true);
+      // Inclure toutes les inscriptions : celles cochées = présent, celles non cochées = absent
+      const presencesArray = selectedRegistrations.map(reg => ({
+        registrationId: reg.id,
+        present: presences[reg.id] === true, // true si explicitement coché, false sinon
+      }));
+
+      const response = await fetch(`/api/admin/integrations/${selectedIntegration.id}/registrations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presences: presencesArray }),
+      });
+
+      if (response.ok) {
+        alert("✅ Présences enregistrées avec succès !");
+        // Recharger les données
+        await loadData();
+        // Réouvrir le modal avec les nouvelles données
+        if (selectedIntegration) {
+          handleOpenModal(selectedIntegration);
+        }
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible d\'enregistrer les présences'}`);
+      }
+    } catch (error) {
+      console.error('Erreur sauvegarde présences:', error);
+      alert('❌ Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -202,6 +326,104 @@ export default function InscriptionPage() {
               </p>
             </div>
 
+            {/* Formulaire d'ajout manuel */}
+            {showAddForm && (
+              <div className="p-6 border-b border-gray-700 bg-[#0e0e10]">
+                <h3 className="text-lg font-semibold text-white mb-4">Ajouter un membre manuellement</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
+                      Pseudo Discord *
+                    </label>
+                    <input
+                      type="text"
+                      value={newMember.discordUsername}
+                      onChange={(e) => setNewMember({ ...newMember, discordUsername: e.target.value })}
+                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      placeholder="Pseudo Discord"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
+                      Lien de chaîne Twitch *
+                    </label>
+                    <input
+                      type="text"
+                      value={newMember.twitchChannelUrl}
+                      onChange={(e) => setNewMember({ ...newMember, twitchChannelUrl: e.target.value })}
+                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      placeholder="https://www.twitch.tv/pseudo ou pseudo"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
+                      Parrain TENF *
+                    </label>
+                    <input
+                      type="text"
+                      value={newMember.parrain}
+                      onChange={(e) => setNewMember({ ...newMember, parrain: e.target.value })}
+                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      placeholder="Pseudo Discord du parrain"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
+                      Notes (optionnel)
+                    </label>
+                    <textarea
+                      value={newMember.notes}
+                      onChange={(e) => setNewMember({ ...newMember, notes: e.target.value })}
+                      rows={2}
+                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                      placeholder="Notes optionnelles"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setNewMember({ discordUsername: "", twitchChannelUrl: "", parrain: "", notes: "" });
+                      }}
+                      className="flex-1 rounded-lg bg-[#1a1a1d] border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#252529]"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleAddMember}
+                      disabled={saving}
+                      className="flex-1 rounded-lg bg-[#9146ff] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#7c3aed] disabled:opacity-50"
+                    >
+                      {saving ? "Ajout..." : "Ajouter"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Boutons d'action */}
+            <div className="p-6 border-b border-gray-700 flex gap-3">
+              {!showAddForm && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Ajouter un membre
+                </button>
+              )}
+              {selectedRegistrations.length > 0 && (
+                <button
+                  onClick={handleSavePresences}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? "Enregistrement..." : "Enregistrer les présences"}
+                </button>
+              )}
+            </div>
+
             {/* Liste des inscriptions */}
             <div className="p-6">
               {selectedRegistrations.length === 0 ? (
@@ -210,59 +432,83 @@ export default function InscriptionPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {selectedRegistrations.map((registration) => (
-                    <div
-                      key={registration.id}
-                      className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Pseudo Discord</div>
-                          <div className="text-white font-medium">
-                            {registration.displayName || registration.discordUsername || 'N/A'}
+                  {selectedRegistrations.map((registration) => {
+                    const isPresent = presences[registration.id] ?? registration.present;
+                    const isAbsent = isPresent === false;
+                    
+                    return (
+                      <div
+                        key={registration.id}
+                        className={`bg-[#0e0e10] border rounded-lg p-4 ${
+                          isAbsent ? 'border-red-500/50 bg-red-950/20' : 'border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Pseudo Discord</div>
+                                <div className={`font-medium ${isAbsent ? 'text-red-400' : 'text-white'}`}>
+                                  {registration.displayName || registration.discordUsername || 'N/A'}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Lien de chaîne Twitch</div>
+                                <div className="text-white">
+                                  {registration.twitchChannelUrl ? (
+                                    <a
+                                      href={registration.twitchChannelUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#9146ff] hover:text-[#7c3aed] underline break-all"
+                                    >
+                                      {registration.twitchChannelUrl}
+                                    </a>
+                                  ) : (
+                                    <span className="text-gray-400">N/A</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Parrain TENF</div>
+                                <div className={`font-medium ${isAbsent ? 'text-red-400' : 'text-white'}`}>
+                                  {registration.parrain || <span className="text-gray-400">N/A</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isPresent === true}
+                                onChange={(e) => handlePresenceChange(registration.id, e.target.checked)}
+                                className="w-5 h-5 text-[#9146ff] bg-[#1a1a1d] border-gray-700 rounded focus:ring-[#9146ff]"
+                              />
+                              <span className={`text-sm font-medium ${isAbsent ? 'text-red-400' : 'text-gray-300'}`}>
+                                {isAbsent ? 'Absent' : isPresent ? 'Présent' : 'Non défini'}
+                              </span>
+                            </label>
                           </div>
                         </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Lien de chaîne Twitch</div>
-                          <div className="text-white">
-                            {registration.twitchChannelUrl ? (
-                              <a
-                                href={registration.twitchChannelUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#9146ff] hover:text-[#7c3aed] underline break-all"
-                              >
-                                {registration.twitchChannelUrl}
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">N/A</span>
-                            )}
+                        {registration.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-700">
+                            <div className="text-xs text-gray-500 mb-1">Notes</div>
+                            <div className="text-gray-300 text-sm">{registration.notes}</div>
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Parrain TENF</div>
-                          <div className="text-white font-medium">
-                            {registration.parrain || <span className="text-gray-400">N/A</span>}
-                          </div>
+                        )}
+                        <div className="mt-2 text-xs text-gray-500">
+                          Inscrit le {new Date(registration.registeredAt).toLocaleDateString("fr-FR", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </div>
                       </div>
-                      {registration.notes && (
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                          <div className="text-xs text-gray-500 mb-1">Notes</div>
-                          <div className="text-gray-300 text-sm">{registration.notes}</div>
-                        </div>
-                      )}
-                      <div className="mt-2 text-xs text-gray-500">
-                        Inscrit le {new Date(registration.registeredAt).toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
