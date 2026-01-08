@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
 
 interface CategoryConfig {
   value: string;
@@ -78,6 +78,8 @@ export default function PlanificationPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -160,6 +162,70 @@ export default function PlanificationPage() {
     }
   };
 
+  const handleStartEdit = (event: any) => {
+    // Convertir la date ISO en format datetime-local
+    const dateObj = new Date(event.date);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const dateTimeLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    setEditingEvent(event);
+    setFormData({
+      title: event.title || "",
+      description: event.description || "",
+      category: event.category || "Spotlight",
+      date: dateTimeLocal,
+      location: event.location || "",
+      isPublished: event.isPublished || false,
+      image: null,
+      imageUrl: event.image || null,
+    });
+    setImagePreview(event.image || null);
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEvent(null);
+    setIsEditMode(false);
+    setFormData({
+      title: "",
+      description: "",
+      category: "Spotlight",
+      date: "",
+      location: "",
+      isPublished: false,
+      image: null,
+      imageUrl: null,
+    });
+    setImagePreview(null);
+  };
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        alert("✅ Événement supprimé avec succès !");
+        await loadEvents();
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || "Impossible de supprimer l'événement"}`);
+      }
+    } catch (error) {
+      console.error("Erreur suppression événement:", error);
+      alert("❌ Erreur lors de la suppression");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.date) {
@@ -201,41 +267,45 @@ export default function PlanificationPage() {
 
     try {
       setSaving(true);
-      const response = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          date: formData.date,
-          location: formData.location,
-          isPublished: formData.isPublished,
-          image: finalImageUrl || undefined,
-        }),
-      });
+      
+      const eventData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        date: formData.date,
+        location: formData.location,
+        isPublished: formData.isPublished,
+        image: finalImageUrl || undefined,
+      };
+
+      let response;
+      if (isEditMode && editingEvent) {
+        // Mise à jour d'un événement existant
+        response = await fetch(`/api/events/${editingEvent.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(eventData),
+        });
+      } else {
+        // Création d'un nouvel événement
+        response = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(eventData),
+        });
+      }
 
       if (response.ok) {
-        alert("✅ Événement créé avec succès !");
-        setFormData({
-          title: "",
-          description: "",
-          category: "Spotlight",
-          date: "",
-          location: "",
-          isPublished: false,
-          image: null,
-          imageUrl: null,
-        });
-        setImagePreview(null);
+        alert(isEditMode ? "✅ Événement modifié avec succès !" : "✅ Événement créé avec succès !");
+        handleCancelEdit();
         await loadEvents();
       } else {
         const error = await response.json();
-        alert(`❌ Erreur: ${error.error || "Impossible de créer l'événement"}`);
+        alert(`❌ Erreur: ${error.error || (isEditMode ? "Impossible de modifier l'événement" : "Impossible de créer l'événement")}`);
       }
     } catch (error) {
-      console.error("Erreur création événement:", error);
-      alert("❌ Erreur lors de la création");
+      console.error(`Erreur ${isEditMode ? 'modification' : 'création'} événement:`, error);
+      alert(`❌ Erreur lors de la ${isEditMode ? 'modification' : 'création'}`);
     } finally {
       setSaving(false);
     }
@@ -261,9 +331,19 @@ export default function PlanificationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulaire */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-6">
-            Créer un événement
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-white">
+              {isEditMode ? "Modifier l'événement" : "Créer un événement"}
+            </h2>
+            {isEditMode && (
+              <button
+                onClick={handleCancelEdit}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Upload d'image */}
             <div>
@@ -427,7 +507,7 @@ export default function PlanificationPage() {
               disabled={saving}
               className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
             >
-              {saving ? "Création..." : "Créer l'événement"}
+              {saving ? (isEditMode ? "Modification..." : "Création...") : (isEditMode ? "Enregistrer les modifications" : "Créer l'événement")}
             </button>
           </form>
         </div>
@@ -457,6 +537,11 @@ export default function PlanificationPage() {
                       <h3 className="text-white font-semibold mb-1">
                         {event.title}
                       </h3>
+                      {event.description && (
+                        <p className="text-sm text-gray-300 mb-2 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-400 mb-2">
                         {new Date(event.date).toLocaleDateString("fr-FR", {
                           day: "numeric",
@@ -466,7 +551,12 @@ export default function PlanificationPage() {
                           minute: "2-digit",
                         })}
                       </p>
-                      <div className="flex items-center gap-2">
+                      {event.location && (
+                        <p className="text-sm text-gray-400 mb-2">
+                          📍 {event.location}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mb-2">
                         {(() => {
                           const catConfig = getCategoryConfig(event.category);
                           return (
@@ -490,6 +580,22 @@ export default function PlanificationPage() {
                           />
                         </div>
                       )}
+                    </div>
+                    <div className="flex flex-col gap-2 ml-4">
+                      <button
+                        onClick={() => handleStartEdit(event)}
+                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(event.id)}
+                        className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
