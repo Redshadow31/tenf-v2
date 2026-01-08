@@ -224,7 +224,7 @@ export default function RaidImportModal({
 
         // Ignorer les lignes parasites communes
         const lowerLine = trimmedLine.toLowerCase();
-        if (lowerLine.match(/^(oups|transféré|transféré|n/a|^$)/i)) {
+        if (lowerLine.match(/^(oups|transféré|n\/a)$/i) || trimmedLine.trim() === '') {
           continue;
         }
 
