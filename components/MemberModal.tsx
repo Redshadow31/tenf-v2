@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getRoleBadgeStyles } from "@/lib/roleColors";
 
 type MemberModalProps = {
   member: {
@@ -90,26 +91,8 @@ export default function MemberModal({
 
   if (!isOpen) return null;
 
-  const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
-    switch (role) {
-      case "Modérateur Junior":
-        return { bg: 'var(--color-primary)', text: 'white' };
-      case "Développement":
-        return { bg: 'var(--color-primary-dark)', text: 'white' };
-      case "Affilié":
-        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
-      case "Mentor":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Admin":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Admin Adjoint":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Créateur Junior":
-        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
-      default:
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-    }
-  };
+  // Utiliser la fonction utilitaire pour les couleurs de rôles
+  const getBadgeColor = (role: string) => getRoleBadgeStyles(role);
 
   return (
     <div

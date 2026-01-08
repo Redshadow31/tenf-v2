@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import MemberModal from "@/components/MemberModal";
+import { getRoleBadgeStyles } from "@/lib/roleColors";
 
 const filters = ["Tous", "Développement", "Affiliés", "Staff"];
 
@@ -99,26 +100,8 @@ export default function Page() {
     });
   };
 
-  const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
-    switch (role) {
-      case "Modérateur Junior":
-        return { bg: 'var(--color-primary)', text: 'white' };
-      case "Développement":
-        return { bg: 'var(--color-primary-dark)', text: 'white' };
-      case "Affilié":
-        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
-      case "Mentor":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Admin":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Admin Adjoint":
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-      case "Créateur Junior":
-        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
-      default:
-        return { bg: 'var(--color-text-secondary)', text: 'white' };
-    }
-  };
+  // Utiliser la fonction utilitaire pour les couleurs de rôles
+  const getBadgeColor = (role: string) => getRoleBadgeStyles(role);
 
   const handleMemberClick = (member: PublicMember) => {
     // Utiliser l'avatar déjà récupéré depuis l'API (pas besoin d'appel supplémentaire)

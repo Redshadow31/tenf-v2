@@ -13,6 +13,7 @@ import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
+import { getRoleBadgeClasses } from "@/lib/roleColors";
 
 type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
 type MemberStatus = "Actif" | "Inactif";
@@ -939,26 +940,8 @@ export default function GestionMembresPage() {
     await loadMembers();
   };
 
-  const getRoleBadgeColor = (role: MemberRole) => {
-    switch (role) {
-      case "Modérateur Junior":
-        return "bg-gray-700 text-white";
-      case "Développement":
-        return "bg-gray-700 text-white";
-      case "Affilié":
-        return "bg-gray-700 text-white";
-      case "Mentor":
-        return "bg-gray-700 text-white";
-      case "Admin":
-        return "bg-gray-700 text-white";
-      case "Admin Adjoint":
-        return "bg-gray-700 text-white";
-      case "Créateur Junior":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
-      default:
-        return "bg-gray-700 text-white";
-    }
-  };
+  // Utiliser la fonction utilitaire pour les couleurs de rôles
+  const getRoleBadgeColor = (role: MemberRole) => getRoleBadgeClasses(role);
 
   const getStatusBadgeColor = (statut: MemberStatus) => {
     return statut === "Actif"
