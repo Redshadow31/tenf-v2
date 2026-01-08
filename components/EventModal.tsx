@@ -36,22 +36,22 @@ export default function EventModal({
 
   if (!isOpen) return null;
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category: string): string => {
     switch (category) {
       case "Spotlight":
-        return "bg-[#9146ff]";
+        return "#9146ff";
       case "Soirée Film":
-        return "bg-blue-500";
+        return "#3b82f6";
       case "Formation":
-        return "bg-green-500";
+        return "#10b981";
       case "Jeux communautaire":
-        return "bg-amber-500";
+        return "#f59e0b";
       case "Apéro":
-        return "bg-purple-500";
+        return "#a855f7";
       case "Organisation Aventura 2026":
-        return "bg-pink-500";
+        return "#ec4899";
       default:
-        return "bg-gray-700";
+        return "var(--color-primary)";
     }
   };
 
@@ -76,17 +76,28 @@ export default function EventModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
       onClick={onClose}
     >
       <div
-        className="card relative max-h-[90vh] w-full max-w-3xl overflow-y-auto bg-[#1a1a1d] border border-gray-700"
+        className="card relative max-h-[90vh] w-full max-w-3xl overflow-y-auto border"
+        style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Bouton fermer */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 rounded-lg bg-[#0e0e10] p-2 text-gray-400 transition-colors hover:text-white"
+          className="absolute right-4 top-4 z-10 rounded-lg p-2 transition-colors"
+          style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--color-text)';
+            e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+          }}
         >
           <svg
             className="h-6 w-6"
@@ -111,7 +122,7 @@ export default function EventModal({
               alt={event.title}
               className="h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1d] to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t" style={{ background: `linear-gradient(to top, var(--color-card), transparent)` }}></div>
           </div>
         )}
 
@@ -120,19 +131,18 @@ export default function EventModal({
           {/* Badge catégorie */}
           <div className="mb-4">
             <span
-              className={`inline-block rounded-lg px-4 py-2 text-sm font-bold text-white ${getCategoryColor(
-                event.category
-              )}`}
+              className="inline-block rounded-lg px-4 py-2 text-sm font-bold text-white"
+              style={{ backgroundColor: getCategoryColor(event.category) }}
             >
               {event.category}
             </span>
           </div>
 
           {/* Titre */}
-          <h2 className="mb-4 text-3xl font-bold text-white">{event.title}</h2>
+          <h2 className="mb-4 text-3xl font-bold" style={{ color: 'var(--color-text)' }}>{event.title}</h2>
 
           {/* Date */}
-          <div className="mb-6 flex items-center gap-2 text-gray-300">
+          <div className="mb-6 flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -146,13 +156,13 @@ export default function EventModal({
 
           {/* Description */}
           <div className="mb-8 space-y-4">
-            <h3 className="text-xl font-semibold text-white">Description</h3>
-            <p className="text-gray-300 leading-relaxed">{event.description}</p>
+            <h3 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{event.description}</p>
           </div>
 
           {/* Localisation si disponible */}
           {event.location && (
-            <div className="mb-8 flex items-center gap-2 text-gray-300">
+            <div className="mb-8 flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
               <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -172,7 +182,14 @@ export default function EventModal({
                   href={event.location}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#9146ff] hover:text-[#7c3aed] underline break-all transition-colors"
+                  className="underline break-all transition-colors"
+                  style={{ color: 'var(--color-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--color-primary-dark)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--color-primary)';
+                  }}
                 >
                   {event.location}
                 </a>
@@ -185,7 +202,14 @@ export default function EventModal({
           {/* Bouton s'inscrire */}
           <button
             onClick={onRegister}
-            className="w-full rounded-lg bg-[#9146ff] px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#5a32b4]"
+            className="w-full rounded-lg px-6 py-4 text-lg font-semibold text-white transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
           >
             S'inscrire à l'événement
           </button>

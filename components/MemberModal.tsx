@@ -90,40 +90,51 @@ export default function MemberModal({
 
   if (!isOpen) return null;
 
-  const getBadgeColor = (role: string) => {
+  const getBadgeColor = (role: string): { bg: string; text: string; border?: string } => {
     switch (role) {
       case "Staff":
-        return "bg-[#9146ff] text-white";
+        return { bg: 'var(--color-primary)', text: 'white' };
       case "Développement":
-        return "bg-[#5a32b4] text-white";
+        return { bg: 'var(--color-primary-dark)', text: 'white' };
       case "Affilié":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       case "Mentor":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Admin Adjoint":
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
       case "Créateur Junior":
-        return "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30";
+        return { bg: 'var(--color-accent-light)', text: 'var(--color-primary)', border: 'var(--color-primary)' };
       default:
-        return "bg-gray-700 text-white";
+        return { bg: 'var(--color-text-secondary)', text: 'white' };
     }
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
       onClick={onClose}
     >
       <div
-        className="card relative max-h-[90vh] w-full max-w-2xl overflow-y-auto bg-[#1a1a1d] border border-gray-700 p-8"
+        className="card relative max-h-[90vh] w-full max-w-2xl overflow-y-auto border p-8"
+        style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Bouton fermer */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg bg-[#0e0e10] p-2 text-gray-400 transition-colors hover:text-white"
+          className="absolute right-4 top-4 rounded-lg p-2 transition-colors"
+          style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--color-text)';
+            e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+          }}
         >
           <svg
             className="h-6 w-6"
@@ -147,10 +158,11 @@ export default function MemberModal({
             <img
               src={member.avatar}
               alt={member.name}
-              className="h-32 w-32 rounded-full object-cover border-4 border-gray-700"
+              className="h-32 w-32 rounded-full object-cover border-4"
+              style={{ borderColor: 'var(--color-border)' }}
             />
             {member.isVip && (
-              <div className="absolute -bottom-2 -right-2 rounded-full bg-[#9146ff] px-3 py-1 text-xs font-bold text-white">
+              <div className="absolute -bottom-2 -right-2 rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
                 {member.vipBadge || "VIP"}
               </div>
             )}
@@ -158,11 +170,14 @@ export default function MemberModal({
 
           {/* Nom et badge rôle */}
           <div className="space-y-2">
-            <h2 className="text-3xl font-bold text-white">{member.name}</h2>
+            <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>{member.name}</h2>
             <span
-              className={`inline-block rounded-lg px-4 py-1 text-sm font-bold ${getBadgeColor(
-                member.role
-              )}`}
+              className="inline-block rounded-lg px-4 py-1 text-sm font-bold"
+              style={{
+                backgroundColor: getBadgeColor(member.role).bg,
+                color: getBadgeColor(member.role).text,
+                border: getBadgeColor(member.role).border ? `1px solid ${getBadgeColor(member.role).border}` : 'none',
+              }}
             >
               {member.role}
             </span>
@@ -170,13 +185,13 @@ export default function MemberModal({
 
           {/* Description Twitch */}
           <div className="w-full space-y-2">
-            <h3 className="text-lg font-semibold text-white">Description</h3>
-            <p className="text-gray-300">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
+            <p style={{ color: 'var(--color-text-secondary)' }}>
               {member.description ||
                 "Aucune description disponible pour le moment."}
             </p>
             {isAdmin && (
-              <button className="mt-2 rounded-lg bg-[#9146ff]/10 px-4 py-2 text-sm font-medium text-[#9146ff] transition-colors hover:bg-[#9146ff]/20 border border-[#9146ff]/30">
+              <button className="mt-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors border" style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-medium)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-light)'; }}>
                 Modifier la description
               </button>
             )}
@@ -184,12 +199,19 @@ export default function MemberModal({
 
           {/* Lien Twitch */}
           <div className="w-full space-y-3">
-            <h3 className="text-lg font-semibold text-white">Chaîne Twitch</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Chaîne Twitch</h3>
             <Link
               href={member.twitchUrl || `https://twitch.tv/${member.twitchLogin}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#9146ff] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#5a32b4]"
+              className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-colors"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+              }}
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
@@ -210,27 +232,27 @@ export default function MemberModal({
                 </div>
               ) : discordStats ? (
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Messages</div>
-                    <div className="text-xl font-bold text-[#5865F2]">
+                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Messages</div>
+                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
                       {discordStats.messages.toLocaleString()}
                     </div>
                   </div>
-                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Temps vocal</div>
-                    <div className="text-xl font-bold text-[#5865F2]">
+                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Temps vocal</div>
+                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
                       {Math.round(discordStats.voiceMinutes / 60)}h
                     </div>
                   </div>
-                  <div className="bg-[#0e0e10] rounded-lg p-4 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Rang</div>
-                    <div className="text-xl font-bold text-[#5865F2]">
+                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Rang</div>
+                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
                       #{discordStats.rank}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-500 text-center py-4">
+                <div className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>
                   Aucune donnée disponible pour ce mois
                 </div>
               )}
@@ -240,11 +262,11 @@ export default function MemberModal({
           {/* Autres réseaux sociaux */}
           <div className="w-full space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
                 Autres réseaux
               </h3>
               {isAdmin && (
-                <button className="rounded-lg bg-[#9146ff]/10 px-3 py-1 text-xs font-medium text-[#9146ff] transition-colors hover:bg-[#9146ff]/20 border border-[#9146ff]/30">
+                <button className="rounded-lg px-3 py-1 text-xs font-medium transition-colors border" style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-medium)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-light)'; }}>
                   + Ajouter
                 </button>
             )}
@@ -255,7 +277,14 @@ export default function MemberModal({
                   href={member.socials.discord}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#4752C4]"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: '#5865F2' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#4752C4';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#5865F2';
+                  }}
                 >
                   Discord
                 </Link>
@@ -275,7 +304,14 @@ export default function MemberModal({
                   href={member.socials.twitter}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg bg-[#1DA1F2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#1a8cd8]"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: '#1DA1F2' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1a8cd8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1DA1F2';
+                  }}
                 >
                   Twitter
                 </Link>
@@ -285,7 +321,14 @@ export default function MemberModal({
                   href={member.socials.youtube}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg bg-[#FF0000] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#cc0000]"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: '#FF0000' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#cc0000';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FF0000';
+                  }}
                 >
                   YouTube
                 </Link>
@@ -294,7 +337,7 @@ export default function MemberModal({
                 !member.socials?.instagram &&
                 !member.socials?.twitter &&
                 !member.socials?.youtube) && (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                   Aucun réseau social ajouté
                 </p>
               )}
