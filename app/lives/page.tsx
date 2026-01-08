@@ -25,6 +25,7 @@ interface LiveMember {
   thumbnailUrl: string;
   avatar: string;
   role: string;
+  isVip?: boolean;
 }
 
 export default function LivesPage() {
@@ -106,19 +107,47 @@ export default function LivesPage() {
               ?.replace("{height}", "360") || stream.thumbnailUrl,
             avatar: avatar,
             role: member.role,
+            isVip: member.isVip || false,
           };
         });
 
-        // Filtrer les nulls et trier par nombre de viewers (décroissant)
-        const validLives = enrichedLives
-          .filter((live): live is LiveMember => live !== null)
-          .sort((a, b) => b.viewerCount - a.viewerCount);
+        // Filtrer les nulls
+        const validLives = enrichedLives.filter((live): live is LiveMember => live !== null);
+        
+        // Fonction pour mélanger un tableau (Fisher-Yates shuffle)
+        const shuffleArray = <T,>(array: T[]): T[] => {
+          const shuffled = [...array];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          return shuffled;
+        };
+        
+        // Déterminer si un membre est staff (non VIP)
+        const isStaff = (live: LiveMember): boolean => {
+          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Staff', 'Créateur Junior', 'Développement'];
+          return staffRoles.includes(live.role) && !live.isVip;
+        };
+        
+        // Séparer en groupes : VIP, Staff, Autres
+        const vipLives = validLives.filter(live => live.isVip === true);
+        const staffLives = validLives.filter(live => isStaff(live));
+        const otherLives = validLives.filter(live => !live.isVip && !isStaff(live));
+        
+        // Mélanger chaque groupe aléatoirement
+        const shuffledVip = shuffleArray(vipLives);
+        const shuffledStaff = shuffleArray(staffLives);
+        const shuffledOther = shuffleArray(otherLives);
+        
+        // Combiner dans l'ordre : VIP -> Staff -> Autres
+        const sortedLives = [...shuffledVip, ...shuffledStaff, ...shuffledOther];
 
         // Extraire les jeux uniques pour le filtre
-        const uniqueGames = Array.from(new Set(validLives.map(live => live.game).filter(Boolean))).sort();
+        const uniqueGames = Array.from(new Set(sortedLives.map(live => live.game).filter(Boolean))).sort();
         setAvailableGames(uniqueGames);
 
-        setLiveMembers(validLives);
+        setLiveMembers(sortedLives);
       } catch (err) {
         console.error("Error fetching live streams:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
