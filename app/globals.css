@@ -3,12 +3,26 @@
 @tailwind utilities;
 
 :root {
+  /* Mode sombre (par défaut) */
   --color-bg: #0e0e10;
   --color-text: #e5e5e5;
   --color-primary: #9146ff;
   --color-primary-dark: #5a32b4;
   --color-card: #1a1a1d;
+  --color-border: rgba(255, 255, 255, 0.05);
+  --color-text-secondary: #9ca3af;
   --radius-base: 8px;
+}
+
+[data-theme="light"] {
+  /* Mode clair - Violet pâle avec texte noir/violet foncé */
+  --color-bg: #faf5ff;
+  --color-text: #1a1a1d;
+  --color-primary: #7c3aed;
+  --color-primary-dark: #5a32b4;
+  --color-card: #ffffff;
+  --color-border: rgba(124, 58, 237, 0.15);
+  --color-text-secondary: #6b7280;
 }
 
 * {
@@ -49,9 +63,13 @@ h3 {
 .card {
   background-color: var(--color-card);
   border-radius: var(--radius-base);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   padding: 1.25rem;
+}
+
+[data-theme="light"] .card {
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.1);
 }
 
 a {

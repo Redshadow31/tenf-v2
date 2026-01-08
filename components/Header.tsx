@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import TENFLogo from "./TENFLogo";
 import { socialLinks } from "@/lib/socialLinks";
+import ThemeToggle from "./ThemeToggle";
 
 const publicLinks = [
   { href: "/a-propos", label: "À propos" },
@@ -54,7 +55,7 @@ export default function Header() {
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0e0e10]/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b backdrop-blur" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
         {/* Logo TENF et icônes réseaux sociaux */}
         <div className="flex items-center gap-4">
@@ -100,6 +101,11 @@ export default function Header() {
             </Link>
           ))}
         </nav>
+
+        {/* Bouton de changement de thème */}
+        <div className="flex items-center">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

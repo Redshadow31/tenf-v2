@@ -9,7 +9,7 @@ type AdminLayoutProps = {
 
 export default function Layout({ children }: AdminLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#0e0e10] flex">
+    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminSidebar />
       <main className="flex-1 p-6 overflow-auto">
         {children}

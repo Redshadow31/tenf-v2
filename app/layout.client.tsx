@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Header from "@/components/Header";
 import UserSidebar from "@/components/UserSidebar";
 
@@ -15,17 +16,23 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
 
   // Pour les routes admin, laisser le layout admin gérer l'affichage
   if (isAdmin) {
-    return <>{children}</>;
+    return (
+      <ThemeProvider>
+        {children}
+      </ThemeProvider>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-[#e5e5e5]">
-      <Header />
-      <div className="flex">
-        <UserSidebar />
-        <main className="flex-1 mx-auto max-w-7xl px-8 py-6">{children}</main>
+    <ThemeProvider>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
+        <Header />
+        <div className="flex">
+          <UserSidebar />
+          <main className="flex-1 mx-auto max-w-7xl px-8 py-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
 

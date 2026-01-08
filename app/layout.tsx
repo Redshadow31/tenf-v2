@@ -23,7 +23,19 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="fr">
-      <body className="bg-[#0e0e10] text-[#e5e5e5]">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const theme = localStorage.getItem('theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
