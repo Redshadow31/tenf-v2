@@ -25,7 +25,10 @@ export default function AdminSidebar() {
       </div>
       <nav className="flex flex-col gap-2">
         {adminLinks.map((link) => {
-          const isActive = pathname === link.href;
+          // Pour les événements, considérer actif si on est sur /admin/events ou une sous-page
+          const isActive = link.href === "/admin/events"
+            ? pathname?.startsWith("/admin/events")
+            : pathname === link.href;
           return (
             <Link
               key={link.href}

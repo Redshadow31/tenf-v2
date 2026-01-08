@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import EventModal from "@/components/EventModal";
 
 type Event = {
@@ -8,62 +8,45 @@ type Event = {
   title: string;
   description: string;
   image?: string;
-  date: Date;
-  category: "Spotlight" | "Soirées communautaires" | "Ateliers créateurs";
+  date: string; // ISO date string
+  category: "Spotlight" | "Soirées communautaires" | "Ateliers créateurs" | string;
   location?: string;
 };
 
-// Mock data pour les événements
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Spotlight",
-    description: "Événement mensuel où les membres de la communauté présentent leurs créations et partagent leurs expériences. Un moment de partage et de découverte pour toute la New Family.",
-    image: "/api/placeholder/800/400?text=Spotlight",
-    date: new Date(2025, 0, 2), // 2 janvier 2025
-    category: "Spotlight",
-    location: "Discord TENF",
-  },
-  {
-    id: "2",
-    title: "Atelier OBS",
-    description: "Apprenez à configurer et utiliser OBS Studio pour améliorer la qualité de vos streams. Nous couvrirons les bases de la configuration, les scènes, les sources et les plugins essentiels.",
-    image: "/api/placeholder/800/400?text=Atelier+OBS",
-    date: new Date(2025, 0, 10), // 10 janvier 2025
-    category: "Ateliers créateurs",
-    location: "Discord TENF",
-  },
-  {
-    id: "3",
-    title: "Soirée Fortnite",
-    description: "Rejoignez-nous pour une soirée gaming conviviale sur Fortnite ! Que vous soyez débutant ou pro, venez passer un bon moment avec la communauté TENF.",
-    image: "/api/placeholder/800/400?text=Soirée+Fortnite",
-    date: new Date(2025, 0, 12), // 12 janvier 2025
-    category: "Soirées communautaires",
-    location: "Discord TENF",
-  },
-  {
-    id: "4",
-    title: "Réunion Aventura 2026",
-    description: "Présentation et discussion autour du projet Aventura 2026. Échangez avec l'équipe et découvrez les nouveautés à venir pour la communauté.",
-    image: "/api/placeholder/800/400?text=Aventura+2026",
-    date: new Date(2025, 0, 19), // 19 janvier 2025
-    category: "Ateliers créateurs",
-    location: "Discord TENF",
-  },
-];
-
-const categories = ["Spotlight", "Soirées communautaires", "Ateliers créateurs"];
+const categories = ["Spotlight", "Soirées communautaires", "Ateliers créateurs", "Aventura 2025"];
 
 export default function Page() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 0, 1)); // Janvier 2025
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Charger les événements depuis l'API
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/events', {
+          cache: 'no-store',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error('Erreur chargement événements:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadEvents();
+  }, []);
 
   const getFilteredEvents = () => {
-    if (!activeFilter) return mockEvents;
-    return mockEvents.filter((event) => event.category === activeFilter);
+    if (!activeFilter) return events;
+    return events.filter((event) => event.category === activeFilter);
   };
 
   const getCategoryColor = (category: string) => {
@@ -84,10 +67,34 @@ export default function Page() {
     setIsModalOpen(true);
   };
 
-  const handleRegister = () => {
-    // TODO: Implémenter l'inscription à l'événement
-    alert(`Inscription à "${selectedEvent?.title}" enregistrée !`);
-    setIsModalOpen(false);
+  const handleRegister = async () => {
+    if (!selectedEvent) return;
+    
+    try {
+      const response = await fetch(`/api/events/${selectedEvent.id}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ ${data.message || 'Inscription réussie !'}`);
+        setIsModalOpen(false);
+        // Recharger les événements pour mettre à jour les inscriptions
+        // (on pourrait ajouter un indicateur visuel d'inscription)
+      } else {
+        const error = await response.json();
+        if (response.status === 409) {
+          alert(`ℹ️ ${error.error || 'Vous êtes déjà inscrit à cet événement'}`);
+        } else {
+          alert(`❌ ${error.error || 'Erreur lors de l\'inscription'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur inscription:', error);
+      alert('❌ Erreur lors de l\'inscription');
+    }
   };
 
   // Fonction pour générer le calendrier
@@ -125,6 +132,14 @@ export default function Page() {
       );
     });
   };
+
+  // Mettre à jour le mois actuel en fonction des événements
+  useEffect(() => {
+    if (events.length > 0) {
+      const firstEventDate = new Date(events[0].date);
+      setCurrentMonth(new Date(firstEventDate.getFullYear(), firstEventDate.getMonth(), 1));
+    }
+  }, [events]);
 
   const calendarDays = generateCalendar();
   const monthNames = [
@@ -229,7 +244,10 @@ export default function Page() {
       {/* Modal événement */}
       {selectedEvent && (
         <EventModal
-          event={selectedEvent}
+          event={{
+            ...selectedEvent,
+            date: new Date(selectedEvent.date), // Convertir en Date pour le modal
+          }}
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
@@ -237,6 +255,19 @@ export default function Page() {
           }}
           onRegister={handleRegister}
         />
+      )}
+
+      {loading && (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+          <p className="text-gray-400 mt-4">Chargement des événements...</p>
+        </div>
+      )}
+
+      {!loading && events.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-400">Aucun événement disponible pour le moment.</p>
+        </div>
       )}
     </div>
   );
