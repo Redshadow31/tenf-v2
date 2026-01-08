@@ -15,12 +15,11 @@ type IntegrationModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onRegister: (formData?: {
-    displayName: string;
-    email: string;
-    twitchLogin?: string;
-    discordUsername?: string;
+    discordUsername: string;
+    twitchChannelUrl: string;
+    parrain: string;
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   isLoading?: boolean;
 };
 
