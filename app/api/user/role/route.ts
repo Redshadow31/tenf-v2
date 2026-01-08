@@ -37,7 +37,7 @@ export async function GET() {
       console.log('User role check - Found as Moderator');
       return NextResponse.json({ 
         hasAdminAccess: true,
-        role: "Staff",
+        role: "Modérateur Junior",
       });
     }
 
@@ -49,8 +49,8 @@ export async function GET() {
 
     if (member) {
       const role = member.role;
-      // Admin, Admin Adjoint, Mentor, ou Staff (Junior)
-      const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Staff"];
+      // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
+      const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
       const hasAdminAccess = allowedRoles.includes(role);
 
       console.log('User role check - Found in memberDataStore:', { role, hasAdminAccess });
@@ -79,8 +79,8 @@ export async function GET() {
           const discordMember = await memberResponse.json();
           const { role: siteRole } = mapDiscordRoleToSiteRole(discordMember.roles || []);
           
-          // Admin, Admin Adjoint, Mentor, ou Staff (Junior)
-          const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Staff"];
+          // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
+          const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
           const hasAdminAccess = allowedRoles.includes(siteRole);
 
           console.log('User role check - Found via Discord API:', { role: siteRole, hasAdminAccess });

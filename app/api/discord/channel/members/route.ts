@@ -27,7 +27,7 @@ interface ParsedMember {
   twitchUrl: string;
   avatar: string;
   roles: string[];
-  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  siteRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;
