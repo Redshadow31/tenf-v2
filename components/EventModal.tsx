@@ -64,6 +64,16 @@ export default function EventModal({
     }).format(date);
   };
 
+  // Vérifier si location est une URL
+  const isUrl = (str: string): boolean => {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
@@ -143,7 +153,7 @@ export default function EventModal({
           {/* Localisation si disponible */}
           {event.location && (
             <div className="mb-8 flex items-center gap-2 text-gray-300">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -157,7 +167,18 @@ export default function EventModal({
                   d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-              <span>{event.location}</span>
+              {isUrl(event.location) ? (
+                <a
+                  href={event.location}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#9146ff] hover:text-[#7c3aed] underline break-all transition-colors"
+                >
+                  {event.location}
+                </a>
+              ) : (
+                <span>{event.location}</span>
+              )}
             </div>
           )}
 
