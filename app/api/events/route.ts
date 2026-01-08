@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     let isAdmin = false;
     if (adminOnly) {
       const admin = await getCurrentAdmin();
-      isAdmin = admin && hasAdminDashboardAccess(admin.id);
+      if (admin) {
+        isAdmin = hasAdminDashboardAccess(admin.id);
+      }
       if (!isAdmin) {
         return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
       }
