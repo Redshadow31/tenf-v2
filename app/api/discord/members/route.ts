@@ -28,7 +28,7 @@ interface MemberWithDiscordRoles {
   avatar: string;
   roles: string[]; // IDs des rôles Discord
   roleNames: string[]; // Noms des rôles Discord
-  siteRole: "Affilié" | "Développement" | "Staff" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  siteRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;
