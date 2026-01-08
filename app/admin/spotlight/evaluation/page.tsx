@@ -55,6 +55,7 @@ export default function EvaluationSpotlightPage() {
   const [isEditingEvaluation, setIsEditingEvaluation] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingSpotlightId, setDeletingSpotlightId] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState("");
   const [editingDuration, setEditingDuration] = useState("");
   const [editingStartedAt, setEditingStartedAt] = useState("");
