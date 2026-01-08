@@ -8,7 +8,7 @@ const adminLinks = [
   { href: "/admin/membres", label: "Membres" },
   { href: "/admin/spotlight", label: "Spotlight" },
   { href: "/admin/follow", label: "Suivi Follow" },
-  { href: "/admin/evaluation-mensuelle", label: "Évaluation Mensuelle" },
+  { href: "/admin/evaluations", label: "Évaluation Mensuelle" },
   { href: "/admin/statistiques", label: "Statistiques" },
   { href: "/admin/boutique", label: "Boutique" },
   { href: "/admin/events", label: "Événements" },
@@ -25,9 +25,11 @@ export default function AdminSidebar() {
       </div>
       <nav className="flex flex-col gap-2">
         {adminLinks.map((link) => {
-          // Pour les événements, considérer actif si on est sur /admin/events ou une sous-page
+          // Pour les événements et évaluations, considérer actif si on est sur la route ou une sous-page
           const isActive = link.href === "/admin/events"
             ? pathname?.startsWith("/admin/events")
+            : link.href === "/admin/evaluations"
+            ? pathname?.startsWith("/admin/evaluations")
             : pathname === link.href;
           return (
             <Link

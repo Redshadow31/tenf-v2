@@ -1,25 +1,80 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-export default function EvaluationsIndexPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Rediriger vers le mois en cours
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    router.replace(`/admin/evaluations/${year}-${month}`);
-  }, [router]);
+export default function EvaluationsHubPage() {
+  const sections = [
+    {
+      href: "/admin/evaluations/planification",
+      title: "Planification",
+      description: "Gérer la planification des évaluations mensuelles",
+      icon: "📅",
+      color: "from-blue-500 to-blue-600",
+    },
+    {
+      href: "/admin/evaluations/inscription",
+      title: "Inscription",
+      description: "Gérer les inscriptions aux évaluations",
+      icon: "📝",
+      color: "from-green-500 to-green-600",
+    },
+    {
+      href: "/admin/evaluations/presence-retour",
+      title: "Présence et retour",
+      description: "Suivre les présences et les retours de follow",
+      icon: "👥",
+      color: "from-purple-500 to-purple-600",
+    },
+    {
+      href: "/admin/evaluations/statistique",
+      title: "Statistique",
+      description: "Consulter les statistiques et résultats des évaluations",
+      icon: "📊",
+      color: "from-amber-500 to-amber-600",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-gray-400">Redirection...</p>
+    <div className="text-white">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white mb-2">Évaluations Mensuelles</h1>
+        <p className="text-gray-400">Gestion complète des évaluations mensuelles</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        {sections.map((section) => (
+          <Link
+            key={section.href}
+            href={section.href}
+            className="group bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 hover:border-[#9146ff] transition-all hover:shadow-lg hover:shadow-[#9146ff]/20"
+          >
+            <div className="flex items-start gap-4">
+              <div className={`flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-br ${section.color} text-3xl`}>
+                {section.icon}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white mb-2 group-hover:text-[#9146ff] transition-colors">
+                  {section.title}
+                </h2>
+                <p className="text-gray-400 text-sm">{section.description}</p>
+              </div>
+              <svg
+                className="w-6 h-6 text-gray-400 group-hover:text-[#9146ff] transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
 }
-
