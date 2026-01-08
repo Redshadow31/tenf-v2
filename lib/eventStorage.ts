@@ -99,13 +99,13 @@ export async function getEvent(eventId: string): Promise<Event | null> {
   return events.find(e => e.id === eventId) || null;
 }
 
-export async function createEvent(event: Omit<Event, 'id' | 'createdAt' | 'createdBy'>): Promise<Event> {
+export async function createEvent(event: Omit<Event, 'id' | 'createdAt' | 'createdBy'> & { createdBy?: string }): Promise<Event> {
   const events = await loadEvents();
   const newEvent: Event = {
     ...event,
     id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
-    createdBy: '', // Sera rempli par l'API
+    createdBy: event.createdBy || '', // Utiliser le createdBy fourni ou une chaîne vide
     isPublished: event.isPublished ?? false,
   };
   events.push(newEvent);
