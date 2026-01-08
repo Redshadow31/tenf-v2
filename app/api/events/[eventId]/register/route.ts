@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordUser } from '@/lib/discord';
+import { cookies } from 'next/headers';
 import { getEvent, registerForEvent } from '@/lib/eventStorage';
 import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberData';
 
@@ -31,11 +31,31 @@ export async function POST(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté
-    const discordUser = await getDiscordUser();
-    if (!discordUser) {
+    // Récupérer l'utilisateur Discord connecté depuis les cookies
+    const cookieStore = cookies();
+    const discordUserId = cookieStore.get('discord_user_id')?.value;
+    const discordUsername = cookieStore.get('discord_username')?.value;
+    const discordAvatar = cookieStore.get('discord_avatar')?.value;
+    
+    if (!discordUserId) {
+      // Debug en développement
+      const isDev = process.env.NODE_ENV === 'development';
+      const allCookies = cookieStore.getAll();
+      const debugInfo = isDev ? {
+        hasDiscordUserIdCookie: !!cookieStore.get('discord_user_id'),
+        cookieNames: allCookies.map(c => c.name),
+        origin: request.headers.get('origin'),
+        host: request.headers.get('host'),
+        referer: request.headers.get('referer'),
+      } : undefined;
+      
+      console.error('[Event Registration] Utilisateur non connecté', debugInfo);
+      
       return NextResponse.json(
-        { error: 'Vous devez être connecté pour vous inscrire' },
+        { 
+          error: 'Vous devez être connecté pour vous inscrire',
+          ...(debugInfo && { debug: debugInfo })
+        },
         { status: 401 }
       );
     }
@@ -44,7 +64,7 @@ export async function POST(
     await loadMemberDataFromStorage();
     
     // Récupérer les données du membre depuis la base par Discord ID
-    const member = findMemberByIdentifier({ discordId: discordUser.id });
+    const member = findMemberByIdentifier({ discordId: discordUserId });
     if (!member) {
       return NextResponse.json(
         { error: 'Membre non trouvé dans la base de données' },
@@ -57,7 +77,7 @@ export async function POST(
       twitchLogin: member.twitchLogin,
       displayName: member.displayName || member.twitchLogin,
       discordId: member.discordId,
-      discordUsername: member.discordUsername,
+      discordUsername: member.discordUsername || discordUsername,
       notes: notes || undefined,
     });
     

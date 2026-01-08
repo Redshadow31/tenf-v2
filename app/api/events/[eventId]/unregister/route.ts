@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordUser } from '@/lib/discord';
+import { cookies } from 'next/headers';
 import { getEvent, unregisterFromEvent } from '@/lib/eventStorage';
 import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberData';
 
@@ -22,9 +22,11 @@ export async function DELETE(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté
-    const discordUser = await getDiscordUser();
-    if (!discordUser) {
+    // Récupérer l'utilisateur Discord connecté depuis les cookies
+    const cookieStore = cookies();
+    const discordUserId = cookieStore.get('discord_user_id')?.value;
+    
+    if (!discordUserId) {
       return NextResponse.json(
         { error: 'Vous devez être connecté' },
         { status: 401 }
@@ -35,7 +37,7 @@ export async function DELETE(
     await loadMemberDataFromStorage();
     
     // Récupérer les données du membre depuis la base par Discord ID
-    const member = findMemberByIdentifier({ discordId: discordUser.id });
+    const member = findMemberByIdentifier({ discordId: discordUserId });
     if (!member) {
       return NextResponse.json(
         { error: 'Membre non trouvé dans la base de données' },

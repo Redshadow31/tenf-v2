@@ -86,6 +86,7 @@ export default function Page() {
     try {
       const response = await fetch(`/api/events/${selectedEvent.id}/register`, {
         method: 'POST',
+        credentials: 'include', // Important : inclure les cookies de session
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
