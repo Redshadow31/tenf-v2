@@ -70,7 +70,7 @@ export default function Page() {
               <section className="mb-16">
                 <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-                    Bienvenue dans TENF ! Cette page vous explique comment fonctionne notre communauté et comment vous pouvez en tirer le meilleur parti.
+                    Bienvenue dans TENF ✨ Ici, on t'accompagne de tes premiers pas jusqu'à ton intégration complète. Tu vas découvrir nos étapes d'arrivée, notre fonctionnement, et surtout comment profiter au maximum de l'entraide, des events et de la vie de la communauté.
                   </p>
                 </div>
               </section>
@@ -83,37 +83,28 @@ export default function Page() {
                 <div className="space-y-6">
                   <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      1. Candidature
+                      1. Inscription
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Remplissez le formulaire d'intégration disponible sur notre site. Votre candidature sera examinée par notre équipe d'accueil.
+                      Remplis le formulaire d'intégration via le site : tes informations arrivent directement dans notre tableau de suivi. L'équipe d'accueil vérifie ta demande et te guide si quelque chose manque.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      2. Évaluation
+                      2. Réunion d'intégration
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Une fois accepté, vous passerez une évaluation initiale qui permettra de déterminer votre niveau et vos besoins spécifiques.
+                      Ta place se valide en participant à une réunion d'intégration. On t'explique TENF, on te montre où trouver les infos importantes, et tu peux poser toutes tes questions. La présence et l'échange sont essentiels.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      3. Attribution d'un Mentor
+                      3. Découvrir les autres & s'impliquer
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Un mentor vous sera assigné pour vous accompagner dans vos premiers pas et répondre à vos questions.
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      4. Intégration Progressive
-                    </h3>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Vous serez progressivement intégré aux différents canaux et activités de la communauté selon vos besoins et vos objectifs.
+                      Fais connaissance avec la communauté : sois actif sur le serveur, participe aux événements et passe sur les lives des membres TENF. Plus tu échanges, plus l'entraide devient naturelle (et efficace).
                     </p>
                   </div>
                 </div>
@@ -148,25 +139,25 @@ export default function Page() {
                       Membres Actifs
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Le cœur de notre communauté. Les membres actifs participent aux activités, s'entraident et grandissent ensemble.
+                      Le cœur de TENF : ils participent à l'entraide, aux raids, aux events et font vivre les échanges au quotidien.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      Créateurs Juniors
+                      Créateur Junior (mineur)
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Membres qui commencent à prendre des responsabilités et à aider les nouveaux arrivants.
+                      Jeunes créateurs : un cadre adapté et bienveillant, pour progresser et participer à la communauté en toute sécurité.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      Mentors
+                      Communauté (mineur)
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Membres expérimentés qui accompagnent et forment les nouveaux membres de la communauté.
+                      Jeunes viewers / membres : accès à la vie du serveur et aux activités, avec un environnement encadré et respectueux.
                     </p>
                   </div>
 
@@ -175,7 +166,7 @@ export default function Page() {
                       Staff & Admins
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Équipe qui gère l'organisation, les événements et assure le bon fonctionnement de TENF.
+                      L'équipe qui organise, anime et veille au bon fonctionnement : accueil, événements, accompagnement et modération.
                     </p>
                   </div>
                 </div>
@@ -188,13 +179,14 @@ export default function Page() {
                 </h2>
                 <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                    TENF organise régulièrement diverses activités pour renforcer les liens entre membres :
+                    TENF propose des rendez-vous réguliers pour se découvrir, progresser et créer des liens entre streamers et membres :
                   </p>
                   <ul className="leading-relaxed text-lg space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Raids organisés</strong> : Sessions de raids pour découvrir de nouveaux streamers</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Événements communautaires</strong> : Tournois, défis et activités créatives</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Formations</strong> : Ateliers et sessions de formation sur le streaming</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Spotlight</strong> : Mise en avant des membres et de leurs contenus</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Spotlight</strong> : mises en avant régulières de membres et de contenus (live, clip, projet)</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Films communautaires</strong> : moments "watch party" en vocal pour partager un bon moment</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Jeux communautaires</strong> : soirées fun (Petit Bac, Fortnite, Gartic Phone, etc.)</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Sessions de mentorat (petits groupes encadrés)</strong> : suivi, retours, objectifs et progression ensemble</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Formations</strong> : ateliers pratiques autour du streaming (outils, organisation, bonnes pratiques)</li>
                   </ul>
                 </div>
               </section>
