@@ -224,6 +224,36 @@ export default function EvaluationSpotlightPage() {
     });
   };
 
+  const handleDeleteSpotlight = async (spotlightId: string, streamerName: string) => {
+    const confirmMessage = `⚠️ ATTENTION : Cette action est irréversible !\n\nVoulez-vous supprimer le spotlight de ${streamerName} ?\n\nCela supprimera :\n- L'évaluation du spotlight\n- Les présences\n- Les données dans la section A (évaluation mensuelle)\n- Toutes les données associées`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setDeletingSpotlightId(spotlightId);
+    try {
+      const response = await fetch(`/api/spotlight/spotlight/${spotlightId}/delete`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ Spotlight supprimé avec succès${data.deletedFromSectionA ? ' (supprimé de la section A)' : ''}`);
+        // Recharger les données
+        await loadMonthlyData();
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error || 'Impossible de supprimer le spotlight'}`);
+      }
+    } catch (error) {
+      console.error("Erreur suppression spotlight:", error);
+      alert('❌ Erreur lors de la suppression');
+    } finally {
+      setDeletingSpotlightId(null);
+    }
+  };
+
   const handleSaveSpotlightData = async () => {
     if (!selectedSpotlight) return;
 
@@ -488,27 +518,37 @@ export default function EvaluationSpotlightPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setSelectedSpotlight(spotlight);
-                            if (spotlight.evaluation) {
-                              setEditingEvaluation({ ...spotlight.evaluation });
-                            } else {
-                              setEditingEvaluation(null);
-                            }
-                            setIsEditingEvaluation(false);
-                            setIsEditingInfo(false);
-                            // Initialiser les champs de date et durée
-                            setEditingDate(spotlight.date.split('T')[0] || spotlight.date);
-                            setEditingDuration(spotlight.duration || "");
-                            // Les startedAt/endsAt ne sont pas dans SpotlightData, on les laisse vides
-                            setEditingStartedAt("");
-                            setEditingEndsAt("");
-                          }}
-                          className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors"
-                        >
-                          {spotlight.evaluation ? "Modifier" : "Détails"}
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedSpotlight(spotlight);
+                              if (spotlight.evaluation) {
+                                setEditingEvaluation({ ...spotlight.evaluation });
+                              } else {
+                                setEditingEvaluation(null);
+                              }
+                              setIsEditingEvaluation(false);
+                              setIsEditingInfo(false);
+                              // Initialiser les champs de date et durée
+                              setEditingDate(spotlight.date.split('T')[0] || spotlight.date);
+                              setEditingDuration(spotlight.duration || "");
+                              // Les startedAt/endsAt ne sont pas dans SpotlightData, on les laisse vides
+                              setEditingStartedAt("");
+                              setEditingEndsAt("");
+                            }}
+                            className="text-[#9146ff] hover:text-[#7c3aed] font-semibold text-sm transition-colors"
+                          >
+                            {spotlight.evaluation ? "Modifier" : "Détails"}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSpotlight(spotlight.id, spotlight.streamerTwitchLogin)}
+                            disabled={deletingSpotlightId === spotlight.id}
+                            className="text-red-400 hover:text-red-300 font-semibold text-sm transition-colors disabled:opacity-50"
+                            title="Supprimer ce spotlight et toutes ses données"
+                          >
+                            {deletingSpotlightId === spotlight.id ? "..." : "🗑️"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

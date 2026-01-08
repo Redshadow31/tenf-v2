@@ -288,6 +288,73 @@ export async function saveSpotlightEvaluation(evaluation: SpotlightEvaluation): 
   }
 }
 
+/**
+ * Supprime l'évaluation d'un spotlight
+ */
+export async function deleteSpotlightEvaluation(spotlightId: string): Promise<void> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(SPOTLIGHT_STORE_NAME);
+      await store.delete(`${spotlightId}/evaluation.json`);
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'spotlights');
+      const filePath = path.join(dataDir, `${spotlightId}`, 'evaluation.json');
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch (error) {
+    console.error(`[SpotlightStorage] Erreur suppression évaluation pour ${spotlightId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Supprime les présences d'un spotlight
+ */
+export async function deleteSpotlightPresences(spotlightId: string): Promise<void> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(SPOTLIGHT_STORE_NAME);
+      await store.delete(`${spotlightId}/presences.json`);
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'spotlights');
+      const filePath = path.join(dataDir, `${spotlightId}`, 'presences.json');
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch (error) {
+    console.error(`[SpotlightStorage] Erreur suppression présences pour ${spotlightId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Supprime toutes les données d'un spotlight (évaluation, présences, dossier complet)
+ */
+export async function deleteAllSpotlightData(spotlightId: string): Promise<void> {
+  try {
+    // Supprimer l'évaluation
+    await deleteSpotlightEvaluation(spotlightId);
+    
+    // Supprimer les présences
+    await deleteSpotlightPresences(spotlightId);
+    
+    // Supprimer le dossier complet (si en développement local)
+    if (!isNetlify()) {
+      const dataDir = path.join(process.cwd(), 'data', 'spotlights');
+      const spotlightDir = path.join(dataDir, spotlightId);
+      if (fs.existsSync(spotlightDir)) {
+        fs.rmSync(spotlightDir, { recursive: true, force: true });
+      }
+    }
+  } catch (error) {
+    console.error(`[SpotlightStorage] Erreur suppression complète pour ${spotlightId}:`, error);
+    throw error;
+  }
+}
+
 // ============================================
 // DONNÉES COMPLÈTES
 // ============================================
