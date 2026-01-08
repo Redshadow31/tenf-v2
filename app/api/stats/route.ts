@@ -62,99 +62,66 @@ export async function GET() {
     
     // Debug: logger le nombre de membres actifs
     console.log(`[Stats API] Active members count: ${activeMembersCount}`);
+    console.log(`[Stats API] Sample member logins:`, activeMembers.slice(0, 5).map(m => m.twitchLogin));
 
-    // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams)
+    // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
     try {
-      // Utiliser les twitchId si disponibles, sinon utiliser twitchLogin
-      const membersWithTwitch = activeMembers.filter(member => member.twitchLogin || member.twitchId);
+      // Récupérer les logins Twitch des membres actifs
+      const twitchLogins = activeMembers
+        .map(member => member.twitchLogin)
+        .filter(Boolean) as string[];
       
-      console.log(`[Stats API] Members with Twitch: ${membersWithTwitch.length}`);
+      console.log(`[Stats API] Members with Twitch: ${twitchLogins.length}`);
       
-      if (membersWithTwitch.length > 0) {
+      if (twitchLogins.length > 0) {
         const accessToken = await getTwitchAccessToken();
         if (!accessToken) {
           console.error('[Stats API] Failed to get Twitch access token');
         } else {
-          console.log('[Stats API] Twitch access token obtained');
-          // Essayer d'abord avec les twitchId si disponibles
-          const membersWithId = membersWithTwitch.filter(m => m.twitchId);
-          const membersWithoutId = membersWithTwitch.filter(m => !m.twitchId);
-          
-          let allUserIds: string[] = [];
-          
-          // Utiliser les IDs Twitch déjà stockés
-          if (membersWithId.length > 0) {
-            allUserIds = membersWithId
-              .map(m => m.twitchId)
-              .filter(Boolean) as string[];
-          }
-          
-          // Pour les membres sans ID, récupérer les IDs depuis les logins
-          if (membersWithoutId.length > 0) {
-            const twitchLogins = membersWithoutId
-              .map(member => member.twitchLogin)
-              .filter(Boolean)
-              .slice(0, 100); // Limite API Twitch pour les logins
-            
-            if (twitchLogins.length > 0) {
-              // Construire correctement la requête avec login (pour /helix/users)
-              // L'API Twitch /helix/users utilise "login" et non "user_login"
-              const userLoginsParam = twitchLogins.map(l => `login=${encodeURIComponent(l.trim().toLowerCase())}`).join('&');
-              
-              const usersResponse = await fetch(
-                `https://api.twitch.tv/helix/users?${userLoginsParam}`,
-                {
-                  headers: {
-                    'Client-ID': process.env.TWITCH_CLIENT_ID || '',
-                    'Authorization': `Bearer ${accessToken}`,
-                  },
-                }
-              );
-
-              if (usersResponse.ok) {
-                const usersData = await usersResponse.json();
-                const userIdsFromLogins = (usersData.data || []).map((user: any) => user.id);
-                allUserIds = [...allUserIds, ...userIdsFromLogins];
-              }
-            }
-          }
-
-          // Récupérer les streams en cours pour tous les IDs
-          if (allUserIds.length > 0) {
-            // L'API Twitch accepte jusqu'à 100 user_id par requête
-            const batches = [];
-            for (let i = 0; i < allUserIds.length; i += 100) {
-              batches.push(allUserIds.slice(i, i + 100));
-            }
-            
+          const clientId = process.env.TWITCH_CLIENT_ID;
+          if (!clientId) {
+            console.error('[Stats API] Twitch Client ID not configured');
+          } else {
+            // Utiliser la même logique que /api/twitch/streams : batches de 99 logins
+            const BATCH_SIZE = 99;
             let totalLives = 0;
-            for (const batch of batches) {
-              const userIdsParam = batch.map((id: string) => `user_id=${id}`).join('&');
+            
+            for (let i = 0; i < twitchLogins.length; i += BATCH_SIZE) {
+              const batch = twitchLogins.slice(i, i + BATCH_SIZE);
+              
+              const params = batch
+                .map((login) => `user_login=${encodeURIComponent(login.trim().toLowerCase())}`)
+                .join('&');
+
               const streamsResponse = await fetch(
-                `https://api.twitch.tv/helix/streams?${userIdsParam}`,
+                `https://api.twitch.tv/helix/streams?${params}`,
                 {
                   headers: {
-                    'Client-ID': process.env.TWITCH_CLIENT_ID || '',
-                    'Authorization': `Bearer ${accessToken}`,
+                    'Client-ID': clientId,
+                    Authorization: `Bearer ${accessToken}`,
                   },
                 }
               );
 
               if (streamsResponse.ok) {
                 const streamsData = await streamsResponse.json();
-                const liveStreams = (streamsData.data || []).filter((stream: any) => stream.type === 'live');
-                totalLives += liveStreams.length;
+                const streams = streamsData.data || [];
+                // Filtrer uniquement les streams vraiment en live (même logique que la page lives)
+                const liveStreamsOnly = streams.filter((stream: any) => stream.type === "live");
+                totalLives += liveStreamsOnly.length;
+              } else {
+                const errorText = await streamsResponse.text();
+                console.error(`[Stats API] Twitch Streams API error for batch ${i / BATCH_SIZE + 1}:`, errorText);
               }
             }
+            
             livesCount = totalLives;
             console.log(`[Stats API] Total lives in progress: ${livesCount}`);
-          } else {
-            console.log('[Stats API] No user IDs to check for streams');
           }
         }
       } else {
-        console.log('[Stats API] No access token or no members with Twitch');
+        console.log('[Stats API] No members with Twitch login');
       }
     } catch (error) {
       console.error('[Stats API] Error fetching live streams count:', error);
