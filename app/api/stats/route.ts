@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage } from '@/lib/memberData';
+import { getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { allMembers } from '@/lib/members';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -52,17 +53,36 @@ export async function GET() {
       }
     }
 
+    // Initialiser les données membres si nécessaire
+    initializeMemberData();
+    
     // Charger les données depuis le stockage persistant (Blobs ou fichier)
     await loadMemberDataFromStorage();
     
-    // 2. Compter le nombre total de membres actifs (utiliser la même logique que l'API publique)
-    // Utiliser getAllActiveMemberDataFromAllLists() qui est la fonction utilisée par l'API publique
-    const activeMembers = getAllActiveMemberDataFromAllLists();
-    const activeMembersCount = activeMembers.length;
+    // 2. Compter le nombre total de membres actifs
+    // Utiliser getAllActiveMemberDataFromAllLists() pour les membres enregistrés dans le système
+    let activeMembers = getAllActiveMemberDataFromAllLists();
+    let activeMembersCount = activeMembers.length;
+    
+    // Si aucun membre trouvé dans le store, utiliser allMembers comme source de vérité (membres enregistrés dans le site)
+    if (activeMembersCount === 0) {
+      console.log(`[Stats API] No members in store, using allMembers as source of truth`);
+      activeMembersCount = allMembers.length;
+      // Créer une structure similaire pour les lives avec les logins Twitch
+      activeMembers = allMembers.map(m => ({
+        twitchLogin: m.twitchLogin,
+        twitchId: undefined,
+        twitchUrl: m.twitchUrl,
+        displayName: m.displayName,
+        role: 'Affilié' as const,
+        isVip: false,
+        isActive: true,
+        listId: undefined,
+      }));
+    }
     
     // Debug: logger le nombre de membres actifs
     console.log(`[Stats API] Active members count: ${activeMembersCount}`);
-    console.log(`[Stats API] Sample member logins:`, activeMembers.slice(0, 5).map(m => m.twitchLogin));
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
