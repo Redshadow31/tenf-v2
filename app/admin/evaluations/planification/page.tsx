@@ -10,11 +10,11 @@ export default function PlanificationPage() {
           href="/admin/evaluations"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
-          ← Retour aux évaluations
+          ← Retour à l'intégration
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Planification</h1>
         <p className="text-gray-400">
-          Gérer la planification des évaluations mensuelles
+          Gérer la planification de l'intégration
         </p>
       </div>
 

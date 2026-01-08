@@ -7,14 +7,14 @@ export default function EvaluationsHubPage() {
     {
       href: "/admin/evaluations/planification",
       title: "Planification",
-      description: "Gérer la planification des évaluations mensuelles",
+      description: "Gérer la planification de l'intégration",
       icon: "📅",
       color: "from-blue-500 to-blue-600",
     },
     {
       href: "/admin/evaluations/inscription",
       title: "Inscription",
-      description: "Gérer les inscriptions aux évaluations",
+      description: "Gérer les inscriptions à l'intégration",
       icon: "📝",
       color: "from-green-500 to-green-600",
     },
@@ -28,7 +28,7 @@ export default function EvaluationsHubPage() {
     {
       href: "/admin/evaluations/statistique",
       title: "Statistique",
-      description: "Consulter les statistiques et résultats des évaluations",
+      description: "Consulter les statistiques et résultats de l'intégration",
       icon: "📊",
       color: "from-amber-500 to-amber-600",
     },
@@ -37,8 +37,8 @@ export default function EvaluationsHubPage() {
   return (
     <div className="text-white">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Évaluations Mensuelles</h1>
-        <p className="text-gray-400">Gestion complète des évaluations mensuelles</p>
+        <h1 className="text-4xl font-bold text-white mb-2">Intégration</h1>
+        <p className="text-gray-400">Gestion complète de l'intégration</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">

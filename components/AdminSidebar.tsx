@@ -8,7 +8,7 @@ const adminLinks = [
   { href: "/admin/membres", label: "Membres" },
   { href: "/admin/spotlight", label: "Spotlight" },
   { href: "/admin/follow", label: "Suivi Follow" },
-  { href: "/admin/evaluations", label: "Évaluation Mensuelle" },
+  { href: "/admin/evaluations", label: "Intégration" },
   { href: "/admin/statistiques", label: "Statistiques" },
   { href: "/admin/boutique", label: "Boutique" },
   { href: "/admin/events", label: "Événements" },

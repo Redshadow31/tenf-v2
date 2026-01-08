@@ -10,7 +10,7 @@ export default function PresenceRetourPage() {
           href="/admin/evaluations"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
-          ← Retour aux évaluations
+          ← Retour à l'intégration
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Présence et retour</h1>
         <p className="text-gray-400">
