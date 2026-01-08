@@ -38,6 +38,8 @@ export default function RaidsPage() {
     manual: true,
   });
   const [rawRaidsData, setRawRaidsData] = useState<any>(null); // Stocker les données brutes pour le filtrage
+  const [sortColumn, setSortColumn] = useState<'membre' | 'done' | 'received'>('done');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     async function loadAdmin() {
@@ -343,6 +345,44 @@ export default function RaidsPage() {
     return false;
   };
 
+  const handleSort = (column: 'membre' | 'done' | 'received') => {
+    if (sortColumn === column) {
+      // Inverser la direction si on clique sur la même colonne
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nouvelle colonne, trier par défaut en ordre décroissant pour les nombres, croissant pour membre
+      setSortColumn(column);
+      setSortDirection(column === 'membre' ? 'asc' : 'desc');
+    }
+  };
+
+  const getSortedEntries = () => {
+    const entries = Object.entries(raids);
+    
+    return entries.sort((a, b) => {
+      const [loginA, statsA] = a;
+      const [loginB, statsB] = b;
+      
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'membre':
+          const nameA = getMemberDisplayName(loginA).toLowerCase();
+          const nameB = getMemberDisplayName(loginB).toLowerCase();
+          comparison = nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+          break;
+        case 'done':
+          comparison = statsA.done - statsB.done;
+          break;
+        case 'received':
+          comparison = statsA.received - statsB.received;
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -542,13 +582,43 @@ export default function RaidsPage() {
               <thead>
                 <tr className="border-b border-gray-700">
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Membre
+                    <button
+                      onClick={() => handleSort('membre')}
+                      className="flex items-center gap-2 hover:text-[#9146ff] transition-colors cursor-pointer"
+                    >
+                      Membre
+                      {sortColumn === 'membre' && (
+                        <span className="text-[#9146ff]">
+                          {sortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Raids faits
+                    <button
+                      onClick={() => handleSort('done')}
+                      className="flex items-center gap-2 hover:text-[#9146ff] transition-colors cursor-pointer"
+                    >
+                      Raids faits
+                      {sortColumn === 'done' && (
+                        <span className="text-[#9146ff]">
+                          {sortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Raids reçus
+                    <button
+                      onClick={() => handleSort('received')}
+                      className="flex items-center gap-2 hover:text-[#9146ff] transition-colors cursor-pointer"
+                    >
+                      Raids reçus
+                      {sortColumn === 'received' && (
+                        <span className="text-[#9146ff]">
+                          {sortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
                     Alertes
@@ -563,9 +633,7 @@ export default function RaidsPage() {
                     </td>
                   </tr>
                 ) : (
-                  Object.entries(raids)
-                    .sort((a, b) => b[1].done - a[1].done)
-                    .map(([twitchLogin, stats]) => {
+                  getSortedEntries().map(([twitchLogin, stats]) => {
                       // Trouver les alertes pour ce membre
                       const memberAlerts = computedStats?.alerts.filter(
                         (alert) => alert.raider === twitchLogin
