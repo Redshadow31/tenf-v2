@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { findMemberByIdentifier, updateMemberData, createMemberData, getAllActiveMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import type { MemberRole } from '@/lib/memberRoles';
 
 /**
  * POST - Intègre les membres présents au site et Discord
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
           : `https://www.twitch.tv/${twitchLogin}`;
         
         // Préparer les données du membre
+        const defaultRole: MemberRole = 'Affilié';
         const memberData: {
           twitchLogin: string;
           twitchUrl: string;
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
           discordUsername?: string;
           discordId?: string;
           parrain?: string;
-          role: string;
+          role: MemberRole;
           integrationDate?: Date;
           isActive: boolean;
           isVip: boolean;
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
           displayName: discordUsername,
           discordUsername: discordUsername,
           parrain: parrain || undefined,
-          role: 'Affilié', // Rôle par défaut pour les nouveaux membres
+          role: defaultRole, // Rôle par défaut pour les nouveaux membres
           integrationDate: new Date(),
           isActive: true,
           isVip: false,
