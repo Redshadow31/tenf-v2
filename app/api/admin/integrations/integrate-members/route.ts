@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
         const { discordUsername, discordId, twitchLogin, twitchChannelUrl, parrain } = member;
         
         if (!twitchLogin || !discordUsername) {
-          errors.push(`${discordUsername || 'Membre inconnu'}: Données incomplètes`);
+          errors.push(`${discordUsername || 'Membre inconnu'}: Données incomplètes (pseudo Discord et Twitch requis)`);
+          continue;
+        }
+        
+        if (!twitchChannelUrl) {
+          errors.push(`${discordUsername}: Lien de chaîne Twitch requis`);
           continue;
         }
         
