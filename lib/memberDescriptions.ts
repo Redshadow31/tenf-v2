@@ -26,8 +26,8 @@ function getRoleText(role: MemberRole): string {
       return "Créateur en Développement";
     case "Affilié":
       return "Créateur Affilié";
-    case "Staff":
-      return "Membre du Staff";
+    case "Modérateur Junior":
+      return "Modérateur Junior";
     case "Mentor":
       return "Mentor";
     case "Admin":
