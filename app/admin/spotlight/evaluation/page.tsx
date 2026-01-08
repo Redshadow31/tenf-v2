@@ -295,7 +295,13 @@ export default function EvaluationSpotlightPage() {
         setIsEditingInfo(false);
         // Recharger les données mensuelles
         await loadMonthlyData();
-        alert('✅ Informations du spotlight mises à jour avec succès');
+        
+        // Afficher un message approprié selon si le spotlight a été déplacé
+        if (data.moved) {
+          alert(`✅ Spotlight mis à jour et déplacé de ${data.oldMonth} vers ${data.newMonth}`);
+        } else {
+          alert('✅ Informations du spotlight mises à jour avec succès');
+        }
       } else {
         const error = await response.json();
         alert(`❌ Erreur: ${error.error || 'Impossible de sauvegarder'}`);

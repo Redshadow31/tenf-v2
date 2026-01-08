@@ -29,19 +29,20 @@ export async function PUT(
     const { date, duration, startedAt, endsAt } = body;
 
     // Charger les données de section A pour trouver le mois
-    // On essaie le mois courant et les mois précédents/récents
+    // On cherche dans les 12 derniers mois pour être sûr de trouver le spotlight
     const now = new Date();
     const monthsToCheck: string[] = [];
     
-    // Générer les 3 derniers mois à vérifier
-    for (let i = 0; i < 3; i++) {
+    // Générer les 12 derniers mois à vérifier
+    for (let i = 0; i < 12; i++) {
       const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
     }
 
-    let sectionAData = null;
-    let monthKey: string | null = null;
+    let oldSectionAData = null;
+    let oldMonthKey: string | null = null;
     let spotlightIndex = -1;
+    let spotlightToMove = null;
 
     // Chercher le spotlight dans les mois récents
     for (const month of monthsToCheck) {
@@ -49,24 +50,24 @@ export async function PUT(
       if (data && data.spotlights) {
         const index = data.spotlights.findIndex(s => s.id === spotlightId);
         if (index !== -1) {
-          sectionAData = data;
-          monthKey = month;
+          oldSectionAData = data;
+          oldMonthKey = month;
           spotlightIndex = index;
+          spotlightToMove = { ...data.spotlights[index] };
           break;
         }
       }
     }
 
-    if (!sectionAData || spotlightIndex === -1) {
+    if (!oldSectionAData || spotlightIndex === -1 || !spotlightToMove) {
       return NextResponse.json(
         { error: 'Spotlight non trouvé' },
         { status: 404 }
       );
     }
 
-    // Mettre à jour le spotlight
-    const spotlight = sectionAData.spotlights[spotlightIndex];
-    
+    // Vérifier si la date change et déterminer le nouveau mois
+    let newMonthKey: string | null = null;
     if (date) {
       // Vérifier que la nouvelle date est valide
       const newDate = new Date(date);
@@ -76,32 +77,75 @@ export async function PUT(
           { status: 400 }
         );
       }
-      spotlight.date = newDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      // Calculer le nouveau mois
+      newMonthKey = getMonthKey(newDate.getFullYear(), newDate.getMonth() + 1);
+      spotlightToMove.date = newDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    } else {
+      // Si pas de nouvelle date, utiliser l'ancienne pour déterminer le mois
+      const currentDate = new Date(spotlightToMove.date);
+      newMonthKey = getMonthKey(currentDate.getFullYear(), currentDate.getMonth() + 1);
     }
 
     // Stocker startedAt et endsAt pour calculer la durée
-    // On peut les stocker dans un champ personnalisé ou utiliser une structure étendue
-    // Pour l'instant, on stocke la durée directement si fournie
     if (startedAt) {
-      (spotlight as any).startedAt = startedAt;
+      (spotlightToMove as any).startedAt = startedAt;
     }
     if (endsAt) {
-      (spotlight as any).endsAt = endsAt;
+      (spotlightToMove as any).endsAt = endsAt;
     }
     if (duration !== undefined) {
-      (spotlight as any).duration = duration;
+      (spotlightToMove as any).duration = duration;
     }
 
-    // Mettre à jour lastUpdated
-    sectionAData.lastUpdated = new Date().toISOString();
+    // Si le mois a changé, déplacer le spotlight
+    if (newMonthKey && newMonthKey !== oldMonthKey) {
+      // 1. Supprimer du mois ancien
+      oldSectionAData.spotlights.splice(spotlightIndex, 1);
+      oldSectionAData.lastUpdated = new Date().toISOString();
+      await saveSectionAData(oldSectionAData);
 
-    // Sauvegarder les modifications
-    await saveSectionAData(sectionAData);
+      // 2. Ajouter au nouveau mois
+      let newSectionAData = await loadSectionAData(newMonthKey);
+      if (!newSectionAData) {
+        // Créer les données du mois si elles n'existent pas
+        newSectionAData = {
+          month: newMonthKey,
+          spotlights: [],
+          events: [],
+          raidPoints: {},
+          spotlightBonus: {},
+          lastUpdated: new Date().toISOString(),
+        };
+      }
+      
+      // Vérifier que le spotlight n'existe pas déjà dans le nouveau mois
+      const existingIndex = newSectionAData.spotlights.findIndex(s => s.id === spotlightId);
+      if (existingIndex === -1) {
+        newSectionAData.spotlights.push(spotlightToMove);
+      } else {
+        // Si déjà présent, mettre à jour
+        newSectionAData.spotlights[existingIndex] = spotlightToMove;
+      }
+      
+      newSectionAData.lastUpdated = new Date().toISOString();
+      await saveSectionAData(newSectionAData);
+    } else {
+      // Même mois, juste mettre à jour
+      oldSectionAData.spotlights[spotlightIndex] = spotlightToMove;
+      oldSectionAData.lastUpdated = new Date().toISOString();
+      await saveSectionAData(oldSectionAData);
+    }
 
     return NextResponse.json({ 
       success: true, 
-      spotlight,
-      message: 'Spotlight mis à jour avec succès' 
+      spotlight: spotlightToMove,
+      message: newMonthKey && newMonthKey !== oldMonthKey 
+        ? `Spotlight mis à jour et déplacé de ${oldMonthKey} vers ${newMonthKey}` 
+        : 'Spotlight mis à jour avec succès',
+      moved: newMonthKey && newMonthKey !== oldMonthKey,
+      oldMonth: oldMonthKey,
+      newMonth: newMonthKey,
     });
   } catch (error) {
     console.error('[Spotlight Update API] Erreur PUT:', error);
