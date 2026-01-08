@@ -215,12 +215,28 @@ const navItems: NavItem[] = [
   },
   {
     href: "/admin/evaluations",
-    label: "Évaluation Mensuelle",
+    label: "Intégration",
     icon: "📝",
     children: [
       {
         href: "/admin/evaluations",
-        label: "Vue d'ensemble",
+        label: "Hub",
+      },
+      {
+        href: "/admin/evaluations/planification",
+        label: "Planification",
+      },
+      {
+        href: "/admin/evaluations/inscription",
+        label: "Inscription",
+      },
+      {
+        href: "/admin/evaluations/presence-retour",
+        label: "Présence et retour",
+      },
+      {
+        href: "/admin/evaluations/statistique",
+        label: "Statistique",
       },
     ],
   },
