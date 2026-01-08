@@ -49,17 +49,17 @@ export default function UserSidebar() {
 
   if (loading) {
     return (
-      <aside className="w-64 bg-[#1a1a1d] border-r border-gray-700 p-6">
-        <div className="text-gray-400 text-sm">Chargement...</div>
+      <aside className="w-64 border-r p-6" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
+        <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Chargement...</div>
       </aside>
     );
   }
 
   if (!discordUser) {
     return (
-      <aside className="w-64 bg-[#1a1a1d] border-r border-gray-700 p-6">
+      <aside className="w-64 border-r p-6" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
         <div className="space-y-4">
-          <h3 className="text-white font-semibold mb-4">Connexion</h3>
+          <h3 className="font-semibold mb-4" style={{ color: 'var(--color-text)' }}>Connexion</h3>
           <button
             onClick={handleDiscordLogin}
             className="w-full rounded-lg bg-[#5865F2] hover:bg-[#4752C4] px-4 py-2 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
@@ -72,10 +72,10 @@ export default function UserSidebar() {
   }
 
   return (
-    <aside className="w-64 bg-[#1a1a1d] border-r border-gray-700 p-6">
+    <aside className="w-64 border-r p-6" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
       <div className="space-y-4">
         {/* Profil utilisateur */}
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-700">
+        <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
           {discordUser.avatar && (
             <img
               src={`https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`}
@@ -84,8 +84,8 @@ export default function UserSidebar() {
             />
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-white font-medium truncate">{discordUser.username}</div>
-            <div className="text-xs text-gray-400 truncate">@{discordUser.username}</div>
+            <div className="font-medium truncate" style={{ color: 'var(--color-text)' }}>{discordUser.username}</div>
+            <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>@{discordUser.username}</div>
           </div>
         </div>
 
@@ -93,14 +93,36 @@ export default function UserSidebar() {
         <nav className="space-y-2">
           <Link
             href="/membres/me"
-            className="block rounded-lg bg-[#1a1a1d] hover:bg-[#252529] px-4 py-3 text-sm font-medium text-white transition-colors border border-gray-700"
+            className="block rounded-lg px-4 py-3 text-sm font-medium transition-colors border"
+            style={{ 
+              backgroundColor: 'var(--color-card)', 
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card)';
+            }}
           >
             Mon profil
           </Link>
           
           <Link
             href="/evaluation"
-            className="block rounded-lg bg-[#1a1a1d] hover:bg-[#252529] px-4 py-3 text-sm font-medium text-white transition-colors border border-gray-700"
+            className="block rounded-lg px-4 py-3 text-sm font-medium transition-colors border"
+            style={{ 
+              backgroundColor: 'var(--color-card)', 
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card)';
+            }}
           >
             Mon évaluation
           </Link>
@@ -108,7 +130,14 @@ export default function UserSidebar() {
           {hasAdminAccess && (
             <Link
               href="/admin/dashboard"
-              className="block rounded-lg bg-[#9146ff] hover:bg-[#5a32b4] px-4 py-3 text-sm font-semibold text-white transition-colors"
+              className="block rounded-lg px-4 py-3 text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+              }}
             >
               Dashboard Admin
             </Link>
@@ -116,7 +145,14 @@ export default function UserSidebar() {
 
           <button
             onClick={handleLogout}
-            className="w-full rounded-lg bg-gray-700 hover:bg-gray-600 px-4 py-3 text-sm font-medium text-white transition-colors"
+            className="w-full rounded-lg px-4 py-3 text-sm font-medium text-white transition-colors"
+            style={{ backgroundColor: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
           >
             Déconnexion
           </button>

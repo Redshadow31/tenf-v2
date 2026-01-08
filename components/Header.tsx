@@ -69,9 +69,20 @@ export default function Header() {
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-[#9146ff] hover:bg-[#9146ff]/10 transition-all duration-200"
-                  onMouseEnter={() => setHoveredIcon(social.icon)}
-                  onMouseLeave={() => setHoveredIcon(null)}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--color-primary)';
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+                    e.currentTarget.style.opacity = '0.1';
+                    setHoveredIcon(social.icon);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.opacity = '1';
+                    setHoveredIcon(null);
+                  }}
                   aria-label={social.name}
                 >
                   <SocialIcon icon={social.icon} />
@@ -79,9 +90,9 @@ export default function Header() {
                 
                 {/* Tooltip */}
                 {hoveredIcon === social.icon && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md shadow-lg whitespace-nowrap pointer-events-none z-50">
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium rounded-md shadow-lg whitespace-nowrap pointer-events-none z-50" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
                     {social.name}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 w-2 h-2 rotate-45" style={{ backgroundColor: 'var(--color-card)', borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}></div>
                   </div>
                 )}
               </div>
@@ -90,14 +101,32 @@ export default function Header() {
         </div>
 
         {/* Navigation - Centrée */}
-        <nav className="hidden items-center gap-8 text-[15px] font-medium text-gray-200 md:flex">
+        <nav className="hidden items-center gap-8 text-[15px] font-medium md:flex">
           {publicLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="relative transition-colors hover:text-[#9146ff] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#9146ff] after:transition-all hover:after:w-full"
+              className="relative transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                const underline = e.currentTarget.querySelector('.nav-underline') as HTMLElement;
+                if (underline) underline.style.width = '100%';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                const underline = e.currentTarget.querySelector('.nav-underline') as HTMLElement;
+                if (underline) underline.style.width = '0%';
+              }}
             >
               {link.label}
+              <span 
+                className="nav-underline absolute bottom-0 left-0 h-0.5 transition-all duration-300"
+                style={{ 
+                  width: '0%',
+                  backgroundColor: 'var(--color-primary)'
+                }}
+              ></span>
             </Link>
           ))}
         </nav>

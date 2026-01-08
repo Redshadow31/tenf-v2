@@ -352,13 +352,13 @@ export default function AdminSidebar() {
   }
 
   return (
-    <div className="w-64 bg-[#1a1a1d] border-r border-gray-700 min-h-screen p-4">
+    <div className="w-64 border-r min-h-screen p-4" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
       <div className="mb-8">
         <Link href="/" className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-gradient-to-br from-[#9146ff] to-[#5a32b4]">
+          <div className="flex h-10 w-10 items-center justify-center rounded" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}>
             <span className="text-lg font-bold text-white">T</span>
           </div>
-          <span className="text-xl font-bold text-white">TENF Admin</span>
+          <span className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>TENF Admin</span>
         </Link>
       </div>
 
@@ -374,13 +374,23 @@ export default function AdminSidebar() {
               {hasChildren ? (
                 <button
                   onClick={() => toggleMenu(item.href)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    active
-                      ? "bg-[#9146ff] text-white"
-                      : parentActive
-                      ? "bg-[#252529] text-gray-200"
-                      : "text-gray-300 hover:bg-[#252529] hover:text-white"
-                  }`}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+                  style={{
+                    backgroundColor: active ? 'var(--color-primary)' : parentActive ? 'var(--color-card-hover)' : 'transparent',
+                    color: active ? 'white' : 'var(--color-text-secondary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active && !parentActive) {
+                      e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                      e.currentTarget.style.color = 'var(--color-text)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active && !parentActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    }
+                  }}
                 >
                   {item.icon && <span className="text-xl">{item.icon}</span>}
                   <span className="font-medium flex-1 text-left">{item.label}</span>
@@ -401,11 +411,23 @@ export default function AdminSidebar() {
               ) : (
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    active
-                      ? "bg-[#9146ff] text-white"
-                      : "text-gray-300 hover:bg-[#252529] hover:text-white"
-                  }`}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+                  style={{
+                    backgroundColor: active ? 'var(--color-primary)' : 'transparent',
+                    color: active ? 'white' : 'var(--color-text-secondary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                      e.currentTarget.style.color = 'var(--color-text)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    }
+                  }}
                 >
                   {item.icon && <span className="text-xl">{item.icon}</span>}
                   <span className="font-medium">{item.label}</span>
@@ -421,11 +443,26 @@ export default function AdminSidebar() {
                       <Link
                         key={child.href}
                         href={child.href}
-                        className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
-                          childActive
-                            ? "bg-[#9146ff]/30 text-white"
-                            : "text-gray-400 hover:text-white hover:bg-[#252529]"
-                        }`}
+                        className="block px-4 py-2 rounded-lg text-sm transition-colors"
+                        style={{
+                          backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
+                          color: childActive ? 'white' : 'var(--color-text-secondary)',
+                          opacity: childActive ? '1' : '0.7'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!childActive) {
+                            e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                            e.currentTarget.style.color = 'var(--color-text)';
+                            e.currentTarget.style.opacity = '1';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!childActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = 'var(--color-text-secondary)';
+                            e.currentTarget.style.opacity = '0.7';
+                          }
+                        }}
                       >
                         {child.label}
                       </Link>
@@ -439,10 +476,19 @@ export default function AdminSidebar() {
       </nav>
 
       {/* Retour au site */}
-      <div className="mt-8 pt-8 border-t border-gray-700">
+      <div className="mt-8 pt-8 border-t" style={{ borderColor: 'var(--color-border)' }}>
         <Link
           href="/"
-          className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white hover:bg-[#252529] rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"
+          style={{ color: 'var(--color-text-secondary)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--color-text)';
+            e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
         >
           <span>←</span>
           <span>Retour au site</span>

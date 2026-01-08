@@ -9,8 +9,11 @@
   --color-primary: #9146ff;
   --color-primary-dark: #5a32b4;
   --color-card: #1a1a1d;
+  --color-card-hover: #252529;
   --color-border: rgba(255, 255, 255, 0.05);
   --color-text-secondary: #9ca3af;
+  --color-sidebar-bg: #1a1a1d;
+  --color-sidebar-border: rgba(255, 255, 255, 0.1);
   --radius-base: 8px;
 }
 
@@ -21,8 +24,11 @@
   --color-primary: #7c3aed;
   --color-primary-dark: #5a32b4;
   --color-card: #ffffff;
+  --color-card-hover: #f3e8ff;
   --color-border: rgba(124, 58, 237, 0.15);
   --color-text-secondary: #6b7280;
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-border: rgba(124, 58, 237, 0.2);
 }
 
 * {
@@ -70,6 +76,42 @@ h3 {
 
 [data-theme="light"] .card {
   box-shadow: 0 4px 15px rgba(124, 58, 237, 0.1);
+}
+
+/* Styles pour les textes en mode clair */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3,
+[data-theme="light"] h4,
+[data-theme="light"] h5,
+[data-theme="light"] h6 {
+  color: var(--color-text);
+}
+
+[data-theme="light"] p,
+[data-theme="light"] span,
+[data-theme="light"] div {
+  color: var(--color-text);
+}
+
+/* Assurer que les inputs et textareas utilisent les bonnes couleurs */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background-color: var(--color-card);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  border-color: var(--color-primary);
+  outline-color: var(--color-primary);
 }
 
 a {
