@@ -25,7 +25,7 @@ interface LiveMember {
   thumbnailUrl: string;
   avatar: string;
   role: string;
-  isVip?: boolean;
+  isVip: boolean;
 }
 
 export default function LivesPage() {
