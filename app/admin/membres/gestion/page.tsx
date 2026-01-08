@@ -243,6 +243,7 @@ export default function GestionMembresPage() {
                 createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
                 integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
                 roleHistory: member.roleHistory || [],
+                parrain: member.parrain,
               };
             });
             
