@@ -767,9 +767,6 @@ export default function RaidImportModal({
                             return null;
                           }
                           
-                          return (
-                            <tr
-                              key={originalIdx}
                           const statusColor = {
                             'ok': 'text-green-400',
                             'unknown': 'text-yellow-400',
