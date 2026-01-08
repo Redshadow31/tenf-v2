@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
-import { allMembers } from '@/lib/members';
+import { getAllMemberData, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -60,15 +59,20 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres actifs
-    // Utiliser allMembers comme source de vérité (membres enregistrés dans le site)
-    // C'est la liste complète des membres TENF enregistrés
-    const activeMembersCount = allMembers.length;
+    // Utiliser getAllMemberData() comme la page admin, puis filtrer les membres actifs
+    // C'est la même logique que la page admin /admin/membres/gestion
+    const allMembers = getAllMemberData();
+    const activeMembers = allMembers.filter(m => m.isActive);
+    const activeMembersCount = activeMembers.length;
     
-    // Pour les lives, utiliser les logins Twitch de allMembers
-    const twitchLoginsForLives = allMembers.map(m => m.twitchLogin).filter(Boolean);
+    // Pour les lives, utiliser les logins Twitch des membres actifs
+    const twitchLoginsForLives = activeMembers
+      .map(m => m.twitchLogin)
+      .filter(Boolean) as string[];
     
     // Debug: logger le nombre de membres actifs
-    console.log(`[Stats API] Active members count (from allMembers): ${activeMembersCount}`);
+    console.log(`[Stats API] Total members in store: ${allMembers.length}`);
+    console.log(`[Stats API] Active members count: ${activeMembersCount}`);
 
     // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
