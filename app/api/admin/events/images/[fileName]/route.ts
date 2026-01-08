@@ -29,9 +29,39 @@ export async function GET(
       );
     }
 
-    // Récupérer les métadonnées pour le Content-Type
-    const metadata = await store.getMetadata(fileName);
-    const contentType = metadata?.contentType || 'image/jpeg';
+    // Déterminer le Content-Type depuis l'extension du fichier
+    let contentType = 'image/jpeg'; // Par défaut
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'gif':
+        contentType = 'image/gif';
+        break;
+      case 'webp':
+        contentType = 'image/webp';
+        break;
+      case 'svg':
+        contentType = 'image/svg+xml';
+        break;
+      default:
+        contentType = 'image/jpeg';
+    }
+    
+    // Essayer de récupérer le Content-Type depuis les métadonnées si disponible
+    try {
+      const metadata = await store.getMetadata(fileName);
+      if (metadata?.metadata) {
+        const customMetadata = metadata.metadata as Record<string, any>;
+        if (customMetadata.contentType) {
+          contentType = customMetadata.contentType;
+        }
+      }
+    } catch (error) {
+      // Si on ne peut pas récupérer les métadonnées, utiliser le type déterminé par l'extension
+      console.warn('[Event Image API] Impossible de récupérer les métadonnées:', error);
+    }
 
     // Retourner l'image
     return new NextResponse(image, {
