@@ -24,6 +24,7 @@ export default function GestionAccesPage() {
   const [accessList, setAccessList] = useState<AdminAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isFounder, setIsFounder] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newDiscordId, setNewDiscordId] = useState("");
@@ -171,9 +172,14 @@ export default function GestionAccesPage() {
       await loadAccessList();
       setNewDiscordId("");
       setIsAdding(false);
+      setSuccess("Accès ajouté avec succès !");
+      setError(null);
+      // Effacer le message de succès après 3 secondes
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       console.error("Error adding access:", err);
       setError(err.message || "Erreur lors de l'ajout de l'accès");
+      setSuccess(null);
     }
   }
 
@@ -195,9 +201,14 @@ export default function GestionAccesPage() {
 
       // Recharger la liste
       await loadAccessList();
+      setSuccess("Accès supprimé avec succès !");
+      setError(null);
+      // Effacer le message de succès après 3 secondes
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       console.error("Error deleting access:", err);
       setError(err.message || "Erreur lors de la suppression de l'accès");
+      setSuccess(null);
     }
   }
 
@@ -245,6 +256,20 @@ export default function GestionAccesPage() {
             <button
               onClick={() => setError(null)}
               className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Message de succès */}
+        {success && (
+          <div className="mb-6 p-4 rounded-lg border flex items-center gap-3" style={{ backgroundColor: 'var(--color-card)', borderColor: '#10b981' }}>
+            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <p className="text-sm" style={{ color: 'var(--color-text)' }}>{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="ml-auto text-green-500 hover:text-green-700"
             >
               ×
             </button>
