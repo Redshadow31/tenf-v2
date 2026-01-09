@@ -241,8 +241,9 @@ function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
           <span className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
             €{product.price.toFixed(2)}
           </span>
-          <button
-            className="px-4 py-2 rounded-lg font-semibold text-sm text-white transition-colors"
+          <Link
+            href={`/boutique/${product.id}`}
+            className="px-4 py-2 rounded-lg font-semibold text-sm text-white transition-colors text-center"
             style={{ backgroundColor: "var(--color-primary)" }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = "0.9";
@@ -252,11 +253,10 @@ function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              onClick(product);
             }}
           >
             Acheter
-          </button>
+          </Link>
         </div>
       </div>
     </div>
