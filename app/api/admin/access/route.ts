@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/adminAuth';
-import { isFounder, getAllAdminIds, getAdminRole, type AdminRole } from '@/lib/adminRoles';
+import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from '@/lib/adminAccessCache';
 import { getStore } from '@netlify/blobs';
 import { GUILD_ID } from '@/lib/discordRoles';
@@ -38,45 +38,60 @@ export async function GET() {
       );
     }
 
-    // Récupérer la liste depuis Blobs
-    let accessList: AdminAccess[] = [];
+    // Récupérer la liste depuis Blobs (membres ajoutés manuellement)
+    const store = getStore(ACCESS_STORE);
+    let storedAccessList: AdminAccess[] = [];
     try {
-      const store = getStore(ACCESS_STORE);
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        accessList = JSON.parse(stored);
+        storedAccessList = JSON.parse(stored);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
     }
 
-    // Si la liste est vide, initialiser avec les données hardcodées
-    if (accessList.length === 0) {
-      // Charger le cache d'abord pour inclure les données Blobs
-      await loadAdminAccessCache();
-      
-      // Utiliser getAllAdminIdsFromCache pour inclure le cache Blobs
-      const allIds = getAllAdminIdsFromCache();
-      accessList = allIds.map(id => {
-        // Vérifier d'abord dans le cache Blobs, puis les données hardcodées
-        const roleFromCache = getAdminRoleFromCache(id);
-        const role = roleFromCache || getAdminRole(id) || 'MODO_JUNIOR';
-        return {
-          discordId: id,
-          role: role as AdminRole,
-          addedAt: new Date().toISOString(),
-          addedBy: 'system',
-        };
+    // Charger le cache pour obtenir les membres ajoutés via Blobs
+    await loadAdminAccessCache();
+    
+    // Construire la liste complète avec TOUS les membres ayant accès admin
+    const accessList: AdminAccess[] = [];
+    const addedIds = new Set<string>();
+    
+    // 1. Toujours inclure les fondateurs en premier (hardcodés, non modifiables)
+    FOUNDERS.forEach(id => {
+      accessList.push({
+        discordId: id,
+        role: 'FOUNDER' as AdminRole,
+        addedAt: new Date(0).toISOString(), // Date ancienne pour indiquer qu'ils sont là depuis le début
+        addedBy: 'system',
       });
-      
-      // Sauvegarder dans Blobs
-      try {
-        const store = getStore(ACCESS_STORE);
-        await store.set(ACCESS_KEY, JSON.stringify(accessList, null, 2));
-      } catch (error) {
-        console.error('Error saving admin access to Blobs:', error);
+      addedIds.add(id);
+    });
+    
+    // 2. Ajouter tous les autres membres hardcodés (Admin Adjoint, Modo Mentor, Modo Junior)
+    const allHardcodedIds = getAllAdminIds();
+    allHardcodedIds.forEach(id => {
+      if (!addedIds.has(id)) {
+        const role = getAdminRole(id);
+        if (role) {
+          accessList.push({
+            discordId: id,
+            role: role,
+            addedAt: new Date(0).toISOString(),
+            addedBy: 'system',
+          });
+          addedIds.add(id);
+        }
       }
-    }
+    });
+    
+    // 3. Ajouter les membres ajoutés manuellement via Blobs (ceux qui ne sont pas hardcodés)
+    storedAccessList.forEach(access => {
+      if (!addedIds.has(access.discordId)) {
+        accessList.push(access);
+        addedIds.add(access.discordId);
+      }
+    });
 
     // Enrichir avec les informations Discord (username, avatar)
     const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -182,33 +197,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Charger la liste actuelle
+    // Charger la liste actuelle depuis Blobs (uniquement les membres ajoutés manuellement)
     const store = getStore(ACCESS_STORE);
-    let accessList: AdminAccess[] = [];
+    let storedAccessList: AdminAccess[] = [];
     
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        accessList = JSON.parse(stored);
+        storedAccessList = JSON.parse(stored);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
     }
 
-    // Vérifier si l'accès existe déjà
-    const existingIndex = accessList.findIndex(a => a.discordId === discordId);
+    // Filtrer les membres hardcodés de la liste Blobs (ils ne doivent pas être stockés)
+    storedAccessList = storedAccessList.filter(access => {
+      const hardcodedRole = getAdminRole(access.discordId);
+      // Garder uniquement les membres qui ne sont pas hardcodés
+      return !hardcodedRole || isFounder(access.discordId);
+    });
+
+    // Vérifier si l'accès existe déjà dans la liste Blobs
+    const existingIndex = storedAccessList.findIndex(a => a.discordId === discordId);
     
     if (existingIndex >= 0) {
       // Mettre à jour le rôle existant
-      accessList[existingIndex] = {
-        ...accessList[existingIndex],
+      storedAccessList[existingIndex] = {
+        ...storedAccessList[existingIndex],
         role: role as AdminRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.id,
       };
     } else {
       // Ajouter un nouvel accès
-      accessList.push({
+      storedAccessList.push({
         discordId,
         role: role as AdminRole,
         addedAt: new Date().toISOString(),
@@ -216,8 +238,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Sauvegarder dans Blobs
-    await store.set(ACCESS_KEY, JSON.stringify(accessList, null, 2));
+    // Sauvegarder dans Blobs (uniquement les membres ajoutés manuellement)
+    await store.set(ACCESS_KEY, JSON.stringify(storedAccessList, null, 2));
 
     // Recharger le cache en mémoire
     await loadAdminAccessCache();
@@ -275,14 +297,23 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Charger la liste actuelle
+    // Vérifier que ce n'est pas un membre hardcodé (Admin Adjoint, Modo Mentor, Modo Junior)
+    const hardcodedRole = getAdminRole(discordId);
+    if (hardcodedRole && !isFounder(discordId)) {
+      return NextResponse.json(
+        { error: "Impossible de supprimer un membre hardcodé. Les membres hardcodés doivent être modifiés dans le code source." },
+        { status: 403 }
+      );
+    }
+
+    // Charger la liste actuelle depuis Blobs (uniquement les membres ajoutés manuellement)
     const store = getStore(ACCESS_STORE);
-    let accessList: AdminAccess[] = [];
+    let storedAccessList: AdminAccess[] = [];
     
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        accessList = JSON.parse(stored);
+        storedAccessList = JSON.parse(stored);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
@@ -292,10 +323,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Filtrer pour retirer l'accès
-    const filteredList = accessList.filter(a => a.discordId !== discordId);
+    // Vérifier que le membre existe dans la liste Blobs (il doit avoir été ajouté manuellement)
+    const memberExists = storedAccessList.find(a => a.discordId === discordId);
+    if (!memberExists) {
+      return NextResponse.json(
+        { error: "Ce membre n'a pas été ajouté manuellement via cette interface et ne peut pas être supprimé." },
+        { status: 404 }
+      );
+    }
 
-    // Sauvegarder dans Blobs
+    // Filtrer pour retirer l'accès (uniquement les membres ajoutés via Blobs)
+    const filteredList = storedAccessList.filter(a => a.discordId !== discordId);
+
+    // Sauvegarder dans Blobs (uniquement les membres ajoutés manuellement)
     await store.set(ACCESS_KEY, JSON.stringify(filteredList, null, 2));
 
     // Recharger le cache en mémoire

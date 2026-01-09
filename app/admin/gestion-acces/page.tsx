@@ -482,18 +482,20 @@ export default function GestionAccesPage() {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        {new Date(access.addedAt).toLocaleDateString('fr-FR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {access.addedAt && new Date(access.addedAt).getTime() > 0
+                          ? new Date(access.addedAt).toLocaleDateString('fr-FR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'Initial'}
                       </td>
                       <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                         {access.addedBy === 'system' ? 'Système' : access.addedBy}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        {access.role === "FOUNDER" ? (
-                          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                        {access.role === "FOUNDER" || (access.addedBy === 'system' && new Date(access.addedAt).getTime() === 0) ? (
+                          <span className="text-xs italic" style={{ color: 'var(--color-text-secondary)' }}>
                             Non modifiable
                           </span>
                         ) : (
@@ -510,6 +512,7 @@ export default function GestionAccesPage() {
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = '#dc2626';
                             }}
+                            title="Supprimer l'accès admin de ce membre"
                           >
                             <Trash2 className="w-4 h-4" />
                             Supprimer

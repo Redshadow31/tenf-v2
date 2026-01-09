@@ -13,6 +13,7 @@ export interface AdminUser {
 
 /**
  * Récupère l'utilisateur admin actuel depuis les cookies (serveur uniquement)
+ * Vérifie d'abord les rôles hardcodés, puis le cache Blobs (uniquement dans Node.js runtime)
  */
 export async function getCurrentAdmin(): Promise<AdminUser | null> {
   try {
@@ -24,7 +25,21 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
       return null;
     }
 
-    const role = getAdminRole(userId);
+    // Vérifier d'abord les rôles hardcodés
+    let role = getAdminRole(userId);
+    
+    // Si pas trouvé dans les hardcodés, vérifier le cache Blobs (uniquement dans Node.js runtime)
+    if (!role && typeof process !== 'undefined' && process.versions?.node) {
+      try {
+        const { loadAdminAccessCache, getAdminRoleFromCache } = await import('./adminAccessCache');
+        await loadAdminAccessCache();
+        role = getAdminRoleFromCache(userId);
+      } catch (error) {
+        // Si Blobs n'est pas disponible (Edge Runtime), ignorer l'erreur
+        console.warn('[AdminAuth] Cannot load admin access cache (Edge Runtime):', error);
+      }
+    }
+
     if (!role) {
       return null;
     }
