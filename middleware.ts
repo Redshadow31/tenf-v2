@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isFounder } from "@/lib/adminRoles";
 
 /**
  * Middleware Next.js pour protéger les routes admin
@@ -20,6 +21,15 @@ export function middleware(request: NextRequest) {
       const loginUrl = new URL("/auth/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Vérification spécifique pour la page de gestion des accès (réservée aux fondateurs uniquement)
+    if (pathname.startsWith("/admin/gestion-acces")) {
+      // Vérifier que l'utilisateur est fondateur
+      if (!isFounder(userId)) {
+        // Rediriger vers la page d'accès refusé
+        return NextResponse.redirect(new URL("/unauthorized", request.url));
+      }
     }
 
     // La vérification des permissions spécifiques (Admin, Admin Adjoint, etc.)
