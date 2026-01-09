@@ -60,8 +60,35 @@ export async function GET() {
       });
     }
 
-    // Si pas trouvé dans memberDataStore, vérifier directement via Discord API
-    console.log('User role check - Not in memberDataStore, checking Discord API...');
+    // Si pas trouvé dans memberDataStore, vérifier le cache Blobs (membres ajoutés via l'interface admin)
+    console.log('User role check - Not in memberDataStore, checking Blobs cache...');
+    try {
+      const { loadAdminAccessCache, getAdminRoleFromCache } = await import('@/lib/adminAccessCache');
+      await loadAdminAccessCache();
+      const blobRole = getAdminRoleFromCache(userId);
+      
+      if (blobRole) {
+        // Mapper le rôle Blobs vers le nom d'affichage
+        const roleNames: Record<string, string> = {
+          'FOUNDER': 'Admin',
+          'ADMIN_ADJOINT': 'Admin Adjoint',
+          'MODO_MENTOR': 'Mentor',
+          'MODO_JUNIOR': 'Modérateur Junior',
+        };
+        const roleName = roleNames[blobRole] || blobRole;
+        
+        console.log('User role check - Found in Blobs cache:', { role: roleName, hasAdminAccess: true });
+        return NextResponse.json({ 
+          hasAdminAccess: true,
+          role: roleName,
+        });
+      }
+    } catch (error) {
+      console.warn('User role check - Error checking Blobs cache:', error);
+    }
+
+    // Si pas trouvé dans Blobs, vérifier directement via Discord API
+    console.log('User role check - Not in Blobs cache, checking Discord API...');
     const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
     
     if (DISCORD_BOT_TOKEN) {
