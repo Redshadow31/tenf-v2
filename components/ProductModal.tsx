@@ -128,11 +128,13 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
                       className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                        currentImageIndex === index ? "ring-2 ring-offset-2" : "opacity-60 hover:opacity-100"
+                        currentImageIndex === index ? "" : "opacity-60 hover:opacity-100"
                       }`}
                       style={{
                         borderColor: currentImageIndex === index ? "var(--color-primary)" : "var(--color-border)",
+                        borderWidth: currentImageIndex === index ? "3px" : "2px",
                         backgroundColor: "var(--color-surface)",
+                        boxShadow: currentImageIndex === index ? "0 0 0 2px var(--color-primary)" : "none",
                       }}
                     >
                       <img
