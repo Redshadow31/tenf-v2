@@ -18,6 +18,17 @@ const navItems: NavItem[] = [
     icon: "📊",
   },
   {
+    href: "/admin/gestion-acces",
+    label: "Gestion du Site",
+    icon: "⚙️",
+    children: [
+      {
+        href: "/admin/gestion-acces",
+        label: "Accès Dashboard",
+      },
+    ],
+  },
+  {
     href: "/admin/membres",
     label: "Membres",
     icon: "👥",
@@ -302,6 +313,9 @@ export default function AdminSidebar() {
           if (child.href === "/admin/membres") {
             return pathname?.startsWith("/admin/membres") ?? false;
           }
+          if (child.href === "/admin/gestion-acces") {
+            return pathname?.startsWith("/admin/gestion-acces") ?? false;
+          }
           return pathname === child.href;
         });
         if (isOnChildPage) {
@@ -327,6 +341,9 @@ export default function AdminSidebar() {
     }
     if (href === "/admin/membres") {
       return pathname === "/admin/membres" || (pathname?.startsWith("/admin/membres/") ?? false);
+    }
+    if (href === "/admin/gestion-acces") {
+      return pathname === "/admin/gestion-acces" || (pathname?.startsWith("/admin/gestion-acces/") ?? false);
     }
     return pathname === href;
   }
