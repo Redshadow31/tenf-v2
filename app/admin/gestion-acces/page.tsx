@@ -177,53 +177,6 @@ export default function GestionAccesPage() {
     }
   }
 
-  async function handleSearchDiscord() {
-    if (!searchDiscord.trim()) return;
-
-    try {
-      setSearchingDiscord(true);
-      setError(null);
-
-      // Rechercher dans les membres Discord du serveur
-      const response = await fetch("/api/discord/members", {
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la recherche");
-      }
-
-      const data = await response.json();
-      const searchTerm = searchDiscord.toLowerCase().trim();
-      
-      // Filtrer les membres qui correspondent à la recherche
-      const matches = (data.members || [])
-        .filter((member: any) => {
-          const username = (member.discordUsername || "").toLowerCase();
-          const nickname = (member.discordNickname || "").toLowerCase();
-          const id = member.discordId || "";
-          return username.includes(searchTerm) || nickname.includes(searchTerm) || id.includes(searchTerm);
-        })
-        .slice(0, 10) // Limiter à 10 résultats
-        .map((member: any) => ({
-          id: member.discordId,
-          username: member.discordNickname || member.discordUsername || "Inconnu",
-          avatar: member.avatar || null,
-        }));
-
-      setDiscordMembers(matches);
-
-      if (matches.length === 0) {
-        setError("Aucun membre Discord trouvé");
-      }
-    } catch (err: any) {
-      console.error("Error searching Discord members:", err);
-      setError(err.message || "Erreur lors de la recherche");
-    } finally {
-      setSearchingDiscord(false);
-    }
-  }
-
   async function handleDeleteAccess(discordId: string) {
     if (!confirm("Êtes-vous sûr de vouloir supprimer l'accès de ce membre ?")) {
       return;
