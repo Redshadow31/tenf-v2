@@ -132,7 +132,6 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                       }`}
                       style={{
                         borderColor: currentImageIndex === index ? "var(--color-primary)" : "var(--color-border)",
-                        ringColor: "var(--color-primary)",
                         backgroundColor: "var(--color-surface)",
                       }}
                     >
