@@ -305,6 +305,47 @@ export default function Page() {
           ))}
         </div>
       </section>
+
+      {/* SECTION 4 — BOUTIQUE */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Boutique TENF</h2>
+          <Link
+            href="/boutique"
+            className="px-6 py-2 rounded-lg font-medium text-white transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
+          >
+            Découvrir toute la boutique →
+          </Link>
+        </div>
+        <div className="rounded-lg border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="text-lg mb-4" style={{ color: 'var(--color-text)' }}>
+            💜 Soutiens la communauté avec notre merch officiel
+          </p>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+            Chaque achat contribue au projet New Family Aventura 2026 et au développement de notre communauté
+          </p>
+          <Link
+            href="/boutique"
+            className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-colors"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
+          >
+            Découvrir toute la boutique
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
