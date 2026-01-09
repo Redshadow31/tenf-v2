@@ -96,7 +96,7 @@ export default function BoutiquePage() {
             🎉 Promotion limitée !
           </p>
           <p className="text-lg" style={{ color: 'var(--color-text)' }}>
-            5 produits pour 100€ avec le code <strong className="font-bold" style={{ color: 'var(--color-primary)' }}>TENF5</strong>
+            5% de réduction avec le code <strong className="font-bold" style={{ color: 'var(--color-primary)' }}>TENF5</strong>
           </p>
         </div>
 
