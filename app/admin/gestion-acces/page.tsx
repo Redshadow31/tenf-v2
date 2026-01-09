@@ -321,6 +321,72 @@ export default function GestionAccesPage() {
             <div className="mt-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                  Rechercher un membre Discord (optionnel)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={searchDiscord}
+                    onChange={(e) => setSearchDiscord(e.target.value)}
+                    placeholder="Nom d'utilisateur Discord..."
+                    className="flex-1 px-4 py-2 rounded-lg border"
+                    style={{
+                      backgroundColor: 'var(--color-surface)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text)',
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearchDiscord();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleSearchDiscord}
+                    disabled={searchingDiscord || !searchDiscord.trim()}
+                    className="px-4 py-2 rounded-lg font-medium text-white transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  >
+                    {searchingDiscord ? "..." : "Rechercher"}
+                  </button>
+                </div>
+                
+                {/* Résultats de recherche */}
+                {discordMembers.length > 0 && (
+                  <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                    {discordMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        onClick={() => {
+                          setNewDiscordId(member.id);
+                          setDiscordMembers([]);
+                          setSearchDiscord("");
+                        }}
+                        className="w-full p-2 rounded-lg border flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        style={{
+                          backgroundColor: 'var(--color-surface)',
+                          borderColor: 'var(--color-border)',
+                        }}
+                      >
+                        {member.avatar ? (
+                          <img src={member.avatar} alt={member.username} className="w-8 h-8 rounded-full" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm">
+                            {member.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 text-left">
+                          <div className="font-medium" style={{ color: 'var(--color-text)' }}>{member.username}</div>
+                          <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{member.id}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
                   ID Discord
                 </label>
                 <input
@@ -336,7 +402,7 @@ export default function GestionAccesPage() {
                   }}
                 />
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  L'ID Discord de l'utilisateur (pas le username)
+                  L'ID Discord de l'utilisateur (peut être rempli automatiquement via la recherche ci-dessus)
                 </p>
               </div>
 
