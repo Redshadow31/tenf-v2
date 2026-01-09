@@ -18,7 +18,7 @@ export type Permission =
 // RÔLES HARDCODÉS (IDs Discord)
 // ============================================
 
-const FOUNDERS: string[] = [
+export const FOUNDERS: string[] = [
   "1021398088474169414",
   "333001130705420299",
   "535244297214361603",
@@ -61,66 +61,22 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 };
 
 // ============================================
-// CACHE DES ACCÈS ADMIN (chargé depuis Blobs)
+// CACHE DES ACCÈS ADMIN
 // ============================================
-
-// Cache en mémoire pour les accès admin depuis Blobs
-// Format: { discordId: AdminRole }
-let adminAccessCache: Record<string, AdminRole> = {};
-
-/**
- * Charge le cache des accès admin depuis Blobs
- * Cette fonction est appelée de manière asynchrone pour initialiser le cache
- */
-export async function loadAdminAccessCache(): Promise<void> {
-  try {
-    // Vérifier si on peut utiliser Blobs
-    const { getStore } = await import('@netlify/blobs');
-    const store = getStore('tenf-admin-access');
-    const stored = await store.get('admin-access-list');
-    
-    if (stored) {
-      const accessList: Array<{ discordId: string; role: AdminRole }> = JSON.parse(stored);
-      // Reconstruire le cache (exclure les fondateurs car ils sont hardcodés)
-      adminAccessCache = {};
-      accessList.forEach(access => {
-        // Ne pas mettre en cache les fondateurs, ils sont toujours hardcodés
-        if (access.role !== 'FOUNDER' || !FOUNDERS.includes(access.discordId)) {
-          adminAccessCache[access.discordId] = access.role;
-        }
-      });
-    }
-  } catch (error) {
-    // Si Blobs n'est pas disponible ou erreur, utiliser les données hardcodées
-    console.warn('Error loading admin access cache from Blobs, using hardcoded data:', error);
-    adminAccessCache = {};
-  }
-}
-
-/**
- * Initialise le cache au démarrage (si possible)
- */
-if (typeof window === 'undefined') {
-  // Seulement côté serveur
-  loadAdminAccessCache().catch(err => {
-    console.warn('Failed to load admin access cache:', err);
-  });
-}
+// Le cache Blobs est géré dans lib/adminAccessCache.ts
+// pour éviter que le middleware (Edge Runtime) n'importe @netlify/blobs
 
 /**
  * Récupère le rôle d'un utilisateur Discord par son ID
- * Vérifie d'abord les fondateurs hardcodés, puis le cache Blobs
+ * Vérifie d'abord les fondateurs hardcodés, puis les données hardcodées
+ * Pour le cache Blobs, utiliser getAdminRoleFromCache de lib/adminAccessCache.ts
  */
 export function getAdminRole(discordId: string): AdminRole | null {
   // Les fondateurs sont toujours hardcodés et prioritaires
   if (FOUNDERS.includes(discordId)) return "FOUNDER";
   
-  // Vérifier le cache Blobs
-  if (adminAccessCache[discordId]) {
-    return adminAccessCache[discordId];
-  }
-  
   // Fallback sur les données hardcodées (pour compatibilité)
+  // Le cache Blobs est vérifié séparément dans les routes API via getAdminRoleFromCache
   if (ADMINS_ADJOINTS.includes(discordId)) return "ADMIN_ADJOINT";
   if (MODOS_MENTORS.includes(discordId)) return "MODO_MENTOR";
   if (MODOS_JUNIORS.includes(discordId)) return "MODO_JUNIOR";
@@ -196,23 +152,15 @@ export function getRoleDisplayName(role: AdminRole): string {
 }
 
 /**
- * Récupère tous les IDs Discord des admins/staff
- * Combine les fondateurs hardcodés avec le cache Blobs
+ * Récupère tous les IDs Discord des admins/staff (hardcodés uniquement)
+ * Pour inclure le cache Blobs, utiliser getAllAdminIdsFromCache de lib/adminAccessCache.ts
  */
 export function getAllAdminIds(): string[] {
-  const ids = new Set<string>();
-  
-  // Toujours inclure les fondateurs
-  FOUNDERS.forEach(id => ids.add(id));
-  
-  // Ajouter les IDs du cache Blobs
-  Object.keys(adminAccessCache).forEach(id => ids.add(id));
-  
-  // Ajouter les IDs hardcodés (pour compatibilité)
-  ADMINS_ADJOINTS.forEach(id => ids.add(id));
-  MODOS_MENTORS.forEach(id => ids.add(id));
-  MODOS_JUNIORS.forEach(id => ids.add(id));
-  
-  return Array.from(ids);
+  return [
+    ...FOUNDERS,
+    ...ADMINS_ADJOINTS,
+    ...MODOS_MENTORS,
+    ...MODOS_JUNIORS,
+  ];
 }
 

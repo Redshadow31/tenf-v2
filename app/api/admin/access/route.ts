@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/adminAuth';
-import { isFounder, getAllAdminIds, getAdminRole, loadAdminAccessCache, type AdminRole } from '@/lib/adminRoles';
+import { isFounder, getAllAdminIds, getAdminRole, type AdminRole } from '@/lib/adminRoles';
+import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from '@/lib/adminAccessCache';
 import { getStore } from '@netlify/blobs';
 import { GUILD_ID } from '@/lib/discordRoles';
 
@@ -51,9 +52,15 @@ export async function GET() {
 
     // Si la liste est vide, initialiser avec les données hardcodées
     if (accessList.length === 0) {
-      const hardcodedIds = getAllAdminIds();
-      accessList = hardcodedIds.map(id => {
-        const role = getAdminRole(id) || 'MODO_JUNIOR';
+      // Charger le cache d'abord pour inclure les données Blobs
+      await loadAdminAccessCache();
+      
+      // Utiliser getAllAdminIdsFromCache pour inclure le cache Blobs
+      const allIds = getAllAdminIdsFromCache();
+      accessList = allIds.map(id => {
+        // Vérifier d'abord dans le cache Blobs, puis les données hardcodées
+        const roleFromCache = getAdminRoleFromCache(id);
+        const role = roleFromCache || getAdminRole(id) || 'MODO_JUNIOR';
         return {
           discordId: id,
           role: role as AdminRole,
