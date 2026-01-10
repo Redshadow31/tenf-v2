@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
       if (identifier.twitchId) {
         // Chercher par ID Twitch
-        member = allMembers.find(m => m.twitchId === identifier.twitchId);
+        member = allMembers.find(m => m.twitchId === identifier.twitchId) || null;
       } else if (identifier.discordId) {
         // Chercher par Discord ID
         member = findMemberByIdentifier({ discordId: identifier.discordId });
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         // Chercher par login Twitch (fallback)
         member = allMembers.find(m => 
           m.twitchLogin?.toLowerCase() === identifier.twitchLogin?.toLowerCase()
-        );
+        ) || null;
       }
 
       if (member && member.twitchId) {
