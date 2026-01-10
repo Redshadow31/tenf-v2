@@ -174,7 +174,7 @@ export default function EvaluationDPage() {
       ]);
 
       // Parser les réponses
-      const membersData = membersResponse.ok ? (await membersResponse.json()).members || [] : [];
+      const membersData: any[] = membersResponse.ok ? (await membersResponse.json()).members || [] : [];
       const spotlightData = spotlightResponse.ok ? await spotlightResponse.json() : { totalSpotlights: 0, members: [] };
       const raidsData = raidsResponse.ok ? await raidsResponse.json() : { raidsFaits: [], raidsRecus: [] };
       const discordData = discordResponse.ok ? await discordResponse.json() : { dataByMember: {} };
@@ -186,7 +186,7 @@ export default function EvaluationDPage() {
       const evaluationData: MemberEvaluationData[] = [];
       
       // Filtrer uniquement les membres actifs
-      const activeMembers = membersData.filter(m => m.isActive !== false && m.twitchLogin);
+      const activeMembers = membersData.filter((m: any) => m.isActive !== false && m.twitchLogin);
       
       // Créer des maps pour accès rapide
       const spotlightMap = new Map<string, { presences: number; total: number }>();
@@ -264,7 +264,7 @@ export default function EvaluationDPage() {
       
       // Populate follow map (simplifié - basé sur computeScores de la page C)
       if (followData.validations && Array.isArray(followData.validations)) {
-        const memberLogins = membersData.map(m => m.twitchLogin?.toLowerCase()).filter(Boolean) as string[];
+        const memberLogins = membersData.map((m: any) => m.twitchLogin?.toLowerCase()).filter(Boolean) as string[];
         const totalSheets = followData.validations.length;
         
         for (const login of memberLogins) {
