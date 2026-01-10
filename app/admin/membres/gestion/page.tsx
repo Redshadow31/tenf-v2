@@ -10,6 +10,7 @@ import BulkImportModal from "@/components/admin/BulkImportModal";
 import DiscordSyncModal from "@/components/admin/DiscordSyncModal";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
+import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
@@ -81,6 +82,7 @@ export default function GestionMembresPage() {
   const [duplicates, setDuplicates] = useState<Array<{ key: string; type: string; members: any[] }>>([]);
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
   const [showMemberHistory, setShowMemberHistory] = useState(false);
+  const [showVerifyTwitchNamesModal, setShowVerifyTwitchNamesModal] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -1168,6 +1170,18 @@ export default function GestionMembresPage() {
               </button>
             )}
 
+            {/* Bouton de vérification des noms de chaînes Twitch (pour les fondateurs) */}
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={() => setShowVerifyTwitchNamesModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                title="Vérifier les noms de chaînes Twitch via leur ID pour détecter les changements de pseudo"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Vérifier noms Twitch
+              </button>
+            )}
+
             {/* Modale de synchronisation Discord avec sélection */}
             {showDiscordSyncModal && (
               <DiscordSyncModal
@@ -1654,6 +1668,18 @@ export default function GestionMembresPage() {
             }}
             memberId={selectedMember.twitch}
             memberName={selectedMember.nom}
+          />
+        )}
+
+        {/* Modal de vérification des noms de chaînes Twitch */}
+        {showVerifyTwitchNamesModal && (
+          <VerifyTwitchNamesModal
+            isOpen={showVerifyTwitchNamesModal}
+            onClose={async () => {
+              setShowVerifyTwitchNamesModal(false);
+              // Recharger les membres après fermeture du modal (en cas de modifications)
+              await loadMembers();
+            }}
           />
         )}
 
