@@ -5,8 +5,6 @@ import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess } from "@/lib/admin";
 import {
-  calculateSpotlightPoints,
-  calculateRaidPoints,
   calculateTotalHorsBonus,
   calculateTotalAvecBonus,
   getAutoStatus,
@@ -157,15 +155,19 @@ export default function EvaluationDPage() {
       // Charger toutes les données en parallèle
       const [
         membersResponse,
-        spotlightResponse,
-        raidsResponse,
+        spotlightPointsResponse,
+        spotlightPresenceResponse,
+        raidsPointsResponse,
+        raidsDataResponse,
         discordResponse,
         eventsResponse,
         followResponse,
         bonusesResponse,
       ] = await Promise.all([
         fetch("/api/admin/members", { cache: 'no-store' }),
+        fetch(`/api/evaluations/spotlights/points?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/spotlight/presence/monthly?month=${selectedMonth}`, { cache: 'no-store' }),
+        fetch(`/api/evaluations/raids/points?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/discord/raids/data-v2?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/discord-engagement/${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/admin/events/presence?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
@@ -175,8 +177,10 @@ export default function EvaluationDPage() {
 
       // Parser les réponses
       const membersData: any[] = membersResponse.ok ? (await membersResponse.json()).members || [] : [];
-      const spotlightData = spotlightResponse.ok ? await spotlightResponse.json() : { totalSpotlights: 0, members: [] };
-      const raidsData = raidsResponse.ok ? await raidsResponse.json() : { raidsFaits: [], raidsRecus: [] };
+      const spotlightPointsData = spotlightPointsResponse.ok ? (await spotlightPointsResponse.json()).points || {} : {};
+      const spotlightPresenceData = spotlightPresenceResponse.ok ? await spotlightPresenceResponse.json() : { totalSpotlights: 0, members: [] };
+      const raidsPointsData = raidsPointsResponse.ok ? (await raidsPointsResponse.json()).points || {} : {};
+      const raidsData = raidsDataResponse.ok ? await raidsDataResponse.json() : { raidsFaits: [], raidsRecus: [] };
       const discordData = discordResponse.ok ? await discordResponse.json() : { dataByMember: {} };
       const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] };
       const followData = followResponse.ok ? await followResponse.json() : { validations: [] };
@@ -189,43 +193,49 @@ export default function EvaluationDPage() {
       const activeMembers = membersData.filter((m: any) => m.isActive !== false && m.twitchLogin);
       
       // Créer des maps pour accès rapide
-      const spotlightMap = new Map<string, { presences: number; total: number }>();
-      const raidsMap = new Map<string, { done: number; received: number }>();
+      const spotlightPointsMap = new Map<string, number>(); // Map des points Spotlight depuis l'API
+      const raidsPointsMap = new Map<string, number>(); // Map des points Raids depuis l'API
+      const raidsStatsMap = new Map<string, { done: number; received: number }>(); // Stats pour affichage
       const discordMap = new Map<string, { nbMessages: number; nbVocalMinutes: number; noteFinale: number }>();
       const eventsMap = new Map<string, { presences: number; total: number }>();
       const followMap = new Map<string, number>();
       
-      // Populate spotlight map
-      if (spotlightData.members) {
-        for (const member of spotlightData.members) {
-          const login = member.twitchLogin?.toLowerCase();
-          if (login) {
-            spotlightMap.set(login, {
-              presences: member.presences || 0,
-              total: spotlightData.totalSpotlights || 0,
-            });
+      // Populate spotlight points map depuis l'API (points calculés depuis /admin/evaluation/a/spotlights)
+      if (spotlightPointsData && typeof spotlightPointsData === 'object') {
+        Object.entries(spotlightPointsData).forEach(([login, points]) => {
+          if (login && typeof points === 'number') {
+            spotlightPointsMap.set(login.toLowerCase(), points);
           }
-        }
+        });
       }
       
-      // Populate raids map
+      // Populate raids points map depuis l'API (points calculés depuis /admin/evaluation/a/raids)
+      if (raidsPointsData && typeof raidsPointsData === 'object') {
+        Object.entries(raidsPointsData).forEach(([login, points]) => {
+          if (login && typeof points === 'number') {
+            raidsPointsMap.set(login.toLowerCase(), points);
+          }
+        });
+      }
+      
+      // Populate raids stats map pour affichage (nombre de raids faits/reçus)
       if (raidsData.raidsFaits) {
         for (const raid of raidsData.raidsFaits) {
-          const login = raid.raiderLogin?.toLowerCase();
+          const login = (raid.raiderTwitchLogin || raid.raiderLogin || raid.raider)?.toLowerCase();
           if (login) {
-            const existing = raidsMap.get(login) || { done: 0, received: 0 };
-            existing.done = (existing.done || 0) + 1;
-            raidsMap.set(login, existing);
+            const existing = raidsStatsMap.get(login) || { done: 0, received: 0 };
+            existing.done = (existing.done || 0) + (raid.count || 1);
+            raidsStatsMap.set(login, existing);
           }
         }
       }
       if (raidsData.raidsRecus) {
         for (const raid of raidsData.raidsRecus) {
-          const login = raid.targetLogin?.toLowerCase();
+          const login = (raid.targetTwitchLogin || raid.targetLogin || raid.target)?.toLowerCase();
           if (login) {
-            const existing = raidsMap.get(login) || { done: 0, received: 0 };
+            const existing = raidsStatsMap.get(login) || { done: 0, received: 0 };
             existing.received = (existing.received || 0) + 1;
-            raidsMap.set(login, existing);
+            raidsStatsMap.set(login, existing);
           }
         }
       }
@@ -287,13 +297,12 @@ export default function EvaluationDPage() {
         const login = member.twitchLogin?.toLowerCase();
         if (!login) continue;
         
-        // Spotlight
-        const spotlightInfo = spotlightMap.get(login) || { presences: 0, total: spotlightData.totalSpotlights || 0 };
-        const spotlightPoints = calculateSpotlightPoints(spotlightInfo.presences, spotlightInfo.total);
+        // Spotlight - Récupérer les points depuis l'API (calculés depuis /admin/evaluation/a/spotlights)
+        const spotlightPoints = spotlightPointsMap.get(login) || 0;
         
-        // Raids
-        const raidsInfo = raidsMap.get(login) || { done: 0, received: 0 };
-        const raidsPoints = calculateRaidPoints(raidsInfo.done);
+        // Raids - Récupérer les points depuis l'API (calculés depuis /admin/evaluation/a/raids)
+        const raidsPoints = raidsPointsMap.get(login) || 0;
+        const raidsInfo = raidsStatsMap.get(login) || { done: 0, received: 0 };
         
         // Discord
         const discordInfo = discordMap.get(login) || { nbMessages: 0, nbVocalMinutes: 0, noteFinale: 0 };
@@ -340,8 +349,8 @@ export default function EvaluationDPage() {
           bonusTotal: bonusTotal.total,
           finalScore,
           autoStatus,
-          spotlightPresences: spotlightInfo.presences,
-          spotlightTotal: spotlightInfo.total,
+          spotlightPresences: (spotlightPresenceData.members || []).find((m: any) => m.twitchLogin?.toLowerCase() === login)?.presences || 0,
+          spotlightTotal: spotlightPresenceData.totalSpotlights || 0,
           raidsDone: raidsInfo.done,
           raidsReceived: raidsInfo.received,
           discordNbMessages: discordInfo.nbMessages,
@@ -358,7 +367,7 @@ export default function EvaluationDPage() {
       setMembersData(evaluationData);
       
       // Calculer les statistiques générales
-      calculateGeneralStats(evaluationData, eventsTotal || 0, spotlightData.totalSpotlights || 0);
+      calculateGeneralStats(evaluationData, eventsTotal || 0, spotlightPresenceData.totalSpotlights || 0);
       
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
