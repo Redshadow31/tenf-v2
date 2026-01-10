@@ -1,7 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getAllVipMemberData, initializeMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAllVipMemberData, initializeMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
+import fs from 'fs';
+import path from 'path';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const VIP_MONTH_STORE_NAME = 'tenf-vip-month';
 
 interface VipMember {
   discordId: string;
@@ -22,17 +29,75 @@ if (!initialized) {
   initialized = true;
 }
 
+function isNetlify(): boolean {
+  try {
+    return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV || typeof window === 'undefined';
+  } catch {
+    return false;
+  }
+}
+
+async function getCurrentMonthVipLogins(): Promise<string[] | null> {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const monthKey = `${year}-${month}`;
+
+    try {
+      if (isNetlify()) {
+        const { getStore } = await import('@netlify/blobs');
+        const store = getStore(VIP_MONTH_STORE_NAME);
+        const data = await store.get(`${monthKey}.json`, { type: 'json' }).catch(() => null);
+        if (data && typeof data === 'object' && 'vipLogins' in data) {
+          return (data as any).vipLogins || [];
+        }
+      }
+    } catch (blobError) {
+      console.warn('[VIP Members API] Blobs non disponible, utilisation du système de fichiers:', blobError);
+    }
+
+    // Fallback: système de fichiers local
+    const dataDir = path.join(process.cwd(), 'data', 'vip-month');
+    const filePath = path.join(dataDir, `${monthKey}.json`);
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(content);
+      return data.vipLogins || [];
+    }
+  } catch (error) {
+    console.error('[VIP Members API] Erreur récupération VIP du mois:', error);
+  }
+  return null;
+}
+
 /**
  * Récupère les membres VIP Elite depuis le dashboard (memberData)
- * Beaucoup plus simple et rapide que de passer par l'API Discord
+ * Priorité : VIP du mois actuel (blob) > Membres avec isVip=true
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Charger les données depuis le stockage persistant (Blobs ou fichier)
     await loadMemberDataFromStorage();
     
-    // Récupérer tous les membres VIP depuis le dashboard
-    const vipMemberData = getAllVipMemberData();
+    // Essayer de récupérer les VIP du mois actuel depuis le blob
+    const currentMonthVipLogins = await getCurrentMonthVipLogins();
+    
+    let vipMemberData;
+    
+    if (currentMonthVipLogins && currentMonthVipLogins.length > 0) {
+      // Utiliser les VIP du mois actuel depuis le blob
+      const allMembers = getAllMemberData();
+      vipMemberData = allMembers.filter((member: any) => 
+        member.isActive !== false && 
+        currentMonthVipLogins.includes(member.twitchLogin?.toLowerCase() || '')
+      );
+      console.log(`[VIP Members API] Utilisation des VIP du mois actuel (${currentMonthVipLogins.length} membres)`);
+    } else {
+      // Fallback : utiliser tous les membres VIP depuis le dashboard
+      vipMemberData = getAllVipMemberData();
+      console.log(`[VIP Members API] Utilisation des membres avec isVip=true (${vipMemberData.length} membres)`);
+    }
     
     if (vipMemberData.length === 0) {
       return NextResponse.json({ 

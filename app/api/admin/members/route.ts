@@ -308,6 +308,36 @@ export async function PUT(request: NextRequest) {
     if (updates.role && updates.role !== existingMember.role) {
       updates.roleManuallySet = true;
     }
+
+    // Synchronisation VIP Élite <-> isVip
+    // Si isVip est modifié, synchroniser avec le badge VIP Élite
+    if (updates.isVip !== undefined) {
+      const currentBadges = existingMember.badges || [];
+      const hasVipEliteBadge = currentBadges.includes("VIP Élite");
+      
+      if (updates.isVip && !hasVipEliteBadge) {
+        // Activer VIP : ajouter le badge VIP Élite s'il n'est pas présent
+        updates.badges = [...currentBadges, "VIP Élite"];
+      } else if (!updates.isVip && hasVipEliteBadge) {
+        // Désactiver VIP : retirer le badge VIP Élite
+        updates.badges = currentBadges.filter((badge: string) => badge !== "VIP Élite");
+      }
+    }
+    
+    // Si le badge VIP Élite est ajouté/supprimé manuellement, synchroniser isVip
+    if (updates.badges !== undefined) {
+      const currentBadges = Array.isArray(updates.badges) ? updates.badges : (existingMember.badges || []);
+      const hasVipEliteBadge = currentBadges.includes("VIP Élite");
+      const currentlyVip = existingMember.isVip || false;
+      
+      if (hasVipEliteBadge && !currentlyVip) {
+        // Badge VIP Élite ajouté : activer isVip
+        updates.isVip = true;
+      } else if (!hasVipEliteBadge && currentlyVip && updates.isVip === undefined) {
+        // Badge VIP Élite retiré : désactiver isVip (seulement si isVip n'est pas explicitement modifié)
+        updates.isVip = false;
+      }
+    }
     
     // roleChangeReason sera utilisé par updateMemberData pour créer l'entrée roleHistory
 
