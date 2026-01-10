@@ -23,6 +23,10 @@ interface DetectedRaid {
   };
   status: 'ok' | 'unknown' | 'ignored'; // Statut du raid
   ignored: boolean; // Si le raid a été explicitement ignoré
+  ignoredRaider?: boolean; // Si le raider a été ignoré
+  ignoredTarget?: boolean; // Si la cible a été ignorée
+  isDuplicate?: boolean; // Si c'est un doublon détecté
+  duplicateGroup?: number; // Groupe de doublons
 }
 
 interface Member {
@@ -60,6 +64,9 @@ export default function RaidImportModal({
   const [showResults, setShowResults] = useState<Record<string, { raider: boolean; target: boolean }>>({});
   const [ignoredRaids, setIgnoredRaids] = useState<Set<string>>(new Set()); // Set de "raiderNormalized|targetNormalized"
   const [showIgnored, setShowIgnored] = useState(false); // Filtre pour afficher les ignorés
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false); // Modal pour gérer les doublons
+  const [duplicates, setDuplicates] = useState<Record<number, number[]>>({}); // Groupe de doublons : { groupId: [raidIndex1, raidIndex2, ...] }
+  const [selectedDuplicates, setSelectedDuplicates] = useState<number[]>([]); // Indices des doublons sélectionnés pour suppression
 
   useEffect(() => {
     if (isOpen) {
@@ -71,33 +78,19 @@ export default function RaidImportModal({
   async function loadMembers() {
     try {
       setMembersLoading(true);
-      const response = await fetch("/api/admin/members", {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
       
-      if (response.ok) {
-        const data = await response.json();
-        // Filtrer uniquement les membres actifs
-        const members = (data.members || [])
-          .filter((m: any) => m.isActive !== false) // Seulement membres actifs
-          .map((m: any) => ({
-            discordId: m.discordId || '',
-            displayName: m.displayName || m.twitchLogin || '',
-            twitchLogin: m.twitchLogin || '',
-            discordUsername: m.discordUsername || m.discordName || '',
-            isActive: m.isActive !== false,
-          }));
-        setAllMembers(members);
-      } else {
-        // Fallback: essayer l'API publique
-        try {
-          const publicResponse = await fetch("/api/members/public", {
-            cache: 'no-store',
-          });
-          if (publicResponse.ok) {
+      // Essayer d'abord l'API publique (plus fiable, pas d'authentification requise)
+      try {
+        const publicResponse = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (publicResponse.ok) {
+          const contentType = publicResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
             const publicData = await publicResponse.json();
             // Filtrer uniquement les membres actifs
             const members = (publicData.members || [])
@@ -110,10 +103,49 @@ export default function RaidImportModal({
                 isActive: m.isActive !== false,
               }));
             setAllMembers(members);
+            return; // Succès, on sort
           }
-        } catch (err) {
-          console.error("[Raid Import] Erreur fallback membres:", err);
         }
+      } catch (publicErr) {
+        console.error("[Raid Import] Erreur API publique membres:", publicErr);
+      }
+      
+      // Fallback: essayer l'API admin si l'API publique échoue
+      try {
+        const response = await fetch("/api/admin/members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            // Filtrer uniquement les membres actifs
+            const members = (data.members || [])
+              .filter((m: any) => m.isActive !== false) // Seulement membres actifs
+              .map((m: any) => ({
+                discordId: m.discordId || '',
+                displayName: m.displayName || m.twitchLogin || '',
+                twitchLogin: m.twitchLogin || '',
+                discordUsername: m.discordUsername || m.discordName || '',
+                isActive: m.isActive !== false,
+              }));
+            setAllMembers(members);
+            return; // Succès, on sort
+          } else {
+            console.error("[Raid Import] API admin a retourné du HTML au lieu de JSON");
+            // Ne pas afficher d'erreur, l'API publique a peut-être fonctionné
+          }
+        } else {
+          // Erreur HTTP, mais on ne log que si l'API publique a aussi échoué
+          const errorText = await response.text().catch(() => '');
+          console.error(`[Raid Import] Erreur API admin (${response.status}):`, errorText.substring(0, 100));
+        }
+      } catch (adminErr) {
+        console.error("[Raid Import] Erreur API admin membres:", adminErr);
       }
     } catch (error) {
       console.error("[Raid Import] Erreur lors du chargement des membres:", error);
@@ -331,40 +363,194 @@ export default function RaidImportModal({
     }
   }
 
-  async function ignoreRaid(raidIndex: number) {
+  async function ignoreRaid(raidIndex: number, ignoreType: 'raider' | 'target' | 'both' = 'both') {
     const raid = detectedRaids[raidIndex];
     if (!raid) return;
 
     try {
-      const response = await fetch('/api/discord/raids/ignored', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          month,
-          raiderNormalized: raid.raiderNormalized,
-          targetNormalized: raid.targetNormalized,
-          rawText: raid.originalText,
-        }),
-      });
+      // Mettre à jour le statut local immédiatement
+      const updatedRaids = [...detectedRaids];
+      const updatedRaid = { ...raid };
 
-      if (response.ok) {
-        // Mettre à jour le statut local
-        const updatedRaids = [...detectedRaids];
-        updatedRaids[raidIndex] = {
-          ...raid,
-          status: 'ignored',
-          ignored: true,
-        };
-        setDetectedRaids(updatedRaids);
+      if (ignoreType === 'raider' || ignoreType === 'both') {
+        updatedRaid.ignoredRaider = true;
+      }
+      if (ignoreType === 'target' || ignoreType === 'both') {
+        updatedRaid.ignoredTarget = true;
+      }
 
-        // Ajouter à la liste locale des ignorés
-        const ignoredKey = `${raid.raiderNormalized}|${raid.targetNormalized}`;
-        setIgnoredRaids(prev => new Set(prev).add(ignoredKey));
+      // Si les deux sont ignorés, ignorer complètement le raid
+      if ((updatedRaid.ignoredRaider && updatedRaid.ignoredTarget) || ignoreType === 'both') {
+        updatedRaid.status = 'ignored';
+        updatedRaid.ignored = true;
+      } else {
+        updatedRaid.status = 'unknown';
+      }
+
+      updatedRaids[raidIndex] = updatedRaid;
+      setDetectedRaids(updatedRaids);
+
+      // Enregistrer sur le serveur seulement si on ignore complètement (les deux)
+      if (ignoreType === 'both' || (updatedRaid.ignoredRaider && updatedRaid.ignoredTarget)) {
+        try {
+          const response = await fetch('/api/discord/raids/ignored', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              month,
+              raiderNormalized: raid.raiderNormalized,
+              targetNormalized: raid.targetNormalized,
+              rawText: raid.originalText,
+            }),
+          });
+
+          if (response.ok) {
+            // Ajouter à la liste locale des ignorés
+            const ignoredKey = `${raid.raiderNormalized}|${raid.targetNormalized}`;
+            setIgnoredRaids(prev => new Set(prev).add(ignoredKey));
+          }
+        } catch (error) {
+          console.error("[Raid Import] Erreur lors de l'enregistrement de l'ignorance:", error);
+        }
       }
     } catch (error) {
       console.error("[Raid Import] Erreur lors de l'ignorance du raid:", error);
       alert('Erreur lors de l\'ignorance du raid');
     }
+  }
+
+  function findDuplicates() {
+    // Réinitialiser les doublons précédents
+    const updatedRaids = detectedRaids.map(raid => ({
+      ...raid,
+      isDuplicate: false,
+      duplicateGroup: undefined,
+    }));
+
+    // Détecter les doublons : même raider, même target, même jour et même heure (à la minute près)
+    const duplicateGroups: Record<number, number[]> = {};
+    let currentGroupId = 1;
+
+    for (let i = 0; i < updatedRaids.length; i++) {
+      if (updatedRaids[i].ignored || updatedRaids[i].duplicateGroup) continue;
+
+      const raid1 = updatedRaids[i];
+      const date1 = new Date(raid1.date);
+      const date1Key = `${date1.getFullYear()}-${String(date1.getMonth() + 1).padStart(2, '0')}-${String(date1.getDate()).padStart(2, '0')}-${String(date1.getHours()).padStart(2, '0')}-${String(date1.getMinutes()).padStart(2, '0')}`;
+
+      let groupId = updatedRaids[i].duplicateGroup;
+      
+      for (let j = i + 1; j < updatedRaids.length; j++) {
+        if (updatedRaids[j].ignored || updatedRaids[j].duplicateGroup) continue;
+
+        const raid2 = updatedRaids[j];
+        const date2 = new Date(raid2.date);
+        const date2Key = `${date2.getFullYear()}-${String(date2.getMonth() + 1).padStart(2, '0')}-${String(date2.getDate()).padStart(2, '0')}-${String(date2.getHours()).padStart(2, '0')}-${String(date2.getMinutes()).padStart(2, '0')}`;
+
+        // Vérifier si c'est un doublon : même raider, même target, même date/heure (minute)
+        if (
+          raid1.raiderNormalized === raid2.raiderNormalized &&
+          raid1.targetNormalized === raid2.targetNormalized &&
+          date1Key === date2Key
+        ) {
+          if (!groupId) {
+            groupId = currentGroupId++;
+            duplicateGroups[groupId] = [i];
+          }
+          if (!duplicateGroups[groupId].includes(j)) {
+            duplicateGroups[groupId].push(j);
+          }
+        }
+      }
+
+      if (groupId) {
+        duplicateGroups[groupId].forEach((idx) => {
+          updatedRaids[idx] = {
+            ...updatedRaids[idx],
+            isDuplicate: true,
+            duplicateGroup: groupId,
+          };
+        });
+      }
+    }
+
+    setDetectedRaids(updatedRaids);
+
+    // Filtrer les groupes avec au moins 2 éléments (vrais doublons)
+    const filteredDuplicates: Record<number, number[]> = {};
+    Object.keys(duplicateGroups).forEach((key) => {
+      const group = duplicateGroups[parseInt(key)];
+      if (group.length >= 2) {
+        filteredDuplicates[parseInt(key)] = group;
+      }
+    });
+
+    setDuplicates(filteredDuplicates);
+    
+    if (Object.keys(filteredDuplicates).length > 0) {
+      setSelectedDuplicates([]); // Réinitialiser la sélection
+      setShowDuplicatesModal(true);
+    } else {
+      setError("Aucun doublon détecté (même personne, même jour, même heure)");
+      setTimeout(() => setError(null), 3000);
+    }
+  }
+
+  function removeDuplicates(selectedIndices: number[]) {
+    if (selectedIndices.length === 0) return;
+
+    // Supprimer les raids sélectionnés
+    const updatedRaids = detectedRaids.filter((_, index) => !selectedIndices.includes(index));
+    
+    // Réindexer les groupes de doublons après suppression
+    const indexMap = new Map<number, number>();
+    let newIndex = 0;
+    detectedRaids.forEach((_, oldIndex) => {
+      if (!selectedIndices.includes(oldIndex)) {
+        indexMap.set(oldIndex, newIndex);
+        newIndex++;
+      }
+    });
+
+    // Mettre à jour les groupes de doublons avec les nouveaux indices
+    const updatedDuplicates: Record<number, number[]> = {};
+    Object.keys(duplicates).forEach((groupIdStr) => {
+      const groupId = parseInt(groupIdStr);
+      const group = duplicates[groupId]
+        .filter(idx => !selectedIndices.includes(idx))
+        .map(idx => indexMap.get(idx))
+        .filter((idx): idx is number => idx !== undefined);
+      
+      if (group.length >= 2) {
+        updatedDuplicates[groupId] = group;
+        // Mettre à jour les flags isDuplicate et duplicateGroup
+        group.forEach(idx => {
+          if (updatedRaids[idx]) {
+            updatedRaids[idx] = {
+              ...updatedRaids[idx],
+              isDuplicate: true,
+              duplicateGroup: groupId,
+            };
+          }
+        });
+      } else {
+        // Nettoyer les flags si le groupe n'a plus assez d'éléments
+        group.forEach(idx => {
+          if (updatedRaids[idx]) {
+            updatedRaids[idx] = {
+              ...updatedRaids[idx],
+              isDuplicate: false,
+              duplicateGroup: undefined,
+            };
+          }
+        });
+      }
+    });
+
+    setDetectedRaids(updatedRaids);
+    setDuplicates(updatedDuplicates);
+    setSuccess(`${selectedIndices.length} doublon(s) supprimé(s) avec succès !`);
+    setTimeout(() => setSuccess(null), 3000);
   }
 
   function selectMember(member: Member, field: 'raider' | 'target', raidIndex: number) {
@@ -612,10 +798,21 @@ export default function RaidImportModal({
         }),
       });
 
-      const data = await response.json();
+      // Vérifier le Content-Type avant de parser le JSON
+      const contentType = response.headers.get('content-type');
+      let data: any;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Si la réponse n'est pas du JSON (probablement du HTML d'erreur)
+        const text = await response.text();
+        console.error("[Raid Import] Réponse non-JSON reçue:", text.substring(0, 200));
+        throw new Error(`Erreur serveur (${response.status}): La réponse n'est pas au format JSON. Vérifiez les logs serveur.`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de l'enregistrement");
+        throw new Error(data.error || `Erreur lors de l'enregistrement (${response.status})`);
       }
 
       const unknownCount = detectedRaids.filter(r => r.status === 'unknown' && !r.ignored).length;
@@ -633,7 +830,16 @@ export default function RaidImportModal({
         onClose();
       }, 2000);
     } catch (err) {
-      setError(`Erreur : ${err instanceof Error ? err.message : "Erreur inconnue"}`);
+      const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      // Nettoyer les messages d'erreur techniques pour l'utilisateur
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes('Unexpected token') || errorMessage.includes('<HTML>')) {
+        userFriendlyMessage = "Erreur serveur : La réponse n'est pas au format attendu. Veuillez réessayer ou contacter un administrateur.";
+      } else if (errorMessage.includes('JSON')) {
+        userFriendlyMessage = "Erreur serveur : Problème de format de données. Veuillez réessayer.";
+      }
+      setError(`Erreur : ${userFriendlyMessage}`);
+      console.error("[Raid Import] Erreur détaillée:", err);
     } finally {
       setSaving(false);
     }
@@ -740,11 +946,22 @@ export default function RaidImportModal({
                 </label>
               </div>
               
-              {/* Compteurs */}
-              <div className="flex gap-4 mb-3 text-xs">
-                <span className="text-green-400">✅ OK: {detectedRaids.filter(r => r.status === 'ok').length}</span>
-                <span className="text-yellow-400">⚠️ Inconnu: {detectedRaids.filter(r => r.status === 'unknown' && !r.ignored).length}</span>
-                <span className="text-gray-400">🚫 Ignoré: {detectedRaids.filter(r => r.status === 'ignored' || r.ignored).length}</span>
+              {/* Compteurs et bouton Gérer les doublons */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex gap-4 text-xs">
+                  <span className="text-green-400">✅ OK: {detectedRaids.filter(r => r.status === 'ok').length}</span>
+                  <span className="text-yellow-400">⚠️ Inconnu: {detectedRaids.filter(r => r.status === 'unknown' && !r.ignored).length}</span>
+                  <span className="text-gray-400">🚫 Ignoré: {detectedRaids.filter(r => r.status === 'ignored' || r.ignored).length}</span>
+                  <span className="text-orange-400">🔁 Doublons: {Object.keys(duplicates).reduce((sum, key) => sum + duplicates[parseInt(key)].length, 0)}</span>
+                </div>
+                <button
+                  onClick={findDuplicates}
+                  disabled={detectedRaids.length === 0 || analyzing || saving}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  title="Rechercher les doublons (même personne, même jour, même heure)"
+                >
+                  🔍 Gérer les doublons
+                </button>
               </div>
 
               <div className="bg-[#0e0e10] border border-gray-700 rounded-lg overflow-hidden">
@@ -818,14 +1035,47 @@ export default function RaidImportModal({
                               </td>
                               <td className="py-2 px-3">
                                 {raid.status === 'unknown' && !raid.ignored && (
-                                  <button
-                                    onClick={() => ignoreRaid(originalIdx)}
-                                    disabled={saving}
-                                    className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
-                                    title="Ignorer ce raid (ne sera plus affiché lors des prochains imports)"
-                                  >
-                                    Ignorer
-                                  </button>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => ignoreRaid(originalIdx, 'raider')}
+                                        disabled={saving || raid.ignoredRaider}
+                                        className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
+                                          raid.ignoredRaider 
+                                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                            : 'bg-orange-700 hover:bg-orange-600 text-white'
+                                        }`}
+                                        title="Ignorer le raider seulement"
+                                      >
+                                        {raid.ignoredRaider ? '✓ Raider' : 'Ignorer Raider'}
+                                      </button>
+                                      <button
+                                        onClick={() => ignoreRaid(originalIdx, 'target')}
+                                        disabled={saving || raid.ignoredTarget}
+                                        className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
+                                          raid.ignoredTarget 
+                                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                            : 'bg-orange-700 hover:bg-orange-600 text-white'
+                                        }`}
+                                        title="Ignorer la cible seulement"
+                                      >
+                                        {raid.ignoredTarget ? '✓ Cible' : 'Ignorer Cible'}
+                                      </button>
+                                    </div>
+                                    <button
+                                      onClick={() => ignoreRaid(originalIdx, 'both')}
+                                      disabled={saving}
+                                      className="bg-red-700 hover:bg-red-600 text-white text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                      title="Ignorer le raid complètement (ne sera plus affiché lors des prochains imports)"
+                                    >
+                                      Ignorer Tout
+                                    </button>
+                                  </div>
+                                )}
+                                {raid.isDuplicate && (
+                                  <span className="inline-block px-2 py-1 bg-orange-600/20 text-orange-300 text-xs rounded border border-orange-500/30">
+                                    Doublon #{raid.duplicateGroup}
+                                  </span>
                                 )}
                               </td>
                               <td className="py-2 px-3 text-gray-400 text-xs font-mono truncate max-w-xs" title={raid.originalText}>
@@ -860,6 +1110,243 @@ export default function RaidImportModal({
           </button>
         </div>
       </div>
+
+      {/* Modal de gestion des doublons */}
+      {showDuplicatesModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* En-tête */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h3 className="text-xl font-bold text-white">Gestion des doublons</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Doublons détectés : {Object.keys(duplicates).length} groupe(s) totalisant {Object.keys(duplicates).reduce((sum, key) => sum + duplicates[parseInt(key)].length, 0)} raid(s)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDuplicatesModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenu */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {Object.keys(duplicates).length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  Aucun doublon détecté (même personne, même jour, même heure)
+                </div>
+              ) : (
+                Object.keys(duplicates).map((groupIdStr) => {
+                  const groupId = parseInt(groupIdStr);
+                  const groupIndices = duplicates[groupId];
+                  const groupRaids = groupIndices.map(idx => detectedRaids[idx]).filter(Boolean);
+
+                  if (groupRaids.length === 0) return null;
+
+                  return (
+                    <div key={groupId} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-lg font-semibold text-white">
+                          Groupe #{groupId} - {groupRaids.length} doublon(s)
+                        </h4>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Sélectionner tous sauf le premier (garder le premier)
+                                const toRemove = groupIndices.slice(1);
+                                setSelectedDuplicates(prev => {
+                                  const newSelection = [...prev];
+                                  toRemove.forEach(idx => {
+                                    if (!newSelection.includes(idx)) {
+                                      newSelection.push(idx);
+                                    }
+                                  });
+                                  return newSelection;
+                                });
+                              }}
+                              className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1 rounded transition-colors"
+                            >
+                              Sélectionner tout sauf le premier
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Désélectionner seulement les raids de ce groupe
+                                setSelectedDuplicates(prev => prev.filter(idx => !groupIndices.includes(idx)));
+                              }}
+                              className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded transition-colors"
+                            >
+                              Désélectionner ce groupe
+                            </button>
+                          </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {groupRaids.map((raid, idx) => {
+                          const raidIndex = groupIndices[idx];
+                          const isSelected = selectedDuplicates.includes(raidIndex);
+                          const isFirst = idx === 0; // Garder le premier par défaut
+
+                          return (
+                            <div
+                              key={raidIndex}
+                              className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-red-600/20 border-red-500/50'
+                                  : isFirst
+                                  ? 'bg-green-600/10 border-green-500/30'
+                                  : 'bg-gray-800/30 border-gray-700 hover:border-gray-600'
+                              }`}
+                              onClick={() => {
+                                if (!isFirst) { // Ne pas permettre de sélectionner le premier
+                                  setSelectedDuplicates(prev => 
+                                    prev.includes(raidIndex)
+                                      ? prev.filter(i => i !== raidIndex)
+                                      : [...prev, raidIndex]
+                                  );
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  disabled={isFirst}
+                                  onChange={() => {
+                                    if (!isFirst) {
+                                      setSelectedDuplicates(prev => 
+                                        prev.includes(raidIndex)
+                                          ? prev.filter(i => i !== raidIndex)
+                                          : [...prev, raidIndex]
+                                      );
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-5 h-5 text-red-600 bg-[#0e0e10] border-gray-700 rounded focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-white font-semibold text-sm">
+                                      Ligne {raid.lineNumber}
+                                    </span>
+                                    <span className="text-gray-400 text-xs">
+                                      {formatDate(raid.date)}
+                                    </span>
+                                    {isFirst && (
+                                      <span className="px-2 py-0.5 bg-green-600/20 text-green-300 text-xs rounded border border-green-500/30">
+                                        ⭐ Garder (premier du groupe)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-300 mt-1">
+                                    <span className="font-semibold">{raid.raider}</span>
+                                    {' → '}
+                                    <span className="font-semibold">{raid.target}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1 font-mono truncate max-w-md" title={raid.originalText}>
+                                    {raid.originalText}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 flex justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            const groupSelected = selectedDuplicates.filter(idx => groupIndices.includes(idx));
+                            if (groupSelected.length === 0) {
+                              alert('Veuillez sélectionner au moins un raid à supprimer dans ce groupe');
+                              return;
+                            }
+                            if (!confirm(`Êtes-vous sûr de vouloir supprimer ${groupSelected.length} doublon(s) de ce groupe ?`)) {
+                              return;
+                            }
+                            removeDuplicates(groupSelected);
+                            // Mettre à jour la sélection globale
+                            setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
+                              // Vérifier si le modal doit être fermé après suppression
+                              const remainingInGroup = groupIndices.filter(idx => !groupSelected.includes(idx));
+                              if (remainingInGroup.length < 2) {
+                                const updatedDuplicates = { ...duplicates };
+                                delete updatedDuplicates[groupId];
+                                setDuplicates(updatedDuplicates);
+                                setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
+                                // Fermer le modal si tous les groupes sont vides
+                                if (Object.keys(updatedDuplicates).length === 0) {
+                                  setShowDuplicatesModal(false);
+                                  setSelectedDuplicates([]);
+                                }
+                              } else {
+                                // Mettre à jour la sélection seulement pour ce groupe
+                                setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
+                              }
+                          }}
+                          disabled={selectedDuplicates.filter(idx => groupIndices.includes(idx)).length === 0}
+                          className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          Supprimer {selectedDuplicates.filter(idx => groupIndices.includes(idx)).length > 0 ? `(${selectedDuplicates.filter(idx => groupIndices.includes(idx)).length})` : ''} sélectionné(s) de ce groupe
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Pied de page */}
+            <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-700">
+              <div className="text-sm text-gray-400">
+                {selectedDuplicates.length > 0 && (
+                  <span>{selectedDuplicates.length} raid(s) sélectionné(s) pour suppression</span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                {selectedDuplicates.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (!confirm(`Êtes-vous sûr de vouloir supprimer ${selectedDuplicates.length} doublon(s) sélectionné(s) ?`)) {
+                        return;
+                      }
+                      removeDuplicates(selectedDuplicates);
+                      setSelectedDuplicates([]);
+                      // Vérifier si tous les groupes sont vides après suppression
+                      // La fonction removeDuplicates mettra à jour les groupes automatiquement
+                      const remainingCount = Object.keys(duplicates).reduce((sum, key) => {
+                        const groupId = parseInt(key);
+                        const groupIndices = duplicates[groupId];
+                        const remaining = groupIndices.filter(idx => !selectedDuplicates.includes(idx));
+                        return sum + (remaining.length >= 2 ? 1 : 0);
+                      }, 0);
+                      if (remainingCount === 0) {
+                        setTimeout(() => {
+                          setShowDuplicatesModal(false);
+                          setSelectedDuplicates([]);
+                        }, 100);
+                      }
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    Supprimer {selectedDuplicates.length} sélectionné(s)
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowDuplicatesModal(false);
+                    setSelectedDuplicates([]);
+                  }}
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
