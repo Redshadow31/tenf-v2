@@ -273,16 +273,6 @@ export default function EventPresencePage() {
     }
   }
 
-  function filterMembers(query: string): Member[] {
-    if (!query.trim()) return [];
-    const lowerQuery = query.toLowerCase();
-    return allMembers.filter(m =>
-      m.displayName.toLowerCase().includes(lowerQuery) ||
-      m.twitchLogin.toLowerCase().includes(lowerQuery) ||
-      m.discordUsername?.toLowerCase().includes(lowerQuery)
-    ).slice(0, 10); // Limiter à 10 résultats
-  }
-
   if (loading && !events.length) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -304,8 +294,6 @@ export default function EventPresencePage() {
       </div>
     );
   }
-
-  const filteredMembers = filterMembers(searchQuery);
 
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white p-8">
