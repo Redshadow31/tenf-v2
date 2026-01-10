@@ -23,6 +23,7 @@ export interface ShopProduct {
   categoryId: string;
   images: string[]; // Array of image URLs (up to 6)
   featured: boolean;
+  buyUrl?: string; // URL personnalisée pour le bouton "Acheter" (optionnel)
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, price, description, categoryId, images, featured } = body;
+    const { name, price, description, categoryId, images, featured, buyUrl } = body;
 
     if (!name || price === undefined || !categoryId) {
       return NextResponse.json(
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
       categoryId,
       images,
       featured: featured === true,
+      buyUrl: buyUrl || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: admin.id,
@@ -189,7 +191,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, price, description, categoryId, images, featured } = body;
+    const { id, name, price, description, categoryId, images, featured, buyUrl } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -233,6 +235,7 @@ export async function PUT(request: NextRequest) {
       ...(categoryId !== undefined && { categoryId }),
       ...(images !== undefined && { images: images.length > 6 ? images.slice(0, 6) : images }),
       ...(featured !== undefined && { featured }),
+      ...(buyUrl !== undefined && { buyUrl: buyUrl || undefined }),
       updatedAt: new Date().toISOString(),
     };
 

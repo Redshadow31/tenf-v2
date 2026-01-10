@@ -11,6 +11,7 @@ type ProductModalProps = {
     price: number;
     description: string;
     images: string[];
+    buyUrl?: string;
     category?: {
       id: string;
       name: string;

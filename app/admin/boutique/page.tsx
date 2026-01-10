@@ -22,6 +22,7 @@ export default function BoutiqueAdminPage() {
     categoryId: "",
     images: [""],
     featured: false,
+    buyUrl: "",
   });
 
   // Category form
@@ -76,6 +77,7 @@ export default function BoutiqueAdminPage() {
           ...productForm,
           price: parseFloat(productForm.price),
           images: productForm.images.filter(img => img.trim()),
+          buyUrl: productForm.buyUrl.trim() || undefined,
         }),
       });
 
@@ -264,6 +266,7 @@ export default function BoutiqueAdminPage() {
       categoryId: "",
       images: [""],
       featured: false,
+      buyUrl: "",
     });
     setEditingProduct(null);
   }
@@ -476,6 +479,23 @@ export default function BoutiqueAdminPage() {
                       )}
                     </div>
                   ))}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                    URL d'achat (optionnel)
+                  </label>
+                  <input
+                    type="url"
+                    value={productForm.buyUrl}
+                    onChange={(e) => setProductForm({ ...productForm, buyUrl: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                    placeholder="https://exemple.com/acheter"
+                  />
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Si vide, le bouton redirigera vers la page du produit ({`/boutique/{id}`})
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">

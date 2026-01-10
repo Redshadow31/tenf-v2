@@ -12,6 +12,7 @@ interface ShopProduct {
   categoryId: string;
   images: string[];
   featured: boolean;
+  buyUrl?: string;
   category?: {
     id: string;
     name: string;
