@@ -438,7 +438,7 @@ export default function RaidImportModal({
       const date1 = new Date(raid1.date);
       const date1Key = `${date1.getFullYear()}-${String(date1.getMonth() + 1).padStart(2, '0')}-${String(date1.getDate()).padStart(2, '0')}-${String(date1.getHours()).padStart(2, '0')}-${String(date1.getMinutes()).padStart(2, '0')}`;
 
-      let groupId = updatedRaids[i].duplicateGroup;
+      let groupId: number | undefined = updatedRaids[i].duplicateGroup;
       
       for (let j = i + 1; j < updatedRaids.length; j++) {
         if (updatedRaids[j].ignored || updatedRaids[j].duplicateGroup) continue;
@@ -457,13 +457,13 @@ export default function RaidImportModal({
             groupId = currentGroupId++;
             duplicateGroups[groupId] = [i];
           }
-          if (!duplicateGroups[groupId].includes(j)) {
+          if (groupId && !duplicateGroups[groupId].includes(j)) {
             duplicateGroups[groupId].push(j);
           }
         }
       }
 
-      if (groupId) {
+      if (groupId !== undefined) {
         duplicateGroups[groupId].forEach((idx) => {
           updatedRaids[idx] = {
             ...updatedRaids[idx],
