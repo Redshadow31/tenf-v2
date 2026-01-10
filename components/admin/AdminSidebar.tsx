@@ -264,6 +264,10 @@ const navItems: NavItem[] = [
         href: "/admin/raids/twitch",
         label: "Raids Twitch",
       },
+      {
+        href: "/admin/raids/historique",
+        label: "Historique",
+      },
     ],
   },
   {
@@ -301,7 +305,7 @@ export default function AdminSidebar() {
           if (child.href === "/admin/evaluations") {
             return pathname?.startsWith("/admin/evaluations") ?? false;
           }
-          if (child.href === "/admin/raids") {
+          if (child.href === "/admin/raids" || child.href === "/admin/raids/historique") {
             return pathname?.startsWith("/admin/raids") ?? false;
           }
           if (child.href === "/admin/spotlight") {
