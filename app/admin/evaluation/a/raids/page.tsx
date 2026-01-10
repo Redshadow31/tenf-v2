@@ -10,7 +10,8 @@ interface MemberRaidStats {
   displayName: string;
   raidsDone: number;
   raidsReceived: number;
-  points: number; // Points calculés automatiquement selon la logique
+  calculatedPoints: number; // Points calculés automatiquement selon la logique
+  manualPoints?: number; // Points manuels (0-5), si défini, remplace les points calculés
   note?: string; // Commentaire manuel optionnel
 }
 
@@ -50,9 +51,10 @@ export default function EvaluationARaidsPage() {
   const [members, setMembers] = useState<MemberRaidStats[]>([]);
   const [raidStats, setRaidStats] = useState<RaidStats | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [manualPoints, setManualPoints] = useState<Record<string, number | undefined>>({});
   const [sortColumn, setSortColumn] = useState<SortColumn>('membre');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [editingNote, setEditingNote] = useState<{ twitchLogin: string; note: string } | null>(null);
+  const [editingMember, setEditingMember] = useState<{ twitchLogin: string; note: string; manualPoints?: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -139,21 +141,29 @@ export default function EvaluationARaidsPage() {
       });
 
       let notesData: Record<string, string> = {};
+      let manualPointsData: Record<string, number | undefined> = {};
       if (notesResponse.ok) {
         const notesResult = await notesResponse.json();
-        // Convertir les notes au format { twitchLogin: note }
+        // Convertir les notes et points manuels au format { twitchLogin: { note, manualPoints } }
         if (notesResult.notes && typeof notesResult.notes === 'object') {
           Object.entries(notesResult.notes).forEach(([key, value]: [string, any]) => {
-            if (value && typeof value === 'object' && value.note) {
-              notesData[key.toLowerCase()] = value.note;
+            const loginLower = key.toLowerCase();
+            if (value && typeof value === 'object') {
+              if (value.note !== undefined) {
+                notesData[loginLower] = value.note;
+              }
+              if (value.manualPoints !== undefined && value.manualPoints !== null) {
+                manualPointsData[loginLower] = Number(value.manualPoints);
+              }
             } else if (typeof value === 'string') {
-              // Format direct : { twitchLogin: "note" }
-              notesData[key.toLowerCase()] = value;
+              // Format direct : { twitchLogin: "note" } (ancien format, pour compatibilité)
+              notesData[loginLower] = value;
             }
           });
         }
       }
       setNotes(notesData);
+      setManualPoints(manualPointsData);
 
       // Calculer les statistiques par membre
       const memberStatsMap = new Map<string, { done: number; received: number }>();
@@ -200,12 +210,15 @@ export default function EvaluationARaidsPage() {
         .map((member: any) => {
           const loginLower = (member.twitchLogin || '').toLowerCase();
           const stats = memberStatsMap.get(loginLower) || { done: 0, received: 0 };
+          const calculatedPts = calculatePoints(stats.done);
+          const manualPts = manualPointsData[loginLower];
           return {
             twitchLogin: member.twitchLogin || '',
             displayName: member.displayName || member.nom || member.twitchLogin || '',
             raidsDone: stats.done,
             raidsReceived: stats.received,
-            points: calculatePoints(stats.done),
+            calculatedPoints: calculatedPts,
+            manualPoints: manualPts,
             note: notesData[loginLower],
           };
         });
@@ -268,8 +281,13 @@ export default function EvaluationARaidsPage() {
     }
   }
   
+  // Helper pour obtenir les points affichés (manuel si défini, sinon calculé)
+  function getDisplayPoints(member: MemberRaidStats): number {
+    return member.manualPoints !== undefined && member.manualPoints !== null ? member.manualPoints : member.calculatedPoints;
+  }
+
   // Calculer les statistiques des points pour l'affichage (calculées dynamiquement depuis members)
-  const totalPoints = members.reduce((sum, m) => sum + m.points, 0);
+  const totalPoints = members.reduce((sum, m) => sum + getDisplayPoints(m), 0);
   const averagePoints = members.length > 0 ? (totalPoints / members.length).toFixed(2) : '0';
 
   function getSortedMembers(): MemberRaidStats[] {
@@ -288,7 +306,7 @@ export default function EvaluationARaidsPage() {
           comparison = a.raidsReceived - b.raidsReceived;
           break;
         case 'points':
-          comparison = a.points - b.points;
+          comparison = getDisplayPoints(a) - getDisplayPoints(b);
           break;
         case 'note':
           const noteA = (a.note || '').toLowerCase();
@@ -303,7 +321,7 @@ export default function EvaluationARaidsPage() {
     return sorted;
   }
 
-  async function handleSaveNote(twitchLogin: string, note: string) {
+  async function handleSaveMember(twitchLogin: string, note: string, manualPoints?: number) {
     try {
       setSaving(true);
       const response = await fetch('/api/evaluations/raids/notes', {
@@ -315,34 +333,49 @@ export default function EvaluationARaidsPage() {
           month: selectedMonth,
           twitchLogin,
           note: note.trim() || undefined,
+          manualPoints: manualPoints !== undefined && manualPoints !== null ? Number(manualPoints) : undefined,
         }),
       });
 
       if (response.ok) {
+        const loginLower = twitchLogin.toLowerCase();
+        
         // Mettre à jour localement
         const updatedNotes = { ...notes };
         if (note.trim()) {
-          updatedNotes[twitchLogin.toLowerCase()] = note.trim();
+          updatedNotes[loginLower] = note.trim();
         } else {
-          delete updatedNotes[twitchLogin.toLowerCase()];
+          delete updatedNotes[loginLower];
         }
         setNotes(updatedNotes);
 
+        const updatedManualPoints = { ...manualPoints };
+        if (manualPoints !== undefined && manualPoints !== null) {
+          updatedManualPoints[loginLower] = Number(manualPoints);
+        } else {
+          delete updatedManualPoints[loginLower];
+        }
+        setManualPoints(updatedManualPoints);
+
         // Mettre à jour la liste des membres
         setMembers(members.map(m => 
-          m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase()
-            ? { ...m, note: note.trim() || undefined }
+          m.twitchLogin.toLowerCase() === loginLower
+            ? { 
+                ...m, 
+                note: note.trim() || undefined,
+                manualPoints: manualPoints !== undefined && manualPoints !== null ? Number(manualPoints) : undefined
+              }
             : m
         ));
 
-        setEditingNote(null);
+        setEditingMember(null);
       } else {
         const error = await response.json();
         alert(`Erreur : ${error.error || 'Erreur inconnue'}`);
       }
     } catch (error) {
-      console.error("Erreur lors de la sauvegarde de la note:", error);
-      alert("Erreur lors de la sauvegarde de la note");
+      console.error("Erreur lors de la sauvegarde:", error);
+      alert("Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
@@ -484,7 +517,7 @@ export default function EvaluationARaidsPage() {
                   <button
                     onClick={() => handleSort('points')}
                     className="flex items-center gap-2 hover:text-[#9146ff] transition-colors cursor-pointer"
-                    title="Points calculés: 0 raid=0pt, 1-2 raids=1pt, 3 raids=2pt, 4 raids=3pt, 5 raids=4pt, 6+=5pt"
+                    title="Points (cliquez sur Modifier pour éditer manuellement): 0 raid=0pt, 1-2 raids=1pt, 3 raids=2pt, 4 raids=3pt, 5 raids=4pt, 6+=5pt. (M) = Points manuels"
                   >
                     Points (sur 5)
                     {sortColumn === 'points' && (
@@ -538,28 +571,62 @@ export default function EvaluationARaidsPage() {
                       <span className="text-white font-semibold">{member.raidsReceived}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold ${
-                          member.points === 0 ? 'text-gray-500' :
-                          member.points === 5 ? 'text-green-400' :
-                          member.points >= 3 ? 'text-yellow-400' :
-                          'text-orange-400'
-                        }`}>
-                          {member.points}/5
-                        </span>
-                        {member.raidsDone > 0 && (
-                          <span className="text-xs text-gray-500">
-                            ({member.raidsDone} raid{member.raidsDone > 1 ? 's' : ''})
+                      {editingMember?.twitchLogin === member.twitchLogin ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            step="0.5"
+                            value={editingMember.manualPoints !== undefined && editingMember.manualPoints !== null ? editingMember.manualPoints : ''}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              if (val === '') {
+                                setEditingMember({ ...editingMember, manualPoints: undefined });
+                              } else {
+                                const numVal = Number(val);
+                                if (!isNaN(numVal) && numVal >= 0 && numVal <= 5) {
+                                  setEditingMember({ ...editingMember, manualPoints: numVal });
+                                }
+                              }
+                            }}
+                            placeholder="Auto"
+                            className="w-20 bg-[#0e0e10] border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-[#9146ff]"
+                          />
+                          <span className="text-xs text-gray-500">/5</span>
+                          {editingMember.manualPoints === undefined && (
+                            <span className="text-xs text-gray-500">
+                              (Auto: {member.calculatedPoints})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className={`text-lg font-bold ${
+                            getDisplayPoints(member) === 0 ? 'text-gray-500' :
+                            getDisplayPoints(member) === 5 ? 'text-green-400' :
+                            getDisplayPoints(member) >= 3 ? 'text-yellow-400' :
+                            'text-orange-400'
+                          }`}>
+                            {getDisplayPoints(member)}/5
                           </span>
-                        )}
-                      </div>
+                          {member.manualPoints !== undefined && member.manualPoints !== null && (
+                            <span className="text-xs text-purple-400" title="Points manuels">(M)</span>
+                          )}
+                          {member.raidsDone > 0 && member.manualPoints === undefined && (
+                            <span className="text-xs text-gray-500">
+                              ({member.raidsDone} raid{member.raidsDone > 1 ? 's' : ''})
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <div className="max-w-md">
-                        {editingNote?.twitchLogin === member.twitchLogin ? (
+                        {editingMember?.twitchLogin === member.twitchLogin ? (
                           <textarea
-                            value={editingNote.note}
-                            onChange={(e) => setEditingNote({ ...editingNote, note: e.target.value })}
+                            value={editingMember.note}
+                            onChange={(e) => setEditingMember({ ...editingMember, note: e.target.value })}
                             className="w-full bg-[#0e0e10] border border-gray-600 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#9146ff] resize-none"
                             rows={2}
                             placeholder="Ajouter un commentaire (optionnel)..."
@@ -576,17 +643,17 @@ export default function EvaluationARaidsPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      {editingNote?.twitchLogin === member.twitchLogin ? (
+                      {editingMember?.twitchLogin === member.twitchLogin ? (
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleSaveNote(member.twitchLogin, editingNote.note)}
+                            onClick={() => handleSaveMember(member.twitchLogin, editingMember.note, editingMember.manualPoints)}
                             disabled={saving}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {saving ? '...' : '✓'}
                           </button>
                           <button
-                            onClick={() => setEditingNote(null)}
+                            onClick={() => setEditingMember(null)}
                             disabled={saving}
                             className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-3 py-1 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -595,7 +662,11 @@ export default function EvaluationARaidsPage() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => setEditingNote({ twitchLogin: member.twitchLogin, note: member.note || '' })}
+                          onClick={() => setEditingMember({ 
+                            twitchLogin: member.twitchLogin, 
+                            note: member.note || '',
+                            manualPoints: member.manualPoints
+                          })}
                           className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded text-sm transition-colors"
                         >
                           Modifier

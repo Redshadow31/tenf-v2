@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * PUT - Met à jour ou crée une note d'évaluation pour un membre
- * Body: { month: string, twitchLogin: string, note: string | undefined }
+ * Body: { month: string, twitchLogin: string, note: string | undefined, manualPoints: number | undefined }
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { month, twitchLogin, note } = body;
+    const { month, twitchLogin, note, manualPoints } = body;
 
     if (!month || !twitchLogin) {
       return NextResponse.json(
@@ -99,15 +99,24 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Mois invalide" }, { status: 400 });
     }
 
+    // Valider manualPoints si fourni (doit être entre 0 et 5)
+    if (manualPoints !== undefined && manualPoints !== null) {
+      const pointsNum = Number(manualPoints);
+      if (isNaN(pointsNum) || pointsNum < 0 || pointsNum > 5) {
+        return NextResponse.json({ error: "Les points manuels doivent être entre 0 et 5" }, { status: 400 });
+      }
+    }
+
     const monthKey = getMonthKey(year, monthNum);
 
-    // Mettre à jour la note
-    await updateRaidEvaluationNote(monthKey, twitchLogin, note, admin.id);
+    // Mettre à jour la note et les points manuels
+    await updateRaidEvaluationNote(monthKey, twitchLogin, note, manualPoints, admin.id);
 
     return NextResponse.json({
       success: true,
-      message: "Note mise à jour avec succès",
+      message: "Note et points mis à jour avec succès",
       note: note || null,
+      manualPoints: manualPoints !== undefined && manualPoints !== null ? Number(manualPoints) : null,
     });
   } catch (error) {
     console.error('[API Raid Evaluation Notes] Erreur PUT:', error);

@@ -12,6 +12,7 @@ import path from 'path';
 export interface RaidEvaluationNote {
   twitchLogin: string;
   note?: string; // Note manuelle (texte libre)
+  manualPoints?: number; // Points manuels (0-5), si non défini, utilise les points calculés automatiquement
   lastUpdated: string; // ISO timestamp
   updatedBy: string; // Discord ID
 }
@@ -98,6 +99,7 @@ export async function updateRaidEvaluationNote(
   monthKey: string,
   twitchLogin: string,
   note: string | undefined,
+  manualPoints: number | undefined,
   updatedBy: string
 ): Promise<void> {
   let data = await loadRaidEvaluationData(monthKey);
@@ -110,14 +112,18 @@ export async function updateRaidEvaluationNote(
     };
   }
   
-  if (note === undefined || note.trim() === '') {
-    // Supprimer la note si elle est vide
-    delete data.notes[twitchLogin.toLowerCase()];
+  const loginLower = twitchLogin.toLowerCase();
+  const existingNote = data.notes[loginLower];
+  
+  // Si note et manualPoints sont vides/undefined, supprimer l'entrée complète
+  if ((note === undefined || note.trim() === '') && (manualPoints === undefined || manualPoints === null)) {
+    delete data.notes[loginLower];
   } else {
-    // Mettre à jour ou créer la note
-    data.notes[twitchLogin.toLowerCase()] = {
-      twitchLogin: twitchLogin.toLowerCase(),
-      note: note.trim(),
+    // Mettre à jour ou créer la note avec les nouvelles valeurs
+    data.notes[loginLower] = {
+      twitchLogin: loginLower,
+      note: note !== undefined && note.trim() !== '' ? note.trim() : existingNote?.note,
+      manualPoints: manualPoints !== undefined && manualPoints !== null ? Math.max(0, Math.min(5, manualPoints)) : existingNote?.manualPoints,
       lastUpdated: new Date().toISOString(),
       updatedBy,
     };

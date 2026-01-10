@@ -9,6 +9,7 @@ import {
   getMonthKey,
 } from '@/lib/raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { loadRaidEvaluationData } from '@/lib/raidEvaluationStorage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,11 +112,36 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculer les points pour chaque membre
+    // Charger les notes d'évaluation pour récupérer les points manuels
+    const evaluationData = await loadRaidEvaluationData(monthKey);
+    const manualPointsMap = new Map<string, number>();
+    if (evaluationData?.notes) {
+      Object.entries(evaluationData.notes).forEach(([login, noteData]: [string, any]) => {
+        if (noteData.manualPoints !== undefined && noteData.manualPoints !== null) {
+          manualPointsMap.set(login.toLowerCase(), Number(noteData.manualPoints));
+        }
+      });
+    }
+
+    // Calculer les points pour chaque membre (utiliser les points manuels s'ils existent, sinon calculer)
     const pointsMap: Record<string, number> = {};
     memberStatsMap.forEach((stats, login) => {
-      const points = calculateRaidPoints(stats.done);
-      pointsMap[login] = points;
+      // Vérifier s'il y a des points manuels pour ce membre
+      const manualPts = manualPointsMap.get(login);
+      if (manualPts !== undefined) {
+        pointsMap[login] = manualPts;
+      } else {
+        // Sinon, calculer les points automatiquement
+        const points = calculateRaidPoints(stats.done);
+        pointsMap[login] = points;
+      }
+    });
+
+    // Ajouter aussi les membres qui ont des points manuels mais pas de raids
+    manualPointsMap.forEach((points, login) => {
+      if (!pointsMap[login]) {
+        pointsMap[login] = points;
+      }
     });
 
     return NextResponse.json({ success: true, points: pointsMap, month: monthKey });
