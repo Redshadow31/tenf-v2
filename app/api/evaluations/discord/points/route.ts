@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/adminRoles';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { getDiscordEngagementData } from '@/lib/discordEngagementStorage';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { calculateNoteEcrit, calculateNoteVocal, calculateNoteFinale } from '@/lib/discordEngagement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
-    const monthKey = monthParam || getCurrentMonthKey();
+    
+    // Valider le format du mois (YYYY-MM)
+    let monthKey: string;
+    if (monthParam) {
+      if (!monthParam.match(/^\d{4}-\d{2}$/)) {
+        return NextResponse.json({ error: "Format de mois invalide (attendu: YYYY-MM)" }, { status: 400 });
+      }
+      monthKey = monthParam;
+    } else {
+      monthKey = getCurrentMonthKey();
+    }
 
     // Charger les membres pour la conversion Discord ID -> Twitch Login
     await loadMemberDataFromStorage();
@@ -41,12 +52,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Convertir les notes finales de Discord ID vers Twitch Login
+    // Si noteFinale existe dans le storage, on l'utilise, sinon on la calcule
     const pointsMap: Record<string, number> = {};
     
     Object.entries(engagementData.dataByMember).forEach(([discordId, engagement]: [string, any]) => {
       const twitchLogin = discordIdToTwitchLogin.get(discordId);
-      if (twitchLogin && engagement && typeof engagement.noteFinale === 'number') {
-        pointsMap[twitchLogin.toLowerCase()] = engagement.noteFinale;
+      if (twitchLogin && engagement) {
+        let noteFinale: number;
+        
+        // Si noteFinale existe déjà dans le storage, l'utiliser
+        if (typeof engagement.noteFinale === 'number' && !isNaN(engagement.noteFinale)) {
+          noteFinale = engagement.noteFinale;
+        } else {
+          // Sinon, calculer la note finale à partir de nbMessages et nbVocalMinutes
+          const nbMessages = engagement.nbMessages || 0;
+          const nbVocalMinutes = engagement.nbVocalMinutes || 0;
+          const noteEcrit = calculateNoteEcrit(nbMessages);
+          const noteVocal = calculateNoteVocal(nbVocalMinutes);
+          noteFinale = calculateNoteFinale(noteEcrit, noteVocal);
+        }
+        
+        pointsMap[twitchLogin.toLowerCase()] = noteFinale;
       }
     });
 
