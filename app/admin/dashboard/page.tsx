@@ -194,8 +194,13 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold text-white mb-4">
             Activité Twitch
           </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={twitchActivityData}>
+          {loadingDashboardData ? (
+            <div className="flex items-center justify-center h-[200px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={twitchActivityData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
                 dataKey="month"
@@ -222,6 +227,7 @@ export default function DashboardPage() {
               />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* Croissance Discord */}
@@ -356,8 +362,13 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-white mb-4">
               Progression Spotlight
             </h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={spotlightProgressionData}>
+            {loadingDashboardData ? (
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={spotlightProgressionData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="month"
@@ -384,6 +395,7 @@ export default function DashboardPage() {
                 />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           {/* Raids reçus */}
@@ -448,10 +460,7 @@ export default function DashboardPage() {
                       Pseudo
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                      Vocal
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                      Messages
+                      Heures vocales
                     </th>
                   </tr>
                 </thead>
@@ -478,9 +487,6 @@ export default function DashboardPage() {
                           ? `${(member.value / 1000).toFixed(1)}k`
                           : member.value}{" "}
                         h
-                      </td>
-                      <td className="py-3 px-4 text-gray-300">
-                        {member.messages || 0}
                       </td>
                     </tr>
                   ))}
