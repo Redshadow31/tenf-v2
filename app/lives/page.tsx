@@ -40,6 +40,26 @@ export default function LivesPage() {
   useEffect(() => {
     async function fetchLiveStreams() {
       try {
+        // Récupérer les VIP du mois en cours depuis l'API
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthKey = `${year}-${month}`;
+        
+        let currentMonthVipLogins: string[] = [];
+        try {
+          const vipMonthResponse = await fetch(`/api/vip-month/save?month=${currentMonthKey}`, {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
+          if (vipMonthResponse.ok) {
+            const vipMonthData = await vipMonthResponse.json();
+            currentMonthVipLogins = (vipMonthData.vipLogins || []).map((login: string) => login.toLowerCase());
+          }
+        } catch (error) {
+          console.warn('Erreur récupération VIP du mois:', error);
+        }
+        
         // Récupérer tous les membres actifs depuis l'API publique (même source que la page /membres)
         const membersResponse = await fetch("/api/members/public", {
           cache: 'no-store',
@@ -124,24 +144,39 @@ export default function LivesPage() {
           return shuffled;
         };
         
-        // Déterminer si un membre est staff (non VIP, excluant Créateur Junior)
+        // Déterminer si un membre est staff (uniquement Admin, Admin Adjoint, Mentor, Modérateur Junior)
         const isStaff = (live: LiveMember): boolean => {
-          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Modérateur Junior', 'Développement'];
+          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Modérateur Junior'];
           return staffRoles.includes(live.role) && !live.isVip;
         };
         
-        // Séparer en groupes : Staff, VIP, Autres
+        // Vérifier si un membre est VIP du mois en cours
+        const isCurrentMonthVip = (live: LiveMember): boolean => {
+          return currentMonthVipLogins.includes(live.twitchLogin.toLowerCase());
+        };
+        
+        // Séparer en groupes : Staff, VIP, Autres (avec priorité VIP du mois)
         const staffLives = validLives.filter(live => isStaff(live));
         const vipLives = validLives.filter(live => live.isVip === true && !isStaff(live));
+        
+        // Dans "Autres", séparer les VIP du mois en cours des autres
         const otherLives = validLives.filter(live => !live.isVip && !isStaff(live));
+        const otherLivesCurrentMonthVip = otherLives.filter(live => isCurrentMonthVip(live));
+        const otherLivesRegular = otherLives.filter(live => !isCurrentMonthVip(live));
         
         // Mélanger chaque groupe aléatoirement
         const shuffledStaff = shuffleArray(staffLives);
         const shuffledVip = shuffleArray(vipLives);
-        const shuffledOther = shuffleArray(otherLives);
+        const shuffledOtherCurrentMonthVip = shuffleArray(otherLivesCurrentMonthVip);
+        const shuffledOtherRegular = shuffleArray(otherLivesRegular);
         
-        // Combiner dans l'ordre : Staff -> VIP -> Autres
-        const sortedLives = [...shuffledStaff, ...shuffledVip, ...shuffledOther];
+        // Combiner dans l'ordre : Staff -> VIP -> Autres (VIP du mois en premier) -> Autres (reste)
+        const sortedLives = [
+          ...shuffledStaff, 
+          ...shuffledVip, 
+          ...shuffledOtherCurrentMonthVip,
+          ...shuffledOtherRegular
+        ];
 
         // Extraire les jeux uniques pour le filtre
         const uniqueGames = Array.from(new Set(sortedLives.map(live => live.game).filter(Boolean))).sort();
