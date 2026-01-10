@@ -965,8 +965,16 @@ export default function RaidImportModal({
             />
           </div>
 
-          {/* Bouton Analyser */}
-          <div className="flex justify-end">
+          {/* Boutons Analyser et Gérer les doublons */}
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={findDuplicates}
+              disabled={detectedRaids.length === 0 || analyzing || saving}
+              className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Rechercher les doublons (même personne, même jour, même heure). Nécessite d'avoir analysé du texte avec des raids détectés."
+            >
+              🔍 Gérer les doublons
+            </button>
             <button
               onClick={analyzeText}
               disabled={analyzing || saving || !inputText.trim()}

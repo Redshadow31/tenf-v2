@@ -457,7 +457,7 @@ export default function RaidsPage() {
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              title="Importer des raids manuellement depuis du texte"
+              title="Importer des raids manuellement depuis du texte (avec détection automatique des doublons)"
             >
               📥 Importer des raids manuellement
             </button>
