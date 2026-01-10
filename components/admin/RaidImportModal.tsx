@@ -864,16 +864,39 @@ export default function RaidImportModal({
       let data: any;
       
       if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // Si le parsing JSON échoue, lire le texte brut
+          const text = await response.text();
+          console.error("[Raid Import] Erreur de parsing JSON:", jsonError);
+          console.error("[Raid Import] Réponse brute reçue:", text.substring(0, 500));
+          throw new Error(`Erreur serveur (${response.status}): Impossible de parser la réponse JSON. Réponse: ${text.substring(0, 200)}`);
+        }
       } else {
         // Si la réponse n'est pas du JSON (probablement du HTML d'erreur)
         const text = await response.text();
-        console.error("[Raid Import] Réponse non-JSON reçue:", text.substring(0, 200));
-        throw new Error(`Erreur serveur (${response.status}): La réponse n'est pas au format JSON. Vérifiez les logs serveur.`);
+        console.error("[Raid Import] Réponse non-JSON reçue (Status:", response.status, ", Content-Type:", contentType, "):", text.substring(0, 500));
+        
+        // Message d'erreur selon le statut HTTP
+        let errorMsg = `Erreur serveur (${response.status}): `;
+        if (response.status === 401) {
+          errorMsg += "Non authentifié. Veuillez vous reconnecter.";
+        } else if (response.status === 403) {
+          errorMsg += "Accès refusé. Permissions insuffisantes.";
+        } else if (response.status === 404) {
+          errorMsg += "Route API non trouvée.";
+        } else if (response.status >= 500) {
+          errorMsg += "Erreur serveur interne. Vérifiez les logs serveur.";
+        } else {
+          errorMsg += "La réponse n'est pas au format JSON attendu.";
+        }
+        throw new Error(errorMsg);
       }
 
       if (!response.ok) {
-        throw new Error(data.error || `Erreur lors de l'enregistrement (${response.status})`);
+        const errorMsg = data?.error || data?.message || `Erreur lors de l'enregistrement (${response.status})`;
+        throw new Error(errorMsg);
       }
 
       const unknownCount = detectedRaids.filter(r => r.status === 'unknown' && !r.ignored).length;
@@ -894,13 +917,25 @@ export default function RaidImportModal({
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
       // Nettoyer les messages d'erreur techniques pour l'utilisateur
       let userFriendlyMessage = errorMessage;
-      if (errorMessage.includes('Unexpected token') || errorMessage.includes('<HTML>')) {
+      
+      // Messages d'erreur spécifiques selon le type d'erreur
+      if (errorMessage.includes('Non authentifié') || errorMessage.includes('401')) {
+        userFriendlyMessage = "Erreur d'authentification : Veuillez vous reconnecter à Discord.";
+      } else if (errorMessage.includes('Accès refusé') || errorMessage.includes('403')) {
+        userFriendlyMessage = "Erreur de permissions : Vous n'avez pas les droits nécessaires pour importer des raids.";
+      } else if (errorMessage.includes('Unexpected token') || errorMessage.includes('<HTML>')) {
         userFriendlyMessage = "Erreur serveur : La réponse n'est pas au format attendu. Veuillez réessayer ou contacter un administrateur.";
-      } else if (errorMessage.includes('JSON')) {
-        userFriendlyMessage = "Erreur serveur : Problème de format de données. Veuillez réessayer.";
+      } else if (errorMessage.includes('JSON') || errorMessage.includes('format')) {
+        userFriendlyMessage = `Erreur serveur : ${errorMessage}. Vérifiez les logs de la console pour plus de détails.`;
       }
+      
       setError(`Erreur : ${userFriendlyMessage}`);
       console.error("[Raid Import] Erreur détaillée:", err);
+      
+      // Si l'erreur est une erreur réseau, afficher un message supplémentaire
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError(`Erreur réseau : Impossible de contacter le serveur. Vérifiez votre connexion internet.`);
+      }
     } finally {
       setSaving(false);
     }

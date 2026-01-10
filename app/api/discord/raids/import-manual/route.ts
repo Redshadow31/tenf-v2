@@ -11,13 +11,37 @@ import {
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { getCurrentAdmin } from '@/lib/adminAuth';
+import { hasPermission } from '@/lib/adminRoles';
+
+// Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * POST - Importe plusieurs raids manuellement en une seule fois
- * Body: { month: string, raids: Array<{ raider: string, target: string, date?: string }> }
+ * Body: { month: string, raids: Array<{ raider: string, target: string, date?: string, countFrom?: boolean, countTo?: boolean }> }
  */
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier l'authentification
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Non authentifié" },
+        { status: 401 }
+      );
+    }
+
+    // Vérifier les permissions : write pour importer
+    if (!hasPermission(admin.id, "write")) {
+      return NextResponse.json(
+        { error: "Accès refusé. Permissions insuffisantes." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { month, raids } = body;
 
