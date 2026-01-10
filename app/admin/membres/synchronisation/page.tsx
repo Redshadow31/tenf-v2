@@ -317,12 +317,16 @@ export default function SynchronisationMembresPage() {
 
     if (!selectedMember) return;
 
-    // Trouver le membre original dans la liste
+    // Trouver le membre original dans la liste (utiliser selectedMember.twitch qui est le pseudo actuel avant modification)
+    const originalTwitchLogin = selectedMember.twitch;
     const oldMember = members.find((m) => 
-      m.twitchLogin === selectedMember.twitchLogin || 
+      m.twitchLogin === originalTwitchLogin || 
       m.discordId === selectedMember.discordId
     );
-    if (!oldMember) return;
+    if (!oldMember) {
+      alert("Membre original non trouvé dans la liste");
+      return;
+    }
 
     try {
       // Mettre à jour via l'API
