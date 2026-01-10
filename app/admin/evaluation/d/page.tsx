@@ -197,7 +197,7 @@ export default function EvaluationDPage() {
       const raidsStatsMap = new Map<string, { done: number; received: number }>(); // Stats pour affichage
       const discordPointsMap = new Map<string, number>(); // Map des points Discord depuis l'API
       const eventsMap = new Map<string, { presences: number; total: number }>();
-      const followMap = new Map<string, number>();
+      const followPointsMap = new Map<string, number>(); // Map des points Follow depuis l'API (dernière évaluation connue)
       
       // Populate spotlight points map depuis l'API (points calculés depuis /admin/evaluation/a/spotlights)
       if (spotlightPointsData && typeof spotlightPointsData === 'object') {
@@ -222,6 +222,15 @@ export default function EvaluationDPage() {
         Object.entries(discordPointsData).forEach(([login, points]) => {
           if (login && typeof points === 'number') {
             discordPointsMap.set(login.toLowerCase(), points);
+          }
+        });
+      }
+      
+      // Populate follow points map depuis l'API (points calculés depuis /admin/evaluation/c - dernière évaluation connue)
+      if (followPointsData && typeof followPointsData === 'object') {
+        Object.entries(followPointsData).forEach(([login, points]) => {
+          if (login && typeof points === 'number') {
+            followPointsMap.set(login.toLowerCase(), points);
           }
         });
       }
@@ -263,26 +272,6 @@ export default function EvaluationDPage() {
               }
             }
           }
-        }
-      }
-      
-      // Populate follow map (simplifié - basé sur computeScores de la page C)
-      if (followData.validations && Array.isArray(followData.validations)) {
-        const memberLogins = membersData.map((m: any) => m.twitchLogin?.toLowerCase()).filter(Boolean) as string[];
-        const totalSheets = followData.validations.length;
-        
-        for (const login of memberLogins) {
-          let count = 0;
-          for (const sheet of followData.validations) {
-            // Utiliser la même logique que computeScores (simplifié)
-            if (sheet.membersArray) {
-              const member = sheet.membersArray.find((m: any) => (m.twitchLogin || '').toLowerCase() === login);
-              if (member?.meSuit) count++;
-            }
-          }
-          const taux = totalSheets > 0 ? count / totalSheets : 0;
-          const score = Math.round(taux * 5 * 100) / 100;
-          followMap.set(login, score);
         }
       }
       
