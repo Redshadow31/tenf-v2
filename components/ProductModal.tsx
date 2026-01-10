@@ -180,19 +180,37 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
 
               {/* Buy Button */}
               <div className="pt-4">
-                <Link
-                  href={`/boutique/${product.id}`}
-                  className="block w-full text-center px-6 py-3 rounded-lg font-semibold text-white transition-colors"
-                  style={{ backgroundColor: "var(--color-primary)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = "0.9";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = "1";
-                  }}
-                >
-                  Acheter maintenant
-                </Link>
+                {product.buyUrl ? (
+                  <a
+                    href={product.buyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center px-6 py-3 rounded-lg font-semibold text-white transition-colors"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
+                    Acheter maintenant
+                  </a>
+                ) : (
+                  <Link
+                    href={`/boutique/${product.id}`}
+                    className="block w-full text-center px-6 py-3 rounded-lg font-semibold text-white transition-colors"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
+                    Acheter maintenant
+                  </Link>
+                )}
               </div>
             </div>
           </div>

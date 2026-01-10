@@ -110,6 +110,7 @@ export default function BoutiqueAdminPage() {
           ...productForm,
           price: parseFloat(productForm.price),
           images: productForm.images.filter(img => img.trim()),
+          buyUrl: productForm.buyUrl.trim() || undefined,
         }),
       });
 
