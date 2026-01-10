@@ -208,19 +208,23 @@ export default function EvaluationARaidsPage() {
           return hasTwitchLogin;
         })
         .map((member: any) => {
-          const loginLower = (member.twitchLogin || '').toLowerCase();
-          const stats = memberStatsMap.get(loginLower) || { done: 0, received: 0 };
-          const calculatedPts = calculatePoints(stats.done);
-          const manualPts = manualPointsData[loginLower];
-          return {
-            twitchLogin: member.twitchLogin || '',
-            displayName: member.displayName || member.nom || member.twitchLogin || '',
-            raidsDone: stats.done,
-            raidsReceived: stats.received,
-            calculatedPoints: calculatedPts,
-            manualPoints: manualPts,
-            note: notesData[loginLower],
-          };
+            const loginLower = (member.twitchLogin || '').toLowerCase();
+            const stats = memberStatsMap.get(loginLower) || { done: 0, received: 0 };
+            const calculatedPts = calculatePoints(stats.done);
+            const manualPts = manualPointsData[loginLower];
+            // S'assurer que manualPts est valide (pas NaN, pas undefined/null, ou undefined si invalide)
+            const validManualPts = (manualPts !== undefined && manualPts !== null && !isNaN(manualPts) && manualPts >= 0 && manualPts <= 5)
+              ? manualPts
+              : undefined;
+            return {
+              twitchLogin: member.twitchLogin || '',
+              displayName: member.displayName || member.nom || member.twitchLogin || '',
+              raidsDone: stats.done,
+              raidsReceived: stats.received,
+              calculatedPoints: calculatedPts,
+              manualPoints: validManualPts,
+              note: notesData[loginLower],
+            };
         });
       
       console.log(`[Evaluation Raids] Liste finale des membres: ${membersList.length}`);
@@ -283,7 +287,10 @@ export default function EvaluationARaidsPage() {
   
   // Helper pour obtenir les points affichés (manuel si défini, sinon calculé)
   function getDisplayPoints(member: MemberRaidStats): number {
-    return member.manualPoints !== undefined && member.manualPoints !== null ? member.manualPoints : member.calculatedPoints;
+    if (member.manualPoints !== undefined && member.manualPoints !== null && !isNaN(member.manualPoints)) {
+      return member.manualPoints;
+    }
+    return member.calculatedPoints;
   }
 
   // Calculer les statistiques des points pour l'affichage (calculées dynamiquement depuis members)
@@ -363,7 +370,9 @@ export default function EvaluationARaidsPage() {
             ? { 
                 ...m, 
                 note: note.trim() || undefined,
-                manualPoints: manualPoints !== undefined && manualPoints !== null ? Number(manualPoints) : undefined
+                manualPoints: manualPointsValue !== undefined && manualPointsValue !== null && !isNaN(Number(manualPointsValue)) 
+                  ? Number(manualPointsValue) 
+                  : undefined
               }
             : m
         ));
@@ -578,7 +587,7 @@ export default function EvaluationARaidsPage() {
                             min="0"
                             max="5"
                             step="0.5"
-                            value={editingMember.manualPoints !== undefined && editingMember.manualPoints !== null ? editingMember.manualPoints : ''}
+                            value={editingMember.manualPoints !== undefined && editingMember.manualPoints !== null && !isNaN(editingMember.manualPoints) ? editingMember.manualPoints : ''}
                             onChange={(e) => {
                               const val = e.target.value.trim();
                               if (val === '') {

@@ -100,17 +100,19 @@ export async function PUT(request: NextRequest) {
     }
 
     // Valider manualPoints si fourni (doit être entre 0 et 5)
+    let validatedManualPoints: number | undefined = undefined;
     if (manualPoints !== undefined && manualPoints !== null) {
       const pointsNum = Number(manualPoints);
       if (isNaN(pointsNum) || pointsNum < 0 || pointsNum > 5) {
         return NextResponse.json({ error: "Les points manuels doivent être entre 0 et 5" }, { status: 400 });
       }
+      validatedManualPoints = pointsNum;
     }
 
     const monthKey = getMonthKey(year, monthNum);
 
     // Mettre à jour la note et les points manuels
-    await updateRaidEvaluationNote(monthKey, twitchLogin, note, manualPoints, admin.id);
+    await updateRaidEvaluationNote(monthKey, twitchLogin, note, validatedManualPoints, admin.id);
 
     return NextResponse.json({
       success: true,
