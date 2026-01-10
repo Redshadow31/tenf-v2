@@ -1,21 +1,15 @@
 // Stockage des bonus d'évaluation mensuels (Section D) dans Netlify Blobs
 // Architecture: tenf-evaluation-bonus/{YYYY-MM}/bonus.json
+// ⚠️ Ce fichier utilise fs (Node.js) et ne doit être importé que dans des routes API (serveur)
 
 import { getStore } from '@netlify/blobs';
 import fs from 'fs';
 import path from 'path';
+import type { MemberBonus } from './evaluationBonusHelpers';
 
 // ============================================
 // TYPES
 // ============================================
-
-export interface MemberBonus {
-  twitchLogin: string;
-  timezoneBonusEnabled: boolean; // Bonus décalage horaire activé
-  moderationBonus: number; // Bonus modération (0-5)
-  updatedAt: string; // ISO timestamp
-  updatedBy: string; // Discord ID
-}
 
 export interface EvaluationBonusData {
   month: string; // YYYY-MM
@@ -28,7 +22,6 @@ export interface EvaluationBonusData {
 // ============================================
 
 const BONUS_STORE_NAME = 'tenf-evaluation-bonus';
-const TIMEZONE_BONUS_VALUE = 2; // Points accordés pour le bonus décalage horaire
 
 // ============================================
 // UTILITAIRES
@@ -147,24 +140,6 @@ export async function getAllBonuses(monthKey: string): Promise<Record<string, Me
   return data?.bonuses || {};
 }
 
-/**
- * Calcule le total des bonus pour un membre
- * @returns { timezoneBonus: number, moderationBonus: number, total: number }
- */
-export function calculateBonusTotal(bonus: MemberBonus | null): { timezoneBonus: number; moderationBonus: number; total: number } {
-  if (!bonus) {
-    return { timezoneBonus: 0, moderationBonus: 0, total: 0 };
-  }
-  
-  const timezoneBonus = bonus.timezoneBonusEnabled ? TIMEZONE_BONUS_VALUE : 0;
-  const moderationBonus = bonus.moderationBonus || 0;
-  const total = timezoneBonus + moderationBonus;
-  
-  return { timezoneBonus, moderationBonus, total };
-}
-
-/**
- * Valeur du bonus décalage horaire (exportée pour utilisation dans les calculs)
- */
-export const TIMEZONE_BONUS_POINTS = TIMEZONE_BONUS_VALUE;
+// Note: calculateBonusTotal et TIMEZONE_BONUS_POINTS sont maintenant dans lib/evaluationBonusHelpers.ts
+// pour éviter les dépendances Node.js (fs) dans les composants client
 

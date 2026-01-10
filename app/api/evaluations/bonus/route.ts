@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, logAction } from '@/lib/adminAuth';
 import { hasPermission } from '@/lib/adminRoles';
-import { loadEvaluationBonusData, saveEvaluationBonusData, updateMemberBonus, getAllBonuses, MemberBonus } from '@/lib/evaluationBonusStorage';
+import { loadEvaluationBonusData, saveEvaluationBonusData, updateMemberBonus, getAllBonuses } from '@/lib/evaluationBonusStorage';
+import type { MemberBonus } from '@/lib/evaluationBonusHelpers';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 export async function GET(request: NextRequest) {

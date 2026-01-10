@@ -13,7 +13,7 @@ import {
   calculateSeniority,
 } from "@/lib/evaluationSynthesisHelpers";
 import { calculateNoteEcrit, calculateNoteVocal, calculateNoteFinale } from "@/lib/discordEngagement";
-import { calculateBonusTotal, TIMEZONE_BONUS_POINTS, type MemberBonus } from "@/lib/evaluationBonusStorage";
+import { calculateBonusTotal, TIMEZONE_BONUS_POINTS, type MemberBonus } from "@/lib/evaluationBonusHelpers";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
 
 // ============================================
