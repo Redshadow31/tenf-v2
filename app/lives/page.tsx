@@ -126,22 +126,22 @@ export default function LivesPage() {
         
         // Déterminer si un membre est staff (non VIP)
         const isStaff = (live: LiveMember): boolean => {
-          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Staff', 'Créateur Junior', 'Développement'];
+          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Modérateur Junior', 'Créateur Junior', 'Développement'];
           return staffRoles.includes(live.role) && !live.isVip;
         };
         
-        // Séparer en groupes : VIP, Staff, Autres
-        const vipLives = validLives.filter(live => live.isVip === true);
+        // Séparer en groupes : Staff, VIP, Autres
         const staffLives = validLives.filter(live => isStaff(live));
+        const vipLives = validLives.filter(live => live.isVip === true && !isStaff(live));
         const otherLives = validLives.filter(live => !live.isVip && !isStaff(live));
         
         // Mélanger chaque groupe aléatoirement
-        const shuffledVip = shuffleArray(vipLives);
         const shuffledStaff = shuffleArray(staffLives);
+        const shuffledVip = shuffleArray(vipLives);
         const shuffledOther = shuffleArray(otherLives);
         
-        // Combiner dans l'ordre : VIP -> Staff -> Autres
-        const sortedLives = [...shuffledVip, ...shuffledStaff, ...shuffledOther];
+        // Combiner dans l'ordre : Staff -> VIP -> Autres
+        const sortedLives = [...shuffledStaff, ...shuffledVip, ...shuffledOther];
 
         // Extraire les jeux uniques pour le filtre
         const uniqueGames = Array.from(new Set(sortedLives.map(live => live.game).filter(Boolean))).sort();
