@@ -47,7 +47,15 @@ export async function PUT(request: NextRequest) {
       admin.id
     );
 
-    await logAction(admin.id, admin.username, 'update_evaluation_bonus', twitchLogin, { month: monthKey, timezoneBonusEnabled, moderationBonus });
+    await logAction(
+      admin,
+      'update_evaluation_bonus',
+      'evaluation_bonus',
+      {
+        resourceId: twitchLogin,
+        newValue: { month: monthKey, timezoneBonusEnabled, moderationBonus },
+      }
+    );
 
     return NextResponse.json({ success: true, bonus: updatedBonus });
   } catch (error) {
