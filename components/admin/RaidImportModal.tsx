@@ -243,12 +243,12 @@ export default function RaidImportModal({
         
         for (const match of matches) {
           // Extraire raider et target bruts
-          let raiderRaw = normalizeHandleForDisplay(match[1].trim());
-          let targetRaw = normalizeHandleForDisplay(match[2].trim());
+          // Le pattern capture déjà jusqu'au premier espace, donc pas besoin de split
+          let raiderRaw = normalizeHandleForDisplay(match[1]?.trim() || '');
+          let targetRaw = normalizeHandleForDisplay(match[2]?.trim() || '');
 
-          // Supprimer le texte après le @ de la cible (ex: "sur Avatar", "^^", etc.)
-          // On prend seulement jusqu'au premier espace après le @
-          targetRaw = targetRaw.split(/\s+/)[0];
+          // Le pattern regex capture déjà jusqu'au premier espace après @, donc le texte après est automatiquement ignoré
+          // (ex: "@Darkins  hier ^^" → capture seulement "Darkins")
 
           if (!raiderRaw || !targetRaw || raiderRaw.length < 1 || targetRaw.length < 1) continue;
           if (raiderRaw.toLowerCase() === targetRaw.toLowerCase()) continue;
@@ -319,7 +319,7 @@ export default function RaidImportModal({
       }
 
       if (raids.length === 0) {
-        setError("Aucun raid détecté dans le texte. Formats supportés : @Raider a raid @Cible, @Raider à raid @Cible, @Raider raid @Cible, @Raider vers @Cible, @Raider chez @Cible");
+        setError("Aucun raid détecté dans le texte. Formats supportés : @Raider a raid @Cible, @Raider à raid @Cible, @Raider raid @Cible, @Raider raid vers @Cible, @Raider raid chez @Cible (les emojis dans les pseudos sont supportés, le texte après la cible est ignoré)");
       } else {
         setDetectedRaids(raids);
         setError(null);
@@ -677,8 +677,10 @@ export default function RaidImportModal({
             </p>
             <ul className="text-xs text-blue-400 list-disc list-inside space-y-1">
               <li>Dates : <code className="bg-blue-900/50 px-1 rounded">DD/MM/YYYY HH:mm</code> (optionnel, définit le contexte temporel)</li>
-              <li>Raids : <code className="bg-blue-900/50 px-1 rounded">@Raider a raid @Cible</code> ou <code className="bg-blue-900/50 px-1 rounded">@Raider à raid @Cible</code></li>
+              <li>Raids : <code className="bg-blue-900/50 px-1 rounded">@Raider a raid @Cible</code>, <code className="bg-blue-900/50 px-1 rounded">@Raider à raid @Cible</code>, <code className="bg-blue-900/50 px-1 rounded">@Raider raid @Cible</code>, <code className="bg-blue-900/50 px-1 rounded">@Raider raid vers @Cible</code>, ou <code className="bg-blue-900/50 px-1 rounded">@Raider raid chez @Cible</code></li>
               <li>Les dates s'appliquent à tous les raids suivants jusqu'à la prochaine date</li>
+              <li>Les emojis dans les pseudos sont supportés (ex: <code className="bg-blue-900/50 px-1 rounded">@😈MiSsLyliee🦄</code>)</li>
+              <li>Le texte après la cible est automatiquement ignoré (ex: "hier ^^", "^^", etc.)</li>
             </ul>
           </div>
 

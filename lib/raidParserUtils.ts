@@ -28,13 +28,15 @@ export function normalizeHandle(handle: string): string {
 }
 
 /**
- * Normalise un handle pour l'affichage (conserve plus d'informations)
+ * Normalise un handle pour l'affichage (conserve plus d'informations, incluant emojis)
  * @param handle - Le handle à normaliser
- * @returns Handle normalisé pour l'affichage
+ * @returns Handle normalisé pour l'affichage (avec emojis préservés)
  */
 export function normalizeHandleForDisplay(handle: string): string {
   if (!handle) return "";
   
+  // Préserver les emojis et caractères spéciaux pour l'affichage
+  // Seulement nettoyer les @ multiples et les guillemets
   return handle
     .trim()
     .replace(/^@+/, '')
@@ -55,14 +57,20 @@ export const DATE_PATTERN = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{
  * - @X à raid @Y
  * - @X A raid @Y
  * - @X raid @Y (sans "a/à")
- * - @X vers @Y
- * - @X chez @Y
+ * - @X raid vers @Y
+ * - @X raid chez @Y
  * - Double espaces
- * - Texte après la cible (ignoré)
+ * - Emojis dans les pseudos (ex: @😈MiSsLyliee🦄)
+ * - Texte après la cible (ignoré, ex: "hier ^^")
  * 
  * Utiliser avec matchAll pour trouver tous les raids dans une ligne
+ * 
+ * Pattern amélioré:
+ * - Capture les pseudos avec emojis: @([^\s@]+) capture tout sauf espaces et @
+ * - Supporte "a raid", "à raid", "raid", "raid vers", "raid chez"
+ * - Capture la cible jusqu'au premier espace, puis ignore le reste
  */
-export const RAID_PATTERN = /@([^\s]+)\s*(?:a|à|A)?\s*(?:raid|vers|chez)\s*@([^\s]+)/gi;
+export const RAID_PATTERN = /@([^\s@]+)\s+(?:(?:a|à|A)\s+)?raid(?:\s+(?:vers|chez))?\s+@([^\s@]+)/giu;
 
 /**
  * Parse une date depuis un string au format DD/MM/YYYY HH:mm
