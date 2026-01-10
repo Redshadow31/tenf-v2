@@ -260,6 +260,15 @@ export async function PUT(request: NextRequest) {
     // Récupérer le login original pour la mise à jour
     const originalLogin = existingMember.twitchLogin.toLowerCase();
     
+    // Ajouter twitchLogin dans updates s'il est différent de l'ancien (important pour mettre à jour le nom de chaîne Twitch)
+    if (twitchLogin && twitchLogin.toLowerCase() !== originalLogin) {
+      updates.twitchLogin = twitchLogin;
+      console.log(`[Update Member API] 🔄 Pseudo Twitch changé: ${originalLogin} → ${twitchLogin}`);
+    } else if (twitchLogin) {
+      // Même si identique, s'assurer que twitchLogin est dans updates pour la cohérence
+      updates.twitchLogin = twitchLogin;
+    }
+    
     // Ne pas écraser discordId ou discordUsername avec des valeurs vides
     if (updates.discordId === "" || updates.discordId === null) {
       delete updates.discordId;
@@ -332,9 +341,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Préparer l'identifiant pour updateMemberData (utiliser identifiant stable si disponible)
+    // Utiliser l'ancien twitchLogin pour identifier le membre, pas le nouveau
     const memberIdentifier = originalDiscordId || originalTwitchId
-      ? { discordId: originalDiscordId, twitchId: originalTwitchId, twitchLogin: twitchLogin }
-      : twitchLogin;
+      ? { discordId: originalDiscordId, twitchId: originalTwitchId, twitchLogin: existingMember.twitchLogin }
+      : existingMember.twitchLogin;
 
     // Log pour déboguer
     console.log(`[Update Member API] ${originalLogin}:`, {
