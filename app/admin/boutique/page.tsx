@@ -162,6 +162,7 @@ export default function BoutiqueAdminPage() {
       categoryId: product.categoryId,
       images: product.images.length > 0 ? product.images : [""],
       featured: product.featured,
+      buyUrl: product.buyUrl || "",
     });
     setIsAddingProduct(true);
   }
