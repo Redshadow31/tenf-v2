@@ -26,7 +26,7 @@ interface DetectedRaid {
   ignoredRaider?: boolean; // Si le raider a été ignoré
   ignoredTarget?: boolean; // Si la cible a été ignorée
   isDuplicate?: boolean; // Si c'est un doublon détecté
-  duplicateGroup?: number; // Groupe de doublons
+  duplicateGroup?: number | undefined; // Groupe de doublons
 }
 
 interface Member {
@@ -421,11 +421,11 @@ export default function RaidImportModal({
 
   function findDuplicates() {
     // Réinitialiser les doublons précédents
-    const updatedRaids = detectedRaids.map(raid => ({
+    const updatedRaids: DetectedRaid[] = detectedRaids.map(raid => ({
       ...raid,
       isDuplicate: false,
       duplicateGroup: undefined,
-    }));
+    } as DetectedRaid));
 
     // Détecter les doublons : même raider, même target, même jour et même heure (à la minute près)
     const duplicateGroups: Record<number, number[]> = {};
@@ -466,11 +466,27 @@ export default function RaidImportModal({
       if (groupId !== undefined) {
         const finalGroupId: number = groupId; // Type guard pour TypeScript
         duplicateGroups[finalGroupId].forEach((idx) => {
-          updatedRaids[idx] = {
-            ...updatedRaids[idx],
-            isDuplicate: true,
-            duplicateGroup: finalGroupId,
-          };
+          const existingRaid = updatedRaids[idx];
+          if (existingRaid) {
+            const updatedRaid: DetectedRaid = {
+              raider: existingRaid.raider,
+              target: existingRaid.target,
+              raiderNormalized: existingRaid.raiderNormalized,
+              targetNormalized: existingRaid.targetNormalized,
+              lineNumber: existingRaid.lineNumber,
+              originalText: existingRaid.originalText,
+              date: existingRaid.date,
+              raiderMember: existingRaid.raiderMember,
+              targetMember: existingRaid.targetMember,
+              status: existingRaid.status,
+              ignored: existingRaid.ignored,
+              ignoredRaider: existingRaid.ignoredRaider,
+              ignoredTarget: existingRaid.ignoredTarget,
+              isDuplicate: true,
+              duplicateGroup: finalGroupId,
+            };
+            updatedRaids[idx] = updatedRaid;
+          }
         });
       }
     }
@@ -501,7 +517,7 @@ export default function RaidImportModal({
     if (selectedIndices.length === 0) return;
 
     // Supprimer les raids sélectionnés
-    const updatedRaids = detectedRaids.filter((_, index) => !selectedIndices.includes(index));
+    const updatedRaids: DetectedRaid[] = detectedRaids.filter((_, index) => !selectedIndices.includes(index));
     
     // Réindexer les groupes de doublons après suppression
     const indexMap = new Map<number, number>();
@@ -530,12 +546,26 @@ export default function RaidImportModal({
           updatedDuplicates[groupId] = newGroup;
           // Mettre à jour les flags isDuplicate et duplicateGroup
           newGroup.forEach(idx => {
-            if (updatedRaids[idx]) {
-              updatedRaids[idx] = {
-                ...updatedRaids[idx],
+            const existingRaid = updatedRaids[idx];
+            if (existingRaid) {
+              const updatedRaid: DetectedRaid = {
+                raider: existingRaid.raider,
+                target: existingRaid.target,
+                raiderNormalized: existingRaid.raiderNormalized,
+                targetNormalized: existingRaid.targetNormalized,
+                lineNumber: existingRaid.lineNumber,
+                originalText: existingRaid.originalText,
+                date: existingRaid.date,
+                raiderMember: existingRaid.raiderMember,
+                targetMember: existingRaid.targetMember,
+                status: existingRaid.status,
+                ignored: existingRaid.ignored,
+                ignoredRaider: existingRaid.ignoredRaider,
+                ignoredTarget: existingRaid.ignoredTarget,
                 isDuplicate: true,
                 duplicateGroup: groupId,
               };
+              updatedRaids[idx] = updatedRaid;
             }
           });
         }
@@ -543,12 +573,28 @@ export default function RaidImportModal({
         // Nettoyer les flags pour tous les membres du groupe (même s'ils ne sont pas supprimés)
         oldGroup.forEach(oldIdx => {
           const newIdx = indexMap.get(oldIdx);
-          if (newIdx !== undefined && updatedRaids[newIdx]) {
-            updatedRaids[newIdx] = {
-              ...updatedRaids[newIdx],
-              isDuplicate: false,
-              duplicateGroup: undefined,
-            };
+          if (newIdx !== undefined) {
+            const existingRaid = updatedRaids[newIdx];
+            if (existingRaid) {
+              const updatedRaid: DetectedRaid = {
+                raider: existingRaid.raider,
+                target: existingRaid.target,
+                raiderNormalized: existingRaid.raiderNormalized,
+                targetNormalized: existingRaid.targetNormalized,
+                lineNumber: existingRaid.lineNumber,
+                originalText: existingRaid.originalText,
+                date: existingRaid.date,
+                raiderMember: existingRaid.raiderMember,
+                targetMember: existingRaid.targetMember,
+                status: existingRaid.status,
+                ignored: existingRaid.ignored,
+                ignoredRaider: existingRaid.ignoredRaider,
+                ignoredTarget: existingRaid.ignoredTarget,
+                isDuplicate: false,
+                duplicateGroup: undefined,
+              };
+              updatedRaids[newIdx] = updatedRaid;
+            }
           }
         });
       }
