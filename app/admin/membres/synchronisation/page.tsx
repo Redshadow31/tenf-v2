@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/admin";
 import Link from "next/link";
+import EditMemberModal from "@/components/admin/EditMemberModal";
 
 interface Member {
   twitchLogin: string;
@@ -32,6 +33,32 @@ export default function SynchronisationMembresPage() {
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [syncing, setSyncing] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{
+    id: number;
+    avatar: string;
+    nom: string;
+    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+    statut: "Actif" | "Inactif";
+    discord: string;
+    discordId?: string;
+    twitch: string;
+    twitchId?: string;
+    notesInternes?: string;
+    description?: string;
+    badges?: string[];
+    isVip?: boolean;
+    createdAt?: string;
+    integrationDate?: string;
+    parrain?: string;
+    roleHistory?: Array<{
+      fromRole: string;
+      toRole: string;
+      changedAt: string;
+      changedBy: string;
+      reason?: string;
+    }>;
+  } | null>(null);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -175,6 +202,205 @@ export default function SynchronisationMembresPage() {
       setSyncing(false);
     }
   }
+
+  const handleEdit = async (status: SyncStatus) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent modifier les membres");
+      return;
+    }
+
+    try {
+      // Récupérer les données complètes du membre depuis l'API
+      const memberResponse = await fetch(
+        `/api/admin/members?twitchLogin=${encodeURIComponent(status.member.twitchLogin || status.member.displayName)}`,
+        {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        }
+      );
+
+      let fullMemberData = status.member;
+      if (memberResponse.ok) {
+        const memberData = await memberResponse.json();
+        if (memberData.member) {
+          fullMemberData = memberData.member;
+        }
+      }
+
+      // Récupérer l'avatar depuis l'API publique
+      let avatar = `https://placehold.co/64x64?text=${(fullMemberData.displayName || fullMemberData.twitchLogin).charAt(0).toUpperCase()}`;
+      
+      if (fullMemberData.twitchLogin) {
+        try {
+          const publicResponse = await fetch("/api/members/public", {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
+          if (publicResponse.ok) {
+            const publicData = await publicResponse.json();
+            const publicMember = publicData.members?.find((m: any) => 
+              m.twitchLogin?.toLowerCase() === fullMemberData.twitchLogin?.toLowerCase()
+            );
+            if (publicMember?.avatar) {
+              avatar = publicMember.avatar;
+            }
+          }
+        } catch (err) {
+          console.warn("Erreur lors de la récupération de l'avatar:", err);
+        }
+      }
+
+      // Fallback Discord avatar si disponible
+      if (!avatar && fullMemberData.discordId) {
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(fullMemberData.discordId) % 5}.png`;
+      }
+
+      // Convertir les données vers le format attendu par EditMemberModal
+      const memberForModal = {
+        id: 0, // Pas utilisé dans la synchronisation
+        avatar,
+        nom: fullMemberData.displayName || fullMemberData.twitchLogin,
+        role: ((fullMemberData.role as any) || "Affilié") as "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior",
+        statut: (fullMemberData.isActive ? "Actif" : "Inactif") as "Actif" | "Inactif",
+        discord: fullMemberData.discordUsername || "",
+        discordId: fullMemberData.discordId,
+        twitch: fullMemberData.twitchLogin || "",
+        twitchId: fullMemberData.twitchId,
+        description: fullMemberData.description,
+        notesInternes: fullMemberData.notesInternes || fullMemberData.description,
+        badges: fullMemberData.badges || [],
+        isVip: fullMemberData.isVip || false,
+        createdAt: fullMemberData.createdAt,
+        integrationDate: fullMemberData.integrationDate,
+        roleHistory: fullMemberData.roleHistory || [],
+        parrain: fullMemberData.parrain,
+      };
+
+      setSelectedMember(memberForModal);
+      setIsEditModalOpen(true);
+    } catch (error) {
+      console.error("Erreur lors de l'ouverture du modal:", error);
+      alert("Erreur lors de l'ouverture du modal");
+    }
+  };
+
+  const handleSaveEdit = async (updatedMember: {
+    id: number;
+    avatar: string;
+    nom: string;
+    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+    statut: "Actif" | "Inactif";
+    discord: string;
+    discordId?: string;
+    twitch: string;
+    twitchId?: string;
+    notesInternes?: string;
+    description?: string;
+    badges?: string[];
+    isVip?: boolean;
+    createdAt?: string;
+    integrationDate?: string;
+    parrain?: string;
+    roleHistory?: Array<{
+      fromRole: string;
+      toRole: string;
+      changedAt: string;
+      changedBy: string;
+      reason?: string;
+    }>;
+    roleChangeReason?: string;
+  }) => {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent modifier les membres");
+      return;
+    }
+
+    if (!selectedMember) return;
+
+    // Trouver le membre original dans la liste
+    const oldMember = members.find((m) => 
+      m.twitchLogin === selectedMember.twitchLogin || 
+      m.discordId === selectedMember.discordId
+    );
+    if (!oldMember) return;
+
+    try {
+      // Mettre à jour via l'API
+      const response = await fetch("/api/admin/members", {
+        method: "PUT",
+        cache: 'no-store',
+        headers: { 
+          "Content-Type": "application/json",
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify({
+          twitchLogin: updatedMember.twitch, // Nouveau pseudo (peut avoir changé)
+          twitchId: updatedMember.twitchId, // Inclure l'ID Twitch
+          displayName: updatedMember.nom,
+          twitchUrl: updatedMember.twitch ? `https://www.twitch.tv/${updatedMember.twitch}` : undefined,
+          discordId: updatedMember.discordId,
+          discordUsername: updatedMember.discord,
+          role: updatedMember.role,
+          isActive: updatedMember.statut === "Actif",
+          isVip: updatedMember.isVip || false,
+          badges: updatedMember.badges || [],
+          description: updatedMember.description,
+          createdAt: updatedMember.createdAt,
+          integrationDate: updatedMember.integrationDate,
+          parrain: updatedMember.parrain,
+          roleChangeReason: updatedMember.roleChangeReason,
+          // Identifiants stables pour identifier le membre (important si le pseudo change)
+          originalDiscordId: oldMember.discordId, // ID Discord original (stable)
+          originalTwitchId: oldMember.twitchId, // ID Twitch original (stable)
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la mise à jour");
+      }
+
+      // Logger l'action via l'API
+      try {
+        await fetch("/api/admin/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Modification d'un membre",
+            target: updatedMember.nom,
+            details: {
+              oldData: {
+                nom: oldMember.displayName || oldMember.twitchLogin,
+                role: oldMember.role,
+                isActive: oldMember.isActive,
+                discord: oldMember.discordUsername,
+                twitch: oldMember.twitchLogin,
+              },
+              newData: {
+                nom: updatedMember.nom,
+                role: updatedMember.role,
+                isActive: updatedMember.statut === "Actif",
+                discord: updatedMember.discord,
+                twitch: updatedMember.twitch,
+              },
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Erreur lors du logging:", err);
+      }
+
+      setIsEditModalOpen(false);
+      setSelectedMember(null);
+      alert("Membre modifié avec succès");
+      
+      // Recharger les données depuis la base de données
+      await loadMembersAndSyncStatus();
+    } catch (error) {
+      console.error("Erreur lors de la modification:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
 
   const filteredStatuses = filterStatus === "all"
     ? syncStatuses
@@ -410,19 +636,34 @@ export default function SynchronisationMembresPage() {
                     <div className="text-xs text-gray-500">
                       Dernière sync: {formatLastSync(status.lastSync)}
                     </div>
-                    <div className="mt-4">
-                      <Link
-                        href={`/admin/membres/gestion?search=${encodeURIComponent(status.member.twitchLogin || status.member.displayName)}`}
-                        className="text-[#9146ff] hover:text-[#5a32b4] text-sm font-medium"
-                      >
-                        → Voir dans la gestion
-                      </Link>
-                    </div>
+                    {currentAdmin?.isFounder && (
+                      <div className="mt-4">
+                        <button
+                          onClick={() => handleEdit(status)}
+                          className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                        >
+                          Modifier le profil
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {/* Modal d'édition (pour les fondateurs) */}
+        {isEditModalOpen && selectedMember && currentAdmin?.isFounder && (
+          <EditMemberModal
+            isOpen={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedMember(null);
+            }}
+            member={selectedMember}
+            onSave={handleSaveEdit}
+          />
         )}
       </div>
     </div>
