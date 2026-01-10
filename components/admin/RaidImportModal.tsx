@@ -516,29 +516,35 @@ export default function RaidImportModal({
     const updatedDuplicates: Record<number, number[]> = {};
     Object.keys(duplicates).forEach((groupIdStr) => {
       const groupId = parseInt(groupIdStr);
-      const group = duplicates[groupId]
-        .filter(idx => !selectedIndices.includes(idx))
-        .map(idx => indexMap.get(idx))
-        .filter((idx): idx is number => idx !== undefined);
+      const oldGroup = duplicates[groupId];
+      const remainingInOldGroup = oldGroup.filter(idx => !selectedIndices.includes(idx));
       
-      if (group.length >= 2) {
-        updatedDuplicates[groupId] = group;
-        // Mettre à jour les flags isDuplicate et duplicateGroup
-        group.forEach(idx => {
-          if (updatedRaids[idx]) {
-            updatedRaids[idx] = {
-              ...updatedRaids[idx],
-              isDuplicate: true,
-              duplicateGroup: groupId,
-            };
-          }
-        });
+      if (remainingInOldGroup.length >= 2) {
+        // Mapper les anciens indices vers les nouveaux
+        const newGroup = remainingInOldGroup
+          .map(oldIdx => indexMap.get(oldIdx))
+          .filter((idx): idx is number => idx !== undefined);
+        
+        if (newGroup.length >= 2) {
+          updatedDuplicates[groupId] = newGroup;
+          // Mettre à jour les flags isDuplicate et duplicateGroup
+          newGroup.forEach(idx => {
+            if (updatedRaids[idx]) {
+              updatedRaids[idx] = {
+                ...updatedRaids[idx],
+                isDuplicate: true,
+                duplicateGroup: groupId,
+              };
+            }
+          });
+        }
       } else {
-        // Nettoyer les flags si le groupe n'a plus assez d'éléments
-        group.forEach(idx => {
-          if (updatedRaids[idx]) {
-            updatedRaids[idx] = {
-              ...updatedRaids[idx],
+        // Nettoyer les flags pour tous les membres du groupe (même s'ils ne sont pas supprimés)
+        oldGroup.forEach(oldIdx => {
+          const newIdx = indexMap.get(oldIdx);
+          if (newIdx !== undefined && updatedRaids[newIdx]) {
+            updatedRaids[newIdx] = {
+              ...updatedRaids[newIdx],
               isDuplicate: false,
               duplicateGroup: undefined,
             };
@@ -551,6 +557,14 @@ export default function RaidImportModal({
     setDuplicates(updatedDuplicates);
     setSuccess(`${selectedIndices.length} doublon(s) supprimé(s) avec succès !`);
     setTimeout(() => setSuccess(null), 3000);
+
+    // Si tous les groupes sont vides après suppression, fermer le modal
+    if (Object.keys(updatedDuplicates).length === 0) {
+      setTimeout(() => {
+        setShowDuplicatesModal(false);
+        setSelectedDuplicates([]);
+      }, 500);
+    }
   }
 
   function selectMember(member: Member, field: 'raider' | 'target', raidIndex: number) {
@@ -1268,22 +1282,9 @@ export default function RaidImportModal({
                             removeDuplicates(groupSelected);
                             // Mettre à jour la sélection globale
                             setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
-                              // Vérifier si le modal doit être fermé après suppression
-                              const remainingInGroup = groupIndices.filter(idx => !groupSelected.includes(idx));
-                              if (remainingInGroup.length < 2) {
-                                const updatedDuplicates = { ...duplicates };
-                                delete updatedDuplicates[groupId];
-                                setDuplicates(updatedDuplicates);
-                                setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
-                                // Fermer le modal si tous les groupes sont vides
-                                if (Object.keys(updatedDuplicates).length === 0) {
-                                  setShowDuplicatesModal(false);
-                                  setSelectedDuplicates([]);
-                                }
-                              } else {
-                                // Mettre à jour la sélection seulement pour ce groupe
-                                setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
-                              }
+                              // La fonction removeDuplicates mettra à jour les états automatiquement
+                              // On met juste à jour la sélection pour ce groupe
+                              setSelectedDuplicates(prev => prev.filter(idx => !groupSelected.includes(idx)));
                           }}
                           disabled={selectedDuplicates.filter(idx => groupIndices.includes(idx)).length === 0}
                           className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
@@ -1311,22 +1312,10 @@ export default function RaidImportModal({
                       if (!confirm(`Êtes-vous sûr de vouloir supprimer ${selectedDuplicates.length} doublon(s) sélectionné(s) ?`)) {
                         return;
                       }
-                      removeDuplicates(selectedDuplicates);
+                      const toRemove = [...selectedDuplicates];
+                      removeDuplicates(toRemove);
                       setSelectedDuplicates([]);
-                      // Vérifier si tous les groupes sont vides après suppression
-                      // La fonction removeDuplicates mettra à jour les groupes automatiquement
-                      const remainingCount = Object.keys(duplicates).reduce((sum, key) => {
-                        const groupId = parseInt(key);
-                        const groupIndices = duplicates[groupId];
-                        const remaining = groupIndices.filter(idx => !selectedDuplicates.includes(idx));
-                        return sum + (remaining.length >= 2 ? 1 : 0);
-                      }, 0);
-                      if (remainingCount === 0) {
-                        setTimeout(() => {
-                          setShowDuplicatesModal(false);
-                          setSelectedDuplicates([]);
-                        }, 100);
-                      }
+                      // Fermer le modal si tous les doublons sont supprimés (vérifié dans removeDuplicates via useEffect)
                     }}
                     className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm"
                   >
