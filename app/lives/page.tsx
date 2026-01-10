@@ -124,9 +124,9 @@ export default function LivesPage() {
           return shuffled;
         };
         
-        // Déterminer si un membre est staff (non VIP)
+        // Déterminer si un membre est staff (non VIP, excluant Créateur Junior)
         const isStaff = (live: LiveMember): boolean => {
-          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Modérateur Junior', 'Créateur Junior', 'Développement'];
+          const staffRoles = ['Admin', 'Admin Adjoint', 'Mentor', 'Modérateur Junior', 'Développement'];
           return staffRoles.includes(live.role) && !live.isVip;
         };
         
