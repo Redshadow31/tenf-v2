@@ -26,6 +26,10 @@ const navItems: NavItem[] = [
         href: "/admin/gestion-acces",
         label: "Accès Dashboard",
       },
+      {
+        href: "/admin/gestion-acces/dashboard",
+        label: "Gestion du Dashboard",
+      },
     ],
   },
   {

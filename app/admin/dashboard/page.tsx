@@ -14,22 +14,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Mock data
-const twitchActivityData = [
-  { month: "Janv", value: 45 },
-  { month: "Fév", value: 52 },
-  { month: "Mar", value: 68 },
-  { month: "Avr", value: 75 },
-  { month: "Mai", value: 95 },
-  { month: "Juin", value: 88 },
-  { month: "Juil", value: 72 },
-  { month: "Août", value: 80 },
-  { month: "Sept", value: 85 },
-  { month: "Oct", value: 90 },
-  { month: "Nov", value: 100 },
-  { month: "Déc", value: 115 },
-];
-
 // Données par défaut (fallback)
 const defaultDiscordGrowthData = [
   { month: "Janv", value: 160 },
@@ -46,7 +30,23 @@ const defaultDiscordGrowthData = [
   { month: "Déc", value: 420 },
 ];
 
-const spotlightProgressionData = [
+// Données par défaut pour fallback
+const defaultTwitchActivity = [
+  { month: "Janv", value: 45 },
+  { month: "Fév", value: 52 },
+  { month: "Mar", value: 68 },
+  { month: "Avr", value: 75 },
+  { month: "Mai", value: 95 },
+  { month: "Juin", value: 88 },
+  { month: "Juil", value: 72 },
+  { month: "Août", value: 80 },
+  { month: "Sept", value: 85 },
+  { month: "Oct", value: 90 },
+  { month: "Nov", value: 100 },
+  { month: "Déc", value: 115 },
+];
+
+const defaultSpotlightProgression = [
   { month: "Mai", value: 45 },
   { month: "Juin", value: 52 },
   { month: "Juil", value: 60 },
@@ -57,97 +57,25 @@ const spotlightProgressionData = [
   { month: "Déc", value: 95 },
 ];
 
-const vocalRanking = [
-  {
-    id: 1,
-    name: "Jenny",
-    avatar: "https://placehold.co/40x40?text=J",
-    vocalHours: 58,
-    messages: 98,
-  },
-  {
-    id: 2,
-    name: "Clara",
-    avatar: "https://placehold.co/40x40?text=C",
-    vocalHours: 71,
-    messages: 1872,
-  },
-  {
-    id: 3,
-    name: "NeXou",
-    avatar: "https://placehold.co/40x40?text=N",
-    vocalHours: 1271,
-    messages: 1872,
-  },
-  {
-    id: 4,
-    name: "Red",
-    avatar: "https://placehold.co/40x40?text=R",
-    vocalHours: 834,
-    messages: 133,
-  },
+const defaultVocalRanking = [
+  { id: 1, name: "Jenny", avatar: "https://placehold.co/40x40?text=J", value: 58 },
+  { id: 2, name: "Clara", avatar: "https://placehold.co/40x40?text=C", value: 71 },
+  { id: 3, name: "NeXou", avatar: "https://placehold.co/40x40?text=N", value: 1271 },
+  { id: 4, name: "Red", avatar: "https://placehold.co/40x40?text=R", value: 834 },
 ];
 
-const textRanking = [
-  {
-    id: 1,
-    name: "Jenny",
-    avatar: "https://placehold.co/40x40?text=J",
-    messages: 151000,
-    progression: "+3",
-  },
-  {
-    id: 2,
-    name: "Clara",
-    avatar: "https://placehold.co/40x40?text=C",
-    messages: 1872,
-    progression: "-2",
-  },
-  {
-    id: 3,
-    name: "NeXou",
-    avatar: "https://placehold.co/40x40?text=N",
-    messages: 1763,
-    progression: "-4",
-  },
-  {
-    id: 4,
-    name: "Red",
-    avatar: "https://placehold.co/40x40?text=R",
-    messages: 1238,
-    progression: "+1",
-  },
+const defaultTextRanking = [
+  { id: 1, name: "Jenny", avatar: "https://placehold.co/40x40?text=J", value: 151000, progression: "+3" },
+  { id: 2, name: "Clara", avatar: "https://placehold.co/40x40?text=C", value: 1872, progression: "-2" },
+  { id: 3, name: "NeXou", avatar: "https://placehold.co/40x40?text=N", value: 1763, progression: "-4" },
+  { id: 4, name: "Red", avatar: "https://placehold.co/40x40?text=R", value: 1238, progression: "+1" },
 ];
 
-const topClips = [
-  {
-    id: 1,
-    name: "Jenny",
-    avatar: "https://placehold.co/64x64?text=J",
-    duration: "316 h",
-    thumbnail: "https://placehold.co/120x68?text=Clip",
-  },
-  {
-    id: 2,
-    name: "Clara",
-    avatar: "https://placehold.co/64x64?text=C",
-    duration: "281 h",
-    thumbnail: "https://placehold.co/120x68?text=Clip",
-  },
-  {
-    id: 3,
-    name: "NeXou",
-    avatar: "https://placehold.co/64x64?text=N",
-    duration: "245 h",
-    thumbnail: "https://placehold.co/120x68?text=Clip",
-  },
-  {
-    id: 4,
-    name: "Red",
-    avatar: "https://placehold.co/64x64?text=R",
-    duration: "198 h",
-    thumbnail: "https://placehold.co/120x68?text=Clip",
-  },
+const defaultTopClips = [
+  { id: 1, name: "Jenny", avatar: "https://placehold.co/64x64?text=J", duration: "316 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
+  { id: 2, name: "Clara", avatar: "https://placehold.co/64x64?text=C", duration: "281 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
+  { id: 3, name: "NeXou", avatar: "https://placehold.co/64x64?text=N", duration: "245 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
+  { id: 4, name: "Red", avatar: "https://placehold.co/64x64?text=R", duration: "198 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
 ];
 
 
@@ -160,6 +88,43 @@ export default function DashboardPage() {
     topMembers: Array<{ displayName: string; messages: number; voiceMinutes: number; rank: number }>;
   } | null>(null);
   const [loadingDiscordStats, setLoadingDiscordStats] = useState(true);
+  const [twitchActivityData, setTwitchActivityData] = useState(defaultTwitchActivity);
+  const [spotlightProgressionData, setSpotlightProgressionData] = useState(defaultSpotlightProgression);
+  const [vocalRanking, setVocalRanking] = useState(defaultVocalRanking);
+  const [textRanking, setTextRanking] = useState(defaultTextRanking);
+  const [topClips, setTopClips] = useState(defaultTopClips);
+  const [loadingDashboardData, setLoadingDashboardData] = useState(true);
+
+  // Charger les données du dashboard depuis l'API
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        const response = await fetch('/api/dashboard/data', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setTwitchActivityData(result.data.twitchActivity || defaultTwitchActivity);
+            setSpotlightProgressionData(result.data.spotlightProgression || defaultSpotlightProgression);
+            setVocalRanking(result.data.vocalRanking || defaultVocalRanking);
+            setTextRanking(result.data.textRanking || defaultTextRanking);
+            setTopClips(result.data.topClips || defaultTopClips);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données du dashboard:', error);
+      } finally {
+        setLoadingDashboardData(false);
+      }
+    }
+    
+    loadDashboardData();
+  }, []);
 
   // Charger les données de croissance Discord depuis l'API
   useEffect(() => {
@@ -509,13 +474,13 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-300">
-                        {member.vocalHours >= 1000
-                          ? `${(member.vocalHours / 1000).toFixed(1)}k`
-                          : member.vocalHours}{" "}
+                        {member.value >= 1000
+                          ? `${(member.value / 1000).toFixed(1)}k`
+                          : member.value}{" "}
                         h
                       </td>
                       <td className="py-3 px-4 text-gray-300">
-                        {member.messages}
+                        {member.messages || 0}
                       </td>
                     </tr>
                   ))}
@@ -563,20 +528,22 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-300">
-                        {member.messages >= 1000
-                          ? `${(member.messages / 1000).toFixed(1)}k`
-                          : member.messages}
+                        {member.value >= 1000
+                          ? `${(member.value / 1000).toFixed(1)}k`
+                          : member.value}
                       </td>
                       <td className="py-3 px-4">
-                        <span
-                          className={`text-sm font-semibold ${
-                            member.progression.startsWith("+")
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {member.progression}
-                        </span>
+                        {member.progression && (
+                          <span
+                            className={`text-sm font-semibold ${
+                              member.progression.startsWith("+")
+                                ? "text-green-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {member.progression}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
