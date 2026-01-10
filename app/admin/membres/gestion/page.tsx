@@ -140,7 +140,7 @@ export default function GestionMembresPage() {
     if (currentAdmin !== null) {
       loadMembers();
     }
-  }, [currentAdmin?.isFounder]); // Seulement quand le statut fondateur change
+  }, [currentAdmin?.id]); // Charger quand l'admin change (tous les admins ont accès maintenant)
 
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
@@ -172,91 +172,96 @@ export default function GestionMembresPage() {
         console.warn("Impossible de charger les stats de raids:", err);
       }
       
-      // Si l'admin a accès (Fondateur, Admin, ou Admin Adjoint), charger depuis l'API centralisée
+      // Toujours essayer de charger depuis l'API centralisée (l'API vérifie les permissions)
       // L'API centralisée contient les modifications manuelles et est prioritaire
-      if (currentAdmin?.isFounder) {
-        try {
-          const centralResponse = await fetch("/api/admin/members", {
+      // Tous les admins (Fondateur, Admin, Admin Adjoint, Mentor, Modérateur Junior) ont accès
+      try {
+        const centralResponse = await fetch("/api/admin/members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (centralResponse.ok) {
+          const centralData = await centralResponse.json();
+          const centralMembers = centralData.members || [];
+          
+          // Récupérer tous les avatars Twitch en batch depuis l'API publique
+          const publicMembersResponse = await fetch("/api/members/public", {
             cache: 'no-store',
             headers: {
               'Cache-Control': 'no-cache',
             },
           });
-          if (centralResponse.ok) {
-            const centralData = await centralResponse.json();
-            const centralMembers = centralData.members || [];
-            
-            // Récupérer tous les avatars Twitch en batch depuis l'API publique
-            const publicMembersResponse = await fetch("/api/members/public", {
-              cache: 'no-store',
-              headers: {
-                'Cache-Control': 'no-cache',
-              },
+          
+          let avatarMap = new Map<string, string>();
+          if (publicMembersResponse.ok) {
+            const publicData = await publicMembersResponse.json();
+            publicData.members?.forEach((m: any) => {
+              if (m.avatar) {
+                avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
+              }
             });
+          }
+          
+          // Mapper les membres centralisés vers le format Member avec avatars Twitch
+          const mappedMembers: Member[] = centralMembers.map((member: any, index: number) => {
+            // Récupérer l'avatar depuis le map (déjà récupéré en batch)
+            let avatar = avatarMap.get(member.twitchLogin.toLowerCase());
             
-            let avatarMap = new Map<string, string>();
-            if (publicMembersResponse.ok) {
-              const publicData = await publicMembersResponse.json();
-              publicData.members?.forEach((m: any) => {
-                if (m.avatar) {
-                  avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
-                }
-              });
+            // Si pas d'avatar Twitch, utiliser Discord en fallback
+            if (!avatar && member.discordId) {
+              avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
             }
             
-            // Mapper les membres centralisés vers le format Member avec avatars Twitch
-            const mappedMembers: Member[] = centralMembers.map((member: any, index: number) => {
-              // Récupérer l'avatar depuis le map (déjà récupéré en batch)
-              let avatar = avatarMap.get(member.twitchLogin.toLowerCase());
-              
-              // Si pas d'avatar Twitch, utiliser Discord en fallback
-              if (!avatar && member.discordId) {
-                avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-              }
-              
-              // Dernier fallback : placeholder
-              if (!avatar) {
-                avatar = `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
-              }
-              
-              // Récupérer les stats de raids
-              const raidStats = raidsStats[member.twitchLogin.toLowerCase()] || { done: 0, received: 0 };
+            // Dernier fallback : placeholder
+            if (!avatar) {
+              avatar = `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
+            }
             
-              return {
-                id: index + 1,
-                avatar,
-                nom: member.displayName || member.twitchLogin,
-                role: member.role || "Affilié",
-                statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
-                discord: member.discordUsername || "",
-                discordId: member.discordId,
-                twitch: member.twitchLogin || "",
-                twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
-                twitchId: member.twitchId, // Ajouter l'ID Twitch
-                siteUsername: member.siteUsername,
-                description: member.description,
-                customBio: member.customBio,
-                twitchStatus: member.twitchStatus,
-                badges: member.badges || [],
-                isVip: member.isVip || false,
-                isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
-                isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
-                raidsDone: raidStats.done,
-                raidsReceived: raidStats.received,
-                createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
-                integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
-                roleHistory: member.roleHistory || [],
-                parrain: member.parrain,
-              };
-            });
-            
-            setMembers(mappedMembers);
-            setLoading(false);
-            return;
-          }
-        } catch (err) {
-          console.warn("Impossible de charger les membres depuis l'API centralisée:", err);
+            // Récupérer les stats de raids
+            const raidStats = raidsStats[member.twitchLogin.toLowerCase()] || { done: 0, received: 0 };
+          
+            return {
+              id: index + 1,
+              avatar,
+              nom: member.displayName || member.twitchLogin,
+              role: member.role || "Affilié",
+              statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
+              discord: member.discordUsername || "",
+              discordId: member.discordId,
+              twitch: member.twitchLogin || "",
+              twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+              twitchId: member.twitchId, // Ajouter l'ID Twitch
+              siteUsername: member.siteUsername,
+              description: member.description,
+              customBio: member.customBio,
+              twitchStatus: member.twitchStatus,
+              badges: member.badges || [],
+              isVip: member.isVip || false,
+              isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
+              isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
+              raidsDone: raidStats.done,
+              raidsReceived: raidStats.received,
+              createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
+              integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
+              roleHistory: member.roleHistory || [],
+              parrain: member.parrain,
+            };
+          });
+          
+          setMembers(mappedMembers);
+          setLoading(false);
+          return;
+        } else if (centralResponse.status === 403) {
+          // Accès refusé : rediriger vers unauthorized
+          console.warn("Accès refusé à l'API centralisée");
+          window.location.href = "/unauthorized";
+          return;
         }
+      } catch (err) {
+        console.warn("Impossible de charger les membres depuis l'API centralisée:", err);
       }
       
       // Fallback: essayer de charger depuis Discord si l'API centralisée n'est pas disponible
@@ -313,23 +318,24 @@ export default function GestionMembresPage() {
         return;
       }
 
-      // Si l'admin est fondateur, récupérer aussi les données centralisées pour enrichir
+      // Récupérer aussi les données centralisées pour enrichir (tous les admins ont accès)
       let centralMembers: any[] = [];
-      if (currentAdmin?.isFounder) {
-        try {
-          const centralResponse = await fetch("/api/admin/members", {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache',
-            },
-          });
-          if (centralResponse.ok) {
-            const centralData = await centralResponse.json();
-            centralMembers = centralData.members || [];
-          }
-        } catch (err) {
-          console.warn("Impossible de charger les données centralisées:", err);
+      try {
+        const centralResponse = await fetch("/api/admin/members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (centralResponse.ok) {
+          const centralData = await centralResponse.json();
+          centralMembers = centralData.members || [];
+        } else if (centralResponse.status === 403) {
+          // Accès refusé : continuer avec les données Discord uniquement
+          console.warn("Accès refusé à l'API centralisée pour enrichissement");
         }
+      } catch (err) {
+        console.warn("Impossible de charger les données centralisées:", err);
       }
 
       // Créer des maps pour fusionner les données
