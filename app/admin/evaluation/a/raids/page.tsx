@@ -321,7 +321,7 @@ export default function EvaluationARaidsPage() {
     return sorted;
   }
 
-  async function handleSaveMember(twitchLogin: string, note: string, manualPoints?: number) {
+  async function handleSaveMember(twitchLogin: string, note: string, manualPointsValue?: number) {
     try {
       setSaving(true);
       const response = await fetch('/api/evaluations/raids/notes', {
@@ -333,7 +333,7 @@ export default function EvaluationARaidsPage() {
           month: selectedMonth,
           twitchLogin,
           note: note.trim() || undefined,
-          manualPoints: manualPoints !== undefined && manualPoints !== null ? Number(manualPoints) : undefined,
+          manualPoints: manualPointsValue !== undefined && manualPointsValue !== null ? Number(manualPointsValue) : undefined,
         }),
       });
 
@@ -349,9 +349,9 @@ export default function EvaluationARaidsPage() {
         }
         setNotes(updatedNotes);
 
-        const updatedManualPoints = { ...manualPoints };
-        if (manualPoints !== undefined && manualPoints !== null) {
-          updatedManualPoints[loginLower] = Number(manualPoints);
+        const updatedManualPoints: Record<string, number | undefined> = { ...manualPoints };
+        if (manualPointsValue !== undefined && manualPointsValue !== null) {
+          updatedManualPoints[loginLower] = Number(manualPointsValue);
         } else {
           delete updatedManualPoints[loginLower];
         }
