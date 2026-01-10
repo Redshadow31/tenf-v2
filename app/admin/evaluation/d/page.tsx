@@ -530,7 +530,7 @@ export default function EvaluationDPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }} className="flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
       </div>
     );
@@ -538,7 +538,7 @@ export default function EvaluationDPage() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }} className="p-8">
+      <div className="min-h-screen p-8" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
         <div className="rounded-lg border p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: '#dc2626' }}>
           <h1 className="text-2xl font-bold mb-4" style={{ color: '#dc2626' }}>Accès refusé</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>Vous n'avez pas les permissions nécessaires.</p>
