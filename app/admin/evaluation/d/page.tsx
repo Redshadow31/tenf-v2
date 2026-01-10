@@ -10,7 +10,6 @@ import {
   getAutoStatus,
   calculateSeniority,
 } from "@/lib/evaluationSynthesisHelpers";
-import { calculateNoteEcrit, calculateNoteVocal, calculateNoteFinale } from "@/lib/discordEngagement";
 import { calculateBonusTotal, TIMEZONE_BONUS_POINTS, type MemberBonus } from "@/lib/evaluationBonusHelpers";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
 
@@ -159,7 +158,7 @@ export default function EvaluationDPage() {
         spotlightPresenceResponse,
         raidsPointsResponse,
         raidsDataResponse,
-        discordResponse,
+        discordPointsResponse,
         eventsResponse,
         followResponse,
         bonusesResponse,
@@ -169,9 +168,9 @@ export default function EvaluationDPage() {
         fetch(`/api/spotlight/presence/monthly?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/evaluations/raids/points?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/discord/raids/data-v2?month=${selectedMonth}`, { cache: 'no-store' }),
-        fetch(`/api/discord-engagement/${selectedMonth}`, { cache: 'no-store' }),
+        fetch(`/api/evaluations/discord/points?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/admin/events/presence?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
-        fetch(`/api/follow/validations/${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ validations: [] }) })),
+        fetch(`/api/evaluations/follow/points`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
         fetch(`/api/evaluations/bonus?month=${selectedMonth}`, { cache: 'no-store' }),
       ]);
 
@@ -181,9 +180,9 @@ export default function EvaluationDPage() {
       const spotlightPresenceData = spotlightPresenceResponse.ok ? await spotlightPresenceResponse.json() : { totalSpotlights: 0, members: [] };
       const raidsPointsData = raidsPointsResponse.ok ? (await raidsPointsResponse.json()).points || {} : {};
       const raidsData = raidsDataResponse.ok ? await raidsDataResponse.json() : { raidsFaits: [], raidsRecus: [] };
-      const discordData = discordResponse.ok ? await discordResponse.json() : { dataByMember: {} };
+      const discordPointsData = discordPointsResponse.ok ? (await discordPointsResponse.json()).points || {} : {};
       const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] };
-      const followData = followResponse.ok ? await followResponse.json() : { validations: [] };
+      const followPointsData = followResponse.ok ? (await followResponse.json()).points || {} : {};
       const bonusesData = bonusesResponse.ok ? (await bonusesResponse.json()).bonuses || {} : {};
 
       // Construire les données d'évaluation pour chaque membre actif
@@ -196,7 +195,7 @@ export default function EvaluationDPage() {
       const spotlightPointsMap = new Map<string, number>(); // Map des points Spotlight depuis l'API
       const raidsPointsMap = new Map<string, number>(); // Map des points Raids depuis l'API
       const raidsStatsMap = new Map<string, { done: number; received: number }>(); // Stats pour affichage
-      const discordMap = new Map<string, { nbMessages: number; nbVocalMinutes: number; noteFinale: number }>();
+      const discordPointsMap = new Map<string, number>(); // Map des points Discord depuis l'API
       const eventsMap = new Map<string, { presences: number; total: number }>();
       const followMap = new Map<string, number>();
       
@@ -214,6 +213,15 @@ export default function EvaluationDPage() {
         Object.entries(raidsPointsData).forEach(([login, points]) => {
           if (login && typeof points === 'number') {
             raidsPointsMap.set(login.toLowerCase(), points);
+          }
+        });
+      }
+      
+      // Populate discord points map depuis l'API (note finale calculée depuis /admin/evaluation/b/discord)
+      if (discordPointsData && typeof discordPointsData === 'object') {
+        Object.entries(discordPointsData).forEach(([login, points]) => {
+          if (login && typeof points === 'number') {
+            discordPointsMap.set(login.toLowerCase(), points);
           }
         });
       }
@@ -236,20 +244,6 @@ export default function EvaluationDPage() {
             const existing = raidsStatsMap.get(login) || { done: 0, received: 0 };
             existing.received = (existing.received || 0) + 1;
             raidsStatsMap.set(login, existing);
-          }
-        }
-      }
-      
-      // Populate discord map
-      if (discordData.dataByMember) {
-        for (const [discordId, engagement] of Object.entries(discordData.dataByMember) as [string, any][]) {
-          const login = engagement.twitchLogin?.toLowerCase();
-          if (login) {
-            discordMap.set(login, {
-              nbMessages: engagement.nbMessages || 0,
-              nbVocalMinutes: engagement.nbVocalMinutes || 0,
-              noteFinale: engagement.noteFinale || 0,
-            });
           }
         }
       }
@@ -304,14 +298,8 @@ export default function EvaluationDPage() {
         const raidsPoints = raidsPointsMap.get(login) || 0;
         const raidsInfo = raidsStatsMap.get(login) || { done: 0, received: 0 };
         
-        // Discord
-        const discordInfo = discordMap.get(login) || { nbMessages: 0, nbVocalMinutes: 0, noteFinale: 0 };
-        let discordPoints = discordInfo.noteFinale;
-        if (!discordPoints) {
-          const noteEcrit = calculateNoteEcrit(discordInfo.nbMessages);
-          const noteVocal = calculateNoteVocal(discordInfo.nbVocalMinutes);
-          discordPoints = calculateNoteFinale(noteEcrit, noteVocal);
-        }
+        // Discord - Récupérer les points depuis l'API (note finale calculée depuis /admin/evaluation/b/discord)
+        const discordPoints = discordPointsMap.get(login) || 0;
         
         // Events (simplifié - sur /2 pour l'instant, à adapter selon l'API réelle)
         const eventsInfo = eventsMap.get(login) || { presences: 0, total: eventsTotal };
@@ -319,8 +307,8 @@ export default function EvaluationDPage() {
         const eventsRate = eventsInfo.total > 0 ? eventsInfo.presences / eventsInfo.total : 0;
         const eventsPoints = Math.round(eventsRate * 2 * 100) / 100;
         
-        // Follow
-        const followPoints = followMap.get(login) || 0;
+        // Follow - Récupérer les points depuis l'API (dernière évaluation connue depuis /admin/evaluation/c)
+        const followPoints = followPointsMap.get(login) || 0;
         
         // Bonus
         const bonusInfo: MemberBonus | null = bonusesData[login] || null;
@@ -353,8 +341,8 @@ export default function EvaluationDPage() {
           spotlightTotal: spotlightPresenceData.totalSpotlights || 0,
           raidsDone: raidsInfo.done,
           raidsReceived: raidsInfo.received,
-          discordNbMessages: discordInfo.nbMessages,
-          discordNbVocalMinutes: discordInfo.nbVocalMinutes,
+          discordNbMessages: 0, // Non utilisé, les points viennent de l'API
+          discordNbVocalMinutes: 0, // Non utilisé, les points viennent de l'API
           eventsPresences: eventsInfo.presences,
           eventsTotal: eventsInfo.total,
           followScore: followPoints,
