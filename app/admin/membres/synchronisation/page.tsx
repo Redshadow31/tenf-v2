@@ -219,7 +219,7 @@ export default function SynchronisationMembresPage() {
         }
       );
 
-      let fullMemberData = status.member;
+      let fullMemberData: any = status.member;
       if (memberResponse.ok) {
         const memberData = await memberResponse.json();
         if (memberData.member) {
