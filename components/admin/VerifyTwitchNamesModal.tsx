@@ -39,6 +39,7 @@ export default function VerifyTwitchNamesModal({
       setSelectedMembers(new Set());
       setResults(null);
       setSearchQuery("");
+      setVerifying(false);
     }
   }, [isOpen]);
 
@@ -129,16 +130,6 @@ export default function VerifyTwitchNamesModal({
 
       // Recharger les membres pour obtenir les nouveaux noms
       await loadMembers();
-
-      // Afficher un résumé
-      const summary = data.summary || {};
-      alert(
-        `Vérification terminée !\n\n` +
-        `Total vérifié : ${summary.total || 0}\n` +
-        `Mis à jour : ${summary.updated || 0}\n` +
-        `Sans changement : ${summary.unchanged || 0}\n` +
-        `Erreurs : ${summary.errors || 0}`
-      );
     } catch (error) {
       console.error("Erreur lors de la vérification:", error);
       alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
@@ -233,8 +224,84 @@ export default function VerifyTwitchNamesModal({
                       <span className="text-blue-400 font-semibold">{filteredMembers.length}</span> filtré{filteredMembers.length > 1 ? 's' : ''}
                     </span>
                   )}
+                  {results && results.length > 0 && (
+                    <>
+                      <span className="text-green-400 font-semibold">
+                        {results.filter(r => r.updated).length} mis à jour
+                      </span>
+                      <span className="text-red-400 font-semibold">
+                        {results.filter(r => r.error).length} erreur{results.filter(r => r.error).length > 1 ? 's' : ''}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Section de résultats détaillés */}
+              {results && results.length > 0 && (
+                <div className="mb-4 space-y-3">
+                  {/* Mises à jour */}
+                  {results.filter(r => r.updated).length > 0 && (
+                    <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                      <h3 className="text-green-300 font-semibold mb-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5" />
+                        Mises à jour ({results.filter(r => r.updated).length})
+                      </h3>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {results.filter(r => r.updated).map((result) => {
+                          const member = members.find(m => m.twitchId === result.twitchId);
+                          return (
+                            <div key={result.twitchId} className="bg-[#0e0e10] rounded-lg p-3 border border-green-500/20">
+                              <div className="text-sm text-white font-medium">
+                                {member?.displayName || member?.twitchLogin || "Membre inconnu"}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-1">
+                                <span className="line-through text-gray-500">{result.oldLogin}</span>
+                                {" → "}
+                                <span className="text-green-400 font-semibold">{result.newLogin}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                ID Twitch: <code className="bg-[#1a1a1d] px-1 py-0.5 rounded">{result.twitchId}</code>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erreurs */}
+                  {results.filter(r => r.error).length > 0 && (
+                    <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                      <h3 className="text-red-300 font-semibold mb-3 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        Erreurs ({results.filter(r => r.error).length})
+                      </h3>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {results.filter(r => r.error).map((result) => {
+                          const member = members.find(m => m.twitchId === result.twitchId);
+                          return (
+                            <div key={result.twitchId} className="bg-[#0e0e10] rounded-lg p-3 border border-red-500/20">
+                              <div className="text-sm text-white font-medium">
+                                {member?.displayName || member?.twitchLogin || "Membre inconnu"}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-1">
+                                Twitch: <span className="text-gray-500">{result.oldLogin}</span>
+                              </div>
+                              <div className="text-xs text-red-400 mt-1 font-medium">
+                                ⚠️ {result.error}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                ID Twitch: <code className="bg-[#1a1a1d] px-1 py-0.5 rounded">{result.twitchId}</code>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Liste des membres */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
