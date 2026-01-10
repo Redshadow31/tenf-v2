@@ -61,6 +61,14 @@ const navItems: NavItem[] = [
         href: "/admin/membres/historique",
         label: "Historique",
       },
+      {
+        href: "/admin/membres/badges",
+        label: "Gestion des badges",
+      },
+      {
+        href: "/admin/membres/vip",
+        label: "Gestion des VIP",
+      },
     ],
   },
   {
