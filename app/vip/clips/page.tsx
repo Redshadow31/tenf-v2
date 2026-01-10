@@ -169,24 +169,14 @@ export default function ClipsPage() {
     ? validClips[Math.min(currentClipIndex, validClips.length - 1)]
     : null;
 
-  // Charger l'embed seulement quand nécessaire (lazy loading)
+  // Détecter les erreurs d'embedding avec un timeout seulement si l'embed est en cours de chargement
   useEffect(() => {
-    if (!currentClip) return;
-    
-    // Réinitialiser l'état au changement de clip
-    setEmbedLoaded(false);
-    setEmbedError(false);
-    setShouldLoadEmbed(false);
-    
-    // Charger l'embed après un court délai pour permettre au DOM de se mettre à jour
-    const loadTimer = setTimeout(() => {
-      setShouldLoadEmbed(true);
-    }, 100);
+    if (!currentClip || !shouldLoadEmbed) return;
     
     // Timeout pour détecter si l'iframe reste bloquée (ERR_BLOCKED_BY_RESPONSE)
     let mounted = true;
     const timeoutId = setTimeout(() => {
-      if (mounted && shouldLoadEmbed && !embedLoaded) {
+      if (mounted && !embedLoaded) {
         // Si après 6 secondes l'embed n'est toujours pas chargé, considérer comme erreur
         console.warn('Clip embed timeout, switching to fallback');
         setEmbedError(true);
@@ -196,10 +186,17 @@ export default function ClipsPage() {
     
     return () => {
       mounted = false;
-      clearTimeout(loadTimer);
       clearTimeout(timeoutId);
     };
   }, [currentClipIndex, currentClip?.id, shouldLoadEmbed, embedLoaded]);
+
+  // Réinitialiser l'état au changement de clip
+  useEffect(() => {
+    if (!currentClip) return;
+    setEmbedLoaded(false);
+    setEmbedError(false);
+    setShouldLoadEmbed(false); // Ne pas charger automatiquement, attendre le clic
+  }, [currentClipIndex, currentClip?.id]);
 
   const nextClip = () => {
     if (validClips.length === 0) return;
@@ -266,11 +263,11 @@ export default function ClipsPage() {
           </Link>
         </div>
         
-        {/* Message d'information si besoin */}
+        {/* Message d'information */}
         {validClips.length > 0 && (
           <div className="bg-purple-900/30 border border-purple-600/50 rounded-lg p-4 mb-6">
             <p className="text-purple-200 text-sm">
-              💡 <strong>Astuce:</strong> Cliquez sur la miniature d'un clip pour le charger. Si un clip ne se charge pas, utilisez le bouton "Regarder sur Twitch" pour le visionner directement.
+              💡 <strong>Astuce:</strong> Cliquez sur la miniature d'un clip pour le charger. Les clips se chargent à la demande pour une meilleure performance. Si un clip ne se charge pas, utilisez le bouton "Regarder sur Twitch".
             </p>
           </div>
         )}
