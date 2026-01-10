@@ -39,12 +39,15 @@ interface DashboardData {
 
 const MONTHS = ["Janv", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
 
+type TabId = 'twitch' | 'discord' | 'vocal' | 'text' | 'clips';
+
 export default function DashboardManagementPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isFounder, setIsFounder] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('twitch');
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     twitchActivity: [],
     spotlightProgression: [],
@@ -303,62 +306,112 @@ export default function DashboardManagementPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Activité Twitch */}
-            <DataSection
-              title="Activité Twitch"
-              description="Données mensuelles pour le graphique d'activité Twitch"
-              data={dashboardData.twitchActivity}
-              onAdd={(month, value) => addDataPoint('twitchActivity', month, value)}
-              onUpdate={(index, month, value) => updateDataPoint('twitchActivity', index, month, value)}
-              onRemove={(index) => removeDataPoint('twitchActivity', index)}
-              type="monthly"
-            />
+          <>
+            {/* Système d'onglets */}
+            <div className="mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              <nav className="flex space-x-1" style={{ backgroundColor: 'var(--color-bg)' }}>
+                {[
+                  { id: 'twitch' as TabId, label: 'Activité Twitch', icon: '🎮' },
+                  { id: 'discord' as TabId, label: 'Progression Spotlight', icon: '⭐' },
+                  { id: 'vocal' as TabId, label: 'Top Vocaux', icon: '🎤' },
+                  { id: 'text' as TabId, label: 'Top Écrits', icon: '💬' },
+                  { id: 'clips' as TabId, label: 'Top Clips', icon: '🎬' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors ${
+                      activeTab === tab.id
+                        ? 'text-white border-b-2'
+                        : 'text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                    }`}
+                    style={{
+                      backgroundColor: activeTab === tab.id ? 'transparent' : 'transparent',
+                      borderBottomColor: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
+                      borderBottomWidth: activeTab === tab.id ? '2px' : '0px',
+                      color: activeTab === tab.id ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeTab !== tab.id) {
+                        e.currentTarget.style.color = 'var(--color-text)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeTab !== tab.id) {
+                        e.currentTarget.style.color = 'var(--color-text-secondary)';
+                      }
+                    }}
+                  >
+                    <span className="mr-2">{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
 
-            {/* Progression Spotlight */}
-            <DataSection
-              title="Progression Spotlight"
-              description="Données mensuelles pour le graphique de progression Spotlight"
-              data={dashboardData.spotlightProgression}
-              onAdd={(month, value) => addDataPoint('spotlightProgression', month, value)}
-              onUpdate={(index, month, value) => updateDataPoint('spotlightProgression', index, month, value)}
-              onRemove={(index) => removeDataPoint('spotlightProgression', index)}
-              type="monthly"
-            />
+            {/* Contenu des onglets */}
+            <div className="mt-6">
+              {activeTab === 'twitch' && (
+                <DataSection
+                  title="Activité Twitch"
+                  description="Données mensuelles pour le graphique d'activité Twitch"
+                  data={dashboardData.twitchActivity}
+                  onAdd={(month, value) => addDataPoint('twitchActivity', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('twitchActivity', index, month, value)}
+                  onRemove={(index) => removeDataPoint('twitchActivity', index)}
+                  type="monthly"
+                />
+              )}
 
-            {/* Ranking Vocal */}
-            <RankingSection
-              title="Top Membres Vocaux"
-              description="Classement des membres par heures vocales"
-              data={dashboardData.vocalRanking}
-              onAdd={(member) => addRankingMember('vocalRanking', member)}
-              onUpdate={(index, member) => updateRankingMember('vocalRanking', index, member)}
-              onRemove={(index) => removeRankingMember('vocalRanking', index)}
-              valueLabel="Heures vocales"
-            />
+              {activeTab === 'discord' && (
+                <DataSection
+                  title="Progression Spotlight"
+                  description="Données mensuelles pour le graphique de progression Spotlight"
+                  data={dashboardData.spotlightProgression}
+                  onAdd={(month, value) => addDataPoint('spotlightProgression', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('spotlightProgression', index, month, value)}
+                  onRemove={(index) => removeDataPoint('spotlightProgression', index)}
+                  type="monthly"
+                />
+              )}
 
-            {/* Ranking Textuel */}
-            <RankingSection
-              title="Top Membres Messages"
-              description="Classement des membres par nombre de messages"
-              data={dashboardData.textRanking}
-              onAdd={(member) => addRankingMember('textRanking', member)}
-              onUpdate={(index, member) => updateRankingMember('textRanking', index, member)}
-              onRemove={(index) => removeRankingMember('textRanking', index)}
-              valueLabel="Messages"
-              showProgression={true}
-            />
+              {activeTab === 'vocal' && (
+                <RankingSection
+                  title="Top Membres Vocaux"
+                  description="Classement des membres par heures vocales"
+                  data={dashboardData.vocalRanking}
+                  onAdd={(member) => addRankingMember('vocalRanking', member)}
+                  onUpdate={(index, member) => updateRankingMember('vocalRanking', index, member)}
+                  onRemove={(index) => removeRankingMember('vocalRanking', index)}
+                  valueLabel="Heures vocales"
+                />
+              )}
 
-            {/* Top Clips */}
-            <TopClipsSection
-              title="Top Clips"
-              description="Meilleurs clips de la communauté"
-              data={dashboardData.topClips}
-              onAdd={(clip) => addTopClip(clip)}
-              onUpdate={(index, clip) => updateTopClip(index, clip)}
-              onRemove={(index) => removeTopClip(index)}
-            />
-          </div>
+              {activeTab === 'text' && (
+                <RankingSection
+                  title="Top Membres Messages"
+                  description="Classement des membres par nombre de messages"
+                  data={dashboardData.textRanking}
+                  onAdd={(member) => addRankingMember('textRanking', member)}
+                  onUpdate={(index, member) => updateRankingMember('textRanking', index, member)}
+                  onRemove={(index) => removeRankingMember('textRanking', index)}
+                  valueLabel="Messages"
+                  showProgression={true}
+                />
+              )}
+
+              {activeTab === 'clips' && (
+                <TopClipsSection
+                  title="Top Clips"
+                  description="Meilleurs clips de la communauté"
+                  data={dashboardData.topClips}
+                  onAdd={(clip) => addTopClip(clip)}
+                  onUpdate={(index, clip) => updateTopClip(index, clip)}
+                  onRemove={(index) => removeTopClip(index)}
+                />
+              )}
+            </div>
+          </>
         )}
 
         {/* Informations de dernière mise à jour */}
