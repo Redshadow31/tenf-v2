@@ -22,6 +22,7 @@ type MemberModalProps = {
     };
     isVip?: boolean;
     vipBadge?: string;
+    badges?: string[];
   };
   isOpen: boolean;
   onClose: () => void;
@@ -164,6 +165,25 @@ export default function MemberModal({
             >
               {member.role}
             </span>
+            
+            {/* Badges personnalisés */}
+            {member.badges && member.badges.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center mt-3">
+                {member.badges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="inline-block rounded-lg px-3 py-1 text-xs font-semibold border"
+                    style={{
+                      backgroundColor: 'rgba(145, 70, 255, 0.2)',
+                      color: '#c084fc',
+                      borderColor: 'rgba(145, 70, 255, 0.3)',
+                    }}
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Description Twitch */}
