@@ -96,13 +96,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const allClips: TwitchClip[] = [];
+    // Limiter le nombre de broadcasters à traiter pour accélérer (max 10)
+    const limitedBroadcasters = broadcasterIds.slice(0, 10);
     
-    // Récupérer les clips pour chaque broadcaster (max 100 par requête)
-    for (const broadcasterId of broadcasterIds) {
+    // Limiter le nombre de clips par broadcaster (max 3 pour accélérer significativement)
+    const clipsPerBroadcaster = Math.max(2, Math.min(3, Math.floor(limit / Math.max(limitedBroadcasters.length, 1))));
+    
+    // Récupérer les clips en parallèle pour accélérer le chargement
+    const clipPromises = limitedBroadcasters.map(async (broadcasterId) => {
       try {
         const response = await fetch(
-          `https://api.twitch.tv/helix/clips?broadcaster_id=${broadcasterId}&first=${Math.min(limit, 100)}`,
+          `https://api.twitch.tv/helix/clips?broadcaster_id=${broadcasterId}&first=${Math.min(clipsPerBroadcaster, 20)}`,
           {
             headers: {
               'Client-ID': clientId,
@@ -114,25 +118,29 @@ export async function GET(request: Request) {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Twitch Clips API error for broadcaster ${broadcasterId}:`, errorText);
-          continue;
+          return [];
         }
 
         const data: TwitchClipsResponse = await response.json();
-        
-        if (data.data && data.data.length > 0) {
-          allClips.push(...data.data);
-        }
+        return data.data || [];
       } catch (error) {
         console.error(`Error fetching clips for broadcaster ${broadcasterId}:`, error);
-        continue;
+        return [];
       }
-    }
+    });
+    
+    // Attendre toutes les requêtes en parallèle
+    const clipResults = await Promise.all(clipPromises);
+    const allClips: TwitchClip[] = clipResults.flat();
 
     // Trier par nombre de vues (décroissant)
     allClips.sort((a, b) => b.view_count - a.view_count);
 
+    // Limiter le nombre total de clips retournés pour améliorer les performances (max 15 clips)
+    const limitedClips = allClips.slice(0, Math.min(limit, 15));
+
     // Formater les clips
-    const formattedClips = allClips.map((clip) => ({
+    const formattedClips = limitedClips.map((clip) => ({
       id: clip.id,
       url: clip.url,
       title: clip.title,
