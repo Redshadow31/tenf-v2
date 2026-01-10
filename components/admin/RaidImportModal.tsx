@@ -464,11 +464,12 @@ export default function RaidImportModal({
       }
 
       if (groupId !== undefined) {
-        duplicateGroups[groupId].forEach((idx) => {
+        const finalGroupId: number = groupId; // Type guard pour TypeScript
+        duplicateGroups[finalGroupId].forEach((idx) => {
           updatedRaids[idx] = {
             ...updatedRaids[idx],
             isDuplicate: true,
-            duplicateGroup: groupId,
+            duplicateGroup: finalGroupId,
           };
         });
       }
