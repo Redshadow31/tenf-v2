@@ -281,9 +281,31 @@ const navItems: NavItem[] = [
     icon: "🛒",
   },
   {
-    href: "/admin/planification",
+    href: "/admin/events",
     label: "Événements",
     icon: "📅",
+    children: [
+      {
+        href: "/admin/events",
+        label: "Hub",
+      },
+      {
+        href: "/admin/events/planification",
+        label: "Planification",
+      },
+      {
+        href: "/admin/events/liste",
+        label: "Liste des événements",
+      },
+      {
+        href: "/admin/events/recap",
+        label: "Récapitulatif",
+      },
+      {
+        href: "/admin/events/presence",
+        label: "Gestion des présences",
+      },
+    ],
   },
   {
     href: "/admin/logs",
@@ -310,6 +332,9 @@ export default function AdminSidebar() {
           }
           if (child.href === "/admin/spotlight") {
             return pathname?.startsWith("/admin/spotlight") ?? false;
+          }
+          if (child.href === "/admin/events") {
+            return pathname?.startsWith("/admin/events") ?? false;
           }
           if (child.href === "/admin/follow") {
             return pathname?.startsWith("/admin/follow") ?? false;
@@ -339,6 +364,9 @@ export default function AdminSidebar() {
     }
     if (href === "/admin/spotlight") {
       return pathname?.startsWith("/admin/spotlight") ?? false;
+    }
+    if (href === "/admin/events") {
+      return pathname?.startsWith("/admin/events") ?? false;
     }
     if (href === "/admin/follow") {
       return pathname === "/admin/follow" || (pathname?.startsWith("/admin/follow/") ?? false);
