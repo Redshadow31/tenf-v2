@@ -17,6 +17,7 @@ export async function GET() {
       success: true,
       data: {
         twitchActivity: data.twitchActivity,
+        discordGrowth: data.discordGrowth,
         spotlightProgression: data.spotlightProgression,
         vocalRanking: data.vocalRanking,
         textRanking: data.textRanking,

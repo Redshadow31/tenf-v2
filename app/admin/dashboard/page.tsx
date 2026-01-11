@@ -101,6 +101,7 @@ export default function DashboardPage() {
           const result = await response.json();
           if (result.success && result.data) {
             setTwitchActivityData(result.data.twitchActivity || defaultTwitchActivity);
+            setDiscordGrowthData(result.data.discordGrowth || defaultDiscordGrowthData);
             setSpotlightProgressionData(result.data.spotlightProgression || defaultSpotlightProgression);
             setVocalRanking(result.data.vocalRanking || defaultVocalRanking);
             setTextRanking(result.data.textRanking || defaultTextRanking);
@@ -110,37 +111,11 @@ export default function DashboardPage() {
         console.error('Erreur lors du chargement des données du dashboard:', error);
       } finally {
         setLoadingDashboardData(false);
-      }
-    }
-    
-    loadDashboardData();
-  }, []);
-
-  // Charger les données de croissance Discord depuis l'API
-  useEffect(() => {
-    async function loadDiscordGrowthData() {
-      try {
-        const response = await fetch('/api/admin/discord-growth', {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.data && result.data.length > 0) {
-            setDiscordGrowthData(result.data);
-          }
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des données Discord:', error);
-      } finally {
         setLoadingDiscordData(false);
       }
     }
     
-    loadDiscordGrowthData();
+    loadDashboardData();
   }, []);
 
   // Charger les statistiques Discord du mois (Statbot)
