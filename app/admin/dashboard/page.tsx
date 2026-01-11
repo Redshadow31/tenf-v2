@@ -13,6 +13,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
+import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
 
 // Données par défaut (fallback)
 const defaultDiscordGrowthData = [
@@ -77,9 +79,12 @@ export default function DashboardPage() {
   const [discordStats, setDiscordStats] = useState<{
     totalMessages: number;
     totalVoiceHours: number;
-    topMembers: Array<{ displayName: string; messages: number; voiceMinutes: number; rank: number }>;
+    topMessages: Array<{ displayName: string; messages: number; rank: number }>;
+    topVocals: Array<{ displayName: string; display: string; hoursDecimal: number; rank: number }>;
   } | null>(null);
   const [loadingDiscordStats, setLoadingDiscordStats] = useState(true);
+  const [showMessagesImport, setShowMessagesImport] = useState(false);
+  const [showVocalsImport, setShowVocalsImport] = useState(false);
   const [twitchActivityData, setTwitchActivityData] = useState(defaultTwitchActivity);
   const [spotlightProgressionData, setSpotlightProgressionData] = useState(defaultSpotlightProgression);
   const [vocalRanking, setVocalRanking] = useState(defaultVocalRanking);
@@ -118,11 +123,12 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  // Charger les statistiques Discord du mois (Statbot)
+  // Charger les statistiques Discord du mois (depuis le stockage)
   useEffect(() => {
     async function loadDiscordStats() {
       try {
-        const response = await fetch('/api/statbot/data', {
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const response = await fetch(`/api/admin/discord-activity/data?month=${currentMonth}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -130,12 +136,15 @@ export default function DashboardPage() {
         });
         
         if (response.ok) {
-          const data = await response.json();
-          setDiscordStats({
-            totalMessages: data.totalMessages || 0,
-            totalVoiceHours: data.totalVoiceHours || 0,
-            topMembers: (data.topMembers || []).slice(0, 5),
-          });
+          const result = await response.json();
+          if (result.success && result.data) {
+            setDiscordStats({
+              totalMessages: result.data.totalMessages || 0,
+              totalVoiceHours: result.data.totalVoiceHours || 0,
+              topMessages: result.data.topMessages || [],
+              topVocals: result.data.topVocals || [],
+            });
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement des stats Discord:', error);
@@ -146,6 +155,54 @@ export default function DashboardPage() {
     
     loadDiscordStats();
   }, []);
+
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+  const handleMessagesImport = async (data: Record<string, number>) => {
+    try {
+      const response = await fetch('/api/admin/discord-activity/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ month: currentMonth, type: 'messages', data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de l\'import');
+      }
+
+      // Recharger les stats
+      window.location.reload();
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de l\'import');
+    }
+  };
+
+  const handleVocalsImport = async (data: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>) => {
+    try {
+      const response = await fetch('/api/admin/discord-activity/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ month: currentMonth, type: 'vocals', data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de l\'import');
+      }
+
+      // Recharger les stats
+      window.location.reload();
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de l\'import');
+    }
+  };
 
   return (
     <>
@@ -525,6 +582,20 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      <DiscordMessagesImportModal
+        isOpen={showMessagesImport}
+        onClose={() => setShowMessagesImport(false)}
+        onImport={handleMessagesImport}
+        month={currentMonth}
+      />
+
+      <DiscordVocalsImportModal
+        isOpen={showVocalsImport}
+        onClose={() => setShowVocalsImport(false)}
+        onImport={handleVocalsImport}
+        month={currentMonth}
+      />
     </>
   );
 }
