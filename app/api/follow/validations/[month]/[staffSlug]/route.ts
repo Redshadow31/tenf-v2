@@ -85,7 +85,7 @@ export async function POST(
   { params }: { params: { month: string; staffSlug: string } }
 ) {
   try {
-    const admin = await requirePermission("read");
+    const admin = await requirePermission("write");
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
