@@ -102,6 +102,7 @@ export default function DiscordVocalsImportModal({
     }
 
     const vocalsByUser: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }> = {};
+    const unmatchedData: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }> = {};
     const unmatchedUsernames: string[] = [];
     const activeLogins = new Set(activeMembers.map(m => m.twitchLogin));
 
