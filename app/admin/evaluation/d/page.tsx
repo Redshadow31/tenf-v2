@@ -119,6 +119,10 @@ export default function EvaluationDPage() {
   
   // États pour les bonus (édition en ligne)
   const [editingBonuses, setEditingBonuses] = useState<Record<string, { timezone: boolean; moderation: number }>>({});
+  
+  // États pour les notes finales manuelles et statuts (édition en ligne)
+  const [editingFinalNotes, setEditingFinalNotes] = useState<Record<string, number | null>>({});
+  const [editingStatuses, setEditingStatuses] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function checkAccess() {
@@ -414,39 +418,81 @@ export default function EvaluationDPage() {
     });
   }
 
-  async function saveBonuses() {
+  async function saveAll() {
     setSaving(true);
     try {
-      const updates = Object.entries(editingBonuses).map(([login, bonus]) => ({
-        month: selectedMonth,
-        twitchLogin: login,
-        timezoneBonusEnabled: bonus.timezone,
-        moderationBonus: bonus.moderation,
-      }));
+      // Sauvegarder les bonus
+      if (Object.keys(editingBonuses).length > 0) {
+        const bonusUpdates = Object.entries(editingBonuses).map(([login, bonus]) => ({
+          month: selectedMonth,
+          twitchLogin: login,
+          timezoneBonusEnabled: bonus.timezone,
+          moderationBonus: bonus.moderation,
+        }));
+        
+        for (const update of bonusUpdates) {
+          const response = await fetch('/api/evaluations/bonus', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(update),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Erreur lors de la sauvegarde du bonus pour ${update.twitchLogin}`);
+          }
+        }
+      }
       
-      // Sauvegarder chaque bonus
-      for (const update of updates) {
-        const response = await fetch('/api/evaluations/bonus', {
-          method: 'PUT',
+      // Sauvegarder les notes finales et statuts
+      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0) {
+        const updates = [];
+        
+        // Récupérer tous les logins uniques
+        const allLogins = new Set([
+          ...Object.keys(editingFinalNotes),
+          ...Object.keys(editingStatuses),
+        ]);
+        
+        for (const login of allLogins) {
+          updates.push({
+            twitchLogin: login,
+            finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
+            isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
+          });
+        }
+        
+        const response = await fetch('/api/evaluations/synthesis/save', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(update),
+          body: JSON.stringify({
+            month: selectedMonth,
+            updates,
+          }),
         });
         
         if (!response.ok) {
-          throw new Error(`Erreur lors de la sauvegarde du bonus pour ${update.twitchLogin}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Erreur lors de la sauvegarde des notes finales et statuts');
         }
       }
       
       // Recharger les données
       await loadAllData();
       setEditingBonuses({});
-      alert('✅ Bonus enregistrés avec succès');
+      setEditingFinalNotes({});
+      setEditingStatuses({});
+      alert('✅ Toutes les modifications ont été enregistrées avec succès');
     } catch (error) {
-      console.error("Erreur lors de la sauvegarde des bonus:", error);
-      alert('❌ Erreur lors de la sauvegarde des bonus');
+      console.error("Erreur lors de la sauvegarde:", error);
+      alert(`❌ Erreur lors de la sauvegarde: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setSaving(false);
     }
+  }
+  
+  // Fonction de compatibilité pour le bouton bonus (dépréciée)
+  async function saveBonuses() {
+    await saveAll();
   }
 
   function handleTimezoneToggle(login: string, enabled: boolean) {
@@ -469,6 +515,34 @@ export default function EvaluationDPage() {
         moderation: Math.max(0, Math.min(5, value)),
       },
     }));
+  }
+  
+  function handleFinalNoteChange(login: string, value: string) {
+    const numValue = value === '' ? null : parseFloat(value);
+    setEditingFinalNotes(prev => {
+      if (numValue === null) {
+        const { [login]: removed, ...rest } = prev;
+        return rest;
+      }
+      return {
+        ...prev,
+        [login]: numValue,
+      };
+    });
+  }
+  
+  function handleStatusChange(login: string, isActive: boolean) {
+    setEditingStatuses(prev => ({
+      ...prev,
+      [login]: isActive,
+    }));
+  }
+  
+  // Fonction pour calculer le nombre total de modifications en attente
+  function getTotalPendingChanges(): number {
+    return Object.keys(editingBonuses).length + 
+           Object.keys(editingFinalNotes).length + 
+           Object.keys(editingStatuses).length;
   }
 
   function getMonthOptions(): string[] {
@@ -663,15 +737,15 @@ export default function EvaluationDPage() {
             Tableau récapitulatif ({filteredMembers.length} membres)
           </h2>
           <button
-            onClick={saveBonuses}
-            disabled={saving || Object.keys(editingBonuses).length === 0}
+            onClick={saveAll}
+            disabled={saving || getTotalPendingChanges() === 0}
             className="px-6 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: saving || Object.keys(editingBonuses).length === 0 ? 'var(--color-surface)' : 'var(--color-primary)',
+              backgroundColor: saving || getTotalPendingChanges() === 0 ? 'var(--color-surface)' : '#10b981',
               color: 'white',
             }}
           >
-            {saving ? 'Enregistrement...' : `Enregistrer bonus (${Object.keys(editingBonuses).length})`}
+            {saving ? 'Enregistrement...' : `Enregistrer les modifications (${getTotalPendingChanges()})`}
           </button>
         </div>
         
@@ -701,6 +775,8 @@ export default function EvaluationDPage() {
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Total (hors bonus)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus total</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale manuelle</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut auto</th>
                 </tr>
               </thead>
@@ -713,6 +789,11 @@ export default function EvaluationDPage() {
                   const bonusTotal = (currentTimezoneBonus ? TIMEZONE_BONUS_POINTS : 0) + currentModerationBonus;
                   const { total: finalScore } = calculateTotalAvecBonus(member.totalHorsBonus, currentTimezoneBonus ? TIMEZONE_BONUS_POINTS : 0, currentModerationBonus);
                   const autoStatus = getAutoStatus(finalScore);
+                  
+                  // Notes finales et statuts en cours d'édition
+                  const finalNoteInEdit = editingFinalNotes[member.twitchLogin];
+                  const statusInEdit = editingStatuses[member.twitchLogin];
+                  const currentIsActive = statusInEdit !== undefined ? statusInEdit : member.isActive;
                   
                   return (
                     <tr
@@ -810,6 +891,36 @@ export default function EvaluationDPage() {
                       </td>
                       <td className="px-4 py-3 text-center font-bold" style={{ color: finalScore > 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)' }}>
                         {finalScore.toFixed(2)} / 32
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="number"
+                          min="0"
+                          max="32"
+                          step="0.01"
+                          placeholder={finalScore.toFixed(2)}
+                          value={finalNoteInEdit !== undefined && finalNoteInEdit !== null ? finalNoteInEdit : ''}
+                          onChange={(e) => handleFinalNoteChange(member.twitchLogin, e.target.value)}
+                          className="w-20 px-2 py-1 rounded border text-center text-sm"
+                          style={{ backgroundColor: finalNoteInEdit !== undefined ? '#10b98120' : 'var(--color-surface)', borderColor: finalNoteInEdit !== undefined ? '#10b981' : 'var(--color-border)', color: 'var(--color-text)' }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <label className="flex items-center justify-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={currentIsActive}
+                            onChange={(e) => handleStatusChange(member.twitchLogin, e.target.checked)}
+                            className="w-5 h-5 rounded border"
+                            style={{ borderColor: statusInEdit !== undefined ? '#10b981' : 'var(--color-border)' }}
+                            title={currentIsActive ? "Actif (désactiver = rôle Communauté)" : "Inactif (activer pour réintégrer)"}
+                          />
+                        </label>
+                        {statusInEdit !== undefined && (
+                          <span className="text-xs ml-1" style={{ color: statusInEdit ? '#10b981' : '#f59e0b' }}>
+                            {statusInEdit ? '✓' : '✗'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {autoStatus === 'vip' && (

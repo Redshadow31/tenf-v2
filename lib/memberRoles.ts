@@ -3,7 +3,7 @@
 
 import { allMembers } from "./members";
 
-export type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+export type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
 export type MemberStatus = "active" | "inactive" | "vip";
 
 export interface MemberWithRole {
