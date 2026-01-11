@@ -43,7 +43,7 @@ const MODOS_JUNIORS: string[] = [
 // PERMISSIONS PAR RÔLE
 // ============================================
 
-const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
+export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   FOUNDER: ["read", "write", "validate", "revert", "global_revert"],
   ADMIN_ADJOINT: ["read", "write", "validate", "revert"],
   MODO_MENTOR: ["read", "write", "validate"],
