@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, hasAdminDashboardAccess } from "@/lib/admin";
+import { getCurrentAdmin } from "@/lib/adminAuth";
 import { getLogs, initializeLogs } from "@/lib/logAction";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Initialiser les logs
     await initializeLogs();
     
-    // Vérifier que l'utilisateur est connecté
+    // Vérifier que l'utilisateur est connecté (getCurrentAdmin charge déjà le cache Blobs)
     const admin = await getCurrentAdmin();
     
     if (!admin) {
@@ -22,13 +22,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Vérifier l'accès avec le nouveau système de rôles
-    if (!hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux administrateurs." },
-        { status: 403 }
-      );
-    }
+    // getCurrentAdmin() de lib/adminAuth charge le cache Blobs et retourne null si l'utilisateur n'a pas de rôle admin
+    // Donc si on arrive ici, l'utilisateur a déjà un rôle admin (hardcodé ou Blobs)
 
     // Récupérer le paramètre limit depuis la query string
     const { searchParams } = new URL(request.url);

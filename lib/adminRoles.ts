@@ -114,9 +114,37 @@ export function canPerformAction(
 
 /**
  * Vérifie l'accès au dashboard admin (tous les rôles ont accès)
+ * Cette fonction vérifie uniquement les rôles hardcodés.
+ * Pour vérifier aussi le cache Blobs, utiliser hasAdminDashboardAccessAsync
  */
 export function hasAdminDashboardAccess(discordId: string): boolean {
   return hasAdminRole(discordId);
+}
+
+/**
+ * Vérifie l'accès au dashboard admin en incluant le cache Blobs (async)
+ * Utilisé dans les routes API pour vérifier les membres ajoutés manuellement
+ */
+export async function hasAdminDashboardAccessAsync(discordId: string): Promise<boolean> {
+  // Vérifier d'abord les rôles hardcodés
+  if (hasAdminRole(discordId)) {
+    return true;
+  }
+  
+  // Vérifier le cache Blobs (uniquement dans Node.js runtime)
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const { loadAdminAccessCache, getAdminRoleFromCache } = await import('./adminAccessCache');
+      await loadAdminAccessCache();
+      const role = getAdminRoleFromCache(discordId);
+      return role !== null;
+    } catch (error) {
+      // Si Blobs n'est pas disponible (Edge Runtime), ignorer l'erreur
+      console.warn('[AdminRoles] Cannot load admin access cache:', error);
+    }
+  }
+  
+  return false;
 }
 
 /**
