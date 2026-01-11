@@ -82,6 +82,7 @@ export default function DiscordMessagesImportModal({
       return {
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: 0,
           linesValid: 0,

@@ -90,6 +90,7 @@ export default function DiscordVocalsImportModal({
       return {
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: 0,
           linesValid: 0,
@@ -150,39 +151,43 @@ export default function DiscordVocalsImportModal({
 
       if (!username || isNaN(hoursDecimal) || hoursDecimal < 0) continue;
 
-      // Filtrer : ne garder que si username correspond à un membre actif
+      const { totalMinutes, display } = convertHoursToDisplay(hoursDecimal);
+
+      // Séparer les membres reconnus des non reconnus
       if (activeLogins.has(username)) {
-        const { totalMinutes, display } = convertHoursToDisplay(hoursDecimal);
         vocalsByUser[username] = { hoursDecimal, totalMinutes, display };
       } else {
+        unmatchedData[username] = { hoursDecimal, totalMinutes, display };
         if (!unmatchedUsernames.includes(username)) {
           unmatchedUsernames.push(username);
         }
       }
     }
 
-    if (Object.keys(vocalsByUser).length === 0) {
+    if (Object.keys(vocalsByUser).length === 0 && Object.keys(unmatchedData).length === 0) {
       return {
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: lines.length,
           linesValid: 0,
           matchedMembers: 0,
-          unmatchedUsernames: unmatchedUsernames.slice(0, 10),
+          unmatchedUsernames: [],
         },
-        error: "Aucun membre actif trouvé dans les données",
+        error: "Aucune donnée valide trouvée",
       };
     }
 
     return {
       success: true,
       data: vocalsByUser,
+      unmatchedData: unmatchedData,
       summary: {
         linesRead: lines.length,
-        linesValid: Object.keys(vocalsByUser).length,
+        linesValid: Object.keys(vocalsByUser).length + Object.keys(unmatchedData).length,
         matchedMembers: Object.keys(vocalsByUser).length,
-        unmatchedUsernames: unmatchedUsernames.slice(0, 10),
+        unmatchedUsernames: unmatchedUsernames,
       },
     };
   }
