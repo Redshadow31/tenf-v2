@@ -90,6 +90,11 @@ export default function DashboardPage() {
   const [vocalRanking, setVocalRanking] = useState(defaultVocalRanking);
   const [textRanking, setTextRanking] = useState(defaultTextRanking);
   const [loadingDashboardData, setLoadingDashboardData] = useState(true);
+  const [raidStats, setRaidStats] = useState<{
+    totalRaidsReceived: number;
+    totalRaidsSent: number;
+  } | null>(null);
+  const [loadingRaidStats, setLoadingRaidStats] = useState(true);
 
   // Charger les données du dashboard depuis l'API
   useEffect(() => {
@@ -154,6 +159,37 @@ export default function DashboardPage() {
     }
     
     loadDiscordStats();
+  }, []);
+
+  // Charger les statistiques de raids
+  useEffect(() => {
+    async function loadRaidStats() {
+      try {
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const response = await fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.stats) {
+            setRaidStats({
+              totalRaidsReceived: result.stats.totalRaidsRecus || 0,
+              totalRaidsSent: result.stats.totalRaidsFaits || 0,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des stats de raids:', error);
+      } finally {
+        setLoadingRaidStats(false);
+      }
+    }
+    
+    loadRaidStats();
   }, []);
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -451,7 +487,15 @@ export default function DashboardPage() {
                   />
                 </svg>
               </div>
-              <div className="text-4xl font-bold text-white mb-2">156</div>
+              {loadingRaidStats ? (
+                <div className="flex items-center justify-center h-16 mb-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#9146ff]"></div>
+                </div>
+              ) : (
+                <div className="text-4xl font-bold text-white mb-2">
+                  {raidStats?.totalRaidsReceived ?? 0}
+                </div>
+              )}
               <div className="text-sm text-gray-400">Raids reçus</div>
             </div>
           </div>
@@ -474,7 +518,15 @@ export default function DashboardPage() {
                   />
                 </svg>
               </div>
-              <div className="text-4xl font-bold text-white mb-2">89</div>
+              {loadingRaidStats ? (
+                <div className="flex items-center justify-center h-16 mb-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10b981]"></div>
+                </div>
+              ) : (
+                <div className="text-4xl font-bold text-white mb-2">
+                  {raidStats?.totalRaidsSent ?? 0}
+                </div>
+              )}
               <div className="text-sm text-gray-400">Raids envoyés</div>
             </div>
           </div>
