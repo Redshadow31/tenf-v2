@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { hasAdminDashboardAccess } from "@/lib/admin";
 import {
   calculateTotalHorsBonus,
   calculateTotalAvecBonus,
