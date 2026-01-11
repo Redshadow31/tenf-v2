@@ -101,6 +101,7 @@ export async function GET() {
         const enrichedList = await Promise.all(
           accessList.map(async (access) => {
             try {
+              // Essayer d'abord de récupérer depuis le serveur (guild member)
               const memberResponse = await fetch(
                 `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${access.discordId}`,
                 {
@@ -112,13 +113,45 @@ export async function GET() {
 
               if (memberResponse.ok) {
                 const member = await memberResponse.json();
+                const user = member.user || member;
+                const username = user.nick || user.global_name || user.username || 'Inconnu';
+                const avatarHash = user.avatar;
+                const avatar = avatarHash
+                  ? `https://cdn.discordapp.com/avatars/${access.discordId}/${avatarHash}.png`
+                  : null;
+                
                 return {
                   ...access,
-                  username: member.user?.username || member.user?.global_name || 'Inconnu',
-                  avatar: member.user?.avatar
-                    ? `https://cdn.discordapp.com/avatars/${access.discordId}/${member.user.avatar}.png`
-                    : null,
+                  username,
+                  avatar,
                 };
+              }
+
+              // Si le membre n'est pas dans le serveur, essayer l'API Users
+              if (memberResponse.status === 404) {
+                const userResponse = await fetch(
+                  `https://discord.com/api/v10/users/${access.discordId}`,
+                  {
+                    headers: {
+                      Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+                    },
+                  }
+                );
+
+                if (userResponse.ok) {
+                  const user = await userResponse.json();
+                  const username = user.global_name || user.username || 'Inconnu';
+                  const avatarHash = user.avatar;
+                  const avatar = avatarHash
+                    ? `https://cdn.discordapp.com/avatars/${access.discordId}/${avatarHash}.png`
+                    : null;
+                  
+                  return {
+                    ...access,
+                    username,
+                    avatar,
+                  };
+                }
               }
             } catch (error) {
               console.error(`Error fetching Discord info for ${access.discordId}:`, error);
