@@ -24,6 +24,7 @@ interface MemberEvaluationData {
   avatar?: string;
   createdAt?: string;
   isActive: boolean;
+  isVip?: boolean; // Statut VIP
   
   // Notes par section
   spotlightPoints: number; // /5
@@ -320,6 +321,7 @@ export default function EvaluationDPage() {
           avatar: member.avatar,
           createdAt: member.createdAt,
           isActive: member.isActive !== false,
+          isVip: member.isVip || false,
           spotlightPoints,
           raidsPoints,
           discordPoints,
