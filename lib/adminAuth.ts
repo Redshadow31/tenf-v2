@@ -70,6 +70,7 @@ export async function requireAuth(): Promise<AdminUser | null> {
 /**
  * Vérifie l'authentification et les permissions
  * Retourne l'admin si autorisé, null sinon
+ * Utilise le rôle de l'admin (qui inclut le cache Blobs) au lieu de hasPermission
  */
 export async function requirePermission(permission: Permission): Promise<AdminUser | null> {
   const admin = await getCurrentAdmin();
@@ -77,7 +78,10 @@ export async function requirePermission(permission: Permission): Promise<AdminUs
     return null;
   }
 
-  if (!hasPermission(admin.id, permission)) {
+  // Vérifier les permissions en utilisant directement le rôle de l'admin (qui inclut le cache Blobs)
+  const { ROLE_PERMISSIONS } = await import('./adminRoles');
+  const permissions = ROLE_PERMISSIONS[admin.role] || [];
+  if (!permissions.includes(permission)) {
     return null;
   }
 

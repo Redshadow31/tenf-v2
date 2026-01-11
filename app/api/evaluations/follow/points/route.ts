@@ -150,8 +150,9 @@ async function getLatestMonth(): Promise<string | null> {
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.id, "read")) {
+    const { requirePermission } = await import('@/lib/adminAuth');
+    const admin = await requirePermission("read");
+    if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
