@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, logAction } from '@/lib/adminAuth';
 import { hasPermission } from '@/lib/adminRoles';
 import { loadMemberDataFromStorage, getMemberData, updateMemberData } from '@/lib/memberData';
+import type { MemberRole } from '@/lib/memberRoles';
 import { getStore } from '@netlify/blobs';
 import fs from 'fs';
 import path from 'path';
@@ -17,7 +18,7 @@ interface SynthesisSaveRequest {
     twitchLogin: string;
     finalNote?: number; // Note finale manuelle (optionnelle)
     isActive?: boolean; // Statut actif/inactif
-    role?: string; // Rôle forcé (optionnel, ex: 'Communauté')
+    role?: MemberRole; // Rôle forcé (optionnel, ex: 'Communauté')
   }>;
 }
 
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
           }
 
           const currentRole = member.role;
-          let newRole = role !== undefined ? role : currentRole;
+          let newRole: MemberRole = role !== undefined ? role : currentRole;
           let newIsActive = isActive !== undefined ? Boolean(isActive) : member.isActive;
 
           // Si on désactive le membre (isActive = false), changer le rôle en "Communauté" si pas déjà défini
