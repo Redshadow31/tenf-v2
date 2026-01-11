@@ -12,6 +12,7 @@ interface DiscordVocalsImportModalProps {
 interface ParseResult {
   success: boolean;
   data: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>;
+  unmatchedData: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>;
   summary: {
     linesRead: number;
     linesValid: number;
@@ -40,6 +41,7 @@ export default function DiscordVocalsImportModal({
   const [importing, setImporting] = useState(false);
   const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -190,6 +192,7 @@ export default function DiscordVocalsImportModal({
       setParseResult({
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: 0,
           linesValid: 0,
@@ -198,23 +201,39 @@ export default function DiscordVocalsImportModal({
         },
         error: "Le texte est vide",
       });
+      setSelectedUnmatched(new Set());
       return;
     }
 
     const result = parseTSV(text);
     setParseResult(result);
+    setSelectedUnmatched(new Set());
   };
 
   const handleImport = async () => {
-    if (!parseResult || !parseResult.success || Object.keys(parseResult.data).length === 0) {
+    if (!parseResult || !parseResult.success) {
+      return;
+    }
+
+    // Combiner les données reconnues avec les pseudos non reconnus sélectionnés
+    const finalData = { ...parseResult.data };
+    for (const username of selectedUnmatched) {
+      if (parseResult.unmatchedData[username] !== undefined) {
+        finalData[username] = parseResult.unmatchedData[username];
+      }
+    }
+
+    if (Object.keys(finalData).length === 0) {
+      alert("Aucune donnée à importer");
       return;
     }
 
     setImporting(true);
     try {
-      await onImport(parseResult.data);
+      await onImport(finalData);
       setText("");
       setParseResult(null);
+      setSelectedUnmatched(new Set());
       onClose();
     } catch (error) {
       console.error("Erreur lors de l'import:", error);
@@ -222,6 +241,25 @@ export default function DiscordVocalsImportModal({
     } finally {
       setImporting(false);
     }
+  };
+
+  const toggleUnmatched = (username: string) => {
+    const newSelected = new Set(selectedUnmatched);
+    if (newSelected.has(username)) {
+      newSelected.delete(username);
+    } else {
+      newSelected.add(username);
+    }
+    setSelectedUnmatched(newSelected);
+  };
+
+  const selectAllUnmatched = () => {
+    if (!parseResult) return;
+    setSelectedUnmatched(new Set(parseResult.summary.unmatchedUsernames));
+  };
+
+  const deselectAllUnmatched = () => {
+    setSelectedUnmatched(new Set());
   };
 
   const handleClose = () => {
@@ -356,11 +394,6 @@ export default function DiscordVocalsImportModal({
                   <p className="text-sm text-red-200">
                     {parseResult.error || "Erreur inconnue"}
                   </p>
-                  {parseResult.summary.unmatchedUsernames.length > 0 && (
-                    <div className="mt-3 text-xs text-gray-400">
-                      <div>Pseudos non reconnus : {parseResult.summary.unmatchedUsernames.join(", ")}</div>
-                    </div>
-                  )}
                 </>
               )}
             </div>

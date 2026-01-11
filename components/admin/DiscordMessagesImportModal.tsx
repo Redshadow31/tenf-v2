@@ -12,6 +12,7 @@ interface DiscordMessagesImportModalProps {
 interface ParseResult {
   success: boolean;
   data: Record<string, number>;
+  unmatchedData: Record<string, number>; // Données des pseudos non reconnus
   summary: {
     linesRead: number;
     linesValid: number;
@@ -32,6 +33,7 @@ export default function DiscordMessagesImportModal({
   const [importing, setImporting] = useState(false);
   const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +93,7 @@ export default function DiscordMessagesImportModal({
     }
 
     const messagesByUser: Record<string, number> = {};
+    const unmatchedData: Record<string, number> = {};
     const unmatchedUsernames: string[] = [];
     const activeLogins = new Set(activeMembers.map(m => m.twitchLogin));
 
@@ -140,38 +143,41 @@ export default function DiscordMessagesImportModal({
 
       if (!username || isNaN(messageCount)) continue;
 
-      // Filtrer : ne garder que si username correspond à un membre actif
+      // Séparer les membres reconnus des non reconnus
       if (activeLogins.has(username)) {
         messagesByUser[username] = messageCount;
       } else {
+        unmatchedData[username] = messageCount;
         if (!unmatchedUsernames.includes(username)) {
           unmatchedUsernames.push(username);
         }
       }
     }
 
-    if (Object.keys(messagesByUser).length === 0) {
+    if (Object.keys(messagesByUser).length === 0 && Object.keys(unmatchedData).length === 0) {
       return {
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: lines.length,
           linesValid: 0,
           matchedMembers: 0,
-          unmatchedUsernames: unmatchedUsernames.slice(0, 10),
+          unmatchedUsernames: [],
         },
-        error: "Aucun membre actif trouvé dans les données",
+        error: "Aucune donnée valide trouvée",
       };
     }
 
     return {
       success: true,
       data: messagesByUser,
+      unmatchedData: unmatchedData,
       summary: {
         linesRead: lines.length,
-        linesValid: Object.keys(messagesByUser).length,
+        linesValid: Object.keys(messagesByUser).length + Object.keys(unmatchedData).length,
         matchedMembers: Object.keys(messagesByUser).length,
-        unmatchedUsernames: unmatchedUsernames.slice(0, 10),
+        unmatchedUsernames: unmatchedUsernames,
       },
     };
   }
@@ -181,6 +187,7 @@ export default function DiscordMessagesImportModal({
       setParseResult({
         success: false,
         data: {},
+        unmatchedData: {},
         summary: {
           linesRead: 0,
           linesValid: 0,
@@ -189,23 +196,39 @@ export default function DiscordMessagesImportModal({
         },
         error: "Le texte est vide",
       });
+      setSelectedUnmatched(new Set());
       return;
     }
 
     const result = parseTSV(text);
     setParseResult(result);
+    setSelectedUnmatched(new Set());
   };
 
   const handleImport = async () => {
-    if (!parseResult || !parseResult.success || Object.keys(parseResult.data).length === 0) {
+    if (!parseResult || !parseResult.success) {
+      return;
+    }
+
+    // Combiner les données reconnues avec les pseudos non reconnus sélectionnés
+    const finalData = { ...parseResult.data };
+    for (const username of selectedUnmatched) {
+      if (parseResult.unmatchedData[username] !== undefined) {
+        finalData[username] = parseResult.unmatchedData[username];
+      }
+    }
+
+    if (Object.keys(finalData).length === 0) {
+      alert("Aucune donnée à importer");
       return;
     }
 
     setImporting(true);
     try {
-      await onImport(parseResult.data);
+      await onImport(finalData);
       setText("");
       setParseResult(null);
+      setSelectedUnmatched(new Set());
       onClose();
     } catch (error) {
       console.error("Erreur lors de l'import:", error);
@@ -213,6 +236,25 @@ export default function DiscordMessagesImportModal({
     } finally {
       setImporting(false);
     }
+  };
+
+  const toggleUnmatched = (username: string) => {
+    const newSelected = new Set(selectedUnmatched);
+    if (newSelected.has(username)) {
+      newSelected.delete(username);
+    } else {
+      newSelected.add(username);
+    }
+    setSelectedUnmatched(newSelected);
+  };
+
+  const selectAllUnmatched = () => {
+    if (!parseResult) return;
+    setSelectedUnmatched(new Set(parseResult.summary.unmatchedUsernames));
+  };
+
+  const deselectAllUnmatched = () => {
+    setSelectedUnmatched(new Set());
   };
 
   const handleClose = () => {
@@ -346,11 +388,6 @@ export default function DiscordMessagesImportModal({
                   <p className="text-sm text-red-200">
                     {parseResult.error || "Erreur inconnue"}
                   </p>
-                  {parseResult.summary.unmatchedUsernames.length > 0 && (
-                    <div className="mt-3 text-xs text-gray-400">
-                      <div>Pseudos non reconnus : {parseResult.summary.unmatchedUsernames.join(", ")}</div>
-                    </div>
-                  )}
                 </>
               )}
             </div>

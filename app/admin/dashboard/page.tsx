@@ -210,60 +210,63 @@ export default function DashboardPage() {
       <h1 className="text-4xl font-bold text-white mb-8">Dashboard Général</h1>
 
       {/* Section 1 — Statistiques globales (3 cartes) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" style={{ gridAutoRows: '1fr' }}>
         {/* Activité Twitch */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
             Activité Twitch
           </h3>
-          {loadingDashboardData ? (
-            <div className="flex items-center justify-center h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={twitchActivityData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="month"
-                stroke="#9CA3AF"
-                fontSize={12}
-                tickLine={false}
-              />
-              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1a1a1d",
-                  border: "1px solid #2a2a2d",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#9146ff"
-                strokeWidth={2}
-                dot={{ fill: "#9146ff", r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            {loadingDashboardData ? (
+              <div className="flex items-center justify-center w-full h-full min-h-[200px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                <LineChart data={twitchActivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis
+                  dataKey="month"
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1a1a1d",
+                    border: "1px solid #2a2a2d",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#9146ff"
+                  strokeWidth={2}
+                  dot={{ fill: "#9146ff", r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
           </ResponsiveContainer>
           )}
+          </div>
         </div>
 
         {/* Croissance Discord */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
             Croissance Discord
           </h3>
-          {loadingDiscordData ? (
-            <div className="flex items-center justify-center h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={discordGrowthData}>
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            {loadingDiscordData ? (
+              <div className="flex items-center justify-center w-full h-full min-h-[200px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                <LineChart data={discordGrowthData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="month"
@@ -292,97 +295,100 @@ export default function DashboardPage() {
               </LineChart>
             </ResponsiveContainer>
           )}
+          </div>
         </div>
 
         {/* Activité Discord du mois */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
             Activité Discord du mois
           </h3>
-          {loadingDiscordStats ? (
-            <div className="flex items-center justify-center h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
-            </div>
-          ) : discordStats ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-[#0e0e10] rounded-lg p-3">
-                  <div className="text-xs text-gray-400 mb-1">Messages</div>
-                  <div className="text-2xl font-bold text-[#5865F2]">
-                    {discordStats.totalMessages.toLocaleString()}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {loadingDiscordStats ? (
+              <div className="flex items-center justify-center w-full h-full min-h-[200px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
+              </div>
+            ) : discordStats ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-[#0e0e10] rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Messages</div>
+                    <div className="text-2xl font-bold text-[#5865F2]">
+                      {discordStats.totalMessages.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-[#0e0e10] rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Heures vocales</div>
+                    <div className="text-2xl font-bold text-[#5865F2]">
+                      {discordStats.totalVoiceHours.toFixed(1)}
+                    </div>
                   </div>
                 </div>
-                <div className="bg-[#0e0e10] rounded-lg p-3">
-                  <div className="text-xs text-gray-400 mb-1">Heures vocales</div>
-                  <div className="text-2xl font-bold text-[#5865F2]">
-                    {discordStats.totalVoiceHours.toFixed(1)}
+                <div>
+                  <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Messages)</div>
+                  <div className="space-y-2 mb-4">
+                    {discordStats.topMessages.length > 0 ? (
+                      discordStats.topMessages.map((member) => (
+                        <div key={member.rank} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">#{member.rank}</span>
+                            <span className="text-white">{member.displayName}</span>
+                          </div>
+                          <div className="text-gray-400">
+                            <span>{member.messages.toLocaleString()} msgs</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500 text-center py-2">
+                        Aucune donnée disponible
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Vocaux)</div>
+                  <div className="space-y-2">
+                    {discordStats.topVocals.length > 0 ? (
+                      discordStats.topVocals.map((member) => (
+                        <div key={member.rank} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">#{member.rank}</span>
+                            <span className="text-white">{member.displayName}</span>
+                          </div>
+                          <div className="text-gray-400">
+                            <span>{member.display}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500 text-center py-2">
+                        Aucune donnée disponible
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Messages)</div>
-                <div className="space-y-2 mb-4">
-                  {discordStats.topMessages.length > 0 ? (
-                    discordStats.topMessages.map((member) => (
-                      <div key={member.rank} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500">#{member.rank}</span>
-                          <span className="text-white">{member.displayName}</span>
-                        </div>
-                        <div className="text-gray-400">
-                          <span>{member.messages.toLocaleString()} msgs</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-500 text-center py-2">
-                      Aucune donnée disponible
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Vocaux)</div>
-                <div className="space-y-2">
-                  {discordStats.topVocals.length > 0 ? (
-                    discordStats.topVocals.map((member) => (
-                      <div key={member.rank} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500">#{member.rank}</span>
-                          <span className="text-white">{member.displayName}</span>
-                        </div>
-                        <div className="text-gray-400">
-                          <span>{member.display}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-500 text-center py-2">
-                      Aucune donnée disponible
-                    </div>
-                  )}
+                <div className="pt-4 border-t border-gray-700 space-y-2">
+                  <button
+                    onClick={() => setShowMessagesImport(true)}
+                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    📥 Import messages (copier-coller)
+                  </button>
+                  <button
+                    onClick={() => setShowVocalsImport(true)}
+                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    📥 Import vocaux (copier-coller)
+                  </button>
                 </div>
               </div>
-              <div className="pt-4 border-t border-gray-700 space-y-2">
-                <button
-                  onClick={() => setShowMessagesImport(true)}
-                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  📥 Import messages (copier-coller)
-                </button>
-                <button
-                  onClick={() => setShowVocalsImport(true)}
-                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  📥 Import vocaux (copier-coller)
-                </button>
+            ) : (
+              <div className="text-sm text-gray-500 text-center py-8">
+                Aucune donnée disponible pour ce mois
               </div>
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500 text-center py-8">
-              Aucune donnée disponible pour ce mois
-            </div>
-          )}
+            )}
+          </div>
         </div>
-        </div>
+      </div>
 
         {/* Section 2 — Analyses Spotlight & Raids (3 cartes) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
