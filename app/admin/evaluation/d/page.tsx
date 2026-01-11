@@ -125,6 +125,7 @@ export default function EvaluationDPage() {
   const [editingFinalNotes, setEditingFinalNotes] = useState<Record<string, number | null>>({});
   const [editingStatuses, setEditingStatuses] = useState<Record<string, boolean>>({});
   const [editingRoles, setEditingRoles] = useState<Record<string, string>>({}); // Pour forcer Communauté/VIP
+  const [editingVips, setEditingVips] = useState<Record<string, boolean>>({}); // Pour forcer VIP (isVip)
 
   useEffect(() => {
     async function checkAccess() {
@@ -447,7 +448,7 @@ export default function EvaluationDPage() {
       }
       
       // Sauvegarder les notes finales et statuts
-      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0 || Object.keys(editingRoles).length > 0) {
+      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0 || Object.keys(editingRoles).length > 0 || Object.keys(editingVips).length > 0) {
         const updates = [];
         
         // Récupérer tous les logins uniques
@@ -455,6 +456,7 @@ export default function EvaluationDPage() {
           ...Object.keys(editingFinalNotes),
           ...Object.keys(editingStatuses),
           ...Object.keys(editingRoles),
+          ...Object.keys(editingVips),
         ]);
         
         for (const login of allLogins) {
@@ -464,6 +466,7 @@ export default function EvaluationDPage() {
             finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
             isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
             role: editingRoles[login] !== undefined ? editingRoles[login] : undefined,
+            isVip: editingVips[normalizedLogin] !== undefined ? editingVips[normalizedLogin] : undefined,
           });
         }
         
@@ -488,6 +491,7 @@ export default function EvaluationDPage() {
       setEditingFinalNotes({});
       setEditingStatuses({});
       setEditingRoles({});
+      setEditingVips({});
       alert('✅ Toutes les modifications ont été enregistrées avec succès');
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -558,13 +562,21 @@ export default function EvaluationDPage() {
         [login]: 'Communauté',
       }));
     } else if (role === 'VIP') {
-      // Pour VIP, on ne change pas le rôle directement, mais on peut ajouter le badge VIP
-      // Ici on peut juste marquer pour une action future, ou changer isVip
-      // Pour l'instant, on ne fait rien car VIP n'est pas un rôle mais un statut (isVip)
-      // L'utilisateur veut peut-être juste forcer le statut VIP, mais ce n'est pas clair
-      // On va juste mettre un indicateur pour l'instant
-      alert('Le statut VIP est géré via isVip, pas via le rôle. Utilisez la gestion des VIP pour cela.');
+      // Forcer VIP = isVip = true
+      const normalizedLogin = login.toLowerCase();
+      setEditingVips(prev => ({
+        ...prev,
+        [normalizedLogin]: true,
+      }));
     }
+  }
+  
+  function handleVipToggle(login: string, isVip: boolean) {
+    const normalizedLogin = login.toLowerCase();
+    setEditingVips(prev => ({
+      ...prev,
+      [normalizedLogin]: isVip,
+    }));
   }
   
   // Fonction pour sauvegarder uniquement les modifications manuelles (notes finales)
@@ -612,7 +624,8 @@ export default function EvaluationDPage() {
     return Object.keys(editingBonuses).length + 
            Object.keys(editingFinalNotes).length + 
            Object.keys(editingStatuses).length +
-           Object.keys(editingRoles).length;
+           Object.keys(editingRoles).length +
+           Object.keys(editingVips).length;
   }
 
   function getMonthOptions(): string[] {
@@ -1050,16 +1063,16 @@ export default function EvaluationDPage() {
                             Forcer Communauté
                           </button>
                           <button
-                            onClick={() => handleForceRole(member.twitchLogin, 'VIP')}
+                            onClick={() => handleVipToggle(member.twitchLogin, !currentIsVip)}
                             className="px-3 py-1 rounded text-xs font-medium transition-colors"
                             style={{
-                              backgroundColor: member.isVip ? '#10b981' : '#10b98120',
-                              color: member.isVip ? 'white' : '#10b981',
+                              backgroundColor: currentIsVip ? '#10b981' : '#10b98120',
+                              color: currentIsVip ? 'white' : '#10b981',
                               border: '1px solid #10b981',
                             }}
-                            title="Note: VIP est un statut (isVip), pas un rôle"
+                            title={currentIsVip ? "Désactiver le statut VIP" : "Activer le statut VIP"}
                           >
-                            VIP
+                            {currentIsVip ? 'VIP ✓' : 'VIP'}
                           </button>
                         </div>
                       </td>
