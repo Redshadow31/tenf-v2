@@ -99,6 +99,13 @@ export default function DiscordMessagesImportModal({
     const unmatchedData: Record<string, number> = {};
     const unmatchedUsernames: string[] = [];
     const activeLogins = new Set(activeMembers.map(m => m.twitchLogin));
+    // Créer une map discordId -> twitchLogin pour recherche par ID Discord
+    const discordIdMap = new Map<string, string>();
+    activeMembers.forEach(m => {
+      if (m.discordId) {
+        discordIdMap.set(m.discordId, m.twitchLogin);
+      }
+    });
 
     for (const line of lines) {
       const hasTab = line.includes("\t");
@@ -109,11 +116,13 @@ export default function DiscordMessagesImportModal({
       if (columns.length < 2) continue;
 
       let username: string;
+      let userId: string | undefined;
       let messageCount: number;
 
       if (columns.length === 4) {
         // rank username userId messageCount
         username = normalizeUsername(columns[1]);
+        userId = columns[2]?.trim();
         const countStr = columns[3]?.trim();
         messageCount = parseInt(countStr || '0', 10);
       } else if (columns.length === 3) {
@@ -128,6 +137,7 @@ export default function DiscordMessagesImportModal({
         } else {
           // username userId messageCount
           username = normalizeUsername(columns[0]);
+          userId = columns[1]?.trim();
           messageCount = parseInt(columns[2] || '0', 10);
         }
       } else {
@@ -146,9 +156,17 @@ export default function DiscordMessagesImportModal({
 
       if (!username || isNaN(messageCount)) continue;
 
-      // Séparer les membres reconnus des non reconnus
+      // Essayer de matcher par pseudo d'abord
+      let matchedLogin: string | undefined;
       if (activeLogins.has(username)) {
-        messagesByUser[username] = messageCount;
+        matchedLogin = username;
+      } else if (userId && discordIdMap.has(userId)) {
+        // Si pseudo non reconnu, essayer de matcher par ID Discord
+        matchedLogin = discordIdMap.get(userId);
+      }
+
+      if (matchedLogin) {
+        messagesByUser[matchedLogin] = messageCount;
       } else {
         unmatchedData[username] = messageCount;
         if (!unmatchedUsernames.includes(username)) {
