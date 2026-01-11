@@ -458,8 +458,9 @@ export default function EvaluationDPage() {
         ]);
         
         for (const login of allLogins) {
+          const normalizedLogin = login.toLowerCase(); // Normaliser en lowercase pour correspondre à l'API
           updates.push({
-            twitchLogin: login,
+            twitchLogin: normalizedLogin,
             finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
             isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
             role: editingRoles[login] !== undefined ? editingRoles[login] : undefined,
@@ -525,14 +526,15 @@ export default function EvaluationDPage() {
   
   function handleFinalNoteChange(login: string, value: string) {
     const numValue = value === '' ? null : parseFloat(value);
+    const normalizedLogin = login.toLowerCase(); // Normaliser en lowercase pour correspondre à l'API
     setEditingFinalNotes(prev => {
       if (numValue === null) {
-        const { [login]: removed, ...rest } = prev;
+        const { [normalizedLogin]: removed, ...rest } = prev;
         return rest;
       }
       return {
         ...prev,
-        [login]: numValue,
+        [normalizedLogin]: numValue,
       };
     });
   }
@@ -575,7 +577,7 @@ export default function EvaluationDPage() {
       }
       
       const updates = Object.keys(editingFinalNotes).map(login => ({
-        twitchLogin: login,
+        twitchLogin: login.toLowerCase(), // Normaliser en lowercase pour correspondre à l'API
         finalNote: editingFinalNotes[login],
       }));
       
@@ -874,7 +876,8 @@ export default function EvaluationDPage() {
                   const autoStatus = getAutoStatus(finalScore);
                   
                   // Notes finales et statuts en cours d'édition
-                  const finalNoteInEdit = editingFinalNotes[member.twitchLogin];
+                  const normalizedLogin = member.twitchLogin?.toLowerCase() || '';
+                  const finalNoteInEdit = editingFinalNotes[normalizedLogin];
                   const statusInEdit = editingStatuses[member.twitchLogin];
                   const currentIsActive = statusInEdit !== undefined ? statusInEdit : member.isActive;
                   
