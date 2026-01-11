@@ -2,7 +2,7 @@
 // Utilisé dans les routes API
 
 import { cookies } from "next/headers";
-import { getAdminRole, hasAdminDashboardAccess, hasPermission, type AdminRole, type Permission } from "./adminRoles";
+import { getAdminRole, hasAdminDashboardAccess, hasPermission, ROLE_PERMISSIONS, type AdminRole, type Permission } from "./adminRoles";
 import { logAdminAction } from "./adminAudit";
 
 export interface AdminUser {
@@ -79,7 +79,6 @@ export async function requirePermission(permission: Permission): Promise<AdminUs
   }
 
   // Vérifier les permissions en utilisant directement le rôle de l'admin (qui inclut le cache Blobs)
-  const { ROLE_PERMISSIONS } = await import('./adminRoles');
   const permissions = ROLE_PERMISSIONS[admin.role] || [];
   if (!permissions.includes(permission)) {
     return null;
