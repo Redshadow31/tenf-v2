@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Vérifier l'accès avec le nouveau système de rôles (incluant le cache Blobs)
-    const { hasAdminDashboardAccessAsync } = await import('@/lib/adminRoles');
+    const { hasAdminDashboardAccessAsync } = await import('@/lib/adminAccessCheck');
     if (!(await hasAdminDashboardAccessAsync(admin.id))) {
       return NextResponse.json(
         { error: "Accès refusé. Réservé aux administrateurs." },
