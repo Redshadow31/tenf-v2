@@ -71,14 +71,6 @@ const defaultTextRanking = [
   { id: 4, name: "Red", avatar: "https://placehold.co/40x40?text=R", value: 1238, progression: "+1" },
 ];
 
-const defaultTopClips = [
-  { id: 1, name: "Jenny", avatar: "https://placehold.co/64x64?text=J", duration: "316 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-  { id: 2, name: "Clara", avatar: "https://placehold.co/64x64?text=C", duration: "281 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-  { id: 3, name: "NeXou", avatar: "https://placehold.co/64x64?text=N", duration: "245 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-  { id: 4, name: "Red", avatar: "https://placehold.co/64x64?text=R", duration: "198 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-];
-
-
 export default function DashboardPage() {
   const [discordGrowthData, setDiscordGrowthData] = useState(defaultDiscordGrowthData);
   const [loadingDiscordData, setLoadingDiscordData] = useState(true);

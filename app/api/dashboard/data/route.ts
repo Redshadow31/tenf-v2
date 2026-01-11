@@ -20,7 +20,6 @@ export async function GET() {
         spotlightProgression: data.spotlightProgression,
         vocalRanking: data.vocalRanking,
         textRanking: data.textRanking,
-        topClips: data.topClips,
       },
     });
   } catch (error) {
