@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { hasAdminDashboardAccess } from "@/lib/admin";
 
 export default function EvaluationBEventsServeurPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -13,10 +12,11 @@ export default function EvaluationBEventsServeurPage() {
   useEffect(() => {
     async function checkAccess() {
       try {
-        const user = await getDiscordUser();
-        if (user) {
-          const access = hasAdminDashboardAccess(user.id);
-          setHasAccess(access);
+        // Utiliser l'API pour vérifier l'accès (supporte le cache Blobs et les rôles dans données membres)
+        const response = await fetch('/api/user/role');
+        if (response.ok) {
+          const data = await response.json();
+          setHasAccess(data.hasAdminAccess === true);
         } else {
           setHasAccess(false);
         }
