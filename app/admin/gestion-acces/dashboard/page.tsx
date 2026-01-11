@@ -19,27 +19,22 @@ interface RankingMember {
   messages?: number; // Pour vocalRanking
 }
 
-interface TopClip {
-  id: number;
-  name: string;
-  avatar: string;
-  duration: string;
-  thumbnail: string;
-}
-
 interface DashboardData {
   twitchActivity: MonthlyDataPoint[];
+  discordGrowth: MonthlyDataPoint[];
+  discordActivity: MonthlyDataPoint[];
   spotlightProgression: MonthlyDataPoint[];
+  raidsReceived: MonthlyDataPoint[];
+  raidsSent: MonthlyDataPoint[];
   vocalRanking: RankingMember[];
   textRanking: RankingMember[];
-  topClips: TopClip[];
   lastUpdated?: string;
   updatedBy?: string;
 }
 
 const MONTHS = ["Janv", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
 
-type TabId = 'twitch' | 'discord' | 'vocal' | 'text' | 'clips';
+type TabId = 'twitch' | 'discordGrowth' | 'discordActivity' | 'spotlight' | 'raidsReceived' | 'raidsSent' | 'vocal' | 'text';
 
 export default function DashboardManagementPage() {
   const [loading, setLoading] = useState(true);
@@ -50,10 +45,13 @@ export default function DashboardManagementPage() {
   const [activeTab, setActiveTab] = useState<TabId>('twitch');
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     twitchActivity: [],
+    discordGrowth: [],
+    discordActivity: [],
     spotlightProgression: [],
+    raidsReceived: [],
+    raidsSent: [],
     vocalRanking: [],
     textRanking: [],
-    topClips: [],
   });
 
   // Vérifier si l'utilisateur est fondateur
@@ -152,7 +150,7 @@ export default function DashboardManagementPage() {
     }
   }
 
-  function addDataPoint(section: 'twitchActivity' | 'spotlightProgression', month: string, value: number) {
+  function addDataPoint(section: 'twitchActivity' | 'discordGrowth' | 'discordActivity' | 'spotlightProgression' | 'raidsReceived' | 'raidsSent', month: string, value: number) {
     setDashboardData(prev => ({
       ...prev,
       [section]: [...prev[section], { month, value }].sort((a, b) => {
@@ -163,7 +161,7 @@ export default function DashboardManagementPage() {
     }));
   }
 
-  function updateDataPoint(section: 'twitchActivity' | 'spotlightProgression', index: number, month: string, value: number) {
+  function updateDataPoint(section: 'twitchActivity' | 'discordGrowth' | 'discordActivity' | 'spotlightProgression' | 'raidsReceived' | 'raidsSent', index: number, month: string, value: number) {
     setDashboardData(prev => ({
       ...prev,
       [section]: prev[section].map((item, i) => 
@@ -172,7 +170,7 @@ export default function DashboardManagementPage() {
     }));
   }
 
-  function removeDataPoint(section: 'twitchActivity' | 'spotlightProgression', index: number) {
+  function removeDataPoint(section: 'twitchActivity' | 'discordGrowth' | 'discordActivity' | 'spotlightProgression' | 'raidsReceived' | 'raidsSent', index: number) {
     setDashboardData(prev => ({
       ...prev,
       [section]: prev[section].filter((_, i) => i !== index),
@@ -202,28 +200,6 @@ export default function DashboardManagementPage() {
     }));
   }
 
-  function addTopClip(clip: TopClip) {
-    setDashboardData(prev => ({
-      ...prev,
-      topClips: [...prev.topClips, clip],
-    }));
-  }
-
-  function updateTopClip(index: number, clip: TopClip) {
-    setDashboardData(prev => ({
-      ...prev,
-      topClips: prev.topClips.map((item, i) => 
-        i === index ? clip : item
-      ),
-    }));
-  }
-
-  function removeTopClip(index: number) {
-    setDashboardData(prev => ({
-      ...prev,
-      topClips: prev.topClips.filter((_, i) => i !== index),
-    }));
-  }
 
   if (loading && !isFounder) {
     return (
@@ -309,13 +285,16 @@ export default function DashboardManagementPage() {
           <>
             {/* Système d'onglets */}
             <div className="mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
-              <nav className="flex space-x-1" style={{ backgroundColor: 'var(--color-bg)' }}>
+              <nav className="flex space-x-1 flex-wrap" style={{ backgroundColor: 'var(--color-bg)' }}>
                 {[
                   { id: 'twitch' as TabId, label: 'Activité Twitch', icon: '🎮' },
-                  { id: 'discord' as TabId, label: 'Progression Spotlight', icon: '⭐' },
-                  { id: 'vocal' as TabId, label: 'Top Vocaux', icon: '🎤' },
-                  { id: 'text' as TabId, label: 'Top Écrits', icon: '💬' },
-                  { id: 'clips' as TabId, label: 'Top Clips', icon: '🎬' },
+                  { id: 'discordGrowth' as TabId, label: 'Croissance Discord', icon: '📈' },
+                  { id: 'discordActivity' as TabId, label: 'Activité Discord du mois', icon: '💬' },
+                  { id: 'spotlight' as TabId, label: 'Progression Spotlight', icon: '⭐' },
+                  { id: 'raidsReceived' as TabId, label: 'Raids reçus', icon: '🎯' },
+                  { id: 'raidsSent' as TabId, label: 'Raids envoyés', icon: '🚀' },
+                  { id: 'vocal' as TabId, label: 'Classement vocal Discord', icon: '🎤' },
+                  { id: 'text' as TabId, label: 'Classement texte Discord', icon: '📝' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -363,7 +342,31 @@ export default function DashboardManagementPage() {
                 />
               )}
 
-              {activeTab === 'discord' && (
+              {activeTab === 'discordGrowth' && (
+                <DataSection
+                  title="Croissance Discord"
+                  description="Données mensuelles pour le graphique de croissance Discord"
+                  data={dashboardData.discordGrowth}
+                  onAdd={(month, value) => addDataPoint('discordGrowth', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('discordGrowth', index, month, value)}
+                  onRemove={(index) => removeDataPoint('discordGrowth', index)}
+                  type="monthly"
+                />
+              )}
+
+              {activeTab === 'discordActivity' && (
+                <DataSection
+                  title="Activité Discord du mois"
+                  description="Données mensuelles pour l'activité Discord"
+                  data={dashboardData.discordActivity}
+                  onAdd={(month, value) => addDataPoint('discordActivity', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('discordActivity', index, month, value)}
+                  onRemove={(index) => removeDataPoint('discordActivity', index)}
+                  type="monthly"
+                />
+              )}
+
+              {activeTab === 'spotlight' && (
                 <DataSection
                   title="Progression Spotlight"
                   description="Données mensuelles pour le graphique de progression Spotlight"
@@ -375,9 +378,33 @@ export default function DashboardManagementPage() {
                 />
               )}
 
+              {activeTab === 'raidsReceived' && (
+                <DataSection
+                  title="Raids reçus"
+                  description="Données mensuelles pour les raids reçus"
+                  data={dashboardData.raidsReceived}
+                  onAdd={(month, value) => addDataPoint('raidsReceived', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('raidsReceived', index, month, value)}
+                  onRemove={(index) => removeDataPoint('raidsReceived', index)}
+                  type="monthly"
+                />
+              )}
+
+              {activeTab === 'raidsSent' && (
+                <DataSection
+                  title="Raids envoyés"
+                  description="Données mensuelles pour les raids envoyés"
+                  data={dashboardData.raidsSent}
+                  onAdd={(month, value) => addDataPoint('raidsSent', month, value)}
+                  onUpdate={(index, month, value) => updateDataPoint('raidsSent', index, month, value)}
+                  onRemove={(index) => removeDataPoint('raidsSent', index)}
+                  type="monthly"
+                />
+              )}
+
               {activeTab === 'vocal' && (
                 <RankingSection
-                  title="Top Membres Vocaux"
+                  title="Classement vocal Discord"
                   description="Classement des membres par heures vocales"
                   data={dashboardData.vocalRanking}
                   onAdd={(member) => addRankingMember('vocalRanking', member)}
@@ -389,7 +416,7 @@ export default function DashboardManagementPage() {
 
               {activeTab === 'text' && (
                 <RankingSection
-                  title="Top Membres Messages"
+                  title="Classement texte Discord"
                   description="Classement des membres par nombre de messages"
                   data={dashboardData.textRanking}
                   onAdd={(member) => addRankingMember('textRanking', member)}
@@ -397,17 +424,6 @@ export default function DashboardManagementPage() {
                   onRemove={(index) => removeRankingMember('textRanking', index)}
                   valueLabel="Messages"
                   showProgression={true}
-                />
-              )}
-
-              {activeTab === 'clips' && (
-                <TopClipsSection
-                  title="Top Clips"
-                  description="Meilleurs clips de la communauté"
-                  data={dashboardData.topClips}
-                  onAdd={(clip) => addTopClip(clip)}
-                  onUpdate={(index, clip) => updateTopClip(index, clip)}
-                  onRemove={(index) => removeTopClip(index)}
                 />
               )}
             </div>
@@ -729,175 +745,6 @@ function RankingSection({
         >
           <Plus className="w-4 h-4" />
           Ajouter
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Composant pour les top clips
-function TopClipsSection({
-  title,
-  description,
-  data,
-  onAdd,
-  onUpdate,
-  onRemove,
-}: {
-  title: string;
-  description: string;
-  data: TopClip[];
-  onAdd: (clip: TopClip) => void;
-  onUpdate: (index: number, clip: TopClip) => void;
-  onRemove: (index: number) => void;
-}) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [newName, setNewName] = useState("");
-  const [newAvatar, setNewAvatar] = useState("");
-  const [newDuration, setNewDuration] = useState("");
-  const [newThumbnail, setNewThumbnail] = useState("");
-
-  const handleAdd = () => {
-    if (newName && newAvatar && newDuration && newThumbnail) {
-      onAdd({
-        id: Date.now(),
-        name: newName,
-        avatar: newAvatar,
-        duration: newDuration,
-        thumbnail: newThumbnail,
-      });
-      setNewName("");
-      setNewAvatar("");
-      setNewDuration("");
-      setNewThumbnail("");
-    }
-  };
-
-  return (
-    <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{title}</h3>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{description}</p>
-      </div>
-
-      {/* Liste des clips */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        {data.map((clip, index) => (
-          <div key={clip.id || index} className="p-4 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-            {editingIndex === index ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={clip.name}
-                  onChange={(e) => onUpdate(index, { ...clip, name: e.target.value })}
-                  placeholder="Nom"
-                  className="w-full px-3 py-1 rounded border text-sm"
-                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                />
-                <input
-                  type="text"
-                  value={clip.avatar}
-                  onChange={(e) => onUpdate(index, { ...clip, avatar: e.target.value })}
-                  placeholder="URL Avatar"
-                  className="w-full px-3 py-1 rounded border text-sm"
-                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                />
-                <input
-                  type="text"
-                  value={clip.duration}
-                  onChange={(e) => onUpdate(index, { ...clip, duration: e.target.value })}
-                  placeholder="Durée (ex: 316 h)"
-                  className="w-full px-3 py-1 rounded border text-sm"
-                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                />
-                <input
-                  type="text"
-                  value={clip.thumbnail}
-                  onChange={(e) => onUpdate(index, { ...clip, thumbnail: e.target.value })}
-                  placeholder="URL Thumbnail"
-                  className="w-full px-3 py-1 rounded border text-sm"
-                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                />
-                <button
-                  onClick={() => setEditingIndex(null)}
-                  className="w-full px-3 py-1 rounded text-sm text-white"
-                  style={{ backgroundColor: '#10b981' }}
-                >
-                  ✓ Enregistrer
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 mb-2">
-                  <img src={clip.avatar} alt={clip.name} className="w-12 h-12 rounded-full" />
-                  <div className="flex-1">
-                    <div className="font-medium" style={{ color: 'var(--color-text)' }}>{clip.name}</div>
-                    <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{clip.duration}</div>
-                  </div>
-                  <button
-                    onClick={() => setEditingIndex(index)}
-                    className="px-3 py-1 rounded text-sm text-white"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => onRemove(index)}
-                    className="px-3 py-1 rounded text-sm text-white"
-                    style={{ backgroundColor: '#dc2626' }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <img src={clip.thumbnail} alt={clip.name} className="w-full rounded" />
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Ajouter un nouveau clip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nom"
-          className="px-3 py-1 rounded border text-sm"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        />
-        <input
-          type="text"
-          value={newAvatar}
-          onChange={(e) => setNewAvatar(e.target.value)}
-          placeholder="URL Avatar"
-          className="px-3 py-1 rounded border text-sm"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        />
-        <input
-          type="text"
-          value={newDuration}
-          onChange={(e) => setNewDuration(e.target.value)}
-          placeholder="Durée (ex: 316 h)"
-          className="px-3 py-1 rounded border text-sm"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        />
-        <input
-          type="text"
-          value={newThumbnail}
-          onChange={(e) => setNewThumbnail(e.target.value)}
-          placeholder="URL Thumbnail"
-          className="px-3 py-1 rounded border text-sm"
-          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        />
-        <button
-          onClick={handleAdd}
-          disabled={!newName || !newAvatar || !newDuration || !newThumbnail}
-          className="col-span-2 md:col-span-4 px-4 py-1 rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          style={{ backgroundColor: 'var(--color-primary)' }}
-        >
-          <Plus className="w-4 h-4" />
-          Ajouter un clip
         </button>
       </div>
     </div>

@@ -139,3 +139,4 @@ export async function getSpotlightEvaluationNote(
   return data.notes[twitchLogin.toLowerCase()]?.note;
 }
 
+

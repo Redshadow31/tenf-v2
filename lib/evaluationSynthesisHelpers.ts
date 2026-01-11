@@ -101,3 +101,4 @@ export function calculateSeniority(createdAt?: string): string {
   }
 }
 
+

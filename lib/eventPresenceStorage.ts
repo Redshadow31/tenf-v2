@@ -216,3 +216,4 @@ export async function loadPresencesByMonth(monthKey: string): Promise<Record<str
   }
 }
 
+

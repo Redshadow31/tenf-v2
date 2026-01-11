@@ -8,7 +8,6 @@ import {
   DashboardData,
   MonthlyDataPoint,
   RankingMember,
-  TopClip,
 } from '@/lib/dashboardDataStorage';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
@@ -55,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * PUT - Met à jour les données du dashboard
- * Body: { section: string, data: MonthlyDataPoint[] | RankingMember[] | TopClip[], ... }
+ * Body: { section: string, data: MonthlyDataPoint[] | RankingMember[], ... }
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -96,12 +95,15 @@ export async function PUT(request: NextRequest) {
       });
     } else if (section && data) {
       // Mise à jour d'une section spécifique
-      const validSections: Array<keyof Pick<DashboardData, 'twitchActivity' | 'spotlightProgression' | 'vocalRanking' | 'textRanking' | 'topClips'>> = [
+      const validSections: Array<keyof Pick<DashboardData, 'twitchActivity' | 'discordGrowth' | 'discordActivity' | 'spotlightProgression' | 'raidsReceived' | 'raidsSent' | 'vocalRanking' | 'textRanking'>> = [
         'twitchActivity',
+        'discordGrowth',
+        'discordActivity',
         'spotlightProgression',
+        'raidsReceived',
+        'raidsSent',
         'vocalRanking',
         'textRanking',
-        'topClips',
       ];
 
       if (!validSections.includes(section)) {
@@ -131,4 +133,5 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
 

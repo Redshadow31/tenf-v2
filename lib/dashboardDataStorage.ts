@@ -32,10 +32,13 @@ export interface TopClip {
 
 export interface DashboardData {
   twitchActivity: MonthlyDataPoint[]; // Graphique activité Twitch
+  discordGrowth: MonthlyDataPoint[]; // Graphique croissance Discord
+  discordActivity: MonthlyDataPoint[]; // Activité Discord du mois
   spotlightProgression: MonthlyDataPoint[]; // Graphique progression Spotlight
-  vocalRanking: RankingMember[]; // Top membres vocaux
-  textRanking: RankingMember[]; // Top membres messages
-  topClips: TopClip[]; // Top clips
+  raidsReceived: MonthlyDataPoint[]; // Raids reçus
+  raidsSent: MonthlyDataPoint[]; // Raids envoyés
+  vocalRanking: RankingMember[]; // Classement vocal Discord
+  textRanking: RankingMember[]; // Classement texte Discord
   lastUpdated: string; // ISO timestamp
   updatedBy?: string; // Discord ID de l'admin qui a mis à jour
 }
@@ -63,6 +66,21 @@ const defaultDashboardData: DashboardData = {
     { month: "Nov", value: 100 },
     { month: "Déc", value: 115 },
   ],
+  discordGrowth: [
+    { month: "Janv", value: 160 },
+    { month: "Fév", value: 180 },
+    { month: "Mar", value: 200 },
+    { month: "Avr", value: 220 },
+    { month: "Mai", value: 250 },
+    { month: "Juin", value: 280 },
+    { month: "Juil", value: 300 },
+    { month: "Août", value: 320 },
+    { month: "Sept", value: 350 },
+    { month: "Oct", value: 380 },
+    { month: "Nov", value: 400 },
+    { month: "Déc", value: 420 },
+  ],
+  discordActivity: [],
   spotlightProgression: [
     { month: "Mai", value: 45 },
     { month: "Juin", value: 52 },
@@ -73,6 +91,8 @@ const defaultDashboardData: DashboardData = {
     { month: "Nov", value: 88 },
     { month: "Déc", value: 95 },
   ],
+  raidsReceived: [],
+  raidsSent: [],
   vocalRanking: [
     { id: 1, name: "Jenny", avatar: "https://placehold.co/40x40?text=J", value: 58 },
     { id: 2, name: "Clara", avatar: "https://placehold.co/40x40?text=C", value: 71 },
@@ -84,12 +104,6 @@ const defaultDashboardData: DashboardData = {
     { id: 2, name: "Clara", avatar: "https://placehold.co/40x40?text=C", value: 1872, progression: "-2" },
     { id: 3, name: "NeXou", avatar: "https://placehold.co/40x40?text=N", value: 1763, progression: "-4" },
     { id: 4, name: "Red", avatar: "https://placehold.co/40x40?text=R", value: 1238, progression: "+1" },
-  ],
-  topClips: [
-    { id: 1, name: "Jenny", avatar: "https://placehold.co/64x64?text=J", duration: "316 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-    { id: 2, name: "Clara", avatar: "https://placehold.co/64x64?text=C", duration: "281 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-    { id: 3, name: "NeXou", avatar: "https://placehold.co/64x64?text=N", duration: "245 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
-    { id: 4, name: "Red", avatar: "https://placehold.co/64x64?text=R", duration: "198 h", thumbnail: "https://placehold.co/120x68?text=Clip" },
   ],
   lastUpdated: new Date().toISOString(),
 };
@@ -168,8 +182,8 @@ export async function saveDashboardData(data: DashboardData, updatedBy?: string)
 }
 
 export async function updateDashboardSection(
-  section: keyof Pick<DashboardData, 'twitchActivity' | 'spotlightProgression' | 'vocalRanking' | 'textRanking' | 'topClips'>,
-  data: MonthlyDataPoint[] | RankingMember[] | TopClip[],
+  section: keyof Pick<DashboardData, 'twitchActivity' | 'discordGrowth' | 'discordActivity' | 'spotlightProgression' | 'raidsReceived' | 'raidsSent' | 'vocalRanking' | 'textRanking'>,
+  data: MonthlyDataPoint[] | RankingMember[],
   updatedBy?: string
 ): Promise<void> {
   const currentData = await loadDashboardData();
@@ -181,4 +195,5 @@ export async function updateDashboardSection(
   };
   await saveDashboardData(updatedData, updatedBy);
 }
+
 

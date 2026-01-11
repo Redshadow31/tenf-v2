@@ -92,7 +92,6 @@ export default function DashboardPage() {
   const [spotlightProgressionData, setSpotlightProgressionData] = useState(defaultSpotlightProgression);
   const [vocalRanking, setVocalRanking] = useState(defaultVocalRanking);
   const [textRanking, setTextRanking] = useState(defaultTextRanking);
-  const [topClips, setTopClips] = useState(defaultTopClips);
   const [loadingDashboardData, setLoadingDashboardData] = useState(true);
 
   // Charger les données du dashboard depuis l'API
@@ -113,7 +112,6 @@ export default function DashboardPage() {
             setSpotlightProgressionData(result.data.spotlightProgression || defaultSpotlightProgression);
             setVocalRanking(result.data.vocalRanking || defaultVocalRanking);
             setTextRanking(result.data.textRanking || defaultTextRanking);
-            setTopClips(result.data.topClips || defaultTopClips);
           }
         }
       } catch (error) {
@@ -559,39 +557,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Section 4 — Clips top */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Clips top</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {topClips.map((clip) => (
-              <div
-                key={clip.id}
-                className="bg-[#0e0e10] border border-[#2a2a2d] rounded-lg overflow-hidden hover:border-[#9146ff] transition-colors"
-              >
-                <div className="aspect-video w-full bg-gray-800 relative">
-                  <img
-                    src={clip.thumbnail}
-                    alt={clip.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <img
-                      src={clip.avatar}
-                      alt={clip.name}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                    <span className="text-sm font-semibold text-white">
-                      {clip.name}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-400">{clip.duration}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </>
   );
