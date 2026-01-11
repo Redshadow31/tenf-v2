@@ -39,7 +39,7 @@ export default function DiscordVocalsImportModal({
   const [text, setText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
-  const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string }>>([]);
+  const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string; discordId?: string; discordUsername?: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
 
@@ -66,6 +66,8 @@ export default function DiscordVocalsImportModal({
           .map((m: any) => ({
             twitchLogin: (m.twitchLogin || '').toLowerCase(),
             displayName: m.displayName || m.twitchLogin || '',
+            discordId: m.discordId,
+            discordUsername: m.discordUsername,
           }));
         setActiveMembers(members);
       }
