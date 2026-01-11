@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ hasAdminAccess: false, role: null });
     }
 
-    // Vérifier d'abord via lib/admin.ts (pour les fondateurs et admins)
+    // Vérifier d'abord les fondateurs (hardcodés)
     if (isFounder(userId)) {
       console.log('User role check - Found as Founder');
       return NextResponse.json({ 
@@ -25,43 +25,9 @@ export async function GET() {
       });
     }
 
-    if (isAdmin(userId)) {
-      console.log('User role check - Found as Admin');
-      return NextResponse.json({ 
-        hasAdminAccess: true,
-        role: "Admin",
-      });
-    }
-
-    if (isModerator(userId)) {
-      console.log('User role check - Found as Moderator');
-      return NextResponse.json({ 
-        hasAdminAccess: true,
-        role: "Modérateur Junior",
-      });
-    }
-
-    console.log('User role check - Not found in admin list, checking memberDataStore...');
-
-    // Sinon, chercher dans memberDataStore
-    const memberData = getAllMemberData();
-    const member = memberData.find(m => m.discordId === userId);
-
-    if (member) {
-      const role = member.role;
-      // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
-      const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
-      const hasAdminAccess = allowedRoles.includes(role);
-
-      console.log('User role check - Found in memberDataStore:', { role, hasAdminAccess });
-      return NextResponse.json({ 
-        hasAdminAccess,
-        role,
-      });
-    }
-
-    // Si pas trouvé dans memberDataStore, vérifier le cache Blobs (membres ajoutés via l'interface admin)
-    console.log('User role check - Not in memberDataStore, checking Blobs cache...');
+    // Vérifier le cache Blobs AVANT de vérifier les rôles hardcodés
+    // (car les membres ajoutés manuellement ont priorité)
+    console.log('User role check - Checking Blobs cache first...');
     try {
       const { loadAdminAccessCache, getAdminRoleFromCache } = await import('@/lib/adminAccessCache');
       await loadAdminAccessCache();
@@ -85,6 +51,42 @@ export async function GET() {
       }
     } catch (error) {
       console.warn('User role check - Error checking Blobs cache:', error);
+    }
+
+    // Ensuite vérifier les rôles hardcodés (pour compatibilité)
+    if (isAdmin(userId)) {
+      console.log('User role check - Found as Admin (hardcoded)');
+      return NextResponse.json({ 
+        hasAdminAccess: true,
+        role: "Admin",
+      });
+    }
+
+    if (isModerator(userId)) {
+      console.log('User role check - Found as Moderator (hardcoded)');
+      return NextResponse.json({ 
+        hasAdminAccess: true,
+        role: "Modérateur Junior",
+      });
+    }
+
+    console.log('User role check - Not found in admin list, checking memberDataStore...');
+
+    // Sinon, chercher dans memberDataStore
+    const memberData = getAllMemberData();
+    const member = memberData.find(m => m.discordId === userId);
+
+    if (member) {
+      const role = member.role;
+      // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
+      const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
+      const hasAdminAccess = allowedRoles.includes(role);
+
+      console.log('User role check - Found in memberDataStore:', { role, hasAdminAccess });
+      return NextResponse.json({ 
+        hasAdminAccess,
+        role,
+      });
     }
 
     // Si pas trouvé dans Blobs, vérifier directement via Discord API
