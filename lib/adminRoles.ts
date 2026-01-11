@@ -25,28 +25,18 @@ export const FOUNDERS: string[] = [
 ];
 
 const ADMINS_ADJOINTS: string[] = [
-  "372124598252077057",
-  "1064901617289269318",
-  "1304717040887660704",
-  "1236323288544972960",
+  // Tous les admins adjoints ont été retirés du hardcode
+  // Utiliser la page /admin/gestion-acces pour gérer les accès
 ];
 
 const MODOS_MENTORS: string[] = [
-  "721805397295497237",
-  "701817098027925505",
-  "921082132259024927",
-  "546513497404735489",
-  "726438071108894760",
+  // Tous les modos mentors ont été retirés du hardcode
+  // Utiliser la page /admin/gestion-acces pour gérer les accès
 ];
 
 const MODOS_JUNIORS: string[] = [
-  "1297107200623513645",
-  "188305426960351232",
-  "689798133932228649",
-  "991741991530537011",
-  "933465757403209758",
-  "867006377494577203",
-  "177710130853314561",
+  // Tous les modos juniors ont été retirés du hardcode
+  // Utiliser la page /admin/gestion-acces pour gérer les accès
 ];
 
 // ============================================
