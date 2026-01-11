@@ -86,10 +86,19 @@ export async function GET(request: NextRequest) {
         rank: index + 1,
       }));
 
-    // Calculer les totaux
-    const totalMessages = Object.values(activityData.messagesByUser || {}).reduce((sum, count) => sum + count, 0);
+    // Calculer les totaux (inclure TOUS les membres, même non reconnus)
+    // Les données peuvent contenir des pseudos Discord non reconnus comme clés
+    const totalMessages = Object.values(activityData.messagesByUser || {}).reduce((sum, count) => {
+      const numCount = typeof count === 'number' ? count : 0;
+      return sum + numCount;
+    }, 0);
     const totalVoiceHours = Object.values(activityData.vocalsByUser || {})
-      .reduce((sum, data) => sum + data.hoursDecimal, 0);
+      .reduce((sum, data) => {
+        if (typeof data === 'object' && data !== null && 'hoursDecimal' in data) {
+          return sum + (data.hoursDecimal || 0);
+        }
+        return sum;
+      }, 0);
 
     return NextResponse.json({
       success: true,
