@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Save, Plus, Trash2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import DiscordGrowthImportModal from "@/components/admin/DiscordGrowthImportModal";
 
 interface MonthlyDataPoint {
   month: string;
@@ -343,7 +344,7 @@ export default function DashboardManagementPage() {
               )}
 
               {activeTab === 'discordGrowth' && (
-                <DataSection
+                <DiscordGrowthSection
                   title="Croissance Discord"
                   description="Données mensuelles pour le graphique de croissance Discord"
                   data={dashboardData.discordGrowth}
@@ -351,6 +352,7 @@ export default function DashboardManagementPage() {
                   onUpdate={(index, month, value) => updateDataPoint('discordGrowth', index, month, value)}
                   onRemove={(index) => removeDataPoint('discordGrowth', index)}
                   type="monthly"
+                  onImportComplete={() => loadDashboardData()}
                 />
               )}
 
@@ -444,8 +446,8 @@ export default function DashboardManagementPage() {
   );
 }
 
-// Composant pour les sections de données mensuelles
-function DataSection({
+// Composant spécialisé pour la croissance Discord avec import
+function DiscordGrowthSection({
   title,
   description,
   data,
@@ -453,6 +455,7 @@ function DataSection({
   onUpdate,
   onRemove,
   type,
+  onImportComplete,
 }: {
   title: string;
   description: string;
@@ -461,10 +464,13 @@ function DataSection({
   onUpdate: (index: number, month: string, value: number) => void;
   onRemove: (index: number) => void;
   type: "monthly";
+  onImportComplete: () => void;
 }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newMonth, setNewMonth] = useState("");
   const [newValue, setNewValue] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const handleAdd = () => {
     if (newMonth && newValue) {
@@ -474,12 +480,48 @@ function DataSection({
     }
   };
 
+  const handleImport = async (importData: Array<{ date: string; members: number; avg21?: number | null }>) => {
+    setImporting(true);
+    try {
+      const response = await fetch('/api/admin/dashboard/discord-growth/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: importData }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de l\'import');
+      }
+
+      await onImportComplete();
+      setShowImportModal(false);
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de l\'import');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
-    <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{title}</h3>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{description}</p>
-      </div>
+    <>
+      <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{title}</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{description}</p>
+          </div>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            📋 Importer (copier-coller)
+          </button>
+        </div>
 
       {/* Liste des données */}
       <div className="space-y-2 mb-4">
@@ -567,7 +609,14 @@ function DataSection({
           Ajouter
         </button>
       </div>
-    </div>
+      </div>
+
+      <DiscordGrowthImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImport}
+      />
+    </>
   );
 }
 
