@@ -893,8 +893,10 @@ export default function EvaluationDPage() {
                   const finalNoteInEdit = editingFinalNotes[normalizedLogin];
                   const statusInEdit = editingStatuses[member.twitchLogin];
                   const roleInEdit = editingRoles[member.twitchLogin];
+                  const vipInEdit = editingVips[normalizedLogin];
                   const currentIsActive = statusInEdit !== undefined ? statusInEdit : member.isActive;
                   const currentRole = roleInEdit !== undefined ? roleInEdit : member.role;
+                  const currentIsVip = vipInEdit !== undefined ? vipInEdit : (member.isVip ?? false);
                   
                   // Vérifier si le membre est passé en Communauté (rouge)
                   const isPassedToCommunaute = (statusInEdit === false || roleInEdit === 'Communauté') && currentRole === 'Communauté';
