@@ -320,18 +320,37 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs</div>
-                <div className="space-y-2">
-                  {discordStats.topMembers.length > 0 ? (
-                    discordStats.topMembers.map((member, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
+                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Messages)</div>
+                <div className="space-y-2 mb-4">
+                  {discordStats.topMessages.length > 0 ? (
+                    discordStats.topMessages.map((member) => (
+                      <div key={member.rank} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500">#{member.rank}</span>
                           <span className="text-white">{member.displayName}</span>
                         </div>
-                        <div className="flex items-center gap-4 text-gray-400">
-                          <span>{member.messages} msgs</span>
-                          <span>{Math.round(member.voiceMinutes / 60)}h</span>
+                        <div className="text-gray-400">
+                          <span>{member.messages.toLocaleString()} msgs</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 text-center py-2">
+                      Aucune donnée disponible
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-gray-400 mb-2">Top 5 membres actifs (Vocaux)</div>
+                <div className="space-y-2">
+                  {discordStats.topVocals.length > 0 ? (
+                    discordStats.topVocals.map((member) => (
+                      <div key={member.rank} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500">#{member.rank}</span>
+                          <span className="text-white">{member.displayName}</span>
+                        </div>
+                        <div className="text-gray-400">
+                          <span>{member.display}</span>
                         </div>
                       </div>
                     ))
@@ -342,30 +361,18 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              <div className="pt-2 border-t border-gray-700">
+              <div className="pt-4 border-t border-gray-700 space-y-2">
                 <button
-                  onClick={async () => {
-                    if (!confirm('Voulez-vous récupérer les données Statbot maintenant ?')) {
-                      return;
-                    }
-                    try {
-                      const response = await fetch('/api/statbot/fetch', { method: 'POST' });
-                      const data = await response.json();
-                      if (response.ok) {
-                        alert(`✅ ${data.message || 'Données récupérées avec succès'}`);
-                        // Recharger les stats
-                        window.location.reload();
-                      } else {
-                        alert(`❌ Erreur: ${data.error || 'Erreur inconnue'}`);
-                      }
-                    } catch (error) {
-                      console.error('Erreur:', error);
-                      alert('Erreur lors de la récupération des données');
-                    }
-                  }}
-                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                  onClick={() => setShowMessagesImport(true)}
+                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
-                  🔄 Récupérer les données Statbot
+                  📥 Import messages (copier-coller)
+                </button>
+                <button
+                  onClick={() => setShowVocalsImport(true)}
+                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  📥 Import vocaux (copier-coller)
                 </button>
               </div>
             </div>
