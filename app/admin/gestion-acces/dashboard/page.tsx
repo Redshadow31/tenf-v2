@@ -620,6 +620,133 @@ function DiscordGrowthSection({
   );
 }
 
+// Composant pour les sections de données mensuelles
+function DataSection({
+  title,
+  description,
+  data,
+  onAdd,
+  onUpdate,
+  onRemove,
+  type,
+}: {
+  title: string;
+  description: string;
+  data: MonthlyDataPoint[];
+  onAdd: (month: string, value: number) => void;
+  onUpdate: (index: number, month: string, value: number) => void;
+  onRemove: (index: number) => void;
+  type: "monthly";
+}) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [newMonth, setNewMonth] = useState("");
+  const [newValue, setNewValue] = useState("");
+
+  const handleAdd = () => {
+    if (newMonth && newValue) {
+      onAdd(newMonth, parseInt(newValue) || 0);
+      setNewMonth("");
+      setNewValue("");
+    }
+  };
+
+  return (
+    <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{title}</h3>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{description}</p>
+      </div>
+
+      {/* Liste des données */}
+      <div className="space-y-2 mb-4">
+        {data.map((item, index) => (
+          <div key={index} className="flex items-center gap-4 p-3 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            {editingIndex === index ? (
+              <>
+                <select
+                  value={item.month}
+                  onChange={(e) => onUpdate(index, e.target.value, item.value)}
+                  className="px-3 py-1 rounded border text-sm"
+                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                >
+                  {MONTHS.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={item.value}
+                  onChange={(e) => onUpdate(index, item.month, parseInt(e.target.value) || 0)}
+                  className="flex-1 px-3 py-1 rounded border text-sm"
+                  style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                />
+                <button
+                  onClick={() => setEditingIndex(null)}
+                  className="px-3 py-1 rounded text-sm text-white"
+                  style={{ backgroundColor: '#10b981' }}
+                >
+                  ✓
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="font-medium w-16" style={{ color: 'var(--color-text)' }}>{item.month}</span>
+                <span className="flex-1" style={{ color: 'var(--color-text-secondary)' }}>{item.value}</span>
+                <button
+                  onClick={() => setEditingIndex(index)}
+                  className="px-3 py-1 rounded text-sm text-white"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  Modifier
+                </button>
+                <button
+                  onClick={() => onRemove(index)}
+                  className="px-3 py-1 rounded text-sm text-white"
+                  style={{ backgroundColor: '#dc2626' }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Ajouter une nouvelle entrée */}
+      <div className="flex items-center gap-4 p-3 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <select
+          value={newMonth}
+          onChange={(e) => setNewMonth(e.target.value)}
+          className="px-3 py-1 rounded border text-sm"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        >
+          <option value="">Sélectionner un mois</option>
+          {MONTHS.map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <input
+          type="number"
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          placeholder="Valeur"
+          className="flex-1 px-3 py-1 rounded border text-sm"
+          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!newMonth || !newValue}
+          className="px-4 py-1 rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+        >
+          <Plus className="w-4 h-4" />
+          Ajouter
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Composant pour les sections de ranking
 function RankingSection({
   title,
