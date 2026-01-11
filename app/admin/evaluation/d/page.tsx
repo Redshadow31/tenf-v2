@@ -879,7 +879,12 @@ export default function EvaluationDPage() {
                   const normalizedLogin = member.twitchLogin?.toLowerCase() || '';
                   const finalNoteInEdit = editingFinalNotes[normalizedLogin];
                   const statusInEdit = editingStatuses[member.twitchLogin];
+                  const roleInEdit = editingRoles[member.twitchLogin];
                   const currentIsActive = statusInEdit !== undefined ? statusInEdit : member.isActive;
+                  const currentRole = roleInEdit !== undefined ? roleInEdit : member.role;
+                  
+                  // Vérifier si le membre est passé en Communauté (rouge)
+                  const isPassedToCommunaute = (statusInEdit === false || roleInEdit === 'Communauté') && currentRole === 'Communauté';
                   
                   return (
                     <tr
@@ -911,12 +916,12 @@ export default function EvaluationDPage() {
                         <span
                           className="px-2 py-1 rounded-full text-xs font-semibold border"
                           style={{
-                            backgroundColor: roleStyles.bg,
-                            color: roleStyles.text,
-                            borderColor: roleStyles.border || roleStyles.bg,
+                            backgroundColor: isPassedToCommunaute ? '#ef444420' : roleStyles.bg,
+                            color: isPassedToCommunaute ? '#ef4444' : roleStyles.text,
+                            borderColor: isPassedToCommunaute ? '#ef4444' : (roleStyles.border || roleStyles.bg),
                           }}
                         >
-                          {member.role}
+                          {currentRole}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
