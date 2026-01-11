@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requirePermission } from '@/lib/adminAuth';
 import { listStaffFollowValidations } from '@/lib/followStorage';
 
 /**
@@ -10,8 +10,8 @@ export async function GET(
   { params }: { params: { month: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requirePermission("read");
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

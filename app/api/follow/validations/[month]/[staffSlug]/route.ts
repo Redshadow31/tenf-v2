@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requirePermission, requireAuth } from '@/lib/adminAuth';
 import { 
   getStaffFollowValidation, 
   saveStaffFollowValidation,
@@ -39,8 +39,8 @@ export async function GET(
   { params }: { params: { month: string; staffSlug: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requirePermission("read");
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -85,8 +85,8 @@ export async function POST(
   { params }: { params: { month: string; staffSlug: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requirePermission("read");
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
