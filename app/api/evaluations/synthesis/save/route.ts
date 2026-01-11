@@ -19,6 +19,7 @@ interface SynthesisSaveRequest {
     finalNote?: number; // Note finale manuelle (optionnelle)
     isActive?: boolean; // Statut actif/inactif
     role?: MemberRole; // Rôle forcé (optionnel, ex: 'Communauté')
+    isVip?: boolean; // Statut VIP (optionnel)
   }>;
 }
 
