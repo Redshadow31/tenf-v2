@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     };
 
     for (const update of updates) {
-      const { twitchLogin, finalNote, isActive, role } = update;
+      const { twitchLogin, finalNote, isActive, role, isVip } = update;
 
       // Mettre à jour la note finale si fournie
       if (finalNote !== undefined && finalNote !== null) {
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
         results.notesUpdated++;
       }
 
-      // Mettre à jour le statut (isActive) et/ou le rôle si fourni
-      if (isActive !== undefined || role !== undefined) {
+      // Mettre à jour le statut (isActive), le rôle et/ou le statut VIP si fourni
+      if (isActive !== undefined || role !== undefined || isVip !== undefined) {
         try {
           const member = getMemberData(twitchLogin);
           if (!member) {
@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
           const currentRole = member.role;
           let newRole: MemberRole = role !== undefined ? role : currentRole;
           let newIsActive = isActive !== undefined ? Boolean(isActive) : member.isActive;
+          let newIsVip = isVip !== undefined ? Boolean(isVip) : member.isVip;
 
           // Si on désactive le membre (isActive = false), changer le rôle en "Communauté" si pas déjà défini
           if (!newIsActive && newRole === currentRole && currentRole !== 'Communauté') {
@@ -126,13 +127,20 @@ export async function POST(request: NextRequest) {
             newRole = role;
           }
 
+          const updateData: any = {
+            isActive: newIsActive,
+            role: newRole,
+            roleManuallySet: true, // Marquer comme défini manuellement
+          };
+          
+          // Ajouter isVip si défini
+          if (isVip !== undefined) {
+            updateData.isVip = newIsVip;
+          }
+
           await updateMemberData(
             twitchLogin,
-            {
-              isActive: newIsActive,
-              role: newRole,
-              roleManuallySet: true, // Marquer comme défini manuellement
-            },
+            updateData,
             admin.id
           );
 
@@ -142,8 +150,8 @@ export async function POST(request: NextRequest) {
             'member',
             {
               resourceId: twitchLogin,
-              previousValue: { isActive: member.isActive, role: currentRole },
-              newValue: { isActive: newIsActive, role: newRole },
+              previousValue: { isActive: member.isActive, role: currentRole, isVip: member.isVip },
+              newValue: { isActive: newIsActive, role: newRole, isVip: newIsVip },
               metadata: { month, reason: 'Évaluation mensuelle' },
             }
           );
