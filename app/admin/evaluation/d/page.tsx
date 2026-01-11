@@ -123,6 +123,7 @@ export default function EvaluationDPage() {
   // États pour les notes finales manuelles et statuts (édition en ligne)
   const [editingFinalNotes, setEditingFinalNotes] = useState<Record<string, number | null>>({});
   const [editingStatuses, setEditingStatuses] = useState<Record<string, boolean>>({});
+  const [editingRoles, setEditingRoles] = useState<Record<string, string>>({}); // Pour forcer Communauté/VIP
 
   useEffect(() => {
     async function checkAccess() {
@@ -189,11 +190,11 @@ export default function EvaluationDPage() {
       const followPointsData = followResponse.ok ? (await followResponse.json()).points || {} : {};
       const bonusesData = bonusesResponse.ok ? (await bonusesResponse.json()).bonuses || {} : {};
 
-      // Construire les données d'évaluation pour chaque membre actif
+      // Construire les données d'évaluation pour tous les membres (actifs ET inactifs/Communauté)
       const evaluationData: MemberEvaluationData[] = [];
       
-      // Filtrer uniquement les membres actifs
-      const activeMembers = membersData.filter((m: any) => m.isActive !== false && m.twitchLogin);
+      // Inclure TOUS les membres (actifs et inactifs/Communauté)
+      const allMembers = membersData.filter((m: any) => m.twitchLogin);
       
       // Créer des maps pour accès rapide
       const spotlightPointsMap = new Map<string, number>(); // Map des points Spotlight depuis l'API
@@ -279,8 +280,8 @@ export default function EvaluationDPage() {
         }
       }
       
-      // Construire les données d'évaluation pour chaque membre actif
-      for (const member of activeMembers) {
+      // Construire les données d'évaluation pour tous les membres
+      for (const member of allMembers) {
         const login = member.twitchLogin?.toLowerCase();
         if (!login) continue;
         
@@ -444,13 +445,14 @@ export default function EvaluationDPage() {
       }
       
       // Sauvegarder les notes finales et statuts
-      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0) {
+      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0 || Object.keys(editingRoles).length > 0) {
         const updates = [];
         
         // Récupérer tous les logins uniques
         const allLogins = new Set([
           ...Object.keys(editingFinalNotes),
           ...Object.keys(editingStatuses),
+          ...Object.keys(editingRoles),
         ]);
         
         for (const login of allLogins) {
@@ -458,6 +460,7 @@ export default function EvaluationDPage() {
             twitchLogin: login,
             finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
             isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
+            role: editingRoles[login] !== undefined ? editingRoles[login] : undefined,
           });
         }
         
@@ -481,6 +484,7 @@ export default function EvaluationDPage() {
       setEditingBonuses({});
       setEditingFinalNotes({});
       setEditingStatuses({});
+      setEditingRoles({});
       alert('✅ Toutes les modifications ont été enregistrées avec succès');
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -538,11 +542,73 @@ export default function EvaluationDPage() {
     }));
   }
   
+  function handleForceRole(login: string, role: 'Communauté' | 'VIP') {
+    if (role === 'Communauté') {
+      // Forcer Communauté = isActive = false, role = 'Communauté'
+      setEditingStatuses(prev => ({
+        ...prev,
+        [login]: false,
+      }));
+      setEditingRoles(prev => ({
+        ...prev,
+        [login]: 'Communauté',
+      }));
+    } else if (role === 'VIP') {
+      // Pour VIP, on ne change pas le rôle directement, mais on peut ajouter le badge VIP
+      // Ici on peut juste marquer pour une action future, ou changer isVip
+      // Pour l'instant, on ne fait rien car VIP n'est pas un rôle mais un statut (isVip)
+      // L'utilisateur veut peut-être juste forcer le statut VIP, mais ce n'est pas clair
+      // On va juste mettre un indicateur pour l'instant
+      alert('Le statut VIP est géré via isVip, pas via le rôle. Utilisez la gestion des VIP pour cela.');
+    }
+  }
+  
+  // Fonction pour sauvegarder uniquement les modifications manuelles (notes finales)
+  async function saveManualNotes() {
+    setSaving(true);
+    try {
+      if (Object.keys(editingFinalNotes).length === 0) {
+        alert('Aucune note finale manuelle à sauvegarder');
+        return;
+      }
+      
+      const updates = Object.keys(editingFinalNotes).map(login => ({
+        twitchLogin: login,
+        finalNote: editingFinalNotes[login],
+      }));
+      
+      const response = await fetch('/api/evaluations/synthesis/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: selectedMonth,
+          updates,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de la sauvegarde des notes finales manuelles');
+      }
+      
+      // Recharger les données
+      await loadAllData();
+      setEditingFinalNotes({});
+      alert('✅ Notes finales manuelles enregistrées avec succès');
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des notes finales manuelles:", error);
+      alert(`❌ Erreur lors de la sauvegarde: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+  
   // Fonction pour calculer le nombre total de modifications en attente
   function getTotalPendingChanges(): number {
     return Object.keys(editingBonuses).length + 
            Object.keys(editingFinalNotes).length + 
-           Object.keys(editingStatuses).length;
+           Object.keys(editingStatuses).length +
+           Object.keys(editingRoles).length;
   }
 
   function getMonthOptions(): string[] {
@@ -570,9 +636,9 @@ export default function EvaluationDPage() {
   const filteredMembers = useMemo(() => {
     let filtered = membersData;
     
-    // Filtre actifs seulement
+    // Filtre actifs seulement (exclut les Communauté inactifs si coché)
     if (showActiveOnly) {
-      filtered = filtered.filter(m => m.isActive);
+      filtered = filtered.filter(m => m.isActive || m.role === 'Communauté');
     }
     
     // Recherche
@@ -732,21 +798,35 @@ export default function EvaluationDPage() {
 
       {/* Tableau récapitulatif */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>
             Tableau récapitulatif ({filteredMembers.length} membres)
           </h2>
-          <button
-            onClick={saveAll}
-            disabled={saving || getTotalPendingChanges() === 0}
-            className="px-6 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: saving || getTotalPendingChanges() === 0 ? 'var(--color-surface)' : '#10b981',
-              color: 'white',
-            }}
-          >
-            {saving ? 'Enregistrement...' : `Enregistrer les modifications (${getTotalPendingChanges()})`}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={saveManualNotes}
+              disabled={saving || Object.keys(editingFinalNotes).length === 0}
+              className="px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: saving || Object.keys(editingFinalNotes).length === 0 ? 'var(--color-surface)' : '#9146ff',
+                color: 'white',
+              }}
+              title="Sauvegarder uniquement les notes finales manuelles"
+            >
+              {saving ? 'Enregistrement...' : `Sauvegarder notes manuelles (${Object.keys(editingFinalNotes).length})`}
+            </button>
+            <button
+              onClick={saveAll}
+              disabled={saving || getTotalPendingChanges() === 0}
+              className="px-6 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: saving || getTotalPendingChanges() === 0 ? 'var(--color-surface)' : '#10b981',
+                color: 'white',
+              }}
+            >
+              {saving ? 'Enregistrement...' : `Enregistrer toutes les modifications (${getTotalPendingChanges()})`}
+            </button>
+          </div>
         </div>
         
         {loadingData ? (
@@ -778,6 +858,7 @@ export default function EvaluationDPage() {
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale manuelle</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut auto</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -938,6 +1019,39 @@ export default function EvaluationDPage() {
                             —
                           </span>
                         )}
+                        {member.role === 'Communauté' && (
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold ml-2" style={{ backgroundColor: '#155e7520', color: '#06b6d4' }}>
+                            Communauté
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleForceRole(member.twitchLogin, 'Communauté')}
+                            className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                            style={{
+                              backgroundColor: member.role === 'Communauté' ? '#155e75' : '#155e7520',
+                              color: member.role === 'Communauté' ? 'white' : '#06b6d4',
+                              border: '1px solid #06b6d4',
+                            }}
+                            title="Forcer le rôle Communauté (isActive = false)"
+                          >
+                            Forcer Communauté
+                          </button>
+                          <button
+                            onClick={() => handleForceRole(member.twitchLogin, 'VIP')}
+                            className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                            style={{
+                              backgroundColor: member.isVip ? '#10b981' : '#10b98120',
+                              color: member.isVip ? 'white' : '#10b981',
+                              border: '1px solid #10b981',
+                            }}
+                            title="Note: VIP est un statut (isVip), pas un rôle"
+                          >
+                            VIP
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

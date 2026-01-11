@@ -17,6 +17,7 @@ interface SynthesisSaveRequest {
     twitchLogin: string;
     finalNote?: number; // Note finale manuelle (optionnelle)
     isActive?: boolean; // Statut actif/inactif
+    role?: string; // Rôle forcé (optionnel, ex: 'Communauté')
   }>;
 }
 
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
     };
 
     for (const update of updates) {
-      const { twitchLogin, finalNote, isActive } = update;
+      const { twitchLogin, finalNote, isActive, role } = update;
 
       // Mettre à jour la note finale si fournie
       if (finalNote !== undefined && finalNote !== null) {
@@ -101,8 +102,8 @@ export async function POST(request: NextRequest) {
         results.notesUpdated++;
       }
 
-      // Mettre à jour le statut (isActive) si fourni
-      if (isActive !== undefined && isActive !== null) {
+      // Mettre à jour le statut (isActive) et/ou le rôle si fourni
+      if (isActive !== undefined || role !== undefined) {
         try {
           const member = getMemberData(twitchLogin);
           if (!member) {
@@ -111,19 +112,23 @@ export async function POST(request: NextRequest) {
           }
 
           const currentRole = member.role;
-          let newRole = currentRole;
+          let newRole = role !== undefined ? role : currentRole;
+          let newIsActive = isActive !== undefined ? Boolean(isActive) : member.isActive;
 
-          // Si on désactive le membre (isActive = false), changer le rôle en "Communauté"
-          if (!isActive && currentRole !== 'Communauté') {
+          // Si on désactive le membre (isActive = false), changer le rôle en "Communauté" si pas déjà défini
+          if (!newIsActive && newRole === currentRole && currentRole !== 'Communauté') {
             newRole = 'Communauté';
           }
-          // Si on réactive le membre (isActive = true) et qu'il était en "Communauté", on ne change pas (à gérer manuellement)
-          // Note: On pourrait ajouter une logique pour restaurer l'ancien rôle, mais pour l'instant on laisse tel quel
+          
+          // Si un rôle est forcé explicitement, l'utiliser
+          if (role !== undefined && role !== currentRole) {
+            newRole = role;
+          }
 
           await updateMemberData(
             twitchLogin,
             {
-              isActive: Boolean(isActive),
+              isActive: newIsActive,
               role: newRole,
               roleManuallySet: true, // Marquer comme défini manuellement
             },
@@ -137,7 +142,7 @@ export async function POST(request: NextRequest) {
             {
               resourceId: twitchLogin,
               previousValue: { isActive: member.isActive, role: currentRole },
-              newValue: { isActive: Boolean(isActive), role: newRole },
+              newValue: { isActive: newIsActive, role: newRole },
               metadata: { month, reason: 'Évaluation mensuelle' },
             }
           );
