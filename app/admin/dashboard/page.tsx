@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
 import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
+import ChartCard from "@/components/admin/ChartCard";
 
 // Données par défaut (fallback)
 const defaultDiscordGrowthData = [
@@ -248,116 +249,67 @@ export default function DashboardPage() {
       <div className="text-white">
       <h1 className="text-4xl font-bold text-white mb-8">Dashboard Général</h1>
 
-      {/* Section 1 — Statistiques globales (3 cartes) */}
+      {/* Ligne 1 (TOP) — KPI et Activité Discord du mois (3 cartes) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" style={{ gridAutoRows: '1fr' }}>
-        {/* Activité Discord */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
-          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
-            Activité Discord
-          </h3>
-          <div className="flex-1 min-h-0 flex items-center justify-center">
-            {loadingDiscordActivity ? (
-              <div className="flex items-center justify-center w-full h-full min-h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
+        {/* Raids envoyés */}
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4">
+              <svg
+                className="w-16 h-16 mx-auto text-[#10b981]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
+                />
+              </svg>
+            </div>
+            {loadingRaidStats ? (
+              <div className="flex items-center justify-center h-16 mb-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10b981]"></div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                <LineChart data={discordActivityData.map(d => ({
-                  date: new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-                  messages: d.messages,
-                  vocals: d.vocals,
-                }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tickLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} yAxisId="left" />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} orientation="right" yAxisId="right" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1d",
-                    border: "1px solid #2a2a2d",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                />
-                <Legend 
-                  wrapperStyle={{ paddingTop: '20px' }}
-                  iconType="line"
-                />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="messages"
-                  stroke="#5865F2"
-                  strokeWidth={2}
-                  dot={{ fill: "#5865F2", r: 3 }}
-                  activeDot={{ r: 5 }}
-                  name="Messages"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="vocals"
-                  stroke="#57F287"
-                  strokeWidth={2}
-                  dot={{ fill: "#57F287", r: 3 }}
-                  activeDot={{ r: 5 }}
-                  name="Vocaux (h)"
-                />
-              </LineChart>
-          </ResponsiveContainer>
-          )}
+              <div className="text-4xl font-bold text-white mb-2">
+                {raidStats?.totalRaidsSent ?? 0}
+              </div>
+            )}
+            <div className="text-sm text-gray-400">Raids envoyés</div>
           </div>
         </div>
 
-        {/* Croissance Discord */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
-          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
-            Croissance Discord
-          </h3>
-          <div className="flex-1 min-h-0 flex items-center justify-center">
-            {loadingDiscordData ? (
-              <div className="flex items-center justify-center w-full h-full min-h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
+        {/* Raids reçus */}
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4">
+              <svg
+                className="w-16 h-16 mx-auto text-[#9146ff]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                />
+              </svg>
+            </div>
+            {loadingRaidStats ? (
+              <div className="flex items-center justify-center h-16 mb-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#9146ff]"></div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                <LineChart data={discordGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="month"
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1d",
-                    border: "1px solid #2a2a2d",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                  formatter={(value: any) => [value, 'Membres']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ fill: "#10b981", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
+              <div className="text-4xl font-bold text-white mb-2">
+                {raidStats?.totalRaidsReceived ?? 0}
+              </div>
+            )}
+            <div className="text-sm text-gray-400">Raids reçus</div>
           </div>
         </div>
 
@@ -453,111 +405,129 @@ export default function DashboardPage() {
         </div>
       </div>
 
-        {/* Section 2 — Analyses Spotlight & Raids (3 cartes) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Progression Spotlight */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Progression Spotlight
-            </h3>
-            {loadingDashboardData ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10b981]"></div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={spotlightProgressionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="month"
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1d",
-                    border: "1px solid #2a2a2d",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#9146ff"
-                  strokeWidth={2}
-                  dot={{ fill: "#9146ff", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            )}
-          </div>
+      {/* Ligne 2 (BOTTOM) — Graphiques (3 cartes) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {/* Activité Discord */}
+        <ChartCard title="Activité Discord" loading={loadingDiscordActivity}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={discordActivityData.map(d => ({
+              date: new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+              messages: d.messages,
+              vocals: d.vocals,
+            }))}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey="date"
+                stroke="#9CA3AF"
+                fontSize={10}
+                tickLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} yAxisId="left" />
+              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} orientation="right" yAxisId="right" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1a1a1d",
+                  border: "1px solid #2a2a2d",
+                  borderRadius: "8px",
+                  color: "#fff",
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ paddingTop: '20px' }}
+                iconType="line"
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="messages"
+                stroke="#5865F2"
+                strokeWidth={2}
+                dot={{ fill: "#5865F2", r: 3 }}
+                activeDot={{ r: 5 }}
+                name="Messages"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="vocals"
+                stroke="#57F287"
+                strokeWidth={2}
+                dot={{ fill: "#57F287", r: 3 }}
+                activeDot={{ r: 5 }}
+                name="Vocaux (h)"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-          {/* Raids reçus */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="w-16 h-16 mx-auto text-[#9146ff]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                  />
-                </svg>
-              </div>
-              {loadingRaidStats ? (
-                <div className="flex items-center justify-center h-16 mb-2">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#9146ff]"></div>
-                </div>
-              ) : (
-                <div className="text-4xl font-bold text-white mb-2">
-                  {raidStats?.totalRaidsReceived ?? 0}
-                </div>
-              )}
-              <div className="text-sm text-gray-400">Raids reçus</div>
-            </div>
-          </div>
+        {/* Croissance Discord */}
+        <ChartCard title="Croissance Discord" loading={loadingDiscordData}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={discordGrowthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey="month"
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickLine={false}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1a1a1d",
+                  border: "1px solid #2a2a2d",
+                  borderRadius: "8px",
+                  color: "#fff",
+                }}
+                formatter={(value: any) => [value, 'Membres']}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ fill: "#10b981", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-          {/* Raids envoyés */}
-          <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="w-16 h-16 mx-auto text-[#10b981]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                  />
-                </svg>
-              </div>
-              {loadingRaidStats ? (
-                <div className="flex items-center justify-center h-16 mb-2">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10b981]"></div>
-                </div>
-              ) : (
-                <div className="text-4xl font-bold text-white mb-2">
-                  {raidStats?.totalRaidsSent ?? 0}
-                </div>
-              )}
-              <div className="text-sm text-gray-400">Raids envoyés</div>
-            </div>
-          </div>
-        </div>
+        {/* Progression Spotlight */}
+        <ChartCard title="Progression Spotlight" loading={loadingDashboardData}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={spotlightProgressionData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey="month"
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickLine={false}
+              />
+              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1a1a1d",
+                  border: "1px solid #2a2a2d",
+                  borderRadius: "8px",
+                  color: "#fff",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#9146ff"
+                strokeWidth={2}
+                dot={{ fill: "#9146ff", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
         {/* Section 3 — Classements Discord (2 cartes) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
