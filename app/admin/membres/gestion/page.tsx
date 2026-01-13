@@ -891,11 +891,50 @@ export default function GestionMembresPage() {
       return;
     }
 
+    // Récupérer la liste des membres existants
+    let existingMembers: Member[] = [];
+    try {
+      const existingResponse = await fetch("/api/admin/members", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (existingResponse.ok) {
+        const existingData = await existingResponse.json();
+        existingMembers = existingData.members || [];
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des membres existants:", error);
+    }
+
+    // Créer un Set des logins Twitch existants (en minuscules pour la comparaison)
+    const existingTwitchLogins = new Set(
+      existingMembers.map(m => m.twitch?.toLowerCase() || '')
+    );
+
+    // Filtrer pour ne garder que les nouveaux membres
+    const newMembers = members.filter(member => {
+      const twitchLogin = member.twitch.toLowerCase();
+      return !existingTwitchLogins.has(twitchLogin);
+    });
+
+    if (newMembers.length === 0) {
+      alert("Tous les membres de la liste existent déjà. Aucun nouveau membre à ajouter.");
+      setIsBulkImportOpen(false);
+      return;
+    }
+
+    const skippedCount = members.length - newMembers.length;
+    if (skippedCount > 0 && !confirm(`${skippedCount} membre(s) existent déjà et seront ignorés. Voulez-vous continuer l'import de ${newMembers.length} nouveau(x) membre(s) ?`)) {
+      return;
+    }
+
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
 
-    for (const member of members) {
+    for (const member of newMembers) {
       try {
         const response = await fetch("/api/admin/members", {
           method: "POST",
@@ -936,14 +975,21 @@ export default function GestionMembresPage() {
         body: JSON.stringify({
           action: "Import en masse de membres",
           target: `${successCount} membres importés`,
-          details: { successCount, errorCount, errors: errors.slice(0, 10) },
+          details: { successCount, errorCount, skippedCount, errors: errors.slice(0, 10) },
         }),
       });
     } catch (err) {
       console.error("Erreur lors du logging:", err);
     }
 
-    alert(`Import terminé : ${successCount} membres ajoutés, ${errorCount} erreurs`);
+    let message = `Import terminé : ${successCount} membre(s) ajouté(s)`;
+    if (skippedCount > 0) {
+      message += `, ${skippedCount} membre(s) ignoré(s) (déjà existants)`;
+    }
+    if (errorCount > 0) {
+      message += `, ${errorCount} erreur(s)`;
+    }
+    alert(message);
     setIsBulkImportOpen(false);
     await loadMembers();
   };
