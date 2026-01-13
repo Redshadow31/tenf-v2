@@ -19,6 +19,13 @@ export default function EvaluationsHubPage() {
       color: "from-green-500 to-green-600",
     },
     {
+      href: "/admin/evaluations/inscription-moderateur",
+      title: "Inscription modérateur",
+      description: "Inscription du staff modération aux intégrations",
+      icon: "🛡️",
+      color: "from-indigo-500 to-indigo-600",
+    },
+    {
       href: "/admin/evaluations/presence-retour",
       title: "Présence et retour",
       description: "Suivre les présences et les retours de follow",

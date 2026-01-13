@@ -31,18 +31,39 @@ export default function AdminSidebar() {
             : link.href === "/admin/evaluations"
             ? pathname?.startsWith("/admin/evaluations")
             : pathname === link.href;
+          const isEvaluationsSection = link.href === "/admin/evaluations";
+          const isEvaluationsActive = pathname?.startsWith("/admin/evaluations");
+          
           return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-[#9146ff] text-white"
-                  : "text-gray-300 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              {link.label}
-            </Link>
+            <div key={link.href}>
+              <Link
+                href={link.href}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive && !isEvaluationsSection
+                    ? "bg-[#9146ff] text-white"
+                    : isEvaluationsSection && pathname === "/admin/evaluations"
+                    ? "bg-[#9146ff] text-white"
+                    : "text-gray-300 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {link.label}
+              </Link>
+              {/* Sous-menu pour Intégration */}
+              {isEvaluationsSection && isEvaluationsActive && (
+                <div className="ml-4 mt-1 flex flex-col gap-1">
+                  <Link
+                    href="/admin/evaluations/inscription-moderateur"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/evaluations/inscription-moderateur"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Inscription modérateur
+                  </Link>
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
