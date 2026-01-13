@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
 import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
@@ -85,7 +86,8 @@ export default function DashboardPage() {
   const [loadingDiscordStats, setLoadingDiscordStats] = useState(true);
   const [showMessagesImport, setShowMessagesImport] = useState(false);
   const [showVocalsImport, setShowVocalsImport] = useState(false);
-  const [twitchActivityData, setTwitchActivityData] = useState(defaultTwitchActivity);
+  const [discordActivityData, setDiscordActivityData] = useState<Array<{ date: string; messages: number; vocals: number }>>([]);
+  const [loadingDiscordActivity, setLoadingDiscordActivity] = useState(true);
   const [spotlightProgressionData, setSpotlightProgressionData] = useState(defaultSpotlightProgression);
   const [vocalRanking, setVocalRanking] = useState(defaultVocalRanking);
   const [textRanking, setTextRanking] = useState(defaultTextRanking);
@@ -110,7 +112,7 @@ export default function DashboardPage() {
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {
-            setTwitchActivityData(result.data.twitchActivity || defaultTwitchActivity);
+            setDiscordActivityData(result.data.discordDailyActivity || []);
             setDiscordGrowthData(result.data.discordGrowth || defaultDiscordGrowthData);
             setSpotlightProgressionData(result.data.spotlightProgression || defaultSpotlightProgression);
             setVocalRanking(result.data.vocalRanking || defaultVocalRanking);
@@ -122,6 +124,7 @@ export default function DashboardPage() {
       } finally {
         setLoadingDashboardData(false);
         setLoadingDiscordData(false);
+        setLoadingDiscordActivity(false);
       }
     }
     
@@ -247,27 +250,35 @@ export default function DashboardPage() {
 
       {/* Section 1 — Statistiques globales (3 cartes) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" style={{ gridAutoRows: '1fr' }}>
-        {/* Activité Twitch */}
+        {/* Activité Discord */}
         <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
           <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0">
-            Activité Twitch
+            Activité Discord
           </h3>
           <div className="flex-1 min-h-0 flex items-center justify-center">
-            {loadingDashboardData ? (
+            {loadingDiscordActivity ? (
               <div className="flex items-center justify-center w-full h-full min-h-[200px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5865F2]"></div>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                <LineChart data={twitchActivityData}>
+                <LineChart data={discordActivityData.map(d => ({
+                  date: new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+                  messages: d.messages,
+                  vocals: d.vocals,
+                }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
-                  dataKey="month"
+                  dataKey="date"
                   stroke="#9CA3AF"
-                  fontSize={12}
+                  fontSize={10}
                   tickLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} yAxisId="left" />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} orientation="right" yAxisId="right" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#1a1a1d",
@@ -276,13 +287,29 @@ export default function DashboardPage() {
                     color: "#fff",
                   }}
                 />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  iconType="line"
+                />
                 <Line
+                  yAxisId="left"
                   type="monotone"
-                  dataKey="value"
-                  stroke="#9146ff"
+                  dataKey="messages"
+                  stroke="#5865F2"
                   strokeWidth={2}
-                  dot={{ fill: "#9146ff", r: 4 }}
-                  activeDot={{ r: 6 }}
+                  dot={{ fill: "#5865F2", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="Messages"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="vocals"
+                  stroke="#57F287"
+                  strokeWidth={2}
+                  dot={{ fill: "#57F287", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="Vocaux (h)"
                 />
               </LineChart>
           </ResponsiveContainer>

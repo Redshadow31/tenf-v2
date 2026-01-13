@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Save, Plus, Trash2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DiscordGrowthImportModal from "@/components/admin/DiscordGrowthImportModal";
+import DiscordDailyActivityImportModal from "@/components/admin/DiscordDailyActivityImportModal";
 
 interface MonthlyDataPoint {
   month: string;
@@ -290,7 +291,7 @@ export default function DashboardManagementPage() {
                 {[
                   { id: 'twitch' as TabId, label: 'Activité Twitch', icon: '🎮' },
                   { id: 'discordGrowth' as TabId, label: 'Croissance Discord', icon: '📈' },
-                  { id: 'discordActivity' as TabId, label: 'Activité Discord du mois', icon: '💬' },
+                  { id: 'discordActivity' as TabId, label: 'Activité Discord quotidienne', icon: '💬' },
                   { id: 'spotlight' as TabId, label: 'Progression Spotlight', icon: '⭐' },
                   { id: 'raidsReceived' as TabId, label: 'Raids reçus', icon: '🎯' },
                   { id: 'raidsSent' as TabId, label: 'Raids envoyés', icon: '🚀' },
@@ -357,14 +358,10 @@ export default function DashboardManagementPage() {
               )}
 
               {activeTab === 'discordActivity' && (
-                <DataSection
-                  title="Activité Discord du mois"
-                  description="Données mensuelles pour l'activité Discord"
-                  data={dashboardData.discordActivity}
-                  onAdd={(month, value) => addDataPoint('discordActivity', month, value)}
-                  onUpdate={(index, month, value) => updateDataPoint('discordActivity', index, month, value)}
-                  onRemove={(index) => removeDataPoint('discordActivity', index)}
-                  type="monthly"
+                <DiscordDailyActivitySection
+                  title="Activité Discord quotidienne"
+                  description="Données quotidiennes pour le graphique d'activité Discord (messages et vocaux)"
+                  onImportComplete={() => loadDashboardData()}
                 />
               )}
 
@@ -443,6 +440,136 @@ export default function DashboardManagementPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Composant spécialisé pour l'activité Discord quotidienne avec import
+function DiscordDailyActivitySection({
+  title,
+  description,
+  onImportComplete,
+}: {
+  title: string;
+  description: string;
+  onImportComplete: () => void;
+}) {
+  const [showMessagesImport, setShowMessagesImport] = useState(false);
+  const [showVocalsImport, setShowVocalsImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportMessages = async (data: Array<{ date: string; value: number }>) => {
+    setImporting(true);
+    try {
+      const response = await fetch('/api/admin/discord-daily-activity/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'messages', data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de l\'import');
+      }
+
+      await onImportComplete();
+      setShowMessagesImport(false);
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de l\'import');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleImportVocals = async (data: Array<{ date: string; value: number }>) => {
+    setImporting(true);
+    try {
+      const response = await fetch('/api/admin/discord-daily-activity/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'vocals', data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de l\'import');
+      }
+
+      await onImportComplete();
+      setShowVocalsImport(false);
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de l\'import');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{title}</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{description}</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium" style={{ color: 'var(--color-text)' }}>Messages</h4>
+              <button
+                onClick={() => setShowMessagesImport(true)}
+                disabled={importing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                📋 Importer Messages
+              </button>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Importez les données quotidiennes de messages Discord (format: Date ISO + Nombre)
+            </p>
+          </div>
+
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium" style={{ color: 'var(--color-text)' }}>Vocaux</h4>
+              <button
+                onClick={() => setShowVocalsImport(true)}
+                disabled={importing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                📋 Importer Vocaux
+              </button>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Importez les données quotidiennes de vocaux Discord (format: Date ISO + Heures décimales)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <DiscordDailyActivityImportModal
+        isOpen={showMessagesImport}
+        onClose={() => setShowMessagesImport(false)}
+        onImport={handleImportMessages}
+        type="messages"
+      />
+
+      <DiscordDailyActivityImportModal
+        isOpen={showVocalsImport}
+        onClose={() => setShowVocalsImport(false)}
+        onImport={handleImportVocals}
+        type="vocals"
+      />
+    </>
   );
 }
 
