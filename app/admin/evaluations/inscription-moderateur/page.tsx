@@ -18,6 +18,10 @@ type ModeratorStats = {
   adminCount: number;
 };
 
+type RegistrationStats = {
+  normalCount: number; // Nombre d'inscrits normaux (hors modérateurs)
+};
+
 export default function InscriptionModerateurPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +30,7 @@ export default function InscriptionModerateurPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isRegistering, setIsRegistering] = useState(false);
   const [moderatorStats, setModeratorStats] = useState<Record<string, ModeratorStats>>({});
+  const [registrationStats, setRegistrationStats] = useState<Record<string, RegistrationStats>>({});
 
   // Charger les intégrations depuis l'API (admin=true pour toutes)
   useEffect(() => {
@@ -40,11 +45,13 @@ export default function InscriptionModerateurPage() {
           const integrationsList = data.integrations || [];
           setIntegrations(integrationsList);
           
-          // Charger les stats de modérateurs pour chaque intégration
+          // Charger les stats de modérateurs et inscriptions normales pour chaque intégration
           const stats: Record<string, ModeratorStats> = {};
+          const regStats: Record<string, RegistrationStats> = {};
           await Promise.all(
             integrationsList.map(async (integration: Integration) => {
               try {
+                // Charger les modérateurs
                 const modResponse = await fetch(`/api/integrations/${integration.id}/moderators`, {
                   cache: 'no-store',
                 });
@@ -61,13 +68,29 @@ export default function InscriptionModerateurPage() {
                 } else {
                   stats[integration.id] = { total: 0, adminCount: 0 };
                 }
+                
+                // Charger les inscriptions normales
+                const regResponse = await fetch(`/api/admin/integrations/${integration.id}/registrations`, {
+                  cache: 'no-store',
+                });
+                if (regResponse.ok) {
+                  const regData = await regResponse.json();
+                  const normalRegistrations = regData.registrations || [];
+                  regStats[integration.id] = {
+                    normalCount: normalRegistrations.length,
+                  };
+                } else {
+                  regStats[integration.id] = { normalCount: 0 };
+                }
               } catch (error) {
-                console.error(`Erreur chargement modérateurs pour ${integration.id}:`, error);
+                console.error(`Erreur chargement données pour ${integration.id}:`, error);
                 stats[integration.id] = { total: 0, adminCount: 0 };
+                regStats[integration.id] = { normalCount: 0 };
               }
             })
           );
           setModeratorStats(stats);
+          setRegistrationStats(regStats);
         }
       } catch (error) {
         console.error('Erreur chargement intégrations:', error);
@@ -251,8 +274,10 @@ export default function InscriptionModerateurPage() {
           {calendarDays.map((date, index) => {
             const integration = getIntegrationForDate(date);
             const stats = integration ? moderatorStats[integration.id] : null;
+            const regStats = integration ? registrationStats[integration.id] : null;
             const hasEnoughAdmins = stats ? stats.adminCount >= 2 : false;
-            const participantCount = stats ? stats.total : 0;
+            const moderatorCount = stats ? stats.total : 0;
+            const normalCount = regStats ? regStats.normalCount : 0;
             
             return (
               <div
@@ -280,9 +305,9 @@ export default function InscriptionModerateurPage() {
                         >
                           {integration.title}
                         </div>
-                        {/* Badge nombre de participants */}
+                        {/* Badge nombre d'inscrits normaux */}
                         <div className="text-xs text-gray-400">
-                          Participants: {participantCount}
+                          Inscrits: {normalCount}
                         </div>
                         {/* Badge admins */}
                         {stats && (
