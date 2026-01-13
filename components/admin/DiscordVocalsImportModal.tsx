@@ -107,9 +107,15 @@ export default function DiscordVocalsImportModal({
     const unmatchedData: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }> = {};
     const unmatchedUsernames: string[] = [];
     const activeLogins = new Set(activeMembers.map(m => m.twitchLogin));
+    
+    // Créer une map discordUsername -> twitchLogin pour recherche par pseudo Discord (PRIORITÉ)
+    const discordUsernameMap = new Map<string, string>();
     // Créer une map discordId -> twitchLogin pour recherche par ID Discord
     const discordIdMap = new Map<string, string>();
     activeMembers.forEach(m => {
+      if (m.discordUsername) {
+        discordUsernameMap.set(m.discordUsername.toLowerCase(), m.twitchLogin);
+      }
       if (m.discordId) {
         discordIdMap.set(m.discordId, m.twitchLogin);
       }
@@ -166,18 +172,25 @@ export default function DiscordVocalsImportModal({
 
       const { totalMinutes, display } = convertHoursToDisplay(hoursDecimal);
 
-      // Essayer de matcher par pseudo d'abord
+      // Essayer de matcher par pseudo Discord d'abord (PRIORITÉ), puis ID Discord, puis twitchLogin
       let matchedLogin: string | undefined;
-      if (activeLogins.has(username)) {
-        matchedLogin = username;
+      const normalizedUsername = username.toLowerCase();
+      
+      if (discordUsernameMap.has(normalizedUsername)) {
+        // PRIORITÉ 1: Matcher par pseudo Discord
+        matchedLogin = discordUsernameMap.get(normalizedUsername);
       } else if (userId && discordIdMap.has(userId)) {
-        // Si pseudo non reconnu, essayer de matcher par ID Discord
+        // PRIORITÉ 2: Matcher par ID Discord
         matchedLogin = discordIdMap.get(userId);
+      } else if (activeLogins.has(username)) {
+        // PRIORITÉ 3: Matcher par twitchLogin
+        matchedLogin = username;
       }
 
       if (matchedLogin) {
         vocalsByUser[matchedLogin] = { hoursDecimal, totalMinutes, display };
       } else {
+        // Stocker aussi les non reconnus pour les stats globales
         unmatchedData[username] = { hoursDecimal, totalMinutes, display };
         if (!unmatchedUsernames.includes(username)) {
           unmatchedUsernames.push(username);

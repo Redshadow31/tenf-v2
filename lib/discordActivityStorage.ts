@@ -7,6 +7,7 @@ import { getStore } from '@netlify/blobs';
 export interface DiscordActivityData {
   messagesByUser: Record<string, number>; // { login: count }
   vocalsByUser: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>; // { login: { hoursDecimal, totalMinutes, display } }
+  vocalsByUnmatched?: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>; // { discordUsername: { hoursDecimal, totalMinutes, display } } - pour les stats globales
 }
 
 export interface DiscordActivityStorage {
