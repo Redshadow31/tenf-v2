@@ -60,12 +60,23 @@ export default function InscriptionPage() {
         const data = await response.json();
         const integrationsList = (data.integrations || []).filter((i: Integration) => i.isPublished);
         
-        // Trier par date (les plus proches en premier)
-        integrationsList.sort((a: Integration, b: Integration) => {
+        // Séparer les intégrations futures et passées
+        const now = new Date();
+        const futureIntegrations = integrationsList.filter((i: Integration) => new Date(i.date) >= now);
+        const pastIntegrations = integrationsList.filter((i: Integration) => new Date(i.date) < now);
+        
+        // Trier les futures par date (les plus proches en premier)
+        futureIntegrations.sort((a: Integration, b: Integration) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
         
-        setIntegrations(integrationsList);
+        // Trier les passées par date (les plus récentes en premier)
+        pastIntegrations.sort((a: Integration, b: Integration) => {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+        
+        // Stocker les deux listes séparément dans le state
+        setIntegrations([...futureIntegrations, ...pastIntegrations]);
         
         // Charger les inscriptions pour chaque intégration
         const registrationsMap: Record<string, IntegrationRegistration[]> = {};
@@ -250,53 +261,83 @@ export default function InscriptionPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-[#0e0e10] border-b border-gray-700">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Réunion</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Date</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Inscrits</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {integrations.map((integration) => (
-                <tr
-                  key={integration.id}
-                  className="hover:bg-[#252529] transition-colors cursor-pointer"
-                  onClick={() => handleOpenModal(integration)}
-                >
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-white">{integration.title}</div>
-                    {integration.category && (
-                      <div className="text-sm text-gray-400 mt-1">{integration.category}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-300">
-                    {formatDate(integration.date)}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-2 text-gray-300">
-                      <Users className="w-4 h-4" />
-                      <span className="font-medium">{getRegistrationCount(integration.id)}</span>
+        <div className="space-y-8">
+          {(() => {
+            const now = new Date();
+            const futureIntegrations = integrations.filter((i: Integration) => new Date(i.date) >= now);
+            const pastIntegrations = integrations.filter((i: Integration) => new Date(i.date) < now);
+            
+            const renderTable = (integrationsList: Integration[]) => (
+              <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-[#0e0e10] border-b border-gray-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Réunion</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Date</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Inscrits</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {integrationsList.map((integration) => (
+                      <tr
+                        key={integration.id}
+                        className="hover:bg-[#252529] transition-colors cursor-pointer"
+                        onClick={() => handleOpenModal(integration)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-white">{integration.title}</div>
+                          {integration.category && (
+                            <div className="text-sm text-gray-400 mt-1">{integration.category}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-gray-300">
+                          {formatDate(integration.date)}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2 text-gray-300">
+                            <Users className="w-4 h-4" />
+                            <span className="font-medium">{getRegistrationCount(integration.id)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenModal(integration);
+                            }}
+                            className="text-[#9146ff] hover:text-[#7c3aed] transition-colors text-sm font-medium"
+                          >
+                            Voir les détails
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+            
+            return (
+              <>
+                {futureIntegrations.length > 0 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Réunions à venir</h2>
+                    {renderTable(futureIntegrations)}
+                  </div>
+                )}
+                
+                {pastIntegrations.length > 0 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Réunions passées</h2>
+                    <div className="opacity-75">
+                      {renderTable(pastIntegrations)}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenModal(integration);
-                      }}
-                      className="text-[#9146ff] hover:text-[#7c3aed] transition-colors text-sm font-medium"
-                    >
-                      Voir les détails
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
