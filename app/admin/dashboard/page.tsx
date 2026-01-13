@@ -98,8 +98,43 @@ export default function DashboardPage() {
     totalRaidsSent: number;
     topRaiders: Array<{ rank: number; displayName: string; count: number }>;
     topTargets: Array<{ rank: number; displayName: string; count: number }>;
+    dailySent: Array<{ day: number; count: number }>;
+    dailyReceived: Array<{ day: number; count: number }>;
   } | null>(null);
   const [loadingRaidStats, setLoadingRaidStats] = useState(true);
+
+  // Fonctions utilitaires pour les sparklines
+  function getLastRecordedDay(series: Array<{ day: number; count: number }>): number {
+    if (series.length === 0) return 0;
+    return Math.max(...series.map(item => item.day));
+  }
+
+  function toSparklineData(
+    series: Array<{ day: number; count: number }>,
+    lastRecordedDay: number
+  ): Array<{ day: number; count: number | null }> {
+    if (series.length === 0 || lastRecordedDay === 0) return [];
+    
+    // Filtrer jusqu'au dernier jour enregistré
+    const filtered = series.filter(item => item.day <= lastRecordedDay);
+    
+    // Créer un tableau avec tous les jours jusqu'à lastRecordedDay
+    const dataMap = new Map<number, number>();
+    filtered.forEach(item => {
+      dataMap.set(item.day, item.count);
+    });
+    
+    // Construire le tableau avec null pour les jours manquants
+    const result: Array<{ day: number; count: number | null }> = [];
+    for (let day = 1; day <= lastRecordedDay; day++) {
+      result.push({
+        day,
+        count: dataMap.has(day) ? dataMap.get(day)! : null,
+      });
+    }
+    
+    return result;
+  }
 
   // Fonction pour agréger les données quotidiennes par mois
   const aggregateDailyDataByMonth = (dailyData: Array<{ date: string; messages: number; vocals: number }>) => {
@@ -248,6 +283,8 @@ export default function DashboardPage() {
                 displayName: r.displayName,
                 count: r.count,
               })),
+              dailySent: result.stats.dailySent || [],
+              dailyReceived: result.stats.dailyReceived || [],
             });
           }
         }
@@ -334,7 +371,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto mb-2">
               {loadingRaidStats ? (
                 <div className="text-sm text-gray-500 text-center">Chargement...</div>
               ) : raidStats?.topRaiders && raidStats.topRaiders.length > 0 ? (
@@ -358,6 +395,30 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            {/* Sparkline */}
+            {!loadingRaidStats && raidStats?.dailySent && raidStats.dailySent.length > 0 && (() => {
+              const lastDay = getLastRecordedDay(raidStats.dailySent);
+              const sparklineData = toSparklineData(raidStats.dailySent, lastDay);
+              return (
+                <div className="flex-shrink-0 h-14 -mb-2">
+                  <ResponsiveContainer width="100%" height={56}>
+                    <LineChart data={sparklineData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                      <XAxis hide />
+                      <YAxis hide />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#10b981"
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={false}
+                        connectNulls={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -376,7 +437,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto mb-2">
               {loadingRaidStats ? (
                 <div className="text-sm text-gray-500 text-center">Chargement...</div>
               ) : raidStats?.topTargets && raidStats.topTargets.length > 0 ? (
@@ -400,6 +461,28 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            {/* Sparkline */}
+            {!loadingRaidStats && raidStats?.dailyReceived && raidStats.dailyReceived.length > 0 && (() => {
+              const lastDay = getLastRecordedDay(raidStats.dailyReceived);
+              const sparklineData = toSparklineData(raidStats.dailyReceived, lastDay);
+              return (
+                <div className="flex-shrink-0 h-14 -mb-2">
+                  <ResponsiveContainer width="100%" height={56}>
+                    <LineChart data={sparklineData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#9146ff"
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={false}
+                        connectNulls={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

@@ -121,6 +121,48 @@ export async function GET(request: NextRequest) {
       }));
     const topTarget = topTargets[0] || null;
 
+    // Calculer les données quotidiennes pour les sparklines
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    // Vérifier si on est dans le mois courant
+    const [monthYear, monthNum] = monthKey.split('-');
+    const isCurrentMonth = parseInt(monthYear) === currentYear && parseInt(monthNum) === currentMonth;
+    
+    // Construire les séries quotidiennes
+    const dailySentMap = new Map<number, number>();
+    const dailyReceivedMap = new Map<number, number>();
+    
+    if (isCurrentMonth) {
+      // Pour les raids faits
+      raidsFaits.forEach(raid => {
+        const raidDate = new Date(raid.date);
+        if (raidDate.getFullYear() === currentYear && raidDate.getMonth() + 1 === currentMonth) {
+          const day = raidDate.getDate();
+          dailySentMap.set(day, (dailySentMap.get(day) || 0) + (raid.count || 1));
+        }
+      });
+      
+      // Pour les raids reçus
+      raidsRecus.forEach(raid => {
+        const raidDate = new Date(raid.date);
+        if (raidDate.getFullYear() === currentYear && raidDate.getMonth() + 1 === currentMonth) {
+          const day = raidDate.getDate();
+          dailyReceivedMap.set(day, (dailyReceivedMap.get(day) || 0) + 1);
+        }
+      });
+    }
+    
+    // Convertir en tableaux triés
+    const dailySent: Array<{ day: number; count: number }> = Array.from(dailySentMap.entries())
+      .map(([day, count]) => ({ day, count }))
+      .sort((a, b) => a.day - b.day);
+    
+    const dailyReceived: Array<{ day: number; count: number }> = Array.from(dailyReceivedMap.entries())
+      .map(([day, count]) => ({ day, count }))
+      .sort((a, b) => a.day - b.day);
+
     return NextResponse.json({
       month: monthKey,
       raidsFaits: raidsFaitsFormatted,
@@ -146,6 +188,8 @@ export async function GET(request: NextRequest) {
         topRaiders, // Top 5 des raideurs
         topTargets, // Top 5 des cibles
         alertsCount: alerts.length,
+        dailySent, // Données quotidiennes pour les sparklines
+        dailyReceived, // Données quotidiennes pour les sparklines
       },
     });
   } catch (error) {
