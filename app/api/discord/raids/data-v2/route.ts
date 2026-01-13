@@ -87,21 +87,39 @@ export async function GET(request: NextRequest) {
     const raidersSet = new Set(raidsFaits.map(r => r.raider));
     const targetsSet = new Set(raidsRecus.map(r => r.target));
 
-    // Top raideur
+    // Top raideurs (top 5)
     const raiderCounts: Record<string, number> = {};
     raidsFaits.forEach(r => {
       raiderCounts[r.raider] = (raiderCounts[r.raider] || 0) + (r.count || 1);
     });
-    const topRaider = Object.entries(raiderCounts)
-      .sort(([, a], [, b]) => b - a)[0];
+    const topRaiders = Object.entries(raiderCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([discordId, count], index) => ({
+        rank: index + 1,
+        discordId,
+        twitchLogin: discordIdToMember.get(discordId)?.twitchLogin || discordId,
+        displayName: discordIdToMember.get(discordId)?.displayName || discordId,
+        count,
+      }));
+    const topRaider = topRaiders[0] || null;
 
-    // Top cible
+    // Top cibles (top 5)
     const targetCounts: Record<string, number> = {};
     raidsRecus.forEach(r => {
       targetCounts[r.target] = (targetCounts[r.target] || 0) + 1;
     });
-    const topTarget = Object.entries(targetCounts)
-      .sort(([, a], [, b]) => b - a)[0];
+    const topTargets = Object.entries(targetCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([discordId, count], index) => ({
+        rank: index + 1,
+        discordId,
+        twitchLogin: discordIdToMember.get(discordId)?.twitchLogin || discordId,
+        displayName: discordIdToMember.get(discordId)?.displayName || discordId,
+        count,
+      }));
+    const topTarget = topTargets[0] || null;
 
     return NextResponse.json({
       month: monthKey,
@@ -114,17 +132,19 @@ export async function GET(request: NextRequest) {
         activeRaiders: raidersSet.size,
         uniqueTargets: targetsSet.size,
         topRaider: topRaider ? {
-          discordId: topRaider[0],
-          twitchLogin: discordIdToMember.get(topRaider[0])?.twitchLogin || topRaider[0],
-          displayName: discordIdToMember.get(topRaider[0])?.displayName || topRaider[0],
-          count: topRaider[1],
+          discordId: topRaider.discordId,
+          twitchLogin: topRaider.twitchLogin,
+          displayName: topRaider.displayName,
+          count: topRaider.count,
         } : null,
         topTarget: topTarget ? {
-          discordId: topTarget[0],
-          twitchLogin: discordIdToMember.get(topTarget[0])?.twitchLogin || topTarget[0],
-          displayName: discordIdToMember.get(topTarget[0])?.displayName || topTarget[0],
-          count: topTarget[1],
+          discordId: topTarget.discordId,
+          twitchLogin: topTarget.twitchLogin,
+          displayName: topTarget.displayName,
+          count: topTarget.count,
         } : null,
+        topRaiders, // Top 5 des raideurs
+        topTargets, // Top 5 des cibles
         alertsCount: alerts.length,
       },
     });

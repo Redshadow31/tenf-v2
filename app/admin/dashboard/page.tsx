@@ -96,6 +96,8 @@ export default function DashboardPage() {
   const [raidStats, setRaidStats] = useState<{
     totalRaidsReceived: number;
     totalRaidsSent: number;
+    topRaiders: Array<{ rank: number; displayName: string; count: number }>;
+    topTargets: Array<{ rank: number; displayName: string; count: number }>;
   } | null>(null);
   const [loadingRaidStats, setLoadingRaidStats] = useState(true);
 
@@ -222,6 +224,16 @@ export default function DashboardPage() {
             setRaidStats({
               totalRaidsReceived: result.stats.totalRaidsRecus || 0,
               totalRaidsSent: result.stats.totalRaidsFaits || 0,
+              topRaiders: (result.stats.topRaiders || []).map((r: any) => ({
+                rank: r.rank,
+                displayName: r.displayName,
+                count: r.count,
+              })),
+              topTargets: (result.stats.topTargets || []).map((r: any) => ({
+                rank: r.rank,
+                displayName: r.displayName,
+                count: r.count,
+              })),
             });
           }
         }
@@ -294,64 +306,86 @@ export default function DashboardPage() {
       {/* Ligne 1 (TOP) — KPI et Activité Discord du mois (3 cartes) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" style={{ gridAutoRows: '1fr' }}>
         {/* Raids envoyés */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
-          <div className="text-center">
-            <div className="mb-4">
-              <svg
-                className="w-16 h-16 mx-auto text-[#10b981]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                />
-              </svg>
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0 text-center">Raids envoyés</h3>
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="text-center mb-4 flex-shrink-0">
+              {loadingRaidStats ? (
+                <div className="flex items-center justify-center h-16 mb-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10b981]"></div>
+                </div>
+              ) : (
+                <div className="text-4xl font-bold text-white mb-2">
+                  {raidStats?.totalRaidsSent ?? 0}
+                </div>
+              )}
             </div>
-            {loadingRaidStats ? (
-              <div className="flex items-center justify-center h-16 mb-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10b981]"></div>
-              </div>
-            ) : (
-              <div className="text-4xl font-bold text-white mb-2">
-                {raidStats?.totalRaidsSent ?? 0}
-              </div>
-            )}
-            <div className="text-sm text-gray-400">Raids envoyés</div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {loadingRaidStats ? (
+                <div className="text-sm text-gray-500 text-center">Chargement...</div>
+              ) : raidStats?.topRaiders && raidStats.topRaiders.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-400 mb-2">Top 5 streamers</div>
+                  {raidStats.topRaiders.map((raider) => (
+                    <div key={raider.rank} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">#{raider.rank}</span>
+                        <span className="text-white">{raider.displayName}</span>
+                      </div>
+                      <div className="text-gray-400">
+                        <span>{raider.count} raid{raider.count > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 text-center py-2">
+                  Aucune donnée disponible
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Raids reçus */}
-        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col items-center justify-center">
-          <div className="text-center">
-            <div className="mb-4">
-              <svg
-                className="w-16 h-16 mx-auto text-[#9146ff]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
+        <div className="bg-[#1a1a1d] border border-[#2a2a2d] rounded-lg p-6 flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold text-white mb-4 flex-shrink-0 text-center">Raids reçus</h3>
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="text-center mb-4 flex-shrink-0">
+              {loadingRaidStats ? (
+                <div className="flex items-center justify-center h-16 mb-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#9146ff]"></div>
+                </div>
+              ) : (
+                <div className="text-4xl font-bold text-white mb-2">
+                  {raidStats?.totalRaidsReceived ?? 0}
+                </div>
+              )}
             </div>
-            {loadingRaidStats ? (
-              <div className="flex items-center justify-center h-16 mb-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#9146ff]"></div>
-              </div>
-            ) : (
-              <div className="text-4xl font-bold text-white mb-2">
-                {raidStats?.totalRaidsReceived ?? 0}
-              </div>
-            )}
-            <div className="text-sm text-gray-400">Raids reçus</div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {loadingRaidStats ? (
+                <div className="text-sm text-gray-500 text-center">Chargement...</div>
+              ) : raidStats?.topTargets && raidStats.topTargets.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-400 mb-2">Top 5 streamers</div>
+                  {raidStats.topTargets.map((target) => (
+                    <div key={target.rank} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">#{target.rank}</span>
+                        <span className="text-white">{target.displayName}</span>
+                      </div>
+                      <div className="text-gray-400">
+                        <span>{target.count} raid{target.count > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 text-center py-2">
+                  Aucune donnée disponible
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
