@@ -114,15 +114,18 @@ export default function Partie2Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Le <strong>Spotlight</strong> a remplacé l&apos;ancien système du Live Gagnant. Et l&apos;objectif est simple : <strong>vous mettre en lumière, mais de la bonne manière</strong>.</p>
-                <p>Contrairement à une simple mise en avant, le Spotlight est <strong>une heure guidée, structurée</strong>, pensée pour vous aider à :</p>
-                <p>• présenter votre univers<br />
-                • créer du lien avec les viewers<br />
-                • attirer de nouvelles personnes<br />
-                • construire une communauté qui va rester<br />
-                • vous faire découvrir en tant que streamer <strong>et</strong> en tant que personne</p>
-                <p>Ce n&apos;est pas un examen, ce n&apos;est pas une performance parfaite qu&apos;on attend : <strong>c&apos;est votre moment à vous.</strong></p>
-                <p>Et maintenant, le Spotlight est accessible à tous : plus besoin de followers minimum, plus de prérequis. Si vous avez envie de briller, vous pouvez y accéder via la boutique de points ou en participant activement à la communauté.&quot;</p>
+                <p>&quot;Le <span style={{color: '#7b4fd6'}}><strong>Spotlight New Family</strong></span> est le système phare de la communauté. Il a remplacé l&apos;ancien concept du *Live Gagnant*, avec une idée très claire : <span style={{color: '#7b4fd6'}}><strong>vous mettre en lumière, mais de la bonne manière</strong></span>.</p>
+                <p>Le Spotlight n&apos;est pas une simple mise en avant. C&apos;est <span style={{color: '#7b4fd6'}}><strong>une heure guidée, structurée et bienveillante</strong></span>, pensée pour vous aider à :</p>
+                <p>• <strong>présenter votre univers</strong><br />
+                • <strong>créer de vrais liens humains</strong><br />
+                • <strong>rencontrer de nouvelles personnes</strong><br />
+                • <strong>attirer des viewers qui resteront</strong><br />
+                • <strong>montrer qui vous êtes, au-delà du jeu</strong></p>
+                <p>Et c&apos;est très important de le dire clairement : le Spotlight <span style={{color: '#7b4fd6'}}><strong>n&apos;est pas un examen</strong></span>. On n&apos;attend pas une performance parfaite. C&apos;est <span style={{color: '#7b4fd6'}}><strong>votre moment</strong></span>, un moment fait pour être à l&apos;aise et être vous-mêmes.</p>
+                <p>Le but n&apos;est pas de &quot;faire un gros live d&apos;un soir&quot;. Le but, c&apos;est de créer des <strong>connexions durables</strong>, des <strong>viewers réguliers</strong>, et parfois même de vraies <strong>amitiés</strong>.</p>
+                <p>Aujourd&apos;hui, le Spotlight est <span style={{color: '#7b4fd6'}}><strong>accessible à tous</strong></span>. Il n&apos;y a plus de prérequis de followers, ni de conditions cachées. Si vous en avez envie, vous pouvez y accéder via la <strong>boutique de points</strong> ou grâce à votre <strong>implication dans la communauté</strong>.</p>
+                <p>Un guide complet existe pour vous accompagner pas à pas. Il n&apos;est pas là pour vous brider, mais pour vous rassurer et vous aider à faire de ce moment une expérience <span style={{color: '#7b4fd6'}}><strong>douce, humaine et positive</strong></span>.</p>
+                <p>Le Spotlight, c&apos;est un <span style={{color: '#7b4fd6'}}><strong>tremplin</strong></span>. Pas une pression. Pas une compétition. Juste une opportunité de briller, <span style={{color: '#7b4fd6'}}><strong>ensemble</strong></span>.&quot;</p>
               </div>
             </div>
 
@@ -167,19 +170,12 @@ export default function Partie2Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;La New Family, ce n&apos;est pas que le Spotlight ou le Discord. C&apos;est <strong>un véritable écosystème d&apos;entraide</strong> :</p>
-                <p><strong>Côté événements</strong>, on organise régulièrement :</p>
-                <p>• Des <strong>soirées film communautaires</strong> pour se détendre ensemble<br />
-                • Des <strong>projets collaboratifs</strong> entre membres<br />
-                • Des <strong>défis et événements thématiques</strong><br />
-                • Des <strong>soirées gaming communautaires</strong></p>
-                <p><strong>Côté ressources</strong>, vous trouverez :</p>
-                <p>• Des <strong>guides et tutoriels partagés</strong><br />
-                • Des <strong>conseils d&apos;experts streamers</strong><br />
-                • Des <strong>formations régulières</strong> sur OBS, la communication, le montage…<br />
-                • Des <strong>partenariats</strong> avec d&apos;autres communautés<br />
-                • Un <strong>réseau de créateurs bienveillants</strong> qui s&apos;entraident au quotidien</p>
-                <p>Bref, on ne vous laisse pas seuls : il y a toujours quelque chose pour vous aider à progresser !&quot;</p>
+                <p>&quot;La <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span> n&apos;est pas seulement le Spotlight ou un serveur Discord. C&apos;est un <span style={{color: '#7b4fd6'}}><strong>véritable écosystème d&apos;entraide</strong></span>, pensé pour créer du lien, faire grandir les projets et avancer ensemble.</p>
+                <p>Côté <span style={{color: '#7b4fd6'}}><strong>événements et projets</strong></span>, la communauté vit toute l&apos;année. On organise régulièrement des <strong>soirées film communautaires</strong>, des <strong>soirées gaming</strong>, des <strong>défis créatifs</strong> et des <strong>événements thématiques</strong>, toujours dans un esprit convivial et bienveillant.</p>
+                <p>La New Family, ce sont aussi des <span style={{color: '#7b4fd6'}}><strong>projets collaboratifs</strong></span> entre membres : collabs entre streamers, concepts communs, événements croisés ou idées lancées directement par la communauté. L&apos;objectif n&apos;est pas la performance, mais la <strong>création de liens durables</strong>.</p>
+                <p>Et parfois, l&apos;aventure sort du virtuel. Un projet important est en préparation : <span style={{color: '#7b4fd6'}}><strong>un voyage IRL communautaire à PortAventura prévu au mois de mai</strong></span>. Ce moment permettra de se rencontrer autrement, de partager une expérience forte et de renforcer les liens humains déjà créés en ligne.</p>
+                <p>Côté <span style={{color: '#7b4fd6'}}><strong>ressources et soutien</strong></span>, vous trouverez des <strong>guides</strong>, des <strong>tutoriels</strong>, des <strong>conseils d&apos;experts</strong> et des <strong>formations régulières</strong> autour du streaming : OBS, communication, montage, organisation et bien plus encore.</p>
+                <p>Tout cela s&apos;appuie sur un <span style={{color: '#7b4fd6'}}><strong>réseau de créateurs bienveillants</strong></span> qui s&apos;entraident au quotidien. Ici, on ne vous laisse pas seuls : il y a toujours quelqu&apos;un, quelque chose ou un projet pour vous aider à progresser, à votre rythme.&quot;</p>
               </div>
             </div>
 
