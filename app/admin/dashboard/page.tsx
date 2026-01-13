@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   LineChart,
@@ -237,6 +237,9 @@ export default function DashboardPage() {
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
+  // Agréger les données quotidiennes par mois pour le graphique
+  const monthlyActivityData = useMemo(() => aggregateDailyDataByMonth(discordActivityData), [discordActivityData]);
+
   const handleMessagesImport = async (data: Record<string, number>) => {
     try {
       const response = await fetch('/api/admin/discord-activity/import', {
@@ -449,7 +452,7 @@ export default function DashboardPage() {
         {/* Activité Discord */}
         <ChartCard title="Activité Discord" loading={loadingDiscordActivity}>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={aggregateDailyDataByMonth(discordActivityData)}>
+            <LineChart data={monthlyActivityData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
                 dataKey="month"
