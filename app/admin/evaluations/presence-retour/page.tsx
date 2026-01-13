@@ -317,13 +317,46 @@ export default function PresenceRetourPage() {
 
             {/* Liste des membres présents */}
             <div className="p-6">
-              {presentMembers.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">
-                  Aucun membre présent pour cette réunion.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {presentMembers.map((member) => (
+              {/* Modérateurs inscrits */}
+              {selectedModerators.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-white mb-4">Modérateurs inscrits</h3>
+                  <div className="space-y-3">
+                    {selectedModerators.map((moderator) => (
+                      <div
+                        key={moderator.id}
+                        className="bg-[#0e0e10] border border-green-500/30 rounded-lg p-4"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Pseudo</div>
+                            <div className="font-medium text-white">{moderator.pseudo}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Rôle</div>
+                            <div className="font-medium text-white">{moderator.role}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Placement</div>
+                            <div className="font-medium text-green-400">{moderator.placement}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Membres présents */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Membres présents</h3>
+                {presentMembers.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">
+                    Aucun membre présent pour cette réunion.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {presentMembers.map((member) => (
                     <div
                       key={member.id}
                       className="bg-[#0e0e10] border border-green-500/30 rounded-lg p-4"
