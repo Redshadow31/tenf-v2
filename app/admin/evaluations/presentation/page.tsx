@@ -8,7 +8,7 @@ export default function PresentationPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // PDF URL - À adapter selon vos besoins (peut être stocké dans une config ou une API)
-  const pdfUrl = "/presentation.pdf"; // Par défaut, chercher dans /public
+  const pdfUrl = "/Presentation.pdf"; // Fichier dans /public
 
   // Gestion du mode plein écran
   useEffect(() => {
