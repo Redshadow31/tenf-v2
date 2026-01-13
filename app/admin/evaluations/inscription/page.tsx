@@ -230,7 +230,7 @@ export default function InscriptionPage() {
         await loadData();
         // Réouvrir le modal avec les nouvelles données
         if (selectedIntegration) {
-          handleOpenModal(selectedIntegration);
+          await handleOpenModal(selectedIntegration);
         }
       } else {
         const error = await response.json();
