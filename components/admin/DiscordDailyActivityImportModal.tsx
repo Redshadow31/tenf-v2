@@ -5,7 +5,7 @@ import { useState } from "react";
 interface DiscordDailyActivityImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (type: 'messages' | 'vocals', data: Array<{ date: string; value: number }>) => Promise<void>;
+  onImport: (data: Array<{ date: string; value: number }>) => Promise<void>;
   type: 'messages' | 'vocals';
 }
 
