@@ -59,44 +59,17 @@ export default function Partie2Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Dans la<br />
-                <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>,<br />
-                on a mis en place des <strong>rôles</strong>, mais il y a une chose très importante à comprendre dès le départ :<br />
-                ici,<br />
-                <span style={{color: '#7b4fd6'}}><strong>chacun a sa place</strong></span>.</p>
-                <p>Les rôles ne servent <strong>ni à classer</strong>,<br />
-                ni à comparer,<br />
-                ni à mettre la pression.<br />
-                Ils servent simplement à comprendre <strong>où chacun en est</strong>, pour pouvoir mieux accompagner chaque membre selon <strong>son rythme</strong>, <strong>sa situation</strong> et <strong>ses envies</strong>.</p>
-                <p>On distingue d&apos;abord les<br />
-                <span style={{color: '#7b4fd6'}}><strong>créateurs actifs</strong></span>.</p>
-                <p>Les <strong>créateurs affiliés</strong> sont les streamers qui ont obtenu le statut Twitch Affiliate.<br />
-                Les <strong>créateurs en développement</strong> sont ceux qui ne sont pas encore affiliés. Ici, ce terme est important : ce n&apos;est <strong>pas un &quot;moins&quot;</strong>, c&apos;est une <strong>étape</strong>, un chemin.<br />
-                Les <strong>créateurs en pause</strong> sont les streamers qui font une pause courte, tout en restant intégrés au fonctionnement de la communauté.</p>
-                <p>Il y a ensuite le rôle<br />
-                <span style={{color: '#7b4fd6'}}><strong>Communauté</strong></span>,<br />
-                et il est essentiel de bien le comprendre.</p>
+                <p>&quot;Dans la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, on a mis en place des <strong>rôles</strong>, mais il y a une chose très importante à comprendre dès le départ : ici, <span style={{color: '#7b4fd6'}}><strong>chacun a sa place</strong></span>.</p>
+                <p>Les rôles ne servent <strong>ni à classer</strong>, ni à comparer, ni à mettre la pression. Ils servent simplement à comprendre <strong>où chacun en est</strong>, pour pouvoir mieux accompagner chaque membre selon <strong>son rythme</strong>, <strong>sa situation</strong> et <strong>ses envies</strong>.</p>
+                <p>On distingue d&apos;abord les <span style={{color: '#7b4fd6'}}><strong>créateurs actifs</strong></span>.</p>
+                <p>Les <strong>créateurs affiliés</strong> sont les streamers qui ont obtenu le statut Twitch Affiliate. Les <strong>créateurs en développement</strong> sont ceux qui ne sont pas encore affiliés. Ici, ce terme est important : ce n&apos;est <strong>pas un &quot;moins&quot;</strong>, c&apos;est une <strong>étape</strong>, un chemin. Les <strong>créateurs en pause</strong> sont les streamers qui font une pause courte, tout en restant intégrés au fonctionnement de la communauté.</p>
+                <p>Il y a ensuite le rôle <span style={{color: '#7b4fd6'}}><strong>Communauté</strong></span>, et il est essentiel de bien le comprendre.</p>
                 <p>Ce rôle regroupe des <strong>viewers engagés</strong>, des <strong>streamers qui ne souhaitent pas de mise en avant</strong>, des <strong>créateurs en pause longue</strong>, ou encore des membres qui, à un moment donné, ne participaient plus activement à l&apos;entraide.</p>
-                <p>Les membres en Communauté ont <strong>accès à tout le serveur</strong> et participent pleinement à la vie communautaire.<br />
-                La seule différence, c&apos;est que leurs lives ne sont plus <strong>mis en avant automatiquement</strong>, et que leur chaîne ne figure plus dans les <strong>outils de promotion</strong>.</p>
-                <p>Et c&apos;est très important de le dire clairement :<br />
-                <span style={{color: '#7b4fd6'}}><strong>ce rôle n&apos;est jamais une sanction</strong></span>.<br />
-                Il ne juge ni la valeur, ni la légitimité d&apos;une personne.<br />
-                Avec un simple message au staff pour dire &quot;je suis motivé pour revenir&quot;, le rôle actif est récupéré, <strong>sans pression</strong>, <strong>sans justification</strong>, <strong>sans jugement</strong>.</p>
-                <p>Enfin, certains rôles existent pour<br />
-                <span style={{color: '#7b4fd6'}}><strong>protéger les plus jeunes</strong></span>.<br />
-                Les <strong>Jeunes Créateurs</strong> concernent les streamers mineurs.<br />
-                Les <strong>P&apos;tits Jeunes</strong> concernent les viewers mineurs.<br />
-                Cela permet d&apos;adapter l&apos;accès à certains contenus et de garantir un cadre sain et sécurisé.</p>
-                <p>Pour résumer :<br />
-                les rôles évoluent,<br />
-                rien n&apos;est figé,<br />
-                et tout est pensé pour<br />
-                <span style={{color: '#7b4fd6'}}><strong>accompagner</strong></span>,<br />
-                jamais pour juger.</p>
-                <p>Ici, on avance<br />
-                <span style={{color: '#7b4fd6'}}><strong>ensemble</strong></span>,<br />
-                à son rythme — et c&apos;est ce qui fait la richesse de la New Family.&quot;</p>
+                <p>Les membres en Communauté ont <strong>accès à tout le serveur</strong> et participent pleinement à la vie communautaire. La seule différence, c&apos;est que leurs lives ne sont plus <strong>mis en avant automatiquement</strong>, et que leur chaîne ne figure plus dans les <strong>outils de promotion</strong>.</p>
+                <p>Et c&apos;est très important de le dire clairement : <span style={{color: '#7b4fd6'}}><strong>ce rôle n&apos;est jamais une sanction</strong></span>. Il ne juge ni la valeur, ni la légitimité d&apos;une personne. Avec un simple message au staff pour dire &quot;je suis motivé pour revenir&quot;, le rôle actif est récupéré, <strong>sans pression</strong>, <strong>sans justification</strong>, <strong>sans jugement</strong>.</p>
+                <p>Enfin, certains rôles existent pour <span style={{color: '#7b4fd6'}}><strong>protéger les plus jeunes</strong></span>. Les <strong>Jeunes Créateurs</strong> concernent les streamers mineurs. Les <strong>P&apos;tits Jeunes</strong> concernent les viewers mineurs. Cela permet d&apos;adapter l&apos;accès à certains contenus et de garantir un cadre sain et sécurisé.</p>
+                <p>Pour résumer : les rôles évoluent, rien n&apos;est figé, et tout est pensé pour <span style={{color: '#7b4fd6'}}><strong>accompagner</strong></span>, jamais pour juger.</p>
+                <p>Ici, on avance <span style={{color: '#7b4fd6'}}><strong>ensemble</strong></span>, à son rythme — et c&apos;est ce qui fait la richesse de la New Family.&quot;</p>
               </div>
             </div>
 
