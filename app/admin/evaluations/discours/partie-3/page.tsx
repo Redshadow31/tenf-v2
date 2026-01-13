@@ -59,17 +59,14 @@ export default function Partie3Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Faire partie de la New Family, ce n&apos;est pas juste rejoindre un Discord de plus. C&apos;est entrer dans un <strong>vrai système d&apos;entraide</strong>, pensé pour vous accompagner, vous mettre en valeur, et vous aider à évoluer.</p>
-                <p><strong>Le Spotlight</strong>, on en a déjà parlé : c&apos;est notre vitrine pour tous, accessible dès ton arrivée, sans prérequis.</p>
-                <p><strong>La Communauté active</strong>, c&apos;est la vraie force ici : vous trouverez des streamers qui comprennent vos galères, des membres qui vous encouragent, qui vous suivent, qui vous raid. Du soutien sur vos scènes, vos réglages, votre contenu, votre stress avant un live…</p>
-                <p>Et puis, il y a le <strong>rôle VIP Élite</strong>. C&apos;est notre façon de remercier les membres les plus actifs dans l&apos;entraide :</p>
-                <p>• présence sur Discord<br />
-                • participation aux Spotlight<br />
-                • raids communautaires<br />
-                • participation aux événements<br />
-                • soutien régulier aux autres membres</p>
-                <p>Ce rôle donne accès à des <strong>salons privés, des tutoriels exclusifs, le droit de participer à certaines décisions, l&apos;annonce automatique de ton live, la mention @everyone</strong>, et un <strong>badge unique</strong>.</p>
-                <p>Et attention : <strong>le VIP Élite ne s&apos;achète PAS</strong>. Il se mérite par la régularité et l&apos;esprit d&apos;entraide, <strong>jamais par les chiffres</strong>. C&apos;est une reconnaissance de ton implication humaine.&quot;</p>
+                <p>&quot;Faire partie de la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, ce n&apos;est pas simplement rejoindre un serveur Discord de plus. C&apos;est entrer dans un <span style={{color: '#7b4fd6'}}><strong>véritable système d&apos;entraide humaine</strong></span>, pensé pour accompagner les personnes avant les chiffres.</p>
+                <p>On vous a déjà parlé du <span style={{color: '#7b4fd6'}}><strong>Spotlight</strong></span> : une mise en avant guidée, structurée et accessible à tous, sans condition de taille de chaîne. Mais ce n&apos;est qu&apos;une partie de ce qui fait que la New Family est différente.</p>
+                <p>Ce qui fait la vraie force de la communauté, c&apos;est la <span style={{color: '#7b4fd6'}}><strong>Communauté active</strong></span>. Ici, vous trouverez des streamers qui comprennent vos galères, des membres qui passent sur vos lives, qui vous encouragent, qui vous soutiennent quand un live se passe moins bien. On parle de soutien sur les scènes, les réglages, le contenu, mais aussi sur le stress, la motivation et les moments de doute.</p>
+                <p>Et c&apos;est dans cet esprit qu&apos;existe le rôle <span style={{color: '#7b4fd6'}}><strong>VIP Élité</strong></span>. Ce rôle n&apos;est pas là pour créer une élite ou une hiérarchie. Il existe pour <span style={{color: '#7b4fd6'}}><strong>reconnaître l&apos;implication humaine</strong></span> des membres qui font vivre l&apos;entraide au quotidien.</p>
+                <p>Le VIP Élité valorise des actions simples mais essentielles : être présent aux Spotlights, participer aux raids communautaires, s&apos;impliquer dans les événements, soutenir régulièrement les autres membres et contribuer à une ambiance saine et bienveillante.</p>
+                <p>Ce rôle peut donner accès à certains avantages comme des salons dédiés, des ressources spécifiques, la participation à certaines décisions ou un badge distinctif. Mais ce n&apos;est pas ça l&apos;essentiel. L&apos;essentiel, c&apos;est ce qu&apos;il représente.</p>
+                <p>Et c&apos;est très important de le dire clairement : le <span style={{color: '#7b4fd6'}}><strong>VIP Élité ne s&apos;achète pas</strong></span>. Il ne dépend pas des chiffres Twitch, du nombre de followers ou des stats. Il se mérite par la régularité, la bienveillance et l&apos;esprit d&apos;entraide.</p>
+                <p>À la New Family, la reconnaissance ne se mesure pas en chiffres, mais en <span style={{color: '#7b4fd6'}}><strong>présence humaine</strong></span>. Et c&apos;est pour ça que ce n&apos;est pas juste un Discord de plus.&quot;</p>
               </div>
             </div>
 
@@ -113,24 +110,14 @@ export default function Partie3Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Dans la New Family, on croit que l&apos;entraide mérite d&apos;être reconnue. Chaque action positive te rapporte des points :</p>
-                <p><strong>Actions Quotidiennes :</strong></p>
-                <p>📷 <strong>Suivre les réseaux du serveur</strong> → +500 pts<br />
-                📅 <strong>Participer aux événements Discord</strong> → +200 à +500 pts<br />
-                🎫 <strong>Parrainage</strong> → +300 pts chacun<br />
-                💥 <strong>Raid fait à un membre</strong> → +500 pts<br />
-                🆙 <strong>Gain tous les 3 niveaux d&apos;XP</strong> → +500 pts<br />
-                👋 <strong>Cadeau de bienvenue</strong> → +1 000 pts<br />
-                🎂 <strong>Bonus anniversaire</strong> → +2 000 pts<br />
-                📰 <strong>Bonus journalier</strong> (commande /journalier) → +500 pts par jour</p>
-                <p><strong>Boutique Spotlight :</strong></p>
-                <p>🎤 <strong>Spotlight complet</strong> → 30 000 pts<br />
-                📊 <strong>Analyse de chaîne</strong> → De 6 000 à 25 000 pts<br />
-                🎤 <strong>Interview</strong> → 10 000 pts<br />
-                📷 <strong>Post sur réseaux officiels</strong> → 6 000 pts<br />
-                😊 <strong>Défi rigolo et rôle rigolo</strong> → De 2 500 à 5 000 pts</p>
-                <p><em>(À ce moment, faites une démo du salon ⁠🗓・bonus-journalier et de la commande /journalier)</em></p>
-                <p>Ce système n&apos;est pas une compétition. C&apos;est une <strong>valorisation de ton implication</strong>, à ton rythme.&quot;</p>
+                <p>&quot;Dans la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, on part d&apos;un principe simple : l&apos;entraide mérite d&apos;être reconnue. Chaque action positive que vous faites pour la communauté vous rapporte des <strong>points</strong>, non pas pour créer une compétition, mais pour <span style={{color: '#7b4fd6'}}><strong>valoriser votre implication</strong></span>.</p>
+                <p>Ces points se gagnent naturellement, en faisant ce que la New Family encourage déjà : être présent, aider, participer, soutenir.</p>
+                <p>Au quotidien, vous pouvez gagner des points en <strong>suivant les réseaux du serveur</strong>, en <strong>participant aux événements Discord</strong>, en <strong>parrainant de nouveaux membres</strong>, en <strong>raidant un autre membre</strong>, en <strong>progressant avec l&apos;XP</strong>, ou simplement grâce au <strong>bonus journalier</strong>. Il y a aussi des moments spéciaux comme le <strong>cadeau de bienvenue</strong> ou le <strong>bonus d&apos;anniversaire</strong>.</p>
+                <p>Les points servent ensuite dans la <span style={{color: '#7b4fd6'}}><strong>boutique Spotlight</strong></span>. On y retrouve des choses utiles et fun : un <strong>Spotlight complet</strong>, une <strong>analyse de chaîne</strong>, une <strong>interview</strong>, des <strong>posts sur les réseaux officiels</strong>, ou encore des <strong>défis ludiques</strong>. Là encore, ce n&apos;est pas une course : chacun avance à son rythme.</p>
+                <p>À ce moment-là de la réunion, on va faire une petite démo ensemble. On vous montre le salon <span style={{color: '#7b4fd6'}}><strong>🗓・bonus-journalier</strong></span> et comment utiliser la commande <span style={{color: '#7b4fd6'}}><strong>/journalier</strong></span> pour récupérer vos points chaque jour.</p>
+                <p>C&apos;est aussi l&apos;occasion de vous montrer comment déclarer un raid pour que les points soient comptabilisés. La phrase est toute simple, par exemple : <strong>@user1 a raid @user2</strong>. Cette déclaration permet de valoriser concrètement l&apos;entraide entre membres.</p>
+                <p>Et on insiste vraiment sur un point : ce système de points <span style={{color: '#7b4fd6'}}><strong>n&apos;est pas une compétition</strong></span>. Personne n&apos;est en retard, personne n&apos;est obligé de tout faire. C&apos;est un outil ludique, pensé pour récompenser l&apos;implication, encourager les bonnes habitudes et rendre l&apos;entraide encore plus vivante.</p>
+                <p>Ici, chaque point raconte une action positive. Et ça, c&apos;est très New Family.&quot;</p>
               </div>
             </div>
 
