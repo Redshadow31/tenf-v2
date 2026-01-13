@@ -130,15 +130,45 @@ export default function Partie1Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Pour comprendre ce qu&apos;est aujourd&apos;hui la New Family, il faut revenir un peu en arrière.</p>
-                <p>Avant d&apos;être Twitch Entraide New Family, le serveur s&apos;appelait Twitch Entraide Family. À l&apos;origine, c&apos;était une petite idée lancée simplement, entre passionnés, avec une envie très basique : s&apos;entraider entre streamers, sans compétition malsaine.</p>
-                <p>Très vite, une équipe s&apos;est formée autour de cette idée. Des personnes ont donné de leur temps, de leur énergie, pour poser les premières bases : des salons, des règles, des outils… mais surtout une ambiance humaine, bienveillante, où chacun pouvait trouver sa place.</p>
-                <p>Avec le temps, une divergence importante est apparue. Le point de rupture, ça a été le moment où l&apos;un des créateurs a voulu faire payer l&apos;entrée et/ou la visibilité sur le serveur. Pour nous, c&apos;était une ligne rouge. L&apos;entraide ne se monétise pas. La visibilité ne s&apos;achète pas ici. On a donc dit non — et les clés du projet nous ont été laissées.</p>
-                <p>C&apos;est là qu&apos;est née la New Family.</p>
-                <p>Le vrai nouveau départ, c&apos;est le 2 septembre 2024. On a relancé le serveur sur des bases plus claires, plus solides, plus cohérentes avec nos valeurs. Une version plus libre, plus humaine, et surtout plus alignée : Twitch Entraide New Family.</p>
-                <p>Depuis cette relance, on a testé des choses. Certaines ont très bien fonctionné, d&apos;autres non. On a connu des réussites, des erreurs, des remises en question. Mais notre philosophie n&apos;a jamais changé : ici, un échec n&apos;est jamais une fin. C&apos;est un apprentissage. Un tremplin pour faire mieux ensuite.</p>
-                <p>Aujourd&apos;hui, cette vision se reflète aussi dans la croissance de la communauté. On est passés d&apos;environ 70 membres au lancement de la V2 à plus de 400 aujourd&apos;hui, dont plus de 160 réellement actifs dans l&apos;entraide. Mais au-delà des chiffres, ce qui compte, c&apos;est la diversité : des streamers débutants, des créateurs expérimentés, des viewers engagés.</p>
-                <p>La New Family, ce n&apos;est pas une course. Ce n&apos;est pas un classement. C&apos;est une communauté qui avance ensemble, qui apprend ensemble, qui se soutient ensemble, et qui croit profondément en la force de l&apos;humain avant tout.&quot;</p>
+                <p>&quot;Pour comprendre ce qu&apos;est aujourd&apos;hui la<br />
+                <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>,<br />
+                il faut revenir un peu en arrière.</p>
+                <p>Avant d&apos;être ce que vous découvrez aujourd&apos;hui, le serveur s&apos;appelait<br />
+                <span style={{color: '#7b4fd6'}}><strong>Twitch Entraide Family</strong></span>.<br />
+                À l&apos;origine, c&apos;était une <strong>idée simple</strong>, née entre passionnés :<br />
+                créer un espace où l&apos;on pouvait <strong>s&apos;entraider entre streamers</strong>, sans compétition ni pression.</p>
+                <p>Très vite, une équipe s&apos;est formée.<br />
+                Des personnes ont donné de leur temps, de leur énergie, pour poser les premières bases :<br />
+                des salons, des outils, des règles… mais surtout une<br />
+                <span style={{color: '#7b4fd6'}}><strong>ambiance humaine et bienveillante</strong></span>,<br />
+                où chacun pouvait trouver sa place.</p>
+                <p>Avec le temps, une divergence importante est apparue.<br />
+                Le point de rupture, ça a été le moment où l&apos;un des créateurs a voulu<br />
+                <span style={{color: '#7b4fd6'}}><strong>faire payer l&apos;entrée et/ou la visibilité</strong></span>.</p>
+                <p>Pour nous, c&apos;était une <strong>ligne rouge</strong>.<br />
+                L&apos;entraide ne se monétise pas ici.<br />
+                La visibilité ne s&apos;achète pas.<br />
+                On a donc dit <strong>non</strong> — et les clés du projet nous ont été laissées.</p>
+                <p>C&apos;est à ce moment-là qu&apos;est née la<br />
+                <span style={{color: '#7b4fd6'}}><strong>Twitch Entraide New Family</strong></span>.</p>
+                <p>Le vrai nouveau départ, c&apos;est le<br />
+                <span style={{color: '#7b4fd6'}}><strong>2 septembre 2024</strong></span>.<br />
+                On a relancé le serveur sur des bases plus claires, plus solides, plus alignées avec nos valeurs :<br />
+                une version plus libre, plus humaine, et plus cohérente.</p>
+                <p>Au moment de cette relance, nous étions<br />
+                <span style={{color: '#7b4fd6'}}><strong>42 membres</strong></span>.<br />
+                Aujourd&apos;hui, la communauté compte<br />
+                <span style={{color: '#7b4fd6'}}><strong>environ 480 membres</strong></span>,<br />
+                dont<br />
+                <span style={{color: '#7b4fd6'}}><strong>près de 200 réellement actifs dans le système d&apos;entraide</strong></span>.</p>
+                <p>Mais au-delà des chiffres, ce qui fait notre richesse, c&apos;est la diversité :<br />
+                des streamers débutants, des créateurs expérimentés, des viewers engagés.</p>
+                <p>La New Family, ce n&apos;est pas une course.<br />
+                Ce n&apos;est pas un classement.<br />
+                C&apos;est une communauté qui avance <strong>ensemble</strong>,<br />
+                qui apprend <strong>ensemble</strong>,<br />
+                et qui croit profondément en<br />
+                <span style={{color: '#7b4fd6'}}><strong>la force de l&apos;humain avant tout</strong></span>.&quot;</p>
               </div>
             </div>
 
@@ -183,13 +213,34 @@ export default function Partie1Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Derrière la New Family, il y a avant tout des personnes. Pas des rôles, pas des grades, mais des humains qui donnent de leur temps pour faire vivre la communauté.</p>
-                <p>La New Family repose d&apos;abord sur trois fondateurs : Clara, Nexou et Red. Ce sont eux qui portent le projet depuis le début, qui en définissent la vision et qui assurent sa cohérence. Vous les croiserez très souvent : sur Discord, en vocal, en messages privés, dans les salons… mais aussi dans les lives des membres, les événements communautaires, les raids et les moments importants de la vie du serveur.</p>
-                <p>Leur rôle, ce n&apos;est pas seulement de décider. C&apos;est surtout de coordonner, d&apos;écouter, d&apos;organiser, de former, et de veiller à ce que l&apos;esprit New Family reste intact, même quand le serveur grandit. Beaucoup de choses se font dans l&apos;ombre, mais toujours avec la même motivation : faire avancer la communauté dans de bonnes conditions.</p>
-                <p>À leurs côtés, il y a aujourd&apos;hui quatre administrateurs adjoints : Selena_akemi, Nangel89, Jenny31200 et Tab&apos;s_up. Leur mission est essentielle : soutenir les fondateurs, assurer la continuité du projet, coordonner les équipes, et prendre le relais quand c&apos;est nécessaire. Ils sont pleinement intégrés à la gestion du serveur et participent activement à sa stabilité et à son évolution.</p>
-                <p>Et bien sûr, la New Family ne fonctionnerait pas sans l&apos;équipe de modération. Les modérateurs mentors et juniors sont le cœur du terrain. Les mentors sont formés, expérimentés, présents au quotidien pour accueillir, encadrer et accompagner les membres. Les juniors, eux, sont en apprentissage : ils se forment avec nous, accompagnés par les mentors et les fondateurs, pour devenir à leur tour des piliers de la communauté.</p>
-                <p>Ce qui est important à retenir, c&apos;est que le staff est accessible. Vous pouvez nous parler sur Discord, en vocal, en message privé, dans les salons. Il n&apos;y a pas de distance volontaire ni de mur entre le staff et les membres.</p>
-                <p>Ensemble, fondateurs, adjoints et modérateurs forment une équipe soudée, à l&apos;écoute, disponible, et engagée pour faire avancer cette grande famille qu&apos;est la New Family.&quot;</p>
+                <p>&quot;Derrière la<br />
+                <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>,<br />
+                il y a avant tout des <strong>personnes</strong>.<br />
+                Pas des grades, pas des titres impressionnants, mais des <strong>humains</strong> qui donnent de leur temps et de leur énergie pour faire vivre la communauté.</p>
+                <p>La New Family repose d&apos;abord sur<br />
+                <span style={{color: '#7b4fd6'}}><strong>trois fondateurs</strong></span> :<br />
+                <strong>Clara</strong>, <strong>Nexou</strong> et <strong>Red</strong>.<br />
+                Ce sont eux qui portent le projet depuis le début, qui en définissent la vision et qui veillent à ce que l&apos;esprit New Family reste intact.</p>
+                <p>Vous les croiserez très souvent :<br />
+                sur <strong>Discord</strong>, en <strong>vocal</strong>, en <strong>messages privés</strong>, dans les salons…<br />
+                mais aussi dans les <strong>lives des membres</strong>, les <strong>raids</strong>, les <strong>événements communautaires</strong>.<br />
+                Leur rôle n&apos;est pas seulement de décider, mais surtout <strong>d&apos;écouter</strong>, <strong>d&apos;organiser</strong>, <strong>d&apos;accompagner</strong> et de <strong>coordonner</strong>.</p>
+                <p>À leurs côtés, il y a<br />
+                <span style={{color: '#7b4fd6'}}><strong>quatre administrateurs adjoints</strong></span> :<br />
+                <strong>Selena_akemi</strong>, <strong>Nangel89</strong>, <strong>Jenny31200</strong> et <strong>Tab&apos;s_up</strong>.<br />
+                Ils soutiennent les fondateurs, assurent la continuité du projet, coordonnent les équipes et prennent le relais quand c&apos;est nécessaire.<br />
+                Ils jouent un rôle clé dans la <strong>stabilité</strong> et la <strong>solidité</strong> du serveur.</p>
+                <p>Et bien sûr, la New Family ne serait rien sans son<br />
+                <span style={{color: '#7b4fd6'}}><strong>équipe de modération</strong></span>.<br />
+                Les <strong>modérateurs mentors</strong> sont les piliers du terrain : formés, expérimentés, présents au quotidien pour accueillir, guider et soutenir les membres.<br />
+                Les <strong>modérateurs juniors</strong>, eux, sont en apprentissage. Ils se forment avec nous, accompagnés par les mentors et les fondateurs, pour devenir à leur tour des acteurs clés de la communauté.</p>
+                <p>Ce qu&apos;il est important de retenir, c&apos;est que le<br />
+                <span style={{color: '#7b4fd6'}}><strong>staff est accessible</strong></span>.<br />
+                Vous pouvez nous parler sur Discord, en vocal, en message privé, dans les salons.<br />
+                Il n&apos;y a <strong>pas de barrière volontaire</strong>, pas de distance imposée.</p>
+                <p>Ensemble, fondateurs, adjoints et modérateurs forment une<br />
+                <span style={{color: '#7b4fd6'}}><strong>équipe soudée</strong></span>,<br />
+                à l&apos;écoute, disponible, et engagée pour faire avancer cette grande famille qu&apos;est la New Family.&quot;</p>
               </div>
             </div>
 
