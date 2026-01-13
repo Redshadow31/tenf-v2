@@ -107,6 +107,13 @@ export default function DiscordVocalsImportModal({
     const unmatchedData: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }> = {};
     const unmatchedUsernames: string[] = [];
     const activeLogins = new Set(activeMembers.map(m => m.twitchLogin));
+    // Créer une map discordId -> twitchLogin pour recherche par ID Discord
+    const discordIdMap = new Map<string, string>();
+    activeMembers.forEach(m => {
+      if (m.discordId) {
+        discordIdMap.set(m.discordId, m.twitchLogin);
+      }
+    });
 
     for (const line of lines) {
       const hasTab = line.includes("\t");
@@ -117,11 +124,13 @@ export default function DiscordVocalsImportModal({
       if (columns.length < 2) continue;
 
       let username: string;
+      let userId: string | undefined;
       let hoursDecimal: number;
 
       if (columns.length === 4) {
         // rank username userId hoursDecimal
         username = normalizeUsername(columns[1]);
+        userId = columns[2]?.trim();
         const hoursStr = columns[3]?.trim();
         hoursDecimal = parseFloat(hoursStr || '0');
       } else if (columns.length === 3) {
@@ -136,6 +145,7 @@ export default function DiscordVocalsImportModal({
         } else {
           // username userId hoursDecimal
           username = normalizeUsername(columns[0]);
+          userId = columns[1]?.trim();
           hoursDecimal = parseFloat(columns[2] || '0');
         }
       } else {
@@ -156,9 +166,17 @@ export default function DiscordVocalsImportModal({
 
       const { totalMinutes, display } = convertHoursToDisplay(hoursDecimal);
 
-      // Séparer les membres reconnus des non reconnus
+      // Essayer de matcher par pseudo d'abord
+      let matchedLogin: string | undefined;
       if (activeLogins.has(username)) {
-        vocalsByUser[username] = { hoursDecimal, totalMinutes, display };
+        matchedLogin = username;
+      } else if (userId && discordIdMap.has(userId)) {
+        // Si pseudo non reconnu, essayer de matcher par ID Discord
+        matchedLogin = discordIdMap.get(userId);
+      }
+
+      if (matchedLogin) {
+        vocalsByUser[matchedLogin] = { hoursDecimal, totalMinutes, display };
       } else {
         unmatchedData[username] = { hoursDecimal, totalMinutes, display };
         if (!unmatchedUsernames.includes(username)) {
