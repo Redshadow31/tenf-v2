@@ -403,8 +403,18 @@ export default function DashboardPage() {
                 <div className="flex-shrink-0 h-14 -mb-2">
                   <ResponsiveContainer width="100%" height={56}>
                     <LineChart data={sparklineData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                      <XAxis hide />
-                      <YAxis hide />
+                      <XAxis 
+                        dataKey="day"
+                        stroke="#9CA3AF"
+                        fontSize={10}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        stroke="#9CA3AF"
+                        fontSize={10}
+                        tickLine={false}
+                        width={30}
+                      />
                       <Line
                         type="monotone"
                         dataKey="count"
