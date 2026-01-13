@@ -59,16 +59,32 @@ export default function Partie1Page() {
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Salut tout le monde, et bienvenue officiellement chez Twitch Entraide New Family !</p>
-                <p>Déjà, merci d&apos;être là ce soir. Si vous êtes ici, ce n&apos;est pas par hasard : vous avez pris le temps de rejoindre une réunion, d&apos;écouter, de découvrir… et rien que ça, c&apos;est déjà un premier pas important.</p>
-                <p>Ici, vous n&apos;avez pas rejoint un Discord de plus. La New Family, c&apos;est avant tout une famille choisie : une communauté de streamers, de créateurs et de passionnés qui avancent ensemble, qui s&apos;entraident vraiment, et surtout qui respectent le rythme et la réalité de chacun.</p>
-                <p>Il n&apos;y a pas de jugement ici. Que vous débutiez, que vous streamiez depuis longtemps, que vous soyez très actifs ou plus discrets : vous avez votre place. On ne demande pas d&apos;être parfait, on demande juste d&apos;être sincère et bienveillant.</p>
-                <p>Cette réunion, c&apos;est votre porte d&apos;entrée dans la New Family. Le but, ce n&apos;est pas de vous noyer sous les règles, mais de vous expliquer comment on fonctionne, pourquoi on fait les choses comme ça, et surtout comment la communauté peut réellement vous aider à évoluer — dans votre stream, mais aussi humainement.</p>
-                <p>Vous allez voir qu&apos;ici, l&apos;entraide n&apos;est pas un mot posé dans un titre : c&apos;est quelque chose qu&apos;on vit au quotidien, dans les lives, sur Discord, et dans les échanges entre membres.</p>
-                <p>Prenez ce moment comme un temps calme, sans pression. Posez-vous, écoutez, et si quelque chose n&apos;est pas clair : il n&apos;y a aucune question bête.</p>
-                <p>En résumé : vous êtes ici chez vous, vous avancez à votre rythme, et nous on est là pour vous accompagner.</p>
-                <p>Encore bienvenue dans la New Family 💜</p>
-                <p>Allez, on va commencer tranquillement : je vous présente comment tout ça fonctionne et ce que vous allez trouver ici.&quot;</p>
+                <p>&quot;Salut tout le monde, et <strong>bienvenue officiellement</strong> dans la<br />
+                <span style={{color: '#7b4fd6'}}><strong>Twitch Entraide New Family</strong></span> !</p>
+                <p>Déjà, <strong>merci d&apos;être là</strong> aujourd&apos;hui. Le simple fait d&apos;avoir pris le temps de rejoindre cette réunion montre une chose importante :<br />
+                vous avez envie de <strong>comprendre</strong>, de <strong>vous intégrer</strong>, et de <strong>faire partie de quelque chose de collectif</strong>.</p>
+                <p>Ici, vous n&apos;avez pas rejoint <strong>un Discord parmi tant d&apos;autres</strong>.<br />
+                La New Family, c&apos;est avant tout une<br />
+                <span style={{color: '#7b4fd6'}}><strong>famille choisie</strong></span> :<br />
+                une communauté de streamers, de créateurs et de passionnés qui avancent <strong>ensemble</strong>, qui s&apos;entraident <strong>vraiment</strong>, et qui respectent <strong>le rythme de chacun</strong>.</p>
+                <p>Il n&apos;y a <strong>aucun jugement</strong> ici.<br />
+                Que vous débutiez, que vous streamiez depuis longtemps, que vous soyez très actifs ou plus discrets :<br />
+                <span style={{color: '#7b4fd6'}}><strong>vous avez votre place</strong></span>.</p>
+                <p>Cette réunion, c&apos;est votre<br />
+                <span style={{color: '#7b4fd6'}}><strong>porte d&apos;entrée dans la New Family</strong></span>.<br />
+                Le but n&apos;est pas de vous noyer sous des règles, mais de vous expliquer <strong>comment on fonctionne</strong>, <strong>pourquoi on fonctionne comme ça</strong>, et surtout <strong>comment la communauté peut vous aider à évoluer</strong>, dans votre streaming comme humainement.</p>
+                <p>Ici, l&apos;entraide n&apos;est pas un mot posé dans un titre.<br />
+                C&apos;est quelque chose qu&apos;on vit <strong>au quotidien</strong> :<br />
+                dans les lives, sur Discord, dans les échanges entre membres.</p>
+                <p>Prenez ce moment <strong>sans pression</strong>.<br />
+                Écoutez, posez-vous, et surtout retenez ceci :<br />
+                <span style={{color: '#7b4fd6'}}><strong>il n&apos;y a aucune question bête</strong></span>.</p>
+                <p>En résumé :<br />
+                vous êtes <strong>chez vous</strong>,<br />
+                vous avancez <strong>à votre rythme</strong>,<br />
+                et nous, on est là pour <strong>vous accompagner</strong>.</p>
+                <p>Encore <strong>bienvenue dans la New Family</strong> 💜<br />
+                On va maintenant voir ensemble <strong>comment tout ça fonctionne concrètement</strong>.&quot;</p>
               </div>
             </div>
 
