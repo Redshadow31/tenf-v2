@@ -49,7 +49,7 @@ export default function AdminSidebar() {
                 {link.label}
               </Link>
               {/* Sous-menu pour Intégration */}
-              {isEvaluationsSection && isEvaluationsActive && (
+              {isEvaluationsSection && (
                 <div className="ml-4 mt-1 flex flex-col gap-1">
                   <Link
                     href="/admin/evaluations/inscription-moderateur"
