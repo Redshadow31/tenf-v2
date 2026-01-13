@@ -333,14 +333,10 @@ export default function DashboardManagementPage() {
             {/* Contenu des onglets */}
             <div className="mt-6">
               {activeTab === 'twitch' && (
-                <DataSection
-                  title="Activité Twitch"
-                  description="Données mensuelles pour le graphique d'activité Twitch"
-                  data={dashboardData.twitchActivity}
-                  onAdd={(month, value) => addDataPoint('twitchActivity', month, value)}
-                  onUpdate={(index, month, value) => updateDataPoint('twitchActivity', index, month, value)}
-                  onRemove={(index) => removeDataPoint('twitchActivity', index)}
-                  type="monthly"
+                <DiscordDailyActivitySection
+                  title="Activité Discord"
+                  description="Données quotidiennes pour le graphique d'activité Discord (messages et vocaux)"
+                  onImportComplete={() => loadDashboardData()}
                 />
               )}
 
