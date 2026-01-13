@@ -161,25 +161,74 @@ export default function Partie3Page() {
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré (TEXTE ADAPTÉ DU FOLLOW)</h3>
-              <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Une fois cette réunion terminée, tu seras <strong>officiellement intégré dans la New Family</strong>.</p>
-                <p>Ta chaîne sera ajoutée à la <strong>liste des membres actifs</strong>, visible sur le serveur et sur notre site.</p>
-                <p>En échange, on te demande une chose simple : <strong>suivre toutes les autres chaînes déjà présentes dans cette liste</strong>.</p>
-                <p>On sait que ça peut faire beaucoup d&apos;un coup, mais tu n&apos;es pas obligé de tout faire aujourd&apos;hui. <strong>Tu peux prendre ton temps, avancer à ton rythme.</strong> Ce n&apos;est pas une course, c&apos;est un engagement dans l&apos;entraide.</p>
-                <p>Ce système n&apos;est pas là pour gonfler des chiffres. Il sert à <strong>construire un vrai réseau humain</strong>, où chacun découvre d&apos;autres créateurs, s&apos;inspire, échange et crée des liens sincères.</p>
-                <p>Et honnêtement, beaucoup de membres ont découvert des streamers qu&apos;ils n&apos;auraient jamais rencontrés sans ça… et qui sont aujourd&apos;hui devenus des <strong>amis, des collègues ou même des viewers fidèles</strong>.</p>
-                <p>👉 <strong>Tu veux qu&apos;on te découvre, qu&apos;on te soutienne, qu&apos;on t&apos;aide à grandir ?</strong><br />
-                Commence par montrer que toi aussi, tu as envie de découvrir les autres.</p>
-                <p>Si un membre ne te suit pas en retour :<br />
-                • un petit <strong>message gentil</strong> suffit souvent<br />
-                • et si tu n&apos;es pas à l&apos;aise, <strong>un modérateur peut t&apos;aider</strong> — on est là pour toi</p>
-                <p>Maintenant, on va te laisser participer aussi !</p>
-                <p>Si tu es à l&apos;aise, <strong>partage le lien de ta chaîne Twitch dans le vocal</strong>, et si tu as un parrain ou une marraine, n&apos;hésite pas à le dire : ça aide les autres à te situer.</p>
-                <p>C&apos;est le moment parfait pour commencer à tisser tes premiers liens dans la Family.</p>
-                <p>Et surtout, rappelle-toi d&apos;une chose :<br />
-                ✨ <strong>Ici, tu n&apos;es pas juste une chaîne de plus. Tu fais partie d&apos;une communauté.</strong><br />
-                On avance ensemble, à ton rythme, et toujours dans la bienveillance.&quot;</p>
+              <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              <div className="text-gray-300 leading-relaxed space-y-4">
+                <div>
+                  <h4 className="text-lg font-bold text-amber-300 mb-2">🌍 <strong>Explorez les univers</strong></h4>
+                  <p className="text-sm text-gray-400 mb-3 italic">(premier pilier de l&apos;intégration)</p>
+                  <p>Le <strong>premier pas</strong> pour bien s&apos;intégrer dans la <strong>New Family</strong>, c&apos;est <strong>découvrir les autres créateurs</strong>.</p>
+                  <p>Concrètement, cela passe par une chose simple :</p>
+                  <p className="pl-4">👉 <strong>suivre les chaînes des membres actifs de la New Family</strong>.</p>
+                  <p>Ce <strong>follow</strong> n&apos;est <strong>pas une obligation froide ou automatique</strong>.</p>
+                  <p>C&apos;est une <strong>porte d&apos;entrée</strong> pour explorer des univers différents, des styles variés, et <strong>commencer à créer des liens</strong>.</p>
+                </div>
+
+                <hr className="border-gray-600 my-4" />
+
+                <div>
+                  <h4 className="text-lg font-bold text-amber-300 mb-2">💜 <strong>Raidez la New Family… mais pas uniquement</strong></h4>
+                  <p className="text-sm text-gray-400 mb-3 italic">(ouverture et équilibre)</p>
+                  <p>Bien sûr, <strong>raider les membres de la New Family</strong>, c&apos;est <strong>important</strong>.</p>
+                  <p>Ça permet de <strong>renforcer les liens</strong>, de <strong>soutenir les créateurs</strong>, et de <strong>faire vivre la communauté</strong>.</p>
+                  <p>Mais attention :</p>
+                  <p className="pl-4">👉 <strong>l&apos;objectif n&apos;est pas de s&apos;enfermer entre nous</strong>.</p>
+                  <p>Vous pouvez — et vous <strong>devez aussi</strong> — <strong>raider ailleurs</strong>, vers des créateurs que vous appréciez, même s&apos;ils <strong>ne sont pas dans la Family</strong>.</p>
+                  <p>Cela permet de :</p>
+                  <ul className="list-disc pl-6 space-y-1 mt-2">
+                    <li><strong>créer des ponts entre communautés</strong></li>
+                    <li><strong>faire découvrir la New Family à l&apos;extérieur</strong></li>
+                    <li><strong>garder un réseau sain, ouvert et naturel</strong></li>
+                  </ul>
+                </div>
+
+                <hr className="border-gray-600 my-4" />
+
+                <div>
+                  <h4 className="text-lg font-bold text-amber-300 mb-2">💬 <strong>Participez à l&apos;échange</strong></h4>
+                  <p className="text-sm text-gray-400 mb-3 italic">(au-delà du follow et du raid)</p>
+                  <p>La force de la <strong>New Family</strong>, ce n&apos;est <strong>pas juste le raid</strong>.</p>
+                  <p>C&apos;est aussi <strong>l&apos;échange</strong>, la <strong>discussion</strong>, le <strong>respect dans le chat</strong>, le <strong>soutien sincère</strong>.</p>
+                  <p>Que ce soit ici ou ailleurs, on vous demande toujours la même chose :</p>
+                  <p className="pl-4">👉 une <strong>attitude positive</strong>, <strong>respectueuse</strong> et <strong>bienveillante</strong>.</p>
+                </div>
+
+                <hr className="border-gray-600 my-4" />
+
+                <div>
+                  <h4 className="text-lg font-bold text-amber-300 mb-2">✨ <strong>Phrase de synthèse</strong></h4>
+                  <p className="text-sm text-gray-400 mb-3 italic">(à afficher comme un bloc fort / encadré visuel)</p>
+                  <div className="bg-gray-800/50 border-l-4 border-amber-500 p-4 my-4 rounded">
+                    <p className="text-lg font-semibold text-amber-300 mb-3">&quot;<strong>La New Family est un point d&apos;ancrage, pas une cage.</strong>&quot;</p>
+                    <p>On se soutient entre nous,</p>
+                    <p>mais on reste <strong>ouverts au monde</strong>.</p>
+                    <p className="mt-3">On sait que ça peut faire <strong>beaucoup au début</strong>.</p>
+                    <p>Tu n&apos;es <strong>pas obligé de tout faire d&apos;un coup</strong>.</p>
+                    <p>Tu peux <strong>prendre ton temps</strong>, <strong>avancer à ton rythme</strong>, et <strong>découvrir les chaînes petit à petit</strong>.</p>
+                    <p className="mt-3">Et surtout, ce <strong>follow mutuel</strong> n&apos;a <strong>pas pour but de vous enfermer</strong> dans la communauté.</p>
+                    <p>La <strong>New Family est un point de départ</strong>, pas une limite.</p>
+                    <p className="mt-3">On t&apos;encourage aussi à <strong>explorer en dehors</strong>, à <strong>suivre d&apos;autres créateurs</strong>, même s&apos;ils <strong>ne font pas partie de la Family</strong>.</p>
+                  </div>
+                </div>
+
+                <hr className="border-gray-600 my-4" />
+
+                <div>
+                  <h4 className="text-lg font-bold text-amber-300 mb-2">✨ <strong>Phrase clé à faire passer à l&apos;oral</strong></h4>
+                  <p className="text-sm text-gray-400 mb-3 italic">(mise en avant visuelle claire)</p>
+                  <div className="bg-gray-800/50 border-l-4 border-amber-500 p-4 my-4 rounded">
+                    <p className="text-lg font-semibold text-amber-300">&quot;<strong>Le follow est le premier pas vers la découverte.</strong>&quot;</p>
+                  </div>
+                </div>
               </div>
             </div>
 
