@@ -289,7 +289,7 @@ export default function DashboardManagementPage() {
             <div className="mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
               <nav className="flex space-x-1 flex-wrap" style={{ backgroundColor: 'var(--color-bg)' }}>
                 {[
-                  { id: 'twitch' as TabId, label: 'Activité Twitch', icon: '🎮' },
+                  { id: 'twitch' as TabId, label: 'Activité Discord', icon: '💬' },
                   { id: 'discordGrowth' as TabId, label: 'Croissance Discord', icon: '📈' },
                   { id: 'discordActivity' as TabId, label: 'Activité Discord quotidienne', icon: '💬' },
                   { id: 'spotlight' as TabId, label: 'Progression Spotlight', icon: '⭐' },
