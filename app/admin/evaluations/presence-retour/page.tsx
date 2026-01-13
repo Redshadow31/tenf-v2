@@ -27,12 +27,22 @@ type IntegrationRegistration = {
   present?: boolean;
 };
 
+type ModeratorRegistration = {
+  id: string;
+  integrationId: string;
+  pseudo: string;
+  role: string;
+  placement: "Animateur" | "Co-animateur" | "Observateur";
+  registeredAt: string;
+};
+
 export default function PresenceRetourPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [allRegistrations, setAllRegistrations] = useState<Record<string, IntegrationRegistration[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [presentMembers, setPresentMembers] = useState<IntegrationRegistration[]>([]);
+  const [selectedModerators, setSelectedModerators] = useState<ModeratorRegistration[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [integrating, setIntegrating] = useState(false);
 
@@ -87,12 +97,29 @@ export default function PresenceRetourPage() {
     }
   };
 
-  const handleOpenModal = (integration: Integration) => {
+  const handleOpenModal = async (integration: Integration) => {
     setSelectedIntegration(integration);
     const registrations = allRegistrations[integration.id] || [];
     // Filtrer uniquement les personnes présentes
     const presentOnly = registrations.filter(reg => reg.present === true);
     setPresentMembers(presentOnly);
+    
+    // Charger les inscriptions modérateur
+    try {
+      const modResponse = await fetch(`/api/integrations/${integration.id}/moderators`, {
+        cache: 'no-store',
+      });
+      if (modResponse.ok) {
+        const modData = await modResponse.json();
+        setSelectedModerators(modData.registrations || []);
+      } else {
+        setSelectedModerators([]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement modérateurs:', error);
+      setSelectedModerators([]);
+    }
+    
     setIsModalOpen(true);
   };
 

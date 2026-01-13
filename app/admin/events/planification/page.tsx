@@ -368,7 +368,7 @@ export default function PlanificationPage() {
                       Cliquez pour importer une image (webp, jpg, png)
                     </p>
                     <span className="text-xs text-gray-500">
-                      Taille max: 5MB
+                      Dimensions: 800x200px • Taille max: 5MB
                     </span>
                   </label>
                 </div>
