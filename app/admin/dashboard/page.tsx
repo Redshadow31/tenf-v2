@@ -156,9 +156,23 @@ export default function DashboardPage() {
           if (result.success && result.data) {
             setDiscordActivityData(result.data.discordDailyActivity || []);
             setDiscordGrowthData(result.data.discordGrowth || defaultDiscordGrowthData);
-            setSpotlightProgressionData(result.data.spotlightProgression || defaultSpotlightProgression);
             setVocalRanking(result.data.vocalRanking || defaultVocalRanking);
             setTextRanking(result.data.textRanking || defaultTextRanking);
+          }
+        }
+
+        // Charger les données de progression Spotlight depuis la nouvelle API
+        const spotlightProgressionResponse = await fetch('/api/spotlight/progression', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (spotlightProgressionResponse.ok) {
+          const spotlightResult = await spotlightProgressionResponse.json();
+          if (spotlightResult.success && spotlightResult.data) {
+            setSpotlightProgressionData(spotlightResult.data);
           }
         }
       } catch (error) {
