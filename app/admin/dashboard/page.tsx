@@ -99,6 +99,45 @@ export default function DashboardPage() {
   } | null>(null);
   const [loadingRaidStats, setLoadingRaidStats] = useState(true);
 
+  // Fonction pour agréger les données quotidiennes par mois
+  const aggregateDailyDataByMonth = (dailyData: Array<{ date: string; messages: number; vocals: number }>) => {
+    const monthMap = new Map<string, { messages: number; vocals: number }>();
+    
+    dailyData.forEach((day) => {
+      const date = new Date(day.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { messages: 0, vocals: 0 });
+      }
+      
+      const monthData = monthMap.get(monthKey)!;
+      monthData.messages += day.messages || 0;
+      monthData.vocals += day.vocals || 0;
+    });
+    
+    // Convertir en tableau et trier par date
+    const aggregated = Array.from(monthMap.entries())
+      .map(([monthKey, data]) => ({
+        monthKey,
+        date: new Date(monthKey + '-01'),
+        messages: data.messages,
+        vocals: data.vocals,
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    
+    // Prendre les 12 derniers mois
+    const last12Months = aggregated.slice(-12);
+    
+    // Formater pour le graphique
+    const monthNames = ["Janv", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
+    return last12Months.map((item) => ({
+      month: monthNames[item.date.getMonth()] + ' ' + item.date.getFullYear().toString().slice(-2),
+      messages: item.messages,
+      vocals: item.vocals,
+    }));
+  };
+
   // Charger les données du dashboard depuis l'API
   useEffect(() => {
     async function loadDashboardData() {
@@ -410,29 +449,41 @@ export default function DashboardPage() {
         {/* Activité Discord */}
         <ChartCard title="Activité Discord" loading={loadingDiscordActivity}>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={discordActivityData.map(d => ({
-              date: new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-              messages: d.messages,
-              vocals: d.vocals,
-            }))}>
+            <LineChart data={aggregateDailyDataByMonth(discordActivityData)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
-                dataKey="date"
+                dataKey="month"
                 stroke="#9CA3AF"
-                fontSize={10}
+                fontSize={12}
                 tickLine={false}
-                angle={-45}
-                textAnchor="end"
-                height={60}
               />
-              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} yAxisId="left" />
-              <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} orientation="right" yAxisId="right" />
+              <YAxis 
+                stroke="#9CA3AF" 
+                fontSize={12} 
+                tickLine={false} 
+                yAxisId="left"
+                label={{ value: 'Messages', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#9CA3AF' } }}
+              />
+              <YAxis 
+                stroke="#9CA3AF" 
+                fontSize={12} 
+                tickLine={false} 
+                orientation="right" 
+                yAxisId="right"
+                label={{ value: 'Heures vocales', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fill: '#9CA3AF' } }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1a1a1d",
                   border: "1px solid #2a2a2d",
                   borderRadius: "8px",
                   color: "#fff",
+                }}
+                formatter={(value: any, name: string) => {
+                  if (name === 'Vocaux (h)') {
+                    return [value.toFixed(2) + ' h', name];
+                  }
+                  return [value.toLocaleString(), name];
                 }}
               />
               <Legend 
@@ -445,8 +496,8 @@ export default function DashboardPage() {
                 dataKey="messages"
                 stroke="#5865F2"
                 strokeWidth={2}
-                dot={{ fill: "#5865F2", r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={{ fill: "#5865F2", r: 4 }}
+                activeDot={{ r: 6 }}
                 name="Messages"
               />
               <Line
@@ -455,8 +506,8 @@ export default function DashboardPage() {
                 dataKey="vocals"
                 stroke="#57F287"
                 strokeWidth={2}
-                dot={{ fill: "#57F287", r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={{ fill: "#57F287", r: 4 }}
+                activeDot={{ r: 6 }}
                 name="Vocaux (h)"
               />
             </LineChart>
