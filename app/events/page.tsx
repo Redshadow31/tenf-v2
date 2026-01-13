@@ -135,9 +135,9 @@ export default function Page() {
     return days;
   };
 
-  const getEventForDate = (date: Date | null) => {
-    if (!date) return null;
-    return getFilteredEvents().find((event) => {
+  const getEventsForDate = (date: Date | null): Event[] => {
+    if (!date) return [];
+    return getFilteredEvents().filter((event) => {
       const eventDate = new Date(event.date);
       return (
         eventDate.getDate() === date.getDate() &&
@@ -252,38 +252,57 @@ export default function Page() {
         {/* Grille du calendrier */}
         <div className="grid grid-cols-7 gap-2">
           {calendarDays.map((date, index) => {
-            const event = getEventForDate(date);
+            const eventsForDate = getEventsForDate(date);
+            const hasEvents = eventsForDate.length > 0;
             return (
               <div
                 key={index}
                 className={`min-h-[80px] rounded-lg border p-2 transition-colors ${
-                  date && event ? "cursor-pointer" : ""
+                  date && hasEvents ? "cursor-pointer" : ""
                 }`}
                 style={{
-                  backgroundColor: date ? (event ? 'var(--color-surface)' : 'var(--color-bg)') : 'transparent',
-                  borderColor: date ? (event ? 'var(--color-border)' : 'var(--color-border-light)') : 'transparent',
+                  backgroundColor: date ? (hasEvents ? 'var(--color-surface)' : 'var(--color-bg)') : 'transparent',
+                  borderColor: date ? (hasEvents ? 'var(--color-border)' : 'var(--color-border-light)') : 'transparent',
                 }}
                 onMouseEnter={(e) => {
-                  if (date && event) {
+                  if (date && hasEvents) {
                     e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (date && event) {
+                  if (date && hasEvents) {
                     e.currentTarget.style.backgroundColor = 'var(--color-surface)';
                   }
                 }}
-                onClick={() => event && handleEventClick(event)}
+                onClick={() => {
+                  if (hasEvents && eventsForDate.length === 1) {
+                    handleEventClick(eventsForDate[0]);
+                  }
+                }}
               >
                 {date && (
                   <>
                     <div className="mb-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{date.getDate()}</div>
-                    {event && (
-                      <div
-                        className="rounded px-2 py-1 text-xs font-bold text-white"
-                        style={{ backgroundColor: getCategoryColor(event.category) }}
-                      >
-                        {event.title}
+                    {eventsForDate.length > 0 && (
+                      <div className="space-y-1 max-h-[60px] overflow-y-auto">
+                        {eventsForDate.slice(0, 3).map((event) => (
+                          <div
+                            key={event.id}
+                            className="rounded px-2 py-1 text-xs font-bold text-white"
+                            style={{ backgroundColor: getCategoryColor(event.category) }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEventClick(event);
+                            }}
+                          >
+                            {event.title}
+                          </div>
+                        ))}
+                        {eventsForDate.length > 3 && (
+                          <div className="text-xs text-gray-400 px-2">
+                            +{eventsForDate.length - 3} autre{eventsForDate.length - 3 > 1 ? 's' : ''}
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
