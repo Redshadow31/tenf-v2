@@ -148,7 +148,7 @@ export default function DiscordDailyActivityImportModal({
 
     setImporting(true);
     try {
-      await onImport(type, parseResult.data);
+      await onImport(parseResult.data);
       setText("");
       setParseResult(null);
       onClose();
