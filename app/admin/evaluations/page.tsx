@@ -39,6 +39,20 @@ export default function EvaluationsHubPage() {
       icon: "📊",
       color: "from-amber-500 to-amber-600",
     },
+    {
+      href: "/admin/evaluations/presentation",
+      title: "Présentation",
+      description: "Gérer les présentations des intégrations",
+      icon: "📄",
+      color: "from-teal-500 to-teal-600",
+    },
+    {
+      href: "/admin/evaluations/discours",
+      title: "Discours",
+      description: "Gérer les discours des intégrations",
+      icon: "🎤",
+      color: "from-rose-500 to-rose-600",
+    },
   ];
 
   return (

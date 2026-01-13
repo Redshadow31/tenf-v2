@@ -261,6 +261,14 @@ const navItems: NavItem[] = [
         href: "/admin/evaluations/statistique",
         label: "Statistique",
       },
+      {
+        href: "/admin/evaluations/presentation",
+        label: "Présentation",
+      },
+      {
+        href: "/admin/evaluations/discours",
+        label: "Discours",
+      },
     ],
   },
   {
