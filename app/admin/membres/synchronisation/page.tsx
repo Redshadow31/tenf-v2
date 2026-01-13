@@ -203,6 +203,37 @@ export default function SynchronisationMembresPage() {
     }
   }
 
+  async function handleSyncDiscordUsernames() {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent synchroniser");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/admin/members/sync-discord-usernames", {
+        method: "POST",
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`Erreur: ${error.error || "Erreur inconnue"}`);
+        return;
+      }
+
+      const data = await response.json();
+      const message = `Synchronisation Discord terminée: ${data.synced || 0} pseudo(s) Discord mis à jour${data.notFound ? `, ${data.notFound} non trouvé(s) sur Discord` : ''}`;
+      alert(message);
+      await loadMembersAndSyncStatus();
+    } catch (error) {
+      console.error("Erreur lors de la synchronisation Discord:", error);
+      alert("Erreur lors de la synchronisation Discord");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   const handleEdit = async (status: SyncStatus) => {
     if (!currentAdmin?.isFounder) {
       alert("Seuls les fondateurs peuvent modifier les membres");
@@ -508,13 +539,22 @@ export default function SynchronisationMembresPage() {
             <p className="text-gray-400">État des synchronisations Discord / Twitch</p>
           </div>
           {currentAdmin?.isFounder && (
-            <button
-              onClick={handleSyncTwitch}
-              disabled={syncing}
-              className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {syncing ? "⏳ Synchronisation..." : "🔄 Synchroniser Twitch"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSyncDiscordUsernames}
+                disabled={syncing}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {syncing ? "⏳ Synchronisation..." : "🔄 Synchroniser Discord"}
+              </button>
+              <button
+                onClick={handleSyncTwitch}
+                disabled={syncing}
+                className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {syncing ? "⏳ Synchronisation..." : "🔄 Synchroniser Twitch"}
+              </button>
+            </div>
           )}
         </div>
 
