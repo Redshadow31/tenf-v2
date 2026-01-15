@@ -795,6 +795,531 @@ function SpotlightContent() {
   );
 }
 
+function ConseilContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"tenf" | "twitch" | "reseaux">("tenf");
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <section className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
+          🧠 Conseils New Family
+        </h1>
+        <p className="text-xl md:text-2xl" style={{ color: 'var(--color-text-secondary)' }}>
+          Grandir, streamer et interagir sainement
+        </p>
+      </section>
+
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("tenf")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "tenf" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "tenf" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "tenf" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          💜 Conseils TENF
+        </button>
+        <button
+          onClick={() => setActiveSubTab("twitch")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "twitch" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "twitch" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "twitch" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎮 Conseils Twitch
+        </button>
+        <button
+          onClick={() => setActiveSubTab("reseaux")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "reseaux" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "reseaux" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "reseaux" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          📱 Comportement sur les réseaux
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet TENF */}
+      {activeSubTab === "tenf" && (
+        <div className="space-y-6">
+          {/* L'esprit entraide TENF */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              💜 L'esprit entraide TENF
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              À la New Family, l'entraide n'est pas un concept abstrait. C'est quelque chose qu'on vit au quotidien :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Participer aux raids, aux événements, aux lives des membres</li>
+              <li>• Répondre aux questions, partager des connaissances</li>
+              <li>• Encourager, soutenir, motiver</li>
+              <li>• Être présent, même silencieusement (le lurk compte)</li>
+              <li>• Créer des connexions durables, pas des interactions ponctuelles</li>
+            </ul>
+            <p className="leading-relaxed text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>L'entraide fonctionne dans les deux sens.</strong> 
+              On donne autant qu'on reçoit, et c'est ça qui fait la richesse de la communauté.
+            </p>
+          </section>
+
+          {/* Donner avant de demander */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              ⭐ Donner avant de demander
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Avant de demander de l'aide ou du soutien, pose-toi la question : <strong style={{ color: 'var(--color-text)' }}>"Qu'est-ce que j'ai donné récemment à la communauté ?"</strong>
+            </p>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Cela ne veut pas dire qu'il faut être parfait ou toujours présent. Cela signifie simplement :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Participer aux lives des autres quand tu peux</li>
+              <li>• Aider quand tu as les connaissances</li>
+              <li>• Être présent et bienveillant dans les interactions</li>
+              <li>• Soutenir les événements et les projets communautaires</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>L'entraide devient naturelle</strong> quand on commence par donner, sans attendre de retour immédiat.
+            </p>
+          </section>
+
+          {/* Présence sincère */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              💚 Présence sincère (lurk compris)
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ta présence, même silencieuse, compte.</strong> 
+              Le lurk n'est pas une absence, c'est une forme d'engagement :
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">📊</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Stats</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Chaque viewer compte pour les statistiques Twitch</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">💜</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Soutien moral</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Savoir qu'il y a des gens qui regardent, c'est rassurant</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">🤫</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Présence silencieuse</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Tu participes à l'ambiance communautaire</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">✨</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Naturel</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Sois toi-même, sans te forcer à interagir</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Partage de live sans spam */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              📢 Partage de live sans spam
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Partager ton live dans les canaux appropriés, c'est bien. Mais attention à ne pas tomber dans le spam :
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <span className="text-xl mr-3">✅</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>À faire</strong>
+                  <ul className="mt-1 space-y-1 ml-4" style={{ color: 'var(--color-text-secondary)' }}>
+                    <li>• Utiliser les salons dédiés (ex: #🔴・live-en-cours)</li>
+                    <li>• Partager 1 à 2 fois maximum par live</li>
+                    <li>• Mentionner ce que tu fais de spécial dans ton live</li>
+                    <li>• Répondre aux messages si quelqu'un interagit</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-xl mr-3">❌</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>À éviter</strong>
+                  <ul className="mt-1 space-y-1 ml-4" style={{ color: 'var(--color-text-secondary)' }}>
+                    <li>• Poster ton lien toutes les 10 minutes</li>
+                    <li>• Spammer dans plusieurs salons en même temps</li>
+                    <li>• Ne jamais répondre aux messages</li>
+                    <li>• Partager uniquement pour partager, sans interaction</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Feedback constructif */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💬 Feedback constructif
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Quand tu donnes un retour à quelqu'un (conseil, critique, suggestion), pense à :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Être bienveillant</strong> : formuler de manière positive et constructive</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Proposer des solutions</strong> : ne pas seulement pointer les problèmes</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Respecter le rythme</strong> : chacun avance à sa vitesse</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Choisir le bon moment</strong> : en privé plutôt qu'en public si c'est sensible</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Un feedback constructif aide à progresser.</strong> 
+              Un feedback destructeur décourage et crée de la distance.
+            </p>
+          </section>
+
+          {/* Régularité > présence parfaite */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              ⏱️ Régularité > présence parfaite
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              On ne te demande pas d'être présent tout le temps, partout, tout de suite. Ce qui compte, c'est :
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>✅ Régularité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Être présent régulièrement, même si c'est quelques fois par semaine, c'est mieux qu'une présence intensive puis une disparition.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💜 Sincérité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Une présence sincère et naturelle vaut mieux qu'une présence forcée juste pour "faire le nombre".
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🌱 Progression</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  On valorise l'évolution dans le temps, pas la perfection immédiate. Chacun progresse à son rythme.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🤝 Qualité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Mieux vaut quelques interactions de qualité que beaucoup d'interactions superficielles.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Twitch */}
+      {activeSubTab === "twitch" && (
+        <div className="space-y-6">
+          {/* Conseils en live */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🎮 Conseils en live
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>👋 Présentation</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Prends quelques secondes pour dire bonjour quand quelqu'un arrive. Un simple "Salut [pseudo] !" fait toute la différence.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>💬 Interaction</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Réponds aux messages, pose des questions, engage la conversation. Même si le chat est calme, montre que tu es là.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>✨ Ambiance</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Crée une atmosphère positive. Sois authentique, montre ta personnalité, et n'aie pas peur d'être toi-même.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Gestion des stats */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              📊 Gestion des stats
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les statistiques Twitch peuvent être un outil utile, mais attention à ne pas en devenir obsédé :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Les stats fluctuent</strong> : c'est normal, ne panique pas</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Focus sur le contenu</strong> : concentre-toi sur ce que tu fais, pas sur les chiffres</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Patience</strong> : la croissance prend du temps, c'est normal</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Qualité > quantité</strong> : mieux vaut 5 viewers engagés que 50 passifs</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ne laisse pas les stats définir ta valeur.</strong> 
+              Tu es bien plus qu'un chiffre sur un écran.
+            </p>
+          </section>
+
+          {/* Hors live */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              📅 Hors live
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>🗓️ Planning</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Annonce tes horaires de stream pour que ta communauté puisse te rejoindre. Utilise le système de planning Twitch.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>⏸️ Pauses</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Communique si tu prends une pause. Un message simple suffit : "Pause de [durée] pour [raison]". La transparence est appréciée.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>📢 Annonces</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Partage tes événements, tes projets, tes nouveautés. Garde ta communauté informée de ce qui se passe.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Sécurité & IRL */}
+          <section className="rounded-xl p-6 border conseil-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🔒 Sécurité & IRL / déplacements
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ta sécurité avant tout :</strong>
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ne partage jamais ton adresse</strong> en live ou en public</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Attention aux déplacements</strong> : ne révèle pas tes trajets en temps réel</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Limite les informations personnelles</strong> : prénom, ville, lieu de travail… sois prudent</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Rencontres IRL</strong> : toujours en public, toujours avec précaution, jamais seul(e) si possible</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Écoute ton instinct</strong> : si quelque chose te met mal à l'aise, arrête</li>
+            </ul>
+            <p className="leading-relaxed mt-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+              Ta sécurité personnelle est plus importante que n'importe quel contenu ou engagement communautaire.
+            </p>
+          </section>
+
+          {/* Rester humain et cohérent */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💜 Rester humain et cohérent
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Twitch, c'est un média, mais derrière chaque stream, il y a une personne :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Sois authentique</strong> : n'invente pas une personnalité qui n'est pas toi</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Accepte tes imperfections</strong> : les erreurs font partie de l'apprentissage</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Reste cohérent</strong> : avec tes valeurs, ton style, ta personnalité</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Prends soin de toi</strong> : le streaming ne doit pas prendre le pas sur ta santé mentale</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Communique</strong> : si tu passes un moment difficile, tu peux en parler (sans tout révéler)</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Rester humain, c'est rester vrai.</strong> 
+              Et c'est ça qui crée les vraies connexions.
+            </p>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Réseaux */}
+      {activeSubTab === "reseaux" && (
+        <div className="space-y-6">
+          {/* Risques des réseaux */}
+          <section className="rounded-xl p-6 border conseil-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              ⚠️ Risques des réseaux
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les réseaux sociaux sont des outils puissants, mais ils comportent des risques :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Harcèlement et cyberbullying</strong> : malheureusement fréquent</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Exposition excessive</strong> : risque de partager trop d'informations personnelles</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Comparaison malsaine</strong> : se comparer constamment aux autres</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Perte de vie privée</strong> : frontière floue entre public et privé</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Burnout</strong> : pression constante de devoir être actif et présent</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Connaître les risques permet de mieux se protéger.</strong>
+            </p>
+          </section>
+
+          {/* Éviter les dramas */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🚫 Éviter les dramas
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les dramas, c'est rarement constructif. Voici comment les éviter :
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🤐 Ne pas réagir à chaud</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si quelque chose te met en colère, attends 24h avant de publier. La colère passe, les posts restent.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💬 Résoudre en privé</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si tu as un conflit avec quelqu'un, parle-lui en privé avant de tout étaler sur les réseaux.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🧹 Ne pas alimenter</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si un drama éclate ailleurs, ne le partage pas, ne le commente pas. Laisse couler.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🛡️ Se protéger</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Bloque, mute, ignore. Tu n'as pas à subir la négativité des autres.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Pièges classiques */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🪤 Pièges classiques
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Attention à ces pièges fréquents sur les réseaux :
+            </p>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>Le follow-for-follow</strong> : 
+                gagner des followers en masse ne crée pas une vraie communauté. Mieux vaut moins mais mieux.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>La course aux vues</strong> : 
+                se comparer constamment aux autres crée de la frustration. Focus sur ton propre chemin.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>Le fake engagement</strong> : 
+                acheter des follows, utiliser des bots… ça se voit et ça ne mène à rien de durable.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>L'over-sharing</strong> : 
+                tout partager, tout le temps. Garde une part de vie privée, c'est sain.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>La réactivité excessive</strong> : 
+                répondre à tous les commentaires négatifs, à tous les haters… ça consume ton énergie pour rien.
+              </li>
+            </ul>
+          </section>
+
+          {/* Réputation & image */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🎭 Réputation & image
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ce que tu postes sur les réseaux peut avoir un impact sur ta réputation :
+            </p>
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📸 Pense avant de poster</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Une fois publié, c'est difficile à retirer complètement. Assure-toi que ce que tu partages te correspond vraiment.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🔍 Cohérence</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Sois cohérent avec tes valeurs et ton image. Si tu changes d'avis sur quelque chose, c'est ok, mais explique-le.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💼 Impact professionnel</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Souviens-toi que des employeurs, partenaires ou sponsors potentiels peuvent voir ce que tu publies.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🧹 Nettoyage régulier</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Fais un tour de tes anciens posts de temps en temps. Supprime ou archive ce qui ne te correspond plus.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Protection mentale */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🛡️ Protection mentale
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ta santé mentale est primordiale. Voici comment te protéger :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Limite ton temps</strong> : ne passe pas ta vie sur les réseaux</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Désactive les notifications</strong> : pour éviter d'être constamment sollicité(e)</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Fais des pauses</strong> : parfois, décrocher complètement fait du bien</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Filtre les contenus</strong> : ne suis que ce qui t'apporte du positif</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ignore les haters</strong> : ne leur donne pas ton énergie</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Cherche de l'aide</strong> : si les réseaux impactent ta santé mentale, parle-en à quelqu'un</li>
+            </ul>
+            <p className="leading-relaxed mt-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+              Ta santé mentale passe avant tout engagement en ligne. N'aie pas peur de prendre du recul.
+            </p>
+          </section>
+
+          {/* Règle d'or TENF */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💜 Règle d'or TENF
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Sur les réseaux comme dans la vie, la règle d'or de la New Family reste la même :
+            </p>
+            <div className="bg-[var(--color-surface)] rounded-lg p-6 border-2 border-[var(--color-primary)] text-center" style={{ borderColor: 'var(--color-primary)' }}>
+              <p className="text-2xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                "Traitons les autres comme nous voudrions être traités"
+              </p>
+              <p className="text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Bienveillance, respect, entraide. Que tu sois sur Twitch, Discord, Twitter, ou ailleurs, 
+                cette règle simple crée un environnement sain pour tout le monde.
+              </p>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
 
@@ -1522,13 +2047,7 @@ export default function Page() {
           )}
 
           {activeTab === "conseil" && (
-            <div className="space-y-8">
-              <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                <p className="leading-relaxed text-lg text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                  Contenu à venir...
-                </p>
-              </div>
-            </div>
+            <ConseilContent />
           )}
         </div>
       </div>

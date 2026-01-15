@@ -264,3 +264,66 @@ a:hover {
   }
 }
 
+
+/* ============================================
+   Conseils / Page Conseils
+   ============================================ */
+
+/* Sous-onglets Conseils */
+.conseil-subtab {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.conseil-subtab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
+}
+
+/* Cartes Conseils */
+.conseil-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.conseil-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
+  border-color: rgba(145, 70, 255, 0.3);
+}
+
+/* Encadrés tips Conseils */
+.conseil-tip {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.conseil-tip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
+}
+
+/* Encadrés warning Conseils */
+.conseil-warning {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.conseil-warning:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .conseil-subtab,
+  .conseil-card,
+  .conseil-tip,
+  .conseil-warning {
+    transition: none;
+  }
+  
+  .conseil-subtab:hover,
+  .conseil-card:hover,
+  .conseil-tip:hover,
+  .conseil-warning:hover {
+    transform: none;
+  }
+}
+
