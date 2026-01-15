@@ -362,8 +362,8 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
         </div>
       </section>
 
-      {/* ENCADRÉ STICKY RAPPEL TICKET */}
-      <section id="rappel-ticket" className="sticky bottom-4 z-10 shop-ticket-reminder">
+      {/* ENCADRÉ RAPPEL TICKET */}
+      <section id="rappel-ticket" className="shop-ticket-reminder">
         <div className="rounded-xl p-6 border shadow-lg" style={{ backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
           <h3 className="text-xl font-bold mb-3 text-white">
             ✅ Après chaque achat : ouvre un ticket
@@ -450,6 +450,347 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
           </div>
         ))}
       </section>
+    </div>
+  );
+}
+
+function SpotlightContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"viewer" | "streamer">("viewer");
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <section className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
+          🌟 Spotlight New Family
+        </h1>
+        <p className="text-xl md:text-2xl" style={{ color: 'var(--color-text-secondary)' }}>
+          Un moment pour briller… ensemble
+        </p>
+      </section>
+
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("viewer")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg spotlight-subtab"
+          style={{
+            color: activeSubTab === "viewer" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "viewer" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "viewer" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          👀 Je suis viewer sur un Spotlight
+        </button>
+        <button
+          onClick={() => setActiveSubTab("streamer")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg spotlight-subtab"
+          style={{
+            color: activeSubTab === "streamer" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "streamer" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "streamer" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎤 Je suis le streamer mis en avant
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet Viewer */}
+      {activeSubTab === "viewer" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Le Spotlight est un moment communautaire important où un membre de la New Family est mis à l'honneur. 
+              C'est l'occasion de créer du lien, de soutenir quelqu'un, et de faire grandir l'entraide. 
+              <strong style={{ color: 'var(--color-text)' }}> Personne ne peut être présent tout le temps</strong>, 
+              et c'est normal. On valorise la présence quand elle est possible, sans pression ni culpabilité.
+            </p>
+          </section>
+
+          {/* Pourquoi ta présence compte */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              💜 Pourquoi ta présence compte
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Soutien d'un membre</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Ta présence, même silencieuse, montre que tu es là pour le streamer. C'est un geste simple mais précieux.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Renforcer l'entraide</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Chaque viewer contribue à créer une ambiance bienveillante et à faire vivre l'esprit New Family.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Créer des liens humains</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Le Spotlight est l'occasion de découvrir des personnes, de créer des connexions durables, parfois même des amitiés.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Faire vivre le Spotlight</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Ton engagement, même minime, participe à la réussite de ce moment unique pour le streamer.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Prioriser quand tu es disponible */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--color-primary)' }}>
+              ⭐ Prioriser quand tu es disponible
+            </h2>
+            <ul className="space-y-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <li className="flex items-start">
+                <span className="mr-2">✅</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>Si tu peux venir</strong> → viens faire un coucou, même pour 5 minutes. Ta présence compte, même courte.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">💚</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>Si tu ne peux pas</strong> → aucune pression. La vie continue, et c'est parfaitement normal.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">💜</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>L'intention compte plus</strong> que la présence systématique. On préfère ta présence sincère que ton absence par obligation.</span>
+              </li>
+            </ul>
+          </section>
+
+          {/* Lurker = déjà aider */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              👁️ Lurker = déjà aider
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Le lurk compte autant que les messages.</strong> 
+              Ta présence silencieuse apporte déjà beaucoup :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Stats</strong> : chaque viewer compte pour les statistiques Twitch</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Soutien moral</strong> : savoir qu'il y a des gens qui regardent, même en silence, c'est rassurant</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Présence silencieuse</strong> : créer une ambiance communautaire sans avoir besoin de parler</li>
+            </ul>
+            <p className="leading-relaxed text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Déculpabilise-toi si tu es discret.</strong> 
+              Tu participes déjà, même sans écrire dans le chat.
+            </p>
+          </section>
+
+          {/* Être actif sans se forcer */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              💬 Être actif sans se forcer
+            </h2>
+            <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Si tu as envie de participer activement, voici quelques idées simples et naturelles :
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">👋</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Dire bonjour</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Un simple "salut" ou "bon Spotlight" peut faire la différence.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">💬</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Répondre à une question</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Si le streamer pose une question, n'hésite pas à partager ton avis.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">❓</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Poser une question simple</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Sur le jeu, le stream, ou même juste "comment ça va ?".</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">✨</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Rester naturel</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>L'important c'est d'être toi-même, pas de jouer un rôle.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Ce qu'on évite */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🌱 Ce qu'on évite
+            </h2>
+            <ul className="space-y-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Comparaisons</strong> : éviter de comparer ce Spotlight avec d'autres ou avec tes propres stats</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ambiance négative</strong> : garder les critiques constructives pour après, pendant le Spotlight on soutient</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Jugement</strong> : chacun a son style, son rythme, sa personnalité. On respecte ça.</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Passage éclair sans interaction</strong> : si tu restes moins de 30 secondes sans rien dire, mieux vaut peut-être revenir plus tard</li>
+            </ul>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Streamer */}
+      {activeSubTab === "streamer" && (
+        <div className="space-y-8">
+          {/* Ce qu'est vraiment un Spotlight */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              Ce qu'est vraiment un Spotlight
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le Spotlight New Family n'est <strong style={{ color: 'var(--color-text)' }}>pas un examen</strong>, 
+              pas une course aux stats, pas un test de performance. 
+              C'est une <strong style={{ color: 'var(--color-primary)' }}>opportunité humaine et durable</strong> pour :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Présenter ton univers et qui tu es vraiment</li>
+              <li>• Rencontrer de nouvelles personnes de la communauté</li>
+              <li>• Créer des connexions qui dureront au-delà de cette heure</li>
+              <li>• Bénéficier du soutien de la New Family de manière structurée et bienveillante</li>
+            </ul>
+          </section>
+
+          {/* Une heure guidée */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🕒 Une heure guidée (structure rassurante)
+            </h2>
+            <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Voici un déroulé souple pour t'aider à structurer ton Spotlight. Ce n'est pas strict, c'est un guide :
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">👋</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>0–5 min : Accueil & présentation</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Dire bonjour, présenter rapidement qui tu es, ce que tu fais, et remercier la communauté.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">💬</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>5–15 min : Échange</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Répondre aux questions, échanger avec les viewers, créer du lien.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">🎮</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>15–30 min : Ton univers</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Montrer ce que tu aimes, jouer, créer, partager ta passion et ton style.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">💜</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>30–45 min : Moment sincère</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Parler de tes objectifs, tes difficultés, tes réussites. C'est le moment de partager humainement.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">🙏</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>45–60 min : Remerciements & clôture</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Remercier tous ceux qui sont venus, faire un raid vers un autre membre TENF, et clôturer sur une note positive.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Règles simples et protectrices */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🔒 Règles simples et protectrices
+            </h2>
+            <div className="space-y-4">
+              <div className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Duo / co-live</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  À éviter pendant la première heure. Le Spotlight est centré sur <strong style={{ color: 'var(--color-text)' }}>toi</strong>. 
+                  Après la première heure, liberté totale pour faire ce que tu veux.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Pas de multistream</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Pendant ton Spotlight, tu diffuses uniquement sur Twitch. C'est important pour que la communauté puisse te soutenir correctement et que l'heure soit vraiment centrée sur toi.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Réservation minimum 7 jours avant</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Cela permet de bien communiquer sur ton Spotlight, d'organiser la communauté, et de te préparer sereinement.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Réciprocité bienveillante</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  On encourage à venir aux Spotlights des autres membres quand c'est possible. L'entraide fonctionne dans les deux sens, 
+                  et c'est en soutenant les autres qu'on se fait soutenir. <strong style={{ color: 'var(--color-text)' }}>Pas d'obligation</strong>, 
+                  juste de la bienveillance.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Format 1 heure</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Le Spotlight dure environ 1 heure. C'est le temps idéal pour présenter ton univers sans être trop long ni trop court.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Raid TENF en fin de Spotlight</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  En fin de Spotlight, on encourage à raider un autre membre TENF. C'est un geste d'entraide qui continue l'esprit du Spotlight.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Ce qu'on souhaite éviter */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🧡 Ce qu'on souhaite éviter
+            </h2>
+            <ul className="space-y-3" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Live sans présentation</strong> : prendre quelques minutes au début pour te présenter et expliquer ce qui t'a amené ici</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Silence prolongé</strong> : interagir avec le chat, même si les messages sont rares</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Absence d'interaction</strong> : répondre aux questions, poser des questions aux viewers</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Attente uniquement des stats</strong> : le Spotlight n'est pas un concours de vues, c'est un moment humain</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ne jamais participer aux Spotlights des autres</strong> : l'entraide est réciproque, soutenir les autres fait partie de l'esprit New Family</li>
+            </ul>
+          </section>
+
+          {/* Accompagnement bienveillant */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🤝 Accompagnement bienveillant
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L'équipe est là pour t'accompagner avant, pendant et après ton Spotlight :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Rappels en privé</strong> : si quelque chose n'est pas clair, on te rappelle les règles avec bienveillance</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Aide et explication</strong> : on est là pour répondre à tes questions et t'aider à réussir ton Spotlight</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Sanctions rares et jamais immédiates</strong> : on privilégie toujours le dialogue et l'accompagnement avant toute mesure</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L'objectif c'est que tu passes un bon moment et que la communauté aussi. 
+              On est tous dans le même bateau pour faire grandir l'entraide.
+            </p>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -1177,13 +1518,7 @@ export default function Page() {
           )}
 
           {activeTab === "spotlight" && (
-            <div className="space-y-8">
-              <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                <p className="leading-relaxed text-lg text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                  Contenu à venir...
-                </p>
-              </div>
-            </div>
+            <SpotlightContent />
           )}
 
           {activeTab === "conseil" && (

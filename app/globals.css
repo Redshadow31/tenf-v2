@@ -213,3 +213,54 @@ a:hover {
   }
 }
 
+
+/* ============================================
+   Spotlight / Page Spotlight
+   ============================================ */
+
+/* Sous-onglets Spotlight */
+.spotlight-subtab {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.spotlight-subtab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
+}
+
+/* Cartes Spotlight */
+.spotlight-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.spotlight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
+  border-color: rgba(145, 70, 255, 0.3);
+}
+
+/* Encadrés tips Spotlight */
+.spotlight-tip {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.spotlight-tip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-subtab,
+  .spotlight-card,
+  .spotlight-tip {
+    transition: none;
+  }
+  
+  .spotlight-subtab:hover,
+  .spotlight-card:hover,
+  .spotlight-tip:hover {
+    transform: none;
+  }
+}
+
