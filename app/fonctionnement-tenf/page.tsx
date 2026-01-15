@@ -795,6 +795,423 @@ function SpotlightContent() {
   );
 }
 
+function ReglementContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"general" | "vocaux">("general");
+
+  return (
+    <div className="space-y-8">
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("general")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg reglement-subtab"
+          style={{
+            color: activeSubTab === "general" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "general" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "general" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          📜 Règlement général TENF
+        </button>
+        <button
+          onClick={() => setActiveSubTab("vocaux")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg reglement-subtab"
+          style={{
+            color: activeSubTab === "vocaux" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "vocaux" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "vocaux" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎧 Règlement des salons vocaux
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet Règlement général */}
+      {activeSubTab === "general" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              📜 Règlement général – Twitch Entraide New Family
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Bienvenue sur Twitch Entraide New Family (TENF) 💙🐉<br />
+              Ce serveur est un espace d&apos;entraide, de respect et de bienveillance.
+            </p>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              En rejoignant le serveur, vous acceptez les règles suivantes.
+            </p>
+          </section>
+
+          {/* 1. Valeurs de la New Family */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              1️⃣ Valeurs de la New Family
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              La New Family repose sur :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>🤝 l&apos;entraide sincère (pas le donnant-donnant forcé)</li>
+              <li>🧠 le respect des différences (rythmes, niveaux, personnalités)</li>
+              <li>💬 une communication saine et humaine</li>
+              <li>🔒 la confiance et la confidentialité</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Tout comportement allant à l&apos;encontre de ces valeurs pourra être sanctionné.
+            </p>
+          </section>
+
+          {/* 2. Respect & comportement général */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              2️⃣ Respect & comportement général
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le respect de tous les membres est obligatoire (membres, staff, invités).
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Sont interdits :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• propos discriminatoires (racisme, sexisme, homophobie, transphobie, etc.)</li>
+              <li>• moqueries, humiliations, attaques personnelles</li>
+              <li>• harcèlement, pression morale, chantage affectif</li>
+              <li>• comportements toxiques ou passifs-agressifs répétés</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les désaccords sont autorisés dans le calme et le respect.
+            </p>
+          </section>
+
+          {/* 3. Salons & usage approprié */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              3️⃣ Salons & usage approprié
+            </h3>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Chaque salon a un thème précis : merci de le respecter.</li>
+              <li>• Le flood, le spam et les hors-sujets répétés ne sont pas tolérés.</li>
+              <li>• Les débats sensibles peuvent être stoppés par le staff si nécessaire.</li>
+            </ul>
+          </section>
+
+          {/* 4. Confidentialité & confiance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              4️⃣ Confidentialité & confiance
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ce qui se dit sur TENF reste sur TENF.
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Il est strictement interdit :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• de partager des messages privés sans accord</li>
+              <li>• de sortir des propos de leur contexte</li>
+              <li>• d&apos;utiliser le serveur pour nuire à d&apos;autres communautés</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Toute atteinte à la confidentialité est prise très au sérieux.
+            </p>
+          </section>
+
+          {/* 5. Intégration & fonctionnement */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              5️⃣ Intégration & fonctionnement
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;accès complet à l&apos;entraide et à la promotion nécessite :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• la lecture du règlement</li>
+              <li>• la participation à une réunion d&apos;intégration</li>
+            </ul>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Certaines fonctionnalités sont volontairement limitées avant intégration.<br />
+              Ce n&apos;est pas une punition, mais un cadre.
+            </p>
+          </section>
+
+          {/* 6. Entraide & promotion */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              6️⃣ Entraide & promotion
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;entraide sur TENF est humaine, pas automatique.<br />
+              Les follows, vues et participations doivent être authentiques.
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Sont interdits :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• les demandes insistantes de follows, vues ou subs</li>
+              <li>• la consommation de l&apos;entraide sans jamais y participer</li>
+              <li>• le contournement du système (pressions, comparaisons, multi-comptes)</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;implication est évaluée dans la durée, pas sur un coup d&apos;éclat.
+            </p>
+          </section>
+
+          {/* 7. Attitude attendue des créateurs */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              7️⃣ Attitude attendue des créateurs
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Être créateur sur TENF implique :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• le respect du cadre</li>
+              <li>• une régularité minimale</li>
+              <li>• une participation honnête à l&apos;entraide</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Un désengagement prolongé ou un comportement nuisible peut entraîner un changement de rôle (ex : Communauté).
+            </p>
+          </section>
+
+          {/* 8. Rôles, évaluations & décisions du staff */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              8️⃣ Rôles, évaluations & décisions du staff
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les rôles (Créateur, Communauté, VIP, etc.) sont attribués selon des critères définis par le staff.<br />
+              Les évaluations servent à améliorer l&apos;entraide : elles sont internes, non publiques et non comparables.
+            </p>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les décisions du staff doivent être respectées.
+            </p>
+          </section>
+
+          {/* 9. Publicité & partenariats */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              9️⃣ Publicité & partenariats
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Toute publicité, lien externe ou partenariat doit respecter les salons prévus à cet effet.<br />
+              La promotion sauvage ou non autorisée est interdite.
+            </p>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              TENF n&apos;est pas un serveur de publicité, mais une communauté d&apos;entraide.
+            </p>
+          </section>
+
+          {/* 10. Sanctions */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🔟 Sanctions
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Selon la gravité ou la répétition :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• rappel à l&apos;ordre</li>
+              <li>• avertissement</li>
+              <li>• restriction de salons ou de rôles</li>
+              <li>• exclusion temporaire ou définitive</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Le staff se réserve le droit d&apos;agir pour préserver l&apos;équilibre du serveur.
+            </p>
+          </section>
+
+          {/* Mot de l'équipe */}
+          <section className="rounded-xl p-6 border reglement-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💙 Mot de l&apos;équipe
+            </h3>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              La New Family est un lieu de confiance, d&apos;échange et d&apos;évolution.<br />
+              Si tu es ici pour construire et avancer avec les autres : tu es au bon endroit 🐉
+            </p>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              📌 En restant sur le serveur, tu confirmes avoir lu et accepté ce règlement.
+            </p>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Règlement des salons vocaux */}
+      {activeSubTab === "vocaux" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🎧 Règlement des salons vocaux
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Twitch Entraide New Family</strong>
+            </p>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Les salons vocaux sont des espaces de <strong style={{ color: 'var(--color-text)' }}>convivialité, d&apos;échange et de respect</strong>. 
+              Afin de préserver une ambiance saine et sécurisante pour tous, les règles suivantes doivent être respectées.
+            </p>
+          </section>
+
+          {/* 1. Respect & bienveillance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              1️⃣ Respect & bienveillance
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Le respect de chaque personne est obligatoire.</li>
+              <li>• Sont strictement interdits :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• moqueries, attaques personnelles, jugements,</li>
+                  <li>• propos discriminatoires (racisme, sexisme, homophobie, transphobie, validisme, etc.),</li>
+                  <li>• comportements oppressants, harcèlement ou pression morale.</li>
+                </ul>
+              </li>
+              <li>• Les débats sont autorisés <strong style={{ color: 'var(--color-text)' }}>uniquement s&apos;ils restent calmes et respectueux</strong>.</li>
+            </ul>
+          </section>
+
+          {/* 2. Présence en vocal pendant un live */}
+          <section className="rounded-xl p-6 border reglement-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              2️⃣ Présence en vocal pendant un live ou une session de jeu
+            </h3>
+            <ul className="space-y-3 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• ❌ <strong style={{ color: 'var(--color-text)' }}>Il est interdit de rejoindre un vocal général du serveur lorsque vous êtes en live</strong>, sauf accord clair des personnes présentes.</li>
+              <li>• ❌ Il est également <strong style={{ color: 'var(--color-text)' }}>interdit de rejoindre un vocal lorsque vous jouez avec d&apos;autres personnes</strong>, sans les prévenir au préalable.</li>
+              <li>• ⚠️ Les discussions sur le serveur <strong style={{ color: 'var(--color-text)' }}>doivent rester privées</strong> : être en live expose involontairement les échanges.</li>
+              <li>• En cas de doute : <strong style={{ color: 'var(--color-text)' }}>demandez avant d&apos;entrer</strong>.</li>
+            </ul>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              ➡️ Le non-respect de ce point est considéré comme une <strong style={{ color: '#ef4444' }}>atteinte à la confidentialité</strong>.
+            </p>
+          </section>
+
+          {/* 3. Confidentialité & vie privée */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              3️⃣ Confidentialité & vie privée
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Ce qui est dit en vocal <strong style={{ color: 'var(--color-text)' }}>reste dans le vocal</strong>.</li>
+              <li>• Il est strictement interdit :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• d&apos;enregistrer un salon vocal sans l&apos;accord explicite de toutes les personnes présentes,</li>
+                  <li>• de rediffuser, rapporter ou exploiter des propos entendus en vocal (stream, clip, discussion externe).</li>
+                </ul>
+              </li>
+              <li>• Toute violation pourra entraîner des sanctions immédiates.</li>
+            </ul>
+          </section>
+
+          {/* 4. Écoute en vocal */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              4️⃣ Écoute en vocal (micro coupé)
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Il est <strong style={{ color: 'var(--color-text)' }}>autorisé d&apos;être en vocal en restant mute</strong> pour écouter.</li>
+              <li>• Toutefois :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• cela doit rester <strong style={{ color: 'var(--color-text)' }}>occasionnel et respectueux</strong>,</li>
+                  <li>• si une personne demande qui est présent, merci de vous signaler.</li>
+                </ul>
+              </li>
+              <li>• Rester silencieux de manière prolongée sans interaction peut amener le staff à demander des explications.</li>
+            </ul>
+          </section>
+
+          {/* 5. Politesse & savoir-vivre */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              5️⃣ Politesse & savoir-vivre
+            </h3>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Dire <strong style={{ color: 'var(--color-text)' }}>bonjour</strong> en arrivant en vocal est obligatoire.</li>
+              <li>• Dire <strong style={{ color: 'var(--color-text)' }}>au revoir</strong> avant de quitter est également obligatoire.</li>
+              <li>• Les déconnexions sans prévenir, répétées ou systématiques ne sont <strong style={{ color: 'var(--color-text)' }}>pas tolérées</strong>.</li>
+            </ul>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              ➡️ C&apos;est une règle de respect élémentaire envers les personnes présentes.
+            </p>
+          </section>
+
+          {/* 6. Temps de parole & ambiance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              6️⃣ Temps de parole & ambiance
+            </h3>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Merci de ne pas couper la parole et de laisser chacun s&apos;exprimer.</li>
+              <li>• Évitez de monopoliser le vocal.</li>
+              <li>• Les vocaux ne sont <strong style={{ color: 'var(--color-text)' }}>pas des cercles fermés</strong> : l&apos;inclusivité est essentielle.</li>
+              <li>• Toute ambiance lourde, toxique ou excluante pourra être interrompue par le staff.</li>
+            </ul>
+          </section>
+
+          {/* 7. Gestion des conflits */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              7️⃣ Gestion des conflits
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              En cas de malaise ou de désaccord :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• restez calmes,</li>
+              <li>• évitez les règlements de compte en public,</li>
+              <li>• contactez un membre du staff si nécessaire.</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le staff peut intervenir à tout moment pour préserver le climat du vocal.
+            </p>
+          </section>
+
+          {/* 8. Autorité du staff */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              8️⃣ Autorité du staff
+            </h3>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les décisions du staff en vocal doivent être respectées.<br />
+              Refus d&apos;obtempérer, provocation ou contestation agressive = sanction.
+            </p>
+          </section>
+
+          {/* 9. Sanctions */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              9️⃣ Sanctions
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Selon la gravité ou la répétition :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• rappel à l&apos;ordre,</li>
+              <li>• mute vocal temporaire ou définitif,</li>
+              <li>• avertissement officiel,</li>
+              <li>• sanction serveur (jusqu&apos;au bannissement).</li>
+            </ul>
+          </section>
+
+          {/* Objectif des vocaux */}
+          <section className="rounded-xl p-6 border reglement-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💙 Objectif des vocaux New Family
+            </h3>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Créer un espace <strong style={{ color: 'var(--color-text)' }}>safe, respectueux et humain</strong>, 
+              où chacun peut parler librement sans crainte d&apos;être exposé, jugé ou mis mal à l&apos;aise.
+            </p>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConseilContent() {
   const [activeSubTab, setActiveSubTab] = useState<"tenf" | "twitch" | "reseaux">("tenf");
 
@@ -1575,18 +1992,8 @@ export default function Page() {
           )}
 
           {activeTab === "reglement" && (
-            <div className="space-y-8">
-              {/* Introduction */}
-              <section className="mb-16">
-                <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                  <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-                    Bienvenue sur Twitch Entraide New Family (TENF) 💙🐉<br /><br />
-                    TENF est un espace d'entraide, de respect et de bienveillance.<br /><br />
-                    Ce règlement regroupe les règles générales du serveur ainsi que les règles spécifiques des salons vocaux.<br /><br />
-                    En restant sur le serveur, tu confirmes avoir lu et accepté ces règles.
-                  </p>
-                </div>
-              </section>
+            <ReglementContent />
+          )}
 
               {/* Règlement général TENF */}
               <section className="mb-16">

@@ -327,3 +327,66 @@ a:hover {
   }
 }
 
+
+/* ============================================
+   Règlement / Page Règlement
+   ============================================ */
+
+/* Sous-onglets Règlement */
+.reglement-subtab {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.reglement-subtab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
+}
+
+/* Cartes Règlement */
+.reglement-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.reglement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
+  border-color: rgba(145, 70, 255, 0.3);
+}
+
+/* Encadrés tips Règlement */
+.reglement-tip {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.reglement-tip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
+}
+
+/* Encadrés warning Règlement */
+.reglement-warning {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.reglement-warning:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .reglement-subtab,
+  .reglement-card,
+  .reglement-tip,
+  .reglement-warning {
+    transition: none;
+  }
+  
+  .reglement-subtab:hover,
+  .reglement-card:hover,
+  .reglement-tip:hover,
+  .reglement-warning:hover {
+    transform: none;
+  }
+}
+
