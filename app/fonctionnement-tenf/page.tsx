@@ -1070,7 +1070,7 @@ function ConseilContent() {
               <li>• <strong style={{ color: 'var(--color-text)' }}>Les stats fluctuent</strong> : c'est normal, ne panique pas</li>
               <li>• <strong style={{ color: 'var(--color-text)' }}>Focus sur le contenu</strong> : concentre-toi sur ce que tu fais, pas sur les chiffres</li>
               <li>• <strong style={{ color: 'var(--color-text)' }}>Patience</strong> : la croissance prend du temps, c'est normal</li>
-              <li>• <strong style={{ color: 'var(--color-text)' }}>Qualité > quantité</strong> : mieux vaut 5 viewers engagés que 50 passifs</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Qualité &gt; quantité</strong> : mieux vaut 5 viewers engagés que 50 passifs</li>
             </ul>
             <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
               <strong style={{ color: 'var(--color-text)' }}>Ne laisse pas les stats définir ta valeur.</strong> 
