@@ -129,55 +129,167 @@ a:hover {
   color: var(--color-primary-dark);
 }
 
-
 /* ============================================
-   Shop / Boutique des points
+   VIP Premium Effects
    ============================================ */
 
-/* Animations pour les cartes */
-.shop-card {
+/* Carte VIP avec bordure animée */
+.vip-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(145, 70, 255, 0.2) !important;
+  transition: box-shadow 250ms ease;
+}
+
+/* Pseudo-élément pour la bordure animée shimmer */
+.vip-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(
+    45deg,
+    rgba(145, 70, 255, 0),
+    rgba(145, 70, 255, 0.3),
+    rgba(145, 70, 255, 0),
+    rgba(145, 70, 255, 0.3),
+    rgba(145, 70, 255, 0)
+  );
+  background-size: 300% 300%;
+  border-radius: var(--radius-base);
+  z-index: -1;
+  opacity: 0.4;
+  animation: vip-border-shimmer 3s ease-in-out infinite;
+}
+
+/* Animation du shimmer de la bordure */
+@keyframes vip-border-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Glow au hover */
+.vip-card:hover {
+  box-shadow: 0 0 20px rgba(145, 70, 255, 0.4), 0 0 40px rgba(145, 70, 255, 0.2);
+}
+
+/* Avatar VIP avec zoom au hover */
+.vip-avatar {
+  transition: transform 300ms ease;
+}
+
+.vip-card:hover .vip-avatar {
+  transform: scale(1.06);
+}
+
+/* Badge VIP avec pulse doux */
+.vip-badge {
+  animation: vip-pulse 3s ease-in-out infinite;
+}
+
+@keyframes vip-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .vip-card::before {
+    animation: none;
+    opacity: 0.3;
+    background: rgba(145, 70, 255, 0.2);
+  }
+  
+  .vip-badge {
+    animation: none;
+    transform: scale(1);
+    opacity: 1;
+  }
+  
+  .vip-avatar {
+    transition: none;
+  }
+  
+  .vip-card:hover .vip-avatar {
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   Système de points / Page Système de points
+   ============================================ */
+
+/* Introduction Système de points */
+.systeme-points-intro {
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.shop-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(145, 70, 255, 0.15);
-}
-
-/* Catégories avec hover */
-.shop-category {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.shop-category:hover {
+.systeme-points-intro:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
 }
 
-.shop-category-active {
-  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.3);
+/* Cartes Système de points */
+.systeme-points-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
 
-/* Cartes items avec glow au hover */
-.shop-item {
-  transition: transform 300ms ease, box-shadow 300ms ease;
+.systeme-points-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
 }
 
-.shop-item:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 30px rgba(145, 70, 255, 0.25);
-  border-color: rgba(145, 70, 255, 0.5);
+/* Encadrés tips Système de points */
+.systeme-points-tip {
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-/* Rappel ticket sticky */
-.shop-ticket-reminder {
-  animation: shop-fade-in 500ms ease-out;
+.systeme-points-tip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.15);
 }
 
-@keyframes shop-fade-in {
+/* Encadrés reminder Système de points */
+.systeme-points-reminder {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.systeme-points-reminder:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.1);
+}
+
+/* Section esprit Système de points */
+.systeme-points-spirit {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: systeme-points-fade-in 0.6s ease-out;
+}
+
+.systeme-points-spirit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.25);
+}
+
+@keyframes systeme-points-fade-in {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -185,208 +297,22 @@ a:hover {
   }
 }
 
-/* FAQ accordéon avec animation */
-.shop-faq {
-  transition: border-color 200ms ease;
-}
-
-.shop-faq button {
-  transition: background-color 200ms ease;
-}
-
 /* Désactivation des animations pour prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  .shop-card,
-  .shop-category,
-  .shop-item {
+  .systeme-points-intro,
+  .systeme-points-card,
+  .systeme-points-tip,
+  .systeme-points-reminder,
+  .systeme-points-spirit {
     transition: none;
-  }
-  
-  .shop-card:hover,
-  .shop-category:hover,
-  .shop-item:hover {
-    transform: none;
-  }
-  
-  .shop-ticket-reminder {
     animation: none;
   }
-}
-
-
-/* ============================================
-   Spotlight / Page Spotlight
-   ============================================ */
-
-/* Sous-onglets Spotlight */
-.spotlight-subtab {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.spotlight-subtab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
-}
-
-/* Cartes Spotlight */
-.spotlight-card {
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
-}
-
-.spotlight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
-  border-color: rgba(145, 70, 255, 0.3);
-}
-
-/* Encadrés tips Spotlight */
-.spotlight-tip {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.spotlight-tip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
-}
-
-/* Désactivation des animations pour prefers-reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-  .spotlight-subtab,
-  .spotlight-card,
-  .spotlight-tip {
-    transition: none;
-  }
   
-  .spotlight-subtab:hover,
-  .spotlight-card:hover,
-  .spotlight-tip:hover {
+  .systeme-points-intro:hover,
+  .systeme-points-card:hover,
+  .systeme-points-tip:hover,
+  .systeme-points-reminder:hover,
+  .systeme-points-spirit:hover {
     transform: none;
   }
 }
-
-
-/* ============================================
-   Conseils / Page Conseils
-   ============================================ */
-
-/* Sous-onglets Conseils */
-.conseil-subtab {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.conseil-subtab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
-}
-
-/* Cartes Conseils */
-.conseil-card {
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
-}
-
-.conseil-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
-  border-color: rgba(145, 70, 255, 0.3);
-}
-
-/* Encadrés tips Conseils */
-.conseil-tip {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.conseil-tip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
-}
-
-/* Encadrés warning Conseils */
-.conseil-warning {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.conseil-warning:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
-}
-
-/* Désactivation des animations pour prefers-reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-  .conseil-subtab,
-  .conseil-card,
-  .conseil-tip,
-  .conseil-warning {
-    transition: none;
-  }
-  
-  .conseil-subtab:hover,
-  .conseil-card:hover,
-  .conseil-tip:hover,
-  .conseil-warning:hover {
-    transform: none;
-  }
-}
-
-
-/* ============================================
-   Règlement / Page Règlement
-   ============================================ */
-
-/* Sous-onglets Règlement */
-.reglement-subtab {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.reglement-subtab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
-}
-
-/* Cartes Règlement */
-.reglement-card {
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
-}
-
-.reglement-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
-  border-color: rgba(145, 70, 255, 0.3);
-}
-
-/* Encadrés tips Règlement */
-.reglement-tip {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.reglement-tip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.2);
-}
-
-/* Encadrés warning Règlement */
-.reglement-warning {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.reglement-warning:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
-}
-
-/* Désactivation des animations pour prefers-reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-  .reglement-subtab,
-  .reglement-card,
-  .reglement-tip,
-  .reglement-warning {
-    transition: none;
-  }
-  
-  .reglement-subtab:hover,
-  .reglement-card:hover,
-  .reglement-tip:hover,
-  .reglement-warning:hover {
-    transform: none;
-  }
-}
-

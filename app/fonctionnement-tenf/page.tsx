@@ -1212,6 +1212,227 @@ function ReglementContent() {
   );
 }
 
+function SystemePointsContent() {
+  return (
+    <div className="space-y-12">
+      {/* HERO */}
+      <section className="text-center space-y-4">
+        <h1 className="text-5xl font-bold" style={{ color: 'var(--color-text)' }}>⭐ Système de points TENF</h1>
+        <p className="text-xl" style={{ color: 'var(--color-text-secondary)' }}>Un système pensé pour encourager l&apos;entraide, pas la compétition</p>
+        <div className="rounded-xl p-6 border systeme-points-intro" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Le système de points TENF récompense l&apos;engagement réel, la présence humaine et l&apos;entraide sincère sur le serveur Discord. Ici, chaque action compte — pas la performance, mais l&apos;implication.
+          </p>
+        </div>
+      </section>
+
+      {/* Comment gagner des points */}
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎯 Comment gagner des points ?</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Quête quotidienne */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                🗓 Quête quotidienne
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                500 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Utilise la commande /journalier une fois par jour dans le salon 🗓・bonus-journalier.
+            </p>
+          </div>
+
+          {/* Participation à la vie du serveur */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                💬 Participation à la vie du serveur
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                500 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              Tous les 3 niveaux
+            </p>
+            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Gagnés automatiquement grâce à ton activité : discussions textuelles, entraide, présence en vocal… (hors spam ou messages artificiels).
+            </p>
+          </div>
+
+          {/* Organisation de raids */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                🤜🤛 Organisation de raids
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                500 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Organise un raid Twitch entre membres TENF.
+            </p>
+            <div className="rounded-lg p-4 mb-3 systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📋 Format obligatoire :</p>
+              <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                Pour que le raid soit comptabilisé, le message doit être posté obligatoirement et uniquement dans #⚡・coordination-raid, sans aucun texte supplémentaire, sous le format exact suivant :
+              </p>
+              <div className="bg-[var(--color-surface)] rounded-lg p-4 border" style={{ borderColor: 'var(--color-border)' }}>
+                <code className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
+                  @membre1 a raid @membre2
+                </code>
+              </div>
+              <p className="leading-relaxed text-xs mt-3 italic" style={{ color: 'var(--color-text-secondary)' }}>
+                Tout message qui ne respecte pas strictement ce format ne sera pas pris en compte.
+              </p>
+            </div>
+          </div>
+
+          {/* Parrainage de nouveaux membres */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                🆕 Parrainage de nouveaux membres
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                300 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Invite une personne qui partage les valeurs TENF et qui s&apos;implique réellement dans la communauté.
+            </p>
+          </div>
+
+          {/* Suivi des réseaux TENF */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                🔔 Suivi des réseaux TENF
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                500 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              Réseaux concernés : X (Twitter), TikTok, Instagram.
+            </p>
+            <div className="rounded-lg p-3 mt-3 systeme-points-reminder" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)' }}>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                📸 <strong style={{ color: 'var(--color-text)' }}>Preuve obligatoire</strong> à poster dans 📂・preuves-suivi.<br />
+                500 points attribués par réseau validé.
+              </p>
+            </div>
+          </div>
+
+          {/* Participation aux événements communautaires */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                🎉 Participation aux événements communautaires
+              </h3>
+              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                200-500 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Jeux communautaires, soirées fun, events spéciaux… Le montant dépend de l&apos;implication et du type d&apos;événement.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Bonus & avantages */}
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎁 Bonus & avantages</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Pack de démarrage */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🎒</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Pack de démarrage
+              </h3>
+              <span className="text-3xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                1000 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              Attribués aux nouveaux streamers rejoignant TENF.
+            </p>
+          </div>
+
+          {/* Bonus d'anniversaire */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🎂</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Bonus d&apos;anniversaire
+              </h3>
+              <span className="text-3xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                2000 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              Parce que fêter ça ensemble, ça mérite un boost 🎉
+            </p>
+          </div>
+
+          {/* Multiplicateur de points x2 */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🔓</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Multiplicateur x2
+              </h3>
+              <span className="text-lg font-bold block mb-2" style={{ color: 'var(--color-primary)' }}>
+                Niveau 21+
+              </span>
+              <span className="text-2xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                1000 pts / 3 niveaux
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              1000 points tous les 3 niveaux au lieu de 500. Récompense la régularité, la fidélité et l&apos;implication dans la durée.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Utiliser ses points */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🏆 Utiliser ses points</h2>
+        <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+            Les points permettent de débloquer différents avantages communautaires (rôles temporaires, bonus, accès spécifiques…).
+          </p>
+          <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Les détails sont disponibles dans la boutique des points ou les salons dédiés.
+          </p>
+        </div>
+      </section>
+
+      {/* L'esprit du système TENF */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>💙 L&apos;esprit du système TENF</h2>
+        <div className="rounded-xl p-8 border systeme-points-spirit" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+          <p className="leading-relaxed text-xl mb-4 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+            TENF est avant tout : 🤝 de l&apos;entraide, 💬 de l&apos;échange, ❤️ du respect, 🚀 du soutien mutuel entre streamers.
+          </p>
+          <p className="leading-relaxed text-2xl font-bold text-center" style={{ color: 'var(--color-primary)' }}>
+            Les points récompensent l&apos;humain avant la performance.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ConseilContent() {
   const [activeSubTab, setActiveSubTab] = useState<"tenf" | "twitch" | "reseaux">("tenf");
 
@@ -1996,214 +2217,7 @@ export default function Page() {
           )}
 
           {activeTab === "systeme-points" && (
-            <div className="space-y-8">
-              {/* Introduction */}
-              <section className="mb-16">
-                <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                  <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-                    Le système de points TENF récompense l'engagement réel, la présence humaine et l'entraide sincère sur le serveur Discord. Ici, chaque action compte — pas la performance, mais l'implication.
-                  </p>
-                </div>
-              </section>
-
-              {/* Comment gagner des points */}
-              <section className="mb-16">
-                <h2 className="text-2xl font-semibold mb-8" style={{ color: 'var(--color-text)' }}>
-                  🎯 Comment gagner des points ?
-                </h2>
-
-                <div className="space-y-6">
-                  {/* Quête quotidienne */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🗓 Quête quotidienne
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        500 points / jour
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Utilise la commande /journalier une fois par jour dans le salon 🗓・bonus-journalier.
-                    </p>
-                  </div>
-
-                  {/* Participation à la vie du serveur */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        💬 Participation à la vie du serveur
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        500 points tous les 3 niveaux
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Gagnés automatiquement grâce à ton activité : discussions textuelles, entraide, présence en vocal… (hors spam ou messages artificiels).
-                    </p>
-                  </div>
-
-                  {/* Organisation de raids */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🤜🤛 Organisation de raids
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        500 points / raid
-                      </span>
-                    </div>
-                    <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                      Organise un raid Twitch entre membres TENF.
-                    </p>
-                    <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                      Pour que le raid soit comptabilisé, le message doit être posté obligatoirement et uniquement dans #⚡・coordination-raid, sans aucun texte supplémentaire, sous le format exact suivant :
-                    </p>
-                    <div className="bg-[var(--color-surface)] rounded-lg p-4 my-3 border" style={{ borderColor: 'var(--color-border)' }}>
-                      <code className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
-                        @membre1 a raid @membre2
-                      </code>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Tout message qui ne respecte pas strictement ce format ne sera pas pris en compte.
-                    </p>
-                  </div>
-
-                  {/* Parrainage de nouveaux membres */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🆕 Parrainage de nouveaux membres
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        300 points / parrainage validé
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Invite une personne qui partage les valeurs TENF et qui s'implique réellement dans la communauté.
-                    </p>
-                  </div>
-
-                  {/* Suivi des réseaux TENF */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🔔 Suivi des réseaux TENF
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        500 points par réseau
-                      </span>
-                    </div>
-                    <p className="leading-relaxed mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                      Réseaux concernés : X (Twitter), TikTok, Instagram.
-                    </p>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      📸 Preuve obligatoire à poster dans 📂・preuves-suivi.<br />
-                      500 points attribués par réseau validé.
-                    </p>
-                  </div>
-
-                  {/* Participation aux événements communautaires */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🎉 Participation aux événements communautaires
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        200 à 500 points
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Jeux communautaires, soirées fun, events spéciaux… Le montant dépend de l'implication et du type d'événement.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Bonus & avantages */}
-              <section className="mb-16">
-                <h2 className="text-2xl font-semibold mb-8" style={{ color: 'var(--color-text)' }}>
-                  🎁 Bonus & avantages
-                </h2>
-
-                <div className="space-y-6">
-                  {/* Pack de démarrage */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🎒 Pack de démarrage
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        1000 points
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Attribués aux nouveaux streamers rejoignant TENF.
-                    </p>
-                  </div>
-
-                  {/* Bonus d'anniversaire */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🎂 Bonus d'anniversaire
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        2000 points
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Parce que fêter ça ensemble, ça mérite un boost 🎉
-                    </p>
-                  </div>
-
-                  {/* Multiplicateur de points x2 */}
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        🔓 Multiplicateur de points x2
-                      </h3>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
-                        À partir du niveau 21
-                      </span>
-                    </div>
-                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      1000 points tous les 3 niveaux au lieu de 500. Récompense la régularité, la fidélité et l'implication dans la durée.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Utiliser ses points */}
-              <section className="mb-16">
-                <h2 className="text-2xl font-semibold mb-8" style={{ color: 'var(--color-text)' }}>
-                  🏆 Utiliser ses points
-                </h2>
-                <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                  <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                    Les points permettent de débloquer différents avantages communautaires (rôles temporaires, bonus, accès spécifiques…).
-                  </p>
-                  <p className="leading-relaxed mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-                    Les détails sont disponibles dans la boutique des points ou les salons dédiés.
-                  </p>
-                </div>
-              </section>
-
-              {/* L'esprit du système TENF */}
-              <section className="mb-16">
-                <h2 className="text-2xl font-semibold mb-8" style={{ color: 'var(--color-text)' }}>
-                  💙 L'esprit du système TENF
-                </h2>
-                <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                  <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                    TENF est avant tout : 🤝 de l'entraide, 💬 de l'échange, ❤️ du respect, 🚀 du soutien mutuel entre streamers.
-                  </p>
-                  <p className="leading-relaxed mt-3 font-semibold" style={{ color: 'var(--color-text)' }}>
-                    Les points récompensent l'humain avant la performance.
-                  </p>
-                </div>
-              </section>
-            </div>
+            <SystemePointsContent />
           )}
 
           {activeTab === "boutique-points" && (
