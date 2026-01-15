@@ -129,3 +129,87 @@ a:hover {
   color: var(--color-primary-dark);
 }
 
+
+/* ============================================
+   Shop / Boutique des points
+   ============================================ */
+
+/* Animations pour les cartes */
+.shop-card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.shop-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(145, 70, 255, 0.15);
+}
+
+/* Catégories avec hover */
+.shop-category {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.shop-category:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 70, 255, 0.2);
+}
+
+.shop-category-active {
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.3);
+}
+
+/* Cartes items avec glow au hover */
+.shop-item {
+  transition: transform 300ms ease, box-shadow 300ms ease;
+}
+
+.shop-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 30px rgba(145, 70, 255, 0.25);
+  border-color: rgba(145, 70, 255, 0.5);
+}
+
+/* Rappel ticket sticky */
+.shop-ticket-reminder {
+  animation: shop-fade-in 500ms ease-out;
+}
+
+@keyframes shop-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* FAQ accordéon avec animation */
+.shop-faq {
+  transition: border-color 200ms ease;
+}
+
+.shop-faq button {
+  transition: background-color 200ms ease;
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .shop-card,
+  .shop-category,
+  .shop-item {
+    transition: none;
+  }
+  
+  .shop-card:hover,
+  .shop-category:hover,
+  .shop-item:hover {
+    transform: none;
+  }
+  
+  .shop-ticket-reminder {
+    animation: none;
+  }
+}
+

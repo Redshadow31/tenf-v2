@@ -2,6 +2,147 @@
 
 import { useState } from "react";
 
+// Lien unique Discord pour tous les achats
+const DISCORD_SHOP_URL = "https://discord.com/channels/535244857891880970/1278839967962894459";
+
+// Structure des items de la boutique
+interface ShopItem {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: "defis" | "promo" | "coaching" | "spotlight";
+  cooldown?: string;
+  limited?: string;
+  popular?: boolean;
+}
+
+const shopItems: ShopItem[] = [
+  // 🎲 Défis & fun en live
+  {
+    id: "defi-rigolo",
+    title: "Défi rigolo à faire en live",
+    description: "Le staff te propose un mini défi fun (voix bizarre, mot interdit, etc.).",
+    price: 2.5,
+    category: "defis",
+  },
+  // 📣 Promo & visibilité
+  {
+    id: "evenement-discord",
+    title: "Création d'un événement Discord à ton nom hors live twitch (interdit)",
+    description: "Soirée organisée autour de ton jeu ou ton univers (Fall Guys, Mario Kart...).",
+    price: 3,
+    category: "promo",
+  },
+  {
+    id: "post-reseaux",
+    title: "Post Réseaux Promo créateur",
+    description: "Mise en avant de ta chaîne sur le compte officiel TENF (jours de live, lien, description).",
+    price: 6,
+    category: "promo",
+    cooldown: "2 mois",
+  },
+  {
+    id: "interview-post",
+    title: "Interview + post créateur (salon / site / réseaux)",
+    description: "Tu passes à l'honneur avec un post complet sur ton univers.",
+    price: 10,
+    category: "promo",
+    cooldown: "3 mois",
+  },
+  // 🧰 Coaching & outils
+  {
+    id: "test-concept",
+    title: "Test de concept de live (avec feedback)",
+    description: "Le staff assiste à ton live original et te fait un retour : potentiel, ambiance, contenu à améliorer.",
+    price: 6,
+    category: "coaching",
+  },
+  {
+    id: "coaching-identite",
+    title: "Coaching privé : identité de chaîne",
+    description: "20 min de réflexion guidée pour trouver ton positionnement, ton style, tes objectifs.",
+    price: 7,
+    category: "coaching",
+  },
+  {
+    id: "mini-analyse",
+    title: "Mini-analyse de chaîne (15 min vocal)",
+    description: "Retour express sur ton profil Twitch (visuels, bio, présentation) avec conseils personnalisés.",
+    price: 9,
+    category: "coaching",
+    cooldown: "3 mois",
+    limited: "3 membres par semaine",
+  },
+  {
+    id: "feedback-vod",
+    title: "Feedback personnalisé sur un live (VOD)",
+    description: "Analyse de ton replay (15 à 30 min) + retour écrit ou vocal détaillé.",
+    price: 12,
+    category: "coaching",
+  },
+  {
+    id: "coaching-outils",
+    title: "Coaching outils (Canva, Wizebot, OBS...)",
+    description: "Formation privée de 30–45 min sur l'outil de ton choix. Partage d'écran possible.",
+    price: 12,
+    category: "coaching",
+  },
+  {
+    id: "analyse-complete",
+    title: "Analyse complète de chaîne (Pro Review)",
+    description: "Analyse approfondie de ton profil, overlays, live, ambiance, contenu, différenciation + stratégie.",
+    price: 25,
+    category: "coaching",
+    popular: true,
+  },
+  // 🌟 Spotlight & premium
+  {
+    id: "spotlight",
+    title: "Spotlight New Family",
+    description: "Spotlight New Family – Un moment pour briller ✨\n\nUne fois votre achat validé, ouvrez un ticket pour réserver la date et l'heure.\n\nLe Spotlight est une mise en avant d'une heure pour présenter ton univers, rencontrer la New Family et créer de vrais liens.\n\nLimité à 1 Spotlight par mois pour chaque créateur.",
+    price: 30,
+    category: "spotlight",
+    limited: "1 par mois",
+    popular: true,
+  },
+  {
+    id: "pack-refonte",
+    title: "Pack refonte complète de Chaîne",
+    description: "Pack comprenant une refonte totale de ta chaîne créée par Nexou selon tes goûts comprenant :\n\n• Bannière Twitch et Image de Profil.\n• Panneaux de Bio (à propos).\n• Emotes (non animées).\n• Scènes et Overlays pour OBS / Streamlabs.\n• Transition personnalisée (Stinger).",
+    price: 100,
+    category: "spotlight",
+    popular: true,
+  },
+];
+
+const categories = [
+  {
+    id: "defis",
+    name: "Défis & fun en live",
+    icon: "🎲",
+    description: "Des challenges ludiques pour animer tes lives",
+  },
+  {
+    id: "promo",
+    name: "Promo & visibilité",
+    icon: "📣",
+    description: "Boost ta visibilité sur TENF et les réseaux",
+  },
+  {
+    id: "coaching",
+    name: "Coaching & outils",
+    icon: "🧰",
+    description: "Accompagnement personnalisé pour progresser",
+  },
+  {
+    id: "spotlight",
+    name: "Spotlight & premium",
+    icon: "🌟",
+    description: "Services premium et mises en avant exclusives",
+  },
+];
+
 type TabId = "integration" | "reglement" | "systeme-points" | "boutique-points" | "spotlight" | "conseil";
 
 interface Tab {
@@ -17,6 +158,301 @@ const tabs: Tab[] = [
   { id: "spotlight", label: "Spotlight" },
   { id: "conseil", label: "Conseil" },
 ];
+
+function BoutiquePointsContent() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [copiedTicket, setCopiedTicket] = useState(false);
+
+  const filteredItems = selectedCategory
+    ? shopItems.filter((item) => item.category === selectedCategory)
+    : shopItems;
+
+  const ticketExample = `Récompense achetée : [Nom de la récompense]
+Pseudo Twitch : [Ton pseudo]
+Disponibilités : [Tes dispos si planification nécessaire]
+Détails utiles : [Lien VOD si feedback, etc.]`;
+
+  const copyTicketExample = () => {
+    navigator.clipboard.writeText(ticketExample);
+    setCopiedTicket(true);
+    setTimeout(() => setCopiedTicket(false), 2000);
+  };
+
+  const scrollToRewards = () => {
+    const element = document.getElementById("recompenses");
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToTicket = () => {
+    const element = document.getElementById("rappel-ticket");
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="space-y-12">
+      {/* HERO */}
+      <section className="text-center space-y-6">
+        <h1 className="text-4xl md:text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
+          🛍️ Boutique des points TENF
+        </h1>
+        <p className="text-xl md:text-2xl" style={{ color: 'var(--color-text-secondary)' }}>
+          Dépense tes points pour du fun en live, de la visibilité et du coaching.
+        </p>
+        <div className="rounded-lg border p-4 max-w-2xl mx-auto" style={{ backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
+          <p className="text-white font-semibold">
+            🛒 Les achats se font sur Discord (salon 🛒・boutique-des-streamers).
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-4 justify-center">
+          <button
+            onClick={scrollToRewards}
+            className="px-6 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            Voir les récompenses
+          </button>
+          <a
+            href={DISCORD_SHOP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 inline-block"
+            style={{ backgroundColor: 'var(--color-primary-dark)' }}
+          >
+            Accéder à la boutique Discord
+          </a>
+        </div>
+      </section>
+
+      {/* COMMENT ÇA MARCHE ? */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold text-center" style={{ color: 'var(--color-text)' }}>
+          Comment ça marche ?
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="rounded-xl p-6 border text-center shop-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-4xl mb-3">🎁</div>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>1. Choisis une récompense</h3>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Parcours les catégories et sélectionne ce qui t'intéresse</p>
+          </div>
+          <div className="rounded-xl p-6 border text-center shop-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-4xl mb-3">🛒</div>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>2. Clique sur "🛒 Acheter sur Discord"</h3>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Tu seras redirigé vers le salon Discord de la boutique</p>
+          </div>
+          <div className="rounded-xl p-6 border text-center shop-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-4xl mb-3">📩</div>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>3. Ouvre un ticket après achat</h3>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Obligatoire pour traiter ta demande</p>
+          </div>
+        </div>
+
+        {/* Exemple de ticket */}
+        <div className="rounded-xl p-6 border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>Exemple de ticket :</h3>
+          <div className="bg-[var(--color-surface)] rounded-lg p-4 border relative" style={{ borderColor: 'var(--color-border)' }}>
+            <pre className="text-sm whitespace-pre-wrap" style={{ color: 'var(--color-text-secondary)' }}>{ticketExample}</pre>
+            <button
+              onClick={copyTicketExample}
+              className="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+              style={{ backgroundColor: copiedTicket ? '#10b981' : 'var(--color-primary)' }}
+            >
+              {copiedTicket ? '✓ Copié !' : '📋 Copier'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* CATÉGORIES */}
+      <section id="recompenses" className="space-y-6">
+        <h2 className="text-2xl font-bold text-center" style={{ color: 'var(--color-text)' }}>
+          Catégories
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`rounded-xl p-6 border text-center transition-all shop-category ${
+              selectedCategory === null ? 'shop-category-active' : ''
+            }`}
+            style={{
+              backgroundColor: selectedCategory === null ? 'var(--color-primary)' : 'var(--color-card)',
+              borderColor: selectedCategory === null ? 'var(--color-primary)' : 'var(--color-border)',
+            }}
+          >
+            <div className="text-3xl mb-2">✨</div>
+            <h3 className={`font-semibold mb-1 ${selectedCategory === null ? 'text-white' : ''}`} style={selectedCategory === null ? {} : { color: 'var(--color-text)' }}>
+              Toutes
+            </h3>
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`rounded-xl p-6 border text-center transition-all shop-category ${
+                selectedCategory === cat.id ? 'shop-category-active' : ''
+              }`}
+              style={{
+                backgroundColor: selectedCategory === cat.id ? 'var(--color-primary)' : 'var(--color-card)',
+                borderColor: selectedCategory === cat.id ? 'var(--color-primary)' : 'var(--color-border)',
+              }}
+            >
+              <div className="text-3xl mb-2">{cat.icon}</div>
+              <h3 className={`font-semibold mb-1 ${selectedCategory === cat.id ? 'text-white' : ''}`} style={selectedCategory === cat.id ? {} : { color: 'var(--color-text)' }}>
+                {cat.name}
+              </h3>
+              <p className={`text-sm ${selectedCategory === cat.id ? 'text-white/90' : ''}`} style={selectedCategory === cat.id ? {} : { color: 'var(--color-text-secondary)' }}>
+                {cat.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* CARTES ITEMS */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold text-center" style={{ color: 'var(--color-text)' }}>
+          Récompenses disponibles
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl p-6 border shop-item relative"
+              style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+            >
+              {item.popular && (
+                <span className="absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                  ⭐ Populaire
+                </span>
+              )}
+              <h3 className="text-lg font-semibold mb-3 pr-16" style={{ color: 'var(--color-text)' }}>
+                {item.title}
+              </h3>
+              <p className="text-sm mb-4 whitespace-pre-line" style={{ color: 'var(--color-text-secondary)' }}>
+                {item.description}
+              </p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {item.cooldown && (
+                  <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', color: 'var(--color-primary)' }}>
+                    Cooldown: {item.cooldown}
+                  </span>
+                )}
+                {item.limited && (
+                  <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', color: 'var(--color-primary)' }}>
+                    Limité: {item.limited}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
+                  {item.price}k
+                </span>
+                <a
+                  href={DISCORD_SHOP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:scale-105"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  🛒 Acheter sur Discord
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ENCADRÉ STICKY RAPPEL TICKET */}
+      <section id="rappel-ticket" className="sticky bottom-4 z-10 shop-ticket-reminder">
+        <div className="rounded-xl p-6 border shadow-lg" style={{ backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
+          <h3 className="text-xl font-bold mb-3 text-white">
+            ✅ Après chaque achat : ouvre un ticket
+          </h3>
+          <p className="text-white/90 mb-4">
+            <strong>Sans ticket = pas de traitement.</strong>
+          </p>
+          <p className="text-white/90 mb-4">
+            Dans ton ticket, indique :
+          </p>
+          <ul className="list-disc list-inside text-white/90 mb-4 space-y-1">
+            <li>La récompense achetée</li>
+            <li>Ton pseudo Twitch</li>
+            <li>Tes disponibilités (si planification nécessaire)</li>
+            <li>Les détails utiles (lien VOD si feedback, etc.)</li>
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={DISCORD_SHOP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:scale-105 inline-block"
+              style={{ backgroundColor: 'var(--color-primary-dark)' }}
+            >
+              Ouvrir la boutique Discord
+            </a>
+            <button
+              onClick={scrollToTicket}
+              className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:scale-105 border-2 border-white"
+            >
+              Voir la procédure ticket
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-center" style={{ color: 'var(--color-text)' }}>
+          Questions fréquentes
+        </h2>
+        {[
+          {
+            q: "Je viens d'acheter, je fais quoi ?",
+            a: "Ouvre un ticket sur Discord en indiquant la récompense achetée, ton pseudo Twitch, tes disponibilités si nécessaire, et tout autre détail utile. Sans ticket, on ne peut pas traiter ta demande.",
+          },
+          {
+            q: "C'est quoi un cooldown ?",
+            a: "Un cooldown est un délai d'attente avant de pouvoir racheter la même récompense. Par exemple, si un item a un cooldown de 2 mois, tu devras attendre 2 mois avant de le racheter.",
+          },
+          {
+            q: "Combien de temps pour traiter ?",
+            a: "Le temps de traitement varie selon la récompense. Pour les services simples, comptes quelques jours. Pour les services premium comme le Spotlight, cela peut prendre plus de temps pour planifier. On te tiendra informé via ton ticket !",
+          },
+          {
+            q: "Puis-je annuler ?",
+            a: "Si tu as déjà effectué l'achat, contacte le staff via ticket pour discuter. Selon l'avancement du traitement, on pourra voir ensemble la meilleure solution. La communication est la clé !",
+          },
+        ].map((faq, index) => (
+          <div
+            key={index}
+            className="rounded-xl border overflow-hidden shop-faq"
+            style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+          >
+            <button
+              onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+              className="w-full px-6 py-4 text-left flex items-center justify-between transition-all"
+              style={{ backgroundColor: expandedFaq === index ? 'var(--color-surface)' : 'transparent' }}
+            >
+              <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                {faq.q}
+              </h3>
+              <span className="text-xl" style={{ color: 'var(--color-primary)' }}>
+                {expandedFaq === index ? '−' : '+'}
+              </span>
+            </button>
+            {expandedFaq === index && (
+              <div className="px-6 py-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  {faq.a}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
@@ -737,13 +1173,7 @@ export default function Page() {
           )}
 
           {activeTab === "boutique-points" && (
-            <div className="space-y-8">
-              <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                <p className="leading-relaxed text-lg text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                  Contenu à venir...
-                </p>
-              </div>
-            </div>
+            <BoutiquePointsContent />
           )}
 
           {activeTab === "spotlight" && (
