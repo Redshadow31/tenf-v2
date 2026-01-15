@@ -993,7 +993,7 @@ function ConseilContent() {
           {/* Régularité > présence parfaite */}
           <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
-              ⏱️ Régularité > présence parfaite
+              ⏱️ Régularité &gt; présence parfaite
             </h2>
             <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
               On ne te demande pas d'être présent tout le temps, partout, tout de suite. Ce qui compte, c'est :
