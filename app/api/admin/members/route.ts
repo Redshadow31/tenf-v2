@@ -11,7 +11,7 @@ import {
   loadMemberDataFromStorage,
 } from "@/lib/memberData";
 import { getCurrentAdmin } from "@/lib/adminAuth";
-import { logAction } from "@/lib/admin/logger";
+import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -172,12 +172,14 @@ export async function POST(request: NextRequest) {
       admin.id
     );
 
-    // Logger l'action avec le nouveau système d'audit
+    // Logger l'action avec before/after optimisés
+    const { previousValue, newValue } = prepareAuditValues(undefined, newMember);
     await logAction({
       action: "member.create",
       resourceType: "member",
       resourceId: twitchLogin,
-      newValue: { displayName, role, isVip, isActive },
+      previousValue,
+      newValue,
       metadata: { sourcePage: "/admin/membres/gestion" },
     });
 
@@ -417,23 +419,14 @@ export async function PUT(request: NextRequest) {
     if (updates.badges !== undefined) fieldsChanged.push("badges");
     if (updates.parrain !== undefined) fieldsChanged.push("parrain");
 
-    // Logger l'action avec le nouveau système d'audit
+    // Logger l'action avec before/after optimisés (état complet avant/après)
+    const { previousValue, newValue } = prepareAuditValues(existingMember, updatedMember);
     await logAction({
       action: "member.update",
       resourceType: "member",
       resourceId: updatedMember.twitchLogin || twitchLogin,
-      previousValue: {
-        role: existingMember.role,
-        isVip: existingMember.isVip,
-        isActive: existingMember.isActive,
-        description: existingMember.description,
-      },
-      newValue: {
-        role: updatedMember.role,
-        isVip: updatedMember.isVip,
-        isActive: updatedMember.isActive,
-        description: updatedMember.description,
-      },
+      previousValue,
+      newValue,
       metadata: {
         fieldsChanged,
         sourcePage: "/admin/membres/gestion",
@@ -502,16 +495,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Logger l'action avec le nouveau système d'audit
+    // Logger l'action avec before optimisé (état complet avant suppression)
+    const { previousValue } = prepareAuditValues(member, undefined);
     await logAction({
       action: "member.delete",
       resourceType: "member",
       resourceId: twitchLogin,
-      previousValue: {
-        displayName: member.displayName,
-        role: member.role,
-        isVip: member.isVip,
-      },
+      previousValue,
       metadata: { sourcePage: "/admin/membres/gestion" },
     });
 

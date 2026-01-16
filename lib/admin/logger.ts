@@ -147,3 +147,88 @@ export async function logDelete(
     metadata,
   });
 }
+
+/**
+ * Optimise une valeur pour l'audit (limite la taille pour éviter les payloads énormes)
+ * @param value La valeur à optimiser
+ * @param maxSize Taille maximale en octets (par défaut 50KB)
+ * @returns La valeur optimisée
+ */
+export function optimizeAuditValue(value: any, maxSize: number = 50000): any {
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  // Convertir en JSON pour calculer la taille
+  const jsonString = JSON.stringify(value);
+  const sizeInBytes = Buffer.byteLength(jsonString, "utf8");
+
+  // Si la taille est acceptable, retourner tel quel
+  if (sizeInBytes <= maxSize) {
+    return value;
+  }
+
+  // Sinon, créer un résumé avec seulement les champs importants
+  if (Array.isArray(value)) {
+    // Pour les tableaux, garder seulement les premiers éléments + info de taille
+    const summary = value.slice(0, 10).map((item, idx) => ({
+      ...optimizeAuditValue(item, maxSize / 10),
+      _index: idx,
+    }));
+    return {
+      _type: "array",
+      _totalLength: value.length,
+      _truncated: true,
+      _sample: summary,
+    };
+  }
+
+  // Pour les objets, garder seulement les champs de premier niveau importants
+  const importantFields: Record<string, any> = {};
+  const keysToKeep = [
+    "id",
+    "name",
+    "title",
+    "displayName",
+    "twitchLogin",
+    "discordId",
+    "role",
+    "status",
+    "isActive",
+    "isVip",
+    "date",
+    "timestamp",
+    "type",
+    "category",
+  ];
+
+  for (const key of keysToKeep) {
+    if (key in value && value[key] !== undefined) {
+      importantFields[key] = value[key];
+    }
+  }
+
+  return {
+    _type: "object",
+    _truncated: true,
+    _originalSize: sizeInBytes,
+    _totalKeys: Object.keys(value).length,
+    ...importantFields,
+  };
+}
+
+/**
+ * Helper pour capturer l'état avant/après de manière optimisée
+ * @param before État avant
+ * @param after État après
+ * @returns Objet avec before/after optimisés
+ */
+export function prepareAuditValues(before?: any, after?: any): {
+  previousValue?: any;
+  newValue?: any;
+} {
+  return {
+    previousValue: before ? optimizeAuditValue(before) : undefined,
+    newValue: after ? optimizeAuditValue(after) : undefined,
+  };
+}

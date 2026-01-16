@@ -74,6 +74,17 @@ export async function POST(request: NextRequest) {
       createdBy: admin.id,
     });
     
+    // Logger l'action avec before/after optimisés
+    const { previousValue, newValue } = prepareAuditValues(undefined, newEvent);
+    await logAction({
+      action: "event.create",
+      resourceType: "event",
+      resourceId: newEvent.id,
+      previousValue,
+      newValue,
+      metadata: { sourcePage: "/admin/events" },
+    });
+    
     return NextResponse.json({ event: newEvent, success: true });
   } catch (error) {
     console.error('[Events API] Erreur POST:', error);

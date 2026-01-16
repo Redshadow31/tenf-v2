@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { getEvent, updateEvent, deleteEvent } from '@/lib/eventStorage';
+import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
 /**
  * GET - Récupère un événement spécifique
@@ -57,6 +58,15 @@ export async function PUT(
     const { eventId } = params;
     const body = await request.json();
     
+    // Capturer l'état avant la mise à jour
+    const existingEvent = await getEvent(eventId);
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: 'Événement non trouvé' },
+        { status: 404 }
+      );
+    }
+    
     const updatedEvent = await updateEvent(eventId, body);
     
     if (!updatedEvent) {
@@ -65,6 +75,17 @@ export async function PUT(
         { status: 404 }
       );
     }
+    
+    // Logger l'action avec before/after optimisés
+    const { previousValue, newValue } = prepareAuditValues(existingEvent, updatedEvent);
+    await logAction({
+      action: "event.update",
+      resourceType: "event",
+      resourceId: eventId,
+      previousValue,
+      newValue,
+      metadata: { sourcePage: "/admin/events" },
+    });
     
     return NextResponse.json({ event: updatedEvent, success: true });
   } catch (error) {
@@ -90,6 +111,16 @@ export async function DELETE(
     }
     
     const { eventId } = params;
+    
+    // Capturer l'état avant la suppression
+    const existingEvent = await getEvent(eventId);
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: 'Événement non trouvé' },
+        { status: 404 }
+      );
+    }
+    
     const deleted = await deleteEvent(eventId);
     
     if (!deleted) {
@@ -98,6 +129,16 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    
+    // Logger l'action avec before optimisé
+    const { previousValue } = prepareAuditValues(existingEvent, undefined);
+    await logAction({
+      action: "event.delete",
+      resourceType: "event",
+      resourceId: eventId,
+      previousValue,
+      metadata: { sourcePage: "/admin/events" },
+    });
     
     return NextResponse.json({ success: true });
   } catch (error) {
