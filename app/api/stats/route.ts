@@ -58,7 +58,18 @@ export async function GET() {
     // 2. Compter le nombre total de membres actifs
     // IMPORTANT: Utiliser UNIQUEMENT tenf-admin-members (sans fusion avec bot)
     // Pour éviter les bugs, compter uniquement les membres avec isActive: true dans tenf-admin-members
-    const adminData = await loadAdminDataFromStorage();
+    let adminData: Record<string, any>;
+    try {
+      adminData = await loadAdminDataFromStorage();
+      console.log(`[Stats API] Successfully loaded admin data. Keys count: ${Object.keys(adminData).length}`);
+    } catch (error) {
+      console.error(`[Stats API] ERROR loading admin data:`, error);
+      return NextResponse.json(
+        { error: 'Failed to load admin data', details: error instanceof Error ? error.message : String(error) },
+        { status: 500 }
+      );
+    }
+    
     const allAdminMembers = Object.values(adminData);
     console.log(`[Stats API] Total members in tenf-admin-members Blob: ${allAdminMembers.length}`);
     
@@ -72,7 +83,11 @@ export async function GET() {
     console.log(`[Stats API] Members with isActive=undefined: ${undefinedActive}`);
     
     // Compter UNIQUEMENT les membres avec isActive === true du Blob tenf-admin-members
-    const activeMembers = allAdminMembers.filter(m => m.isActive === true);
+    // Gérer aussi le cas où isActive pourrait être une string "true" (par sécurité)
+    const activeMembers = allAdminMembers.filter(m => {
+      // Vérifier si isActive est true (boolean) ou "true" (string)
+      return m.isActive === true || m.isActive === "true";
+    });
     const activeMembersCount = activeMembers.length;
     
     // Logs détaillés pour déboguer
@@ -85,10 +100,18 @@ export async function GET() {
         sampleMembers.map(m => ({ 
           twitchLogin: m.twitchLogin, 
           isActive: m.isActive,
+          typeofIsActive: typeof m.isActive,
           role: m.role,
           listId: m.listId
         }))
       );
+      
+      // Vérifier quelques membres actifs manuellement
+      const manuallyFoundActive = allAdminMembers.filter(m => {
+        const isActiveValue = (m as any).isActive;
+        return isActiveValue === true || isActiveValue === "true" || isActiveValue === 1;
+      });
+      console.log(`[Stats API] Manual check: Found ${manuallyFoundActive.length} members with isActive=true/\"true\"/1`);
     } else if (allAdminMembers.length === 0) {
       console.log(`[Stats API] WARNING: tenf-admin-members Blob is EMPTY! No admin members found.`);
     }

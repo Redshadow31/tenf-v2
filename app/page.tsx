@@ -37,11 +37,14 @@ export default function Page() {
         });
         if (response.ok) {
           const data = await response.json();
+          console.log("[Homepage] Stats API response:", data);
           setStats({
             totalMembers: data.totalMembers || 0,
             activeMembers: data.activeMembers || 0,
             livesInProgress: data.livesInProgress || 0,
           });
+        } else {
+          console.error("[Homepage] Stats API error:", response.status, response.statusText);
         }
       } catch (error) {
         console.error("Erreur lors du chargement des statistiques:", error);
