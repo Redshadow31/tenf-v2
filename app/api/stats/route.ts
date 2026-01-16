@@ -143,9 +143,23 @@ export async function GET() {
             
             // Filtrer uniquement les streams vraiment en live (même logique que la page lives ligne 100)
             const liveStreamsOnly = allStreams.filter((stream: any) => stream.type === "live");
-            livesCount = liveStreamsOnly.length;
             
-            console.log(`[Stats API] Total lives in progress: ${livesCount} (from ${allStreams.length} total streams)`);
+            // IMPORTANT: Filtrer pour ne garder que les streams des membres actifs (même logique que la page lives ligne 107-109)
+            // Créer un Set des logins Twitch actifs pour une recherche rapide
+            const activeMembersSet = new Set(
+              activeMembers.map(m => m.twitchLogin.toLowerCase())
+            );
+            
+            // Ne compter que les lives des membres actifs
+            const livesFromActiveMembers = liveStreamsOnly.filter((stream: any) => 
+              activeMembersSet.has(stream.userLogin.toLowerCase())
+            );
+            
+            livesCount = livesFromActiveMembers.length;
+            
+            console.log(`[Stats API] Total streams from Twitch: ${allStreams.length}`);
+            console.log(`[Stats API] Live streams only: ${liveStreamsOnly.length}`);
+            console.log(`[Stats API] Lives from active members: ${livesCount}`);
           }
         }
       } else {
