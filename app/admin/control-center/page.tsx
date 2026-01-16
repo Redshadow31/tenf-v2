@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, Info, Users, ClipboardList, Star, Calendar, ShoppingCart, FileText, ArrowRight, Clock } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -28,13 +29,12 @@ interface ActivityItem {
   timestamp: string;
 }
 
-// Données mockées pour l'instant
-const mockAlerts: AlertCard[] = [
+// Configuration des alertes (structure, les compteurs seront remplis dynamiquement)
+const alertsConfig: Omit<AlertCard, 'count'>[] = [
   {
     id: "incomplete-accounts",
     title: "Comptes incomplets",
     description: "Membres avec des informations manquantes",
-    count: 0,
     href: "/admin/membres/incomplets",
     type: "warning",
   },
@@ -42,7 +42,6 @@ const mockAlerts: AlertCard[] = [
     id: "errors",
     title: "Erreurs & incohérences",
     description: "Données incohérentes à vérifier",
-    count: 0,
     href: "/admin/membres/erreurs",
     type: "warning",
   },
@@ -50,7 +49,6 @@ const mockAlerts: AlertCard[] = [
     id: "pending-integrations",
     title: "Intégrations en attente",
     description: "Nouveaux membres à intégrer",
-    count: 0,
     href: "/admin/evaluations",
     type: "info",
   },
@@ -58,7 +56,6 @@ const mockAlerts: AlertCard[] = [
     id: "spotlight-pending",
     title: "Spotlights à valider",
     description: "Spotlights nécessitant une action",
-    count: 0,
     href: "/admin/spotlight/gestion",
     type: "info",
   },
@@ -109,43 +106,6 @@ const quickLinks: QuickLink[] = [
   },
 ];
 
-const mockActivities: ActivityItem[] = [
-  {
-    id: "1",
-    type: "member",
-    action: "Modification membre",
-    target: "pseudo_example",
-    timestamp: "Il y a 2 heures",
-  },
-  {
-    id: "2",
-    type: "spotlight",
-    action: "Spotlight programmé",
-    target: "streamer_example",
-    timestamp: "Il y a 5 heures",
-  },
-  {
-    id: "3",
-    type: "event",
-    action: "Événement créé",
-    target: "Soirée jeux",
-    timestamp: "Il y a 1 jour",
-  },
-  {
-    id: "4",
-    type: "member",
-    action: "Modification membre",
-    target: "autre_pseudo",
-    timestamp: "Il y a 1 jour",
-  },
-  {
-    id: "5",
-    type: "evaluation",
-    action: "Évaluation complétée",
-    target: "membre_example",
-    timestamp: "Il y a 2 jours",
-  },
-];
 
 function AlertCard({ alert }: { alert: AlertCard }) {
   const isWarning = alert.type === "warning";
@@ -183,15 +143,15 @@ function AlertCard({ alert }: { alert: AlertCard }) {
             </p>
           </div>
         </div>
-        <div
-          className="px-3 py-1 rounded-full text-sm font-bold"
-          style={{
-            backgroundColor: isWarning ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-            color: isWarning ? '#f59e0b' : '#6366f1',
-          }}
-        >
-          {alert.count}
-        </div>
+              <div
+                className="px-3 py-1 rounded-full text-sm font-bold"
+                style={{
+                  backgroundColor: isWarning ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                  color: isWarning ? '#f59e0b' : '#6366f1',
+                }}
+              >
+                {typeof alert.count === 'number' ? alert.count : alert.count}
+              </div>
       </div>
       <Link
         href={alert.href}
@@ -327,6 +287,79 @@ function ActivityItem({ activity }: { activity: ActivityItem }) {
 }
 
 export default function ControlCenterPage() {
+  const [alerts, setAlerts] = useState<AlertCard[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+
+        // Charger les alertes
+        const alertsResponse = await fetch("/api/admin/control-center/alerts", {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        });
+
+        if (alertsResponse.ok) {
+          const alertsData = await alertsResponse.json();
+          
+          // Construire les alertes avec les compteurs réels
+          const alertsWithCounts: AlertCard[] = alertsConfig.map(config => {
+            let count: number | string = 0;
+            
+            switch (config.id) {
+              case "incomplete-accounts":
+                count = alertsData.incompleteAccounts ?? 0;
+                break;
+              case "errors":
+                count = alertsData.errors ?? 0;
+                break;
+              case "spotlight-pending":
+                count = alertsData.spotlightsPending ?? 0;
+                break;
+              case "pending-integrations":
+                // Pour l'instant, on ne peut pas compter les intégrations en attente facilement
+                // On affiche 0 ou "—" si non disponible
+                count = 0; // TODO: Implémenter si possible
+                break;
+              default:
+                count = 0;
+            }
+
+            return {
+              ...config,
+              count: typeof count === 'number' ? count : count,
+            };
+          });
+
+          setAlerts(alertsWithCounts);
+        }
+
+        // Charger les activités
+        const activitiesResponse = await fetch("/api/admin/control-center/activities", {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        });
+
+        if (activitiesResponse.ok) {
+          const activitiesData = await activitiesResponse.json();
+          setActivities(activitiesData.activities || []);
+        }
+      } catch (error) {
+        console.error("Error loading control center data:", error);
+        // En cas d'erreur, utiliser des valeurs par défaut
+        setAlerts(alertsConfig.map(config => ({ ...config, count: 0 })));
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
@@ -343,11 +376,27 @@ export default function ControlCenterPage() {
           <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
             Alertes à traiter
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {mockAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {alertsConfig.map((config) => (
+                <div
+                  key={config.id}
+                  className="rounded-lg border p-6 animate-pulse"
+                  style={{
+                    backgroundColor: 'var(--color-card)',
+                    borderColor: 'var(--color-border)',
+                    height: '150px',
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {alerts.map((alert) => (
+                <AlertCard key={alert.id} alert={alert} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Section Raccourcis */}
@@ -374,16 +423,33 @@ export default function ControlCenterPage() {
               borderColor: 'var(--color-border)',
             }}
           >
-            <div className="p-6">
-              {mockActivities.map((activity) => (
-                <ActivityItem key={activity.id} activity={activity} />
-              ))}
-            </div>
-            <div className="px-6 py-4 border-t bg-opacity-50" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-              <p className="text-xs text-center italic" style={{ color: 'var(--color-text-secondary)' }}>
-                Données réelles bientôt disponibles
-              </p>
-            </div>
+            {loading ? (
+              <div className="p-6">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 py-3 border-b last:border-b-0 animate-pulse"
+                    style={{ borderColor: 'var(--color-border)' }}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-gray-700" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-700 rounded w-48 mb-2" />
+                      <div className="h-3 bg-gray-700 rounded w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activities.length > 0 ? (
+              <div className="p-6">
+                {activities.map((activity) => (
+                  <ActivityItem key={activity.id} activity={activity} />
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="text-sm">Aucune activité récente</p>
+              </div>
+            )}
           </div>
         </section>
       </div>
