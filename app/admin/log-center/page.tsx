@@ -453,8 +453,22 @@ function AuditFilters({
   onChange,
   monthOptions,
 }: {
-  filters: typeof auditFilters;
-  onChange: (f: typeof auditFilters) => void;
+  filters: {
+    search: string;
+    actorDiscordId: string;
+    action: string;
+    resourceType: string;
+    reverted: string;
+    month: string;
+  };
+  onChange: (f: {
+    search: string;
+    actorDiscordId: string;
+    action: string;
+    resourceType: string;
+    reverted: string;
+    month: string;
+  }) => void;
   monthOptions: Array<{ value: string; label: string }>;
 }) {
   const [showFilters, setShowFilters] = useState(false);
@@ -587,8 +601,20 @@ function LegacyFilters({
   filters,
   onChange,
 }: {
-  filters: typeof legacyFilters;
-  onChange: (f: typeof legacyFilters) => void;
+  filters: {
+    search: string;
+    adminId: string;
+    adminUsername: string;
+    action: string;
+    target: string;
+  };
+  onChange: (f: {
+    search: string;
+    adminId: string;
+    adminUsername: string;
+    action: string;
+    target: string;
+  }) => void;
 }) {
   const [showFilters, setShowFilters] = useState(false);
 
