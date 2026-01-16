@@ -274,4 +274,11 @@ export const adminNavigation: NavItem[] = [
     label: "Logs & audit",
     icon: "📜",
   },
+
+  // 12. 🔎 Recherche
+  {
+    href: "/admin/search",
+    label: "Recherche membre",
+    icon: "🔎",
+  },
 ];
