@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
       reverted?: boolean;
       limit?: number;
     } = {};
+    
+    const month = searchParams.get('month'); // YYYY-MM format
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
 
     if (searchParams.get('actorDiscordId')) {
       filters.actorDiscordId = searchParams.get('actorDiscordId')!;
@@ -45,15 +49,28 @@ export async function GET(request: NextRequest) {
     if (searchParams.get('reverted')) {
       filters.reverted = searchParams.get('reverted') === 'true';
     }
-    if (searchParams.get('limit')) {
-      filters.limit = parseInt(searchParams.get('limit')!, 10);
+    filters.limit = limit + offset; // Charger plus pour pouvoir faire le slice
+
+    // Si month est spécifié, utiliser getAuditLogs (plus performant)
+    // Sinon, utiliser getAllAuditLogs (compatibilité backward)
+    let logs;
+    if (month) {
+      const { getAuditLogs } = await import('@/lib/adminAudit');
+      logs = await getAuditLogs(month, filters);
+    } else {
+      logs = await getAllAuditLogs(filters);
     }
 
-    const logs = await getAllAuditLogs(filters);
+    // Appliquer la pagination (slice)
+    const paginatedLogs = logs.slice(offset, offset + limit);
+    const hasMore = logs.length > offset + limit;
 
     return NextResponse.json({
-      logs,
+      logs: paginatedLogs,
       total: logs.length,
+      hasMore,
+      offset,
+      limit,
     });
   } catch (error) {
     console.error('[Audit API] Erreur:', error);

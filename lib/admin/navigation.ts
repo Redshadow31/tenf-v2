@@ -270,8 +270,8 @@ export const adminNavigation: NavItem[] = [
 
   // 11. 📜 Logs & historique
   {
-    href: "/admin/logs",
-    label: "Logs & historique",
+    href: "/admin/log-center",
+    label: "Logs & audit",
     icon: "📜",
   },
 ];
