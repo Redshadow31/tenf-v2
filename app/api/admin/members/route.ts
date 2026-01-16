@@ -10,7 +10,8 @@ import {
   initializeMemberData,
   loadMemberDataFromStorage,
 } from "@/lib/memberData";
-import { getCurrentAdmin, logAction } from "@/lib/adminAuth";
+import { getCurrentAdmin } from "@/lib/adminAuth";
+import { logAction } from "@/lib/admin/logger";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -172,15 +173,13 @@ export async function POST(request: NextRequest) {
     );
 
     // Logger l'action avec le nouveau système d'audit
-    await logAction(
-      admin,
-      "member.create",
-      "member",
-      {
-        resourceId: twitchLogin,
-        newValue: { displayName, role, isVip, isActive },
-      }
-    );
+    await logAction({
+      action: "member.create",
+      resourceType: "member",
+      resourceId: twitchLogin,
+      newValue: { displayName, role, isVip, isActive },
+      metadata: { sourcePage: "/admin/membres/gestion" },
+    });
 
     return NextResponse.json({ member: newMember, success: true });
   } catch (error) {
@@ -407,28 +406,39 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Identifier les champs modifiés
+    const fieldsChanged: string[] = [];
+    if (updates.role && updates.role !== existingMember.role) fieldsChanged.push("role");
+    if (updates.isVip !== undefined && updates.isVip !== existingMember.isVip) fieldsChanged.push("isVip");
+    if (updates.isActive !== undefined && updates.isActive !== existingMember.isActive) fieldsChanged.push("isActive");
+    if (updates.description !== undefined && updates.description !== existingMember.description) fieldsChanged.push("description");
+    if (updates.twitchLogin && updates.twitchLogin !== existingMember.twitchLogin) fieldsChanged.push("twitchLogin");
+    if (updates.discordId !== undefined && updates.discordId !== existingMember.discordId) fieldsChanged.push("discordId");
+    if (updates.badges !== undefined) fieldsChanged.push("badges");
+    if (updates.parrain !== undefined) fieldsChanged.push("parrain");
+
     // Logger l'action avec le nouveau système d'audit
-    await logAction(
-      admin,
-      "member.update",
-      "member",
-      {
-        resourceId: twitchLogin,
-        previousValue: {
-          role: existingMember.role,
-          isVip: existingMember.isVip,
-          isActive: existingMember.isActive,
-          description: existingMember.description,
-        },
-        newValue: {
-          role: updatedMember.role,
-          isVip: updatedMember.isVip,
-          isActive: updatedMember.isActive,
-          description: updatedMember.description,
-        },
-        metadata: { changes: updates },
-      }
-    );
+    await logAction({
+      action: "member.update",
+      resourceType: "member",
+      resourceId: updatedMember.twitchLogin || twitchLogin,
+      previousValue: {
+        role: existingMember.role,
+        isVip: existingMember.isVip,
+        isActive: existingMember.isActive,
+        description: existingMember.description,
+      },
+      newValue: {
+        role: updatedMember.role,
+        isVip: updatedMember.isVip,
+        isActive: updatedMember.isActive,
+        description: updatedMember.description,
+      },
+      metadata: {
+        fieldsChanged,
+        sourcePage: "/admin/membres/gestion",
+      },
+    });
 
     return NextResponse.json({ member: updatedMember, success: true });
   } catch (error) {
@@ -493,19 +503,17 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Logger l'action avec le nouveau système d'audit
-    await logAction(
-      admin,
-      "member.delete",
-      "member",
-      {
-        resourceId: twitchLogin,
-        previousValue: {
-          displayName: member.displayName,
-          role: member.role,
-          isVip: member.isVip,
-        },
-      }
-    );
+    await logAction({
+      action: "member.delete",
+      resourceType: "member",
+      resourceId: twitchLogin,
+      previousValue: {
+        displayName: member.displayName,
+        role: member.role,
+        isVip: member.isVip,
+      },
+      metadata: { sourcePage: "/admin/membres/gestion" },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

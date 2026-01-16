@@ -277,6 +277,16 @@ export async function POST(request: NextRequest) {
     // Recharger le cache en mémoire
     await loadAdminAccessCache();
 
+    // Logger l'action
+    const { logAction } = await import("@/lib/admin/logger");
+    await logAction({
+      action: existingIndex >= 0 ? "admin.access.update" : "admin.access.create",
+      resourceType: "admin_access",
+      resourceId: discordId,
+      newValue: { role },
+      metadata: { sourcePage: "/admin/gestion-acces" },
+    });
+
     return NextResponse.json({ 
       success: true,
       message: existingIndex >= 0 ? 'Accès mis à jour' : 'Accès ajouté'
@@ -373,6 +383,16 @@ export async function DELETE(request: NextRequest) {
 
     // Recharger le cache en mémoire
     await loadAdminAccessCache();
+
+    // Logger l'action
+    const { logAction } = await import("@/lib/admin/logger");
+    await logAction({
+      action: "admin.access.delete",
+      resourceType: "admin_access",
+      resourceId: discordId,
+      previousValue: { role: memberExists?.role },
+      metadata: { sourcePage: "/admin/gestion-acces" },
+    });
 
     return NextResponse.json({ 
       success: true,
