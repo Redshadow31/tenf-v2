@@ -45,11 +45,14 @@ export async function GET() {
         }
         
         // Pour les créateurs, vérifier aussi certains champs
-        const isCreator = member.role && (
-          member.role.includes("Créateur") || 
-          member.role.includes("créateur") ||
-          member.role === "CREATOR_AFFILIATED" ||
-          member.role === "CREATOR_DEVELOPMENT"
+        // MemberRole peut être string, donc on vérifie le contenu
+        const roleStr = String(member.role || "");
+        const isCreator = roleStr && (
+          roleStr.includes("Créateur") || 
+          roleStr.includes("créateur") ||
+          roleStr === "Affilié" ||
+          roleStr === "Développement" ||
+          roleStr === "Créateur Junior"
         );
         
         if (isCreator) {
