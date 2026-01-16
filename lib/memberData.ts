@@ -7,6 +7,37 @@ import fs from "fs";
 import path from "path";
 import { getStore } from "@netlify/blobs";
 
+/**
+ * Helper pour obtenir un store Netlify Blobs avec configuration explicite
+ * Nécessaire pour les routes API Next.js qui n'ont pas le contexte Netlify automatique
+ */
+export function getBlobStore(storeName: string) {
+  // Vérifier si les variables d'environnement sont disponibles
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_BLOBS_TOKEN;
+  
+  if (siteID && token) {
+    // Configuration explicite avec variables d'environnement
+    return getStore({
+      name: storeName,
+      siteID,
+      token,
+    });
+  }
+  
+  // Essayer sans configuration (fonctionne si le contexte Netlify est disponible)
+  try {
+    return getStore(storeName);
+  } catch (error) {
+    // Si ça échoue, essayer avec les variables disponibles
+    if (process.env.NETLIFY || process.env.NETLIFY_DEV) {
+      // Sur Netlify, les variables peuvent être dans le contexte
+      return getStore(storeName);
+    }
+    throw error;
+  }
+}
+
 export interface MemberData {
   // Identifiants
   twitchLogin: string; // Login Twitch (ex: nexou31)
@@ -132,7 +163,7 @@ function isNetlify(): boolean {
  */
 async function loadAdminDataFromBlob(): Promise<Record<string, MemberData>> {
   try {
-    const store = getStore(ADMIN_BLOB_STORE);
+    const store = getBlobStore(ADMIN_BLOB_STORE);
     const data = await store.get(ADMIN_BLOB_KEY, { type: "text" });
     
     if (!data) {
@@ -163,7 +194,7 @@ async function loadAdminDataFromBlob(): Promise<Record<string, MemberData>> {
  */
 async function loadBotDataFromBlob(): Promise<Record<string, MemberData>> {
   try {
-    const store = getStore(BOT_BLOB_STORE);
+    const store = getBlobStore(BOT_BLOB_STORE);
     const data = await store.get(BOT_BLOB_KEY, { type: "text" });
     
     if (!data) {
@@ -194,7 +225,7 @@ async function loadBotDataFromBlob(): Promise<Record<string, MemberData>> {
  */
 async function saveAdminDataToBlob(data: Record<string, MemberData>): Promise<void> {
   try {
-    const store = getStore(ADMIN_BLOB_STORE);
+    const store = getBlobStore(ADMIN_BLOB_STORE);
     const serializableData: Record<string, any> = {};
     for (const [key, member] of Object.entries(data)) {
       serializableData[key] = {
@@ -217,7 +248,7 @@ async function saveAdminDataToBlob(data: Record<string, MemberData>): Promise<vo
  */
 async function saveBotDataToBlob(data: Record<string, MemberData>): Promise<void> {
   try {
-    const store = getStore(BOT_BLOB_STORE);
+    const store = getBlobStore(BOT_BLOB_STORE);
     const serializableData: Record<string, any> = {};
     for (const [key, member] of Object.entries(data)) {
       serializableData[key] = {
@@ -240,7 +271,7 @@ async function saveBotDataToBlob(data: Record<string, MemberData>): Promise<void
  */
 async function saveMergedDataToBlob(): Promise<void> {
   try {
-    const store = getStore(MERGED_BLOB_STORE);
+    const store = getBlobStore(MERGED_BLOB_STORE);
     const serializableData: Record<string, any> = {};
     for (const [key, member] of Object.entries(memberDataStore)) {
       serializableData[key] = {
@@ -466,7 +497,7 @@ export async function loadMemberDataFromStorage(): Promise<void> {
   try {
     const { getStore } = require("@netlify/blobs");
     if (getStore) {
-      const testStore = getStore("tenf-admin-members");
+      const testStore = getBlobStore("tenf-admin-members");
       if (testStore) {
         useBlobs = true;
       }
@@ -523,7 +554,7 @@ export async function loadAdminDataFromStorage(): Promise<Record<string, MemberD
   try {
     const { getStore } = require("@netlify/blobs");
     if (getStore) {
-      const testStore = getStore("tenf-admin-members");
+      const testStore = getBlobStore("tenf-admin-members");
       if (testStore) {
         useBlobs = true;
       }
@@ -568,7 +599,7 @@ export async function loadBotDataFromStorage(): Promise<Record<string, MemberDat
   try {
     const { getStore } = require("@netlify/blobs");
     if (getStore) {
-      const testStore = getStore("tenf-bot-members");
+      const testStore = getBlobStore("tenf-bot-members");
       if (testStore) {
         useBlobs = true;
       }
@@ -616,7 +647,7 @@ export async function saveAdminData(data: Record<string, MemberData>): Promise<v
       const { getStore } = require("@netlify/blobs");
       if (getStore) {
         // Tester si on peut créer un store (on est sur Netlify)
-        const testStore = getStore("tenf-admin-members");
+        const testStore = getBlobStore("tenf-admin-members");
         if (testStore) {
           useBlobs = true;
         }
@@ -668,7 +699,7 @@ export async function saveBotData(data: Record<string, MemberData>): Promise<voi
       const { getStore } = require("@netlify/blobs");
       if (getStore) {
         // Tester si on peut créer un store (on est sur Netlify)
-        const testStore = getStore("tenf-bot-members");
+        const testStore = getBlobStore("tenf-bot-members");
         if (testStore) {
           useBlobs = true;
         }

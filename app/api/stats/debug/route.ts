@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadAdminDataFromStorage } from '@/lib/memberData';
+import { loadAdminDataFromStorage, getBlobStore } from '@/lib/memberData';
 
 /**
  * GET - Endpoint de debug pour inspecter les données du Blob
@@ -7,17 +7,21 @@ import { loadAdminDataFromStorage } from '@/lib/memberData';
  */
 export async function GET() {
   try {
-    // Tester directement le Blob
+    // Tester directement le Blob avec la fonction helper
     let blobTest: any = {};
     try {
-      const { getStore } = require("@netlify/blobs");
-      const store = getStore("tenf-admin-members");
+      const store = getBlobStore("tenf-admin-members");
       const data = await store.get("admin-members-data", { type: "text" });
       blobTest = {
         storeExists: !!store,
         dataExists: !!data,
         dataLength: data ? data.length : 0,
         dataPreview: data ? data.substring(0, 500) : null,
+        envVars: {
+          hasSiteID: !!(process.env.NETLIFY_SITE_ID || process.env.SITE_ID),
+          hasToken: !!(process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_BLOBS_TOKEN),
+          isNetlify: !!(process.env.NETLIFY || process.env.NETLIFY_DEV),
+        },
         error: null,
       };
     } catch (blobError: any) {
