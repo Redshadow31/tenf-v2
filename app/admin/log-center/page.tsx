@@ -176,9 +176,8 @@ export default function LogCenterPage() {
   }
 
   function exportLogs(format: "json" | "csv") {
-    const logs = activeTab === "audit" ? auditLogs : legacyLogs;
-    
     if (format === "json") {
+      const logs = activeTab === "audit" ? auditLogs : legacyLogs;
       const dataStr = JSON.stringify(logs, null, 2);
       const dataBlob = new Blob([dataStr], { type: "application/json" });
       const url = URL.createObjectURL(dataBlob);
@@ -191,12 +190,12 @@ export default function LogCenterPage() {
       let csv = "";
       if (activeTab === "audit") {
         csv = "ID,Date,Acteur,Action,Resource Type,Resource ID,Reverted\n";
-        logs.forEach((log: AuditLog) => {
+        auditLogs.forEach((log) => {
           csv += `"${log.id}","${log.timestamp}","${log.actorUsername || log.actorDiscordId}","${log.action}","${log.resourceType}","${log.resourceId || ""}","${log.reverted}"\n`;
         });
       } else {
         csv = "Date,Admin,Action,Target,Details\n";
-        logs.forEach((log: LegacyLog) => {
+        legacyLogs.forEach((log) => {
           csv += `"${log.timestamp}","${log.adminUsername}","${log.action}","${log.target}","${JSON.stringify(log.details).replace(/"/g, '""')}"\n`;
         });
       }
