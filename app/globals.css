@@ -391,3 +391,178 @@ a:hover {
     transform: none;
   }
 }
+
+/* ============================================
+   Page d'accueil / Homepage
+   ============================================ */
+
+/* Animation fade-in */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+/* Boutons CTA */
+.home-cta-button {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.home-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.3);
+}
+
+.home-cta-button-secondary {
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+}
+
+.home-cta-button-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.2);
+  background-color: rgba(145, 70, 255, 0.1) !important;
+}
+
+/* Cartes statistiques */
+.home-stat-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.home-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Cartes lives */
+.home-live-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.home-live-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.25);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+.home-live-thumbnail {
+  transition: transform 300ms ease;
+}
+
+.home-live-card:hover .home-live-thumbnail {
+  transform: scale(1.05);
+}
+
+/* Cartes VIP */
+.home-vip-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.home-vip-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.25);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+.home-vip-avatar {
+  transition: transform 300ms ease;
+}
+
+.home-vip-card:hover .home-vip-avatar {
+  transform: scale(1.1);
+}
+
+.home-vip-badge {
+  animation: vip-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes vip-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* Cartes features */
+.home-feature-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.home-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Carte boutique */
+.home-boutique-card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.home-boutique-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 70, 255, 0.15);
+}
+
+/* Liens */
+.home-link {
+  transition: color 200ms ease;
+}
+
+.home-link:hover {
+  color: var(--color-primary) !important;
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+  }
+  
+  .home-cta-button,
+  .home-cta-button-secondary,
+  .home-stat-card,
+  .home-live-card,
+  .home-vip-card,
+  .home-feature-card,
+  .home-boutique-card {
+    transition: none;
+  }
+  
+  .home-cta-button:hover,
+  .home-cta-button-secondary:hover,
+  .home-stat-card:hover,
+  .home-live-card:hover,
+  .home-vip-card:hover,
+  .home-feature-card:hover,
+  .home-boutique-card:hover {
+    transform: none;
+  }
+  
+  .home-live-thumbnail,
+  .home-vip-avatar {
+    transition: none;
+  }
+  
+  .home-live-card:hover .home-live-thumbnail,
+  .home-vip-card:hover .home-vip-avatar {
+    transform: none;
+  }
+  
+  .home-vip-badge {
+    animation: none;
+  }
+}

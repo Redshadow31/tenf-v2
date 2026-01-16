@@ -24,6 +24,7 @@ export default function Page() {
     livesInProgress: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [heroExpanded, setHeroExpanded] = useState(false);
 
   // Charger les statistiques depuis l'API
   useEffect(() => {
@@ -129,75 +130,107 @@ export default function Page() {
     <div className="space-y-16 pb-16">
       {/* SECTION 1 — HERO */}
       <section className="flex flex-col items-center justify-center space-y-8 py-16 text-center">
-        <h1 className="text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
-          Communauté d'entraide pour streamers
+        <h1 className="text-5xl md:text-6xl font-bold" style={{ color: 'var(--color-text)' }}>
+          Communauté d&apos;entraide pour streamers
         </h1>
+        
+        {/* Phrase d'accroche courte */}
+        <p className="text-xl md:text-2xl font-semibold max-w-3xl" style={{ color: 'var(--color-primary)' }}>
+          Une véritable famille où chaque créateur grandit ensemble 💜
+        </p>
+
+        {/* Texte principal (réduit au premier coup d'œil) */}
         <div className="max-w-4xl space-y-4 text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-          <p>
-            TENF est bien plus qu'un simple serveur Discord : c'est une véritable famille de streamers engagés à progresser ensemble.
+          <p className="text-xl">
+            TENF est bien plus qu&apos;un simple serveur Discord : c&apos;est une véritable famille de streamers engagés à progresser ensemble.
           </p>
           <p>
             Que tu sois débutant, en développement ou déjà affilié, tu trouveras ici un espace bienveillant où chaque créateur est soutenu, encouragé et valorisé.
           </p>
-          <p>
-            Notre communauté repose sur trois piliers : entraide, formation et découverte. Grâce à un suivi personnalisé, des retours constructifs, un système d'évaluations transparentes et une équipe de modération formée, TENF accompagne chaque membre vers la réussite.
-          </p>
-          <p>
-            Lives partagés, events communautaires, mentorat, visibilité, accompagnement technique, ambiance chaleureuse : ici, personne ne grandit seul.
-          </p>
-          <p>
-            Rejoins une communauté active, humaine et passionnée, où chaque streamer compte et où ta progression devient un projet collectif.
-          </p>
+          
+          {/* Contenu supplémentaire (replié par défaut) */}
+          {heroExpanded && (
+            <div className="space-y-4 animate-fade-in">
+              <p>
+                Notre communauté repose sur trois piliers : entraide, formation et découverte. Grâce à un suivi personnalisé, des retours constructifs, un système d&apos;évaluations transparentes et une équipe de modération formée, TENF accompagne chaque membre vers la réussite.
+              </p>
+              <p>
+                Lives partagés, events communautaires, mentorat, visibilité, accompagnement technique, ambiance chaleureuse : ici, personne ne grandit seul.
+              </p>
+              <p>
+                Rejoins une communauté active, humaine et passionnée, où chaque streamer compte et où ta progression devient un projet collectif.
+              </p>
+            </div>
+          )}
+          
           <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
             Bienvenue dans la New Family.
           </p>
+          
+          {/* Bouton pour lire plus/moins */}
+          <button
+            onClick={() => setHeroExpanded(!heroExpanded)}
+            className="text-sm font-medium transition-colors hover:underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            {heroExpanded ? 'Lire moins ▲' : 'Lire plus ▼'}
+          </button>
         </div>
 
-        {/* Bouton Rejoindre le serveur */}
-        <div className="flex flex-col items-center gap-2">
+        {/* Boutons d'action */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
           <Link
             href="https://discord.gg/tenf"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg px-6 py-3 text-base font-semibold text-white transition-colors"
+            className="rounded-lg px-8 py-3 text-base font-semibold text-white transition-all home-cta-button"
             style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-            }}
           >
             Rejoindre le serveur
           </Link>
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Rejoins plus de 170 créateurs déjà engagés dans l'aventure TENF.
-          </p>
+          <Link
+            href="/fonctionnement-tenf"
+            className="rounded-lg px-8 py-3 text-base font-semibold transition-all home-cta-button-secondary border-2"
+            style={{ 
+              color: 'var(--color-primary)',
+              borderColor: 'var(--color-primary)',
+              backgroundColor: 'transparent'
+            }}
+          >
+            Découvrir comment ça fonctionne
+          </Link>
         </div>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Rejoins plus de 170 créateurs déjà engagés dans l&apos;aventure TENF.
+        </p>
 
         {/* Cartes de stats */}
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
-          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
+          <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
               {loading ? "..." : stats.totalMembers}
             </p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>membres</p>
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>membres</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>créateurs engagés</p>
           </div>
-          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
+          <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
               {loading ? "..." : stats.activeMembers}
             </p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>actifs ce mois</p>
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>actifs ce mois</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>entraide active</p>
           </div>
-          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <p className="text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
+          <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
               {loading ? "..." : stats.livesInProgress}
             </p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>lives en cours</p>
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>lives en cours</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>communauté vivante</p>
           </div>
-          <div className="card border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{vipOfMonth}</p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>VIP du mois</p>
+          <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="text-2xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>{vipOfMonth}</p>
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>VIP du mois</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>reconnaissance</p>
           </div>
         </div>
       </section>
@@ -205,17 +238,14 @@ export default function Page() {
       {/* SECTION 2 — LIVES EN STREAMING */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en streaming</h2>
+          <div>
+            <p className="text-lg mb-2" style={{ color: 'var(--color-text-secondary)' }}>🎥 En ce moment dans la New Family</p>
+            <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en streaming</h2>
+          </div>
           <Link
             href="/lives"
-            className="text-sm font-medium transition-colors"
+            className="text-sm font-medium transition-colors home-link"
             style={{ color: 'var(--color-text-secondary)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-            }}
           >
             Voir plus →
           </Link>
@@ -224,23 +254,23 @@ export default function Page() {
           {randomLives.map((live) => (
             <div
               key={live.id}
-              className="card overflow-hidden border transition-transform hover:scale-[1.02]"
+              className="card overflow-hidden border home-live-card"
               style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
-              <div className="relative aspect-video w-full" style={{ background: 'linear-gradient(to bottom right, var(--color-accent-light), var(--color-accent-medium))' }}>
+              <div className="relative aspect-video w-full overflow-hidden" style={{ background: 'linear-gradient(to bottom right, var(--color-accent-light), var(--color-accent-medium))' }}>
                 {live.thumbnail && (
                   <img
                     src={live.thumbnail}
                     alt={live.username}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover home-live-thumbnail"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
                     }}
                   />
                 )}
-                <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white">
-                  EN DIRECT
+                <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white animate-pulse">
+                  🔴 EN DIRECT
                 </div>
               </div>
               <div className="p-4">
@@ -270,17 +300,16 @@ export default function Page() {
       {/* SECTION 3 — VIPs DU MOIS */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>VIPs du mois</h2>
+          <div>
+            <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>⭐ VIPs du mois</h2>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Mis en avant pour leur implication et leur bienveillance
+            </p>
+          </div>
           <Link
             href="/vip"
-            className="text-sm font-medium transition-colors"
+            className="text-sm font-medium transition-colors home-link"
             style={{ color: 'var(--color-text-secondary)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-            }}
           >
             Voir plus →
           </Link>
@@ -289,12 +318,20 @@ export default function Page() {
           {randomVip.map((vip) => (
             <div
               key={vip.twitchLogin}
-              className="card flex flex-col items-center space-y-4 border p-6 text-center transition-transform hover:scale-[1.02]"
+              className="card flex flex-col items-center space-y-4 border p-6 text-center home-vip-card"
               style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
               <div className="relative">
-                <div className="h-20 w-20 rounded-full" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}></div>
-                <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                <img
+                  src={vip.twitchAvatar || vip.avatar || `https://placehold.co/80x80?text=${vip.displayName.charAt(0)}`}
+                  alt={vip.displayName}
+                  className="h-20 w-20 rounded-full object-cover home-vip-avatar"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://placehold.co/80x80?text=${vip.displayName.charAt(0)}`;
+                  }}
+                />
+                <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white home-vip-badge" style={{ backgroundColor: 'var(--color-primary)' }}>
                   VIP
                 </div>
               </div>
@@ -306,41 +343,72 @@ export default function Page() {
         </div>
       </section>
 
-      {/* SECTION 4 — BOUTIQUE */}
+      {/* SECTION 4 — COMMENT FONCTIONNE TENF */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Boutique TENF</h2>
+        <div className="text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+            ⭐ Comment fonctionne TENF ?
+          </h2>
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--color-text-secondary)' }}>
+            Découvre les piliers qui font de TENF une communauté unique
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="card border p-6 text-center home-feature-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-5xl mb-4">🤝</div>
+            <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--color-primary)' }}>Entraide humaine</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Un système d&apos;entraide sincère où chaque membre soutient les autres. Pas de compétition, juste du partage et de la bienveillance.
+            </p>
+          </div>
+          <div className="card border p-6 text-center home-feature-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-5xl mb-4">⭐</div>
+            <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--color-primary)' }}>Système de points & reconnaissance</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Gagne des points en participant à la communauté et débloque des récompenses. L&apos;engagement est valorisé, pas la performance.
+            </p>
+          </div>
+          <div className="card border p-6 text-center home-feature-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-5xl mb-4">🌟</div>
+            <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--color-primary)' }}>Spotlight & événements</h3>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Des événements communautaires, des Spotlights pour mettre en avant les membres, et une vie de communauté riche et active.
+            </p>
+          </div>
+        </div>
+        <div className="text-center">
           <Link
-            href="/boutique"
-            className="px-6 py-2 rounded-lg font-medium text-white transition-colors"
+            href="/fonctionnement-tenf"
+            className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-all home-cta-button"
             style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-            }}
           >
-            Découvrir toute la boutique →
+            Découvrir le fonctionnement TENF
           </Link>
         </div>
-        <div className="rounded-lg border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-          <p className="text-lg mb-4" style={{ color: 'var(--color-text)' }}>
+      </section>
+
+      {/* SECTION 5 — BOUTIQUE */}
+      <section className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>💜 Boutique TENF</h2>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+            Soutiens la communauté avec notre merch officiel
+          </p>
+        </div>
+        <div className="rounded-lg border p-8 text-center home-boutique-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="text-xl mb-4 font-semibold" style={{ color: 'var(--color-text)' }}>
             💜 Soutiens la communauté avec notre merch officiel
           </p>
+          <p className="text-base mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+            Chaque achat contribue au projet <strong style={{ color: 'var(--color-text)' }}>New Family Aventura 2026</strong> et au développement de notre communauté.
+          </p>
           <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-            Chaque achat contribue au projet New Family Aventura 2026 et au développement de notre communauté
+            💰 Tes achats permettent d&apos;organiser des événements, de développer de nouveaux outils, et de faire grandir la New Family ensemble.
           </p>
           <Link
             href="/boutique"
-            className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-colors"
+            className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-all home-cta-button"
             style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-            }}
           >
             Découvrir toute la boutique
           </Link>
