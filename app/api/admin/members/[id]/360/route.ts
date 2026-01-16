@@ -61,7 +61,7 @@ export async function GET(
       const allMembers = getAllMemberData();
       member = allMembers.find(
         (m) => m.displayName?.toLowerCase() === decodedId.toLowerCase()
-      );
+      ) || null;
     }
 
     if (!member) {
