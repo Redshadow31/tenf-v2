@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { loadEvents, createEvent, Event } from '@/lib/eventStorage';
+import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
 /**
  * GET - Récupère tous les événements publiés (public) ou tous les événements (admin)
