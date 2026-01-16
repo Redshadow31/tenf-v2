@@ -316,3 +316,78 @@ a:hover {
     transform: none;
   }
 }
+
+/* ============================================
+   Styles harmonisés pour tous les onglets
+   Cartes avec effet hover halo violet
+   ============================================ */
+
+/* Cartes Spotlight */
+.spotlight-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.spotlight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Cartes Conseils */
+.conseil-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.conseil-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Cartes Intégration */
+.integration-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.integration-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Harmonisation des cartes Règlement (déjà existantes mais on s'assure de la cohérence) */
+.reglement-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.reglement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Harmonisation des cartes Système de points */
+.systeme-points-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(145, 70, 255, 0.2);
+  border-color: rgba(145, 70, 255, 0.4);
+}
+
+/* Désactivation des animations pour prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card,
+  .conseil-card,
+  .integration-card,
+  .reglement-card,
+  .systeme-points-card {
+    transition: none;
+  }
+  
+  .spotlight-card:hover,
+  .conseil-card:hover,
+  .integration-card:hover,
+  .reglement-card:hover,
+  .systeme-points-card:hover {
+    transform: none;
+  }
+}

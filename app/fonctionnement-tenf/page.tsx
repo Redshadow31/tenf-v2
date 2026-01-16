@@ -2008,7 +2008,7 @@ export default function Page() {
             <div className="space-y-8">
               {/* Section : Introduction */}
               <section className="mb-16">
-                <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="rounded-xl p-8 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
                     Bienvenue dans TENF ✨ Ici, on t'accompagne de tes premiers pas jusqu'à ton intégration complète. Tu vas découvrir nos étapes d'arrivée, notre fonctionnement, et surtout comment profiter au maximum de l'entraide, des events et de la vie de la communauté.
                   </p>
@@ -2021,7 +2021,7 @@ export default function Page() {
                   Processus d'Intégration
                 </h2>
                 <div className="space-y-6">
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       1. Inscription
                     </h3>
@@ -2030,7 +2030,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       2. Réunion d'intégration
                     </h3>
@@ -2039,7 +2039,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       3. Découvrir les autres & s'impliquer
                     </h3>
@@ -2055,7 +2055,7 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Système d'Évaluation
                 </h2>
-                <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="rounded-xl p-8 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                     TENF fonctionne avec un système d'évaluation transparent qui permet de suivre votre progression :
                   </p>
@@ -2074,7 +2074,7 @@ export default function Page() {
                   Rôles et Hiérarchie
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Membres Actifs
                     </h3>
@@ -2083,7 +2083,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Créateur Junior (mineur)
                     </h3>
@@ -2092,7 +2092,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Communauté (mineur)
                     </h3>
@@ -2101,7 +2101,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Staff & Admins
                     </h3>
@@ -2117,7 +2117,7 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Activités et Événements
                 </h2>
-                <div className="rounded-xl p-8 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="rounded-xl p-8 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                     TENF propose des rendez-vous réguliers pour se découvrir, progresser et créer des liens entre streamers et membres :
                   </p>
@@ -2137,7 +2137,7 @@ export default function Page() {
                   Ressources Disponibles
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Support Personnalisé
                     </h3>
@@ -2146,7 +2146,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Outils et Automatisation
                     </h3>
@@ -2155,7 +2155,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Communauté Active
                     </h3>
@@ -2172,7 +2172,7 @@ export default function Page() {
                   Questions Fréquentes
                 </h2>
                 <div className="space-y-4">
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                       Comment puis-je rejoindre TENF ?
                     </h3>
@@ -2181,7 +2181,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                       Y a-t-il des critères pour rejoindre ?
                     </h3>
@@ -2190,7 +2190,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                       Comment fonctionnent les évaluations ?
                     </h3>
@@ -2199,7 +2199,7 @@ export default function Page() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                       Puis-je évoluer dans la hiérarchie ?
                     </h3>
