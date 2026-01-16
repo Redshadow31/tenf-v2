@@ -7,7 +7,7 @@ import {
   getAllMemberData 
 } from "@/lib/memberData";
 import { getAllAuditLogs } from "@/lib/adminAudit";
-import { loadIntegrations, getIntegrationRegistrations } from "@/lib/integrationStorage";
+import { loadIntegrations, loadRegistrations } from "@/lib/integrationStorage";
 import { getAllFollowValidationsForMonth } from "@/lib/followStorage";
 import { loadRaidsFaits, loadRaidsRecus, getCurrentMonthKey } from "@/lib/raidStorage";
 import { 
@@ -115,7 +115,7 @@ export async function GET(
         const memberIntegrations = [];
 
         for (const integration of allIntegrations) {
-          const registrations = await getIntegrationRegistrations(integration.id);
+          const registrations = await loadRegistrations(integration.id);
           const registration = registrations.find(
             (reg: any) =>
               reg.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase() ||
