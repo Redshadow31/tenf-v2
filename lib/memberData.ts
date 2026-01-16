@@ -10,31 +10,50 @@ import { getStore } from "@netlify/blobs";
 /**
  * Helper pour obtenir un store Netlify Blobs avec configuration explicite
  * Nécessaire pour les routes API Next.js qui n'ont pas le contexte Netlify automatique
+ * 
+ * Le plugin @netlify/plugin-nextjs en mode Lambda compatibility ne configure pas
+ * automatiquement Netlify Blobs, il faut donc fournir siteID et token explicitement.
  */
 export function getBlobStore(storeName: string) {
-  // Vérifier si les variables d'environnement sont disponibles
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
-  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_BLOBS_TOKEN;
+  // Vérifier si on est dans un environnement Netlify
+  const isNetlifyEnv = !!(process.env.NETLIFY || process.env.NETLIFY_DEV || process.env.AWS_LAMBDA_FUNCTION_NAME);
   
-  if (siteID && token) {
-    // Configuration explicite avec variables d'environnement
-    return getStore({
-      name: storeName,
-      siteID,
-      token,
-    });
+  if (!isNetlifyEnv) {
+    // En développement local, utiliser les fichiers
+    throw new Error("Not in Netlify environment - cannot use Blobs");
   }
   
-  // Essayer sans configuration (fonctionne si le contexte Netlify est disponible)
+  // Essayer d'abord avec la méthode standard (pour compatibilité avec d'éventuels contextes)
   try {
     return getStore(storeName);
-  } catch (error) {
-    // Si ça échoue, essayer avec les variables disponibles
-    if (process.env.NETLIFY || process.env.NETLIFY_DEV) {
-      // Sur Netlify, les variables peuvent être dans le contexte
-      return getStore(storeName);
+  } catch (error: any) {
+    // Si ça échoue, utiliser les variables d'environnement explicites (obligatoire en Lambda mode)
+    const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+    const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+    
+    if (siteID && token) {
+      try {
+        return getStore({
+          name: storeName,
+          siteID,
+          token,
+        });
+      } catch (configError: any) {
+        console.error(`Failed to create Blob store with explicit config:`, configError.message);
+        throw new Error(`Netlify Blobs configuration failed: ${configError.message}. Please check NETLIFY_SITE_ID and NETLIFY_AUTH_TOKEN environment variables.`);
+      }
     }
-    throw error;
+    
+    // Si aucune méthode ne fonctionne, donner des instructions claires
+    const missingVars = [];
+    if (!siteID) missingVars.push("NETLIFY_SITE_ID or SITE_ID");
+    if (!token) missingVars.push("NETLIFY_AUTH_TOKEN, NETLIFY_BLOBS_TOKEN, or NETLIFY_PERSONAL_ACCESS_TOKEN");
+    
+    throw new Error(
+      `Netlify Blobs not configured. Missing environment variables: ${missingVars.join(", ")}. ` +
+      `Please add these in Netlify Dashboard → Site settings → Environment variables. ` +
+      `Original error: ${error.message}`
+    );
   }
 }
 
