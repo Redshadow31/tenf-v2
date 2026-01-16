@@ -1122,15 +1122,30 @@ export async function createMemberData(
   // Charger les données admin actuelles
   const adminData = await loadAdminDataFromStorage();
   
+  // Supprimer l'entrée de suppression si elle existe (pour permettre la recréation)
+  const deletedKey = `__deleted_${login}`;
+  if (adminData[deletedKey]) {
+    delete adminData[deletedKey];
+    console.log(`[Create Member] Suppression de l'entrée __deleted_${login} pour permettre la recréation`);
+  }
+  
   // Vérifier si le membre existe déjà dans admin
   if (adminData[login]) {
     // Membre existe déjà : mettre à jour au lieu de créer
+    // Vérifier aussi s'il est marqué comme supprimé
+    const existingMember = adminData[login] as any;
+    if (existingMember.deleted === true) {
+      // Réactiver le membre en supprimant le flag deleted
+      delete existingMember.deleted;
+    }
+    // Créer le nouveau membre sans le flag deleted
+    const { deleted, ...memberDataWithoutDeleted } = existingMember as any;
     adminData[login] = {
-      ...adminData[login],
+      ...memberDataWithoutDeleted,
       ...memberData,
       updatedAt: new Date(),
       updatedBy: createdBy,
-    };
+    } as MemberData;
   } else {
     // Nouveau membre : créer
     adminData[login] = {
