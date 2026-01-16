@@ -7,11 +7,34 @@ import { loadAdminDataFromStorage } from '@/lib/memberData';
  */
 export async function GET() {
   try {
+    // Tester directement le Blob
+    let blobTest: any = {};
+    try {
+      const { getStore } = require("@netlify/blobs");
+      const store = getStore("tenf-admin-members");
+      const data = await store.get("admin-members-data", { type: "text" });
+      blobTest = {
+        storeExists: !!store,
+        dataExists: !!data,
+        dataLength: data ? data.length : 0,
+        dataPreview: data ? data.substring(0, 500) : null,
+        error: null,
+      };
+    } catch (blobError: any) {
+      blobTest = {
+        storeExists: false,
+        dataExists: false,
+        error: blobError.message,
+        stack: blobError.stack,
+      };
+    }
+
     const adminData = await loadAdminDataFromStorage();
     const allAdminMembers = Object.values(adminData);
     
     // Analyser les données
     const analysis = {
+      blobTest,
       totalMembers: allAdminMembers.length,
       activeMembers: {
         true: allAdminMembers.filter(m => m.isActive === true).length,
