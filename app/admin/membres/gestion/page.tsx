@@ -70,7 +70,8 @@ export default function GestionMembresPage() {
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
-  const [sortColumn, setSortColumn] = useState<"nom" | "role" | "lastLive" | null>(null);
+  type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive";
+  const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
   const [showDiscordSyncModal, setShowDiscordSyncModal] = useState(false);
@@ -511,10 +512,43 @@ export default function GestionMembresPage() {
         case "role":
           comparison = a.role.localeCompare(b.role, 'fr', { sensitivity: 'base' });
           break;
+        case "statut":
+          comparison = a.statut.localeCompare(b.statut, 'fr', { sensitivity: 'base' });
+          break;
+        case "createdAt":
+          const createdAtA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const createdAtB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          comparison = createdAtA - createdAtB;
+          break;
+        case "integrationDate":
+          const integrationA = a.integrationDate ? new Date(a.integrationDate).getTime() : 0;
+          const integrationB = b.integrationDate ? new Date(b.integrationDate).getTime() : 0;
+          comparison = integrationA - integrationB;
+          break;
+        case "parrain":
+          const parrainA = (a.parrain || "").localeCompare(b.parrain || "", 'fr', { sensitivity: 'base' });
+          comparison = parrainA;
+          break;
         case "lastLive":
           const dateA = a.lastLiveDate ? new Date(a.lastLiveDate).getTime() : 0;
           const dateB = b.lastLiveDate ? new Date(b.lastLiveDate).getTime() : 0;
           comparison = dateA - dateB;
+          break;
+        case "raidsDone":
+          comparison = (a.raidsDone || 0) - (b.raidsDone || 0);
+          break;
+        case "raidsReceived":
+          comparison = (a.raidsReceived || 0) - (b.raidsReceived || 0);
+          break;
+        case "isVip":
+          const vipA = a.isVip ? 1 : 0;
+          const vipB = b.isVip ? 1 : 0;
+          comparison = vipA - vipB;
+          break;
+        case "isLive":
+          const liveA = a.twitchStatus?.isLive ? 1 : 0;
+          const liveB = b.twitchStatus?.isLive ? 1 : 0;
+          comparison = liveA - liveB;
           break;
       }
       
@@ -523,7 +557,7 @@ export default function GestionMembresPage() {
   }
 
   // Fonction pour gérer le clic sur un en-tête de colonne
-  const handleSort = (column: "nom" | "role" | "lastLive") => {
+  const handleSort = (column: SortableColumn) => {
     if (sortColumn === column) {
       // Inverser la direction si on clique sur la même colonne
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -533,6 +567,23 @@ export default function GestionMembresPage() {
       setSortDirection("asc");
     }
   };
+
+  // Helper pour rendre un en-tête de colonne triable
+  const SortableHeader = ({ column, label }: { column: SortableColumn; label: string }) => (
+    <th 
+      className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center gap-2">
+        {label}
+        {sortColumn === column && (
+          <span className="text-purple-400">
+            {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        )}
+      </div>
+    </th>
+  );
 
   // Récupérer les dernières dates de live après le chargement initial
   useEffect(() => {
@@ -1367,19 +1418,7 @@ export default function GestionMembresPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-700">
-                  <th 
-                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
-                    onClick={() => handleSort("nom")}
-                  >
-                    <div className="flex items-center gap-2">
-                      CRÉATEUR
-                      {sortColumn === "nom" && (
-                        <span className="text-purple-400">
-                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </span>
-                      )}
-                    </div>
-                  </th>
+                  <SortableHeader column="nom" label="CRÉATEUR" />
                   {viewMode === "complet" && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
@@ -1387,46 +1426,18 @@ export default function GestionMembresPage() {
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Twitch</th>
                     </>
                   )}
-                  <th 
-                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
-                    onClick={() => handleSort("role")}
-                  >
-                    <div className="flex items-center gap-2">
-                      RÔLE
-                      {sortColumn === "role" && (
-                        <span className="text-purple-400">
-                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">STATUT</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">MEMBRE DEPUIS</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">INTÉGRATION</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">PARRAIN</th>
-                  <th 
-                    className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
-                    onClick={() => handleSort("lastLive")}
-                  >
-                    <div className="flex items-center gap-2">
-                      DERNIER LIVE
-                      {sortColumn === "lastLive" && (
-                        <span className="text-purple-400">
-                          {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Raids TENF faits
-                  </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">
-                    Raids reçus
-                  </th>
+                  <SortableHeader column="role" label="RÔLE" />
+                  <SortableHeader column="statut" label="STATUT" />
+                  <SortableHeader column="createdAt" label="MEMBRE DEPUIS" />
+                  <SortableHeader column="integrationDate" label="INTÉGRATION" />
+                  <SortableHeader column="parrain" label="PARRAIN" />
+                  <SortableHeader column="lastLive" label="DERNIER LIVE" />
+                  <SortableHeader column="raidsDone" label="Raids TENF faits" />
+                  <SortableHeader column="raidsReceived" label="Raids reçus" />
                   {viewMode === "complet" && (
                     <>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">VIP</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Live</th>
+                      <SortableHeader column="isVip" label="VIP" />
+                      <SortableHeader column="isLive" label="Live" />
                     </>
                   )}
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ACTIONS</th>
