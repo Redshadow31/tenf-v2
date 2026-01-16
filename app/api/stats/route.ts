@@ -64,7 +64,16 @@ export async function GET() {
     const allMembers = getAllMemberData();
     console.log(`[Stats API] Total members in store: ${allMembers.length}`);
     
-    // Compter les membres actifs : tous ceux avec isActive === true
+    // Analyser les valeurs isActive pour comprendre le problème
+    const activeCount = allMembers.filter(m => m.isActive === true).length;
+    const inactiveCount = allMembers.filter(m => m.isActive === false).length;
+    const undefinedActive = allMembers.filter(m => m.isActive === undefined).length;
+    
+    console.log(`[Stats API] Members with isActive=true: ${activeCount}`);
+    console.log(`[Stats API] Members with isActive=false: ${inactiveCount}`);
+    console.log(`[Stats API] Members with isActive=undefined: ${undefinedActive}`);
+    
+    // Compter les membres actifs : tous ceux avec isActive === true (strictement)
     const activeMembers = allMembers.filter(m => m.isActive === true);
     const activeMembersCount = activeMembers.length;
     
@@ -73,12 +82,13 @@ export async function GET() {
     
     // Si aucun membre actif, logger quelques détails pour déboguer
     if (activeMembersCount === 0 && allMembers.length > 0) {
-      const sampleMembers = allMembers.slice(0, 5);
-      console.log(`[Stats API] WARNING: No active members found! Sample members:`, 
+      const sampleMembers = allMembers.slice(0, 10);
+      console.log(`[Stats API] WARNING: No active members found! Sample of first 10 members:`, 
         sampleMembers.map(m => ({ 
           twitchLogin: m.twitchLogin, 
           isActive: m.isActive,
-          role: m.role 
+          role: m.role,
+          listId: m.listId
         }))
       );
     } else if (allMembers.length === 0) {
