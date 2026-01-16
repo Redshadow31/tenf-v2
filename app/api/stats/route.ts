@@ -74,7 +74,7 @@ export async function GET() {
     console.log(`[Stats API] Total members in store: ${allMembers.length}`);
     console.log(`[Stats API] Active members count: ${activeMembersCount}`);
 
-    // 3. Compter les lives en cours (utiliser la même logique que /api/twitch/streams et la page /lives)
+    // 3. Compter les lives en cours (utiliser exactement la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
     try {
       console.log(`[Stats API] Members with Twitch: ${twitchLoginsForLives.length}`);
@@ -88,9 +88,9 @@ export async function GET() {
           if (!clientId) {
             console.error('[Stats API] Twitch Client ID not configured');
           } else {
-            // Utiliser la même logique que /api/twitch/streams : batches de 99 logins
+            // Utiliser exactement la même logique que /api/twitch/streams : batches de 99 logins
             const BATCH_SIZE = 99;
-            let totalLives = 0;
+            const allStreams: any[] = [];
             
             for (let i = 0; i < twitchLoginsForLives.length; i += BATCH_SIZE) {
               const batch = twitchLoginsForLives.slice(i, i + BATCH_SIZE);
@@ -112,17 +112,36 @@ export async function GET() {
               if (streamsResponse.ok) {
                 const streamsData = await streamsResponse.json();
                 const streams = streamsData.data || [];
-                // Filtrer uniquement les streams vraiment en live (même logique que la page lives)
-                const liveStreamsOnly = streams.filter((stream: any) => stream.type === "live");
-                totalLives += liveStreamsOnly.length;
+                
+                // Ajouter tous les streams trouvés (comme dans /api/twitch/streams)
+                if (streams.length > 0) {
+                  const formattedStreams = streams.map((stream: any) => ({
+                    id: stream.id,
+                    userId: stream.user_id,
+                    userLogin: stream.user_login,
+                    userName: stream.user_name,
+                    gameName: stream.game_name || 'Just Chatting',
+                    title: stream.title,
+                    viewerCount: stream.viewer_count,
+                    startedAt: stream.started_at,
+                    thumbnailUrl: stream.thumbnail_url
+                      ?.replace('{width}', '640')
+                      ?.replace('{height}', '360'),
+                    type: stream.type,
+                  }));
+                  allStreams.push(...formattedStreams);
+                }
               } else {
                 const errorText = await streamsResponse.text();
                 console.error(`[Stats API] Twitch Streams API error for batch ${i / BATCH_SIZE + 1}:`, errorText);
               }
             }
             
-            livesCount = totalLives;
-            console.log(`[Stats API] Total lives in progress: ${livesCount}`);
+            // Filtrer uniquement les streams vraiment en live (même logique que la page lives ligne 100)
+            const liveStreamsOnly = allStreams.filter((stream: any) => stream.type === "live");
+            livesCount = liveStreamsOnly.length;
+            
+            console.log(`[Stats API] Total lives in progress: ${livesCount} (from ${allStreams.length} total streams)`);
           }
         }
       } else {
@@ -179,5 +198,3 @@ async function getTwitchAccessToken(): Promise<string | null> {
   }
   return null;
 }
-
-
