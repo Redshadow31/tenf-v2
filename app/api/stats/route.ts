@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { getAllMemberData, getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
+import { getTwitchUsers } from '@/lib/twitch';
 
 /**
  * GET - Récupère les statistiques pour la page d'accueil
@@ -69,21 +70,24 @@ export async function GET() {
     const activeMembersCount = activeMembers.length;
     
     console.log(`[Stats API] Active members count: ${activeMembersCount} (filtered from ${allMembers.length} total)`);
-    
-    // Pour les lives, utiliser les logins Twitch des membres actifs
-    const twitchLoginsForLives = activeMembers
-      .map(m => m.twitchLogin)
-      .filter(Boolean) as string[];
-    
-    // Debug: logger le nombre de membres actifs
-    console.log(`[Stats API] Active members count (from getAllActiveMemberDataFromAllLists): ${activeMembersCount}`);
 
-    // 3. Compter les lives en cours (utiliser exactement la même logique que /api/twitch/streams et la page /lives)
+    // 3. Compter les lives en cours (utiliser EXACTEMENT la même logique que la page /lives)
+    // La page /lives utilise getAllActiveMemberDataFromAllLists() puis /api/twitch/streams
+    // Utilisons la même source de données pour garantir la cohérence
     let livesCount = 0;
     try {
-      console.log(`[Stats API] Members with Twitch: ${twitchLoginsForLives.length}`);
+      // Utiliser getAllActiveMemberDataFromAllLists() comme /api/members/public (comme la page /lives)
+      const activeMembersForLives = getAllActiveMemberDataFromAllLists();
       
-      if (twitchLoginsForLives.length > 0) {
+      const twitchLogins = activeMembersForLives
+        .map((member) => member.twitchLogin)
+        .filter(Boolean) as string[];
+      
+      console.log(`[Stats API] Active members for lives: ${activeMembersForLives.length}`);
+      console.log(`[Stats API] Twitch logins: ${twitchLogins.length}`);
+      
+      if (twitchLogins.length > 0) {
+        // Appeler directement l'API Twitch comme /api/twitch/streams le fait
         const accessToken = await getTwitchAccessToken();
         if (!accessToken) {
           console.error('[Stats API] Failed to get Twitch access token');
@@ -96,8 +100,8 @@ export async function GET() {
             const BATCH_SIZE = 99;
             const allStreams: any[] = [];
             
-            for (let i = 0; i < twitchLoginsForLives.length; i += BATCH_SIZE) {
-              const batch = twitchLoginsForLives.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < twitchLogins.length; i += BATCH_SIZE) {
+              const batch = twitchLogins.slice(i, i + BATCH_SIZE);
               
               const params = batch
                 .map((login) => `user_login=${encodeURIComponent(login.trim().toLowerCase())}`)
@@ -141,29 +145,33 @@ export async function GET() {
               }
             }
             
-            // Filtrer uniquement les streams vraiment en live (même logique que la page lives ligne 100)
+            // Filtrer uniquement les streams vraiment en live (comme la page /lives ligne 100)
             const liveStreamsOnly = allStreams.filter((stream: any) => stream.type === "live");
             
-            // IMPORTANT: Filtrer pour ne garder que les streams des membres actifs (même logique que la page lives ligne 107-109)
+            // Enrichir et filtrer pour ne garder que les streams des membres actifs (comme la page /lives ligne 105-135)
             // Créer un Set des logins Twitch actifs pour une recherche rapide
             const activeMembersSet = new Set(
-              activeMembers.map(m => m.twitchLogin.toLowerCase())
+              activeMembersForLives.map(m => m.twitchLogin.toLowerCase())
             );
             
-            // Ne compter que les lives des membres actifs
-            const livesFromActiveMembers = liveStreamsOnly.filter((stream: any) => 
-              activeMembersSet.has(stream.userLogin.toLowerCase())
-            );
+            const enrichedLives = liveStreamsOnly.map((stream: any) => {
+              // Vérifier si le stream appartient à un membre actif (comme la page /lives ligne 107-109)
+              if (activeMembersSet.has(stream.userLogin.toLowerCase())) {
+                return stream;
+              }
+              return null;
+            });
             
-            livesCount = livesFromActiveMembers.length;
+            // Filtrer les nulls (comme la page /lives ligne 135)
+            const validLives = enrichedLives.filter((live: any) => live !== null);
+            
+            livesCount = validLives.length;
             
             console.log(`[Stats API] Total streams from Twitch: ${allStreams.length}`);
             console.log(`[Stats API] Live streams only: ${liveStreamsOnly.length}`);
-            console.log(`[Stats API] Lives from active members: ${livesCount}`);
+            console.log(`[Stats API] Valid lives from active members: ${livesCount}`);
           }
         }
-      } else {
-        console.log('[Stats API] No members with Twitch login');
       }
     } catch (error) {
       console.error('[Stats API] Error fetching live streams count:', error);
@@ -216,3 +224,4 @@ async function getTwitchAccessToken(): Promise<string | null> {
   }
   return null;
 }
+
