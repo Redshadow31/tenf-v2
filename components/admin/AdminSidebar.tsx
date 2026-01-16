@@ -3,410 +3,105 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-
-interface NavItem {
-  href: string;
-  label: string;
-  icon?: string;
-  children?: NavItem[];
-}
-
-const navItems: NavItem[] = [
-  {
-    href: "/admin/dashboard",
-    label: "Dashboard",
-    icon: "📊",
-  },
-  {
-    href: "/admin/gestion-acces",
-    label: "Gestion du Site",
-    icon: "⚙️",
-    children: [
-      {
-        href: "/admin/gestion-acces",
-        label: "Accès Dashboard",
-      },
-      {
-        href: "/admin/gestion-acces/dashboard",
-        label: "Gestion du Dashboard",
-      },
-    ],
-  },
-  {
-    href: "/admin/membres",
-    label: "Membres",
-    icon: "👥",
-    children: [
-      {
-        href: "/admin/membres",
-        label: "Hub",
-      },
-      {
-        href: "/admin/membres/gestion",
-        label: "Gestion",
-      },
-      {
-        href: "/admin/membres/erreurs",
-        label: "Erreurs & incohérences",
-      },
-      {
-        href: "/admin/membres/incomplets",
-        label: "Comptes incomplets",
-      },
-      {
-        href: "/admin/membres/synchronisation",
-        label: "Synchronisation",
-      },
-      {
-        href: "/admin/membres/historique",
-        label: "Historique",
-      },
-      {
-        href: "/admin/membres/badges",
-        label: "Gestion des badges",
-      },
-      {
-        href: "/admin/membres/vip",
-        label: "Gestion des VIP",
-      },
-    ],
-  },
-  {
-    href: "/admin/spotlight",
-    label: "Spotlight",
-    icon: "⭐",
-    children: [
-      {
-        href: "/admin/spotlight",
-        label: "Hub",
-      },
-      {
-        href: "/admin/spotlight/gestion",
-        label: "Gestion",
-      },
-      {
-        href: "/admin/spotlight/membres",
-        label: "Données individuelles",
-      },
-      {
-        href: "/admin/spotlight/presence",
-        label: "Présence",
-      },
-      {
-        href: "/admin/spotlight/evaluation",
-        label: "Évaluation streamer",
-      },
-    ],
-  },
-  {
-    href: "/admin/follow",
-    label: "Suivi Follow",
-    icon: "👁️",
-    children: [
-      {
-        href: "/admin/follow",
-        label: "Hub",
-      },
-      {
-        href: "/admin/follow/red",
-        label: "Follow de Red",
-      },
-      {
-        href: "/admin/follow/clara",
-        label: "Follow de Clara",
-      },
-      {
-        href: "/admin/follow/nexou",
-        label: "Follow de Nexou",
-      },
-      {
-        href: "/admin/follow/tabs",
-        label: "Follow de Tabs",
-      },
-      {
-        href: "/admin/follow/nangel",
-        label: "Follow de Nangel",
-      },
-      {
-        href: "/admin/follow/jenny",
-        label: "Follow de Jenny",
-      },
-      {
-        href: "/admin/follow/selena",
-        label: "Follow de Selena",
-      },
-      {
-        href: "/admin/follow/dark",
-        label: "Follow de Dark",
-      },
-      {
-        href: "/admin/follow/yaya",
-        label: "Follow de Yaya",
-      },
-      {
-        href: "/admin/follow/rubby",
-        label: "Follow de Rubby",
-      },
-      {
-        href: "/admin/follow/livio",
-        label: "Follow de Livio",
-      },
-      {
-        href: "/admin/follow/rebelle",
-        label: "Follow de Rebelle",
-      },
-      {
-        href: "/admin/follow/sigurdson",
-        label: "Follow de Sigurdson",
-      },
-      {
-        href: "/admin/follow/nico",
-        label: "Follow de Nico",
-      },
-      {
-        href: "/admin/follow/willy",
-        label: "Follow de Willy",
-      },
-      {
-        href: "/admin/follow/b1nx",
-        label: "Follow de B1nx",
-      },
-      {
-        href: "/admin/follow/spydy",
-        label: "Follow de Spydy",
-      },
-      {
-        href: "/admin/follow/simon",
-        label: "Follow de Simon",
-      },
-      {
-        href: "/admin/follow/zylkao",
-        label: "Follow de Zylkao",
-      },
-    ],
-  },
-  {
-    href: "/admin/evaluation",
-    label: "Évaluation Mensuelle",
-    icon: "📊",
-    children: [
-      {
-        href: "/admin/evaluation",
-        label: "Hub",
-      },
-      {
-        href: "/admin/evaluation/a",
-        label: "A. Présence Active",
-        children: [
-          {
-            href: "/admin/evaluation/a/spotlights",
-            label: "Spotlights",
-          },
-          {
-            href: "/admin/evaluation/a/raids",
-            label: "Raids",
-          },
-        ],
-      },
-      {
-        href: "/admin/evaluation/b",
-        label: "B. Engagement Communautaire",
-        children: [
-          {
-            href: "/admin/evaluation/b/discord",
-            label: "Discord",
-          },
-          {
-            href: "/admin/evaluation/b/events-serveur",
-            label: "Events serveur",
-          },
-        ],
-      },
-      {
-        href: "/admin/evaluation/c",
-        label: "C. Follow",
-      },
-      {
-        href: "/admin/evaluation/d",
-        label: "D. Synthèse & Bonus",
-      },
-      {
-        href: "/admin/evaluation/result",
-        label: "Résultat Final",
-      },
-    ],
-  },
-  {
-    href: "/admin/evaluations",
-    label: "Intégration",
-    icon: "📝",
-    children: [
-      {
-        href: "/admin/evaluations",
-        label: "Hub",
-      },
-      {
-        href: "/admin/evaluations/planification",
-        label: "Planification",
-      },
-      {
-        href: "/admin/evaluations/inscription",
-        label: "Inscription",
-      },
-      {
-        href: "/admin/evaluations/presence-retour",
-        label: "Présence et retour",
-      },
-      {
-        href: "/admin/evaluations/statistique",
-        label: "Statistique",
-      },
-      {
-        href: "/admin/evaluations/presentation",
-        label: "Présentation",
-      },
-      {
-        href: "/admin/evaluations/discours",
-        label: "Discours",
-      },
-    ],
-  },
-  {
-    href: "/admin/raids",
-    label: "Suivi Raids",
-    icon: "🚀",
-    children: [
-      {
-        href: "/admin/raids",
-        label: "Suivi des Raids",
-      },
-      {
-        href: "/admin/raids/twitch",
-        label: "Raids Twitch",
-      },
-      {
-        href: "/admin/raids/historique",
-        label: "Historique",
-      },
-    ],
-  },
-  {
-    href: "/admin/statistiques",
-    label: "Statistiques",
-    icon: "📈",
-  },
-  {
-    href: "/admin/boutique",
-    label: "Boutique",
-    icon: "🛒",
-  },
-  {
-    href: "/admin/events",
-    label: "Événements",
-    icon: "📅",
-    children: [
-      {
-        href: "/admin/events",
-        label: "Hub",
-      },
-      {
-        href: "/admin/events/planification",
-        label: "Planification",
-      },
-      {
-        href: "/admin/events/liste",
-        label: "Liste des événements",
-      },
-      {
-        href: "/admin/events/recap",
-        label: "Récapitulatif",
-      },
-      {
-        href: "/admin/events/presence",
-        label: "Gestion des présences",
-      },
-    ],
-  },
-  {
-    href: "/admin/logs",
-    label: "Logs",
-    icon: "📋",
-  },
-];
+import { adminNavigation, type NavItem } from "@/lib/admin/navigation";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
 
+  /**
+   * Vérifie si un élément de navigation est actif
+   * Logique générique: un élément est actif si pathname === href OU pathname.startsWith(href + "/")
+   */
+  function isActive(item: NavItem): boolean {
+    if (!pathname) return false;
+    
+    // Match exact
+    if (pathname === item.href) {
+      return true;
+    }
+    
+    // Si l'élément a des enfants, utiliser startsWith pour détecter les sous-pages
+    if (item.children && item.children.length > 0) {
+      return pathname.startsWith(item.href + "/");
+    }
+    
+    // Pour les éléments sans enfants mais avec routes dynamiques (ex: /admin/follow/[slug]),
+    // vérifier startsWith avec "/" pour éviter les faux positifs
+    const hasDynamicRoutes = item.href === "/admin/follow";
+    if (hasDynamicRoutes) {
+      return pathname.startsWith(item.href + "/");
+    }
+    
+    // Sinon, match exact uniquement
+    return false;
+  }
+
+  /**
+   * Vérifie si un élément parent est actif (soit lui-même, soit un de ses enfants)
+   * Logique générique: parent actif si pathname.startsWith(parent.href) OU si un child est actif
+   */
+  function isParentActive(item: NavItem): boolean {
+    if (!pathname) return false;
+    
+    // Le parent est actif si pathname commence par son href (logique générique)
+    if (pathname.startsWith(item.href)) {
+      return true;
+    }
+    
+    // Ou si un de ses enfants est actif
+    if (item.children) {
+      return item.children.some(child => {
+        // Pour les enfants avec sous-enfants, vérifier récursivement
+        if (child.children) {
+          return isParentActive(child);
+        }
+        return isChildActive(child);
+      });
+    }
+    
+    return false;
+  }
+
+  /**
+   * Vérifie si un enfant spécifique est actif
+   * Logique générique: child actif si pathname === child.href OU pathname.startsWith(child.href + "/")
+   */
+  function isChildActive(child: NavItem): boolean {
+    if (!pathname) return false;
+    
+    // Match exact
+    if (pathname === child.href) {
+      return true;
+    }
+    
+    // Si l'enfant a des sous-enfants, utiliser startsWith pour détecter les sous-sous-pages
+    if (child.children && child.children.length > 0) {
+      return pathname.startsWith(child.href + "/");
+    }
+    
+    // Pour les enfants simples, vérifier si pathname commence par child.href + "/"
+    // Cela gère les routes dynamiques comme /admin/follow/[slug]
+    return pathname.startsWith(child.href + "/");
+  }
+
   // Ouvrir automatiquement les menus parents si on est sur une de leurs pages enfants
   useEffect(() => {
     const newOpenMenus = new Set<string>();
-    navItems.forEach((item) => {
-      if (item.children) {
-        const isOnChildPage = item.children.some(child => {
-          if (child.href === "/admin/evaluations") {
-            return pathname?.startsWith("/admin/evaluations") ?? false;
+    adminNavigation.forEach((item) => {
+      if (item.children && isParentActive(item)) {
+        newOpenMenus.add(item.href);
+        
+        // Ouvrir aussi les sous-menus si nécessaire (pour les enfants avec enfants)
+        item.children.forEach(child => {
+          if (child.children && isParentActive(child)) {
+            newOpenMenus.add(child.href);
           }
-          if (child.href === "/admin/raids" || child.href === "/admin/raids/historique") {
-            return pathname?.startsWith("/admin/raids") ?? false;
-          }
-          if (child.href === "/admin/spotlight") {
-            return pathname?.startsWith("/admin/spotlight") ?? false;
-          }
-          if (child.href === "/admin/events") {
-            return pathname?.startsWith("/admin/events") ?? false;
-          }
-          if (child.href === "/admin/follow") {
-            return pathname?.startsWith("/admin/follow") ?? false;
-          }
-          if (child.href === "/admin/membres") {
-            return pathname?.startsWith("/admin/membres") ?? false;
-          }
-          if (child.href === "/admin/gestion-acces") {
-            return pathname?.startsWith("/admin/gestion-acces") ?? false;
-          }
-          return pathname === child.href;
         });
-        if (isOnChildPage) {
-          newOpenMenus.add(item.href);
-        }
       }
     });
     setOpenMenus(newOpenMenus);
   }, [pathname]);
-
-  function isActive(href: string): boolean {
-    if (href === "/admin/evaluations") {
-      return pathname?.startsWith("/admin/evaluations") ?? false;
-    }
-    if (href === "/admin/raids") {
-      return pathname?.startsWith("/admin/raids") ?? false;
-    }
-    if (href === "/admin/spotlight") {
-      return pathname?.startsWith("/admin/spotlight") ?? false;
-    }
-    if (href === "/admin/events") {
-      return pathname?.startsWith("/admin/events") ?? false;
-    }
-    if (href === "/admin/follow") {
-      return pathname === "/admin/follow" || (pathname?.startsWith("/admin/follow/") ?? false);
-    }
-    if (href === "/admin/membres") {
-      return pathname === "/admin/membres" || (pathname?.startsWith("/admin/membres/") ?? false);
-    }
-    if (href === "/admin/gestion-acces") {
-      return pathname === "/admin/gestion-acces" || (pathname?.startsWith("/admin/gestion-acces/") ?? false);
-    }
-    return pathname === href;
-  }
-
-  function isParentActive(item: NavItem): boolean {
-    if (isActive(item.href)) return true;
-    if (item.children) {
-      return item.children.some(child => isActive(child.href));
-    }
-    return false;
-  }
 
   function toggleMenu(href: string) {
     setOpenMenus((prev) => {
@@ -432,8 +127,8 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="space-y-2">
-        {navItems.map((item) => {
-          const active = isActive(item.href);
+        {adminNavigation.map((item) => {
+          const active = isActive(item);
           const parentActive = isParentActive(item);
           const hasChildren = item.children && item.children.length > 0;
           const isMenuOpen = openMenus.has(item.href);
@@ -507,34 +202,117 @@ export default function AdminSidebar() {
               {hasChildren && isMenuOpen && (
                 <div className="ml-4 mt-2 space-y-1">
                   {item.children?.map((child) => {
-                    const childActive = isActive(child.href);
+                    const childActive = isChildActive(child);
+                    const childHasChildren = child.children && child.children.length > 0;
+                    const isChildMenuOpen = openMenus.has(child.href);
+
                     return (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className="block px-4 py-2 rounded-lg text-sm transition-colors"
-                        style={{
-                          backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
-                          color: childActive ? 'white' : 'var(--color-text-secondary)',
-                          opacity: childActive ? '1' : '0.7'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!childActive) {
-                            e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                            e.currentTarget.style.color = 'var(--color-text)';
-                            e.currentTarget.style.opacity = '1';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!childActive) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = 'var(--color-text-secondary)';
-                            e.currentTarget.style.opacity = '0.7';
-                          }
-                        }}
-                      >
-                        {child.label}
-                      </Link>
+                      <div key={child.href}>
+                        {childHasChildren ? (
+                          <>
+                            <button
+                              onClick={() => toggleMenu(child.href)}
+                              className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-sm transition-colors"
+                              style={{
+                                backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
+                                color: childActive ? 'white' : 'var(--color-text-secondary)',
+                                opacity: childActive ? '1' : '0.7'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!childActive) {
+                                  e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                                  e.currentTarget.style.color = 'var(--color-text)';
+                                  e.currentTarget.style.opacity = '1';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!childActive) {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                                  e.currentTarget.style.opacity = '0.7';
+                                }
+                              }}
+                            >
+                              <span>{child.label}</span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${isChildMenuOpen ? "rotate-90" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                            {/* Sous-sous-menu (pour évaluation mensuelle par exemple) */}
+                            {isChildMenuOpen && child.children && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {child.children.map((grandChild) => {
+                                  const grandChildActive = isChildActive(grandChild);
+                                  return (
+                                    <Link
+                                      key={grandChild.href}
+                                      href={grandChild.href}
+                                      className="block px-4 py-2 rounded-lg text-xs transition-colors"
+                                      style={{
+                                        backgroundColor: grandChildActive ? 'var(--color-primary)' : 'transparent',
+                                        color: grandChildActive ? 'white' : 'var(--color-text-secondary)',
+                                        opacity: grandChildActive ? '1' : '0.6'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        if (!grandChildActive) {
+                                          e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                                          e.currentTarget.style.color = 'var(--color-text)';
+                                          e.currentTarget.style.opacity = '1';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (!grandChildActive) {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                          e.currentTarget.style.color = 'var(--color-text-secondary)';
+                                          e.currentTarget.style.opacity = '0.6';
+                                        }
+                                      }}
+                                    >
+                                      {grandChild.label}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <Link
+                            href={child.href}
+                            className="block px-4 py-2 rounded-lg text-sm transition-colors"
+                            style={{
+                              backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
+                              color: childActive ? 'white' : 'var(--color-text-secondary)',
+                              opacity: childActive ? '1' : '0.7'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!childActive) {
+                                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+                                e.currentTarget.style.color = 'var(--color-text)';
+                                e.currentTarget.style.opacity = '1';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!childActive) {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                                e.currentTarget.style.opacity = '0.7';
+                              }
+                            }}
+                          >
+                            {child.label}
+                          </Link>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
