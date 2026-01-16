@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { getAllMemberData, getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -59,10 +59,9 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres actifs
-    // Utiliser getAllMemberData() comme la page admin, puis filtrer les membres actifs
-    // C'est la même logique que la page admin /admin/membres/gestion
-    const allMembers = getAllMemberData();
-    const activeMembers = allMembers.filter(m => m.isActive);
+    // Utiliser getAllActiveMemberDataFromAllLists() comme l'API publique /api/members/public
+    // Cette fonction retourne uniquement les membres actifs de toutes les listes (1, 2, 3)
+    const activeMembers = getAllActiveMemberDataFromAllLists();
     const activeMembersCount = activeMembers.length;
     
     // Pour les lives, utiliser les logins Twitch des membres actifs
@@ -71,6 +70,7 @@ export async function GET() {
       .filter(Boolean) as string[];
     
     // Debug: logger le nombre de membres actifs
+    const allMembers = getAllMemberData();
     console.log(`[Stats API] Total members in store: ${allMembers.length}`);
     console.log(`[Stats API] Active members count: ${activeMembersCount}`);
 
