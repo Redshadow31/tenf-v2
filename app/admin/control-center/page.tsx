@@ -150,7 +150,7 @@ function AlertCard({ alert }: { alert: AlertCard }) {
                   color: isWarning ? '#f59e0b' : '#6366f1',
                 }}
               >
-                {typeof alert.count === 'number' ? alert.count : alert.count}
+                {alert.count}
               </div>
       </div>
       <Link
@@ -307,21 +307,21 @@ export default function ControlCenterPage() {
           
           // Construire les alertes avec les compteurs réels
           const alertsWithCounts: AlertCard[] = alertsConfig.map(config => {
-            let count: number | string = 0;
+            let count: number = 0;
             
             switch (config.id) {
               case "incomplete-accounts":
-                count = alertsData.incompleteAccounts ?? 0;
+                count = typeof alertsData.incompleteAccounts === 'number' ? alertsData.incompleteAccounts : 0;
                 break;
               case "errors":
-                count = alertsData.errors ?? 0;
+                count = typeof alertsData.errors === 'number' ? alertsData.errors : 0;
                 break;
               case "spotlight-pending":
-                count = alertsData.spotlightsPending ?? 0;
+                count = typeof alertsData.spotlightsPending === 'number' ? alertsData.spotlightsPending : 0;
                 break;
               case "pending-integrations":
                 // Pour l'instant, on ne peut pas compter les intégrations en attente facilement
-                // On affiche 0 ou "—" si non disponible
+                // On affiche 0 si non disponible
                 count = 0; // TODO: Implémenter si possible
                 break;
               default:
@@ -330,7 +330,7 @@ export default function ControlCenterPage() {
 
             return {
               ...config,
-              count: typeof count === 'number' ? count : count,
+              count,
             };
           });
 
