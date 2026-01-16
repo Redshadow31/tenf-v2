@@ -17,8 +17,8 @@ export async function GET() {
         true: allAdminMembers.filter(m => m.isActive === true).length,
         false: allAdminMembers.filter(m => m.isActive === false).length,
         undefined: allAdminMembers.filter(m => m.isActive === undefined).length,
-        stringTrue: allAdminMembers.filter(m => m.isActive === "true").length,
-        numberOne: allAdminMembers.filter(m => m.isActive === 1).length,
+        stringTrue: allAdminMembers.filter(m => (m as any).isActive === "true").length,
+        numberOne: allAdminMembers.filter(m => (m as any).isActive === 1).length,
       },
       sampleMembers: allAdminMembers.slice(0, 20).map(m => ({
         twitchLogin: m.twitchLogin,
@@ -29,7 +29,7 @@ export async function GET() {
         deleted: (m as any).deleted,
       })),
       sampleActiveMembers: allAdminMembers
-        .filter(m => m.isActive === true || m.isActive === "true" || m.isActive === 1)
+        .filter(m => m.isActive === true || (m as any).isActive === "true" || (m as any).isActive === 1)
         .slice(0, 10)
         .map(m => ({
           twitchLogin: m.twitchLogin,
