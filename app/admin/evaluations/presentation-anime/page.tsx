@@ -128,7 +128,7 @@ export default function PresentationAnimePage() {
           <div className="absolute inset-0 bg-black/95"></div>
 
           {/* Conteneur 16:9 centré */}
-          <div className="relative w-full" style={{ aspectRatio: "16/9", maxWidth: "90vw", maxHeight: "90vh" }}>
+          <div className="relative w-full" style={{ aspectRatio: "16/9", maxWidth: "95vw", maxHeight: "95vh" }}>
             {/* Bouton fermer */}
             <button
               onClick={handleExitPresentation}
