@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
         role: member.role,
         isVip: member.isVip || false,
         isActive: member.isActive !== false,
-        avatar: member.avatar,
         twitchUrl: member.twitchUrl,
         badges: member.badges || [],
         description: member.description,

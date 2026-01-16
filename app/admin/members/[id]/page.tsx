@@ -179,17 +179,22 @@ export default function Member360Page() {
           <div className="flex items-start gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              {member.avatar ? (
+              {member.discordId ? (
                 <img
-                  src={member.avatar}
+                  src={`https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`}
                   alt={member.displayName}
                   className="w-20 h-20 rounded-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    if ((e.target as HTMLImageElement).nextElementSibling) {
+                      (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
+                    }
+                  }}
                 />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white text-2xl font-semibold">
-                  {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
-                </div>
-              )}
+              ) : null}
+              <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white text-2xl font-semibold ${member.discordId ? 'hidden' : ''}`}>
+                {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
+              </div>
             </div>
 
             {/* Infos principales */}

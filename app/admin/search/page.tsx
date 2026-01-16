@@ -16,7 +16,6 @@ interface MemberSearchResult {
   role: string;
   isVip: boolean;
   isActive: boolean;
-  avatar?: string;
   twitchUrl?: string;
   badges?: string[];
   description?: string;
@@ -165,17 +164,22 @@ export default function AdminSearchPage() {
                       <div className="flex items-start gap-4">
                         {/* Avatar */}
                         <div className="flex-shrink-0">
-                          {member.avatar ? (
+                          {member.discordId ? (
                             <img
-                              src={member.avatar}
+                              src={`https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`}
                               alt={member.displayName}
                               className="w-12 h-12 rounded-full"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                if ((e.target as HTMLImageElement).nextElementSibling) {
+                                  (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
+                                }
+                              }}
                             />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-semibold">
-                              {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
-                            </div>
-                          )}
+                          ) : null}
+                          <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-semibold ${member.discordId ? 'hidden' : ''}`}>
+                            {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
+                          </div>
                         </div>
 
                         {/* Infos */}
