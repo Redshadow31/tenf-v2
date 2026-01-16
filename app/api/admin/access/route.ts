@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/adminAuth';
 import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from '@/lib/adminAccessCache';
-import { getStore } from '@netlify/blobs';
+import { getBlobStore } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 const ACCESS_STORE = 'tenf-admin-access';
@@ -39,7 +39,7 @@ export async function GET() {
     }
 
     // Récupérer la liste depuis Blobs (membres ajoutés manuellement)
-    const store = getStore(ACCESS_STORE);
+    const store = getBlobStore(ACCESS_STORE);
     let storedAccessList: AdminAccess[] = [];
     try {
       const stored = await store.get(ACCESS_KEY);
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Charger la liste actuelle depuis Blobs (uniquement les membres ajoutés manuellement)
-    const store = getStore(ACCESS_STORE);
+    const store = getBlobStore(ACCESS_STORE);
     let storedAccessList: AdminAccess[] = [];
     
     try {
@@ -340,7 +340,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Charger la liste actuelle depuis Blobs (uniquement les membres ajoutés manuellement)
-    const store = getStore(ACCESS_STORE);
+    const store = getBlobStore(ACCESS_STORE);
     let storedAccessList: AdminAccess[] = [];
     
     try {

@@ -21,8 +21,8 @@ let adminAccessCache: Record<string, AdminRole> = {};
 export async function loadAdminAccessCache(): Promise<void> {
   try {
     // Import dynamique uniquement dans Node.js runtime
-    const { getStore } = await import('@netlify/blobs');
-    const store = getStore('tenf-admin-access');
+    const { getBlobStore } = await import('./memberData');
+    const store = getBlobStore('tenf-admin-access');
     const stored = await store.get('admin-access-list');
     
     if (stored) {
