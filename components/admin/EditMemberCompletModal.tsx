@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 interface MemberData {
   twitchLogin: string;
@@ -191,6 +192,12 @@ export default function EditMemberCompletModal({
           >
             Enregistrer
           </button>
+          <Link
+            href={`/admin/membres/gestion?search=${encodeURIComponent(member.twitchLogin || member.displayName)}`}
+            className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-semibold text-white transition-colors text-center"
+          >
+            Voir dans la gestion
+          </Link>
           <button
             onClick={onClose}
             className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-semibold text-white transition-colors"

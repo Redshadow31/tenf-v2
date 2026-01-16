@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History } from "lucide-react";
 import MemberBadges from "@/components/admin/MemberBadges";
@@ -60,6 +61,7 @@ interface Member {
 
 
 export default function GestionMembresPage() {
+  const searchParams = useSearchParams();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +86,14 @@ export default function GestionMembresPage() {
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
   const [showMemberHistory, setShowMemberHistory] = useState(false);
   const [showVerifyTwitchNamesModal, setShowVerifyTwitchNamesModal] = useState(false);
+
+  // Lire le paramètre search de l'URL au chargement
+  useEffect(() => {
+    const searchParam = searchParams.get("search");
+    if (searchParam) {
+      setSearchQuery(decodeURIComponent(searchParam));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadAdmin() {
