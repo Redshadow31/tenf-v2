@@ -60,16 +60,30 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres actifs
-    // Utiliser la même logique que la page admin /admin/membres/gestion
-    // La page admin filtre simplement avec m.isActive (sans vérifier listId)
+    // Compter TOUS les membres avec isActive: true du Blob tenf-admin-members (fusionné avec bot)
     const allMembers = getAllMemberData();
     console.log(`[Stats API] Total members in store: ${allMembers.length}`);
     
-    // Compter les membres actifs (même logique que la page admin)
+    // Compter les membres actifs : tous ceux avec isActive === true
     const activeMembers = allMembers.filter(m => m.isActive === true);
     const activeMembersCount = activeMembers.length;
     
+    // Logs détaillés pour déboguer
     console.log(`[Stats API] Active members count: ${activeMembersCount} (filtered from ${allMembers.length} total)`);
+    
+    // Si aucun membre actif, logger quelques détails pour déboguer
+    if (activeMembersCount === 0 && allMembers.length > 0) {
+      const sampleMembers = allMembers.slice(0, 5);
+      console.log(`[Stats API] WARNING: No active members found! Sample members:`, 
+        sampleMembers.map(m => ({ 
+          twitchLogin: m.twitchLogin, 
+          isActive: m.isActive,
+          role: m.role 
+        }))
+      );
+    } else if (allMembers.length === 0) {
+      console.log(`[Stats API] WARNING: memberDataStore is EMPTY! The Blob might not be loaded correctly.`);
+    }
 
     // 3. Compter les lives en cours (utiliser EXACTEMENT la même logique que la page /lives)
     // La page /lives utilise getAllActiveMemberDataFromAllLists() puis /api/twitch/streams
