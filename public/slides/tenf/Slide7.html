@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1280px;
+            height: 720px;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+            background-color: #0F0F1A;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            perspective: 1000px;
+        }
+
+        /* -------------------------------------------------------------------
+           BACKGROUND & ATMOSPHERE - ULTRA VIVANT
+           ------------------------------------------------------------------- */
+        .bg-layer-1 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0F0F1A;
+            z-index: 0;
+        }
+
+        /* Animated Glows */
+        @keyframes breathe {
+            0% { opacity: 0.1; transform: scale(1); }
+            100% { opacity: 0.2; transform: scale(1.1); }
+        }
+
+        .bg-glow-purple {
+            position: absolute;
+            top: 20%;
+            right: -10%;
+            width: 900px;
+            height: 900px;
+            background-color: #9146FF;
+            opacity: 0.15;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 1;
+            animation: breathe 8s infinite alternate ease-in-out;
+        }
+
+        .bg-glow-blue {
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 800px;
+            height: 800px;
+            background-color: #3B82F6;
+            opacity: 0.1;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: 1;
+            animation: breathe 10s infinite alternate-reverse ease-in-out;
+        }
+
+        /* Moving Rays */
+        @keyframes ray-move {
+            0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+            50% { opacity: 0.05; }
+            100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+        }
+
+        .light-ray {
+            position: absolute;
+            width: 200px;
+            height: 1200px;
+            background-color: white;
+            opacity: 0;
+            filter: blur(60px);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        /* Particles */
+        @keyframes particle-float-random {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(var(--mx), var(--my)); }
+            50% { transform: translate(var(--mx2), var(--my2)); }
+            75% { transform: translate(var(--mx), var(--my)); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.6;
+            z-index: 2;
+            animation: particle-float-random 8s infinite ease-in-out;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        /* Stars Twinkle */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 5px white; }
+        }
+
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 2;
+            animation: twinkle 4s infinite ease-in-out;
+        }
+
+        /* -------------------------------------------------------------------
+           LOGO TENF - ULTRA DYNAMIQUE
+           ------------------------------------------------------------------- */
+        @keyframes spin3D {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        @keyframes shadow-pulse-multi {
+            0% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }
+            33% { filter: drop-shadow(0 0 30px rgba(145, 70, 255, 0.6)); }
+            66% { filter: drop-shadow(0 0 30px rgba(255, 107, 53, 0.6)); }
+            100% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }
+        }
+
+        @keyframes float-logo {
+            0%, 100% { top: 40px; }
+            50% { top: 30px; }
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-3px) rotate(-3deg); }
+            50% { transform: translateX(3px) rotate(3deg); }
+            75% { transform: translateX(-3px) rotate(-3deg); }
+            100% { transform: translateX(0); }
+        }
+
+        .logo-container {
+            position: absolute;
+            top: 40px;
+            left: 50px;
+            width: 90px;
+            height: 90px;
+            z-index: 50;
+            perspective: 1000px;
+            animation: float-logo 4s infinite ease-in-out;
+        }
+
+        .logo-tenf {
+            width: 100%;
+            height: auto;
+            animation: spin3D 20s infinite linear, shadow-pulse-multi 4s infinite linear;
+            transform-style: preserve-3d;
+            transition: transform 0.3s;
+        }
+
+        .logo-container:hover .logo-tenf {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* -------------------------------------------------------------------
+           HEADER & TITRE - GLITCH GAMING
+           ------------------------------------------------------------------- */
+        .main-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 60px 40px 60px;
+            box-sizing: border-box;
+        }
+
+        .page-header {
+            margin-bottom: 20px;
+            padding-left: 100px;
+            position: relative;
+        }
+
+        @keyframes glitch-text {
+            0% { transform: translate(0); text-shadow: none; }
+            20% { transform: translate(-2px, 2px); text-shadow: 2px 0 #9146FF; }
+            40% { transform: translate(-2px, -2px); text-shadow: -2px 0 #FFD700; }
+            60% { transform: translate(2px, 2px); text-shadow: 2px 0 #CE1946; }
+            80% { transform: translate(2px, -2px); text-shadow: -2px 0 #4DEEEA; }
+            100% { transform: translate(0); text-shadow: none; }
+        }
+
+        @keyframes gradient-move {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulse-shadow-text {
+            0%, 100% { text-shadow: 0 0 20px rgba(145, 70, 255, 0.4); }
+            50% { text-shadow: 0 0 40px rgba(145, 70, 255, 0.8); }
+        }
+
+        .title-main {
+            font-size: 56px;
+            font-weight: 900;
+            line-height: 1.1;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 5px;
+            position: relative;
+            animation: pulse-shadow-text 3s infinite ease-in-out;
+            transition: all 0.3s;
+        }
+
+        .title-main:hover {
+            animation: glitch-text 0.5s infinite linear;
+        }
+
+        .title-gradient {
+            background-color: #CE1946;
+            /* Fallback */
+            color: #CE1946;
+            text-shadow: 0 0 30px rgba(206, 25, 70, 0.6);
+            position: relative;
+            display: inline-block;
+        }
+        
+        /* Simulated gradient animation via opacity overlay */
+        .title-gradient::after {
+            content: 'PLUS';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            color: #FF6B35;
+            opacity: 0;
+            animation: breathe 3s infinite alternate;
+        }
+
+        .title-decoration {
+            position: absolute;
+            bottom: -10px;
+            left: 100px;
+            width: 200px;
+            height: 4px;
+            background-color: #CE1946;
+            box-shadow: 0 0 10px rgba(206, 25, 70, 0.8);
+            border-radius: 2px;
+            animation: breathe 2s infinite alternate;
+        }
+
+        /* -------------------------------------------------------------------
+           CARDS GLASSMORPHISM - ANIMATIONS VIVANTES
+           ------------------------------------------------------------------- */
+        .cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+            justify-content: center;
+            margin-top: 5px;
+            perspective: 1000px;
+        }
+
+        @keyframes slide-in-up-stagger {
+            0% { opacity: 0; transform: translateY(50px) rotateX(10deg); }
+            100% { opacity: 1; transform: translateY(0) rotateX(0deg); }
+        }
+
+        @keyframes border-pulse-card {
+            0% { border-color: rgba(145, 70, 255, 0.3); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
+            50% { border-color: rgba(145, 70, 255, 0.8); box-shadow: 0 10px 40px rgba(145, 70, 255, 0.4); }
+            100% { border-color: rgba(145, 70, 255, 0.3); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
+        }
+
+        @keyframes icon-bounce-delay {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-8px) scale(1.1); }
+        }
+
+        .feature-card {
+            background-color: rgba(145, 70, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(145, 70, 255, 0.3);
+            border-radius: 16px;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+            height: 150px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Initial state: opacity 1 to ensure visibility immediately if animation fails, but animation will override */
+            opacity: 1; 
+            animation: slide-in-up-stagger 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+        }
+        
+        .feature-card:hover {
+            transform: scale(1.03) translateY(-5px);
+            background-color: rgba(145, 70, 255, 0.15);
+            z-index: 10;
+        }
+
+        /* Individual Card Animations */
+        .feature-card:nth-child(1) {
+            animation-delay: 0s;
+            border-color: rgba(145, 70, 255, 0.3);
+        }
+        .feature-card:nth-child(1):hover {
+            box-shadow: 0 0 30px rgba(145, 70, 255, 0.6), inset 0 0 20px rgba(145, 70, 255, 0.2);
+            border-color: #9146FF;
+        }
+
+        .feature-card:nth-child(2) {
+            animation-delay: 0.2s;
+            background-color: rgba(206, 25, 70, 0.08);
+            border-color: rgba(206, 25, 70, 0.3);
+        }
+        .feature-card:nth-child(2):hover {
+            box-shadow: 0 0 30px rgba(206, 25, 70, 0.6), inset 0 0 20px rgba(206, 25, 70, 0.2);
+            border-color: #CE1946;
+            background-color: rgba(206, 25, 70, 0.15);
+        }
+        
+        .feature-card:nth-child(3) {
+            animation-delay: 0.4s;
+            background-color: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .feature-card:nth-child(3):hover {
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 20px rgba(59, 130, 246, 0.2);
+            border-color: #3B82F6;
+            background-color: rgba(59, 130, 246, 0.15);
+        }
+        
+        /* Left Accent Lines */
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            background-color: #9146FF;
+            box-shadow: 0 0 15px rgba(145, 70, 255, 0.6);
+            transition: width 0.3s ease;
+        }
+        .feature-card:hover::before { width: 10px; }
+        
+        .feature-card:nth-child(2)::before {
+            background-color: #CE1946;
+            box-shadow: 0 0 15px rgba(206, 25, 70, 0.6);
+        }
+        
+        .feature-card:nth-child(3)::before {
+            background-color: #3B82F6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        }
+
+        /* Icon Container */
+        .icon-wrapper {
+            width: 90px;
+            height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .feature-card:hover .icon-wrapper {
+            transform: scale(1.1) rotate(5deg);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .icon-3d {
+            font-size: 40px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+            animation: icon-bounce-delay 4s infinite ease-in-out;
+        }
+        
+        .feature-card:nth-child(2) .icon-3d { animation-delay: 1s; }
+        .feature-card:nth-child(3) .icon-3d { animation-delay: 2s; }
+
+        /* Text Content */
+        .card-content {
+            flex: 1;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card-title {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .card-subtitle {
+            font-family: 'Parisienne', cursive;
+            font-size: 22px;
+            color: #FFD700;
+            margin-bottom: 6px;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover .card-subtitle {
+            transform: translateX(5px);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
+        .card-desc {
+            font-size: 15px;
+            line-height: 1.4;
+            color: #E2E8F0;
+            font-weight: 300;
+        }
+
+    </style>
+</head>
+<body>
+<!-- Background Atmosphere -->
+<div class="bg-layer-1"></div>
+<div class="bg-glow-purple"></div>
+<div class="bg-glow-blue"></div>
+<!-- Moving Light Rays -->
+<div class="light-ray" style="top: -200px; left: 100px; animation: ray-move 10s infinite linear;"></div>
+<div class="light-ray" style="top: -300px; left: 500px; animation: ray-move 12s infinite linear reverse; animation-delay: 2s;"></div>
+<!-- Particles (12+) -->
+<div class="particle" style="--mx: 20px; --my: -30px; --mx2: -10px; --my2: -50px; top: 15%; left: 80%; width: 4px; height: 4px; background: #FFD700; animation-duration: 9s;"></div>
+<div class="particle" style="--mx: -20px; --my: 30px; --mx2: 10px; --my2: 50px; top: 35%; left: 10%; width: 3px; height: 3px; background: #9146FF; animation-duration: 11s;"></div>
+<div class="particle" style="--mx: 30px; --my: 10px; --mx2: -20px; --my2: -20px; top: 75%; left: 90%; width: 5px; height: 5px; background: #CE1946; animation-duration: 8s;"></div>
+<div class="particle" style="--mx: -15px; --my: -40px; --mx2: 25px; --my2: -10px; top: 85%; left: 15%; width: 2px; height: 2px; background: white; animation-duration: 13s;"></div>
+<div class="particle" style="--mx: 10px; --my: 20px; --mx2: -10px; --my2: 30px; top: 20%; left: 40%; width: 3px; height: 3px; background: #FF6B35; animation-duration: 10s;"></div>
+<div class="particle" style="--mx: -30px; --my: -10px; --mx2: 15px; --my2: 20px; top: 50%; left: 50%; width: 4px; height: 4px; background: #FF69B4; animation-duration: 7s; opacity: 0.3;"></div>
+<div class="particle" style="--mx: 25px; --my: 25px; --mx2: -25px; --my2: -25px; top: 10%; left: 20%; width: 3px; height: 3px; background: #9146FF; animation-duration: 12s;"></div>
+<div class="particle" style="--mx: -10px; --my: -20px; --mx2: 20px; --my2: -30px; top: 90%; left: 60%; width: 5px; height: 5px; background: #FFD700; animation-duration: 9.5s;"></div>
+<!-- Stars (6) -->
+<div class="star" style="top: 15%; left: 15%; width: 2px; height: 2px; animation-delay: 0s;"></div>
+<div class="star" style="top: 25%; left: 85%; width: 3px; height: 3px; animation-delay: 1.5s;"></div>
+<div class="star" style="top: 80%; left: 35%; width: 2px; height: 2px; animation-delay: 0.5s;"></div>
+<div class="star" style="top: 45%; left: 95%; width: 2px; height: 2px; animation-delay: 2s;"></div>
+<div class="star" style="top: 5%; left: 55%; width: 3px; height: 3px; animation-delay: 3s;"></div>
+<div class="star" style="top: 95%; left: 5%; width: 2px; height: 2px; animation-delay: 1s;"></div>
+<!-- Logo TENF -->
+<div class="logo-container">
+<img alt="TENF Logo" class="logo-tenf" src="https://www.genspark.ai/api/files/s/R3MioI83"/>
+</div>
+<!-- Main Container -->
+<div class="main-container">
+<!-- Header -->
+<div class="page-header">
+<h1 class="title-main">POURQUOI C'EST <span class="title-gradient">PLUS</span><br/>QU'UN SIMPLE DISCORD ?</h1>
+<div class="title-decoration"></div>
+</div>
+<!-- Cards Container (3 Stacked Cards) -->
+<div class="cards-container">
+<!-- Card 1: Spotlight (Purple/Gold) -->
+<div class="feature-card">
+<div class="icon-wrapper">
+<i class="fas fa-microphone-alt icon-3d" style="color: #FFD700;"></i>
+</div>
+<div class="card-content">
+<div class="card-title">
+<span style="color: #9146FF;">SPOTLIGHT</span> <span class="text-white">NEW FAMILY</span>
+</div>
+<p class="card-subtitle">Une vitrine pour tous</p>
+<p class="card-desc">
+                    Mise en avant régulière de créateurs sous forme d'émission. Pas de prérequis, pas de points : on met en lumière l'entraide, les parcours inspirants et la diversité de notre famille !
+                </p>
+</div>
+</div>
+<!-- Card 2: Communauté (Red) -->
+<div class="feature-card">
+<div class="icon-wrapper">
+<i class="fas fa-hands-helping icon-3d" style="color: #CE1946;"></i>
+</div>
+<div class="card-content">
+<div class="card-title">
+<span style="color: #CE1946;">COMMUNAUTÉ</span> <span class="text-white">ACTIVE</span>
+</div>
+<p class="card-subtitle">Entraide au quotidien</p>
+<p class="card-desc">
+                    Conseils techniques, salons d'entraide thématiques, retours sur vos contenus, et échanges entre passionnés. Un soutien constant pour progresser ensemble, peu importe votre niveau.
+                </p>
+</div>
+</div>
+<!-- Card 3: Ressources (Blue) -->
+<div class="feature-card">
+<div class="icon-wrapper">
+<i class="fas fa-rocket icon-3d" style="color: #3B82F6;"></i>
+</div>
+<div class="card-content">
+<div class="card-title">
+<span style="color: #3B82F6;">RESSOURCES</span> <span class="text-white">&amp; OUTILS</span>
+</div>
+<p class="card-subtitle">Évolution continue</p>
+<p class="card-desc">
+                    Guides exclusifs, templates graphiques, ateliers et formations régulières animés par des experts de la communauté. Tout pour développer votre chaîne et vos compétences.
+                </p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

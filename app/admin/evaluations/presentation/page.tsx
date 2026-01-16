@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 
 export default function PresentationPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -68,6 +69,25 @@ export default function PresentationPage() {
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Présentation</h1>
             <p className="text-gray-400">Visualisation de la présentation d'intégration</p>
+            <Link
+              href="/admin/evaluations/presentation-anime"
+              className="mt-2 inline-flex items-center gap-2 text-sm text-[#9146ff] hover:text-[#7c3aed] transition-colors"
+            >
+              🎬 Découvrir la présentation animée
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </Link>
           </div>
           <button
             onClick={toggleFullscreen}

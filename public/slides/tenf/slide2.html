@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1280px;
+            height: 720px;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+            background-color: #0F0F1A;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            perspective: 1000px; /* For 3D effects */
+        }
+
+        /* --- ANIMATIONS DEFINITIONS --- */
+
+        /* 1. Logo Animations */
+        @keyframes spin3D {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        @keyframes float-logo {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes shadow-pulse-multi {
+            0% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }      /* Red */
+            33% { filter: drop-shadow(0 0 30px rgba(145, 70, 255, 0.6)); }    /* Purple */
+            66% { filter: drop-shadow(0 0 30px rgba(255, 107, 53, 0.6)); }    /* Orange */
+            100% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }    /* Red */
+        }
+
+        /* 2. Title Animations (Glitch & Gradient Simulation) */
+        @keyframes glitch-text {
+            0% { transform: translate(0); text-shadow: none; }
+            20% { transform: translate(-2px, 2px); text-shadow: 2px 0 #9146FF; }
+            40% { transform: translate(-2px, -2px); text-shadow: -2px 0 #FFD700; }
+            60% { transform: translate(2px, 2px); text-shadow: 2px 0 #CE1946; }
+            80% { transform: translate(2px, -2px); text-shadow: -2px 0 #4DEEEA; }
+            100% { transform: translate(0); text-shadow: none; }
+        }
+
+        @keyframes color-cycle {
+            0% { color: white; text-shadow: 0 0 20px rgba(206, 25, 70, 0.5); }
+            50% { color: #FFE5E5; text-shadow: 0 0 30px rgba(145, 70, 255, 0.7); }
+            100% { color: white; text-shadow: 0 0 20px rgba(206, 25, 70, 0.5); }
+        }
+
+        /* 3. Card Animations */
+        @keyframes slide-in-left {
+            0% { opacity: 0; transform: translateX(-100px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slide-in-up {
+            0% { opacity: 0; transform: translateY(100px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in-right {
+            0% { opacity: 0; transform: translateX(100px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes border-glow-cycle {
+            0% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            50% { border-color: rgba(145, 70, 255, 0.5); box-shadow: 0 10px 40px rgba(145, 70, 255, 0.3); }
+            100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        }
+
+        @keyframes icon-bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.1); }
+        }
+
+        /* 4. Particle Float */
+        @keyframes particle-float {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(10px, -15px); }
+            50% { transform: translate(-5px, -25px); }
+            75% { transform: translate(-15px, -10px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* 5. Star Twinkle */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 5px white; }
+        }
+
+        /* 6. Background Breathe */
+        @keyframes breathe {
+            0% { opacity: 0.1; transform: scale(1); }
+            100% { opacity: 0.2; transform: scale(1.1); }
+        }
+
+        /* 7. Rays */
+        @keyframes ray-move {
+            0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+            50% { opacity: 0.05; }
+            100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+        }
+
+        /* 8. Quote Entry */
+        @keyframes quote-fade-in {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes text-pulse-gold {
+            0%, 100% { text-shadow: 0 0 15px rgba(77, 238, 234, 0.4); }
+            50% { text-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+        }
+
+
+        /* --- STYLES --- */
+
+        /* Background Effects */
+        .bg-layer-1 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0F0F1A;
+            z-index: 0;
+        }
+
+        .bg-glow-purple {
+            position: absolute;
+            top: -200px;
+            right: -200px;
+            width: 900px;
+            height: 900px;
+            background-color: #9146FF;
+            opacity: 0.12;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 1;
+            animation: breathe 8s ease-in-out infinite alternate;
+        }
+
+        .bg-glow-red {
+            position: absolute;
+            bottom: -200px;
+            left: -200px;
+            width: 900px;
+            height: 900px;
+            background-color: #CE1946;
+            opacity: 0.12;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 1;
+            animation: breathe 8s ease-in-out infinite alternate-reverse;
+        }
+
+        .light-ray {
+            position: absolute;
+            width: 200px;
+            height: 1200px;
+            background-color: white;
+            filter: blur(60px);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.6;
+            z-index: 2;
+            animation: particle-float 10s ease-in-out infinite;
+        }
+
+        /* Stars */
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 2;
+            animation: twinkle 4s ease-in-out infinite;
+        }
+
+        /* Logo Styling */
+        .logo-container {
+            position: absolute;
+            top: 40px;
+            left: 50px;
+            width: 90px;
+            height: 90px;
+            z-index: 30;
+            animation: float-logo 4s ease-in-out infinite;
+            perspective: 1000px;
+        }
+        
+        .logo-tenf {
+            width: 100%;
+            height: auto;
+            animation: spin3D 20s linear infinite, shadow-pulse-multi 4s infinite;
+            transform-style: preserve-3d;
+        }
+
+        .logo-container:hover .logo-tenf {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+
+        /* Title Styles */
+        .main-title {
+            font-size: 60px;
+            font-weight: 900;
+            line-height: 1.1;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            color: white;
+            position: relative;
+            z-index: 10;
+            animation: color-cycle 8s infinite;
+        }
+
+        .main-title:hover {
+            animation: glitch-text 0.5s infinite;
+        }
+
+        .title-highlight {
+            color: #CE1946;
+            text-shadow: 0 0 30px rgba(206, 25, 70, 0.5);
+        }
+
+        .title-underline {
+            width: 150px;
+            height: 6px;
+            background-color: #FFD700;
+            margin-top: 15px;
+            margin-bottom: 40px;
+            border-radius: 3px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            animation: breathe 4s infinite;
+        }
+
+        /* Glassmorphism Cards */
+        .cards-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 20px;
+            z-index: 10;
+        }
+
+        .glass-card {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 30px 25px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: border-glow-cycle 6s infinite alternate;
+        }
+
+        /* Staggered Entry Animations */
+        .card-1 { animation: slide-in-left 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, border-glow-cycle 6s infinite alternate; }
+        .card-2 { animation: slide-in-up 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards; opacity: 0; } /* Delay needs opacity 0 start */
+        .card-3 { animation: slide-in-right 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s forwards; opacity: 0; }
+
+        /* Ensure animation persistence for delayed elements */
+        .card-2, .card-3 {
+            animation-fill-mode: forwards;
+        }
+        /* Combined animation definition for delayed cards to include the border glow loop */
+        .card-2 { animation: slide-in-up 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards, border-glow-cycle 6s infinite alternate 0.3s; }
+        .card-3 { animation: slide-in-right 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s forwards, border-glow-cycle 6s infinite alternate 0.6s; }
+
+
+        .glass-card:hover {
+            transform: scale(1.05) translateY(-10px);
+            background-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(145, 70, 255, 0.4);
+            border-color: #FFD700;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: #FFD700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .card-icon-container {
+            width: 90px;
+            height: 90px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover .card-icon-container {
+            background-color: rgba(255, 215, 0, 0.1);
+            transform: scale(1.1);
+        }
+
+        .card-icon {
+            font-size: 45px;
+            color: #FFD700;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+            animation: icon-bounce 3s ease-in-out infinite;
+        }
+        
+        .card-2 .card-icon { animation-delay: 1s; }
+        .card-3 .card-icon { animation-delay: 2s; }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .card-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+        }
+
+        .card-list-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            color: #E0E0E0;
+            font-size: 15px;
+            line-height: 1.4;
+            transition: transform 0.2s ease;
+        }
+        
+        .card-list-item:hover {
+            transform: translateX(5px);
+            color: white;
+        }
+
+        .bullet-point {
+            color: #CE1946;
+            margin-right: 10px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Script Quote */
+        .quote-container {
+            margin-top: auto;
+            margin-bottom: 30px;
+            text-align: center;
+            z-index: 10;
+            width: 100%;
+            opacity: 0; /* Initial state */
+            animation: quote-fade-in 1s ease-out 1.5s forwards;
+        }
+
+        .quote-text {
+            font-family: 'Parisienne', cursive;
+            font-size: 32px;
+            color: #4DEEEA; /* Cyan */
+            animation: text-pulse-gold 4s infinite;
+        }
+
+        /* Decorative elements */
+        .corner-accent {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-top: 2px solid rgba(145, 70, 255, 0.3);
+            border-right: 2px solid rgba(145, 70, 255, 0.3);
+            top: 40px;
+            right: 40px;
+            z-index: 5;
+            animation: breathe 5s infinite;
+        }
+
+        .corner-accent::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 20px;
+            height: 20px;
+            border-top: 4px solid #9146FF;
+            border-right: 4px solid #9146FF;
+            box-shadow: 0 0 15px rgba(145, 70, 255, 0.8);
+        }
+
+    </style>
+</head>
+<body>
+<!-- Background Layers -->
+<div class="bg-layer-1"></div>
+<div class="bg-glow-purple"></div>
+<div class="bg-glow-red"></div>
+<!-- Rays -->
+<div class="light-ray" style="top: -200px; left: -100px; animation: ray-move 10s linear infinite;"></div>
+<div class="light-ray" style="bottom: -200px; right: -100px; animation: ray-move 12s linear infinite reverse;"></div>
+<!-- Decorative Particles (12+) -->
+<div class="particle" style="top: 15%; left: 10%; width: 4px; height: 4px; background-color: #FFD700; animation-duration: 6s;"></div>
+<div class="particle" style="top: 35%; left: 90%; width: 6px; height: 6px; background-color: #9146FF; animation-duration: 8s;"></div>
+<div class="particle" style="top: 75%; left: 20%; width: 3px; height: 3px; background-color: #CE1946; animation-duration: 7s;"></div>
+<div class="particle" style="top: 25%; left: 70%; width: 5px; height: 5px; background-color: #FFD700; animation-duration: 9s;"></div>
+<div class="particle" style="top: 85%; left: 85%; width: 4px; height: 4px; background-color: #9146FF; animation-duration: 6.5s;"></div>
+<div class="particle" style="top: 55%; left: 15%; width: 3px; height: 3px; opacity: 0.3; background-color: #CE1946; animation-duration: 7.5s;"></div>
+<div class="particle" style="top: 10%; left: 50%; width: 5px; height: 5px; background-color: #FFD700; animation-duration: 10s;"></div>
+<div class="particle" style="top: 60%; left: 60%; width: 4px; height: 4px; background-color: #9146FF; animation-duration: 8.5s;"></div>
+<div class="particle" style="top: 90%; left: 40%; width: 3px; height: 3px; background-color: #CE1946; animation-duration: 6.2s;"></div>
+<div class="particle" style="top: 30%; left: 30%; width: 6px; height: 6px; background-color: #FFD700; animation-duration: 9.5s;"></div>
+<div class="particle" style="top: 45%; left: 5%; width: 4px; height: 4px; background-color: #9146FF; animation-duration: 7.2s;"></div>
+<div class="particle" style="top: 80%; left: 95%; width: 5px; height: 5px; background-color: #CE1946; animation-duration: 8.8s;"></div>
+<!-- Stars (6) -->
+<div class="star" style="top: 12%; left: 25%; width: 2px; height: 2px; animation-delay: 0s;"></div>
+<div class="star" style="top: 28%; left: 80%; width: 3px; height: 3px; animation-delay: 1s;"></div>
+<div class="star" style="top: 65%; left: 10%; width: 2px; height: 2px; animation-delay: 2s;"></div>
+<div class="star" style="top: 50%; left: 90%; width: 3px; height: 3px; animation-delay: 1.5s;"></div>
+<div class="star" style="top: 88%; left: 30%; width: 2px; height: 2px; animation-delay: 0.5s;"></div>
+<div class="star" style="top: 5%; left: 60%; width: 2px; height: 2px; animation-delay: 2.5s;"></div>
+<!-- TENF Logo -->
+<div class="logo-container">
+<img alt="TENF Logo" class="logo-tenf" src="https://www.genspark.ai/api/files/s/R3MioI83"/>
+</div>
+<!-- Corner Decoration -->
+<div class="corner-accent"></div>
+<!-- Main Content Container -->
+<div style="display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 50px; position: relative; z-index: 10;">
+<!-- Title Section -->
+<div style="text-align: center; margin-bottom: 20px;">
+<p class="main-title">
+            LES FONDATIONS DE LA <br/>
+<span class="title-highlight">NEW FAMILY</span>
+</p>
+<div style="display: flex; justify-content: center;">
+<div class="title-underline"></div>
+</div>
+</div>
+<!-- Cards Container -->
+<div class="cards-container">
+<!-- Card 1: Objectif (Left) -->
+<div class="glass-card card-1">
+<div class="card-icon-container">
+<i class="fas fa-bullseye card-icon"></i>
+</div>
+<p class="card-title">OBJECTIF</p>
+<ul class="card-list">
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Créer un espace d'entraide authentique</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Promouvoir les contenus de chacun</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Partager astuces et bonnes pratiques</span>
+</li>
+</ul>
+</div>
+<!-- Card 2: Modération (Up/Bottom) -->
+<div class="glass-card card-2">
+<div class="card-icon-container">
+<i class="fas fa-shield-alt card-icon"></i>
+</div>
+<p class="card-title">MODÉRATION</p>
+<ul class="card-list">
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Équipe bienveillante et à l'écoute</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Cadre sécurisant pour tous</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Résolution rapide des conflits</span>
+</li>
+</ul>
+</div>
+<!-- Card 3: Valeurs (Right) -->
+<div class="glass-card card-3">
+<div class="card-icon-container">
+<i class="fas fa-handshake card-icon"></i>
+</div>
+<p class="card-title">VALEURS</p>
+<ul class="card-list">
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Bienveillance et respect avant tout</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Collaboration plutôt que compétition</span>
+</li>
+<li class="card-list-item">
+<i class="fas fa-chevron-right bullet-point"></i>
+<span>Chaque membre compte</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Quote Section -->
+<div class="quote-container">
+<p class="quote-text">"Des fondations solides pour une communauté durable."</p>
+</div>
+</div>
+</body>
+</html>

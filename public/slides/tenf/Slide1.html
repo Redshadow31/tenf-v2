@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
+<title>Twitch Entraide New Family - Page de Titre Spectaculaire</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1280px;
+            height: 720px;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+            background-color: #0F0F1A;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- BACKGROUND & ATMOSPHERE --- */
+        .bg-layer-1 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0F0F1A;
+            z-index: 0;
+        }
+
+        /* Dynamic Glows */
+        .bg-glow-purple {
+            position: absolute;
+            top: -200px;
+            right: -200px;
+            width: 900px;
+            height: 900px;
+            background-color: #9146FF;
+            opacity: 0.15;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 1;
+            animation: breathe 8s infinite alternate;
+        }
+
+        .bg-glow-red {
+            position: absolute;
+            bottom: -200px;
+            left: -200px;
+            width: 900px;
+            height: 900px;
+            background-color: #CE1946;
+            opacity: 0.15;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 1;
+            animation: breathe 8s infinite alternate-reverse;
+        }
+
+        @keyframes breathe {
+            0% { opacity: 0.1; transform: scale(1); }
+            100% { opacity: 0.2; transform: scale(1.1); }
+        }
+
+        /* Light Rays (Simulated) */
+        .light-ray {
+            position: absolute;
+            width: 200px;
+            height: 1200px;
+            background-color: rgba(255, 255, 255, 0.03);
+            transform: rotate(45deg);
+            z-index: 1;
+            filter: blur(20px);
+            animation: ray-move 10s linear infinite;
+        }
+        @keyframes ray-move {
+            0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+            50% { opacity: 0.05; }
+            100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+        }
+
+        /* Stars */
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 1;
+            animation: twinkle var(--duration) ease-in-out infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 5px white; }
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            z-index: 2;
+            animation: float-random var(--duration) ease-in-out infinite;
+        }
+        @keyframes float-random {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(var(--mx), var(--my)); }
+            50% { transform: translate(var(--mx2), var(--my2)); }
+            75% { transform: translate(var(--mx), var(--my)); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* --- LOGO ENHANCED --- */
+        .logo-tenf-container {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            z-index: 30;
+            width: 120px;
+            height: 120px;
+            perspective: 1000px; /* Enables 3D rotation */
+        }
+
+        .logo-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: spin3D 20s linear infinite, float-logo 4s ease-in-out infinite;
+        }
+
+        .logo-tenf {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            /* Multi-color pulsing shadow */
+            animation: shadow-pulse 4s infinite;
+        }
+
+        /* Shake effect on hover (simulated by a class or just keyframe if we could use hover) */
+        .logo-wrapper:hover {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes spin3D {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        @keyframes float-logo {
+            0%, 100% { top: 0; }
+            50% { top: -10px; }
+        }
+
+        @keyframes shadow-pulse {
+            0% { box-shadow: 0 0 30px rgba(206, 25, 70, 0.6); }
+            33% { box-shadow: 0 0 40px rgba(145, 70, 255, 0.6); }
+            66% { box-shadow: 0 0 40px rgba(255, 107, 53, 0.6); }
+            100% { box-shadow: 0 0 30px rgba(206, 25, 70, 0.6); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* --- MICROPHONE ENHANCED --- */
+        .microphone-container {
+            position: absolute;
+            top: 50%;
+            right: -50px;
+            transform: translateY(-50%);
+            z-index: 5;
+            opacity: 0.85;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Bounce and subtle rotation */
+            animation: mic-float 6s ease-in-out infinite;
+        }
+
+        @keyframes mic-float {
+            0%, 100% { transform: translateY(-50%) rotate(0deg); }
+            50% { transform: translateY(-55%) rotate(3deg); }
+        }
+
+        .microphone-icon {
+            font-size: 220px;
+            color: #FFD700;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.4));
+            position: relative;
+            z-index: 2;
+            animation: glow-pulse-intense 2s infinite alternate;
+        }
+        
+        @keyframes glow-pulse-intense {
+            from { filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3)); }
+            to { filter: drop-shadow(0 0 40px rgba(255, 215, 0, 0.8)); }
+        }
+        
+        .mic-shadow {
+            position: absolute;
+            font-size: 220px;
+            color: rgba(0,0,0,0.5);
+            transform: translate(15px, 15px);
+            filter: blur(8px);
+            z-index: 1;
+        }
+        
+        .mic-glow {
+            position: absolute;
+            font-size: 220px;
+            color: rgba(255, 215, 0, 0.2);
+            filter: blur(40px);
+            z-index: 0;
+            animation: pulse-bg 3s infinite alternate;
+        }
+
+        /* Floating icons around mic */
+        .float-icon {
+            position: absolute;
+            z-index: 1;
+        }
+        
+        .twitch-icon {
+            top: -30px;
+            right: 90px;
+            font-size: 40px;
+            color: #9146FF;
+            text-shadow: 0 0 15px rgba(145, 70, 255, 0.8);
+            animation: icon-bounce-rotate 5s ease-in-out infinite;
+        }
+        
+        .gamepad-icon {
+            bottom: -10px;
+            left: 10px;
+            font-size: 35px;
+            color: #CE1946;
+            text-shadow: 0 0 15px rgba(206, 25, 70, 0.8);
+            animation: icon-bounce-rotate 4s ease-in-out infinite reverse;
+        }
+
+        @keyframes icon-bounce-rotate {
+            0% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-20px) rotate(15deg) scale(1.1); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); }
+        }
+
+        /* --- CONTENT TYPOGRAPHY --- */
+        .content-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            padding-top: 40px;
+        }
+
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.3em;
+            margin-bottom: 10px;
+            opacity: 1;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+            animation: fade-in-down 1s ease-out;
+        }
+
+        .main-title-container {
+            text-align: center;
+            position: relative;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .main-title-word {
+            font-size: 100px;
+            font-weight: 900;
+            line-height: 0.9;
+            text-transform: uppercase;
+            display: block;
+            position: relative;
+        }
+
+        .word-twitch {
+            color: white;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            animation: glitch-white 5s infinite;
+        }
+
+        .word-entraide {
+            color: #CE1946;
+            text-shadow: 0 0 30px rgba(206, 25, 70, 0.8), 0 0 60px rgba(206, 25, 70, 0.4);
+            animation: glitch-red 4s infinite alternate;
+        }
+
+        .word-newfamily {
+            color: #9146FF;
+            text-shadow: 0 0 30px rgba(145, 70, 255, 0.8), 0 0 60px rgba(145, 70, 255, 0.4);
+            animation: glitch-purple 6s infinite;
+        }
+
+        /* Glitch Animations */
+        @keyframes glitch-red {
+            0%, 95% { transform: skew(0deg); }
+            96% { transform: skew(-2deg) translateX(-2px); text-shadow: 2px 0 #9146FF; }
+            97% { transform: skew(2deg) translateX(2px); text-shadow: -2px 0 #FFD700; }
+            98% { transform: skew(0deg); text-shadow: 0 0 30px rgba(206, 25, 70, 0.8); }
+        }
+
+        @keyframes glitch-white {
+            0%, 98% { opacity: 1; }
+            99% { opacity: 0.8; transform: scale(1.01); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes glitch-purple {
+            0%, 90% { letter-spacing: normal; }
+            95% { letter-spacing: 2px; }
+            100% { letter-spacing: normal; }
+        }
+
+        /* Subtitle */
+        .subtitle-script {
+            font-family: 'Parisienne', cursive;
+            font-size: 32px;
+            color: #FFD700;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            text-align: center;
+            max-width: 80%;
+            animation: fade-in-up 1.5s ease-out;
+        }
+
+        /* --- BASELINE CARD ANIMATIONS --- */
+        .baseline-card {
+            background-color: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #CE1946;
+            border-radius: 16px;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            max-width: 800px;
+            /* Slide in from bottom */
+            animation: slide-in-bottom 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+            animation-delay: 0.5s;
+        }
+        
+        .baseline-card:hover {
+            /* Handled via keyframes if not interacting, but simulates scale up */
+            animation: card-pulse 2s infinite; 
+        }
+
+        @keyframes slide-in-bottom {
+            0% { transform: translateY(100px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes card-pulse {
+            0% { transform: scale(1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 15px 40px rgba(206, 25, 70, 0.3); }
+            100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+        }
+
+        .heart-icon-container {
+            width: 50px;
+            height: 50px;
+            background-color: #CE1946;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(206, 25, 70, 0.6);
+            animation: heart-beat 1.5s infinite;
+        }
+
+        @keyframes heart-beat {
+            0% { transform: scale(1); }
+            15% { transform: scale(1.2); }
+            30% { transform: scale(1); }
+            45% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .baseline-text {
+            font-size: 18px;
+            color: #E0E0E0;
+            font-weight: 300;
+        }
+        
+        .highlight-gold {
+            color: #FFD700;
+            font-weight: 600;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+
+        /* --- DECORATIVE ELEMENTS --- */
+        .corner-twitch {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 50px;
+            color: #9146FF;
+            text-shadow: 0 0 20px rgba(145, 70, 255, 0.8);
+            z-index: 20;
+            opacity: 0.8;
+            animation: bounce-subtle 3s infinite;
+        }
+        
+        .corner-site {
+            position: absolute;
+            bottom: 30px;
+            left: 40px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            z-index: 20;
+            padding-bottom: 2px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fade-in 2s ease-in;
+        }
+
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes fade-in {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes fade-in-down {
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+    </style>
+</head>
+<body>
+<!-- Background Layers -->
+<div class="bg-layer-1"></div>
+<!-- Light Rays -->
+<div class="light-ray" style="top: -20%; left: 30%;"></div>
+<div class="light-ray" style="top: -20%; right: 30%; animation-delay: 2s;"></div>
+<!-- Animated Glows -->
+<div class="bg-glow-purple"></div>
+<div class="bg-glow-red"></div>
+<!-- Stars (Twinkling) -->
+<div class="star" style="top: 10%; left: 10%; width: 2px; height: 2px; --duration: 3s;"></div>
+<div class="star" style="top: 20%; right: 20%; width: 3px; height: 3px; --duration: 4s;"></div>
+<div class="star" style="top: 80%; left: 15%; width: 2px; height: 2px; --duration: 5s;"></div>
+<div class="star" style="top: 15%; right: 5%; width: 2px; height: 2px; --duration: 2.5s;"></div>
+<div class="star" style="top: 90%; left: 50%; width: 2px; height: 2px; --duration: 3.5s;"></div>
+<div class="star" style="top: 50%; left: 5%; width: 1px; height: 1px; --duration: 6s;"></div>
+<!-- Particles (Increased Count & Varied Animation) -->
+<div class="particle" style="top: 15%; left: 20%; width: 4px; height: 4px; background: #FFD700; --duration: 6s; --mx: 20px; --my: -20px; --mx2: -10px; --my2: -40px;"></div>
+<div class="particle" style="top: 25%; right: 15%; width: 6px; height: 6px; background: #9146FF; --duration: 8s; --mx: -30px; --my: 10px; --mx2: -10px; --my2: 30px;"></div>
+<div class="particle" style="top: 60%; left: 10%; width: 3px; height: 3px; opacity: 0.5; background: #CE1946; --duration: 10s; --mx: 10px; --my: 10px; --mx2: 30px; --my2: -10px;"></div>
+<div class="particle" style="top: 80%; right: 25%; width: 5px; height: 5px; background: #FFD700; --duration: 7s; --mx: -20px; --my: -20px; --mx2: 0px; --my2: -50px;"></div>
+<div class="particle" style="top: 40%; left: 80%; width: 4px; height: 4px; background: #FF838A; --duration: 9s; --mx: 15px; --my: 15px; --mx2: -15px; --my2: 30px;"></div>
+<div class="particle" style="top: 10%; left: 50%; width: 3px; height: 3px; background: white; --duration: 5s; --mx: 50px; --my: 0px; --mx2: -50px; --my2: 10px;"></div>
+<div class="particle" style="top: 90%; left: 40%; width: 5px; height: 5px; background: #9146FF; --duration: 12s; --mx: 0px; --my: -60px; --mx2: 20px; --my2: -30px;"></div>
+<div class="particle" style="top: 5%; right: 40%; width: 3px; height: 3px; background: #FFD700; --duration: 6.5s; --mx: -10px; --my: 20px; --mx2: 10px; --my2: 40px;"></div>
+<div class="particle" style="top: 70%; left: 5%; width: 4px; height: 4px; background: #CE1946; --duration: 7.5s; --mx: 20px; --my: -20px; --mx2: 40px; --my2: 0px;"></div>
+<div class="particle" style="top: 35%; right: 5%; width: 5px; height: 5px; background: #FF6B35; --duration: 8.5s; --mx: -30px; --my: 0px; --mx2: -10px; --my2: -20px;"></div>
+<!-- Logo with 3D Rotation & Multi-colored Shadow -->
+<div class="logo-tenf-container">
+<div class="logo-wrapper">
+<img alt="TENF Logo" class="logo-tenf" src="https://www.genspark.ai/api/files/s/R3MioI83"/>
+</div>
+</div>
+<!-- Decorative Microphone (Enhanced Animation) -->
+<div class="microphone-container">
+<div class="mic-glow">
+<i class="fas fa-microphone-lines"></i>
+</div>
+<div class="mic-shadow">
+<i class="fas fa-microphone-lines"></i>
+</div>
+<i class="fas fa-microphone-lines microphone-icon"></i>
+<!-- Floating Icons (Bouncing) -->
+<i class="fab fa-twitch twitch-icon"></i>
+<i class="fas fa-gamepad gamepad-icon"></i>
+</div>
+<!-- Main Content -->
+<div class="content-container">
+<!-- Welcome Text (Fade In) -->
+<p class="welcome-text">BIENVENUE SUR</p>
+<!-- Main Title (Glitch & Wave Effects) -->
+<div class="main-title-container">
+<span class="main-title-word word-twitch">TWITCH</span>
+<span class="main-title-word word-entraide">ENTRAIDE</span>
+<span class="main-title-word word-newfamily">NEW FAMILY</span>
+</div>
+<!-- Subtitle Script (Fade Up) -->
+<p class="subtitle-script">
+        "Une communauté francophone d'entraide et de passion pour le streaming"
+    </p>
+<!-- Baseline Card (Slide In + Pulse) -->
+<div class="baseline-card">
+<div class="heart-icon-container">
+<i class="fas fa-heart text-white text-xl"></i>
+</div>
+<div>
+<p class="baseline-text">
+                Que vous soyez <span class="highlight-gold">débutant</span> ou <span class="highlight-gold">confirmé</span>, 
+                ici vous trouverez écoute et soutien.
+            </p>
+</div>
+</div>
+</div>
+<!-- Bottom Elements -->
+<div class="corner-site">
+    teamnewfamily.netlify.app
+</div>
+<div class="corner-twitch">
+<i class="fab fa-twitch"></i>
+</div>
+</body>
+</html>

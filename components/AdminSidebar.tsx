@@ -61,6 +61,26 @@ export default function AdminSidebar() {
                   >
                     Inscription modérateur
                   </Link>
+                  <Link
+                    href="/admin/evaluations/presentation"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/evaluations/presentation"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Présentation TENF
+                  </Link>
+                  <Link
+                    href="/admin/evaluations/presentation-anime"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/evaluations/presentation-anime"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Présentation animée
+                  </Link>
                 </div>
               )}
             </div>
