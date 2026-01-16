@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { getAllMemberData, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 /**
@@ -59,10 +59,16 @@ export async function GET() {
     await loadMemberDataFromStorage();
     
     // 2. Compter le nombre total de membres actifs
-    // Utiliser getAllActiveMemberDataFromAllLists() comme l'API publique /api/members/public
-    // Cette fonction retourne uniquement les membres actifs de toutes les listes (1, 2, 3)
-    const activeMembers = getAllActiveMemberDataFromAllLists();
+    // Utiliser la même logique que la page admin /admin/membres/gestion
+    // La page admin filtre simplement avec m.isActive (sans vérifier listId)
+    const allMembers = getAllMemberData();
+    console.log(`[Stats API] Total members in store: ${allMembers.length}`);
+    
+    // Compter les membres actifs (même logique que la page admin)
+    const activeMembers = allMembers.filter(m => m.isActive === true);
     const activeMembersCount = activeMembers.length;
+    
+    console.log(`[Stats API] Active members count: ${activeMembersCount} (filtered from ${allMembers.length} total)`);
     
     // Pour les lives, utiliser les logins Twitch des membres actifs
     const twitchLoginsForLives = activeMembers
@@ -70,9 +76,7 @@ export async function GET() {
       .filter(Boolean) as string[];
     
     // Debug: logger le nombre de membres actifs
-    const allMembers = getAllMemberData();
-    console.log(`[Stats API] Total members in store: ${allMembers.length}`);
-    console.log(`[Stats API] Active members count: ${activeMembersCount}`);
+    console.log(`[Stats API] Active members count (from getAllActiveMemberDataFromAllLists): ${activeMembersCount}`);
 
     // 3. Compter les lives en cours (utiliser exactement la même logique que /api/twitch/streams et la page /lives)
     let livesCount = 0;
