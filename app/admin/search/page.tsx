@@ -166,7 +166,7 @@ export default function AdminSearchPage() {
                         <div className="flex-shrink-0">
                           {member.discordId ? (
                             <img
-                              src={`https://cdn.discordapp.com/avatars/${member.discordId}/avatar.png`}
+                              src={`https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`}
                               alt={member.displayName}
                               className="w-12 h-12 rounded-full"
                               onError={(e) => {
