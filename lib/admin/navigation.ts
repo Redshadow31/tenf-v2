@@ -19,6 +19,11 @@ export const adminNavigation: NavItem[] = [
     label: "Tableau de bord",
     icon: "📊",
   },
+  {
+    href: "/admin/control-center",
+    label: "Centre de contrôle",
+    icon: "📌",
+  },
 
   // 2. ⚙️ Administration du site
   {

@@ -566,3 +566,49 @@ a:hover {
     animation: none;
   }
 }
+
+/* Styles pour le Centre de contrôle */
+.control-center-alert-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.control-center-alert-card:hover {
+  transform: translateY(-2px);
+}
+
+.control-center-quick-link {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.control-center-quick-link:hover {
+  transform: translateY(-4px);
+}
+
+.control-center-arrow {
+  transition: transform 0.2s ease;
+}
+
+.group:hover .control-center-arrow {
+  transform: translateX(4px);
+}
+
+/* Désactivation des animations pour prefers-reduced-motion - Centre de contrôle */
+@media (prefers-reduced-motion: reduce) {
+  .control-center-alert-card,
+  .control-center-quick-link {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .control-center-alert-card:hover,
+  .control-center-quick-link:hover {
+    transform: none;
+  }
+  
+  .control-center-arrow {
+    transition: none;
+  }
+  
+  .group:hover .control-center-arrow {
+    transform: none;
+  }
+}
