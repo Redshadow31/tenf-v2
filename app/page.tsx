@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { allMembers } from "@/lib/members";
-import { getVipMembers } from "@/lib/memberRoles";
 
 interface Stats {
   totalMembers: number;
@@ -54,12 +53,32 @@ export default function Page() {
   }, []);
 
   // Récupérer les VIP
-  const allVip = getVipMembers();
+  const [vipMembers, setVipMembers] = useState<any[]>([]);
+  
+  useEffect(() => {
+    async function fetchVipMembers() {
+      try {
+        const response = await fetch("/api/vip-members", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setVipMembers(data.members || []);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des VIP:", error);
+      }
+    }
+    fetchVipMembers();
+  }, []);
   
   // Sélectionner 3 VIP au hasard parmi tous les VIP du mois
-  const randomVip = getRandomItems(allVip, 3);
+  const randomVip = getRandomItems(vipMembers, 3);
   
-  const vipOfMonth = allVip[0]?.displayName || "MissLyliee";
+  const vipOfMonth = vipMembers[0]?.displayName || "MissLyliee";
   
   // Récupérer les vraies données de lives
   const [lives, setLives] = useState<any[]>([]);
@@ -317,18 +336,18 @@ export default function Page() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {randomVip.map((vip) => (
             <div
-              key={vip.twitchLogin}
+              key={(vip as any).discordId || (vip as any).twitchLogin || Math.random()}
               className="card flex flex-col items-center space-y-4 border p-6 text-center home-vip-card"
               style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
               <div className="relative">
                 <img
-                  src={vip.twitchAvatar || vip.avatar || `https://placehold.co/80x80?text=${vip.displayName.charAt(0)}`}
-                  alt={vip.displayName}
+                  src={(vip as any).twitchAvatar || (vip as any).avatar || `https://placehold.co/80x80?text=${(vip as any).displayName?.charAt(0) || 'V'}`}
+                  alt={(vip as any).displayName || 'VIP'}
                   className="h-20 w-20 rounded-full object-cover home-vip-avatar"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = `https://placehold.co/80x80?text=${vip.displayName.charAt(0)}`;
+                    target.src = `https://placehold.co/80x80?text=${(vip as any).displayName?.charAt(0) || 'V'}`;
                   }}
                 />
                 <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white home-vip-badge" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -336,7 +355,7 @@ export default function Page() {
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{vip.displayName}</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{(vip as any).displayName || 'VIP'}</h3>
               </div>
             </div>
           ))}
