@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import NextEventBanner from "@/components/NextEventBanner";
 
 interface LiveStream {
   id: string;
@@ -272,6 +273,9 @@ export default function LivesPage() {
 
   return (
     <div className="space-y-8">
+      {/* Bandeau prochain événement */}
+      <NextEventBanner />
+      
       {/* Titre et bouton filtre jeu */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Lives en direct</h1>

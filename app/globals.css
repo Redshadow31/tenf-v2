@@ -612,3 +612,26 @@ a:hover {
     transform: none;
   }
 }
+
+/* ============================================
+   Animation marquee pour bandeau événement
+   ============================================ */
+
+@keyframes scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-text {
+  animation: scroll-text 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-text {
+    animation: none;
+  }
+}
