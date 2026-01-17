@@ -127,16 +127,25 @@ export default function PresentationAnimePage() {
           {/* Overlay sombre */}
           <div className="absolute inset-0 bg-black/95"></div>
 
-          {/* Conteneur 16:9 centré */}
-          <div className="relative w-full" style={{ aspectRatio: "16/9", maxWidth: "95vw", maxHeight: "95vh" }}>
-            {/* Bouton fermer */}
-            <button
-              onClick={handleExitPresentation}
-              className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all duration-200 hover:scale-110 border border-gray-600"
-              aria-label="Quitter la présentation"
-            >
-              <span className="text-2xl">✕</span>
-            </button>
+          {/* Conteneur 16:9 plein écran */}
+          <div className="relative w-full h-full" style={{ width: "100vw", height: "100vh" }}>
+            {/* Indicateur de progression + Bouton fermer en haut à droite */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+              {/* Indicateur de progression */}
+              <div className="flex items-center gap-2 bg-black/50 px-4 py-2 rounded-full border border-gray-600">
+                <span className="text-sm text-gray-300">
+                  {currentSlide + 1} / {slides.length}
+                </span>
+              </div>
+              {/* Bouton fermer */}
+              <button
+                onClick={handleExitPresentation}
+                className="w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all duration-200 hover:scale-110 border border-gray-600"
+                aria-label="Quitter la présentation"
+              >
+                <span className="text-2xl">✕</span>
+              </button>
+            </div>
 
             {/* Flèche gauche */}
             <button
@@ -178,21 +187,14 @@ export default function PresentationAnimePage() {
               </svg>
             </button>
 
-            {/* Slide actuel */}
-            <div className="w-full h-full bg-[#1a1a1d] rounded-lg overflow-hidden border border-gray-700">
+            {/* Slide actuel - plein écran */}
+            <div className="w-full h-full bg-[#1a1a1d] overflow-hidden">
               <iframe
                 src={`/slides/tenf/${slides[currentSlide]}`}
                 className="w-full h-full border-0"
                 title={`Slide ${currentSlide + 1}`}
                 allowFullScreen
               />
-            </div>
-
-            {/* Indicateur de progression */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-black/50 px-4 py-2 rounded-full border border-gray-600">
-              <span className="text-sm text-gray-300">
-                {currentSlide + 1} / {slides.length}
-              </span>
             </div>
           </div>
         </div>
