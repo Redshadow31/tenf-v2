@@ -123,12 +123,12 @@ export default function PresentationAnimePage() {
         </div>
       ) : (
         // Mode présentation plein écran
-        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black" style={{ margin: 0, padding: 0 }}>
           {/* Overlay sombre */}
           <div className="absolute inset-0 bg-black/95"></div>
 
-          {/* Conteneur 16:9 plein écran */}
-          <div className="relative w-full h-full" style={{ width: "100vw", height: "100vh" }}>
+          {/* Conteneur plein écran */}
+          <div className="relative w-full h-full" style={{ width: "100vw", height: "100vh", margin: 0, padding: 0 }}>
             {/* Indicateur de progression + Bouton fermer en haut à droite */}
             <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
               {/* Indicateur de progression */}
@@ -188,10 +188,11 @@ export default function PresentationAnimePage() {
             </button>
 
             {/* Slide actuel - plein écran */}
-            <div className="w-full h-full bg-[#1a1a1d] overflow-hidden">
+            <div className="absolute inset-0 bg-[#1a1a1d] overflow-hidden" style={{ margin: 0, padding: 0 }}>
               <iframe
                 src={`/slides/tenf/${slides[currentSlide]}`}
                 className="w-full h-full border-0"
+                style={{ width: "100%", height: "100%", margin: 0, padding: 0 }}
                 title={`Slide ${currentSlide + 1}`}
                 allowFullScreen
               />
