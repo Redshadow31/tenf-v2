@@ -26,6 +26,8 @@ export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMembers, setActiveMembers] = useState<PublicMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Charger les membres depuis l'API publique
   useEffect(() => {
@@ -51,6 +53,15 @@ export default function Page() {
     loadMembers();
   }, []);
 
+  // Debounce de la recherche (250ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Fonction pour déterminer si un membre appartient à la catégorie "Staff"
   const isStaffCategory = (role: string): boolean => {
     return role === "Admin" || role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
@@ -67,36 +78,61 @@ export default function Page() {
     }
   };
 
+  // Fonction de normalisation pour la recherche (insensible à la casse et aux accents)
+  const normalizeText = (text: string | undefined | null): string => {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
   const getFilteredMembers = () => {
-    if (activeFilter === "Tous") {
-      // Trier tous les membres : Staff d'abord (dans l'ordre), puis les autres
-      return [...activeMembers].sort((a, b) => {
-        const aIsStaff = isStaffCategory(a.role);
-        const bIsStaff = isStaffCategory(b.role);
-        
-        if (aIsStaff && bIsStaff) {
-          // Les deux sont Staff, trier par ordre de hiérarchie
-          return getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role);
-        }
-        if (aIsStaff && !bIsStaff) return -1; // Staff avant les autres
-        if (!aIsStaff && bIsStaff) return 1;  // Staff avant les autres
-        return 0; // Même catégorie, ordre original
+    let filtered = activeMembers;
+
+    // Appliquer le filtre de rôle d'abord
+    if (activeFilter !== "Tous") {
+      if (activeFilter === "Staff") {
+        filtered = filtered.filter((member) => isStaffCategory(member.role));
+      } else {
+        const filterMap: Record<string, string> = {
+          Développement: "Développement",
+          Affiliés: "Affilié",
+        };
+        filtered = filtered.filter((member) => {
+          return member.role === filterMap[activeFilter];
+        });
+      }
+    }
+
+    // Appliquer la recherche (si présente)
+    if (debouncedSearchQuery.trim().length > 0) {
+      const normalizedQuery = normalizeText(debouncedSearchQuery);
+      filtered = filtered.filter((member) => {
+        const normalizedTwitch = normalizeText(member.twitchLogin);
+        const normalizedDisplayName = normalizeText(member.displayName);
+        const normalizedDiscord = normalizeText(member.discordUsername);
+
+        return (
+          normalizedTwitch.includes(normalizedQuery) ||
+          normalizedDisplayName.includes(normalizedQuery) ||
+          (normalizedDiscord && normalizedDiscord.includes(normalizedQuery))
+        );
       });
     }
-    
-    if (activeFilter === "Staff") {
-      // Filtrer et trier les membres Staff
-      return activeMembers
-        .filter((member) => isStaffCategory(member.role))
-        .sort((a, b) => getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role));
-    }
-    
-    const filterMap: Record<string, string> = {
-      Développement: "Développement",
-      Affiliés: "Affilié",
-    };
-    return activeMembers.filter((member) => {
-      return member.role === filterMap[activeFilter];
+
+    // Trier les résultats
+    return filtered.sort((a, b) => {
+      const aIsStaff = isStaffCategory(a.role);
+      const bIsStaff = isStaffCategory(b.role);
+      
+      if (aIsStaff && bIsStaff) {
+        return getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role);
+      }
+      if (aIsStaff && !bIsStaff) return -1;
+      if (!aIsStaff && bIsStaff) return 1;
+      return 0;
     });
   };
 
@@ -123,11 +159,104 @@ export default function Page() {
     setIsModalOpen(true);
   };
 
+  const filteredMembers = getFilteredMembers();
+
   return (
     <div className="space-y-8">
       {/* Titre de page */}
       <div className="space-y-4">
         <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Membres Actifs</h1>
+      </div>
+
+      {/* Barre de recherche */}
+      <div className="relative">
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-gray-400 group-focus-within:text-[#9146ff] transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher un membre (Twitch ou Discord)…"
+            className="w-full pl-10 pr-10 py-3 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9146ff]/50 placeholder-gray-500"
+            style={{
+              backgroundColor: 'var(--color-card)',
+              borderColor: searchQuery ? 'var(--color-primary)' : 'var(--color-border)',
+              color: 'var(--color-text)',
+            }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.matches(':focus')) {
+                e.currentTarget.style.borderColor = 'rgba(145, 70, 255, 0.5)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.matches(':focus') && !searchQuery) {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+              }
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary)';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(145, 70, 255, 0.1)';
+            }}
+            onBlur={(e) => {
+              if (!searchQuery) {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+              }
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setDebouncedSearchQuery("");
+              }}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-[#9146ff] transition-colors"
+              aria-label="Réinitialiser la recherche"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+        {debouncedSearchQuery && (
+          <div className="mt-2 text-xs flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+            {filteredMembers.length === 0 ? (
+              <span>
+                Aucun membre trouvé pour &quot;{debouncedSearchQuery}&quot;.
+              </span>
+            ) : (
+              <span>
+                {filteredMembers.length} {filteredMembers.length > 1 ? "membres trouvés" : "membre trouvé"}
+                {activeFilter !== "Tous" && " (filtré par " + activeFilter + ")"}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Barre de filtres */}
@@ -164,9 +293,37 @@ export default function Page() {
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
         </div>
+      ) : filteredMembers.length === 0 && debouncedSearchQuery.trim().length > 0 ? (
+        <div className="text-center py-12">
+          <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Aucun membre trouvé pour &quot;{debouncedSearchQuery}&quot;.
+          </p>
+          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
+            Essayez avec un autre terme de recherche.
+          </p>
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setDebouncedSearchQuery("");
+            }}
+            className="mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
+          >
+            Réinitialiser la recherche
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 lg:grid-cols-8">
-          {getFilteredMembers().map((member) => {
+          {filteredMembers.map((member) => {
             return (
               <div
                 key={member.twitchLogin}
