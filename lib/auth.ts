@@ -4,11 +4,6 @@ import { getAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 
 export const authOptions: NextAuthOptions = {
-  // Forcer NextAuth à utiliser NEXTAUTH_URL pour construire les URLs de callback
-  // Cela évite que NextAuth utilise l'URL du preview deploy au lieu de la production
-  ...(process.env.NEXTAUTH_URL && {
-    url: process.env.NEXTAUTH_URL,
-  }),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
