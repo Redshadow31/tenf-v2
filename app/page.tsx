@@ -1,8 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { allMembers } from "@/lib/members";
+import Image from "next/image";
+import { getRandomItems } from "@/lib/utils";
+import HomeClient from "@/components/HomeClient";
 
 interface Stats {
   totalMembers: number;
@@ -10,143 +9,65 @@ interface Stats {
   livesInProgress: number;
 }
 
-// Fonction pour sélectionner aléatoirement N éléments d'un tableau
-function getRandomItems<T>(array: T[], count: number): T[] {
-  const shuffled = [...array].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
+interface Live {
+  id: string;
+  username: string;
+  game: string;
+  thumbnail: string;
+  twitchUrl: string;
 }
 
-export default function Page() {
-  const [stats, setStats] = useState<Stats>({
-    totalMembers: 0,
-    activeMembers: 0,
-    livesInProgress: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [heroExpanded, setHeroExpanded] = useState(false);
+interface VipMember {
+  discordId: string;
+  username: string;
+  avatar: string;
+  displayName: string;
+  twitchLogin?: string;
+  twitchUrl?: string;
+  twitchAvatar?: string;
+  vipBadge?: string;
+  consecutiveMonths?: number;
+}
 
-  // Charger les statistiques depuis l'API
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const response = await fetch("/api/stats", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          console.log("[Homepage] Stats API response:", data);
-          setStats({
-            totalMembers: data.totalMembers || 0,
-            activeMembers: data.activeMembers || 0,
-            livesInProgress: data.livesInProgress || 0,
-          });
-        } else {
-          console.error("[Homepage] Stats API error:", response.status, response.statusText);
-        }
-      } catch (error) {
-        console.error("Erreur lors du chargement des statistiques:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStats();
-  }, []);
+interface HomeData {
+  stats: Stats;
+  vipMembers: VipMember[];
+  lives: Live[];
+}
 
-  // Récupérer les VIP
-  const [vipMembers, setVipMembers] = useState<any[]>([]);
-  
-  useEffect(() => {
-    async function fetchVipMembers() {
-      try {
-        const response = await fetch("/api/vip-members", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setVipMembers(data.members || []);
-        }
-      } catch (error) {
-        console.error("Erreur lors du chargement des VIP:", error);
-      }
+/**
+ * Page d'accueil - Server Component
+ * Récupère toutes les données côté serveur avec cache ISR de 30 secondes
+ */
+export default async function Page() {
+  // Récupérer toutes les données en une seule requête depuis /api/home
+  let homeData: HomeData = {
+    stats: { totalMembers: 0, activeMembers: 0, livesInProgress: 0 },
+    vipMembers: [],
+    lives: [],
+  };
+
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/home`, {
+      next: { revalidate: 30 }, // Cache ISR de 30 secondes
+    });
+
+    if (response.ok) {
+      homeData = await response.json();
     }
-    fetchVipMembers();
-  }, []);
-  
+  } catch (error) {
+    console.error('[Homepage] Error fetching home data:', error);
+  }
+
+  const { stats, vipMembers, lives } = homeData;
+
   // Sélectionner 3 VIP au hasard parmi tous les VIP du mois
   const randomVip = getRandomItems(vipMembers, 3);
-  
   const vipOfMonth = vipMembers[0]?.displayName || "MissLyliee";
-  
-  // Récupérer les vraies données de lives
-  const [lives, setLives] = useState<any[]>([]);
-  
-  useEffect(() => {
-    async function loadLives() {
-      try {
-        // Récupérer les membres actifs
-        const membersResponse = await fetch("/api/members/public", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        
-        if (membersResponse.ok) {
-          const membersData = await membersResponse.json();
-          const activeMembers = membersData.members || [];
-          const twitchLogins = activeMembers
-            .map((member: any) => member.twitchLogin)
-            .filter(Boolean);
 
-          if (twitchLogins.length > 0) {
-            // Récupérer les streams en cours
-            const userLoginsParam = twitchLogins.join(',');
-            const streamsResponse = await fetch(
-              `/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`,
-              {
-                cache: 'no-store',
-                headers: {
-                  'Cache-Control': 'no-cache',
-                },
-              }
-            );
-
-            if (streamsResponse.ok) {
-              const streamsData = await streamsResponse.json();
-              const liveStreams = (streamsData.streams || [])
-                .filter((stream: any) => stream.type === 'live')
-                .map((stream: any) => {
-                  const member = activeMembers.find(
-                    (m: any) => m.twitchLogin.toLowerCase() === stream.userLogin.toLowerCase()
-                  );
-                  return {
-                    id: stream.userLogin,
-                    username: member?.displayName || stream.userName,
-                    game: stream.gameName || "Just Chatting",
-                    thumbnail: stream.thumbnailUrl || "/api/placeholder/400/225",
-                    twitchUrl: member?.twitchUrl || `https://www.twitch.tv/${stream.userLogin}`,
-                  };
-                });
-              
-              // Sélectionner 3 lives au hasard
-              setLives(getRandomItems(liveStreams, 3));
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Erreur lors du chargement des lives:", error);
-      }
-    }
-    loadLives();
-  }, []);
-  
-  const randomLives = lives;
+  // Sélectionner 3 lives au hasard
+  const randomLives = getRandomItems(lives, 3);
 
   return (
     <div className="space-y-16 pb-16">
@@ -161,43 +82,8 @@ export default function Page() {
           Une véritable famille où chaque créateur grandit ensemble 💜
         </p>
 
-        {/* Texte principal (réduit au premier coup d'œil) */}
-        <div className="max-w-4xl space-y-4 text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-          <p className="text-xl">
-            TENF est bien plus qu&apos;un simple serveur Discord : c&apos;est une véritable famille de streamers engagés à progresser ensemble.
-          </p>
-          <p>
-            Que tu sois débutant, en développement ou déjà affilié, tu trouveras ici un espace bienveillant où chaque créateur est soutenu, encouragé et valorisé.
-          </p>
-          
-          {/* Contenu supplémentaire (replié par défaut) */}
-          {heroExpanded && (
-            <div className="space-y-4 animate-fade-in">
-              <p>
-                Notre communauté repose sur trois piliers : entraide, formation et découverte. Grâce à un suivi personnalisé, des retours constructifs, un système d&apos;évaluations transparentes et une équipe de modération formée, TENF accompagne chaque membre vers la réussite.
-              </p>
-              <p>
-                Lives partagés, events communautaires, mentorat, visibilité, accompagnement technique, ambiance chaleureuse : ici, personne ne grandit seul.
-              </p>
-              <p>
-                Rejoins une communauté active, humaine et passionnée, où chaque streamer compte et où ta progression devient un projet collectif.
-              </p>
-            </div>
-          )}
-          
-          <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
-            Bienvenue dans la New Family.
-          </p>
-          
-          {/* Bouton pour lire plus/moins */}
-          <button
-            onClick={() => setHeroExpanded(!heroExpanded)}
-            className="text-sm font-medium transition-colors hover:underline"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            {heroExpanded ? 'Lire moins ▲' : 'Lire plus ▼'}
-          </button>
-        </div>
+        {/* Texte principal (avec composant client pour "Lire plus") */}
+        <HomeClient />
 
         {/* Boutons d'action */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
@@ -230,21 +116,21 @@ export default function Page() {
         <div className="grid w-full max-w-5xl grid-cols-1 gap-6 md:grid-cols-4">
           <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-              {loading ? "..." : stats.totalMembers}
+              {stats.totalMembers}
             </p>
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>membres</p>
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>créateurs engagés</p>
           </div>
           <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-              {loading ? "..." : stats.activeMembers}
+              {stats.activeMembers}
             </p>
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>actifs ce mois</p>
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>entraide active</p>
           </div>
           <div className="card border p-6 text-center home-stat-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <p className="text-4xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-              {loading ? "..." : stats.livesInProgress}
+              {stats.livesInProgress}
             </p>
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>lives en cours</p>
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>communauté vivante</p>
@@ -281,17 +167,15 @@ export default function Page() {
             >
               <div className="relative aspect-video w-full overflow-hidden" style={{ background: 'linear-gradient(to bottom right, var(--color-accent-light), var(--color-accent-medium))' }}>
                 {live.thumbnail && (
-                  <img
+                  <Image
                     src={live.thumbnail}
                     alt={live.username}
-                    className="w-full h-full object-cover home-live-thumbnail"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
+                    fill
+                    className="object-cover home-live-thumbnail"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 )}
-                <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white animate-pulse">
+                <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white animate-pulse z-10">
                   🔴 EN DIRECT
                 </div>
               </div>
@@ -302,14 +186,8 @@ export default function Page() {
                   href={live.twitchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 block w-full rounded-lg px-4 py-2 text-center text-sm font-medium text-white transition-colors"
+                  className="mt-4 block w-full rounded-lg px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:opacity-90"
                   style={{ backgroundColor: 'var(--color-primary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-                  }}
                 >
                   Regarder
                 </Link>
@@ -339,26 +217,24 @@ export default function Page() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {randomVip.map((vip) => (
             <div
-              key={(vip as any).discordId || (vip as any).twitchLogin || Math.random()}
+              key={vip.discordId || vip.twitchLogin || Math.random()}
               className="card flex flex-col items-center space-y-4 border p-6 text-center home-vip-card"
               style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
             >
               <div className="relative">
-                <img
-                  src={(vip as any).twitchAvatar || (vip as any).avatar || `https://placehold.co/80x80?text=${(vip as any).displayName?.charAt(0) || 'V'}`}
-                  alt={(vip as any).displayName || 'VIP'}
-                  className="h-20 w-20 rounded-full object-cover home-vip-avatar"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://placehold.co/80x80?text=${(vip as any).displayName?.charAt(0) || 'V'}`;
-                  }}
+                <Image
+                  src={vip.twitchAvatar || vip.avatar || `https://placehold.co/80x80?text=${vip.displayName?.charAt(0) || 'V'}`}
+                  alt={vip.displayName || 'VIP'}
+                  width={80}
+                  height={80}
+                  className="rounded-full object-cover home-vip-avatar"
                 />
                 <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white home-vip-badge" style={{ backgroundColor: 'var(--color-primary)' }}>
                   VIP
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{(vip as any).displayName || 'VIP'}</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{vip.displayName || 'VIP'}</h3>
               </div>
             </div>
           ))}

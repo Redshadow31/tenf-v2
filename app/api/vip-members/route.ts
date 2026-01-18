@@ -6,7 +6,8 @@ import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// Cache ISR de 30 secondes pour les membres VIP
+export const revalidate = 30;
 
 const VIP_MONTH_STORE_NAME = 'tenf-vip-month';
 
@@ -151,7 +152,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${vipMembers.length} VIP Elite members from dashboard`);
 
-    return NextResponse.json({ members: vipMembers });
+    const response = NextResponse.json({ members: vipMembers });
+
+    // Headers de cache pour Next.js ISR (30 secondes)
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error) {
     console.error('Error fetching VIP members:', error);
     return NextResponse.json(

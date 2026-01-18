@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// Cache ISR de 30 secondes pour les streams Twitch
+export const revalidate = 30;
+
 interface TwitchStream {
   id: string;
   user_id: string;
@@ -147,7 +150,15 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ streams: allStreams });
+    const response = NextResponse.json({ streams: allStreams });
+
+    // Headers de cache pour Next.js ISR (30 secondes)
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error) {
     console.error('Error fetching Twitch streams:', error);
     return NextResponse.json(

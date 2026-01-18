@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { loadAdminDataFromStorage, initializeMemberData } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 
+// Cache ISR de 30 secondes pour les statistiques
+export const revalidate = 30;
+
 /**
  * GET - Récupère les statistiques pour la page d'accueil
  */
@@ -221,11 +224,19 @@ export async function GET() {
       console.error('[Stats API] Error fetching live streams count:', error);
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       totalMembers: totalDiscordMembers,
       activeMembers: activeMembersCount,
       livesInProgress: livesCount,
     });
+
+    // Headers de cache pour Next.js ISR (30 secondes)
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error) {
     console.error('Error fetching stats:', error);
     return NextResponse.json(
