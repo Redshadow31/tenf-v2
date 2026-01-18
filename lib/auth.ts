@@ -4,6 +4,12 @@ import { getAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 
 export const authOptions: NextAuthOptions = {
+  // Configuration de l'URL de base pour NextAuth
+  // Cette configuration force NextAuth à toujours utiliser NEXTAUTH_URL
+  // même sur les preview deploys Netlify
+  ...(process.env.NEXTAUTH_URL && {
+    url: process.env.NEXTAUTH_URL,
+  }),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -11,8 +17,11 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "identify guilds guilds.members.read",
-          // NextAuth gère automatiquement le redirect_uri depuis NEXTAUTH_URL
-          // Il construit : {NEXTAUTH_URL}/api/auth/callback/discord
+          // Forcer explicitement le redirect_uri pour garantir qu'il utilise NEXTAUTH_URL
+          // même si NextAuth détecte une URL différente dans la requête
+          ...(process.env.NEXTAUTH_URL && {
+            redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/discord`,
+          }),
         },
       },
     }),
