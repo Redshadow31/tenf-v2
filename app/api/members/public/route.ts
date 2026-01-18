@@ -5,9 +5,9 @@ import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
 
-// Désactiver le cache pour cette route - les données doivent toujours être à jour
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Activer le cache avec revalidation ISR de 60 secondes
+// Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
+export const revalidate = 60; // Revalidation toutes les 60 secondes
 
 // Initialiser les données au démarrage du serveur
 let initialized = false;
@@ -82,10 +82,13 @@ export async function GET() {
       total: publicMembers.length 
     });
 
-    // Désactiver le cache côté client
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
+    // Configurer les headers de cache pour Next.js ISR
+    // Revalidation de 60 secondes côté serveur (ISR)
+    // Cache de 60 secondes côté client/CDN avec revalidation en arrière-plan
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=60, stale-while-revalidate=300'
+    );
 
     return response;
   } catch (error) {
