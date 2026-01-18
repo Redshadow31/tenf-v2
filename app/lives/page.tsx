@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import NextEventBanner from "@/components/NextEventBanner";
+import LivesFamilyNote from "@/components/LivesFamilyNote";
 
 interface LiveStream {
   id: string;
@@ -275,6 +276,9 @@ export default function LivesPage() {
     <div className="space-y-8">
       {/* Bandeau prochain événement */}
       <NextEventBanner />
+      
+      {/* Encart rappel ADN TENF */}
+      <LivesFamilyNote />
       
       {/* Titre et bouton filtre jeu */}
       <div className="flex items-center justify-between">
