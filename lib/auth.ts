@@ -11,7 +11,8 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "identify guilds guilds.members.read",
-          redirect_uri: process.env.DISCORD_REDIRECT_URI,
+          // Note: NextAuth gère automatiquement le redirect_uri
+          // Il utilise NEXTAUTH_URL + /api/auth/callback/discord
         },
       },
     }),
