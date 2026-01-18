@@ -1,6 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
-import { getAdminRole } from "./adminRoles";
+import { getAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 
 export const authOptions: NextAuthOptions = {
@@ -65,7 +65,7 @@ export const authOptions: NextAuthOptions = {
         session.user.discordId = token.discordId as string;
         session.user.username = (token.username || "Unknown") as string;
         session.user.avatar = (token.avatar || null) as string | null;
-        session.user.role = (token.role || null) as string | null;
+        session.user.role = (token.role || null) as AdminRole | null;
       }
 
       return session;
