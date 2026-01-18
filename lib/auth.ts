@@ -4,6 +4,11 @@ import { getAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 
 export const authOptions: NextAuthOptions = {
+  // Forcer NextAuth à utiliser NEXTAUTH_URL pour construire les URLs de callback
+  // Cela évite que NextAuth utilise l'URL du preview deploy au lieu de la production
+  ...(process.env.NEXTAUTH_URL && {
+    url: process.env.NEXTAUTH_URL,
+  }),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -13,7 +18,6 @@ export const authOptions: NextAuthOptions = {
           scope: "identify guilds guilds.members.read",
           // NextAuth gère automatiquement le redirect_uri depuis NEXTAUTH_URL
           // Il construit : {NEXTAUTH_URL}/api/auth/callback/discord
-          // Ne pas définir redirect_uri manuellement pour éviter les conflits
         },
       },
     }),
