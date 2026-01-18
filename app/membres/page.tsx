@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import MemberModal from "@/components/MemberModal";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
+import MembersDiscoveryNote from "@/components/MembersDiscoveryNote";
 
 const filters = ["Tous", "Développement", "Affiliés", "Staff"];
 
@@ -167,6 +168,9 @@ export default function Page() {
       <div className="space-y-4">
         <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Membres Actifs</h1>
       </div>
+
+      {/* Encart encourageant */}
+      <MembersDiscoveryNote />
 
       {/* Barre de recherche */}
       <div className="relative">
