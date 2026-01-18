@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { getCurrentAdmin } from '@/lib/admin';
+import { requireSectionAccess } from '@/lib/requireAdmin';
 import { getEvent, updateEvent, deleteEvent } from '@/lib/eventStorage';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
@@ -23,7 +24,12 @@ export async function GET(
     
     // Vérifier si l'utilisateur est admin ou si l'événement est publié
     const admin = await getCurrentAdmin();
-    const isAdmin = admin && hasAdminDashboardAccess(admin.id);
+    let isAdmin = false;
+    if (admin) {
+      // Vérifier si l'admin a accès à la section events
+      const sectionAdmin = await requireSectionAccess('/admin/events/planification');
+      isAdmin = sectionAdmin !== null;
+    }
     
     if (!event.isPublished && !isAdmin) {
       return NextResponse.json(
@@ -50,8 +56,8 @@ export async function PUT(
   { params }: { params: { eventId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireSectionAccess('/admin/events/planification');
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     
@@ -105,8 +111,8 @@ export async function DELETE(
   { params }: { params: { eventId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireSectionAccess('/admin/events/planification');
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     

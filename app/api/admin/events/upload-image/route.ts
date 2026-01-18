@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireSectionAccess } from '@/lib/requireAdmin';
 import { getStore } from '@netlify/blobs';
 
 /**
@@ -7,11 +7,11 @@ import { getStore } from '@netlify/blobs';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authentification NextAuth + rôle admin requis
-    const admin = await requireAdmin();
+    // Authentification NextAuth + accès à la section events requis
+    const admin = await requireSectionAccess('/admin/events/planification');
     
     if (!admin) {
-      return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 403 });
     }
 
     const formData = await request.formData();

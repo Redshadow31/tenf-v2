@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireSectionAccess } from '@/lib/requireAdmin';
 import { loadEvents, createEvent, Event } from '@/lib/eventStorage';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
@@ -14,13 +14,11 @@ export async function GET(request: NextRequest) {
     // Vérifier si c'est une requête admin
     let isAdmin = false;
     if (adminOnly) {
-      const admin = await getCurrentAdmin();
-      if (admin) {
-        isAdmin = hasAdminDashboardAccess(admin.id);
-      }
-      if (!isAdmin) {
+      const admin = await requireSectionAccess('/admin/events/planification');
+      if (!admin) {
         return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
       }
+      isAdmin = true;
     }
     
     const events = await loadEvents();
@@ -48,8 +46,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireSectionAccess('/admin/events/planification');
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
       location,
       invitedMembers: invitedMembers || [],
       isPublished: isPublished ?? false,
-      createdBy: admin.id,
+      createdBy: admin.discordId,
     });
     
     // Logger l'action avec before/after optimisés
