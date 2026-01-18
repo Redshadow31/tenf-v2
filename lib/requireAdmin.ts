@@ -14,6 +14,7 @@ import {
   type Permission 
 } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
+import { loadSectionPermissionsCache, hasSectionAccess } from "./sectionPermissions";
 
 export interface AuthenticatedAdmin {
   discordId: string;
@@ -167,10 +168,66 @@ export async function checkPermission(requiredPermission: Permission): Promise<b
  */
 export async function checkIsFounder(): Promise<boolean> {
   const admin = await getAuthenticatedAdmin();
-  
+
   if (!admin) {
     return false;
   }
 
   return admin.role === "FOUNDER";
+}
+
+/**
+ * Vérifie si l'admin authentifié a accès à une section spécifique du dashboard
+ * @param sectionHref - Le href de la section (ex: "/admin/dashboard")
+ * @returns true si l'admin a accès, false sinon
+ */
+export async function hasAccessToSection(sectionHref: string): Promise<boolean> {
+  const admin = await getAuthenticatedAdmin();
+
+  if (!admin) {
+    return false;
+  }
+
+  // Charger le cache des permissions des sections
+  try {
+    await loadSectionPermissionsCache();
+  } catch (error) {
+    console.warn("[requireAdmin] Cannot load section permissions cache:", error);
+    // En cas d'erreur, autoriser l'accès par défaut (sécurité permissive)
+    return true;
+  }
+
+  // Vérifier si le rôle de l'admin a accès à cette section
+  return hasSectionAccess(sectionHref, admin.role);
+}
+
+/**
+ * Exige que l'admin authentifié ait accès à une section spécifique
+ * Retourne l'admin si autorisé, null sinon
+ * À utiliser dans les routes API : si null, retourner 403
+ */
+export async function requireSectionAccess(sectionHref: string): Promise<AuthenticatedAdmin | null> {
+  const admin = await requireAdmin();
+
+  if (!admin) {
+    return null;
+  }
+
+  // Charger le cache des permissions des sections
+  try {
+    await loadSectionPermissionsCache();
+  } catch (error) {
+    console.warn("[requireAdmin] Cannot load section permissions cache:", error);
+    // En cas d'erreur, autoriser l'accès par défaut (sécurité permissive)
+    return admin;
+  }
+
+  // Vérifier si le rôle de l'admin a accès à cette section
+  const hasAccess = hasSectionAccess(sectionHref, admin.role);
+
+  if (!hasAccess) {
+    return null;
+  }
+
+  return admin;
 }

@@ -39,6 +39,10 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/gestion-acces/dashboard",
         label: "Paramètres / configuration",
       },
+      {
+        href: "/admin/gestion-acces/permissions",
+        label: "Permissions par section (Fondateurs)",
+      },
     ],
   },
 
