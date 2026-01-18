@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getStore } from '@netlify/blobs';
 
 /**
@@ -7,9 +7,11 @@ import { getStore } from '@netlify/blobs';
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
+    
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
         contentType: file.type,
         originalName: file.name,
         uploadedAt: new Date().toISOString(),
-        uploadedBy: admin.id,
+        uploadedBy: admin.discordId,
       },
     });
 

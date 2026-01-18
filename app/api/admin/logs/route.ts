@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin } from "@/lib/adminAuth";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getLogs, initializeLogs } from "@/lib/logAction";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 
 /**
  * Route API pour récupérer les logs administratifs
- * Accessible uniquement aux fondateurs
+ * Accessible uniquement aux admins
  */
 export async function GET(request: NextRequest) {
   try {
     // Initialiser les logs
     await initializeLogs();
     
-    // Vérifier que l'utilisateur est connecté (getCurrentAdmin charge déjà le cache Blobs)
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
       );
     }
-
-    // getCurrentAdmin() de lib/adminAuth charge le cache Blobs et retourne null si l'utilisateur n'a pas de rôle admin
-    // Donc si on arrive ici, l'utilisateur a déjà un rôle admin (hardcodé ou Blobs)
 
     // Récupérer le paramètre limit depuis la query string
     const { searchParams } = new URL(request.url);

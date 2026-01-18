@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getIntegration, loadRegistrations, saveRegistrations, registerForIntegration, type IntegrationRegistration } from '@/lib/integrationStorage';
 
 /**
@@ -10,9 +10,11 @@ export async function GET(
   { params }: { params: { integrationId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
+    
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
     }
     
     const { integrationId } = params;
@@ -52,9 +54,11 @@ export async function PUT(
   { params }: { params: { integrationId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
+    
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
     }
     
     const { integrationId } = params;

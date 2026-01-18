@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin as getCurrentAdminLegacy, hasAdminDashboardAccess as hasAdminDashboardAccessLegacy } from "@/lib/admin";
 import { isFounder, hasAdminDashboardAccess, hasPermission } from "@/lib/adminRoles";
 import {
   getAllMemberData,
@@ -10,7 +9,7 @@ import {
   initializeMemberData,
   loadMemberDataFromStorage,
 } from "@/lib/memberData";
-import { getCurrentAdmin } from "@/lib/adminAuth";
+import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
@@ -32,21 +31,13 @@ export async function GET(request: NextRequest) {
     // Charger les données depuis le stockage persistant (Blobs ou fichier)
     await loadMemberDataFromStorage();
     
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth robuste
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier l'accès avec le nouveau système de rôles (incluant le cache Blobs)
-    const { hasAdminDashboardAccessAsync } = await import('@/lib/adminAccessCheck');
-    if (!(await hasAdminDashboardAccessAsync(admin.id))) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux administrateurs." },
-        { status: 403 }
       );
     }
 
@@ -96,7 +87,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
@@ -105,13 +96,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier les permissions : write pour créer
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
-      );
-    }
+    // Permission write déjà vérifiée par requirePermission dans requireAdmin
 
     const body = await request.json();
     const {
@@ -169,7 +154,7 @@ export async function POST(request: NextRequest) {
         description,
         customBio,
       },
-      admin.id
+      admin.discordId
     );
 
     // Logger l'action avec before/after optimisés
@@ -198,20 +183,13 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour modifier
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -391,7 +369,7 @@ export async function PUT(request: NextRequest) {
       newParrain: updates.parrain,
     });
 
-    const updatedMember = await updateMemberData(memberIdentifier, updates, admin.id);
+    const updatedMember = await updateMemberData(memberIdentifier, updates, admin.discordId);
     
     // Log après mise à jour
     console.log(`[Update Member API] ✅ Après mise à jour:`, {
@@ -448,20 +426,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour supprimer
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -486,7 +457,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await deleteMemberData(twitchLogin, admin.id);
+    const success = await deleteMemberData(twitchLogin, admin.discordId);
 
     if (!success) {
       return NextResponse.json(

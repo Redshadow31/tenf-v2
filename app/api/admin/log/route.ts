@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDiscordUser } from "@/lib/discord";
+import { requireAuth } from "@/lib/requireAdmin";
 import { logAction } from "@/lib/logAction";
 
 /**
@@ -13,10 +13,12 @@ import { logAction } from "@/lib/logAction";
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getDiscordUser();
+    // Authentification NextAuth
+    const admin = await requireAuth();
+    
     if (!admin) {
       return NextResponse.json(
-        { error: "Non autorisé" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
       );
     }
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Logger l'action
     await logAction(
-      admin.id,
+      admin.discordId,
       admin.username,
       action,
       target,

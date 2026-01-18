@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, isFounder, isSafeModeEnabled, setSafeMode } from "@/lib/admin";
+import { requireRole } from "@/lib/requireAdmin";
+import { isSafeModeEnabled, setSafeMode } from "@/lib/admin";
 import { logAction } from "@/lib/logAction";
 
 /**
@@ -9,18 +10,12 @@ import { logAction } from "@/lib/logAction";
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
@@ -39,18 +34,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs peuvent modifier le Safe Mode." },
+        { error: "Non authentifié ou accès refusé. Seuls les fondateurs peuvent modifier le Safe Mode." },
         { status: 403 }
       );
     }
@@ -65,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const success = setSafeMode(enabled, admin.id);
+    const success = setSafeMode(enabled, admin.discordId);
 
     if (!success) {
       return NextResponse.json(
@@ -76,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Logger l'action
     await logAction(
-      admin.id,
+      admin.discordId,
       admin.username,
       enabled ? "Activation du Safe Mode" : "Désactivation du Safe Mode",
       "Système",

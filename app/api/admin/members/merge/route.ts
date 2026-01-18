@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDiscordUser } from "@/lib/discord";
-import { getCurrentAdmin, canPerformAction, isFounder, hasAdminDashboardAccess } from "@/lib/admin";
+import { requirePermission } from "@/lib/requireAdmin";
 import {
   getAllMemberData,
   updateMemberData,
@@ -19,31 +18,19 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Utiliser getCurrentAdmin pour une meilleure vérification
-    let admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write (requis pour fusionner)
+    const admin = await requirePermission("write");
     
-    // Si getCurrentAdmin ne fonctionne pas (côté client), utiliser getDiscordUser
     if (!admin) {
-      const discordUser = await getDiscordUser();
-      if (!discordUser) {
-        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-      }
-      admin = { id: discordUser.id, username: discordUser.username, role: "Admin" as any };
-    }
-
-    // Charger les données pour vérifier le rôle dans memberData
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    const userMember = allMembers.find(m => m.discordId === admin.id);
-    const userRole = userMember?.role;
-
-    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent fusionner des membres." },
-        { status: 403 }
+        { error: "Non authentifié ou permissions insuffisantes. Seuls les admins avec permission write peuvent fusionner des membres." },
+        { status: 401 }
       );
     }
+
+    // Charger les données
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
 
     // Les données sont déjà chargées pour la vérification de rôle
 
@@ -97,17 +84,17 @@ export async function POST(request: NextRequest) {
       {
         ...mergedData,
         twitchLogin: primaryTwitchLogin, // S'assurer que le twitchLogin est correct
-        updatedBy: admin.id,
+        updatedBy: admin.discordId,
         updatedAt: new Date(),
         // Marquer comme modifié manuellement pour protéger contre les synchronisations
         roleManuallySet: true,
       },
-      admin.id
+      admin.discordId
     );
 
     // Supprimer les autres membres (doublons)
     for (const twitchLogin of otherMembers) {
-      await deleteMemberData(twitchLogin.toLowerCase(), admin.id);
+      await deleteMemberData(twitchLogin.toLowerCase(), admin.discordId);
       membersToDelete.push(twitchLogin);
     }
 
@@ -131,31 +118,19 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Utiliser getCurrentAdmin pour une meilleure vérification
-    let admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission read
+    const admin = await requirePermission("read");
     
-    // Si getCurrentAdmin ne fonctionne pas (côté client), utiliser getDiscordUser
     if (!admin) {
-      const discordUser = await getDiscordUser();
-      if (!discordUser) {
-        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-      }
-      admin = { id: discordUser.id, username: discordUser.username, role: "Admin" as any };
-    }
-
-    // Charger les données pour vérifier le rôle dans memberData
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    const userMember = allMembers.find(m => m.discordId === admin.id);
-    const userRole = userMember?.role;
-
-    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json(
-        { error: "Accès refusé. Seuls les fondateurs, admins et admin adjoints peuvent voir les doublons." },
-        { status: 403 }
+        { error: "Non authentifié ou permissions insuffisantes" },
+        { status: 401 }
       );
     }
+
+    // Charger les données
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
 
     // Les données sont déjà chargées pour la vérification de rôle
     // Réutiliser allMembers déjà chargé

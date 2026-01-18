@@ -11,8 +11,8 @@ Cette erreur se produit lorsque le `redirect_uri` utilisé ne correspond pas exa
 Assurez-vous que ces variables sont bien configurées :
 
 ```
-DISCORD_CLIENT_ID=1447980264641794108
-DISCORD_CLIENT_SECRET=DslmRsTQKGNXJM-DUa97V-VKqDVBINzl
+DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
+DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
 DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
 NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 ```
@@ -25,7 +25,7 @@ NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 ### 2. Vérifier Discord Developer Portal
 
 1. Allez sur https://discord.com/developers/applications
-2. Sélectionnez votre application (Client ID: 1447980264641794108)
+2. Sélectionnez votre application Discord
 3. Allez dans **OAuth2** → **General**
 4. Dans la section **Redirects**, vérifiez que vous avez EXACTEMENT :
 

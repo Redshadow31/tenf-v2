@@ -2,8 +2,8 @@
 
 ## ✅ Informations confirmées
 
-- **Client ID** : `1447980264641794108` ✅ (correct)
-- **Client Secret** : `ZzcRup7Ayz-HLu04XZE46P8n76YvNYTe` ✅ (nouveau)
+- **Client ID** : `VOTRE_DISCORD_CLIENT_ID_ICI` ✅ (correct)
+- **Client Secret** : `VOTRE_DISCORD_CLIENT_SECRET_ICI` ✅ (nouveau)
 
 ## 🔧 Action requise sur Netlify
 
@@ -14,7 +14,7 @@
 3. Allez dans **Site settings** → **Environment variables**
 4. Trouvez la variable **DISCORD_CLIENT_SECRET**
 5. Cliquez dessus pour l'éditer
-6. Remplacez l'ancienne valeur par : `ZzcRup7Ayz-HLu04XZE46P8n76YvNYTe`
+6. Remplacez l'ancienne valeur par votre nouveau secret Discord (récupéré depuis Discord Developer Portal)
 7. Cliquez sur **"Save variable"**
 
 ## ✅ Vérification complète des variables Netlify
@@ -22,21 +22,21 @@
 Assurez-vous que toutes ces variables sont configurées :
 
 ```
-DISCORD_CLIENT_ID=1447980264641794108
-DISCORD_CLIENT_SECRET=ZzcRup7Ayz-HLu04XZE46P8n76YvNYTe
+DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
+DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
 DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
 NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
-NEXTAUTH_SECRET=tenfSuperSecretKey2025
+NEXTAUTH_SECRET=VOTRE_NEXTAUTH_SECRET_ICI
 NEXTAUTH_URL=https://teamnewfamily.netlify.app
-TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
-TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
+TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
+TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
 ```
 
 ## ✅ Vérification Discord Developer Portal
 
 Dans Discord Developer Portal → TENFSITE → OAuth2 → General :
 
-1. **Client ID** : Doit être `1447980264641794108` ✅
+1. **Client ID** : Doit correspondre à votre Discord Client ID ✅
 2. **Client Secret** : Vient d'être réinitialisé ✅
 3. **Redirects** : Doit contenir exactement :
    ```

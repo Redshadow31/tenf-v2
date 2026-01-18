@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 import { loadMemberDataFromStorage, getAllMemberData, updateMemberData, findMemberByIdentifier } from '@/lib/memberData';
 import { getTwitchLoginsByIds } from '@/lib/twitchHelpers';
 
@@ -9,20 +8,13 @@ import { getTwitchLoginsByIds } from '@/lib/twitchHelpers';
  */
 export async function GET() {
   try {
-    const admin = await getCurrentAdmin();
-
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour modifier
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -59,20 +51,13 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour modifier
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -177,7 +162,7 @@ export async function POST(request: NextRequest) {
         await updateMemberData(memberIdentifier, {
           twitchLogin: newLogin,
           twitchUrl: `https://www.twitch.tv/${newLogin}`,
-        }, admin.id);
+        }, admin.discordId);
 
         results.push({
           twitchId,

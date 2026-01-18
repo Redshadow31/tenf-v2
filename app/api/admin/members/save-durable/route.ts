@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, hasAdminDashboardAccess } from "@/lib/admin";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 import { getStore } from "@netlify/blobs";
 import fs from "fs";
@@ -19,30 +19,17 @@ function isNetlify(): boolean {
 /**
  * POST - Sauvegarde les données des membres de façon durable
  * Utilise Netlify Blobs en production, système de fichiers en développement local
- * Accessible aux fondateurs, admins et admin adjoints
+ * Accessible aux admins
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
-      );
-    }
-
-    // Charger les données pour vérifier le rôle dans memberData
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    const userMember = allMembers.find(m => m.discordId === admin.id);
-    const userRole = userMember?.role;
-
-    // Vérifier l'accès : Fondateurs, Admins, ou Admin Adjoint
-    if (!hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs, admins et admin adjoints." },
-        { status: 403 }
       );
     }
 

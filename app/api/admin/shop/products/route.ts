@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasAdminDashboardAccess } from '@/lib/adminRoles';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getStore } from '@netlify/blobs';
 
 const SHOP_STORE = 'tenf-shop';
@@ -79,19 +78,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
-      );
-    }
-
-    if (!hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux administrateurs." },
-        { status: 403 }
       );
     }
 
@@ -148,7 +141,7 @@ export async function POST(request: NextRequest) {
       buyUrl: buyUrl || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      createdBy: admin.id,
+      createdBy: admin.discordId,
     };
 
     products.push(newProduct);
@@ -174,19 +167,13 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
-      );
-    }
-
-    if (!hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux administrateurs." },
-        { status: 403 }
       );
     }
 
@@ -262,19 +249,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
-      );
-    }
-
-    if (!hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux administrateurs." },
-        { status: 403 }
       );
     }
 

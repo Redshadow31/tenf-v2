@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getAllEvents, getMemberEvents, recordMemberEvent } from '@/lib/memberEvents';
-import { getCurrentAdmin } from '@/lib/admin';
+import { requirePermission } from '@/lib/requireAdmin';
 
 /**
  * GET - Récupère les événements avec filtres optionnels
  */
 export async function GET(request: Request) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission read
+    const admin = await requirePermission("read");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
       );
     }
@@ -48,11 +49,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
       );
     }
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
 
     const event = await recordMemberEvent(memberId, type, {
       source: source || 'manual',
-      actor: actor || admin.id,
+      actor: actor || admin.discordId,
       payload,
     });
 

@@ -84,8 +84,8 @@ Ajoutez toutes ces variables dans votre fichier `.env.local` :
 # ============================================
 # TWITCH API (Déjà configuré ✅)
 # ============================================
-TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
-TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
+TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
+TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
 
 # ============================================
 # DISCORD OAUTH2 (Pour l'authentification)
@@ -146,11 +146,11 @@ DISCORD_BOT_TOKEN=votre_bot_token_ici
 4. Ajoutez toutes les variables :
 
 ```
-TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
-TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
-DISCORD_CLIENT_ID=votre_client_id
-DISCORD_CLIENT_SECRET=votre_client_secret
-DISCORD_BOT_TOKEN=votre_bot_token
+TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
+TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
+DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
+DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
+DISCORD_BOT_TOKEN=VOTRE_DISCORD_BOT_TOKEN_ICI
 DISCORD_REDIRECT_URI=https://votre-site.netlify.app/api/auth/discord/callback
 NEXT_PUBLIC_BASE_URL=https://votre-site.netlify.app
 ```

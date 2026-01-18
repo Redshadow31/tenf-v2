@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
 import { loadEvents } from '@/lib/eventStorage';
 import { loadEventRegistrations } from '@/lib/eventStorage';
 import {
@@ -23,12 +22,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
       );
     }
@@ -103,21 +102,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour gérer les présences
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -160,7 +151,7 @@ export async function POST(request: NextRequest) {
       },
       present,
       note,
-      admin.id
+      admin.discordId
     );
 
     return NextResponse.json({
@@ -183,21 +174,13 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour modifier les notes
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -212,7 +195,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mettre à jour la note
-    const success = await updatePresenceNote(eventId, twitchLogin, note, admin.id);
+    const success = await updatePresenceNote(eventId, twitchLogin, note, admin.discordId);
 
     if (!success) {
       return NextResponse.json(
@@ -240,21 +223,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour supprimer les présences
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -298,21 +273,13 @@ export async function DELETE(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour créer des événements
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -343,7 +310,7 @@ export async function PATCH(request: NextRequest) {
       category,
       location,
       isPublished: false, // Non publié car c'est un événement passé ajouté rétrospectivement
-      createdBy: admin.id,
+      createdBy: admin.discordId,
     });
 
     return NextResponse.json({

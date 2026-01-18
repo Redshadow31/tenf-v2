@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getLogs, initializeLogs } from '@/lib/logAction';
 
 /**
@@ -8,21 +8,13 @@ import { getLogs, initializeLogs } from '@/lib/logAction';
  */
 export async function GET() {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle admin requis
+    const admin = await requireAdmin();
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou accès refusé" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier l'accès admin
-    const { hasAdminDashboardAccessAsync } = await import('@/lib/adminAccessCheck');
-    if (!(await hasAdminDashboardAccessAsync(admin.id))) {
-      return NextResponse.json(
-        { error: "Accès refusé" },
-        { status: 403 }
       );
     }
 

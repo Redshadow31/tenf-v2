@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, isFounder } from '@/lib/admin';
+import { requireRole } from '@/lib/requireAdmin';
 import { getAllActiveMemberData, getMemberData, updateMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
 /**
@@ -7,18 +7,12 @@ import { getAllActiveMemberData, getMemberData, updateMemberData, loadMemberData
  */
 export async function GET() {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
@@ -67,18 +61,12 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
@@ -114,7 +102,7 @@ export async function POST(request: NextRequest) {
     // Mettre à jour le listId
     await updateMemberData(twitchLogin, {
       listId: listId || undefined,
-    }, admin.id);
+    }, admin.discordId);
 
     return NextResponse.json({
       success: true,

@@ -2,7 +2,7 @@
 // Peut synchroniser un membre spécifique ou tous les membres actifs
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/admin';
+import { requirePermission } from '@/lib/requireAdmin';
 import { loadMemberDataFromStorage, getAllMemberData, updateMemberData } from '@/lib/memberData';
 import { resolveAndCacheTwitchId } from '@/lib/twitchIdResolver';
 
@@ -12,11 +12,12 @@ import { resolveAndCacheTwitchId } from '@/lib/twitchIdResolver';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Vérifier les permissions admin
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: 'Non autorisé' },
+        { error: 'Non authentifié ou permissions insuffisantes' },
         { status: 401 }
       );
     }
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
         if (twitchId) {
           // Mettre à jour le membre avec l'ID résolu
-          await updateMemberData(member.twitchLogin, { twitchId }, admin.id);
+          await updateMemberData(member.twitchLogin, { twitchId }, admin.discordId);
           results.push({
             twitchLogin: member.twitchLogin,
             success: true,
@@ -130,10 +131,12 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission read
+    const admin = await requirePermission("read");
+    
     if (!admin) {
       return NextResponse.json(
-        { error: 'Non autorisé' },
+        { error: 'Non authentifié ou permissions insuffisantes' },
         { status: 401 }
       );
     }

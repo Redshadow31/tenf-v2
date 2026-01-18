@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 import { upsertDiscordDailyActivity } from '@/lib/discordDailyActivityStorage';
 
 export const runtime = 'nodejs';
@@ -12,21 +11,13 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + permission write
+    const admin = await requirePermission("write");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
-      );
-    }
-
-    // Vérifier les permissions : write pour modifier les données
-    if (!hasPermission(admin.id, "write")) {
-      return NextResponse.json(
-        { error: "Accès refusé. Permissions insuffisantes." },
-        { status: 403 }
       );
     }
 
@@ -85,7 +76,7 @@ export async function POST(request: NextRequest) {
       vocals: p.vocals,
     }));
 
-    await upsertDiscordDailyActivity(points, admin.id);
+    await upsertDiscordDailyActivity(points, admin.discordId);
 
     return NextResponse.json({
       success: true,

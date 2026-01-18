@@ -22,7 +22,7 @@ Toutes les variables d'environnement nécessaires sont maintenant configurées s
 
 ### 1. **NEXTAUTH_SECRET** (OBLIGATOIRE) ✅ Configuré
 - **Description** : Secret utilisé pour signer les tokens NextAuth
-- **Valeur** : `tenfSuperSecretKey2025`
+- **Valeur** : `VOTRE_NEXTAUTH_SECRET_ICI` (générez un secret sécurisé)
 - **Où l'utiliser** : `lib/auth.ts` ligne 17
 
 ### 2. **NEXTAUTH_URL** (OBLIGATOIRE) ✅ Configuré
@@ -38,7 +38,7 @@ Toutes les variables d'environnement nécessaires sont maintenant configurées s
 
 ### 4. **STATBOT_API_KEY** (OBLIGATOIRE pour les statistiques Discord) ✅ Configuré
 - **Description** : Clé API Statbot pour récupérer les statistiques Discord (messages, heures vocales)
-- **Valeur** : `NTM1MjQ0ODU3ODkxODgwOTcw.e8Z98EEvaTs3UcWIvx66SgHBvzQ6H71koh9ui396uAA`
+- **Valeur** : `VOTRE_STATBOT_API_KEY_ICI`
 - **Où l'utiliser** : `netlify/functions/statbot-fetch.ts`
 - **Note** : Nécessaire pour le bouton "Récupérer les données Statbot" dans le dashboard
 
@@ -53,17 +53,17 @@ Toutes les variables d'environnement nécessaires sont maintenant configurées s
 Ajoutez ces variables dans Netlify → Site settings → Environment variables :
 
 ```
-DISCORD_CLIENT_ID=1447980264641794108
-DISCORD_CLIENT_SECRET=DslmRsTQKGNXJM-DUa97V-VKqDVBINzl
+DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
+DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
 DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
 NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
-NEXTAUTH_SECRET=tenfSuperSecretKey2025
+NEXTAUTH_SECRET=VOTRE_NEXTAUTH_SECRET_ICI
 NEXTAUTH_URL=https://teamnewfamily.netlify.app
-TWITCH_CLIENT_ID=rr75kdousbzbp8qfjy0xtppwpljuke
-TWITCH_CLIENT_SECRET=bn48h38zjqid0dsydemqymg13587nq
-DISCORD_BOT_TOKEN=[votre_bot_token_ici]
-STATBOT_API_KEY=NTM1MjQ0ODU3ODkxODgwOTcw.e8Z98EEvaTs3UcWIvx66SgHBvzQ6H71koh9ui396uAA
-STATBOT_SERVER_ID=535244857891880970
+TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
+TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
+DISCORD_BOT_TOKEN=VOTRE_DISCORD_BOT_TOKEN_ICI
+STATBOT_API_KEY=VOTRE_STATBOT_API_KEY_ICI
+STATBOT_SERVER_ID=VOTRE_STATBOT_SERVER_ID_ICI
 ```
 
 ## ✅ Vérification Discord Developer Portal

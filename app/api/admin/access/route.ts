@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
+import { requireRole } from '@/lib/requireAdmin';
 import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from '@/lib/adminAccessCache';
 import { getBlobStore } from '@/lib/memberData';
@@ -21,19 +21,12 @@ interface AdminAccess {
  */
 export async function GET() {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    // Seuls les fondateurs peuvent voir la liste complète
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
@@ -186,19 +179,12 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    // Seuls les fondateurs peuvent ajouter des accès
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
@@ -259,7 +245,7 @@ export async function POST(request: NextRequest) {
         ...storedAccessList[existingIndex],
         role: role as AdminRole,
         addedAt: new Date().toISOString(),
-        addedBy: admin.id,
+        addedBy: admin.discordId,
       };
     } else {
       // Ajouter un nouvel accès
@@ -267,7 +253,7 @@ export async function POST(request: NextRequest) {
         discordId,
         role: role as AdminRole,
         addedAt: new Date().toISOString(),
-        addedBy: admin.id,
+        addedBy: admin.discordId,
       });
     }
 
@@ -305,19 +291,12 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
+    // Authentification NextAuth + rôle FOUNDER requis
+    const admin = await requireRole("FOUNDER");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    // Seuls les fondateurs peuvent supprimer des accès
-    if (!isFounder(admin.id)) {
-      return NextResponse.json(
-        { error: "Accès refusé. Réservé aux fondateurs." },
+        { error: "Non authentifié ou accès refusé. Réservé aux fondateurs." },
         { status: 403 }
       );
     }
