@@ -423,7 +423,11 @@ export default function PlanificationPage() {
                 }
                 rows={4}
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                placeholder="Vous pouvez utiliser du Markdown : **gras**, *italique*, listes - ..."
               />
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Formatage Markdown disponible : <strong>**gras**</strong>, <em>*italique*</em>, listes <code>- item</code>, retours à la ligne
+              </p>
             </div>
 
             <div>

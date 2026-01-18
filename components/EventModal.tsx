@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type EventModalProps = {
   event: {
@@ -159,7 +161,15 @@ export default function EventModal({
           {/* Description */}
           <div className="mb-8 space-y-4">
             <h3 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
-            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{event.description}</p>
+            {event.description ? (
+              <div className="prose prose-invert max-w-none prose-p:my-2 prose-li:my-1 prose-headings:text-white prose-p:text-gray-300 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff] prose-a:hover:text-[#7c3aed] prose-ul:text-gray-300 prose-ol:text-gray-300 prose-li:text-gray-300">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {event.description}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm italic" style={{ color: 'var(--color-text-muted)' }}>Aucune description</p>
+            )}
           </div>
 
           {/* Localisation si disponible */}
