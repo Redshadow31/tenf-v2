@@ -25,9 +25,11 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account, profile, user }) {
       // Lors de la connexion initiale, account et profile sont disponibles
       if (account && profile) {
-        const discordId = profile.id as string;
-        const username = (profile.username || profile.global_name || "Unknown") as string;
-        const avatar = profile.image as string | undefined;
+        // Le profil Discord a un champ 'id' mais TypeScript ne le reconnaît pas par défaut
+        const discordProfile = profile as any;
+        const discordId = discordProfile.id as string;
+        const username = (discordProfile.username || discordProfile.global_name || "Unknown") as string;
+        const avatar = discordProfile.image as string | undefined;
 
         // Ajouter les informations Discord au token
         token.discordId = discordId;
