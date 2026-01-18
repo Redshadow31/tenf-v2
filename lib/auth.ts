@@ -11,12 +11,9 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "identify guilds guilds.members.read",
-          // Forcer explicitement le redirect_uri pour éviter les problèmes avec les preview deploys
-          // NextAuth construira automatiquement le bon redirect_uri depuis NEXTAUTH_URL
-          // mais on peut aussi le définir explicitement si nécessaire
-          ...(process.env.NEXTAUTH_URL && {
-            redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/discord`,
-          }),
+          // NextAuth gère automatiquement le redirect_uri depuis NEXTAUTH_URL
+          // Il construit : {NEXTAUTH_URL}/api/auth/callback/discord
+          // Ne pas définir redirect_uri manuellement pour éviter les conflits
         },
       },
     }),
