@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import IntegrationModal from "@/components/IntegrationModal";
+import IntegrationWelcomeNote from "@/components/IntegrationWelcomeNote";
 
 type Integration = {
   id: string;
@@ -167,6 +168,9 @@ export default function Page() {
     <div className="space-y-8">
       {/* Titre */}
       <h1 className="text-3xl font-bold text-white">Intégration</h1>
+
+      {/* Encart rassurant */}
+      <IntegrationWelcomeNote />
 
       {/* Filtres */}
       {categories.length > 0 && (
