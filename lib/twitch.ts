@@ -367,7 +367,10 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
     }
 
     // Créer un map pour un accès rapide (incluant les utilisateurs en cache)
-    const userMap = new Map<string, TwitchUser>([...cached, ...allUsers.map((user) => [user.login.toLowerCase(), user])]);
+    const userMap = new Map<string, TwitchUser>([
+      ...Array.from(cached.entries()),
+      ...allUsers.map((user): [string, TwitchUser] => [user.login.toLowerCase(), user])
+    ]);
 
     // Retourner les utilisateurs dans l'ordre demandé
     return logins.map((login) => {
