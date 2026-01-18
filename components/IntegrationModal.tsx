@@ -10,7 +10,9 @@ type IntegrationModalProps = {
     image?: string;
     date: Date;
     category: string;
-    location?: string;
+    location?: string; // DÉPRÉCIÉ: pour compatibilité
+    locationName?: string;
+    locationUrl?: string;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -182,7 +184,7 @@ export default function IntegrationModal({
           </div>
 
           {/* Localisation si disponible */}
-          {integration.location && (
+          {(integration.locationName || integration.location) && (
             <div className="mb-8 flex items-center gap-2 text-gray-300">
               <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -198,7 +200,16 @@ export default function IntegrationModal({
                   d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-              {isUrl(integration.location) ? (
+              {integration.locationName && integration.locationUrl ? (
+                <a
+                  href={integration.locationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#9146ff] hover:text-[#7c3aed] underline transition-colors"
+                >
+                  {integration.locationName}
+                </a>
+              ) : integration.location && isUrl(integration.location) ? (
                 <a
                   href={integration.location}
                   target="_blank"

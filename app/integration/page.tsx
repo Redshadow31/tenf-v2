@@ -10,7 +10,9 @@ type Integration = {
   image?: string;
   date: string; // ISO date string
   category: string;
-  location?: string;
+  location?: string; // DÉPRÉCIÉ: pour compatibilité
+  locationName?: string;
+  locationUrl?: string;
 };
 
 // Catégories d'intégration (seront gérées par /admin/evaluations/planification)

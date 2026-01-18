@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Upload, X, Image as ImageIcon, Edit, Trash2, Copy } from "lucide-react";
+import { LOCATION_OPTIONS } from "@/lib/locationOptions";
 
 interface CategoryConfig {
   value: string;
@@ -47,7 +48,9 @@ export default function PlanificationPage() {
     description: "",
     category: "Intégration standard",
     date: "",
-    location: "",
+    location: "", // DÉPRÉCIÉ: pour compatibilité avec anciennes données
+    locationName: "",
+    locationUrl: "",
     isPublished: false,
     image: null as File | null,
     imageUrl: "" as string | null,
@@ -112,6 +115,17 @@ export default function PlanificationPage() {
     setImagePreview(null);
   };
 
+  // Fonction pour vérifier si une chaîne est une URL
+  const isUrl = (str: string): boolean => {
+    if (!str) return false;
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleStartEdit = (integration: any) => {
     // Convertir la date ISO en format datetime-local
     const dateObj = new Date(integration.date);
@@ -128,7 +142,9 @@ export default function PlanificationPage() {
       description: integration.description || "",
       category: integration.category || "Intégration standard",
       date: dateTimeLocal,
-      location: integration.location || "",
+      location: integration.location || "", // Pour compatibilité
+      locationName: integration.locationName || integration.location || "",
+      locationUrl: integration.locationUrl || (integration.location && isUrl(integration.location) ? integration.location : ""),
       isPublished: integration.isPublished || false,
       image: null,
       imageUrl: integration.image || null,
@@ -146,6 +162,8 @@ export default function PlanificationPage() {
       category: "Intégration standard",
       date: "",
       location: "",
+      locationName: "",
+      locationUrl: "",
       isPublished: false,
       image: null,
       imageUrl: null,
@@ -173,7 +191,9 @@ export default function PlanificationPage() {
       description: integration.description || "",
       category: integration.category || "Intégration standard",
       date: dateTimeLocal, // Nouvelle date (+7 jours par défaut)
-      location: integration.location || "",
+      location: integration.location || "", // Pour compatibilité
+      locationName: integration.locationName || integration.location || "",
+      locationUrl: integration.locationUrl || (integration.location && isUrl(integration.location) ? integration.location : ""),
       isPublished: false, // Par défaut non publiée pour laisser le choix
       image: null,
       imageUrl: integration.image || null, // Conserver l'image
@@ -255,7 +275,10 @@ export default function PlanificationPage() {
         description: formData.description,
         category: formData.category,
         date: formData.date,
-        location: formData.location,
+        // Pour compatibilité avec anciennes données, garder location si locationName/Url sont vides
+        location: formData.locationName && formData.locationUrl ? undefined : formData.location || undefined,
+        locationName: formData.locationName || undefined,
+        locationUrl: formData.locationUrl || undefined,
         isPublished: formData.isPublished,
         image: finalImageUrl || undefined,
       };
@@ -454,19 +477,74 @@ export default function PlanificationPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Localisation
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) =>
-                  setFormData({ ...formData, location: e.target.value })
-                }
-                placeholder="Ex: Discord TENF"
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Localisation
+                </label>
+                <div className="space-y-3">
+                  {/* Sélecteur de nom de localisation */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                      Nom d'affichage
+                    </label>
+                    <select
+                      value={formData.locationName}
+                      onChange={(e) => {
+                        setFormData({ ...formData, locationName: e.target.value });
+                      }}
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    >
+                      <option value="">Aucun</option>
+                      {LOCATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Sélectionnez un nom prédéfini ou laissez vide
+                    </p>
+                  </div>
+
+                  {/* Champ URL */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                      URL de la localisation
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.locationUrl}
+                      onChange={(e) =>
+                        setFormData({ ...formData, locationUrl: e.target.value })
+                      }
+                      placeholder="https://discord.com/channels/..."
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Le nom sélectionné sera affiché comme lien vers cette URL côté public
+                    </p>
+                  </div>
+
+                  {/* Champ legacy pour compatibilité */}
+                  {(!formData.locationName && !formData.locationUrl) && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
+                        Localisation (texte simple - ancien format)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.location}
+                        onChange={(e) =>
+                          setFormData({ ...formData, location: e.target.value })
+                        }
+                        placeholder="Ex: Discord TENF (ancien format)"
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -533,11 +611,23 @@ export default function PlanificationPage() {
                           minute: "2-digit",
                         })}
                       </p>
-                      {integration.location && (
+                      {integration.locationName && integration.locationUrl ? (
+                        <p className="text-sm text-gray-400 mb-2">
+                          📍{" "}
+                          <a
+                            href={integration.locationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#9146ff] hover:text-[#7c3aed] underline"
+                          >
+                            {integration.locationName}
+                          </a>
+                        </p>
+                      ) : integration.location ? (
                         <p className="text-sm text-gray-400 mb-2">
                           📍 {integration.location}
                         </p>
-                      )}
+                      ) : null}
                       <div className="flex items-center gap-2 mb-2">
                         {(() => {
                           const catConfig = getCategoryConfig(integration.category);

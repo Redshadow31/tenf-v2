@@ -16,7 +16,9 @@ export interface Integration {
   image?: string;
   date: string; // ISO date
   category: string;
-  location?: string;
+  location?: string; // DÉPRÉCIÉ: utiliser locationName et locationUrl à la place
+  locationName?: string; // Nom d'affichage avec emoji (ex: "🎙・accueil-et-intégration")
+  locationUrl?: string; // URL de la localisation
   invitedMembers?: string[]; // Twitch logins
   createdAt: string; // ISO timestamp
   createdBy: string; // Discord ID
