@@ -210,7 +210,7 @@ export default function EventPresencePage() {
       const isPresent = existingPresence ? !existingPresence.present : true;
 
       // Mise à jour optimiste : mettre à jour l'UI immédiatement
-      setEvents(prevEvents => prevEvents.map(e => {
+      const updatedEvents = events.map(e => {
         if (e.id !== eventId) return e;
         
         const presences = e.presences || [];
@@ -241,7 +241,17 @@ export default function EventPresencePage() {
           };
           return { ...e, presences: [...presences, newPresence] };
         }
-      }));
+      });
+      
+      setEvents(updatedEvents);
+      
+      // Mettre à jour selectedEvent si c'est l'événement ouvert dans le modal
+      if (selectedEvent && selectedEvent.id === eventId) {
+        const updatedEvent = updatedEvents.find(e => e.id === eventId);
+        if (updatedEvent) {
+          setSelectedEvent(updatedEvent);
+        }
+      }
 
       const response = await fetch('/api/admin/events/presence', {
         method: 'POST',
@@ -279,7 +289,7 @@ export default function EventPresencePage() {
       const trimmedNote = note.trim() || undefined;
       
       // Mise à jour optimiste
-      setEvents(prevEvents => prevEvents.map(e => {
+      const updatedEvents = events.map(e => {
         if (e.id !== eventId) return e;
         
         const presences = e.presences || [];
@@ -296,7 +306,17 @@ export default function EventPresencePage() {
           return { ...e, presences: updatedPresences };
         }
         return e;
-      }));
+      });
+      
+      setEvents(updatedEvents);
+      
+      // Mettre à jour selectedEvent si c'est l'événement ouvert dans le modal
+      if (selectedEvent && selectedEvent.id === eventId) {
+        const updatedEvent = updatedEvents.find(e => e.id === eventId);
+        if (updatedEvent) {
+          setSelectedEvent(updatedEvent);
+        }
+      }
       
       setEditingNote(null);
 
@@ -335,14 +355,24 @@ export default function EventPresencePage() {
       setSaving(true);
       
       // Mise à jour optimiste
-      setEvents(prevEvents => prevEvents.map(e => {
+      const updatedEvents = events.map(e => {
         if (e.id !== eventId) return e;
         
         const presences = (e.presences || []).filter(
           p => p.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
         );
         return { ...e, presences };
-      }));
+      });
+      
+      setEvents(updatedEvents);
+      
+      // Mettre à jour selectedEvent si c'est l'événement ouvert dans le modal
+      if (selectedEvent && selectedEvent.id === eventId) {
+        const updatedEvent = updatedEvents.find(e => e.id === eventId);
+        if (updatedEvent) {
+          setSelectedEvent(updatedEvent);
+        }
+      }
 
       const response = await fetch(`/api/admin/events/presence?eventId=${eventId}&twitchLogin=${twitchLogin}`, {
         method: 'DELETE',
@@ -652,6 +682,13 @@ function EventPresenceModal({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingNote, setEditingNote] = useState<{ twitchLogin: string; note: string } | null>(null);
+  // État local pour l'événement qui se synchronise avec les props
+  const [localEvent, setLocalEvent] = useState<Event>(event);
+
+  // Synchroniser l'événement local avec les props quand elles changent
+  useEffect(() => {
+    setLocalEvent(event);
+  }, [event]);
 
   // Debounce de la recherche (300ms)
   useEffect(() => {
@@ -682,7 +719,7 @@ function EventPresenceModal({
     const lowerQuery = query.toLowerCase();
     return allMembers.filter(m => {
       // Exclure les membres déjà présents
-      const isAlreadyPresent = event.presences?.some(
+      const isAlreadyPresent = localEvent.presences?.some(
         p => p.twitchLogin.toLowerCase() === m.twitchLogin.toLowerCase()
       );
       if (isAlreadyPresent) return false;
@@ -693,14 +730,14 @@ function EventPresenceModal({
         m.discordUsername?.toLowerCase().includes(lowerQuery)
       );
     }).slice(0, 10);
-  }, [allMembers, event.presences]);
+  }, [allMembers, localEvent.presences]);
 
   const filteredMembers = useMemo(
     () => filterMembers(debouncedSearchQuery),
     [debouncedSearchQuery, filterMembers]
   );
-  const registrations = event.registrations || [];
-  const presences = event.presences || [];
+  const registrations = localEvent.registrations || [];
+  const presences = localEvent.presences || [];
 
   // Créer une liste combinée : présences + inscrits non présents
   const allParticipants = new Map<string, {
@@ -750,8 +787,8 @@ function EventPresenceModal({
       >
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-2">{event.title}</h2>
-            <p className="text-gray-400 text-sm">{formatEventDateForModal(event.date)}</p>
+            <h2 className="text-2xl font-bold text-white mb-2">{localEvent.title}</h2>
+            <p className="text-gray-400 text-sm">{formatEventDateForModal(localEvent.date)}</p>
           </div>
           <button
             onClick={onClose}
@@ -784,7 +821,7 @@ function EventPresenceModal({
                       key={member.twitchLogin}
                       type="button"
                       onClick={() => {
-                        onTogglePresence(event.id, member, false);
+                        onTogglePresence(localEvent.id, member, false);
                         setSearchQuery("");
                         setShowAddMember(false);
                       }}
@@ -849,7 +886,7 @@ function EventPresenceModal({
                         </td>
                         <td className="py-3 px-4 text-center">
                           <button
-                            onClick={() => onTogglePresence(event.id, member, isRegistered)}
+                            onClick={() => onTogglePresence(localEvent.id, member, isRegistered)}
                             disabled={saving}
                             className={`inline-flex items-center justify-center w-8 h-8 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               presence?.present
@@ -873,7 +910,7 @@ function EventPresenceModal({
                                 />
                                 <button
                                   onClick={() => {
-                                    onSaveNote(event.id, member.twitchLogin, editingNote.note);
+                                    onSaveNote(localEvent.id, member.twitchLogin, editingNote.note);
                                   }}
                                   disabled={saving}
                                   className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -911,7 +948,7 @@ function EventPresenceModal({
                         <td className="py-3 px-4 text-center">
                           {presence && (
                             <button
-                              onClick={() => onRemovePresence(event.id, member.twitchLogin)}
+                              onClick={() => onRemovePresence(localEvent.id, member.twitchLogin)}
                               disabled={saving}
                               className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Supprimer la présence"
