@@ -52,9 +52,16 @@ export default function RecapPage() {
       
       const registrationsResult = await registrationsResponse.json();
       
-      // Charger les présences pour chaque événement
+      // Filtrer les événements passés uniquement pour les statistiques de présences
+      const now = new Date();
+      const pastEvents = (registrationsResult.eventsWithRegistrations || []).filter((item: any) => {
+        const eventDate = new Date(item.event.date);
+        return eventDate < now;
+      });
+      
+      // Charger les présences pour chaque événement passé uniquement
       const eventsWithPresences = await Promise.all(
-        (registrationsResult.eventsWithRegistrations || []).map(async (item: any) => {
+        pastEvents.map(async (item: any) => {
           try {
             const presenceResponse = await fetch(
               `/api/admin/events/presence?eventId=${item.event.id}`,
@@ -90,9 +97,15 @@ export default function RecapPage() {
         })
       );
       
+      // Calculer le total des inscriptions pour les événements passés uniquement
+      const totalRegistrationsPast = eventsWithPresences.reduce(
+        (sum, item) => sum + item.registrationCount,
+        0
+      );
+      
       setData({
-        totalEvents: registrationsResult.totalEvents || 0,
-        totalRegistrations: registrationsResult.totalRegistrations || 0,
+        totalEvents: pastEvents.length, // Nombre d'événements passés uniquement
+        totalRegistrations: totalRegistrationsPast, // Total inscriptions événements passés
         eventsWithRegistrations: eventsWithPresences,
       });
     } catch (error) {
