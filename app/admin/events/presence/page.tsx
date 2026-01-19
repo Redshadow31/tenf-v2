@@ -529,7 +529,16 @@ export default function EventPresencePage() {
                 <div>
                   <p className="text-gray-400 mb-1">Absents</p>
                   <p className="text-red-400 font-semibold">
-                    {event.presences?.filter(p => !p.present).length || 0}
+                    {(() => {
+                      const presences = event.presences || [];
+                      const registrations = event.registrations || [];
+                      // Absents = présences avec present: false + inscrits sans présence enregistrée
+                      const absentPresences = presences.filter(p => !p.present).length;
+                      const registeredWithoutPresence = registrations.filter(reg => 
+                        !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                      ).length;
+                      return absentPresences + registeredWithoutPresence;
+                    })()}
                   </p>
                 </div>
                 <div>
@@ -601,7 +610,16 @@ export default function EventPresencePage() {
                           <div>
                             <p className="text-gray-400 mb-1">Absents</p>
                             <p className="text-red-400 font-semibold">
-                              {event.presences?.filter(p => !p.present).length || 0}
+                              {(() => {
+                                const presences = event.presences || [];
+                                const registrations = event.registrations || [];
+                                // Absents = présences avec present: false + inscrits sans présence enregistrée
+                                const absentPresences = presences.filter(p => !p.present).length;
+                                const registeredWithoutPresence = registrations.filter(reg => 
+                                  !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                                ).length;
+                                return absentPresences + registeredWithoutPresence;
+                              })()}
                             </p>
                           </div>
                           <div>
@@ -980,7 +998,14 @@ function EventPresenceModal({
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Absents</p>
             <p className="text-red-400 font-bold text-xl">
-              {presences.filter(p => !p.present).length}
+              {(() => {
+                // Absents = présences avec present: false + inscrits sans présence enregistrée
+                const absentPresences = presences.filter(p => !p.present).length;
+                const registeredWithoutPresence = registrations.filter(reg => 
+                  !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                ).length;
+                return absentPresences + registeredWithoutPresence;
+              })()}
             </p>
           </div>
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
