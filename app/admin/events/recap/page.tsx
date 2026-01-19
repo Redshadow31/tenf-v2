@@ -118,9 +118,14 @@ export default function RecapPage() {
     return stats;
   };
 
-  const getAverageRegistrations = () => {
+  const getAveragePresences = () => {
     if (!data || data.totalEvents === 0) return 0;
-    return Math.round((data.totalRegistrations / data.totalEvents) * 10) / 10;
+    // Calculer le total des présences (présents) pour tous les événements
+    const totalPresences = data.eventsWithRegistrations.reduce(
+      (sum, item) => sum + (item.presenceCount || 0),
+      0
+    );
+    return Math.round((totalPresences / data.totalEvents) * 10) / 10;
   };
 
   if (loading) {
@@ -192,7 +197,7 @@ export default function RecapPage() {
                 </h3>
               </div>
               <p className="text-3xl font-bold text-white">
-                {getAverageRegistrations()}
+                {getAveragePresences()}
               </p>
             </div>
 
