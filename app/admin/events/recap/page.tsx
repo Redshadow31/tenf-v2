@@ -4,6 +4,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { BarChart3, Users, Calendar, TrendingUp } from "lucide-react";
 
+interface EventPresence {
+  id: string;
+  twitchLogin: string;
+  displayName: string;
+  present: boolean;
+}
+
 interface RecapData {
   totalEvents: number;
   totalRegistrations: number;
@@ -17,6 +24,8 @@ interface RecapData {
     };
     registrations: Array<any>;
     registrationCount: number;
+    presences?: EventPresence[];
+    presenceCount?: number; // Nombre de présents (present: true)
   }>;
 }
 
@@ -31,17 +40,61 @@ export default function RecapPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/admin/events/registrations", {
+      
+      // Charger les inscriptions
+      const registrationsResponse = await fetch("/api/admin/events/registrations", {
         cache: 'no-store',
       });
-      if (response.ok) {
-        const result = await response.json();
-        setData({
-          totalEvents: result.totalEvents || 0,
-          totalRegistrations: result.totalRegistrations || 0,
-          eventsWithRegistrations: result.eventsWithRegistrations || [],
-        });
+      
+      if (!registrationsResponse.ok) {
+        throw new Error("Erreur lors du chargement des inscriptions");
       }
+      
+      const registrationsResult = await registrationsResponse.json();
+      
+      // Charger les présences pour chaque événement
+      const eventsWithPresences = await Promise.all(
+        (registrationsResult.eventsWithRegistrations || []).map(async (item: any) => {
+          try {
+            const presenceResponse = await fetch(
+              `/api/admin/events/presence?eventId=${item.event.id}`,
+              { cache: 'no-store' }
+            );
+            
+            if (presenceResponse.ok) {
+              const presenceData = await presenceResponse.json();
+              const presences = presenceData.presences || [];
+              // Compter uniquement les présents (present: true)
+              const presenceCount = presences.filter((p: EventPresence) => p.present).length;
+              
+              return {
+                ...item,
+                presences,
+                presenceCount,
+              };
+            }
+            
+            return {
+              ...item,
+              presences: [],
+              presenceCount: 0,
+            };
+          } catch (error) {
+            console.error(`Erreur chargement présences pour ${item.event.id}:`, error);
+            return {
+              ...item,
+              presences: [],
+              presenceCount: 0,
+            };
+          }
+        })
+      );
+      
+      setData({
+        totalEvents: registrationsResult.totalEvents || 0,
+        totalRegistrations: registrationsResult.totalRegistrations || 0,
+        eventsWithRegistrations: eventsWithPresences,
+      });
     } catch (error) {
       console.error("Erreur chargement données:", error);
     } finally {
@@ -51,14 +104,16 @@ export default function RecapPage() {
 
   const getCategoryStats = () => {
     if (!data) return {};
-    const stats: Record<string, { count: number; registrations: number }> = {};
+    const stats: Record<string, { count: number; registrations: number; totalPresences: number }> = {};
     data.eventsWithRegistrations.forEach((item) => {
       const cat = item.event.category;
       if (!stats[cat]) {
-        stats[cat] = { count: 0, registrations: 0 };
+        stats[cat] = { count: 0, registrations: 0, totalPresences: 0 };
       }
       stats[cat].count++;
       stats[cat].registrations += item.registrationCount;
+      // Ajouter le nombre de présents pour cet événement
+      stats[cat].totalPresences += item.presenceCount || 0;
     });
     return stats;
   };
@@ -185,7 +240,7 @@ export default function RecapPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Moyenne:</span>
                         <span className="text-white font-semibold">
-                          {Math.round((stats.registrations / stats.count) * 10) / 10}
+                          {Math.round((stats.totalPresences / stats.count) * 10) / 10}
                         </span>
                       </div>
                     )}
