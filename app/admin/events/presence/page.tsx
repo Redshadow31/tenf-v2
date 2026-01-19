@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar } from "lucide-react";
+import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown } from "lucide-react";
 
 interface Event {
   id: string;
@@ -60,6 +60,8 @@ export default function EventPresencePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingNote, setEditingNote] = useState<{ eventId: string; twitchLogin: string; note: string } | null>(null);
+  const [sortBy, setSortBy] = useState<"date" | "presences" | "inscriptions" | "absents" | "category">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     async function checkAccess() {
@@ -438,20 +440,46 @@ export default function EventPresencePage() {
         </div>
       </div>
 
-      {/* Sélecteur de mois */}
-      <div className="mb-6 flex items-center gap-4">
-        <label className="text-sm font-semibold text-gray-300">Mois :</label>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-        >
-          {getMonthOptions().map(option => (
-            <option key={option} value={option}>
-              {formatMonthKey(option)}
-            </option>
-          ))}
-        </select>
+      {/* Sélecteur de mois et tri */}
+      <div className="mb-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-semibold text-gray-300">Mois :</label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+          >
+            {getMonthOptions().map(option => (
+              <option key={option} value={option}>
+                {formatMonthKey(option)}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-semibold text-gray-300">Trier par :</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+          >
+            <option value="date">Date</option>
+            <option value="presences">Présents</option>
+            <option value="inscriptions">Inscriptions</option>
+            <option value="absents">Absents</option>
+            <option value="category">Catégorie</option>
+          </select>
+          
+          <button
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white hover:bg-[#252529] transition-colors flex items-center gap-2"
+            title={sortOrder === "asc" ? "Tri croissant" : "Tri décroissant"}
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            <span className="text-sm">{sortOrder === "asc" ? "↑" : "↓"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Liste des événements du mois */}
@@ -461,15 +489,59 @@ export default function EventPresencePage() {
             <p className="text-gray-400">Aucun événement pour ce mois</p>
           </div>
         ) : (() => {
+          // Fonction de tri générique
+          const sortEvents = (eventsToSort: Event[]) => {
+            return [...eventsToSort].sort((a, b) => {
+              let comparison = 0;
+              
+              switch (sortBy) {
+                case "date":
+                  comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+                  break;
+                case "presences":
+                  const aPresences = a.presences?.filter(p => p.present).length || 0;
+                  const bPresences = b.presences?.filter(p => p.present).length || 0;
+                  comparison = aPresences - bPresences;
+                  break;
+                case "inscriptions":
+                  const aRegistrations = a.registrations?.length || 0;
+                  const bRegistrations = b.registrations?.length || 0;
+                  comparison = aRegistrations - bRegistrations;
+                  break;
+                case "absents":
+                  const aPresencesList = a.presences || [];
+                  const aRegistrationsList = a.registrations || [];
+                  const aAbsents = aPresencesList.filter(p => !p.present).length + 
+                    aRegistrationsList.filter(reg => 
+                      !aPresencesList.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                    ).length;
+                  
+                  const bPresencesList = b.presences || [];
+                  const bRegistrationsList = b.registrations || [];
+                  const bAbsents = bPresencesList.filter(p => !p.present).length + 
+                    bRegistrationsList.filter(reg => 
+                      !bPresencesList.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                    ).length;
+                  comparison = aAbsents - bAbsents;
+                  break;
+                case "category":
+                  comparison = (a.category || "").localeCompare(b.category || "", 'fr');
+                  break;
+              }
+              
+              return sortOrder === "asc" ? comparison : -comparison;
+            });
+          };
+          
           // Séparer les événements en deux groupes : à venir et passés
           const now = new Date();
-          const upcomingEvents = events
-            .filter(event => new Date(event.date) >= now)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Plus proche en premier
+          const upcomingEvents = sortEvents(
+            events.filter(event => new Date(event.date) >= now)
+          );
           
-          const pastEvents = events
-            .filter(event => new Date(event.date) < now)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Plus récent en premier
+          const pastEvents = sortEvents(
+            events.filter(event => new Date(event.date) < now)
+          );
 
           return (
             <>
