@@ -425,13 +425,33 @@ export default function EventPresencePage() {
       </div>
 
       {/* Liste des événements du mois */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {events.length === 0 ? (
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
             <p className="text-gray-400">Aucun événement pour ce mois</p>
           </div>
-        ) : (
-          events.map((event) => (
+        ) : (() => {
+          // Séparer les événements en deux groupes : à venir et passés
+          const now = new Date();
+          const upcomingEvents = events
+            .filter(event => new Date(event.date) >= now)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Plus proche en premier
+          
+          const pastEvents = events
+            .filter(event => new Date(event.date) < now)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Plus récent en premier
+
+          return (
+            <>
+              {/* Section Événements à venir */}
+              {upcomingEvents.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Calendar className="w-6 h-6 text-green-400" />
+                    Événements à venir ({upcomingEvents.length})
+                  </h2>
+                  <div className="space-y-4">
+                    {upcomingEvents.map((event) => (
             <div
               key={event.id}
               className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
@@ -490,8 +510,92 @@ export default function EventPresencePage() {
                 </div>
               </div>
             </div>
-          ))
-        )}
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Section Événements passés */}
+              {pastEvents.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Calendar className="w-6 h-6 text-gray-400" />
+                    Événements passés ({pastEvents.length})
+                  </h2>
+                  <div className="space-y-4">
+                    {pastEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
+                            <div className="flex items-center gap-4 text-sm text-gray-400">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{formatEventDate(event.date)}</span>
+                              </div>
+                              {event.category && (
+                                <span className="px-2 py-1 bg-gray-700 rounded text-xs">{event.category}</span>
+                              )}
+                              {event.location && (
+                                <span className="text-gray-500">📍 {event.location}</span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedEvent(event);
+                              setIsEventModalOpen(true);
+                              setSearchQuery("");
+                            }}
+                            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                          >
+                            Gérer les présences
+                          </button>
+                        </div>
+
+                        {/* Aperçu des présences */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-400 mb-1">Inscrits</p>
+                            <p className="text-white font-semibold">{event.registrations?.length || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 mb-1">Présents</p>
+                            <p className="text-green-400 font-semibold">
+                              {event.presences?.filter(p => p.present).length || 0}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 mb-1">Absents</p>
+                            <p className="text-red-400 font-semibold">
+                              {event.presences?.filter(p => !p.present).length || 0}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 mb-1">Ajoutés manuellement</p>
+                            <p className="text-yellow-400 font-semibold">
+                              {event.presences?.filter(p => p.addedManually).length || 0}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Message si aucune section n'a d'événements */}
+              {upcomingEvents.length === 0 && pastEvents.length === 0 && (
+                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
+                  <p className="text-gray-400">Aucun événement pour ce mois</p>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Modal de gestion des présences pour un événement */}
