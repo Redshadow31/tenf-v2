@@ -93,7 +93,13 @@ export default function PlanificationPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.events || []);
+        // Filtrer uniquement les événements à venir
+        const now = new Date();
+        const upcomingEvents = (data.events || []).filter((event: any) => {
+          const eventDate = new Date(event.date);
+          return eventDate >= now;
+        });
+        setEvents(upcomingEvents);
       }
     } catch (error) {
       console.error("Erreur chargement événements:", error);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, List, BarChart3, Settings } from "lucide-react";
+import { Calendar, List, BarChart3, Archive } from "lucide-react";
 
 const eventSections = [
   {
@@ -11,6 +11,14 @@ const eventSections = [
     icon: Calendar,
     href: "/admin/events/planification",
     color: "from-[#9146ff] to-[#5a32b4]",
+  },
+  {
+    id: "archives",
+    title: "Événements passés",
+    description: "Consulter les événements passés organisés par mois",
+    icon: Archive,
+    href: "/admin/events/archives",
+    color: "from-amber-600 to-orange-800",
   },
   {
     id: "liste",
