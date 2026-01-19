@@ -14,7 +14,8 @@ import { createEvent, Event } from '@/lib/eventStorage';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// Cache ISR de 30 secondes pour améliorer les performances
+export const revalidate = 30;
 
 /**
  * GET - Récupère les présences pour un mois donné ou pour un événement spécifique
@@ -77,10 +78,18 @@ export async function GET(request: NextRequest) {
         })
       );
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         month: monthParam,
         events: eventsWithPresences,
       });
+      
+      // Ajouter des headers de cache pour améliorer les performances
+      response.headers.set(
+        'Cache-Control',
+        'private, s-maxage=30, stale-while-revalidate=60'
+      );
+      
+      return response;
     }
 
     return NextResponse.json(

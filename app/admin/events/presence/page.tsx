@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar } from "lucide-react";
@@ -94,6 +94,33 @@ export default function EventPresencePage() {
     }
   }, [hasAccess, selectedMonth]);
 
+  // Charger les membres quand le modal s'ouvre (lazy loading)
+  useEffect(() => {
+    if (isEventModalOpen && allMembers.length === 0) {
+      async function loadMembers() {
+        try {
+          const membersResponse = await fetch("/api/admin/members", {
+            next: { revalidate: 60 },
+          });
+
+          if (membersResponse.ok) {
+            const membersData = await membersResponse.json();
+            const activeMembers = (membersData.members || []).filter((m: any) => m.isActive !== false);
+            setAllMembers(activeMembers.map((m: any) => ({
+              twitchLogin: m.twitchLogin || '',
+              displayName: m.displayName || m.nom || m.twitchLogin || '',
+              discordId: m.discordId,
+              discordUsername: m.discordUsername,
+            })).filter((m: Member) => m.twitchLogin));
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement des membres:", error);
+        }
+      }
+      loadMembers();
+    }
+  }, [isEventModalOpen, allMembers.length]);
+
   async function loadData() {
     if (!selectedMonth) return;
     
@@ -101,12 +128,8 @@ export default function EventPresencePage() {
       setLoading(true);
 
       // Charger les événements du mois avec leurs présences
-      const eventsResponse = await fetch(`/api/admin/events/presence?month=${selectedMonth}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
+      // Le cache est géré côté serveur (revalidate: 30)
+      const eventsResponse = await fetch(`/api/admin/events/presence?month=${selectedMonth}`);
 
       if (eventsResponse.ok) {
         const data = await eventsResponse.json();
@@ -115,23 +138,21 @@ export default function EventPresencePage() {
         console.error("Erreur lors du chargement des événements:", eventsResponse.status, eventsResponse.statusText);
       }
 
-      // Charger tous les membres actifs pour la recherche
-      const membersResponse = await fetch("/api/admin/members", {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
+      // Charger les membres seulement si le modal n'est pas encore ouvert (lazy loading)
+      // Les membres seront chargés quand le modal s'ouvre si nécessaire
+      if (isEventModalOpen && allMembers.length === 0) {
+        const membersResponse = await fetch("/api/admin/members");
 
-      if (membersResponse.ok) {
-        const membersData = await membersResponse.json();
-        const activeMembers = (membersData.members || []).filter((m: any) => m.isActive !== false);
-        setAllMembers(activeMembers.map((m: any) => ({
-          twitchLogin: m.twitchLogin || '',
-          displayName: m.displayName || m.nom || m.twitchLogin || '',
-          discordId: m.discordId,
-          discordUsername: m.discordUsername,
-        })).filter((m: Member) => m.twitchLogin));
+        if (membersResponse.ok) {
+          const membersData = await membersResponse.json();
+          const activeMembers = (membersData.members || []).filter((m: any) => m.isActive !== false);
+          setAllMembers(activeMembers.map((m: any) => ({
+            twitchLogin: m.twitchLogin || '',
+            displayName: m.displayName || m.nom || m.twitchLogin || '',
+            discordId: m.discordId,
+            discordUsername: m.discordUsername,
+          })).filter((m: Member) => m.twitchLogin));
+        }
       }
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
@@ -188,6 +209,40 @@ export default function EventPresencePage() {
       
       const isPresent = existingPresence ? !existingPresence.present : true;
 
+      // Mise à jour optimiste : mettre à jour l'UI immédiatement
+      setEvents(prevEvents => prevEvents.map(e => {
+        if (e.id !== eventId) return e;
+        
+        const presences = e.presences || [];
+        const presenceIndex = presences.findIndex(
+          p => p.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
+        );
+        
+        if (presenceIndex >= 0) {
+          // Mettre à jour la présence existante
+          const updatedPresences = [...presences];
+          updatedPresences[presenceIndex] = {
+            ...updatedPresences[presenceIndex],
+            present: isPresent,
+          };
+          return { ...e, presences: updatedPresences };
+        } else {
+          // Ajouter une nouvelle présence
+          const newPresence: EventPresence = {
+            id: `${Date.now()}-${member.twitchLogin}`,
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName,
+            discordId: member.discordId,
+            discordUsername: member.discordUsername,
+            isRegistered,
+            present: isPresent,
+            addedManually: !isRegistered,
+            createdAt: new Date().toISOString(),
+          };
+          return { ...e, presences: [...presences, newPresence] };
+        }
+      }));
+
       const response = await fetch('/api/admin/events/presence', {
         method: 'POST',
         headers: {
@@ -201,16 +256,17 @@ export default function EventPresencePage() {
         }),
       });
 
-      if (response.ok) {
-        // Recharger les données
-        await loadData();
-      } else {
+      if (!response.ok) {
+        // En cas d'erreur, recharger les données pour restaurer l'état correct
         const error = await response.json();
         alert(`Erreur : ${error.error || 'Erreur inconnue'}`);
+        await loadData();
       }
     } catch (error) {
       console.error("Erreur lors de la mise à jour de la présence:", error);
       alert("Erreur lors de la mise à jour de la présence");
+      // Recharger les données en cas d'erreur
+      await loadData();
     } finally {
       setSaving(false);
     }
@@ -219,6 +275,31 @@ export default function EventPresencePage() {
   async function handleSaveNote(eventId: string, twitchLogin: string, note: string) {
     try {
       setSaving(true);
+      
+      const trimmedNote = note.trim() || undefined;
+      
+      // Mise à jour optimiste
+      setEvents(prevEvents => prevEvents.map(e => {
+        if (e.id !== eventId) return e;
+        
+        const presences = e.presences || [];
+        const presenceIndex = presences.findIndex(
+          p => p.twitchLogin.toLowerCase() === twitchLogin.toLowerCase()
+        );
+        
+        if (presenceIndex >= 0) {
+          const updatedPresences = [...presences];
+          updatedPresences[presenceIndex] = {
+            ...updatedPresences[presenceIndex],
+            note: trimmedNote,
+          };
+          return { ...e, presences: updatedPresences };
+        }
+        return e;
+      }));
+      
+      setEditingNote(null);
+
       const response = await fetch('/api/admin/events/presence', {
         method: 'PUT',
         headers: {
@@ -227,21 +308,19 @@ export default function EventPresencePage() {
         body: JSON.stringify({
           eventId,
           twitchLogin,
-          note: note.trim() || undefined,
+          note: trimmedNote,
         }),
       });
 
-      if (response.ok) {
-        // Recharger les données
-        await loadData();
-        setEditingNote(null);
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         alert(`Erreur : ${error.error || 'Erreur inconnue'}`);
+        await loadData();
       }
     } catch (error) {
       console.error("Erreur lors de la sauvegarde de la note:", error);
       alert("Erreur lors de la sauvegarde de la note");
+      await loadData();
     } finally {
       setSaving(false);
     }
@@ -254,20 +333,30 @@ export default function EventPresencePage() {
 
     try {
       setSaving(true);
+      
+      // Mise à jour optimiste
+      setEvents(prevEvents => prevEvents.map(e => {
+        if (e.id !== eventId) return e;
+        
+        const presences = (e.presences || []).filter(
+          p => p.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
+        );
+        return { ...e, presences };
+      }));
+
       const response = await fetch(`/api/admin/events/presence?eventId=${eventId}&twitchLogin=${twitchLogin}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        // Recharger les données
-        await loadData();
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         alert(`Erreur : ${error.error || 'Erreur inconnue'}`);
+        await loadData();
       }
     } catch (error) {
       console.error("Erreur lors de la suppression de la présence:", error);
       alert("Erreur lors de la suppression de la présence");
+      await loadData();
     } finally {
       setSaving(false);
     }
@@ -456,8 +545,18 @@ function EventPresenceModal({
   saving: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingNote, setEditingNote] = useState<{ twitchLogin: string; note: string } | null>(null);
+
+  // Debounce de la recherche (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   function formatEventDateForModal(dateStr: string): string {
     try {
@@ -474,7 +573,7 @@ function EventPresenceModal({
     }
   }
 
-  function filterMembers(query: string): Member[] {
+  const filterMembers = useCallback((query: string): Member[] => {
     if (!query.trim()) return [];
     const lowerQuery = query.toLowerCase();
     return allMembers.filter(m => {
@@ -490,9 +589,12 @@ function EventPresenceModal({
         m.discordUsername?.toLowerCase().includes(lowerQuery)
       );
     }).slice(0, 10);
-  }
+  }, [allMembers, event.presences]);
 
-  const filteredMembers = filterMembers(searchQuery);
+  const filteredMembers = useMemo(
+    () => filterMembers(debouncedSearchQuery),
+    [debouncedSearchQuery, filterMembers]
+  );
   const registrations = event.registrations || [];
   const presences = event.presences || [];
 
@@ -567,6 +669,7 @@ function EventPresenceModal({
                   setSearchQuery(e.target.value);
                   setShowAddMember(e.target.value.trim().length > 0);
                 }}
+                onFocus={() => setShowAddMember(searchQuery.trim().length > 0)}
                 placeholder="Rechercher un membre à ajouter..."
                 className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
               />
