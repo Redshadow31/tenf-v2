@@ -18,10 +18,7 @@ export default function UserSidebar() {
       // Vérifier si l'utilisateur a accès au dashboard admin et à l'Academy
       if (user) {
         try {
-          const [roleResponse, academyResponse] = await Promise.all([
-            fetch("/api/user/role", { cache: 'no-store' }),
-            fetch("/api/academy/check-access", { cache: 'no-store' }).catch(() => ({ ok: false })),
-          ]);
+          const roleResponse = await fetch("/api/user/role", { cache: 'no-store' });
           
           if (roleResponse.ok) {
             const data = await roleResponse.json();
@@ -31,9 +28,15 @@ export default function UserSidebar() {
             console.error('UserSidebar - Role check failed:', roleResponse.status, roleResponse.statusText);
           }
           
-          if (academyResponse.ok) {
-            const academyData = await academyResponse.json();
-            setHasAcademyAccess(academyData.hasAccess || false);
+          try {
+            const academyResponse = await fetch("/api/academy/check-access", { cache: 'no-store' });
+            if (academyResponse.ok) {
+              const academyData = await academyResponse.json();
+              setHasAcademyAccess(academyData.hasAccess || false);
+            }
+          } catch (error) {
+            // Ignorer les erreurs de vérification Academy
+            console.warn('UserSidebar - Academy access check failed:', error);
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
