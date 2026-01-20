@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordUser } from '@/lib/discord';
+import { cookies } from 'next/headers';
 import { loadAccesses, loadPromos } from '@/lib/academyStorage';
 
 export const runtime = 'nodejs';
@@ -10,9 +10,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
+    // Lire les cookies directement côté serveur
+    const cookieStore = cookies();
+    const userId = cookieStore.get('discord_user_id')?.value;
     
-    if (!user) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const accesses = await loadAccesses();
-    const userAccesses = accesses.filter(a => a.userId === user.id);
+    const userAccesses = accesses.filter(a => a.userId === userId);
     
     if (userAccesses.length === 0) {
       return NextResponse.json({ promo: null });

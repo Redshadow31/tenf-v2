@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordUser } from '@/lib/discord';
+import { cookies } from 'next/headers';
 import { grantAccess, addLog, loadSettings, loadPromos } from '@/lib/academyStorage';
 
 export const runtime = 'nodejs';
@@ -10,14 +10,24 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
+    // Lire les cookies directement côté serveur
+    const cookieStore = cookies();
+    const userId = cookieStore.get('discord_user_id')?.value;
+    const username = cookieStore.get('discord_username')?.value;
+    const avatar = cookieStore.get('discord_avatar')?.value;
     
-    if (!user) {
+    if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Vous devez être connecté avec Discord' },
         { status: 401 }
       );
     }
+    
+    const user = {
+      id: userId,
+      username: username || 'Unknown',
+      avatar: avatar || null,
+    };
 
     // Vérifier si Academy est activée
     const settings = await loadSettings();

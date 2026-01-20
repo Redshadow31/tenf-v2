@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordUser } from '@/lib/discord';
+import { cookies } from 'next/headers';
 import { hasAccess, loadAccesses, loadPromos, loadSettings } from '@/lib/academyStorage';
 
 export const runtime = 'nodejs';
@@ -10,9 +10,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getDiscordUser();
+    // Lire les cookies directement côté serveur
+    const cookieStore = cookies();
+    const userId = cookieStore.get('discord_user_id')?.value;
     
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ hasAccess: false });
     }
 
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Vérifier si l'utilisateur a un accès
-    const userHasAccess = await hasAccess(user.id);
+    const userHasAccess = await hasAccess(userId);
     
     if (!userHasAccess) {
       return NextResponse.json({ hasAccess: false });
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Trouver la promo active de l'utilisateur
     const accesses = await loadAccesses();
-    const userAccesses = accesses.filter(a => a.userId === user.id);
+    const userAccesses = accesses.filter(a => a.userId === userId);
     const promos = await loadPromos();
     const activePromo = promos.find(p => p.isActive && userAccesses.some(a => a.promoId === p.id));
 
