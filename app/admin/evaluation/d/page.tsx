@@ -813,6 +813,76 @@ export default function EvaluationDPage() {
         </div>
       )}
 
+      {/* Encadré explicatif des critères de notation */}
+      <div className="mb-8 rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+          📋 Critères de notation
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Spotlight (/5 points)
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Points calculés sur la base de la présence aux spotlights et des évaluations des streamers. 
+              Note finale basée sur la présence active et la qualité du spotlight.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Raids (/5 points)
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Points basés sur les raids effectués et reçus pendant le mois. 
+              Équilibre entre l'aide apportée (raids faits) et la reconnaissance reçue (raids reçus).
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Discord (/5 points)
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Note calculée sur l'activité Discord : messages envoyés et temps passé en vocal. 
+              Reflète l'implication dans la communauté sur le serveur Discord.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Events (/2 points)
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Points basés sur la présence effective aux événements TENF (hors spotlight). 
+              Calcul proportionnel au taux de présence sur le mois.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Follow (/5 points)
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Points attribués sur la base du suivi des autres membres TENF sur Twitch. 
+              Évalué périodiquement lors des validations de suivi.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+              Bonus
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong>Décalage horaire:</strong> +2 points pour les membres avec un décalage horaire significatif.
+              <br />
+              <strong>Modération:</strong> +0 à +5 points selon l'implication en tant que modérateur.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            <strong>Note finale:</strong> Total hors bonus (/25) + Bonus (/7) = Note finale (/32). 
+            Une note finale &gt; 16 indique un statut VIP potentiel, une note &lt; 5 nécessite une attention particulière.
+          </p>
+        </div>
+      </div>
+
       {/* Tableau récapitulatif */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">

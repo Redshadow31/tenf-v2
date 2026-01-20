@@ -2,32 +2,36 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Calendar, Users, CheckCircle2, XCircle, Star, ArrowLeft } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
-import ManualSpotlightModal from "@/components/admin/ManualSpotlightModal";
 
-interface ActiveSpotlight {
-  id: string;
-  streamerTwitchLogin: string;
-  streamerDisplayName?: string;
-  startedAt: string;
-  endsAt: string;
-  status: 'active' | 'completed' | 'cancelled';
-  moderatorUsername: string;
-}
-
-interface SpotlightPresence {
-  twitchLogin: string;
-  displayName?: string;
-  addedAt: string;
-  addedBy: string;
-}
-
-interface Member {
-  twitchLogin: string;
-  displayName: string;
-  role?: string;
-  isActive?: boolean;
+interface EventWithData {
+  event: {
+    id: string;
+    title: string;
+    date: string;
+    category: string;
+    description?: string;
+    location?: string;
+    image?: string;
+    isPublished: boolean;
+  };
+  registrations: Array<{
+    id: string;
+    twitchLogin: string;
+    displayName: string;
+    registeredAt: string;
+  }>;
+  registrationCount: number;
+  presences?: Array<{
+    id: string;
+    twitchLogin: string;
+    displayName: string;
+    present: boolean;
+  }>;
+  presenceCount?: number;
+  absentCount?: number;
+  presenceRate?: number;
 }
 
 interface EvaluationCriteria {
@@ -47,298 +51,267 @@ const DEFAULT_CRITERIA: EvaluationCriteria[] = [
 ];
 
 export default function GestionSpotlightPage() {
-  const [spotlight, setSpotlight] = useState<ActiveSpotlight | null>(null);
-  const [presences, setPresences] = useState<SpotlightPresence[]>([]);
-  const [allMembers, setAllMembers] = useState<Member[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [events, setEvents] = useState<EventWithData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<EventWithData | null>(null);
+  const [activeTab, setActiveTab] = useState<"presence" | "evaluation">("presence");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [evaluation, setEvaluation] = useState<EvaluationCriteria[]>(DEFAULT_CRITERIA);
   const [moderatorComments, setModeratorComments] = useState("");
-  const [timeRemaining, setTimeRemaining] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isFounderUser, setIsFounderUser] = useState(false);
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [showStreamerModal, setShowStreamerModal] = useState(false);
-  const [streamerSearch, setStreamerSearch] = useState("");
-  const [selectedModerator, setSelectedModerator] = useState<{ discordId: string; username: string } | null>(null);
-  const [staffMembers, setStaffMembers] = useState<Array<{ discordId: string; discordUsername: string; displayName: string; role: string }>>([]);
 
   useEffect(() => {
     loadData();
-    loadMembers();
-    checkFounderStatus();
-    loadStaffMembers();
   }, []);
 
-  async function loadStaffMembers() {
-    try {
-      const response = await fetch('/api/admin/staff', { cache: 'no-store' });
-      if (response.ok) {
-        const data = await response.json();
-        setStaffMembers(data.staff || []);
-        // Définir le modérateur par défaut comme l'utilisateur actuel
-        const user = await getDiscordUser();
-        if (user && data.staff) {
-          const currentUser = data.staff.find((s: any) => s.discordId === user.id);
-          if (currentUser) {
-            setSelectedModerator({
-              discordId: currentUser.discordId,
-              username: currentUser.discordUsername || currentUser.displayName,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Erreur chargement staff:", error);
-    }
-  }
-
-  useEffect(() => {
-    // Timer pour mettre à jour le temps restant
-    const interval = setInterval(() => {
-      updateTimeRemaining();
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [spotlight]);
-
-  async function checkFounderStatus() {
-    try {
-      const user = await getDiscordUser();
-      if (user) {
-        const founderStatus = isFounder(user.id);
-        setIsFounderUser(founderStatus);
-      }
-    } catch (error) {
-      console.error("Erreur vérification fondateur:", error);
-    }
-  }
-
-  async function loadData() {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/spotlight/active', {
+      const response = await fetch("/api/admin/events/registrations", {
         cache: 'no-store',
       });
-
       if (response.ok) {
-        const data = await response.json();
-        if (data.spotlight) {
-          setSpotlight(data.spotlight.spotlight);
-          setPresences(data.spotlight.presences || []);
-          if (data.spotlight.evaluation) {
-            setEvaluation(data.spotlight.evaluation.criteria || DEFAULT_CRITERIA);
-            setModeratorComments(data.spotlight.evaluation.moderatorComments || "");
-          } else {
-            // Nouveau spotlight : réinitialiser l'évaluation
-            setEvaluation(DEFAULT_CRITERIA);
-            setModeratorComments("");
+        const result = await response.json();
+        // Filtrer uniquement les événements Spotlight
+        const spotlightEvents = (result.eventsWithRegistrations || []).filter(
+          (item: any) => item.event.category === "Spotlight"
+        );
+
+        // Charger les présences pour chaque événement
+        const eventsWithPresences = await Promise.all(
+          spotlightEvents.map(async (item: any) => {
+            try {
+              const presenceResponse = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, {
+                cache: 'no-store',
+              });
+              if (presenceResponse.ok) {
+                const presenceData = await presenceResponse.json();
+                const presences = presenceData.presences || [];
+                const presentCount = presences.filter((p: any) => p.present).length;
+                const absentCount = presences.filter((p: any) => !p.present).length;
+                const registeredWithoutPresence = item.registrations.filter((reg: any) =>
+                  !presences.some((p: any) => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                ).length;
+                const totalAbsents = absentCount + registeredWithoutPresence;
+                const presenceRate = item.registrationCount > 0
+                  ? Math.round((presentCount / item.registrationCount) * 100)
+                  : 0;
+
+                return {
+                  ...item,
+                  presences,
+                  presenceCount: presentCount,
+                  absentCount: totalAbsents,
+                  presenceRate,
+                };
+              }
+            } catch (error) {
+              console.error(`Erreur chargement présences pour ${item.event.id}:`, error);
+            }
+            return {
+              ...item,
+              presences: [],
+              presenceCount: 0,
+              absentCount: item.registrationCount,
+              presenceRate: 0,
+            };
+          })
+        );
+
+        setEvents(eventsWithPresences);
+      }
+    } catch (error) {
+      console.error("Erreur chargement données:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatMonthKey = (key: string): string => {
+    const [year, month] = key.split('-');
+    const monthNames = [
+      "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+    ];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const formatEventDate = (dateStr: string): string => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Grouper les événements par mois
+  const groupEventsByMonth = () => {
+    const grouped: Record<string, EventWithData[]> = {};
+
+    events.forEach((item) => {
+      const eventDate = new Date(item.event.date);
+      const year = eventDate.getFullYear();
+      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+
+      if (!grouped[monthKey]) {
+        grouped[monthKey] = [];
+      }
+      grouped[monthKey].push(item);
+    });
+
+    // Trier les événements dans chaque mois par date décroissante
+    Object.keys(grouped).forEach(monthKey => {
+      grouped[monthKey].sort((a, b) => {
+        return new Date(b.event.date).getTime() - new Date(a.event.date).getTime();
+      });
+    });
+
+    // Trier les mois par ordre décroissant
+    return Object.entries(grouped).sort((a, b) => {
+      return b[0].localeCompare(a[0]);
+    });
+  };
+
+  const groupedEvents = groupEventsByMonth();
+  const displayedEvents = selectedMonth
+    ? groupedEvents.filter(([monthKey]) => monthKey === selectedMonth)
+    : groupedEvents;
+
+  const handleOpenEvent = (event: EventWithData) => {
+    setSelectedEvent(event);
+    setActiveTab("presence");
+    // Charger l'évaluation si elle existe
+    loadEvaluationForEvent(event);
+  };
+
+  const loadEvaluationForEvent = async (event: EventWithData) => {
+    // Essayer de charger l'évaluation depuis le spotlight correspondant
+    // Chercher dans le mois correspondant et les mois adjacents
+    try {
+      const eventDate = new Date(event.event.date);
+      
+      // Chercher dans le mois de l'événement et les 2 mois adjacents
+      for (let i = -1; i <= 1; i++) {
+        const checkDate = new Date(eventDate);
+        checkDate.setMonth(checkDate.getMonth() + i);
+        const monthKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        const response = await fetch(`/api/spotlight/presence/monthly?month=${monthKey}`, {
+          cache: 'no-store',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Trouver le spotlight correspondant à cet événement par date
+          const matchingSpotlight = data.spotlights?.find((s: any) => {
+            const spotlightDate = new Date(s.date);
+            const eventTime = eventDate.getTime();
+            const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+            return timeDiff < 3 * 60 * 60 * 1000; // Moins de 3h d'écart
+          });
+
+          if (matchingSpotlight) {
+            // Charger l'évaluation depuis spotlightStorage
+            try {
+              const evalResponse = await fetch(`/api/spotlight/evaluation/${matchingSpotlight.id}`, {
+                cache: 'no-store',
+              });
+              if (evalResponse.ok) {
+                const evalData = await evalResponse.json();
+                if (evalData.evaluation) {
+                  setEvaluation(evalData.evaluation.criteria || DEFAULT_CRITERIA);
+                  setModeratorComments(evalData.evaluation.moderatorComments || "");
+                  return;
+                }
+              }
+            } catch (error) {
+              console.error("Erreur chargement évaluation:", error);
+            }
           }
-        } else {
-          setSpotlight(null);
-          setPresences([]);
-          setEvaluation(DEFAULT_CRITERIA);
-          setModeratorComments("");
         }
       }
     } catch (error) {
-      console.error("Erreur chargement spotlight:", error);
-    } finally {
-      setLoading(false);
-      updateTimeRemaining();
+      console.error("Erreur chargement évaluation:", error);
     }
-  }
+    
+    // Par défaut, réinitialiser
+    setEvaluation(DEFAULT_CRITERIA);
+    setModeratorComments("");
+  };
 
-  async function loadMembers() {
+  const handleSavePresences = async () => {
+    if (!selectedEvent) return;
+
+    // Les présences sont déjà gérées via l'API des événements
+    // On valide juste pour passer à l'onglet évaluation
+    setActiveTab("evaluation");
+  };
+
+  const handleSaveEvaluation = async () => {
+    if (!selectedEvent) return;
+
     try {
-      const response = await fetch('/api/members/public', {
+      setSaving(true);
+      
+      // Trouver le spotlight correspondant pour sauvegarder l'évaluation
+      const eventDate = new Date(selectedEvent.event.date);
+      const monthKey = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      const response = await fetch(`/api/spotlight/presence/monthly?month=${monthKey}`, {
         cache: 'no-store',
       });
-
+      
       if (response.ok) {
         const data = await response.json();
-        const members = (data.members || [])
-          .filter((m: any) => m.isActive !== false)
-          .map((m: any) => ({
-            twitchLogin: m.twitchLogin || '',
-            displayName: m.displayName || m.twitchLogin || '',
-            role: m.role,
-            isActive: m.isActive,
-          }))
-          .filter((m: Member) => m.twitchLogin);
-        setAllMembers(members);
-      }
-    } catch (error) {
-      console.error("Erreur chargement membres:", error);
-    }
-  }
+        const matchingSpotlight = data.spotlights?.find((s: any) => {
+          const spotlightDate = new Date(s.date);
+          const eventTime = eventDate.getTime();
+          const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+          return timeDiff < 3 * 60 * 60 * 1000;
+        });
 
-  function updateTimeRemaining() {
-    if (!spotlight || spotlight.status !== 'active') {
-      setTimeRemaining("");
-      return;
-    }
+        if (matchingSpotlight) {
+          // Essayer d'abord PUT (mise à jour), sinon POST (création)
+          let evalResponse = await fetch(`/api/spotlight/evaluation/${matchingSpotlight.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              criteria: evaluation,
+              moderatorComments,
+            }),
+          });
 
-    const endsAt = new Date(spotlight.endsAt);
-    const now = new Date();
-    const diff = endsAt.getTime() - now.getTime();
+          // Si 404, créer avec POST
+          if (evalResponse.status === 404) {
+            evalResponse = await fetch('/api/spotlight/evaluation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                spotlightId: matchingSpotlight.id,
+                criteria: evaluation,
+                moderatorComments,
+              }),
+            });
+          }
 
-    if (diff <= 0) {
-      setTimeRemaining("Terminé");
-      // Ne pas recharger automatiquement pour éviter les boucles
-      // Le rechargement sera fait manuellement si nécessaire
-      return;
-    }
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
-  }
-
-  async function handleLaunchSpotlight() {
-    setShowStreamerModal(true);
-  }
-
-  async function handleSelectStreamer(twitchLogin: string, displayName: string) {
-    if (!selectedModerator) {
-      alert("Veuillez sélectionner un modérateur évaluateur");
-      return;
-    }
-
-    setShowStreamerModal(false);
-    setStreamerSearch("");
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/active', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          streamerTwitchLogin: twitchLogin,
-          streamerDisplayName: displayName,
-          moderatorDiscordId: selectedModerator.discordId,
-          moderatorUsername: selectedModerator.username,
-        }),
-      });
-
-      if (response.ok) {
-        await loadData();
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible de lancer le spotlight'}`);
-      }
-    } catch (error) {
-      console.error("Erreur lancement spotlight:", error);
-      alert("Erreur lors du lancement du spotlight");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleAddPresence(twitchLogin: string, displayName: string) {
-    if (!spotlight) return;
-
-    if (presences.some(p => p.twitchLogin.toLowerCase() === twitchLogin.toLowerCase())) {
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/presences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ twitchLogin, displayName }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPresences(data.presences || []);
-      } else {
-        const errorData = await response.json();
-        console.error("Erreur ajout présence:", errorData.error);
-        alert(`Erreur: ${errorData.error || 'Impossible d\'ajouter la présence'}`);
-      }
-    } catch (error) {
-      console.error("Erreur ajout présence:", error);
-      alert("Erreur lors de l'ajout de la présence");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleRemovePresence(twitchLogin: string) {
-    if (!spotlight) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/presences', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ twitchLogin }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPresences(data.presences || []);
-      } else {
-        const errorData = await response.json();
-        console.error("Erreur suppression présence:", errorData.error);
-        alert(`Erreur: ${errorData.error || 'Impossible de supprimer la présence'}`);
-      }
-    } catch (error) {
-      console.error("Erreur suppression présence:", error);
-      alert("Erreur lors de la suppression de la présence");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSavePresences() {
-    if (!spotlight) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/presences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ presences }),
-      });
-
-      if (response.ok) {
-        alert("Présences enregistrées avec succès");
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible d\'enregistrer les présences'}`);
-      }
-    } catch (error) {
-      console.error("Erreur sauvegarde présences:", error);
-      alert("Erreur lors de l'enregistrement des présences");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSubmitEvaluation() {
-    if (!spotlight) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/evaluation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          criteria: evaluation,
-          moderatorComments,
-        }),
-      });
-
-      if (response.ok) {
-        alert("Évaluation enregistrée avec succès");
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible d\'enregistrer l\'évaluation'}`);
+          if (evalResponse.ok) {
+            alert("Évaluation enregistrée avec succès");
+            await loadEvaluationForEvent(selectedEvent); // Recharger
+          } else {
+            const error = await evalResponse.json();
+            alert(`Erreur: ${error.error || 'Impossible d\'enregistrer l\'évaluation'}`);
+          }
+        } else {
+          alert("Spotlight correspondant non trouvé. Veuillez créer le spotlight dans la section A d'abord.");
+        }
       }
     } catch (error) {
       console.error("Erreur sauvegarde évaluation:", error);
@@ -346,112 +319,17 @@ export default function GestionSpotlightPage() {
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  async function handleAddToMonthlyReport() {
-    if (!spotlight) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      if (response.ok) {
-        alert("Spotlight ajouté au rapport mensuel avec succès");
-        // Réinitialiser complètement la page pour lancer un nouveau spotlight
-        setSpotlight(null);
-        setPresences([]);
-        setEvaluation(DEFAULT_CRITERIA);
-        setModeratorComments("");
-        setTimeRemaining("");
-        await loadData(); // Recharger pour s'assurer que tout est à jour
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible d\'ajouter au rapport mensuel'}`);
-      }
-    } catch (error) {
-      console.error("Erreur finalisation spotlight:", error);
-      alert("Erreur lors de l'ajout au rapport mensuel");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleCancelSpotlight() {
-    if (!spotlight) return;
-
-    const confirmCancel = confirm(
-      "Êtes-vous sûr de vouloir annuler ce spotlight ? Toutes les données non enregistrées seront perdues."
-    );
-
-    if (!confirmCancel) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch('/api/spotlight/active', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' }),
-      });
-
-      if (response.ok) {
-        alert("Spotlight annulé avec succès");
-        await loadData();
-      } else {
-        const error = await response.json();
-        alert(`Erreur: ${error.error || 'Impossible d\'annuler le spotlight'}`);
-      }
-    } catch (error) {
-      console.error("Erreur annulation spotlight:", error);
-      alert("Erreur lors de l'annulation du spotlight");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleSliderChange(id: string, value: number) {
+  const handleSliderChange = (id: string, value: number) => {
     setEvaluation((prev) =>
       prev.map((crit) => (crit.id === id ? { ...crit, value } : crit))
     );
-  }
-
-  const filteredMembers = allMembers
-    .filter((member) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        member.twitchLogin.toLowerCase().includes(query) ||
-        member.displayName.toLowerCase().includes(query) ||
-        (member.role && member.role.toLowerCase().includes(query))
-      );
-    })
-    .sort((a, b) => {
-      // Trier par displayName en ordre alphabétique
-      const nameA = (a.displayName || a.twitchLogin).toLowerCase();
-      const nameB = (b.displayName || b.twitchLogin).toLowerCase();
-      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
-    });
-
-  const filteredStreamers = allMembers.filter((member) => {
-    const query = streamerSearch.toLowerCase();
-    return (
-      member.twitchLogin.toLowerCase().includes(query) ||
-      member.displayName.toLowerCase().includes(query)
-    );
-  });
+  };
 
   const totalScore = evaluation.reduce((sum, crit) => sum + crit.value, 0);
   const maxScore = evaluation.reduce((sum, crit) => sum + crit.maxValue, 0);
   const scorePercentage = (totalScore / maxScore) * 100;
-
-  function getScoreBadge() {
-    if (scorePercentage >= 90) return { text: "Excellent Spotlight", color: "bg-green-500/20 text-green-300 border-green-500/30" };
-    if (scorePercentage >= 75) return { text: "Très bon Spotlight", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" };
-    if (scorePercentage >= 60) return { text: "Bon Spotlight", color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" };
-    return { text: "Spotlight à améliorer", color: "bg-red-500/20 text-red-300 border-red-500/30" };
-  }
 
   if (loading) {
     return (
@@ -468,572 +346,309 @@ export default function GestionSpotlightPage() {
       <div className="mb-8">
         <Link
           href="/admin/spotlight"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
+          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block flex items-center gap-2"
         >
-          ← Retour au hub Spotlight
+          <ArrowLeft className="w-4 h-4" />
+          Retour au hub Spotlight
         </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Gestion Spotlight</h1>
-            <p className="text-gray-400">Créer et gérer les spotlights</p>
-          </div>
-          {isFounderUser && (
-            <button
-              onClick={() => setShowManualModal(true)}
-              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-            >
-              Ajouter un spotlight manuellement
-            </button>
-          )}
-        </div>
+        <h1 className="text-4xl font-bold text-white mb-2">Gestion Spotlight</h1>
+        <p className="text-gray-400">Gérer les présences et évaluations des événements Spotlight</p>
       </div>
 
-      {/* Grille principale - 3 colonnes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* COLONNE GAUCHE */}
-        <div className="space-y-6">
-          {/* Démarrer un Spotlight */}
-          <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Démarrer un Spotlight
-            </h2>
-            {!spotlight || spotlight.status === 'cancelled' || spotlight.status === 'completed' ? (
-              <div className="space-y-4">
-                {spotlight && (spotlight.status === 'cancelled' || spotlight.status === 'completed') && (
-                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-gray-400 mb-1">Spotlight précédent</p>
-                    <p className="text-white font-semibold mb-1">
-                      {spotlight.streamerDisplayName || spotlight.streamerTwitchLogin}
-                    </p>
-                    {spotlight.status === 'cancelled' && (
-                      <p className="text-sm text-red-400 font-semibold">
-                        ⚠️ Annulé
-                      </p>
-                    )}
-                    {spotlight.status === 'completed' && (
-                      <p className="text-sm text-green-400 font-semibold">
-                        ✓ Terminé
-                      </p>
-                    )}
-                  </div>
-                )}
-                <button
-                  onClick={handleLaunchSpotlight}
-                  disabled={saving}
-                  className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {saving ? "Lancement..." : "Lancer un Spotlight"}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-400">Streamer</p>
-                <p className="text-white font-semibold">
-                  {spotlight.streamerDisplayName || spotlight.streamerTwitchLogin}
-                </p>
-                {timeRemaining && spotlight.status === 'active' && (
-                  <>
-                    <p className="text-sm text-gray-400 mt-4">Temps restant</p>
-                    <p className="text-lg font-bold text-[#9146ff]">
-                      {timeRemaining}
-                    </p>
-                  </>
-                )}
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Modérateur</p>
-                  <p className="text-white">{spotlight.moderatorUsername}</p>
-                </div>
-                <button
-                  onClick={handleCancelSpotlight}
-                  disabled={saving}
-                  className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {saving ? "Annulation..." : "Annuler le spotlight"}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Liste des présences (membres ajoutés) */}
-          {spotlight && (
-            <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Présence Spotlight
-              </h2>
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {presences.length > 0 ? (
-                  [...presences]
-                    .sort((a, b) => {
-                      // Trier par displayName en ordre alphabétique
-                      const nameA = (a.displayName || a.twitchLogin).toLowerCase();
-                      const nameB = (b.displayName || b.twitchLogin).toLowerCase();
-                      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
-                    })
-                    .map((presence, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 p-3 bg-[#0e0e10] rounded-lg border border-gray-700 hover:border-[#9146ff]/50 transition-colors group"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold flex-shrink-0">
-                        {(presence.displayName || presence.twitchLogin).charAt(0).toUpperCase()}
-                      </div>
-                      <span className="flex-1 text-white font-medium">
-                        {presence.displayName || presence.twitchLogin}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          if (!saving && spotlight.status !== 'cancelled') {
-                            handleRemovePresence(presence.twitchLogin);
-                          }
-                        }}
-                        disabled={saving || spotlight.status === 'cancelled'}
-                        className="opacity-70 hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                        title="Supprimer de la liste"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    ))
-                ) : (
-                  <p className="text-gray-400 text-sm text-center py-4">
-                    Aucun membre ajouté pour le moment
-                  </p>
-                )}
-              </div>
-              {presences.length > 0 && (
-                <button
-                  onClick={handleSavePresences}
-                  disabled={saving}
-                  className="w-full mt-4 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {saving ? "Enregistrement..." : "enregistrer la liste"}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Évaluation Spotlight */}
-          {spotlight && spotlight.status === 'active' && (
-            <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Évaluation Spotlight
-              </h2>
-
-              <div className="space-y-6">
-                {evaluation.map((crit) => (
-                  <div key={crit.id}>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-300">
-                        {crit.label}
-                      </label>
-                      <span className="text-sm text-purple-400 font-semibold">
-                        {crit.value}/{crit.maxValue}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max={crit.maxValue}
-                        value={crit.value}
-                        onChange={(e) =>
-                          handleSliderChange(crit.id, parseInt(e.target.value))
-                        }
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#9146ff]"
-                        style={{
-                          background: `linear-gradient(to right, #9146ff 0%, #9146ff ${
-                            (crit.value / crit.maxValue) * 100
-                          }%, #374151 ${
-                            (crit.value / crit.maxValue) * 100
-                          }%, #374151 100%)`,
-                        }}
-                      />
-                      <div
-                        className="absolute top-0 left-0 h-2 rounded-lg bg-[#9146ff] pointer-events-none"
-                        style={{ width: `${(crit.value / crit.maxValue) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Commentaires du modérateur
-                </label>
-                <textarea
-                  value={moderatorComments}
-                  onChange={(e) => setModeratorComments(e.target.value)}
-                  placeholder="Commentaires du modérateur"
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] min-h-[100px]"
-                />
-              </div>
-
-              <button
-                onClick={handleSubmitEvaluation}
-                disabled={saving}
-                className="w-full mt-6 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {saving ? "Enregistrement..." : "Soumettre l'évaluation"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* COLONNE CENTRALE */}
-        <div>
-          {spotlight && spotlight.status === 'active' ? (
-            <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Présence Spotlight
-              </h2>
-
-              {/* Barre de recherche */}
-              <div className="mb-6">
-                <div className="relative">
-                  <svg
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Rechercher un membre"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
-                  />
-                </div>
-              </div>
-
-              {/* Tableau */}
-              <div className="overflow-x-auto mb-6">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                        Avatar
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                        Pseudo
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                        Statut
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMembers.length > 0 ? (
-                      filteredMembers.map((member) => {
-                        const isPresent = presences.some(
-                          p => p.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
-                        );
-                        return (
-                          <tr
-                            key={member.twitchLogin}
-                            className="border-b border-gray-700 hover:bg-[#0e0e10] transition-colors"
-                          >
-                            <td className="py-3 px-4">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold">
-                                {member.displayName.charAt(0).toUpperCase()}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-white font-medium">
-                              {member.displayName}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                isPresent
-                                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                                  : "bg-gray-700/50 text-gray-400"
-                              }`}>
-                                {isPresent ? "Présent" : "Absent"}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  if (!isPresent && !saving) {
-                                    handleAddPresence(member.twitchLogin, member.displayName);
-                                  }
-                                }}
-                                disabled={isPresent || saving}
-                                className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                                  isPresent
-                                    ? "bg-[#9146ff] text-white cursor-not-allowed"
-                                    : "bg-gray-700 text-gray-400 hover:bg-[#9146ff] hover:text-white cursor-pointer"
-                                }`}
-                                title={isPresent ? "Déjà présent" : "Ajouter aux présents"}
-                              >
-                                {isPresent && (
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                )}
-                                {!isPresent && (
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 4v16m8-8H4"
-                                    />
-                                  </svg>
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-400">
-                          Aucun membre trouvé
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <button
-                onClick={handleSavePresences}
-                disabled={saving || presences.length === 0}
-                className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? "Enregistrement..." : "Enregistrer les présences"}
-              </button>
-            </div>
-          ) : (
-            <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">⭐</div>
-                <p className="text-gray-400">
-                  Aucun spotlight actif. Lancez un spotlight pour commencer.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* COLONNE DROITE */}
-        {spotlight && spotlight.status === 'active' && (
-          <div>
-            <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Résultat mensuel automatique
-              </h2>
-
-              <div className="text-center space-y-4">
-                <div>
-                  <div className="text-6xl font-bold text-white mb-2">
-                    {totalScore}/{maxScore}
-                  </div>
-                  <p className="text-sm text-gray-400">Score total /{maxScore}</p>
-                </div>
-
-                <div>
-                  <span
-                    className={`inline-block px-4 py-2 rounded-full text-sm font-semibold border ${getScoreBadge().color}`}
-                  >
-                    {getScoreBadge().text}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleAddToMonthlyReport}
-                  disabled={saving}
-                  className="w-full mt-6 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {saving ? "Enregistrement..." : "Ajouter au rapport mensuel"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modal de sélection du streamer */}
-      {showStreamerModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => {
-            setShowStreamerModal(false);
-            setStreamerSearch("");
-          }}
-        >
-          <div
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+      {/* Sélecteur de mois */}
+      {groupedEvents.length > 0 && (
+        <div className="mb-6 flex items-center gap-4">
+          <label className="text-sm font-semibold text-gray-300">Filtrer par mois :</label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">
-                Lancer un Spotlight
-              </h2>
-              <button
-                onClick={() => {
-                  setShowStreamerModal(false);
-                  setStreamerSearch("");
-                }}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Sélection du modérateur évaluateur */}
-            <div className="mb-6 p-4 bg-[#0e0e10] border border-gray-700 rounded-lg">
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Modérateur évaluateur
-              </label>
-              <select
-                value={selectedModerator?.discordId || ""}
-                onChange={(e) => {
-                  const moderator = staffMembers.find(s => s.discordId === e.target.value);
-                  if (moderator) {
-                    setSelectedModerator({
-                      discordId: moderator.discordId,
-                      username: moderator.discordUsername || moderator.displayName,
-                    });
-                  }
-                }}
-                className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-              >
-                <option value="">Sélectionner un modérateur...</option>
-                {staffMembers.map((staff) => (
-                  <option key={staff.discordId} value={staff.discordId}>
-                    {staff.displayName} ({staff.role.replace(/_/g, ' ')})
-                  </option>
-                ))}
-              </select>
-              {selectedModerator && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Modérateur sélectionné : {selectedModerator.username}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Sélectionner le streamer
-              </label>
-              <div className="relative">
-                <svg
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Rechercher un membre par nom ou Twitch login..."
-                  value={streamerSearch}
-                  onChange={(e) => setStreamerSearch(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredStreamers.length > 0 ? (
-                filteredStreamers.map((member) => (
-                  <button
-                    key={member.twitchLogin}
-                    onClick={() => handleSelectStreamer(member.twitchLogin, member.displayName)}
-                    className="w-full flex items-center gap-3 p-3 bg-[#0e0e10] border border-gray-700 rounded-lg hover:border-[#9146ff] hover:bg-[#9146ff]/10 transition-colors text-left"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold flex-shrink-0">
-                      {member.displayName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-semibold">{member.displayName}</p>
-                      <p className="text-sm text-gray-400">@{member.twitchLogin}</p>
-                    </div>
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                ))
-              ) : (
-                <p className="text-gray-400 text-center py-8">
-                  Aucun membre trouvé
-                </p>
-              )}
-            </div>
-          </div>
+            <option value="">Tous les mois</option>
+            {groupedEvents.map(([monthKey]) => (
+              <option key={monthKey} value={monthKey}>
+                {formatMonthKey(monthKey)}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
-      {/* Modal d'ajout manuel */}
-      {showManualModal && (
-        <ManualSpotlightModal
-          isOpen={showManualModal}
-          onClose={() => setShowManualModal(false)}
-          onSuccess={() => {
-            setShowManualModal(false);
-            loadData(); // Recharger les données
-          }}
-        />
+      {/* Liste des événements par mois */}
+      {displayedEvents.length === 0 ? (
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
+          <p className="text-gray-400">Aucun événement Spotlight pour le moment</p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {displayedEvents.map(([monthKey, monthEvents]) => (
+            <div key={monthKey}>
+              <div className="flex items-center gap-3 mb-6">
+                <Calendar className="w-6 h-6 text-[#9146ff]" />
+                <h2 className="text-2xl font-bold text-white">
+                  {formatMonthKey(monthKey)}
+                </h2>
+                <span className="text-gray-400 text-sm">
+                  ({monthEvents.length} {monthEvents.length > 1 ? "événements" : "événement"})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {monthEvents.map((item) => (
+                  <div
+                    key={item.event.id}
+                    className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden hover:border-[#9146ff]/50 transition-all hover:shadow-lg hover:shadow-[#9146ff]/20 group cursor-pointer"
+                    onClick={() => handleOpenEvent(item)}
+                  >
+                    {item.event.image && (
+                      <div className="relative w-full h-48 overflow-hidden bg-gray-800">
+                        <img
+                          src={item.event.image}
+                          alt={item.event.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-white line-clamp-2 mb-2">
+                        {item.event.title}
+                      </h3>
+
+                      <div className="space-y-2 text-sm mb-3">
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <Calendar className="w-4 h-4" />
+                          <span>{formatEventDate(item.event.date)}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <Users className="w-4 h-4" />
+                            <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
+                          </div>
+                          {item.presenceCount !== undefined && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1 text-green-400">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span className="text-xs font-medium">{item.presenceCount}</span>
+                              </div>
+                              {item.absentCount !== undefined && item.absentCount > 0 && (
+                                <div className="flex items-center gap-1 text-red-400">
+                                  <XCircle className="w-3 h-3" />
+                                  <span className="text-xs font-medium">{item.absentCount}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {item.presenceRate !== undefined && item.presenceRate > 0 && (
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-xs text-gray-400">Taux de présence</span>
+                            <span className={`text-xs font-semibold ${item.presenceRate >= 80 ? 'text-green-400' : item.presenceRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {item.presenceRate}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal avec onglets */}
+      {selectedEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setSelectedEvent(null)}
+        >
+          <div
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-white">{selectedEvent.event.title}</h2>
+                <button
+                  onClick={() => setSelectedEvent(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Onglets */}
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setActiveTab("presence")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    activeTab === "presence"
+                      ? "bg-[#9146ff] text-white"
+                      : "bg-[#0e0e10] text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Présence
+                </button>
+                <button
+                  onClick={() => setActiveTab("evaluation")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    activeTab === "evaluation"
+                      ? "bg-[#9146ff] text-white"
+                      : "bg-[#0e0e10] text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Évaluation Streamer
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {activeTab === "presence" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <p className="text-sm text-gray-400 mb-1">Inscriptions</p>
+                      <p className="text-2xl font-bold text-white">{selectedEvent.registrationCount}</p>
+                    </div>
+                    <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <p className="text-sm text-gray-400 mb-1">Présents</p>
+                      <p className="text-2xl font-bold text-green-400">{selectedEvent.presenceCount || 0}</p>
+                    </div>
+                    <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <p className="text-sm text-gray-400 mb-1">Absents</p>
+                      <p className="text-2xl font-bold text-red-400">{selectedEvent.absentCount || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-white mb-4">Liste des participants</h3>
+                    {selectedEvent.presences && selectedEvent.presences.length > 0 ? (
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {selectedEvent.presences.map((presence) => (
+                          <div
+                            key={presence.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              presence.present
+                                ? "bg-green-500/10 border-green-500/30"
+                                : "bg-red-500/10 border-red-500/30"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-white font-medium">{presence.displayName}</p>
+                              <p className="text-sm text-gray-400">@{presence.twitchLogin}</p>
+                            </div>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                presence.present
+                                  ? "bg-green-500/20 text-green-300"
+                                  : "bg-red-500/20 text-red-300"
+                              }`}
+                            >
+                              {presence.present ? "Présent" : "Absent"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-center py-8">Aucune présence enregistrée</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-4 mt-6">
+                    <Link
+                      href={`/admin/events/presence`}
+                      className="flex-1 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors text-center"
+                    >
+                      Gérer les présences
+                    </Link>
+                    <button
+                      onClick={handleSavePresences}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                    >
+                      Valider et continuer →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Critères d'évaluation</h3>
+                    <div className="space-y-6">
+                      {evaluation.map((crit) => (
+                        <div key={crit.id}>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-gray-300">
+                              {crit.label}
+                            </label>
+                            <span className="text-sm text-purple-400 font-semibold">
+                              {crit.value}/{crit.maxValue}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={crit.maxValue}
+                            value={crit.value}
+                            onChange={(e) =>
+                              handleSliderChange(crit.id, parseInt(e.target.value))
+                            }
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#9146ff]"
+                            style={{
+                              background: `linear-gradient(to right, #9146ff 0%, #9146ff ${
+                                (crit.value / crit.maxValue) * 100
+                              }%, #374151 ${
+                                (crit.value / crit.maxValue) * 100
+                              }%, #374151 100%)`,
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Commentaires du modérateur
+                    </label>
+                    <textarea
+                      value={moderatorComments}
+                      onChange={(e) => setModeratorComments(e.target.value)}
+                      placeholder="Commentaires du modérateur"
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-400">Score total</span>
+                      <span className="text-2xl font-bold text-white">
+                        {totalScore}/{maxScore}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Pourcentage</span>
+                      <span className="text-lg font-semibold text-purple-400">
+                        {Math.round(scorePercentage)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveEvaluation}
+                    disabled={saving}
+                    className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {saving ? "Enregistrement..." : "Enregistrer l'évaluation"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
