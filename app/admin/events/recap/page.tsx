@@ -141,20 +141,33 @@ export default function RecapPage() {
     return Math.round((totalPresences / data.totalEvents) * 10) / 10;
   };
 
-  // Calculer le nombre de participants uniques
+  // Calculer le nombre total de présences (chaque présence compte)
+  const getTotalPresences = () => {
+    if (!data) return 0;
+    return data.eventsWithRegistrations.reduce(
+      (sum, item) => sum + (item.presenceCount || 0),
+      0
+    );
+  };
+
+  // Calculer le nombre de participants uniques (présents uniquement)
   const getUniqueParticipants = () => {
     if (!data) return 0;
     const uniqueLogins = new Set<string>();
     data.eventsWithRegistrations.forEach((item) => {
-      item.registrations.forEach((reg: any) => {
-        if (reg.twitchLogin) {
-          uniqueLogins.add(reg.twitchLogin.toLowerCase());
-        }
-      });
+      // Compter uniquement les présents
+      if (item.presences) {
+        item.presences.forEach((presence: EventPresence) => {
+          if (presence.present && presence.twitchLogin) {
+            uniqueLogins.add(presence.twitchLogin.toLowerCase());
+          }
+        });
+      }
     });
     return uniqueLogins.size;
   };
 
+  const totalPresences = getTotalPresences();
   const uniqueParticipants = getUniqueParticipants();
 
   if (loading) {
@@ -226,12 +239,12 @@ export default function RecapPage() {
                 </h3>
               </div>
               <p className="text-3xl font-bold text-white">
-                {data.totalRegistrations}
+                {totalPresences}
               </p>
               <div className="mt-3 space-y-1 text-xs">
                 <div className="flex justify-between text-gray-400">
                   <span>Nombre total:</span>
-                  <span className="text-white font-semibold">{data.totalRegistrations}</span>
+                  <span className="text-white font-semibold">{totalPresences}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
                   <span>Nom unique:</span>
