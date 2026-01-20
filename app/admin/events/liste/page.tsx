@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Users, Calendar, MapPin, ArrowLeft } from "lucide-react";
+import { Users, Calendar, MapPin, ArrowLeft, BarChart3, TrendingUp, CheckCircle2, XCircle, Eye } from "lucide-react";
 
 interface EventWithRegistrations {
   event: {
@@ -22,6 +22,15 @@ interface EventWithRegistrations {
     registeredAt: string;
   }>;
   registrationCount: number;
+  presences?: Array<{
+    id: string;
+    twitchLogin: string;
+    displayName: string;
+    present: boolean;
+  }>;
+  presenceCount?: number;
+  absentCount?: number;
+  presenceRate?: number;
 }
 
 interface CategoryConfig {
@@ -98,7 +107,50 @@ export default function ListeEventsPage() {
       });
       if (response.ok) {
         const result = await response.json();
-        setData(result.eventsWithRegistrations || []);
+        const eventsData = result.eventsWithRegistrations || [];
+        
+        // Charger les présences pour chaque événement
+        const eventsWithPresences = await Promise.all(
+          eventsData.map(async (item: EventWithRegistrations) => {
+            try {
+              const presenceResponse = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, {
+                cache: 'no-store',
+              });
+              if (presenceResponse.ok) {
+                const presenceData = await presenceResponse.json();
+                const presences = presenceData.presences || [];
+                const presentCount = presences.filter((p: any) => p.present).length;
+                const absentCount = presences.filter((p: any) => !p.present).length;
+                const registeredWithoutPresence = item.registrations.filter(reg =>
+                  !presences.some((p: any) => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                ).length;
+                const totalAbsents = absentCount + registeredWithoutPresence;
+                const presenceRate = item.registrationCount > 0 
+                  ? Math.round((presentCount / item.registrationCount) * 100) 
+                  : 0;
+
+                return {
+                  ...item,
+                  presences,
+                  presenceCount: presentCount,
+                  absentCount: totalAbsents,
+                  presenceRate,
+                };
+              }
+            } catch (error) {
+              console.error(`Erreur chargement présences pour ${item.event.id}:`, error);
+            }
+            return {
+              ...item,
+              presences: [],
+              presenceCount: 0,
+              absentCount: item.registrationCount,
+              presenceRate: 0,
+            };
+          })
+        );
+        
+        setData(eventsWithPresences);
       }
     } catch (error) {
       console.error("Erreur chargement données:", error);
@@ -161,6 +213,42 @@ export default function ListeEventsPage() {
 
   const groupedEvents = groupEventsByCategory();
 
+  // Calculer les statistiques générales
+  const totalEvents = data.length;
+  const totalRegistrations = data.reduce((sum, item) => sum + item.registrationCount, 0);
+  const totalPresences = data.reduce((sum, item) => sum + (item.presenceCount || 0), 0);
+  const totalAbsents = data.reduce((sum, item) => sum + (item.absentCount || 0), 0);
+  const averageRegistrations = totalEvents > 0 ? Math.round(totalRegistrations / totalEvents) : 0;
+  const averagePresences = totalEvents > 0 ? Math.round(totalPresences / totalEvents) : 0;
+  const globalPresenceRate = totalRegistrations > 0 ? Math.round((totalPresences / totalRegistrations) * 100) : 0;
+  const publishedEvents = data.filter(item => item.event.isPublished).length;
+
+  // Statistiques par catégorie
+  const categoryStats = Object.entries(
+    data.reduce((acc, item) => {
+      const cat = item.event.category || "Autre";
+      if (!acc[cat]) {
+        acc[cat] = {
+          count: 0,
+          registrations: 0,
+          presences: 0,
+          absents: 0,
+        };
+      }
+      acc[cat].count++;
+      acc[cat].registrations += item.registrationCount;
+      acc[cat].presences += (item.presenceCount || 0);
+      acc[cat].absents += (item.absentCount || 0);
+      return acc;
+    }, {} as Record<string, { count: number; registrations: number; presences: number; absents: number }>)
+  ).map(([category, stats]) => ({
+    category,
+    ...stats,
+    averageRegistrations: stats.count > 0 ? Math.round(stats.registrations / stats.count) : 0,
+    averagePresences: stats.count > 0 ? Math.round(stats.presences / stats.count) : 0,
+    presenceRate: stats.registrations > 0 ? Math.round((stats.presences / stats.registrations) * 100) : 0,
+  }));
+
   if (loading) {
     return (
       <div className="text-white">
@@ -189,6 +277,93 @@ export default function ListeEventsPage() {
         </p>
       </div>
 
+      {/* Statistiques générales */}
+      {data.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Total événements</span>
+              <Calendar className="w-5 h-5 text-[#9146ff]" />
+            </div>
+            <p className="text-3xl font-bold text-white">{totalEvents}</p>
+            <p className="text-xs text-gray-500 mt-1">{publishedEvents} publiés</p>
+          </div>
+
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Total inscriptions</span>
+              <Users className="w-5 h-5 text-blue-400" />
+            </div>
+            <p className="text-3xl font-bold text-white">{totalRegistrations}</p>
+            <p className="text-xs text-gray-500 mt-1">Moyenne: {averageRegistrations}/événement</p>
+          </div>
+
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Total présences</span>
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
+            </div>
+            <p className="text-3xl font-bold text-green-400">{totalPresences}</p>
+            <p className="text-xs text-gray-500 mt-1">Moyenne: {averagePresences}/événement</p>
+          </div>
+
+          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Taux de présence</span>
+              <TrendingUp className="w-5 h-5 text-purple-400" />
+            </div>
+            <p className="text-3xl font-bold text-purple-400">{globalPresenceRate}%</p>
+            <p className="text-xs text-gray-500 mt-1">{totalAbsents} absents</p>
+          </div>
+        </div>
+      )}
+
+      {/* Statistiques par catégorie */}
+      {categoryStats.length > 0 && (
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-6 h-6 text-[#9146ff]" />
+            <h2 className="text-xl font-bold text-white">Statistiques par catégorie</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoryStats.map((stat) => {
+              const catConfig = getCategoryConfig(stat.category);
+              return (
+                <div key={stat.category} className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className={`font-semibold ${catConfig.color}`}>{stat.category}</h3>
+                    <span className="text-xs text-gray-400">{stat.count} événement{stat.count > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Inscriptions:</span>
+                      <span className="text-white font-medium">{stat.registrations}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Moyenne:</span>
+                      <span className="text-white">{stat.averageRegistrations}/événement</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Présences:</span>
+                      <span className="text-green-400 font-medium">{stat.presences}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Moyenne:</span>
+                      <span className="text-green-400">{stat.averagePresences}/événement</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                      <span className="text-gray-400">Taux:</span>
+                      <span className={`font-bold ${stat.presenceRate >= 80 ? 'text-green-400' : stat.presenceRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                        {stat.presenceRate}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {groupedEvents.length === 0 ? (
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
@@ -263,10 +438,34 @@ export default function ListeEventsPage() {
                                 <span>{item.event.location}</span>
                               </div>
                             )}
-                            <div className="flex items-center gap-2 text-gray-400">
-                              <Users className="w-4 h-4" />
-                              <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                              <div className="flex items-center gap-2 text-gray-400">
+                                <Users className="w-4 h-4" />
+                                <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
+                              </div>
+                              {item.presenceCount !== undefined && (
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1 text-green-400">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span className="text-xs font-medium">{item.presenceCount}</span>
+                                  </div>
+                                  {item.absentCount !== undefined && item.absentCount > 0 && (
+                                    <div className="flex items-center gap-1 text-red-400">
+                                      <XCircle className="w-3 h-3" />
+                                      <span className="text-xs font-medium">{item.absentCount}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
+                            {item.presenceRate !== undefined && item.presenceRate > 0 && (
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-xs text-gray-400">Taux de présence</span>
+                                <span className={`text-xs font-semibold ${item.presenceRate >= 80 ? 'text-green-400' : item.presenceRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                  {item.presenceRate}%
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {item.event.description && (

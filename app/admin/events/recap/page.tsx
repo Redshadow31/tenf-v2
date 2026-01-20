@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { BarChart3, Users, Calendar, TrendingUp } from "lucide-react";
+import { BarChart3, Users, Calendar, TrendingUp, UserCheck } from "lucide-react";
 
 interface EventPresence {
   id: string;
@@ -141,6 +141,22 @@ export default function RecapPage() {
     return Math.round((totalPresences / data.totalEvents) * 10) / 10;
   };
 
+  // Calculer le nombre de participants uniques
+  const getUniqueParticipants = () => {
+    if (!data) return 0;
+    const uniqueLogins = new Set<string>();
+    data.eventsWithRegistrations.forEach((item) => {
+      item.registrations.forEach((reg: any) => {
+        if (reg.twitchLogin) {
+          uniqueLogins.add(reg.twitchLogin.toLowerCase());
+        }
+      });
+    });
+    return uniqueLogins.size;
+  };
+
+  const uniqueParticipants = getUniqueParticipants();
+
   if (loading) {
     return (
       <div className="text-white">
@@ -177,7 +193,7 @@ export default function RecapPage() {
       ) : (
         <>
           {/* Statistiques globales */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Calendar className="w-6 h-6 text-[#9146ff]" />
@@ -200,6 +216,28 @@ export default function RecapPage() {
               <p className="text-3xl font-bold text-white">
                 {data.totalRegistrations}
               </p>
+            </div>
+
+            <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <UserCheck className="w-6 h-6 text-amber-400" />
+                <h3 className="text-sm font-semibold text-gray-400">
+                  Total Participants
+                </h3>
+              </div>
+              <p className="text-3xl font-bold text-white">
+                {data.totalRegistrations}
+              </p>
+              <div className="mt-3 space-y-1 text-xs">
+                <div className="flex justify-between text-gray-400">
+                  <span>Nombre total:</span>
+                  <span className="text-white font-semibold">{data.totalRegistrations}</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Nom unique:</span>
+                  <span className="text-white font-semibold">{uniqueParticipants}</span>
+                </div>
+              </div>
             </div>
 
             <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
