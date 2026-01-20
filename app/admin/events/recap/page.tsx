@@ -275,7 +275,7 @@ export default function RecapPage() {
             </h2>
             <div className="space-y-3">
               {[...data.eventsWithRegistrations]
-                .sort((a, b) => b.registrationCount - a.registrationCount)
+                .sort((a, b) => (b.presenceCount || 0) - (a.presenceCount || 0))
                 .slice(0, 5)
                 .map((item) => (
                   <div
@@ -293,9 +293,9 @@ export default function RecapPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-[#9146ff]">
-                        {item.registrationCount}
+                        {item.presenceCount || 0}
                       </p>
-                      <p className="text-xs text-gray-400">inscriptions</p>
+                      <p className="text-xs text-gray-400">présents</p>
                     </div>
                   </div>
                 ))}
