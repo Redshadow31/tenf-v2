@@ -345,3 +345,99 @@ export async function saveSettings(settings: AcademySettings): Promise<void> {
     throw error;
   }
 }
+
+// ============================================
+// FORMULAIRES
+// ============================================
+
+export interface AcademyFormResponse {
+  id: string;
+  promoId: string;
+  userId: string; // Discord ID
+  formType: 'auto-evaluation-debut' | 'retour-post-live' | 'feedback-autre-live' | 'auto-evaluation-fin' | 'evaluation-academy';
+  formData: Record<string, any>;
+  submittedAt: string; // ISO timestamp
+  updatedAt?: string; // ISO timestamp
+}
+
+export async function loadFormResponses(): Promise<AcademyFormResponse[]> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(ACADEMY_STORE_NAME);
+      const responses = await store.get('form-responses.json', { type: 'json' });
+      return responses || [];
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'academy');
+      const filePath = path.join(dataDir, 'form-responses.json');
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(content);
+      }
+      return [];
+    }
+  } catch (error) {
+    console.error('[AcademyStorage] Erreur chargement form responses:', error);
+    return [];
+  }
+}
+
+export async function saveFormResponses(responses: AcademyFormResponse[]): Promise<void> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(ACADEMY_STORE_NAME);
+      await store.set('form-responses.json', JSON.stringify(responses, null, 2));
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'academy');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const filePath = path.join(dataDir, 'form-responses.json');
+      fs.writeFileSync(filePath, JSON.stringify(responses, null, 2), 'utf-8');
+    }
+  } catch (error) {
+    console.error('[AcademyStorage] Erreur sauvegarde form responses:', error);
+    throw error;
+  }
+}
+
+export async function getFormResponse(
+  promoId: string,
+  userId: string,
+  formType: AcademyFormResponse['formType']
+): Promise<AcademyFormResponse | null> {
+  const responses = await loadFormResponses();
+  return responses.find(
+    r => r.promoId === promoId && r.userId === userId && r.formType === formType
+  ) || null;
+}
+
+export async function saveFormResponse(
+  promoId: string,
+  userId: string,
+  formType: AcademyFormResponse['formType'],
+  formData: Record<string, any>
+): Promise<AcademyFormResponse> {
+  const responses = await loadFormResponses();
+  const existingIndex = responses.findIndex(
+    r => r.promoId === promoId && r.userId === userId && r.formType === formType
+  );
+
+  const response: AcademyFormResponse = {
+    id: `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    promoId,
+    userId,
+    formType,
+    formData,
+    submittedAt: existingIndex >= 0 ? responses[existingIndex].submittedAt : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIndex >= 0) {
+    responses[existingIndex] = response;
+  } else {
+    responses.push(response);
+  }
+
+  await saveFormResponses(responses);
+  return response;
+}
