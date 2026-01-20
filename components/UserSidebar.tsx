@@ -8,24 +8,32 @@ export default function UserSidebar() {
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [hasAcademyAccess, setHasAcademyAccess] = useState(false);
 
   useEffect(() => {
     async function fetchUser() {
       const user = await getDiscordUser();
       setDiscordUser(user);
       
-      // Vérifier si l'utilisateur a accès au dashboard admin
+      // Vérifier si l'utilisateur a accès au dashboard admin et à l'Academy
       if (user) {
         try {
-          const response = await fetch("/api/user/role", {
-            cache: 'no-store',
-          });
-          if (response.ok) {
-            const data = await response.json();
+          const [roleResponse, academyResponse] = await Promise.all([
+            fetch("/api/user/role", { cache: 'no-store' }),
+            fetch("/api/academy/check-access", { cache: 'no-store' }).catch(() => ({ ok: false })),
+          ]);
+          
+          if (roleResponse.ok) {
+            const data = await roleResponse.json();
             console.log('UserSidebar - Role check result:', data);
             setHasAdminAccess(data.hasAdminAccess || false);
           } else {
-            console.error('UserSidebar - Role check failed:', response.status, response.statusText);
+            console.error('UserSidebar - Role check failed:', roleResponse.status, roleResponse.statusText);
+          }
+          
+          if (academyResponse.ok) {
+            const academyData = await academyResponse.json();
+            setHasAcademyAccess(academyData.hasAccess || false);
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
@@ -126,6 +134,57 @@ export default function UserSidebar() {
           >
             Mon évaluation
           </Link>
+
+          {/* Section TENF Academy */}
+          <div className="space-y-1">
+            <Link
+              href="/academy"
+              className="block rounded-lg px-4 py-3 text-sm font-medium transition-colors border"
+              style={{ 
+                backgroundColor: 'var(--color-card)', 
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-card)';
+              }}
+            >
+              🎓 TENF Academy
+            </Link>
+            
+            <Link
+              href="/academy/access"
+              className="block rounded-lg px-4 py-2 ml-4 text-xs font-medium transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }}
+            >
+              Entrer dans l'Academy
+            </Link>
+            
+            {hasAcademyAccess && (
+              <Link
+                href="/academy/dashboard"
+                className="block rounded-lg px-4 py-2 ml-4 text-xs font-medium transition-colors"
+                style={{ color: 'var(--color-text-secondary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                }}
+              >
+                Ma promo
+              </Link>
+            )}
+          </div>
 
           {hasAdminAccess && (
             <Link
