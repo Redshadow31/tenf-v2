@@ -11,6 +11,7 @@ import {
 } from '@/lib/eventPresenceStorage';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 import { createEvent, Event } from '@/lib/eventStorage';
+import { loadSectionAData, saveSectionAData, getMonthKey } from '@/lib/evaluationStorage';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
 export const runtime = 'nodejs';
@@ -163,6 +164,59 @@ export async function POST(request: NextRequest) {
       admin.discordId
     );
 
+    // Si l'événement est de type Spotlight, synchroniser avec les présences Spotlight
+    if (event.category === "Spotlight") {
+      try {
+        const eventDate = new Date(event.date);
+        const monthKey = getMonthKey(eventDate.getFullYear(), eventDate.getMonth() + 1);
+        const sectionAData = await loadSectionAData(monthKey);
+        
+        if (sectionAData && sectionAData.spotlights) {
+          // Trouver le spotlight correspondant (le plus proche de la date de l'événement)
+          const eventTime = eventDate.getTime();
+          let matchingSpotlight = sectionAData.spotlights.find(spotlight => {
+            const spotlightDate = new Date(spotlight.date);
+            const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+            // Accepter un écart de moins de 3 heures (10800000 ms)
+            return timeDiff < 3 * 60 * 60 * 1000;
+          });
+
+          // Si aucun spotlight trouvé, chercher celui du même jour
+          if (!matchingSpotlight) {
+            const eventDay = eventDate.toISOString().split('T')[0];
+            matchingSpotlight = sectionAData.spotlights.find(spotlight => {
+              const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
+              return spotlightDay === eventDay;
+            });
+          }
+
+          if (matchingSpotlight) {
+            // Mettre à jour la présence dans le spotlight
+            const memberIndex = matchingSpotlight.members.findIndex(
+              m => m.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
+            );
+
+            if (memberIndex !== -1) {
+              // Mettre à jour la présence existante
+              matchingSpotlight.members[memberIndex].present = present;
+            } else {
+              // Ajouter le membre s'il n'existe pas
+              matchingSpotlight.members.push({
+                twitchLogin: member.twitchLogin,
+                present: present,
+              });
+            }
+
+            // Sauvegarder les modifications
+            await saveSectionAData(sectionAData);
+          }
+        }
+      } catch (error) {
+        // Ne pas faire échouer la requête si la synchronisation Spotlight échoue
+        console.error('[API Event Presence] Erreur synchronisation Spotlight:', error);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: present ? "Présence enregistrée avec succès" : "Présence mise à jour avec succès",
@@ -253,6 +307,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Vérifier que l'événement existe pour connaître sa catégorie
+    const events = await loadEvents();
+    const event = events.find(e => e.id === eventId);
+
     // Supprimer la présence
     const success = await removePresence(eventId, twitchLogin);
 
@@ -261,6 +319,46 @@ export async function DELETE(request: NextRequest) {
         { error: "Présence non trouvée" },
         { status: 404 }
       );
+    }
+
+    // Si l'événement est de type Spotlight, supprimer aussi la présence Spotlight
+    if (event && event.category === "Spotlight") {
+      try {
+        const eventDate = new Date(event.date);
+        const monthKey = getMonthKey(eventDate.getFullYear(), eventDate.getMonth() + 1);
+        const sectionAData = await loadSectionAData(monthKey);
+        
+        if (sectionAData && sectionAData.spotlights) {
+          // Trouver le spotlight correspondant
+          const eventTime = eventDate.getTime();
+          let matchingSpotlight = sectionAData.spotlights.find(spotlight => {
+            const spotlightDate = new Date(spotlight.date);
+            const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+            return timeDiff < 3 * 60 * 60 * 1000;
+          });
+
+          if (!matchingSpotlight) {
+            const eventDay = eventDate.toISOString().split('T')[0];
+            matchingSpotlight = sectionAData.spotlights.find(spotlight => {
+              const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
+              return spotlightDay === eventDay;
+            });
+          }
+
+          if (matchingSpotlight) {
+            // Supprimer le membre du spotlight
+            matchingSpotlight.members = matchingSpotlight.members.filter(
+              m => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
+            );
+
+            // Sauvegarder les modifications
+            await saveSectionAData(sectionAData);
+          }
+        }
+      } catch (error) {
+        // Ne pas faire échouer la requête si la synchronisation Spotlight échoue
+        console.error('[API Event Presence] Erreur synchronisation Spotlight (DELETE):', error);
+      }
     }
 
     return NextResponse.json({

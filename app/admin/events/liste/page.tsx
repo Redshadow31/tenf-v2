@@ -85,7 +85,6 @@ export default function ListeEventsPage() {
   const [data, setData] = useState<EventWithRegistrations[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -118,15 +117,6 @@ export default function ListeEventsPage() {
     });
   };
 
-  const formatMonthKey = (key: string): string => {
-    const [year, month] = key.split('-');
-    const monthNames = [
-      "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-    ];
-    return `${monthNames[parseInt(month) - 1]} ${year}`;
-  };
-
   const formatEventDate = (dateStr: string): string => {
     try {
       const date = new Date(dateStr);
@@ -142,44 +132,34 @@ export default function ListeEventsPage() {
     }
   };
 
-  // Grouper les événements par mois et trier
-  const groupEventsByMonth = () => {
+  // Grouper les événements par catégorie et trier
+  const groupEventsByCategory = () => {
     const grouped: Record<string, EventWithRegistrations[]> = {};
     
     data.forEach((item) => {
-      const eventDate = new Date(item.event.date);
-      const year = eventDate.getFullYear();
-      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-      const monthKey = `${year}-${month}`;
+      const category = item.event.category || "Autre";
       
-      if (!grouped[monthKey]) {
-        grouped[monthKey] = [];
+      if (!grouped[category]) {
+        grouped[category] = [];
       }
-      grouped[monthKey].push(item);
+      grouped[category].push(item);
     });
 
-    // Trier les événements dans chaque mois : d'abord par date, puis par catégorie
-    Object.keys(grouped).forEach(monthKey => {
-      grouped[monthKey].sort((a, b) => {
-        // D'abord trier par date (croissante)
-        const dateDiff = new Date(a.event.date).getTime() - new Date(b.event.date).getTime();
-        if (dateDiff !== 0) return dateDiff;
-        
-        // Si même date, trier par catégorie (ordre alphabétique)
-        return a.event.category.localeCompare(b.event.category, 'fr');
+    // Trier les événements dans chaque catégorie : du plus récent au plus vieux
+    Object.keys(grouped).forEach(category => {
+      grouped[category].sort((a, b) => {
+        // Trier par date décroissante (plus récent en premier)
+        return new Date(b.event.date).getTime() - new Date(a.event.date).getTime();
       });
     });
 
-    // Trier les mois par ordre décroissant
+    // Trier les catégories par ordre alphabétique
     return Object.entries(grouped).sort((a, b) => {
-      return b[0].localeCompare(a[0]);
+      return a[0].localeCompare(b[0], 'fr');
     });
   };
 
-  const groupedEvents = groupEventsByMonth();
-  const displayedEvents = selectedMonth
-    ? groupedEvents.filter(([monthKey]) => monthKey === selectedMonth)
-    : groupedEvents;
+  const groupedEvents = groupEventsByCategory();
 
   if (loading) {
     return (
@@ -209,54 +189,39 @@ export default function ListeEventsPage() {
         </p>
       </div>
 
-      {/* Sélecteur de mois */}
-      {groupedEvents.length > 0 && (
-        <div className="mb-6 flex items-center gap-4">
-          <label className="text-sm font-semibold text-gray-300">Filtrer par mois :</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-          >
-            <option value="">Tous les mois</option>
-            {groupedEvents.map(([monthKey]) => (
-              <option key={monthKey} value={monthKey}>
-                {formatMonthKey(monthKey)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
           <p className="text-gray-400 mt-4">Chargement des événements...</p>
         </div>
-      ) : displayedEvents.length === 0 ? (
+      ) : groupedEvents.length === 0 ? (
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
-          <p className="text-gray-400">
-            {selectedMonth ? "Aucun événement pour ce mois" : "Aucun événement pour le moment"}
-          </p>
+          <p className="text-gray-400">Aucun événement pour le moment</p>
         </div>
       ) : (
         <div className="space-y-8">
-          {displayedEvents.map(([monthKey, monthEvents]) => (
-            <div key={monthKey}>
-              <div className="flex items-center gap-3 mb-6">
-                <Calendar className="w-6 h-6 text-[#9146ff]" />
-                <h2 className="text-2xl font-bold text-white">
-                  {formatMonthKey(monthKey)}
-                </h2>
-                <span className="text-gray-400 text-sm">
-                  ({monthEvents.length} {monthEvents.length > 1 ? "événements" : "événement"})
-                </span>
-              </div>
+          {groupedEvents.map(([category, categoryEvents]) => {
+            const catConfig = getCategoryConfig(category);
+            return (
+              <div key={category}>
+                {/* Titre de catégorie avec ligne */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h2 className="text-2xl font-bold text-white">
+                      Type d'événement: <span className={catConfig.color}>{category}</span>
+                    </h2>
+                    <span className="text-gray-400 text-sm">
+                      ({categoryEvents.length} {categoryEvents.length > 1 ? "événements" : "événement"})
+                    </span>
+                  </div>
+                  <div className={`h-px ${catConfig.borderColor} border-t`}></div>
+                </div>
 
-              {/* Grille de vignettes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {monthEvents.map((item) => {
-                  const catConfig = getCategoryConfig(item.event.category);
+                {/* Grille de vignettes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {categoryEvents.map((item) => {
+                  const itemCatConfig = getCategoryConfig(item.event.category);
                   return (
                     <div
                       key={item.event.id}
@@ -282,7 +247,7 @@ export default function ListeEventsPage() {
                         </div>
 
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <span className={`text-xs px-2 py-1 rounded border ${catConfig.bgColor} ${catConfig.color} ${catConfig.borderColor}`}>
+                          <span className={`text-xs px-2 py-1 rounded border ${itemCatConfig.bgColor} ${itemCatConfig.color} ${itemCatConfig.borderColor}`}>
                             {item.event.category}
                           </span>
                           {item.event.isPublished && (
