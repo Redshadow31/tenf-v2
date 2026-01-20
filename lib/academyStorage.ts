@@ -358,6 +358,7 @@ export interface AcademyFormResponse {
   formData: Record<string, any>;
   submittedAt: string; // ISO timestamp
   updatedAt?: string; // ISO timestamp
+  isPublic?: boolean; // Visibilité publique (pour les auto-évaluations)
 }
 
 export async function loadFormResponses(): Promise<AcademyFormResponse[]> {
@@ -415,7 +416,8 @@ export async function saveFormResponse(
   promoId: string,
   userId: string,
   formType: AcademyFormResponse['formType'],
-  formData: Record<string, any>
+  formData: Record<string, any>,
+  isPublic?: boolean
 ): Promise<AcademyFormResponse> {
   const responses = await loadFormResponses();
   const existingIndex = responses.findIndex(
@@ -423,13 +425,14 @@ export async function saveFormResponse(
   );
 
   const response: AcademyFormResponse = {
-    id: `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: existingIndex >= 0 ? responses[existingIndex].id : `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     promoId,
     userId,
     formType,
     formData,
     submittedAt: existingIndex >= 0 ? responses[existingIndex].submittedAt : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    isPublic: isPublic !== undefined ? isPublic : (existingIndex >= 0 ? responses[existingIndex].isPublic : false),
   };
 
   if (existingIndex >= 0) {
@@ -440,4 +443,119 @@ export async function saveFormResponse(
 
   await saveFormResponses(responses);
   return response;
+}
+
+export async function updateFormResponseVisibility(
+  formResponseId: string,
+  isPublic: boolean
+): Promise<void> {
+  const responses = await loadFormResponses();
+  const index = responses.findIndex(r => r.id === formResponseId);
+  
+  if (index >= 0) {
+    responses[index].isPublic = isPublic;
+    responses[index].updatedAt = new Date().toISOString();
+    await saveFormResponses(responses);
+  }
+}
+
+// ============================================
+// PLANNINGS DE STREAM
+// ============================================
+
+export interface StreamPlanning {
+  id: string;
+  promoId: string;
+  userId: string; // Discord ID
+  name: string; // Nom du stream
+  date: string; // Date du stream (ISO date)
+  time: string; // Heure du stream (HH:mm)
+  approximateDuration: string; // Durée approximative (ex: "2h", "90min")
+  createdAt: string; // ISO timestamp
+  updatedAt?: string; // ISO timestamp
+}
+
+export async function loadStreamPlannings(): Promise<StreamPlanning[]> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(ACADEMY_STORE_NAME);
+      const plannings = await store.get('stream-plannings.json', { type: 'json' });
+      return plannings || [];
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'academy');
+      const filePath = path.join(dataDir, 'stream-plannings.json');
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(content);
+      }
+      return [];
+    }
+  } catch (error) {
+    console.error('[AcademyStorage] Erreur chargement stream plannings:', error);
+    return [];
+  }
+}
+
+export async function saveStreamPlannings(plannings: StreamPlanning[]): Promise<void> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(ACADEMY_STORE_NAME);
+      await store.set('stream-plannings.json', JSON.stringify(plannings, null, 2));
+    } else {
+      const dataDir = path.join(process.cwd(), 'data', 'academy');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const filePath = path.join(dataDir, 'stream-plannings.json');
+      fs.writeFileSync(filePath, JSON.stringify(plannings, null, 2), 'utf-8');
+    }
+  } catch (error) {
+    console.error('[AcademyStorage] Erreur sauvegarde stream plannings:', error);
+    throw error;
+  }
+}
+
+export async function createStreamPlanning(
+  promoId: string,
+  userId: string,
+  name: string,
+  date: string,
+  time: string,
+  approximateDuration: string
+): Promise<StreamPlanning> {
+  const plannings = await loadStreamPlannings();
+  const planning: StreamPlanning = {
+    id: `planning-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    promoId,
+    userId,
+    name,
+    date,
+    time,
+    approximateDuration,
+    createdAt: new Date().toISOString(),
+  };
+  
+  plannings.push(planning);
+  await saveStreamPlannings(plannings);
+  return planning;
+}
+
+export async function deleteStreamPlanning(planningId: string): Promise<void> {
+  const plannings = await loadStreamPlannings();
+  const filtered = plannings.filter(p => p.id !== planningId);
+  await saveStreamPlannings(filtered);
+}
+
+export async function getStreamPlanningsByUser(
+  promoId: string,
+  userId: string
+): Promise<StreamPlanning[]> {
+  const plannings = await loadStreamPlannings();
+  return plannings
+    .filter(p => p.promoId === promoId && p.userId === userId)
+    .sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time}`).getTime();
+      const dateB = new Date(`${b.date}T${b.time}`).getTime();
+      return dateA - dateB;
+    });
 }

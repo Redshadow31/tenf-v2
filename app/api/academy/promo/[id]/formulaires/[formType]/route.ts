@@ -62,8 +62,10 @@ export async function GET(
     );
 
     return NextResponse.json({ 
+      id: formResponse?.id || null,
       formData: formResponse?.formData || null,
       submittedAt: formResponse?.submittedAt || null,
+      isPublic: formResponse?.isPublic || false,
     });
   } catch (error) {
     console.error('[Academy Form API] Erreur GET:', error);
@@ -123,7 +125,9 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { formData } = body;
+    // Accepter les deux formats : { formData: ... } ou directement les données
+    const formData = body.formData || body;
+    const isPublic = body.isPublic;
 
     if (!formData || typeof formData !== 'object') {
       return NextResponse.json(
@@ -132,11 +136,20 @@ export async function POST(
       );
     }
 
+    // Seules les auto-évaluations peuvent être publiques
+    if (isPublic !== undefined && !['auto-evaluation-debut', 'auto-evaluation-fin'].includes(params.formType)) {
+      return NextResponse.json(
+        { error: 'Seules les auto-évaluations peuvent être rendues publiques' },
+        { status: 400 }
+      );
+    }
+
     const response = await saveFormResponse(
       params.id,
       userId,
       params.formType as any,
-      formData
+      formData,
+      isPublic
     );
 
     return NextResponse.json({ success: true, response });

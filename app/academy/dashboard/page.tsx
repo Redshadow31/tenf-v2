@@ -143,6 +143,19 @@ export default function AcademyDashboardPage() {
             Questions fréquentes et support
           </p>
         </Link>
+
+        <Link
+          href={`/academy/promo/${promo.id}/auto-evaluations`}
+          className="rounded-lg border p-6 hover:border-[#9146ff] transition-colors"
+          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+        >
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+            Auto-évaluations publiques
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            Découvrez les auto-évaluations partagées par les membres
+          </p>
+        </Link>
       </div>
     </div>
   );
