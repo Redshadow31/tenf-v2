@@ -89,8 +89,14 @@ export default function AcademyAccessAdminPage() {
       });
 
       if (response.ok) {
-        await loadData();
-        e.currentTarget.reset();
+        const result = await response.json();
+        // Rediriger vers la page de gestion de la promo
+        if (result.success && result.promo?.id) {
+          window.location.href = `/admin/academy/promo/${result.promo.id}`;
+        } else {
+          await loadData();
+          e.currentTarget.reset();
+        }
       }
     } catch (error) {
       console.error("Erreur création promo:", error);
