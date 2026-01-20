@@ -279,7 +279,32 @@ export const adminNavigation: NavItem[] = [
     icon: "📜",
   },
 
-  // 12. 🔎 Recherche
+  // 12. 🎓 TENF Academy
+  {
+    href: "/admin/academy",
+    label: "🎓 TENF Academy",
+    icon: "🎓",
+    children: [
+      {
+        href: "/admin/academy",
+        label: "Hub Academy",
+      },
+      {
+        href: "/admin/academy/access",
+        label: "Accès & rôles",
+      },
+      {
+        href: "/admin/academy/promos",
+        label: "Promos",
+      },
+      {
+        href: "/admin/academy/participants",
+        label: "Participants",
+      },
+    ],
+  },
+
+  // 13. 🔎 Recherche
   {
     href: "/admin/search",
     label: "Recherche membre",
