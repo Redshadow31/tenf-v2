@@ -190,12 +190,7 @@ export default function ListeEventsPage() {
       </div>
 
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
-          <p className="text-gray-400 mt-4">Chargement des événements...</p>
-        </div>
-      ) : groupedEvents.length === 0 ? (
+      {groupedEvents.length === 0 ? (
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
           <p className="text-gray-400">Aucun événement pour le moment</p>
         </div>
@@ -221,113 +216,114 @@ export default function ListeEventsPage() {
                 {/* Grille de vignettes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {categoryEvents.map((item) => {
-                  const itemCatConfig = getCategoryConfig(item.event.category);
-                  return (
-                    <div
-                      key={item.event.id}
-                      className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden hover:border-[#9146ff]/50 transition-all hover:shadow-lg hover:shadow-[#9146ff]/20 group"
-                    >
-                      {/* Image de l'événement */}
-                      {item.event.image && (
-                        <div className="relative w-full h-48 overflow-hidden bg-gray-800">
-                          <img
-                            src={item.event.image}
-                            alt={item.event.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      )}
-                      
-                      {/* Contenu de la vignette */}
-                      <div className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-lg font-semibold text-white line-clamp-2 flex-1">
-                            {item.event.title}
-                          </h3>
-                        </div>
-
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <span className={`text-xs px-2 py-1 rounded border ${itemCatConfig.bgColor} ${itemCatConfig.color} ${itemCatConfig.borderColor}`}>
-                            {item.event.category}
-                          </span>
-                          {item.event.isPublished && (
-                            <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30">
-                              Publié
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="space-y-2 text-sm mb-3">
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Calendar className="w-4 h-4" />
-                            <span>{formatEventDate(item.event.date)}</span>
+                    const itemCatConfig = getCategoryConfig(item.event.category);
+                    return (
+                      <div
+                        key={item.event.id}
+                        className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden hover:border-[#9146ff]/50 transition-all hover:shadow-lg hover:shadow-[#9146ff]/20 group"
+                      >
+                        {/* Image de l'événement */}
+                        {item.event.image && (
+                          <div className="relative w-full h-48 overflow-hidden bg-gray-800">
+                            <img
+                              src={item.event.image}
+                              alt={item.event.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                           </div>
-                          {item.event.location && (
-                            <div className="flex items-center gap-2 text-gray-400">
-                              <MapPin className="w-4 h-4" />
-                              <span>{item.event.location}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Users className="w-4 h-4" />
-                            <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
-                          </div>
-                        </div>
-
-                        {item.event.description && (
-                          <p className="text-sm text-gray-300 mb-3 line-clamp-2">
-                            {item.event.description}
-                          </p>
                         )}
+                        
+                        {/* Contenu de la vignette */}
+                        <div className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-white line-clamp-2 flex-1">
+                              {item.event.title}
+                            </h3>
+                          </div>
 
-                        {/* Bouton pour voir les inscrits */}
-                        <button
-                          onClick={() =>
-                            setSelectedEvent(
-                              selectedEvent === item.event.id ? null : item.event.id
-                            )
-                          }
-                          className="w-full mt-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-                        >
-                          {selectedEvent === item.event.id ? "Masquer les inscrits" : "Voir les inscrits"}
-                        </button>
-
-                        {/* Liste des inscrits */}
-                        {selectedEvent === item.event.id && (
-                          <div className="mt-4 pt-4 border-t border-gray-700">
-                            {item.registrations.length === 0 ? (
-                              <p className="text-gray-400 text-center py-2 text-sm">
-                                Aucune inscription
-                              </p>
-                            ) : (
-                              <div className="space-y-2 max-h-64 overflow-y-auto">
-                                {item.registrations.map((reg) => (
-                                  <div
-                                    key={reg.id}
-                                    className="bg-[#0e0e10] border border-gray-700 rounded-lg p-2"
-                                  >
-                                    <div className="font-semibold text-white text-sm">
-                                      {reg.displayName}
-                                    </div>
-                                    <div className="text-xs text-gray-400">
-                                      @{reg.twitchLogin}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      Inscrit le {new Date(reg.registeredAt).toLocaleDateString("fr-FR")}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            <span className={`text-xs px-2 py-1 rounded border ${itemCatConfig.bgColor} ${itemCatConfig.color} ${itemCatConfig.borderColor}`}>
+                              {item.event.category}
+                            </span>
+                            {item.event.isPublished && (
+                              <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30">
+                                Publié
+                              </span>
                             )}
                           </div>
-                        )}
+
+                          <div className="space-y-2 text-sm mb-3">
+                            <div className="flex items-center gap-2 text-gray-400">
+                              <Calendar className="w-4 h-4" />
+                              <span>{formatEventDate(item.event.date)}</span>
+                            </div>
+                            {item.event.location && (
+                              <div className="flex items-center gap-2 text-gray-400">
+                                <MapPin className="w-4 h-4" />
+                                <span>{item.event.location}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-gray-400">
+                              <Users className="w-4 h-4" />
+                              <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
+                            </div>
+                          </div>
+
+                          {item.event.description && (
+                            <p className="text-sm text-gray-300 mb-3 line-clamp-2">
+                              {item.event.description}
+                            </p>
+                          )}
+
+                          {/* Bouton pour voir les inscrits */}
+                          <button
+                            onClick={() =>
+                              setSelectedEvent(
+                                selectedEvent === item.event.id ? null : item.event.id
+                              )
+                            }
+                            className="w-full mt-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                          >
+                            {selectedEvent === item.event.id ? "Masquer les inscrits" : "Voir les inscrits"}
+                          </button>
+
+                          {/* Liste des inscrits */}
+                          {selectedEvent === item.event.id && (
+                            <div className="mt-4 pt-4 border-t border-gray-700">
+                              {item.registrations.length === 0 ? (
+                                <p className="text-gray-400 text-center py-2 text-sm">
+                                  Aucune inscription
+                                </p>
+                              ) : (
+                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                  {item.registrations.map((reg) => (
+                                    <div
+                                      key={reg.id}
+                                      className="bg-[#0e0e10] border border-gray-700 rounded-lg p-2"
+                                    >
+                                      <div className="font-semibold text-white text-sm">
+                                        {reg.displayName}
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        @{reg.twitchLogin}
+                                      </div>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        Inscrit le {new Date(reg.registeredAt).toLocaleDateString("fr-FR")}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
