@@ -18,16 +18,16 @@ export async function GET(request: NextRequest) {
     );
 
     // Grouper par promoId et userId pour faciliter l'affichage
-    const grouped = publicEvaluations.reduce((acc, eval) => {
-      const key = `${eval.promoId}-${eval.userId}`;
+    const grouped = publicEvaluations.reduce((acc, evaluation) => {
+      const key = `${evaluation.promoId}-${evaluation.userId}`;
       if (!acc[key]) {
         acc[key] = {
-          promoId: eval.promoId,
-          userId: eval.userId,
+          promoId: evaluation.promoId,
+          userId: evaluation.userId,
           evaluations: [],
         };
       }
-      acc[key].evaluations.push(eval);
+      acc[key].evaluations.push(evaluation);
       return acc;
     }, {} as Record<string, { promoId: string; userId: string; evaluations: typeof formResponses }>);
 

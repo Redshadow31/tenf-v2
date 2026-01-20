@@ -154,81 +154,81 @@ export default function AutoEvaluationsPage() {
               </h2>
               
               <div className="space-y-4">
-                {group.evaluations.map((eval) => (
+                {group.evaluations.map((evaluation) => (
                   <div
-                    key={eval.id}
+                    key={evaluation.id}
                     className="p-4 rounded-lg bg-[#0e0e10] border-2 border-gray-700"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-white text-lg">
-                        {eval.formType === 'auto-evaluation-debut' 
+                        {evaluation.formType === 'auto-evaluation-debut' 
                           ? '🟣 Auto-évaluation (début)' 
                           : '🏁 Auto-évaluation (fin)'}
                       </h3>
                       <span className="text-sm text-gray-400">
-                        {new Date(eval.submittedAt).toLocaleDateString('fr-FR')}
+                        {new Date(evaluation.submittedAt).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
                     
                     <div className="space-y-3 text-sm text-gray-300">
-                      {eval.formData?.pseudoTwitch && (
+                      {evaluation.formData?.pseudoTwitch && (
                         <div>
                           <span className="font-semibold text-purple-400">Pseudo Twitch :</span>
-                          <span className="ml-2">{eval.formData.pseudoTwitch}</span>
+                          <span className="ml-2">{evaluation.formData.pseudoTwitch}</span>
                         </div>
                       )}
                       
-                      {eval.formData?.commentTeSentis && (
+                      {evaluation.formData?.commentTeSentis && (
                         <div>
                           <span className="font-semibold text-blue-400">Comment te sens-tu ?</span>
-                          <p className="mt-1 text-white">{eval.formData.commentTeSentis}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.commentTeSentis}</p>
                         </div>
                       )}
                       
-                      {eval.formData?.changements && (
+                      {evaluation.formData?.changements && (
                         <div>
                           <span className="font-semibold text-green-400">Changements mis en place :</span>
-                          <p className="mt-1 text-white">{eval.formData.changements}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.changements}</p>
                         </div>
                       )}
                       
-                      {eval.formData?.plusUtile && (
+                      {evaluation.formData?.plusUtile && (
                         <div>
                           <span className="font-semibold text-yellow-400">Retour le plus utile :</span>
-                          <p className="mt-1 text-white">{eval.formData.plusUtile}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.plusUtile}</p>
                         </div>
                       )}
                       
-                      {eval.formData?.fier && (
+                      {evaluation.formData?.fier && (
                         <div>
                           <span className="font-semibold text-pink-400">De quoi es-tu le plus fier(e) ?</span>
-                          <p className="mt-1 text-white">{eval.formData.fier}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.fier}</p>
                         </div>
                       )}
                       
-                      {eval.formData?.difficile && (
+                      {evaluation.formData?.difficile && (
                         <div>
                           <span className="font-semibold text-red-400">Ce qui reste difficile :</span>
-                          <p className="mt-1 text-white">{eval.formData.difficile}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.difficile}</p>
                         </div>
                       )}
                       
-                      {eval.formData?.progressionGlobale !== undefined && (
+                      {evaluation.formData?.progressionGlobale !== undefined && (
                         <div>
                           <span className="font-semibold text-purple-400">Progression globale :</span>
                           <span className="ml-2 text-yellow-400 text-lg">
-                            {'⭐'.repeat(Math.round(eval.formData.progressionGlobale))}
+                            {'⭐'.repeat(Math.round(evaluation.formData.progressionGlobale))}
                           </span>
                           <span className="ml-2 text-gray-400">
-                            ({eval.formData.progressionGlobale}/10)
+                            ({evaluation.formData.progressionGlobale}/10)
                           </span>
                         </div>
                       )}
                       
-                      {eval.formData?.messageFinal && (
+                      {evaluation.formData?.messageFinal && (
                         <div className="mt-3 p-3 rounded-lg bg-purple-500/10 border-l-4 border-purple-400">
                           <span className="font-semibold text-purple-400">Message final :</span>
-                          <p className="mt-1 text-white">{eval.formData.messageFinal}</p>
+                          <p className="mt-1 text-white">{evaluation.formData.messageFinal}</p>
                         </div>
                       )}
                     </div>

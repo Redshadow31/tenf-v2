@@ -399,36 +399,36 @@ export default function ParcoursPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {evaluations.map((eval) => (
+            {evaluations.map((evaluation) => (
               <div
-                key={eval.id}
+                key={evaluation.id}
                 className="p-4 rounded-lg bg-[#0e0e10] border-2 border-gray-700"
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-white">
-                    {eval.formType === 'auto-evaluation-debut' ? '🟣 Auto-évaluation (début)' : '🏁 Auto-évaluation (fin)'}
+                    {evaluation.formType === 'auto-evaluation-debut' ? '🟣 Auto-évaluation (début)' : '🏁 Auto-évaluation (fin)'}
                   </h3>
                   <div className="flex items-center gap-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      eval.isPublic 
+                      evaluation.isPublic 
                         ? 'bg-green-500/20 text-green-400' 
                         : 'bg-gray-500/20 text-gray-400'
                     }`}>
-                      {eval.isPublic ? '🌐 Public' : '🔒 Privé'}
+                      {evaluation.isPublic ? '🌐 Public' : '🔒 Privé'}
                     </span>
                     <button
-                      onClick={() => handleTogglePublic(eval.id, eval.isPublic || false)}
+                      onClick={() => handleTogglePublic(evaluation.id, evaluation.isPublic || false)}
                       className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors"
                     >
-                      {eval.isPublic ? 'Rendre privé' : 'Rendre public'}
+                      {evaluation.isPublic ? 'Rendre privé' : 'Rendre public'}
                     </button>
                   </div>
                 </div>
                 <p className="text-sm text-gray-400 mb-2">
-                  Complété le {new Date(eval.submittedAt).toLocaleDateString('fr-FR')}
+                  Complété le {new Date(evaluation.submittedAt).toLocaleDateString('fr-FR')}
                 </p>
                 <Link
-                  href={`/academy/promo/${promoId}/formulaires/${eval.formType}`}
+                  href={`/academy/promo/${promoId}/formulaires/${evaluation.formType}`}
                   className="text-purple-400 hover:text-purple-300 text-sm font-semibold"
                 >
                   Voir les détails →
