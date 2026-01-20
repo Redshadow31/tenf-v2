@@ -7,8 +7,8 @@ import type { ReactNode } from "react";
 const ClientLayout = dynamic(() => import("./layout.client"), { ssr: false });
 
 export const metadata: Metadata = {
-  title: "TENF V2",
-  description: "Plateforme TENF V2 - sombre, moderne, professionnelle",
+  title: "TENF New Family",
+  description: "Plateforme TENF New Family - sombre, moderne, professionnelle",
   icons: {
     icon: "/Tenf.png",
     shortcut: "/Tenf.png",
