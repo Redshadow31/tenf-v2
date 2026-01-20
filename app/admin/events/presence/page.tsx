@@ -107,13 +107,17 @@ export default function EventPresencePage() {
 
           if (membersResponse.ok) {
             const membersData = await membersResponse.json();
-            const activeMembers = (membersData.members || []).filter((m: any) => m.isActive !== false);
-            setAllMembers(activeMembers.map((m: any) => ({
+            // Ne PAS filtrer par isActive : on veut pouvoir ajouter tous les membres, même inactifs
+            // Car ils peuvent avoir participé à un événement même s'ils sont inactifs maintenant
+            const allMembersList = (membersData.members || []).map((m: any) => ({
               twitchLogin: m.twitchLogin || '',
               displayName: m.displayName || m.nom || m.twitchLogin || '',
               discordId: m.discordId,
               discordUsername: m.discordUsername,
-            })).filter((m: Member) => m.twitchLogin));
+            })).filter((m: Member) => m.twitchLogin); // Seulement filtrer ceux sans twitchLogin
+            
+            console.log(`[Presence Modal] Chargé ${allMembersList.length} membres (tous, y compris inactifs)`);
+            setAllMembers(allMembersList);
           }
         } catch (error) {
           console.error("Erreur lors du chargement des membres:", error);
@@ -147,13 +151,16 @@ export default function EventPresencePage() {
 
         if (membersResponse.ok) {
           const membersData = await membersResponse.json();
-          const activeMembers = (membersData.members || []).filter((m: any) => m.isActive !== false);
-          setAllMembers(activeMembers.map((m: any) => ({
+          // Ne PAS filtrer par isActive : on veut pouvoir ajouter tous les membres, même inactifs
+          const allMembersList = (membersData.members || []).map((m: any) => ({
             twitchLogin: m.twitchLogin || '',
             displayName: m.displayName || m.nom || m.twitchLogin || '',
             discordId: m.discordId,
             discordUsername: m.discordUsername,
-          })).filter((m: Member) => m.twitchLogin));
+          })).filter((m: Member) => m.twitchLogin); // Seulement filtrer ceux sans twitchLogin
+          
+          console.log(`[Presence Modal] Chargé ${allMembersList.length} membres depuis loadData`);
+          setAllMembers(allMembersList);
         }
       }
     } catch (error) {
@@ -806,7 +813,10 @@ function EventPresenceModal({
 
   const filterMembers = useCallback((query: string): Member[] => {
     if (!query.trim()) return [];
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = query.toLowerCase().trim();
+    // Normaliser la requête : remplacer les espaces par des underscores pour la recherche flexible
+    const normalizedQuery = lowerQuery.replace(/\s+/g, '_');
+    
     return allMembers.filter(m => {
       // Exclure les membres déjà présents
       const isAlreadyPresent = localEvent.presences?.some(
@@ -814,10 +824,27 @@ function EventPresenceModal({
       );
       if (isAlreadyPresent) return false;
       
-      return (
-        m.displayName.toLowerCase().includes(lowerQuery) ||
-        m.twitchLogin.toLowerCase().includes(lowerQuery) ||
-        m.discordUsername?.toLowerCase().includes(lowerQuery)
+      // Normaliser les valeurs pour la recherche
+      const normalizedTwitchLogin = m.twitchLogin.toLowerCase();
+      const normalizedDisplayName = m.displayName.toLowerCase();
+      const normalizedDiscordUsername = m.discordUsername?.toLowerCase() || '';
+      
+      // Recherche flexible : avec et sans underscores
+      const queryVariations = [
+        lowerQuery,
+        normalizedQuery,
+        lowerQuery.replace(/_/g, ''),
+        normalizedQuery.replace(/_/g, ''),
+      ];
+      
+      return queryVariations.some(variation => 
+        normalizedTwitchLogin.includes(variation) ||
+        normalizedDisplayName.includes(variation) ||
+        normalizedDiscordUsername.includes(variation) ||
+        // Recherche aussi avec remplacement des underscores par des espaces
+        normalizedTwitchLogin.replace(/_/g, '').includes(variation.replace(/_/g, '')) ||
+        normalizedDisplayName.replace(/_/g, '').includes(variation.replace(/_/g, '')) ||
+        normalizedDiscordUsername.replace(/_/g, '').includes(variation.replace(/_/g, ''))
       );
     }).slice(0, 10);
   }, [allMembers, localEvent.presences]);
@@ -1086,6 +1113,40 @@ function EventPresenceModal({
               {presences.filter(p => p.addedManually).length}
             </p>
           </div>
+        </div>
+
+        {/* Bouton de sauvegarde/validation */}
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Fermer
+          </button>
+          <button
+            onClick={async () => {
+              // Les modifications sont déjà sauvegardées automatiquement
+              // Ce bouton sert de confirmation visuelle et ferme le modal
+              // On peut aussi ajouter un message de confirmation
+              alert("✅ Toutes les présences ont été sauvegardées avec succès !");
+              onClose();
+            }}
+            disabled={saving}
+            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Sauvegarde...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Valider et fermer
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

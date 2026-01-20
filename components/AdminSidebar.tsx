@@ -33,15 +33,19 @@ export default function AdminSidebar() {
             : pathname === link.href;
           const isEvaluationsSection = link.href === "/admin/evaluations";
           const isEvaluationsActive = pathname?.startsWith("/admin/evaluations");
+          const isEventsSection = link.href === "/admin/events";
+          const isEventsActive = pathname?.startsWith("/admin/events");
           
           return (
             <div key={link.href}>
               <Link
                 href={link.href}
                 className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive && !isEvaluationsSection
+                  isActive && !isEvaluationsSection && !isEventsSection
                     ? "bg-[#9146ff] text-white"
                     : isEvaluationsSection && pathname === "/admin/evaluations"
+                    ? "bg-[#9146ff] text-white"
+                    : isEventsSection && pathname === "/admin/events"
                     ? "bg-[#9146ff] text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -80,6 +84,41 @@ export default function AdminSidebar() {
                     }`}
                   >
                     Présentation animée
+                  </Link>
+                </div>
+              )}
+              {/* Sous-menu pour Événements */}
+              {isEventsSection && (
+                <div className="ml-4 mt-1 flex flex-col gap-1">
+                  <Link
+                    href="/admin/events/planification"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/events/planification"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Planification
+                  </Link>
+                  <Link
+                    href="/admin/events/archives"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/events/archives"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Archives
+                  </Link>
+                  <Link
+                    href="/admin/events/liste"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/events/liste"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Liste des événements
                   </Link>
                 </div>
               )}
