@@ -254,6 +254,121 @@ export class EventRepository {
     };
   }
 
+  /**
+   * Récupère les présences pour un événement
+   */
+  async getPresences(eventId: string): Promise<any[]> {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(this.mapToPresence);
+  }
+
+  /**
+   * Ajoute ou met à jour une présence
+   */
+  async upsertPresence(presence: {
+    eventId: string;
+    twitchLogin: string;
+    displayName: string;
+    discordId?: string;
+    discordUsername?: string;
+    isRegistered: boolean;
+    present: boolean;
+    note?: string;
+    validatedBy: string;
+    addedManually?: boolean;
+  }): Promise<any> {
+    const presenceRecord: any = {
+      event_id: presence.eventId,
+      twitch_login: presence.twitchLogin.toLowerCase(),
+      display_name: presence.displayName,
+      discord_id: presence.discordId || null,
+      discord_username: presence.discordUsername || null,
+      is_registered: presence.isRegistered,
+      present: presence.present,
+      note: presence.note || null,
+      validated_at: new Date().toISOString(),
+      validated_by: presence.validatedBy,
+      added_manually: presence.addedManually || false,
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .upsert(presenceRecord, {
+        onConflict: 'event_id,twitch_login',
+        ignoreDuplicates: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return this.mapToPresence(data);
+  }
+
+  /**
+   * Met à jour la note d'une présence
+   */
+  async updatePresenceNote(eventId: string, twitchLogin: string, note: string | undefined, validatedBy: string): Promise<boolean> {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .update({
+        note: note || null,
+        validated_at: new Date().toISOString(),
+        validated_by: validatedBy,
+      })
+      .eq('event_id', eventId)
+      .eq('twitch_login', twitchLogin.toLowerCase())
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return false;
+      throw error;
+    }
+
+    return !!data;
+  }
+
+  /**
+   * Supprime une présence
+   */
+  async removePresence(eventId: string, twitchLogin: string): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('event_presences')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('twitch_login', twitchLogin.toLowerCase());
+
+    if (error) throw error;
+
+    return true;
+  }
+
+  private mapToPresence(row: any): any {
+    return {
+      id: row.id,
+      eventId: row.event_id,
+      twitchLogin: row.twitch_login,
+      displayName: row.display_name,
+      discordId: row.discord_id || undefined,
+      discordUsername: row.discord_username || undefined,
+      isRegistered: row.is_registered,
+      present: row.present,
+      note: row.note || undefined,
+      validatedAt: row.validated_at ? new Date(row.validated_at).toISOString() : undefined,
+      validatedBy: row.validated_by || undefined,
+      addedManually: row.added_manually,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
+    };
+  }
+
   private mapToDbFormat(event: Partial<Event>): any {
     const record: any = {};
 

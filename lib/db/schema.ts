@@ -1,7 +1,7 @@
 // Schéma de base de données Supabase pour TENF V3
 // Utilise Drizzle ORM pour la type-safety et les migrations
 
-import { pgTable, text, uuid, boolean, timestamp, jsonb, integer, date, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, boolean, timestamp, jsonb, integer, date, pgEnum, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ============================================
@@ -122,6 +122,26 @@ export const eventRegistrations = pgTable('event_registrations', {
   notes: text('notes'),
   registeredAt: timestamp('registered_at').defaultNow(),
 });
+
+// Table: event_presences
+export const eventPresences = pgTable('event_presences', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: text('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  twitchLogin: text('twitch_login').notNull(),
+  displayName: text('display_name').notNull(),
+  discordId: text('discord_id'),
+  discordUsername: text('discord_username'),
+  isRegistered: boolean('is_registered').default(false), // Si le membre était inscrit à l'événement
+  present: boolean('present').notNull(), // Si le membre était présent (validé)
+  note: text('note'), // Note écrite pour ce participant
+  validatedAt: timestamp('validated_at'),
+  validatedBy: text('validated_by'), // Discord ID de l'admin qui a validé
+  addedManually: boolean('added_manually').default(false), // Si le membre a été ajouté manuellement (non inscrit)
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  // Index unique pour éviter les doublons
+  uniqueEventMember: unique().on(table.eventId, table.twitchLogin),
+}));
 
 // Table: spotlights
 export const spotlights = pgTable('spotlights', {
