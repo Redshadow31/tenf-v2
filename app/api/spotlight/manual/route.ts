@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  saveActiveSpotlight,
-  saveSpotlightPresences,
-  saveSpotlightEvaluation 
-} from '@/lib/spotlightStorage';
 import { getCurrentAdmin, isFounder } from '@/lib/admin';
-import { getMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { spotlightRepository, evaluationRepository, memberRepository } from '@/lib/repositories';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { cookies } from 'next/headers';
 
 /**
@@ -65,23 +61,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le login Twitch correspond à un membre enregistré
-    await loadMemberDataFromStorage();
-    const member = getMemberData(streamerTwitchLogin.trim().toLowerCase());
+    const member = await memberRepository.findByTwitchLogin(streamerTwitchLogin.trim().toLowerCase());
     
     if (!member) {
-      const allMembers = getAllMemberData();
-      const foundMember = allMembers.find(
-        m => m.twitchLogin.toLowerCase() === streamerTwitchLogin.trim().toLowerCase()
+      return NextResponse.json(
+        { 
+          error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré.` 
+        },
+        { status: 400 }
       );
-      
-      if (!foundMember) {
-        return NextResponse.json(
-          { 
-            error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré.` 
-          },
-          { status: 400 }
-        );
-      }
     }
 
     // Validation des dates
@@ -107,31 +95,31 @@ export async function POST(request: NextRequest) {
     const username = cookieStore.get('discord_username')?.value || admin.username;
 
     // Créer le spotlight avec status = completed
-    const spotlight = {
-      id: `spotlight-manual-${Date.now()}`,
+    const spotlightId = `spotlight-manual-${Date.now()}`;
+    const createdSpotlight = await spotlightRepository.create({
+      id: spotlightId,
       streamerTwitchLogin: streamerTwitchLogin.trim().toLowerCase(),
-      streamerDisplayName: member?.displayName || streamerDisplayName || streamerTwitchLogin,
-      startedAt: startDate.toISOString(),
-      endsAt: endDate.toISOString(),
-      status: 'completed' as const,
+      streamerDisplayName: member.displayName || streamerDisplayName || streamerTwitchLogin,
+      startedAt: startDate,
+      endsAt: endDate,
+      status: 'completed',
       moderatorDiscordId: admin.id,
       moderatorUsername: username,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       createdBy: admin.id,
-    };
-
-    await saveActiveSpotlight(spotlight);
+    });
 
     // Enregistrer les présences
     if (Array.isArray(presences) && presences.length > 0) {
       const presenceEntries = presences.map((p: any) => ({
-        twitchLogin: p.twitchLogin,
+        spotlightId: createdSpotlight.id,
+        twitchLogin: p.twitchLogin?.toLowerCase() || '',
         displayName: p.displayName,
-        addedAt: startDate.toISOString(), // Utiliser la date de début du spotlight
+        addedAt: startDate,
         addedBy: admin.id,
       }));
 
-      await saveSpotlightPresences(spotlight.id, presenceEntries);
+      await spotlightRepository.replacePresences(createdSpotlight.id, presenceEntries);
     }
 
     // Enregistrer l'évaluation si fournie
@@ -145,82 +133,115 @@ export async function POST(request: NextRequest) {
         0
       );
 
-      const evaluationEntry = {
-        spotlightId: spotlight.id,
-        streamerTwitchLogin: spotlight.streamerTwitchLogin,
+      await spotlightRepository.saveEvaluation({
+        spotlightId: createdSpotlight.id,
+        streamerTwitchLogin: createdSpotlight.streamerTwitchLogin,
         criteria: evaluation.criteria,
         totalScore,
         maxScore,
         moderatorComments: evaluation.moderatorComments || '',
-        evaluatedAt: new Date().toISOString(),
+        evaluatedAt: new Date(),
         evaluatedBy: admin.id,
-      };
-
-      await saveSpotlightEvaluation(evaluationEntry);
+        validated: true,
+        validatedAt: new Date(),
+      });
     }
 
     // Intégrer directement dans les évaluations mensuelles
-    const { loadSectionAData, saveSectionAData, getCurrentMonthKey } = await import('@/lib/evaluationStorage');
     const monthKey = getCurrentMonthKey();
-    const sectionAData = await loadSectionAData(monthKey);
-    const existingData = sectionAData || {
-      month: monthKey,
-      spotlights: [],
-      events: [],
-      raidPoints: {},
-      spotlightBonus: {},
-      lastUpdated: new Date().toISOString(),
-    };
+    const monthDate = `${monthKey}-01`;
 
     // Charger tous les membres actifs pour inclure les absents
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData().filter(m => m.isActive !== false);
+    const allMembers = await memberRepository.findAll();
+    const activeMembers = allMembers.filter(m => m.isActive !== false);
     
     // Créer un Set des membres présents pour vérification rapide
     const presentMembersSet = new Set(
-      (presences || []).map((p: any) => p.twitchLogin.toLowerCase())
+      (presences || []).map((p: any) => p.twitchLogin?.toLowerCase()).filter(Boolean)
     );
 
     // Créer la liste complète des membres (présents et absents)
-    const allMembersList = allMembers.map(member => ({
-      twitchLogin: member.twitchLogin,
-      present: presentMembersSet.has(member.twitchLogin.toLowerCase()),
+    const allMembersList = activeMembers.map(m => ({
+      twitchLogin: m.twitchLogin,
+      present: presentMembersSet.has(m.twitchLogin.toLowerCase()),
       note: undefined,
       comment: undefined,
     }));
 
     // Créer l'entrée SpotlightEvaluation
     const spotlightEvaluation = {
-      id: spotlight.id,
+      id: createdSpotlight.id,
       date: startDate.toISOString().split('T')[0],
-      streamerTwitchLogin: spotlight.streamerTwitchLogin,
-      moderatorDiscordId: spotlight.moderatorDiscordId,
-      moderatorUsername: spotlight.moderatorUsername,
+      streamerTwitchLogin: createdSpotlight.streamerTwitchLogin,
+      moderatorDiscordId: createdSpotlight.moderatorDiscordId,
+      moderatorUsername: createdSpotlight.moderatorUsername,
       members: allMembersList,
       validated: true,
       validatedAt: new Date().toISOString(),
-      createdAt: spotlight.createdAt,
-      createdBy: spotlight.createdBy,
+      createdAt: createdSpotlight.createdAt.toISOString(),
+      createdBy: createdSpotlight.createdBy,
     };
 
-    // Vérifier si le spotlight existe déjà
-    const existingIndex = existingData.spotlights.findIndex(s => s.id === spotlight.id);
-    if (existingIndex >= 0) {
-      existingData.spotlights[existingIndex] = spotlightEvaluation;
-    } else {
-      existingData.spotlights.push(spotlightEvaluation);
+    // Mettre à jour toutes les évaluations du mois pour inclure ce spotlight
+    for (const member of activeMembers) {
+      let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
+      
+      let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
+      
+      // Vérifier si ce spotlight existe déjà dans l'évaluation
+      const existingIndex = spotlightEvaluations.findIndex((s: any) => s.id === createdSpotlight.id);
+      
+      if (existingIndex >= 0) {
+        // Mettre à jour l'entrée existante
+        spotlightEvaluations[existingIndex] = spotlightEvaluation;
+      } else {
+        // Ajouter la nouvelle entrée
+        spotlightEvaluations.push(spotlightEvaluation);
+      }
+
+      // Mettre à jour ou créer l'évaluation
+      await evaluationRepository.upsert({
+        month: new Date(monthDate),
+        twitchLogin: member.twitchLogin.toLowerCase(),
+        spotlightEvaluations,
+        updatedAt: new Date(),
+      });
     }
 
-    existingData.lastUpdated = new Date().toISOString();
-    await saveSectionAData(existingData);
+    // Récupérer les présences et l'évaluation pour la réponse
+    const savedPresences = await spotlightRepository.getPresences(createdSpotlight.id);
+    const savedEvaluation = await spotlightRepository.getEvaluation(createdSpotlight.id);
 
     return NextResponse.json({
       success: true,
       message: 'Spotlight créé avec succès et intégré dans les évaluations mensuelles',
       spotlight: {
-        ...spotlight,
-        presences: presences || [],
-        evaluation: evaluation || null,
+        id: createdSpotlight.id,
+        streamerTwitchLogin: createdSpotlight.streamerTwitchLogin,
+        streamerDisplayName: createdSpotlight.streamerDisplayName,
+        startedAt: createdSpotlight.startedAt.toISOString(),
+        endsAt: createdSpotlight.endsAt.toISOString(),
+        status: createdSpotlight.status,
+        moderatorDiscordId: createdSpotlight.moderatorDiscordId,
+        moderatorUsername: createdSpotlight.moderatorUsername,
+        createdAt: createdSpotlight.createdAt.toISOString(),
+        createdBy: createdSpotlight.createdBy,
+        presences: savedPresences.map(p => ({
+          twitchLogin: p.twitchLogin,
+          displayName: p.displayName,
+          addedAt: p.addedAt.toISOString(),
+          addedBy: p.addedBy,
+        })),
+        evaluation: savedEvaluation ? {
+          spotlightId: savedEvaluation.spotlightId,
+          streamerTwitchLogin: savedEvaluation.streamerTwitchLogin,
+          criteria: savedEvaluation.criteria,
+          totalScore: savedEvaluation.totalScore,
+          maxScore: savedEvaluation.maxScore,
+          moderatorComments: savedEvaluation.moderatorComments,
+          evaluatedAt: savedEvaluation.evaluatedAt.toISOString(),
+          evaluatedBy: savedEvaluation.evaluatedBy,
+        } : null,
       },
     });
   } catch (error) {
