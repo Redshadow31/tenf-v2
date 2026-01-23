@@ -458,9 +458,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await memberRepository.delete(twitchLogin);
-
-    if (!success) {
+    try {
+      await memberRepository.delete(twitchLogin);
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
       return NextResponse.json(
         { error: "Erreur lors de la suppression" },
         { status: 500 }

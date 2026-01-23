@@ -16,6 +16,11 @@ console.log('🔍 Test de connexion à la base de données...\n');
 console.log('Connection string:', databaseUrl.replace(/:[^:@]+@/, ':****@')); // Masquer le mot de passe
 
 async function testConnection() {
+  if (!databaseUrl) {
+    console.error('❌ DATABASE_URL n\'est pas défini');
+    process.exit(1);
+  }
+  
   try {
     const sql = postgres(databaseUrl, {
       max: 1,
