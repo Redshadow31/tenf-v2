@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getSpotlightEvaluation, 
-  saveSpotlightEvaluation 
-} from '@/lib/spotlightStorage';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { spotlightRepository } from '@/lib/repositories';
 
 /**
  * PUT - Met à jour l'évaluation d'un spotlight par son ID
@@ -29,7 +26,7 @@ export async function PUT(
     }
 
     // Récupérer l'évaluation existante pour obtenir le streamerTwitchLogin
-    const existingEvaluation = await getSpotlightEvaluation(spotlightId);
+    const existingEvaluation = await spotlightRepository.getEvaluation(spotlightId);
     
     if (!existingEvaluation) {
       return NextResponse.json(
@@ -52,23 +49,35 @@ export async function PUT(
     const totalScore = criteria.reduce((sum, crit) => sum + (crit.value || 0), 0);
     const maxScore = criteria.reduce((sum, crit) => sum + (crit.maxValue || 0), 0);
 
-    // Créer la nouvelle évaluation (écrase l'ancienne)
-    const evaluation = {
+    // Mettre à jour l'évaluation
+    const evaluation = await spotlightRepository.saveEvaluation({
       spotlightId: spotlightId,
       streamerTwitchLogin: existingEvaluation.streamerTwitchLogin,
       criteria,
       totalScore,
       maxScore,
       moderatorComments: moderatorComments || '',
-      evaluatedAt: new Date().toISOString(), // Mettre à jour la date d'évaluation
+      evaluatedAt: new Date(), // Mettre à jour la date d'évaluation
       evaluatedBy: admin.id, // Mettre à jour l'évaluateur
-    };
+      validated: existingEvaluation.validated,
+      validatedAt: existingEvaluation.validatedAt,
+    });
 
-    await saveSpotlightEvaluation(evaluation);
+    // Convertir au format attendu par le frontend
+    const formattedEvaluation = {
+      spotlightId: evaluation.spotlightId,
+      streamerTwitchLogin: evaluation.streamerTwitchLogin,
+      criteria: evaluation.criteria,
+      totalScore: evaluation.totalScore,
+      maxScore: evaluation.maxScore,
+      moderatorComments: evaluation.moderatorComments,
+      evaluatedAt: evaluation.evaluatedAt.toISOString(),
+      evaluatedBy: evaluation.evaluatedBy,
+    };
 
     return NextResponse.json({ 
       success: true, 
-      evaluation,
+      evaluation: formattedEvaluation,
       message: 'Évaluation mise à jour avec succès' 
     });
   } catch (error) {
@@ -102,13 +111,25 @@ export async function GET(
       );
     }
 
-    const evaluation = await getSpotlightEvaluation(spotlightId);
+    const evaluation = await spotlightRepository.getEvaluation(spotlightId);
     
     if (!evaluation) {
       return NextResponse.json({ evaluation: null });
     }
 
-    return NextResponse.json({ evaluation });
+    // Convertir au format attendu par le frontend
+    const formattedEvaluation = {
+      spotlightId: evaluation.spotlightId,
+      streamerTwitchLogin: evaluation.streamerTwitchLogin,
+      criteria: evaluation.criteria,
+      totalScore: evaluation.totalScore,
+      maxScore: evaluation.maxScore,
+      moderatorComments: evaluation.moderatorComments,
+      evaluatedAt: evaluation.evaluatedAt.toISOString(),
+      evaluatedBy: evaluation.evaluatedBy,
+    };
+
+    return NextResponse.json({ evaluation: formattedEvaluation });
   } catch (error) {
     console.error('[Spotlight Evaluation Get API] Erreur GET:', error);
     return NextResponse.json(
