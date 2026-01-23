@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getActiveSpotlight, 
-  getSpotlightPresences, 
-  getSpotlightEvaluation,
-  saveActiveSpotlight 
-} from '@/lib/spotlightStorage';
-import { loadSectionAData, saveSectionAData } from '@/lib/evaluationStorage';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { spotlightRepository, evaluationRepository, memberRepository } from '@/lib/repositories';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 /**
  * POST - Finalise un spotlight et l'intègre dans le système d'évaluation mensuelle
@@ -19,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
@@ -52,31 +47,19 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Utiliser la date du spotlight pour déterminer le mois
-      const spotlightDate = new Date(spotlight.startedAt);
+      const spotlightDate = spotlight.startedAt;
       const year = spotlightDate.getFullYear();
       const month = String(spotlightDate.getMonth() + 1).padStart(2, '0');
       monthKey = `${year}-${month}`;
     }
 
     // Récupérer les données du spotlight
-    const presences = await getSpotlightPresences(spotlight.id);
-    const evaluation = await getSpotlightEvaluation(spotlight.id);
-
-    // Charger les données de la section A
-    const sectionAData = await loadSectionAData(monthKey);
-    const existingData = sectionAData || {
-      month: monthKey,
-      spotlights: [],
-      events: [],
-      raidPoints: {},
-      spotlightBonus: {},
-      lastUpdated: new Date().toISOString(),
-    };
+    const presences = await spotlightRepository.getPresences(spotlight.id);
+    const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
 
     // Charger tous les membres actifs pour inclure les absents
-    const { getAllMemberData, loadMemberDataFromStorage } = await import('@/lib/memberData');
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData().filter(m => m.isActive !== false);
+    const allMembers = await memberRepository.findAll();
+    const activeMembers = allMembers.filter(m => m.isActive !== false);
     
     // Créer un Set des membres présents pour vérification rapide
     const presentMembersSet = new Set(
@@ -84,7 +67,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Créer la liste complète des membres (présents et absents)
-    const allMembersList = allMembers.map(member => ({
+    const allMembersList = activeMembers.map(member => ({
       twitchLogin: member.twitchLogin,
       present: presentMembersSet.has(member.twitchLogin.toLowerCase()),
       note: undefined,
@@ -94,32 +77,49 @@ export async function POST(request: NextRequest) {
     // Créer l'entrée SpotlightEvaluation
     const spotlightEvaluation = {
       id: spotlight.id,
-      date: spotlight.startedAt.split('T')[0],
+      date: spotlight.startedAt.toISOString().split('T')[0],
       streamerTwitchLogin: spotlight.streamerTwitchLogin,
       moderatorDiscordId: spotlight.moderatorDiscordId,
       moderatorUsername: spotlight.moderatorUsername,
       members: allMembersList,
       validated: true,
       validatedAt: new Date().toISOString(),
-      createdAt: spotlight.createdAt,
+      createdAt: spotlight.createdAt.toISOString(),
       createdBy: spotlight.createdBy,
     };
 
-    // Vérifier si le spotlight existe déjà
-    const existingIndex = existingData.spotlights.findIndex(s => s.id === spotlight.id);
-    if (existingIndex >= 0) {
-      existingData.spotlights[existingIndex] = spotlightEvaluation;
-    } else {
-      existingData.spotlights.push(spotlightEvaluation);
+    // Mettre à jour toutes les évaluations du mois pour inclure ce spotlight
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    const monthDate = `${monthKey}-01`;
+
+    // Pour chaque membre actif, mettre à jour son évaluation
+    for (const member of activeMembers) {
+      let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
+      
+      let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
+      
+      // Vérifier si ce spotlight existe déjà dans l'évaluation
+      const existingIndex = spotlightEvaluations.findIndex((s: any) => s.id === spotlight.id);
+      
+      if (existingIndex >= 0) {
+        // Mettre à jour l'entrée existante
+        spotlightEvaluations[existingIndex] = spotlightEvaluation;
+      } else {
+        // Ajouter la nouvelle entrée
+        spotlightEvaluations.push(spotlightEvaluation);
+      }
+
+      // Mettre à jour ou créer l'évaluation
+      await evaluationRepository.upsert({
+        month: new Date(monthDate),
+        twitchLogin: member.twitchLogin.toLowerCase(),
+        spotlightEvaluations,
+        updatedAt: new Date(),
+      });
     }
 
-    existingData.lastUpdated = new Date().toISOString();
-
-    // Sauvegarder
-    await saveSectionAData(existingData);
-
     // Marquer le spotlight comme complété
-    await saveActiveSpotlight({ ...spotlight, status: 'completed' });
+    await spotlightRepository.update(spotlight.id, { status: 'completed' });
 
     return NextResponse.json({ 
       success: true,
