@@ -202,6 +202,13 @@ export const evaluations = pgTable('evaluations', {
     }>;
   }>>().default([]),
   raidPoints: integer('raid_points').default(0),
+  raidPointsManual: integer('raid_points_manual'), // Points manuels (surcharge le calcul automatique)
+  raidNotes: jsonb('raid_notes').$type<{
+    note?: string; // Note texte libre
+    manualPoints?: number; // Points manuels (0-5)
+    lastUpdated?: string; // ISO timestamp
+    updatedBy?: string; // Discord ID
+  }>(),
   spotlightBonus: integer('spotlight_bonus').default(0),
   
   // Section B (Discord engagement)

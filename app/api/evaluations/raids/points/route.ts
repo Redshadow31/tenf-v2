@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { calculateRaidPoints } from '@/lib/evaluationSynthesisHelpers';
 import {
@@ -8,8 +7,7 @@ import {
   loadRaidsRecus,
   getMonthKey,
 } from '@/lib/raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
-import { loadRaidEvaluationData } from '@/lib/raidEvaluationStorage';
+import { memberRepository, evaluationRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +24,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
@@ -54,11 +51,10 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les membres pour la conversion Discord ID -> Twitch Login
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
+    // Charger les membres depuis Supabase pour la conversion Discord ID -> Twitch Login
+    const allMembers = await memberRepository.findAll();
     const discordIdToMember = new Map<string, any>();
-    allMembers.forEach((m: any) => {
+    allMembers.forEach((m) => {
       if (m.discordId && m.twitchLogin) {
         discordIdToMember.set(m.discordId, m);
       }
@@ -113,16 +109,21 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Charger les notes d'évaluation pour récupérer les points manuels
-    const evaluationData = await loadRaidEvaluationData(monthKey);
+    // Charger les notes d'évaluation depuis Supabase pour récupérer les points manuels
+    // Les points manuels sont stockés dans le champ raidPointsManual ou raidNotes.manualPoints
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
     const manualPointsMap = new Map<string, number>();
-    if (evaluationData?.notes) {
-      Object.entries(evaluationData.notes).forEach(([login, noteData]: [string, any]) => {
-        if (noteData.manualPoints !== undefined && noteData.manualPoints !== null) {
-          manualPointsMap.set(login.toLowerCase(), Number(noteData.manualPoints));
-        }
-      });
-    }
+    
+    evaluations.forEach((eval) => {
+      // Priorité 1: raidPointsManual (champ dédié aux points manuels)
+      if (eval.raidPointsManual !== undefined && eval.raidPointsManual !== null) {
+        manualPointsMap.set(eval.twitchLogin.toLowerCase(), eval.raidPointsManual);
+      }
+      // Priorité 2: raidNotes.manualPoints (ancien système de notes)
+      else if (eval.raidNotes?.manualPoints !== undefined && eval.raidNotes.manualPoints !== null) {
+        manualPointsMap.set(eval.twitchLogin.toLowerCase(), eval.raidNotes.manualPoints);
+      }
+    });
 
     // Calculer les points pour chaque membre (utiliser les points manuels s'ils existent, sinon calculer)
     const pointsMap: Record<string, number> = {};

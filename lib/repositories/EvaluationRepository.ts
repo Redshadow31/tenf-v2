@@ -13,6 +13,13 @@ export interface Evaluation {
   spotlightEvaluations?: any[];
   eventEvaluations?: any[];
   raidPoints?: number;
+  raidPointsManual?: number; // Points manuels (surcharge le calcul automatique)
+  raidNotes?: {
+    note?: string;
+    manualPoints?: number;
+    lastUpdated?: string;
+    updatedBy?: string;
+  };
   spotlightBonus?: number;
   discordEngagement?: any;
   followValidations?: any[];
@@ -145,6 +152,8 @@ export class EvaluationRepository {
       spotlightEvaluations: row.spotlight_evaluations || undefined,
       eventEvaluations: row.event_evaluations || undefined,
       raidPoints: row.raid_points || undefined,
+      raidPointsManual: row.raid_points_manual || undefined,
+      raidNotes: row.raid_notes || undefined,
       spotlightBonus: row.spotlight_bonus || undefined,
       discordEngagement: row.discord_engagement || undefined,
       followValidations: row.follow_validations || undefined,
@@ -178,6 +187,8 @@ export class EvaluationRepository {
     if (evaluation.spotlightEvaluations !== undefined) record.spotlight_evaluations = evaluation.spotlightEvaluations;
     if (evaluation.eventEvaluations !== undefined) record.event_evaluations = evaluation.eventEvaluations;
     if (evaluation.raidPoints !== undefined) record.raid_points = evaluation.raidPoints;
+    if (evaluation.raidPointsManual !== undefined) record.raid_points_manual = evaluation.raidPointsManual;
+    if (evaluation.raidNotes !== undefined) record.raid_notes = evaluation.raidNotes;
     if (evaluation.spotlightBonus !== undefined) record.spotlight_bonus = evaluation.spotlightBonus;
     if (evaluation.discordEngagement !== undefined) record.discord_engagement = evaluation.discordEngagement;
     if (evaluation.followValidations !== undefined) record.follow_validations = evaluation.followValidations;
