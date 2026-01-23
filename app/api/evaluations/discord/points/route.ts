@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
-import { getDiscordEngagementData } from '@/lib/discordEngagementStorage';
-import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { memberRepository, evaluationRepository } from '@/lib/repositories';
 import { calculateNoteEcrit, calculateNoteVocal, calculateNoteFinale } from '@/lib/discordEngagement';
 
 export const runtime = 'nodejs';
@@ -15,7 +13,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
@@ -35,45 +32,45 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les membres pour la conversion Discord ID -> Twitch Login
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
+    // Charger les membres depuis Supabase pour la conversion Discord ID -> Twitch Login
+    const allMembers = await memberRepository.findAll();
     const discordIdToTwitchLogin = new Map<string, string>();
-    allMembers.forEach((m: any) => {
+    allMembers.forEach((m) => {
       if (m.discordId && m.twitchLogin) {
         discordIdToTwitchLogin.set(m.discordId, m.twitchLogin);
       }
     });
 
-    // Charger les données d'engagement Discord depuis le storage
-    const engagementData = await getDiscordEngagementData(monthKey);
+    // Charger les évaluations du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
     
-    if (!engagementData || !engagementData.dataByMember) {
+    if (evaluations.length === 0) {
       return NextResponse.json({ success: true, points: {}, month: monthKey });
     }
 
-    // Convertir les notes finales de Discord ID vers Twitch Login
-    // Si noteFinale existe dans le storage, on l'utilise, sinon on la calcule
+    // Construire la map des points Discord depuis les évaluations
     const pointsMap: Record<string, number> = {};
     
-    Object.entries(engagementData.dataByMember).forEach(([discordId, engagement]: [string, any]) => {
-      const twitchLogin = discordIdToTwitchLogin.get(discordId);
-      if (twitchLogin && engagement) {
+    evaluations.forEach((eval) => {
+      if (eval.discordEngagement && eval.twitchLogin) {
+        const engagement = eval.discordEngagement;
         let noteFinale: number;
         
-        // Si noteFinale existe déjà dans le storage, l'utiliser
-        if (typeof engagement.noteFinale === 'number' && !isNaN(engagement.noteFinale)) {
+        // Si noteFinale existe déjà dans discordEngagement, l'utiliser
+        if (typeof engagement.total === 'number' && !isNaN(engagement.total)) {
+          noteFinale = engagement.total;
+        } else if (typeof engagement.noteFinale === 'number' && !isNaN(engagement.noteFinale)) {
           noteFinale = engagement.noteFinale;
         } else {
-          // Sinon, calculer la note finale à partir de nbMessages et nbVocalMinutes
-          const nbMessages = engagement.nbMessages || 0;
-          const nbVocalMinutes = engagement.nbVocalMinutes || 0;
+          // Sinon, calculer la note finale à partir de messages et vocal
+          const nbMessages = engagement.messages || 0;
+          const nbVocalMinutes = engagement.vocals || 0;
           const noteEcrit = calculateNoteEcrit(nbMessages);
           const noteVocal = calculateNoteVocal(nbVocalMinutes);
           noteFinale = calculateNoteFinale(noteEcrit, noteVocal);
         }
         
-        pointsMap[twitchLogin.toLowerCase()] = noteFinale;
+        pointsMap[eval.twitchLogin.toLowerCase()] = noteFinale;
       }
     });
 
