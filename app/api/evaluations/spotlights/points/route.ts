@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
-import { getCurrentMonthKey, loadSectionAData } from '@/lib/evaluationStorage';
+import { requirePermission } from '@/lib/requireAdmin';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { calculateSpotlightPoints } from '@/lib/evaluationSynthesisHelpers';
-import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { memberRepository, evaluationRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +14,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
@@ -25,24 +23,41 @@ export async function GET(request: NextRequest) {
     const monthParam = searchParams.get('month');
     const monthKey = monthParam || getCurrentMonthKey();
 
-    // Charger les données depuis le storage (même logique que /api/spotlight/presence/monthly)
-    await loadMemberDataFromStorage();
-    const sectionAData = await loadSectionAData(monthKey);
-    const allMembers = getAllMemberData();
+    // Charger les évaluations du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    
+    // Charger tous les membres actifs depuis Supabase
+    const allMembers = await memberRepository.findAll();
+    const activeMembers = allMembers.filter(m => m.isActive !== false);
 
-    if (!sectionAData || !sectionAData.spotlights || sectionAData.spotlights.length === 0) {
+    // Extraire les spotlights validés depuis les évaluations
+    const allSpotlights: any[] = [];
+    evaluations.forEach((eval) => {
+      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+        eval.spotlightEvaluations.forEach((se: any) => {
+          if (se.validated) {
+            // Vérifier si ce spotlight n'est pas déjà dans la liste
+            const exists = allSpotlights.some(s => s.id === se.id);
+            if (!exists) {
+              allSpotlights.push(se);
+            }
+          }
+        });
+      }
+    });
+
+    if (allSpotlights.length === 0) {
       return NextResponse.json({ success: true, points: {}, month: monthKey });
     }
 
-    const spotlights = sectionAData.spotlights.filter((s: any) => s.validated);
-    const totalSpotlights = spotlights.length;
+    const totalSpotlights = allSpotlights.length;
 
-    // Calculer les statistiques par membre (même logique que l'API monthly)
+    // Calculer les statistiques par membre
     const memberStatsMap = new Map<string, { presences: number; totalSpotlights: number }>();
 
     // Initialiser tous les membres actifs
-    allMembers.forEach((member: any) => {
-      if (member.isActive !== false && member.twitchLogin) {
+    activeMembers.forEach((member) => {
+      if (member.twitchLogin) {
         memberStatsMap.set(member.twitchLogin.toLowerCase(), {
           presences: 0,
           totalSpotlights: totalSpotlights,
@@ -50,8 +65,8 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Compter les présences
-    spotlights.forEach((spotlight: any) => {
+    // Compter les présences depuis les spotlightEvaluations
+    allSpotlights.forEach((spotlight: any) => {
       spotlight.members?.forEach((member: any) => {
         const login = member.twitchLogin?.toLowerCase();
         const stats = memberStatsMap.get(login);
