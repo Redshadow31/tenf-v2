@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadRaidEvaluationData, updateRaidEvaluationNote, getRaidEvaluationNote } from '@/lib/raidEvaluationStorage';
-import { getCurrentAdmin } from '@/lib/adminAuth';
+import { requirePermission } from '@/lib/requireAdmin';
+import { evaluationRepository } from '@/lib/repositories';
 import { getMonthKey, getCurrentMonthKey } from '@/lib/raidStorage';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
@@ -14,12 +14,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
-    
+    const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
+        { error: "Non autorisé" },
+        { status: 403 }
       );
     }
 
@@ -45,12 +44,37 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    const data = await loadRaidEvaluationData(monthKey);
+    // Récupérer toutes les évaluations du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    
+    // Construire l'objet notes depuis raidNotes
+    const notes: Record<string, { note?: string; manualPoints?: number; lastUpdated?: string; updatedBy?: string }> = {};
+    let lastUpdated: string | undefined = undefined;
+    
+    evaluations.forEach(eval => {
+      if (eval.raidNotes && Array.isArray(eval.raidNotes)) {
+        eval.raidNotes.forEach((raidNote: any) => {
+          if (raidNote.twitchLogin) {
+            notes[raidNote.twitchLogin.toLowerCase()] = {
+              note: raidNote.note,
+              manualPoints: raidNote.manualPoints,
+              lastUpdated: raidNote.lastUpdated,
+              updatedBy: raidNote.updatedBy,
+            };
+            
+            // Garder la date de mise à jour la plus récente
+            if (raidNote.lastUpdated && (!lastUpdated || raidNote.lastUpdated > lastUpdated)) {
+              lastUpdated = raidNote.lastUpdated;
+            }
+          }
+        });
+      }
+    });
     
     return NextResponse.json({
       month: monthKey,
-      notes: data?.notes || {},
-      lastUpdated: data?.lastUpdated,
+      notes,
+      lastUpdated,
     });
   } catch (error) {
     console.error('[API Raid Evaluation Notes] Erreur GET:', error);
@@ -68,12 +92,11 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
-    
+    const admin = await requirePermission("write");
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
+        { error: "Non autorisé" },
+        { status: 403 }
       );
     }
 
@@ -110,9 +133,65 @@ export async function PUT(request: NextRequest) {
     }
 
     const monthKey = getMonthKey(year, monthNum);
+    const monthDate = `${month}-01`;
 
-    // Mettre à jour la note et les points manuels
-    await updateRaidEvaluationNote(monthKey, twitchLogin, note, validatedManualPoints, admin.id);
+    // Récupérer l'évaluation existante ou en créer une nouvelle
+    let evaluation = await evaluationRepository.findByMemberAndMonth(twitchLogin, month);
+    
+    // Préparer les raidNotes
+    const now = new Date().toISOString();
+    let raidNotes: Array<{
+      twitchLogin: string;
+      note?: string;
+      manualPoints?: number;
+      lastUpdated: string;
+      updatedBy: string;
+    }> = [];
+    
+    if (evaluation && evaluation.raidNotes && Array.isArray(evaluation.raidNotes)) {
+      // Copier les notes existantes
+      raidNotes = [...evaluation.raidNotes];
+      
+      // Trouver ou créer l'entrée pour ce membre
+      const existingIndex = raidNotes.findIndex((n: any) => n.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase());
+      
+      if (existingIndex >= 0) {
+        // Mettre à jour l'entrée existante
+        raidNotes[existingIndex] = {
+          twitchLogin: twitchLogin.toLowerCase(),
+          note: note || undefined,
+          manualPoints: validatedManualPoints,
+          lastUpdated: now,
+          updatedBy: admin.id,
+        };
+      } else {
+        // Ajouter une nouvelle entrée
+        raidNotes.push({
+          twitchLogin: twitchLogin.toLowerCase(),
+          note: note || undefined,
+          manualPoints: validatedManualPoints,
+          lastUpdated: now,
+          updatedBy: admin.id,
+        });
+      }
+    } else {
+      // Créer une nouvelle liste de notes
+      raidNotes = [{
+        twitchLogin: twitchLogin.toLowerCase(),
+        note: note || undefined,
+        manualPoints: validatedManualPoints,
+        lastUpdated: now,
+        updatedBy: admin.id,
+      }];
+    }
+
+    // Mettre à jour ou créer l'évaluation
+    await evaluationRepository.upsert({
+      month: new Date(monthDate),
+      twitchLogin: twitchLogin.toLowerCase(),
+      raidNotes,
+      updatedAt: new Date(),
+    });
 
     return NextResponse.json({
       success: true,
