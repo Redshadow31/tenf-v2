@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getEvent, unregisterFromEvent } from '@/lib/eventStorage';
-import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberData';
+import { eventRepository, memberRepository } from '@/lib/repositories';
 
 /**
  * DELETE - Désinscription d'un événement
@@ -14,7 +13,7 @@ export async function DELETE(
     const { eventId } = params;
     
     // Vérifier que l'événement existe
-    const event = await getEvent(eventId);
+    const event = await eventRepository.findById(eventId);
     if (!event) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
@@ -33,11 +32,8 @@ export async function DELETE(
       );
     }
     
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
-    
-    // Récupérer les données du membre depuis la base par Discord ID
-    const member = findMemberByIdentifier({ discordId: discordUserId });
+    // Récupérer les données du membre depuis Supabase par Discord ID
+    const member = await memberRepository.findByDiscordId(discordUserId);
     if (!member) {
       return NextResponse.json(
         { error: 'Membre non trouvé dans la base de données' },
@@ -45,15 +41,17 @@ export async function DELETE(
       );
     }
     
-    // Se désinscrire de l'événement
-    const unregistered = await unregisterFromEvent(eventId, member.twitchLogin);
-    
-    if (!unregistered) {
+    // Vérifier si le membre est inscrit
+    const registration = await eventRepository.getRegistration(eventId, member.twitchLogin);
+    if (!registration) {
       return NextResponse.json(
         { error: 'Vous n\'êtes pas inscrit à cet événement' },
         { status: 404 }
       );
     }
+    
+    // Se désinscrire de l'événement
+    await eventRepository.removeRegistration(eventId, member.twitchLogin);
     
     return NextResponse.json({ 
       success: true,

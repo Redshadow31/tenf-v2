@@ -157,12 +157,42 @@ export class EventRepository {
   }
 
   /**
+   * Récupère une inscription spécifique
+   */
+  async getRegistration(eventId: string, twitchLogin: string): Promise<EventRegistration | null> {
+    const { data, error } = await supabaseAdmin
+      .from('event_registrations')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('twitch_login', twitchLogin.toLowerCase())
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+
+    return data ? this.mapToRegistration(data) : null;
+  }
+
+  /**
    * Ajoute une inscription à un événement
+   * Vérifie d'abord si l'inscription existe déjà
    */
   async addRegistration(registration: Partial<EventRegistration>): Promise<EventRegistration> {
+    if (!registration.eventId || !registration.twitchLogin) {
+      throw new Error('eventId et twitchLogin sont requis');
+    }
+
+    // Vérifier si l'inscription existe déjà
+    const existing = await this.getRegistration(registration.eventId, registration.twitchLogin);
+    if (existing) {
+      throw new Error('Vous êtes déjà inscrit à cet événement');
+    }
+
     const regRecord: any = {
       event_id: registration.eventId,
-      twitch_login: registration.twitchLogin,
+      twitch_login: registration.twitchLogin.toLowerCase(),
       display_name: registration.displayName,
       discord_id: registration.discordId || null,
       discord_username: registration.discordUsername || null,

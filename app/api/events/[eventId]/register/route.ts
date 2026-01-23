@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getEvent, registerForEvent } from '@/lib/eventStorage';
-import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberData';
+import { eventRepository, memberRepository } from '@/lib/repositories';
 
 /**
  * POST - Inscription à un événement
@@ -16,7 +15,7 @@ export async function POST(
     const { notes } = body;
     
     // Vérifier que l'événement existe et est publié
-    const event = await getEvent(eventId);
+    const event = await eventRepository.findById(eventId);
     if (!event) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
@@ -60,11 +59,8 @@ export async function POST(
       );
     }
     
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
-    
-    // Récupérer les données du membre depuis la base par Discord ID
-    const member = findMemberByIdentifier({ discordId: discordUserId });
+    // Récupérer les données du membre depuis Supabase par Discord ID
+    const member = await memberRepository.findByDiscordId(discordUserId);
     if (!member) {
       return NextResponse.json(
         { error: 'Membre non trouvé dans la base de données' },
@@ -73,23 +69,37 @@ export async function POST(
     }
     
     // S'inscrire à l'événement
-    const registration = await registerForEvent(eventId, {
+    const registration = await eventRepository.addRegistration({
+      eventId,
       twitchLogin: member.twitchLogin,
       displayName: member.displayName || member.twitchLogin,
       discordId: member.discordId,
       discordUsername: member.discordUsername || discordUsername,
       notes: notes || undefined,
+      registeredAt: new Date(),
     });
     
+    // Convertir au format attendu par le frontend
+    const formattedRegistration = {
+      id: registration.id,
+      eventId: registration.eventId,
+      twitchLogin: registration.twitchLogin,
+      displayName: registration.displayName,
+      discordId: registration.discordId,
+      discordUsername: registration.discordUsername,
+      notes: registration.notes,
+      registeredAt: registration.registeredAt.toISOString(),
+    };
+
     return NextResponse.json({ 
-      registration,
+      registration: formattedRegistration,
       success: true,
       message: 'Inscription réussie !' 
     });
   } catch (error) {
     console.error('[Event Registration API] Erreur POST:', error);
     
-    if (error instanceof Error && error.message.includes('déjà inscrit')) {
+    if (error instanceof Error && (error.message.includes('déjà inscrit') || error.message.includes('déjà inscrit'))) {
       return NextResponse.json(
         { error: error.message },
         { status: 409 }
