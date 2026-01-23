@@ -1,7 +1,7 @@
 # 🚀 Améliorations pour TENF V3
 
 **Date** : $(date)  
-**Status Actuel** : ✅ ~85% de la migration V2 → V3 complétée
+**Status Actuel** : ✅ ~90% de la migration V2 → V3 complétée (Routes évaluations migrées ✅)
 
 ## 📊 État Actuel
 
@@ -13,7 +13,7 @@
 - ✅ Tests et validation
 
 ### ⏳ Ce qui reste à FAIRE
-- ⏳ ~60 routes API utilisent encore Netlify Blobs
+- ⏳ ~50 routes API utilisent encore Netlify Blobs (routes évaluations migrées ✅)
 - ⏳ Déploiement en production
 - ⏳ Nettoyage du code legacy
 
@@ -25,15 +25,18 @@
 
 #### Routes API Restantes à Migrer (~60 fichiers)
 
-**Routes Évaluations** (Priorité HAUTE - utilisées fréquemment)
-- `/api/evaluations/*` - Toutes les routes d'évaluations mensuelles
-- `/api/evaluations/synthesis/save` - Sauvegarde des synthèses
-- `/api/evaluations/raids/points` - Points de raids
-- `/api/evaluations/spotlights/points` - Points de spotlights
-- `/api/evaluations/discord/points` - Points Discord
-- `/api/evaluations/follow/points` - Points de follow
-- `/api/evaluations/raids/notes` - Notes de raids
-- `/api/evaluations/spotlights/notes` - Notes de spotlights
+**Routes Évaluations** (Priorité HAUTE - ✅ **100% MIGRÉ**)
+- `✅ /api/evaluations/synthesis/save` - Sauvegarde des synthèses (GET/POST)
+- `✅ /api/evaluations/raids/points` - Points de raids (GET)
+- `✅ /api/evaluations/spotlights/points` - Points de spotlights (GET)
+- `✅ /api/evaluations/discord/points` - Points Discord (GET)
+- `✅ /api/evaluations/follow/points` - Points de follow (GET)
+- `✅ /api/evaluations/raids/notes` - Notes de raids (GET/PUT)
+- `✅ /api/evaluations/spotlights/notes` - Notes de spotlights (GET/PUT)
+- `✅ /api/evaluations/section-a` - Données de la section A (GET/POST)
+- `✅ /api/evaluations/bonus` - Gestion des bonus (GET/PUT)
+
+📄 **Voir** : `migration/MIGRATION_ROUTES_EVALUATIONS_COMPLETE.md` pour le résumé détaillé
 
 **Routes Spotlight** (Priorité MOYENNE)
 - `/api/spotlight/presences` - Présences spotlight
@@ -477,7 +480,7 @@ const MemberSchema = z.object({
 4. ✅ Monitorer les performances
 
 ### Phase 2 : Migration Complète (2-4 semaines)
-1. Migrer les routes évaluations (priorité haute)
+1. ✅ Migrer les routes évaluations (priorité haute) - **TERMINÉ**
 2. Migrer les routes spotlight restantes
 3. Migrer les routes événements
 4. Migrer les routes admin restantes
