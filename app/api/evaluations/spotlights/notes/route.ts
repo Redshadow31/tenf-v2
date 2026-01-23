@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadSpotlightEvaluationData, updateSpotlightEvaluationNote } from '@/lib/spotlightEvaluationStorage';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { getMonthKey, getCurrentMonthKey } from '@/lib/evaluationStorage';
+import { requirePermission } from '@/lib/requireAdmin';
+import { evaluationRepository } from '@/lib/repositories';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
 export const runtime = 'nodejs';
@@ -14,12 +14,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
-    
+    const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
+        { error: "Non autorisé" },
+        { status: 403 }
       );
     }
 
@@ -45,12 +44,37 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    const data = await loadSpotlightEvaluationData(monthKey);
+    // Récupérer toutes les évaluations du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    
+    // Construire l'objet notes depuis spotlightEvaluations
+    const notes: Record<string, string> = {};
+    let lastUpdated: string | undefined = undefined;
+    
+    evaluations.forEach(eval => {
+      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+        eval.spotlightEvaluations.forEach((spotlightEval: any) => {
+          if (spotlightEval.members && Array.isArray(spotlightEval.members)) {
+            spotlightEval.members.forEach((member: any) => {
+              if (member.twitchLogin && member.comment) {
+                const login = member.twitchLogin.toLowerCase();
+                notes[login] = member.comment;
+                
+                // Garder la date de mise à jour la plus récente
+                if (spotlightEval.validatedAt && (!lastUpdated || spotlightEval.validatedAt > lastUpdated)) {
+                  lastUpdated = spotlightEval.validatedAt;
+                }
+              }
+            });
+          }
+        });
+      }
+    });
     
     return NextResponse.json({
       month: monthKey,
-      notes: data?.notes || {},
-      lastUpdated: data?.lastUpdated,
+      notes,
+      lastUpdated,
     });
   } catch (error) {
     console.error('[API Spotlight Evaluation Notes] Erreur GET:', error);
@@ -68,12 +92,11 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
-    
+    const admin = await requirePermission("write");
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
+        { error: "Non autorisé" },
+        { status: 403 }
       );
     }
 
@@ -100,9 +123,54 @@ export async function PUT(request: NextRequest) {
     }
 
     const monthKey = month; // Utiliser directement le format YYYY-MM
+    const monthDate = `${month}-01`;
 
-    // Mettre à jour la note
-    await updateSpotlightEvaluationNote(monthKey, twitchLogin, note, admin.id);
+    // Récupérer l'évaluation existante ou en créer une nouvelle
+    let evaluation = await evaluationRepository.findByMemberAndMonth(twitchLogin, month);
+    
+    // Préparer les spotlightEvaluations
+    let spotlightEvaluations: Array<any> = evaluation?.spotlightEvaluations || [];
+    
+    // Mettre à jour la note dans toutes les évaluations de spotlight du mois
+    // On doit trouver toutes les spotlightEvaluations qui contiennent ce membre
+    let updated = false;
+    spotlightEvaluations = spotlightEvaluations.map((spotlightEval: any) => {
+      if (spotlightEval.members && Array.isArray(spotlightEval.members)) {
+        const updatedMembers = spotlightEval.members.map((member: any) => {
+          if (member.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()) {
+            updated = true;
+            return {
+              ...member,
+              comment: note || undefined,
+            };
+          }
+          return member;
+        });
+        
+        return {
+          ...spotlightEval,
+          members: updatedMembers,
+        };
+      }
+      return spotlightEval;
+    });
+    
+    // Si aucune évaluation de spotlight n'a été trouvée pour ce membre, on ne peut pas ajouter de note
+    // car on ne sait pas à quelle spotlight elle appartient
+    if (!updated && note) {
+      return NextResponse.json(
+        { error: "Aucune évaluation de spotlight trouvée pour ce membre ce mois-ci" },
+        { status: 404 }
+      );
+    }
+
+    // Mettre à jour ou créer l'évaluation
+    await evaluationRepository.upsert({
+      month: new Date(monthDate),
+      twitchLogin: twitchLogin.toLowerCase(),
+      spotlightEvaluations,
+      updatedAt: new Date(),
+    });
 
     return NextResponse.json({
       success: true,
