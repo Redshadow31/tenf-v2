@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { loadSectionAData, getCurrentMonthKey } from '@/lib/evaluationStorage';
-import { getStore } from '@netlify/blobs';
+import { evaluationRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,35 +29,25 @@ export async function GET() {
 
     const progressionData: Array<{ month: string; value: number }> = [];
 
-    // Récupérer le store une seule fois
-    const isNetlify = typeof getStore === 'function' || 
-                      !!process.env.NETLIFY || 
-                      !!process.env.NETLIFY_DEV;
-    
-    let store: any = null;
-    if (isNetlify) {
-      try {
-        store = getStore('tenf-spotlights');
-      } catch (error) {
-        console.error('[Spotlight Progression] Erreur initialisation store:', error);
-      }
-    }
-
     // Pour chaque mois
     for (const monthKey of months) {
       try {
-        // Charger les données du mois
-        const sectionAData = await loadSectionAData(monthKey);
+        // Charger les données du mois depuis Supabase
+        const evaluations = await evaluationRepository.findByMonth(monthKey);
         
-        if (!sectionAData || !sectionAData.spotlights || sectionAData.spotlights.length === 0) {
-          progressionData.push({
-            month: monthKey,
-            value: 0,
-          });
-          continue;
-        }
+        // Agréger les spotlightEvaluations depuis toutes les évaluations
+        const spotlightsMap = new Map<string, any>();
+        evaluations.forEach(eval => {
+          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            eval.spotlightEvaluations.forEach((spotlight: any) => {
+              if (spotlight.validated && !spotlightsMap.has(spotlight.id)) {
+                spotlightsMap.set(spotlight.id, spotlight);
+              }
+            });
+          }
+        });
 
-        const spotlights = sectionAData.spotlights.filter(s => s.validated);
+        const spotlights = Array.from(spotlightsMap.values());
         
         if (spotlights.length === 0) {
           progressionData.push({
