@@ -1,7 +1,7 @@
 # 🚀 Améliorations pour TENF V3
 
 **Date** : $(date)  
-**Status Actuel** : ✅ ~90% de la migration V2 → V3 complétée (Routes évaluations migrées ✅)
+**Status Actuel** : ✅ ~95% de la migration V2 → V3 complétée (Routes évaluations ✅ + Routes spotlight ✅)
 
 ## 📊 État Actuel
 
@@ -13,7 +13,7 @@
 - ✅ Tests et validation
 
 ### ⏳ Ce qui reste à FAIRE
-- ⏳ ~50 routes API utilisent encore Netlify Blobs (routes évaluations migrées ✅)
+- ⏳ ~40 routes API utilisent encore Netlify Blobs (routes évaluations ✅ + routes spotlight ✅ migrées)
 - ⏳ Déploiement en production
 - ⏳ Nettoyage du code legacy
 
@@ -38,14 +38,20 @@
 
 📄 **Voir** : `migration/MIGRATION_ROUTES_EVALUATIONS_COMPLETE.md` pour le résumé détaillé
 
-**Routes Spotlight** (Priorité MOYENNE)
-- `/api/spotlight/presences` - Présences spotlight
-- `/api/spotlight/evaluation` - Évaluations spotlight
-- `/api/spotlight/finalize` - Finalisation spotlight
-- `/api/spotlight/manual` - Création manuelle
-- `/api/spotlight/presence/monthly` - Présences mensuelles
-- `/api/spotlight/evaluations/monthly` - Évaluations mensuelles
-- `/api/spotlight/progression` - Progression spotlight
+**Routes Spotlight** (Priorité MOYENNE - ✅ **100% MIGRÉ**)
+- `✅ /api/spotlight/presences` - Présences spotlight (GET/POST/PUT/DELETE)
+- `✅ /api/spotlight/evaluation` - Évaluations spotlight (GET/POST)
+- `✅ /api/spotlight/finalize` - Finalisation spotlight (POST)
+- `✅ /api/spotlight/manual` - Création manuelle (POST)
+- `✅ /api/spotlight/presence/monthly` - Présences mensuelles (GET)
+- `✅ /api/spotlight/evaluations/monthly` - Évaluations mensuelles (GET)
+- `✅ /api/spotlight/progression` - Progression spotlight (GET)
+- `✅ /api/spotlight/recover` - Récupération spotlight (POST)
+- `✅ /api/spotlight/member/[twitchLogin]` - Spotlights d'un membre (GET)
+- `✅ /api/spotlight/spotlight/[spotlightId]` - CRUD spotlight (GET/PUT)
+- `✅ /api/spotlight/evaluation/[spotlightId]` - Évaluation spécifique (GET/PUT)
+
+📄 **Voir** : `migration/MIGRATION_ROUTES_SPOTLIGHT_COMPLETE.md` pour le résumé détaillé
 
 **Routes Événements** (Priorité MOYENNE)
 - `/api/events/[eventId]/register` - Inscription aux événements
@@ -481,7 +487,7 @@ const MemberSchema = z.object({
 
 ### Phase 2 : Migration Complète (2-4 semaines)
 1. ✅ Migrer les routes évaluations (priorité haute) - **TERMINÉ**
-2. Migrer les routes spotlight restantes
+2. ✅ Migrer les routes spotlight restantes - **TERMINÉ**
 3. Migrer les routes événements
 4. Migrer les routes admin restantes
 
