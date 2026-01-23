@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { loadSectionAData, getCurrentMonthKey } from '@/lib/evaluationStorage';
-import { getStore } from '@netlify/blobs';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
+import { evaluationRepository, spotlightRepository } from '@/lib/repositories';
 
 interface SpotlightEvaluation {
   spotlightId: string;
@@ -49,10 +49,24 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les données du mois
-    const sectionAData = await loadSectionAData(monthKey);
+    // Charger les données du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
 
-    if (!sectionAData || !sectionAData.spotlights || sectionAData.spotlights.length === 0) {
+    // Agréger les spotlightEvaluations depuis toutes les évaluations
+    const spotlightsMap = new Map<string, any>();
+    evaluations.forEach(eval => {
+      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+        eval.spotlightEvaluations.forEach((spotlight: any) => {
+          if (spotlight.validated && !spotlightsMap.has(spotlight.id)) {
+            spotlightsMap.set(spotlight.id, spotlight);
+          }
+        });
+      }
+    });
+
+    const spotlights = Array.from(spotlightsMap.values());
+
+    if (spotlights.length === 0) {
       return NextResponse.json({
         month: monthKey,
         totalSpotlights: 0,
@@ -61,13 +75,6 @@ export async function GET(request: NextRequest) {
         spotlights: [],
       });
     }
-
-    const spotlights = sectionAData.spotlights.filter(s => s.validated);
-    
-    // Récupérer les évaluations depuis le stockage spotlight
-    const isNetlify = typeof getStore === 'function' || 
-                      !!process.env.NETLIFY || 
-                      !!process.env.NETLIFY_DEV;
 
     const spotlightsWithEvaluation: Array<{
       id: string;
@@ -88,57 +95,43 @@ export async function GET(request: NextRequest) {
       }>;
     }> = [];
 
-    // Récupérer le store une seule fois
-    let store: any = null;
-    if (isNetlify) {
-      try {
-        store = getStore('tenf-spotlights');
-      } catch (error) {
-        console.error('[Spotlight Evaluations] Erreur initialisation store:', error);
-      }
-    }
-
     for (const spotlight of spotlights) {
       let evaluation: SpotlightEvaluation | null = null;
       
-      // Récupérer l'évaluation depuis le stockage spotlight
-      if (store) {
-        try {
-          const evalData = await store.get(`${spotlight.id}/evaluation.json`, { type: 'json' }).catch(() => null);
-          
-          if (evalData) {
-            evaluation = {
-              spotlightId: spotlight.id,
-              streamerTwitchLogin: evalData.streamerTwitchLogin || spotlight.streamerTwitchLogin,
-              criteria: evalData.criteria || [],
-              totalScore: evalData.totalScore || 0,
-              maxScore: evalData.maxScore || 0,
-              moderatorComments: evalData.moderatorComments || '',
-              evaluatedAt: evalData.evaluatedAt || spotlight.validatedAt || spotlight.createdAt,
-              evaluatedBy: evalData.evaluatedBy || spotlight.moderatorDiscordId,
-            };
-          }
-        } catch (error) {
-          console.error(`[Spotlight Evaluations] Erreur récupération évaluation ${spotlight.id}:`, error);
+      // Récupérer l'évaluation depuis Supabase
+      try {
+        const evalData = await spotlightRepository.getEvaluation(spotlight.id);
+        
+        if (evalData) {
+          evaluation = {
+            spotlightId: spotlight.id,
+            streamerTwitchLogin: evalData.streamerTwitchLogin,
+            criteria: evalData.criteria,
+            totalScore: evalData.totalScore,
+            maxScore: evalData.maxScore,
+            moderatorComments: evalData.moderatorComments || '',
+            evaluatedAt: evalData.evaluatedAt.toISOString(),
+            evaluatedBy: evalData.evaluatedBy,
+          };
         }
+      } catch (error) {
+        console.error(`[Spotlight Evaluations] Erreur récupération évaluation ${spotlight.id}:`, error);
       }
 
-      // Calculer la durée si on a les dates depuis le spotlight actif
+      // Calculer la durée si on a les dates depuis le spotlight
       let duration: string | undefined;
-      if (store) {
-        try {
-          const activeData = await store.get('active.json', { type: 'json' }).catch(() => null);
-          if (activeData && activeData.id === spotlight.id && activeData.startedAt && activeData.endsAt) {
-            const start = new Date(activeData.startedAt);
-            const end = new Date(activeData.endsAt);
-            const diffMs = end.getTime() - start.getTime();
-            const hours = Math.floor(diffMs / (1000 * 60 * 60));
-            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            duration = `${hours}h ${minutes}m`;
-          }
-        } catch (error) {
-          // Ignorer
+      try {
+        const spotlightData = await spotlightRepository.findById(spotlight.id);
+        if (spotlightData && spotlightData.startedAt && spotlightData.endsAt) {
+          const start = spotlightData.startedAt;
+          const end = spotlightData.endsAt;
+          const diffMs = end.getTime() - start.getTime();
+          const hours = Math.floor(diffMs / (1000 * 60 * 60));
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          duration = `${hours}h ${minutes}m`;
         }
+      } catch (error) {
+        // Ignorer
       }
 
       spotlightsWithEvaluation.push({
