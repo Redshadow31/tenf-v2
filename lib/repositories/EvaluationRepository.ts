@@ -17,6 +17,9 @@ export interface Evaluation {
   discordEngagement?: any;
   followValidations?: any[];
   bonuses?: any[];
+  finalNote?: number;
+  finalNoteSavedAt?: Date;
+  finalNoteSavedBy?: string;
   calculatedAt?: Date;
   calculatedBy?: string;
   createdAt: Date;
@@ -146,6 +149,9 @@ export class EvaluationRepository {
       discordEngagement: row.discord_engagement || undefined,
       followValidations: row.follow_validations || undefined,
       bonuses: row.bonuses || undefined,
+      finalNote: row.final_note || undefined,
+      finalNoteSavedAt: row.final_note_saved_at ? new Date(row.final_note_saved_at) : undefined,
+      finalNoteSavedBy: row.final_note_saved_by || undefined,
       calculatedAt: row.calculated_at ? new Date(row.calculated_at) : undefined,
       calculatedBy: row.calculated_by || undefined,
       createdAt: new Date(row.created_at),
@@ -182,6 +188,13 @@ export class EvaluationRepository {
         : evaluation.calculatedAt;
     }
     if (evaluation.calculatedBy !== undefined) record.calculated_by = evaluation.calculatedBy;
+    if (evaluation.finalNote !== undefined) record.final_note = evaluation.finalNote;
+    if (evaluation.finalNoteSavedAt !== undefined) {
+      record.final_note_saved_at = evaluation.finalNoteSavedAt instanceof Date 
+        ? evaluation.finalNoteSavedAt.toISOString() 
+        : evaluation.finalNoteSavedAt;
+    }
+    if (evaluation.finalNoteSavedBy !== undefined) record.final_note_saved_by = evaluation.finalNoteSavedBy;
 
     return record;
   }

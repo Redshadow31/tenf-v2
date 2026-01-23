@@ -236,6 +236,11 @@ export const evaluations = pgTable('evaluations', {
   // Total
   totalPoints: integer('total_points').default(0),
   
+  // Note finale manuelle (optionnelle, peut être définie lors de la synthèse)
+  finalNote: integer('final_note'),
+  finalNoteSavedAt: timestamp('final_note_saved_at'),
+  finalNoteSavedBy: text('final_note_saved_by'), // Discord ID
+  
   // Métadonnées
   calculatedAt: timestamp('calculated_at'),
   calculatedBy: text('calculated_by'), // Discord ID

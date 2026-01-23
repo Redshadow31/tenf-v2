@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, logAction } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
-import { loadMemberDataFromStorage, getMemberData, updateMemberData } from '@/lib/memberData';
+import { requirePermission } from '@/lib/requireAdmin';
+import { logAction, prepareAuditValues } from '@/lib/admin/logger';
+import { memberRepository, evaluationRepository } from '@/lib/repositories';
 import type { MemberRole } from '@/lib/memberRoles';
-import { getStore } from '@netlify/blobs';
-import fs from 'fs';
-import path from 'path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const STORE_NAME = 'tenf-evaluations';
 
 interface SynthesisSaveRequest {
   month: string; // YYYY-MM
@@ -23,22 +18,13 @@ interface SynthesisSaveRequest {
   }>;
 }
 
-async function getEvaluationStore() {
-  try {
-    const { getStore: dynamicGetStore } = await import('@netlify/blobs');
-    return dynamicGetStore(STORE_NAME);
-  } catch (error) {
-    console.warn('Netlify Blobs not available, falling back to file system for evaluation synthesis data.', error);
-    return null;
-  }
-}
+// Plus besoin de getEvaluationStore, on utilise directement Supabase
 
 /**
  * POST - Sauvegarde les notes finales et statuts pour une évaluation mensuelle
  */
 export async function POST(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission('write');
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
@@ -62,29 +48,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Charger les données des membres
-    await loadMemberDataFromStorage();
-
-    const store = await getEvaluationStore();
-    const key = `${month}/synthesis-final-notes.json`;
-
-    // Charger les notes finales existantes
-    let finalNotes: Record<string, { finalNote?: number; savedAt: string; savedBy: string }> = {};
-    if (store) {
-      const existing = await store.get(key, { type: 'json' }).catch(() => null);
-      if (existing) {
-        finalNotes = existing;
-      }
-    } else {
-      // Développement local
-      const dataDir = path.join(process.cwd(), 'data', 'evaluations', month);
-      const filePath = path.join(dataDir, 'synthesis-final-notes.json');
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        finalNotes = JSON.parse(content);
-      }
-    }
-
     // Mettre à jour les notes finales et statuts
     const results = {
       notesUpdated: 0,
@@ -97,18 +60,40 @@ export async function POST(request: NextRequest) {
 
       // Mettre à jour la note finale si fournie
       if (finalNote !== undefined && finalNote !== null) {
-        finalNotes[twitchLogin.toLowerCase()] = {
-          finalNote: Number(finalNote),
-          savedAt: new Date().toISOString(),
-          savedBy: admin.id,
-        };
-        results.notesUpdated++;
+        try {
+          // Récupérer ou créer l'évaluation pour ce membre et ce mois
+          let evaluation = await evaluationRepository.findByMemberAndMonth(twitchLogin, month);
+          
+          if (!evaluation) {
+            // Créer une nouvelle évaluation si elle n'existe pas
+            const monthDate = new Date(`${month}-01`);
+            evaluation = await evaluationRepository.upsert({
+              month: monthDate,
+              twitchLogin,
+              finalNote: Number(finalNote),
+              finalNoteSavedAt: new Date(),
+              finalNoteSavedBy: admin.discordId,
+            });
+          } else {
+            // Mettre à jour l'évaluation existante
+            evaluation = await evaluationRepository.update(evaluation.id, {
+              finalNote: Number(finalNote),
+              finalNoteSavedAt: new Date(),
+              finalNoteSavedBy: admin.discordId,
+            });
+          }
+          
+          results.notesUpdated++;
+        } catch (error) {
+          console.error(`Erreur lors de la mise à jour de la note finale pour ${twitchLogin}:`, error);
+          results.errors.push(`Erreur note finale pour ${twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        }
       }
 
       // Mettre à jour le statut (isActive), le rôle et/ou le statut VIP si fourni
       if (isActive !== undefined || role !== undefined || isVip !== undefined) {
         try {
-          const member = getMemberData(twitchLogin);
+          const member = await memberRepository.findByTwitchLogin(twitchLogin);
           if (!member) {
             results.errors.push(`Membre ${twitchLogin} non trouvé`);
             continue;
@@ -140,23 +125,16 @@ export async function POST(request: NextRequest) {
             updateData.isVip = newIsVip;
           }
 
-          await updateMemberData(
-            twitchLogin,
-            updateData,
-            admin.id
-          );
+          const updatedMember = await memberRepository.update(twitchLogin, updateData);
 
-          await logAction(
-            admin,
-            'update_member_status',
-            'member',
-            {
-              resourceId: twitchLogin,
-              previousValue: { isActive: member.isActive, role: currentRole, isVip: member.isVip },
-              newValue: { isActive: newIsActive, role: newRole, isVip: newIsVip },
-              metadata: { month, reason: 'Évaluation mensuelle' },
-            }
-          );
+          await logAction({
+            action: 'update_member_status',
+            resourceType: 'member',
+            resourceId: twitchLogin,
+            previousValue: prepareAuditValues(member, undefined).previousValue,
+            newValue: prepareAuditValues(undefined, updatedMember).newValue,
+            metadata: { month, reason: 'Évaluation mensuelle' },
+          });
 
           results.statusUpdated++;
         } catch (error) {
@@ -164,19 +142,6 @@ export async function POST(request: NextRequest) {
           results.errors.push(`Erreur pour ${twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
       }
-    }
-
-    // Sauvegarder les notes finales
-    if (store) {
-      await store.set(key, JSON.stringify(finalNotes, null, 2));
-    } else {
-      // Développement local
-      const dataDir = path.join(process.cwd(), 'data', 'evaluations', month);
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      const filePath = path.join(dataDir, 'synthesis-final-notes.json');
-      fs.writeFileSync(filePath, JSON.stringify(finalNotes, null, 2), 'utf-8');
     }
 
     return NextResponse.json({
@@ -202,7 +167,6 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission('read');
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
@@ -226,25 +190,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const store = await getEvaluationStore();
-    const key = `${month}/synthesis-final-notes.json`;
-
-    let finalNotes: Record<string, { finalNote?: number; savedAt: string; savedBy: string }> = {};
-
-    if (store) {
-      const existing = await store.get(key, { type: 'json' }).catch(() => null);
-      if (existing) {
-        finalNotes = existing;
+    // Récupérer toutes les évaluations du mois avec notes finales
+    const evaluations = await evaluationRepository.findByMonth(month);
+    
+    // Construire l'objet finalNotes au format attendu
+    const finalNotes: Record<string, { finalNote?: number; savedAt: string; savedBy: string }> = {};
+    
+    evaluations.forEach((eval) => {
+      if (eval.finalNote !== undefined && eval.finalNote !== null) {
+        finalNotes[eval.twitchLogin.toLowerCase()] = {
+          finalNote: eval.finalNote,
+          savedAt: eval.finalNoteSavedAt?.toISOString() || new Date().toISOString(),
+          savedBy: eval.finalNoteSavedBy || '',
+        };
       }
-    } else {
-      // Développement local
-      const dataDir = path.join(process.cwd(), 'data', 'evaluations', month);
-      const filePath = path.join(dataDir, 'synthesis-final-notes.json');
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        finalNotes = JSON.parse(content);
-      }
-    }
+    });
 
     return NextResponse.json({
       success: true,

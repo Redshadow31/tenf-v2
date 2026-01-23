@@ -15,6 +15,13 @@
       "when": 1769128019212,
       "tag": "0001_bitter_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769186752480,
+      "tag": "0002_worthless_songbird",
+      "breakpoints": true
     }
   ]
 }
