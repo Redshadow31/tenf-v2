@@ -53,11 +53,15 @@
 
 📄 **Voir** : `migration/MIGRATION_ROUTES_SPOTLIGHT_COMPLETE.md` pour le résumé détaillé
 
-**Routes Événements** (Priorité MOYENNE)
-- `/api/events/[eventId]/register` - Inscription aux événements
-- `/api/events/[eventId]/unregister` - Désinscription
-- `/api/admin/events/presence` - Présences aux événements
-- `/api/admin/events/registrations` - Gestion des inscriptions
+**Routes Événements** (Priorité MOYENNE) ✅ **4/6 migrées (66%)**
+- `✅ /api/events/[eventId]/register` - Inscription aux événements
+- `✅ /api/events/[eventId]/unregister` - Désinscription
+- `✅ /api/admin/events/presence` - Présences aux événements
+- `✅ /api/admin/events/registrations` - Gestion des inscriptions
+- `⏳ /api/admin/events/upload-image` - Upload image (nécessite Supabase Storage)
+- `⏳ /api/admin/events/images/[fileName]` - Récupération image (nécessite Supabase Storage)
+
+📄 **Voir** : `migration/MIGRATION_ROUTES_EVENTS_COMPLETE.md` pour le résumé détaillé
 
 **Routes VIP** (Priorité BASSE)
 - `/api/vip-history` - Historique VIP
