@@ -14,12 +14,13 @@ export interface Evaluation {
   eventEvaluations?: any[];
   raidPoints?: number;
   raidPointsManual?: number; // Points manuels (surcharge le calcul automatique)
-  raidNotes?: {
+  raidNotes?: Array<{
+    twitchLogin: string;
     note?: string;
     manualPoints?: number;
-    lastUpdated?: string;
-    updatedBy?: string;
-  };
+    lastUpdated: string;
+    updatedBy: string;
+  }>;
   spotlightBonus?: number;
   discordEngagement?: any;
   followValidations?: any[];
