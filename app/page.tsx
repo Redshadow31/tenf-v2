@@ -88,7 +88,7 @@ export default async function Page() {
         {/* Boutons d'action */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
           <Link
-            href="https://discord.gg/tenf"
+            href="https://discord.gg/WnpazgcZHk"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg px-8 py-3 text-base font-semibold text-white transition-all home-cta-button"
