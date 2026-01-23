@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
-import { loadEvents } from '@/lib/eventStorage';
-import { loadEventRegistrations } from '@/lib/eventStorage';
-import {
-  loadEventPresenceData,
-  addOrUpdatePresence,
-  removePresence,
-  updatePresenceNote,
-  EventPresence,
-} from '@/lib/eventPresenceStorage';
-import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
-import { createEvent, Event } from '@/lib/eventStorage';
-import { loadSectionAData, saveSectionAData, getMonthKey } from '@/lib/evaluationStorage';
+import { eventRepository, evaluationRepository, spotlightRepository } from '@/lib/repositories';
 
-// Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
-export const runtime = 'nodejs';
-// Cache ISR de 30 secondes pour améliorer les performances
-export const revalidate = 30;
+// Helper pour obtenir le monthKey au format YYYY-MM
+function getMonthKey(year: number, month: number): string {
+  const m = String(month).padStart(2, '0');
+  return `${year}-${m}`;
+}
 
 /**
  * GET - Récupère les présences pour un mois donné ou pour un événement spécifique
@@ -40,13 +30,22 @@ export async function GET(request: NextRequest) {
 
     if (eventIdParam) {
       // Récupérer les présences pour un événement spécifique
-      const presenceData = await loadEventPresenceData(eventIdParam);
-      const registrations = await loadEventRegistrations(eventIdParam);
+      const presences = await eventRepository.getPresences(eventIdParam);
+      const registrations = await eventRepository.getRegistrations(eventIdParam);
       
       return NextResponse.json({
         eventId: eventIdParam,
-        presences: presenceData?.presences || [],
-        registrations: registrations || [],
+        presences: presences || [],
+        registrations: registrations.map(reg => ({
+          id: reg.id,
+          eventId: reg.eventId,
+          twitchLogin: reg.twitchLogin,
+          displayName: reg.displayName,
+          discordId: reg.discordId,
+          discordUsername: reg.discordUsername,
+          notes: reg.notes,
+          registeredAt: reg.registeredAt.toISOString(),
+        })) || [],
       });
     }
 
@@ -57,9 +56,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Format de mois invalide (attendu: YYYY-MM)" }, { status: 400 });
       }
 
-      const events = await loadEvents();
-      const monthEvents = events.filter(event => {
-        const eventDate = new Date(event.date);
+      const allEvents = await eventRepository.findAll();
+      const monthEvents = allEvents.filter(event => {
+        const eventDate = event.date;
         const eventYear = eventDate.getFullYear();
         const eventMonth = String(eventDate.getMonth() + 1).padStart(2, '0');
         return `${eventYear}-${eventMonth}` === monthParam;
@@ -68,13 +67,33 @@ export async function GET(request: NextRequest) {
       // Charger les présences pour chaque événement
       const eventsWithPresences = await Promise.all(
         monthEvents.map(async (event) => {
-          const presenceData = await loadEventPresenceData(event.id);
-          const registrations = await loadEventRegistrations(event.id);
+          const presences = await eventRepository.getPresences(event.id);
+          const registrations = await eventRepository.getRegistrations(event.id);
           
           return {
-            ...event,
-            presences: presenceData?.presences || [],
-            registrations: registrations || [],
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            image: event.image,
+            date: event.date.toISOString(),
+            category: event.category,
+            location: event.location,
+            invitedMembers: event.invitedMembers,
+            isPublished: event.isPublished,
+            createdAt: event.createdAt.toISOString(),
+            createdBy: event.createdBy,
+            updatedAt: event.updatedAt?.toISOString(),
+            presences: presences || [],
+            registrations: registrations.map(reg => ({
+              id: reg.id,
+              eventId: reg.eventId,
+              twitchLogin: reg.twitchLogin,
+              displayName: reg.displayName,
+              discordId: reg.discordId,
+              discordUsername: reg.discordUsername,
+              notes: reg.notes,
+              registeredAt: reg.registeredAt.toISOString(),
+            })) || [],
           };
         })
       );
@@ -133,8 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que l'événement existe
-    const events = await loadEvents();
-    const event = events.find(e => e.id === eventId);
+    const event = await eventRepository.findById(eventId);
     if (!event) {
       return NextResponse.json(
         { error: "Événement non trouvé" },
@@ -143,72 +161,80 @@ export async function POST(request: NextRequest) {
     }
 
     // Charger les inscriptions pour vérifier si le membre était inscrit
-    await loadMemberDataFromStorage();
-    const registrations = await loadEventRegistrations(eventId);
+    const registrations = await eventRepository.getRegistrations(eventId);
     const isRegistered = registrations.some(
       r => r.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
     );
 
     // Ajouter ou mettre à jour la présence
-    const presence = await addOrUpdatePresence(
+    const presence = await eventRepository.upsertPresence({
       eventId,
-      {
-        twitchLogin: member.twitchLogin,
-        displayName: member.displayName || member.twitchLogin,
-        discordId: member.discordId,
-        discordUsername: member.discordUsername,
-        isRegistered,
-      },
+      twitchLogin: member.twitchLogin,
+      displayName: member.displayName || member.twitchLogin,
+      discordId: member.discordId,
+      discordUsername: member.discordUsername,
+      isRegistered,
       present,
       note,
-      admin.discordId
-    );
+      validatedBy: admin.discordId,
+      addedManually: !isRegistered,
+    });
 
     // Si l'événement est de type Spotlight, synchroniser avec les présences Spotlight
     if (event.category === "Spotlight") {
       try {
-        const eventDate = new Date(event.date);
+        const eventDate = event.date;
         const monthKey = getMonthKey(eventDate.getFullYear(), eventDate.getMonth() + 1);
-        const sectionAData = await loadSectionAData(monthKey);
+        const monthEvaluations = await evaluationRepository.findByMonth(monthKey);
         
-        if (sectionAData && sectionAData.spotlights) {
-          // Trouver le spotlight correspondant (le plus proche de la date de l'événement)
-          const eventTime = eventDate.getTime();
-          let matchingSpotlight = sectionAData.spotlights.find(spotlight => {
-            const spotlightDate = new Date(spotlight.date);
-            const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
-            // Accepter un écart de moins de 3 heures (10800000 ms)
-            return timeDiff < 3 * 60 * 60 * 1000;
-          });
+        // Trouver les spotlights du mois dans les évaluations
+        const allSpotlights = monthEvaluations.flatMap(eval => eval.spotlightEvaluations || []);
+        
+        // Trouver le spotlight correspondant (le plus proche de la date de l'événement)
+        const eventTime = eventDate.getTime();
+        let matchingSpotlight = allSpotlights.find(spotlight => {
+          const spotlightDate = new Date(spotlight.date);
+          const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+          // Accepter un écart de moins de 3 heures (10800000 ms)
+          return timeDiff < 3 * 60 * 60 * 1000;
+        });
 
-          // Si aucun spotlight trouvé, chercher celui du même jour
-          if (!matchingSpotlight) {
-            const eventDay = eventDate.toISOString().split('T')[0];
-            matchingSpotlight = sectionAData.spotlights.find(spotlight => {
-              const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
-              return spotlightDay === eventDay;
+        // Si aucun spotlight trouvé, chercher celui du même jour
+        if (!matchingSpotlight) {
+          const eventDay = eventDate.toISOString().split('T')[0];
+          matchingSpotlight = allSpotlights.find(spotlight => {
+            const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
+            return spotlightDay === eventDay;
+          });
+        }
+
+        if (matchingSpotlight) {
+          // Mettre à jour la présence dans le spotlight
+          const memberIndex = matchingSpotlight.members.findIndex(
+            m => m.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
+          );
+
+          if (memberIndex !== -1) {
+            // Mettre à jour la présence existante
+            matchingSpotlight.members[memberIndex].present = present;
+          } else {
+            // Ajouter le membre s'il n'existe pas
+            matchingSpotlight.members.push({
+              twitchLogin: member.twitchLogin,
+              present: present,
             });
           }
 
-          if (matchingSpotlight) {
-            // Mettre à jour la présence dans le spotlight
-            const memberIndex = matchingSpotlight.members.findIndex(
-              m => m.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
-            );
-
-            if (memberIndex !== -1) {
-              // Mettre à jour la présence existante
-              matchingSpotlight.members[memberIndex].present = present;
-            } else {
-              // Ajouter le membre s'il n'existe pas
-              matchingSpotlight.members.push({
-                twitchLogin: member.twitchLogin,
-                present: present,
-              });
+          // Trouver l'évaluation correspondante et mettre à jour
+          for (const evalData of monthEvaluations) {
+            if (evalData.spotlightEvaluations) {
+              const spotlightIndex = evalData.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
+              if (spotlightIndex !== -1) {
+                evalData.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
+                await evaluationRepository.upsert(evalData);
+                break;
+              }
             }
-
-            // Sauvegarder les modifications
-            await saveSectionAData(sectionAData);
           }
         }
       } catch (error) {
@@ -258,7 +284,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mettre à jour la note
-    const success = await updatePresenceNote(eventId, twitchLogin, note, admin.discordId);
+    const success = await eventRepository.updatePresenceNote(eventId, twitchLogin, note, admin.discordId);
 
     if (!success) {
       return NextResponse.json(
@@ -308,11 +334,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Vérifier que l'événement existe pour connaître sa catégorie
-    const events = await loadEvents();
-    const event = events.find(e => e.id === eventId);
+    const event = await eventRepository.findById(eventId);
 
     // Supprimer la présence
-    const success = await removePresence(eventId, twitchLogin);
+    await eventRepository.removePresence(eventId, twitchLogin);
+    const success = true;
 
     if (!success) {
       return NextResponse.json(
@@ -324,35 +350,45 @@ export async function DELETE(request: NextRequest) {
     // Si l'événement est de type Spotlight, supprimer aussi la présence Spotlight
     if (event && event.category === "Spotlight") {
       try {
-        const eventDate = new Date(event.date);
+        const eventDate = event.date;
         const monthKey = getMonthKey(eventDate.getFullYear(), eventDate.getMonth() + 1);
-        const sectionAData = await loadSectionAData(monthKey);
+        const monthEvaluations = await evaluationRepository.findByMonth(monthKey);
         
-        if (sectionAData && sectionAData.spotlights) {
-          // Trouver le spotlight correspondant
-          const eventTime = eventDate.getTime();
-          let matchingSpotlight = sectionAData.spotlights.find(spotlight => {
-            const spotlightDate = new Date(spotlight.date);
-            const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
-            return timeDiff < 3 * 60 * 60 * 1000;
+        // Trouver les spotlights du mois dans les évaluations
+        const allSpotlights = monthEvaluations.flatMap(eval => eval.spotlightEvaluations || []);
+        
+        // Trouver le spotlight correspondant
+        const eventTime = eventDate.getTime();
+        let matchingSpotlight = allSpotlights.find(spotlight => {
+          const spotlightDate = new Date(spotlight.date);
+          const timeDiff = Math.abs(spotlightDate.getTime() - eventTime);
+          return timeDiff < 3 * 60 * 60 * 1000;
+        });
+
+        if (!matchingSpotlight) {
+          const eventDay = eventDate.toISOString().split('T')[0];
+          matchingSpotlight = allSpotlights.find(spotlight => {
+            const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
+            return spotlightDay === eventDay;
           });
+        }
 
-          if (!matchingSpotlight) {
-            const eventDay = eventDate.toISOString().split('T')[0];
-            matchingSpotlight = sectionAData.spotlights.find(spotlight => {
-              const spotlightDay = new Date(spotlight.date).toISOString().split('T')[0];
-              return spotlightDay === eventDay;
-            });
-          }
+        if (matchingSpotlight) {
+          // Supprimer le membre du spotlight
+          matchingSpotlight.members = matchingSpotlight.members.filter(
+            m => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
+          );
 
-          if (matchingSpotlight) {
-            // Supprimer le membre du spotlight
-            matchingSpotlight.members = matchingSpotlight.members.filter(
-              m => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
-            );
-
-            // Sauvegarder les modifications
-            await saveSectionAData(sectionAData);
+          // Trouver l'évaluation correspondante et mettre à jour
+          for (const evalData of monthEvaluations) {
+            if (evalData.spotlightEvaluations) {
+              const spotlightIndex = evalData.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
+              if (spotlightIndex !== -1) {
+                evalData.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
+                await evaluationRepository.upsert(evalData);
+                break;
+              }
+            }
           }
         }
       } catch (error) {
@@ -410,11 +446,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Créer l'événement (non publié par défaut pour un événement passé)
-    const newEvent = await createEvent({
+    const newEvent = await eventRepository.create({
       title,
       description: description || '',
-      date: eventDate.toISOString(),
-      category,
+      date: eventDate,
+      category: category as any,
       location,
       isPublished: false, // Non publié car c'est un événement passé ajouté rétrospectivement
       createdBy: admin.discordId,
@@ -423,7 +459,20 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Événement créé avec succès",
-      event: newEvent,
+      event: {
+        id: newEvent.id,
+        title: newEvent.title,
+        description: newEvent.description,
+        image: newEvent.image,
+        date: newEvent.date.toISOString(),
+        category: newEvent.category,
+        location: newEvent.location,
+        invitedMembers: newEvent.invitedMembers,
+        isPublished: newEvent.isPublished,
+        createdAt: newEvent.createdAt.toISOString(),
+        createdBy: newEvent.createdBy,
+        updatedAt: newEvent.updatedAt?.toISOString(),
+      },
     });
   } catch (error) {
     console.error('[API Event Presence] Erreur PATCH:', error);
