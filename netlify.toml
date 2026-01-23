@@ -7,6 +7,8 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Exclure le dossier migration du scan de secrets (fichiers de documentation)
+  SECRETS_SCAN_OMIT_PATHS = "migration/**"
 
 # Headers de cache pour les assets statiques
 [[headers]]
