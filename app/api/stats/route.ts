@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadAdminDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import { GUILD_ID } from '@/lib/discordRoles';
 
 // Cache ISR de 30 secondes pour les statistiques
@@ -55,75 +55,25 @@ export async function GET() {
       }
     }
 
-    // Initialiser les données membres si nécessaire
-    initializeMemberData();
-    
-    // 2. Compter le nombre total de membres actifs
-    // IMPORTANT: Utiliser UNIQUEMENT tenf-admin-members (sans fusion avec bot)
-    // Pour éviter les bugs, compter uniquement les membres avec isActive: true dans tenf-admin-members
-    let adminData: Record<string, any>;
+    // 2. Compter le nombre total de membres actifs depuis Supabase
+    let activeMembersCount = 0;
+    let activeMembers: any[] = [];
     try {
-      adminData = await loadAdminDataFromStorage();
-      console.log(`[Stats API] Successfully loaded admin data. Keys count: ${Object.keys(adminData).length}`);
+      activeMembersCount = await memberRepository.countActive();
+      // Récupérer tous les membres actifs pour les lives (sans limite pour avoir tous les logins Twitch)
+      activeMembers = await memberRepository.findActive(10000, 0); // Limite élevée pour récupérer tous les membres actifs
+      console.log(`[Stats API] Active members count from Supabase: ${activeMembersCount}`);
+      console.log(`[Stats API] Active members retrieved for lives: ${activeMembers.length}`);
     } catch (error) {
-      console.error(`[Stats API] ERROR loading admin data:`, error);
-      return NextResponse.json(
-        { error: 'Failed to load admin data', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 }
-      );
-    }
-    
-    const allAdminMembers = Object.values(adminData);
-    console.log(`[Stats API] Total members in tenf-admin-members Blob: ${allAdminMembers.length}`);
-    
-    // Analyser les valeurs isActive pour comprendre le problème
-    const activeCount = allAdminMembers.filter(m => m.isActive === true).length;
-    const inactiveCount = allAdminMembers.filter(m => m.isActive === false).length;
-    const undefinedActive = allAdminMembers.filter(m => m.isActive === undefined).length;
-    
-    console.log(`[Stats API] Members with isActive=true: ${activeCount}`);
-    console.log(`[Stats API] Members with isActive=false: ${inactiveCount}`);
-    console.log(`[Stats API] Members with isActive=undefined: ${undefinedActive}`);
-    
-    // Compter UNIQUEMENT les membres avec isActive === true du Blob tenf-admin-members
-    // Gérer aussi le cas où isActive pourrait être une string "true" (par sécurité)
-    const activeMembers = allAdminMembers.filter(m => {
-      // Vérifier si isActive est true (boolean) ou "true" (string)
-      return m.isActive === true || m.isActive === "true";
-    });
-    const activeMembersCount = activeMembers.length;
-    
-    // Logs détaillés pour déboguer
-    console.log(`[Stats API] Active members count: ${activeMembersCount} (from tenf-admin-members Blob only)`);
-    
-    // Si aucun membre actif, logger quelques détails pour déboguer
-    if (activeMembersCount === 0 && allAdminMembers.length > 0) {
-      const sampleMembers = allAdminMembers.slice(0, 10);
-      console.log(`[Stats API] WARNING: No active members found! Sample of first 10 members:`, 
-        sampleMembers.map(m => ({ 
-          twitchLogin: m.twitchLogin, 
-          isActive: m.isActive,
-          typeofIsActive: typeof m.isActive,
-          role: m.role,
-          listId: m.listId
-        }))
-      );
-      
-      // Vérifier quelques membres actifs manuellement
-      const manuallyFoundActive = allAdminMembers.filter(m => {
-        const isActiveValue = (m as any).isActive;
-        return isActiveValue === true || isActiveValue === "true" || isActiveValue === 1;
-      });
-      console.log(`[Stats API] Manual check: Found ${manuallyFoundActive.length} members with isActive=true/\"true\"/1`);
-    } else if (allAdminMembers.length === 0) {
-      console.log(`[Stats API] WARNING: tenf-admin-members Blob is EMPTY! No admin members found.`);
+      console.error(`[Stats API] ERROR loading active members from Supabase:`, error);
+      // Fallback: retourner 0 mais continuer pour les autres stats
     }
 
     // 3. Compter les lives en cours (utiliser EXACTEMENT la même logique que la page /lives)
-    // Utiliser uniquement les membres actifs de tenf-admin-members (comme pour le compteur)
+    // Utiliser uniquement les membres actifs depuis Supabase (comme pour le compteur)
     let livesCount = 0;
     try {
-      // Utiliser uniquement les membres actifs de tenf-admin-members (sans fusion avec bot)
+      // Utiliser uniquement les membres actifs depuis Supabase
       const activeMembersForLives = activeMembers;
       
       const twitchLogins = activeMembersForLives

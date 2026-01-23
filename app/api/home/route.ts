@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadMemberDataFromStorage, getAllActiveMemberDataFromAllLists, getAllMemberData, loadAdminDataFromStorage } from '@/lib/memberData';
-import { initializeMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { GUILD_ID } from '@/lib/discordRoles';
 
@@ -17,12 +16,7 @@ interface HomeData {
   lives: any[];
 }
 
-// Initialiser les données au démarrage du serveur
-let initialized = false;
-if (!initialized) {
-  initializeMemberData();
-  initialized = true;
-}
+// Plus besoin d'initialiser memberData, on utilise directement Supabase
 
 /**
  * GET - Récupère toutes les données nécessaires pour la page d'accueil
@@ -31,15 +25,18 @@ if (!initialized) {
  */
 export async function GET() {
   try {
-    // Appeler toutes les fonctions en parallèle
-    const [stats, vipMembers, activeMembers] = await Promise.all([
+    // Récupérer les membres actifs d'abord (nécessaire pour les stats et les lives)
+    const activeMembers = await getActiveMembersData();
+    
+    // Récupérer les stats et VIP en parallèle
+    const [statsData, vipMembers] = await Promise.all([
       getStatsData(),
       getVipMembersData(),
-      getActiveMembersData(),
     ]);
 
-    // Récupérer les streams en cours uniquement si on a des membres actifs
+    // Récupérer les streams en cours et mettre à jour le nombre de lives dans les stats
     let lives: any[] = [];
+    let livesCount = 0;
     if (activeMembers.length > 0) {
       const twitchLogins = activeMembers
         .map((member: any) => member.twitchLogin)
@@ -47,12 +44,20 @@ export async function GET() {
 
       if (twitchLogins.length > 0) {
         try {
-          lives = await getLiveStreams(twitchLogins, activeMembers);
+          const result = await getLiveStreams(twitchLogins, activeMembers);
+          lives = result.streams;
+          livesCount = result.count;
         } catch (error) {
           console.error('[Home API] Error fetching streams:', error);
         }
       }
     }
+
+    // Mettre à jour les stats avec le nombre réel de lives
+    const stats = {
+      ...statsData,
+      livesInProgress: livesCount,
+    };
 
     const homeData: HomeData = {
       stats,
@@ -87,10 +92,13 @@ export async function GET() {
  * Récupère les statistiques
  */
 async function getStatsData() {
-  // Similaire à /api/stats mais simplifié pour la home
-  const adminData = await loadAdminDataFromStorage();
-  const allAdminMembers = Object.values(adminData);
-  const activeMembersCount = allAdminMembers.filter((m: any) => m.isActive === true || m.isActive === "true").length;
+  // Compter les membres actifs depuis Supabase
+  let activeMembersCount = 0;
+  try {
+    activeMembersCount = await memberRepository.countActive();
+  } catch (error) {
+    console.error('[Home API] Error counting active members:', error);
+  }
 
   // Compter Discord members
   let totalDiscordMembers = 0;
@@ -125,87 +133,94 @@ async function getStatsData() {
  * Récupère les membres VIP
  */
 async function getVipMembersData() {
-  await loadMemberDataFromStorage();
-  const allMembers = getAllMemberData();
-  
-  // Utiliser les membres VIP
-  const vipMemberData = allMembers.filter((m: any) => m.isVip === true);
-  
-  if (vipMemberData.length === 0) {
+  try {
+    // Récupérer les membres VIP depuis Supabase
+    const vipMemberData = await memberRepository.findVip();
+    
+    if (vipMemberData.length === 0) {
+      return [];
+    }
+
+    const twitchLogins = vipMemberData
+      .map(member => member.twitchLogin)
+      .filter(Boolean) as string[];
+    
+    const twitchUsers = await getTwitchUsers(twitchLogins);
+    const avatarMap = new Map(
+      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
+    );
+
+    return vipMemberData.map((member) => {
+      const twitchAvatar = avatarMap.get(member.twitchLogin?.toLowerCase());
+      let avatar = twitchAvatar;
+      if (!avatar && member.discordId) {
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+      }
+      if (!avatar) {
+        avatar = `https://placehold.co/128x128?text=${member.displayName?.charAt(0) || 'V'}`;
+      }
+
+      return {
+        discordId: member.discordId || '',
+        username: member.discordUsername || member.displayName,
+        avatar: avatar,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        twitchLogin: member.twitchLogin,
+        twitchUrl: member.twitchUrl,
+        twitchAvatar: twitchAvatar,
+      };
+    });
+  } catch (error) {
+    console.error('[Home API] Error fetching VIP members:', error);
     return [];
   }
-
-  const twitchLogins = vipMemberData
-    .map(member => member.twitchLogin)
-    .filter(Boolean) as string[];
-  
-  const twitchUsers = await getTwitchUsers(twitchLogins);
-  const avatarMap = new Map(
-    twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-  );
-
-  return vipMemberData.map((member: any) => {
-    const twitchAvatar = avatarMap.get(member.twitchLogin?.toLowerCase());
-    let avatar = twitchAvatar;
-    if (!avatar && member.discordId) {
-      avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-    }
-    if (!avatar) {
-      avatar = `https://placehold.co/128x128?text=${member.displayName?.charAt(0) || 'V'}`;
-    }
-
-    return {
-      discordId: member.discordId || '',
-      username: member.discordUsername || member.displayName,
-      avatar: avatar,
-      displayName: member.displayName || member.siteUsername || member.twitchLogin,
-      twitchLogin: member.twitchLogin,
-      twitchUrl: member.twitchUrl,
-      twitchAvatar: twitchAvatar,
-    };
-  });
 }
 
 /**
  * Récupère les membres actifs
  */
 async function getActiveMembersData() {
-  await loadMemberDataFromStorage();
-  const activeMembers = getAllActiveMemberDataFromAllLists();
-  
-  const twitchLogins = activeMembers
-    .map(member => member.twitchLogin)
-    .filter(Boolean) as string[];
-  
-  const twitchUsers = await getTwitchUsers(twitchLogins);
-  const avatarMap = new Map(
-    twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-  );
+  try {
+    // Récupérer tous les membres actifs depuis Supabase (limite élevée pour avoir tous les membres)
+    const activeMembers = await memberRepository.findActive(10000, 0);
+    
+    const twitchLogins = activeMembers
+      .map(member => member.twitchLogin)
+      .filter(Boolean) as string[];
+    
+    const twitchUsers = await getTwitchUsers(twitchLogins);
+    const avatarMap = new Map(
+      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
+    );
 
-  return activeMembers.map((member: any) => {
-    let avatar: string | undefined = avatarMap.get(member.twitchLogin?.toLowerCase());
-    if (!avatar && member.discordId) {
-      avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-    }
+    return activeMembers.map((member) => {
+      let avatar: string | undefined = avatarMap.get(member.twitchLogin?.toLowerCase());
+      if (!avatar && member.discordId) {
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+      }
 
-    return {
-      twitchLogin: member.twitchLogin,
-      twitchUrl: member.twitchUrl,
-      displayName: member.displayName || member.siteUsername || member.twitchLogin,
-      avatar: avatar,
-    };
-  });
+      return {
+        twitchLogin: member.twitchLogin,
+        twitchUrl: member.twitchUrl,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        avatar: avatar,
+      };
+    });
+  } catch (error) {
+    console.error('[Home API] Error fetching active members:', error);
+    return [];
+  }
 }
 
 /**
  * Récupère les streams en cours
  */
-async function getLiveStreams(twitchLogins: string[], activeMembers: any[]) {
+async function getLiveStreams(twitchLogins: string[], activeMembers: any[]): Promise<{ streams: any[]; count: number }> {
   const accessToken = await getTwitchAccessToken();
-  if (!accessToken) return [];
+  if (!accessToken) return { streams: [], count: 0 };
 
   const clientId = process.env.TWITCH_CLIENT_ID;
-  if (!clientId) return [];
+  if (!clientId) return { streams: [], count: 0 };
 
   const BATCH_SIZE = 99;
   const allStreams: any[] = [];
@@ -262,7 +277,10 @@ async function getLiveStreams(twitchLogins: string[], activeMembers: any[]) {
       };
     });
 
-  return liveStreams;
+  return {
+    streams: liveStreams,
+    count: liveStreams.length,
+  };
 }
 
 /**
