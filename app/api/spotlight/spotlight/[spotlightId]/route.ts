@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { loadSectionAData, saveSectionAData, getMonthKey } from '@/lib/evaluationStorage';
+import { evaluationRepository, memberRepository } from '@/lib/repositories';
 
 /**
  * PUT - Met à jour les données d'un spotlight (date et durée)
@@ -28,38 +28,40 @@ export async function PUT(
     const body = await request.json();
     const { date, duration, startedAt, endsAt } = body;
 
-    // Charger les données de section A pour trouver le mois
-    // On cherche dans les 24 derniers mois pour être sûr de trouver le spotlight
+    // Chercher le spotlight dans les 24 derniers mois
     const now = new Date();
-    const monthsToCheck: string[] = [];
-    
-    // Générer les 24 derniers mois à vérifier
-    for (let i = 0; i < 24; i++) {
-      const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
-    }
-
-    let oldSectionAData = null;
     let oldMonthKey: string | null = null;
-    let spotlightIndex = -1;
-    let spotlightToMove = null;
+    let spotlightToMove: any = null;
 
     // Chercher le spotlight dans les mois récents
-    for (const month of monthsToCheck) {
-      const data = await loadSectionAData(month);
-      if (data && data.spotlights) {
-        const index = data.spotlights.findIndex(s => s.id === spotlightId);
-        if (index !== -1) {
-          oldSectionAData = data;
-          oldMonthKey = month;
-          spotlightIndex = index;
-          spotlightToMove = { ...data.spotlights[index] };
-          break;
+    for (let i = 0; i < 24; i++) {
+      const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = checkDate.getFullYear();
+      const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+      
+      try {
+        const evaluations = await evaluationRepository.findByMonth(monthKey);
+        
+        // Chercher le spotlight dans toutes les évaluations
+        for (const eval of evaluations) {
+          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const spotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+            if (spotlight) {
+              oldMonthKey = monthKey;
+              spotlightToMove = { ...spotlight };
+              break;
+            }
+          }
         }
+        
+        if (spotlightToMove) break;
+      } catch (error) {
+        // Ignorer les erreurs
       }
     }
 
-    if (!oldSectionAData || spotlightIndex === -1 || !spotlightToMove) {
+    if (!spotlightToMove) {
       return NextResponse.json(
         { error: 'Spotlight non trouvé' },
         { status: 404 }
@@ -79,77 +81,104 @@ export async function PUT(
       }
       
       // Calculer le nouveau mois
-      newMonthKey = getMonthKey(newDate.getFullYear(), newDate.getMonth() + 1);
+      const year = newDate.getFullYear();
+      const month = String(newDate.getMonth() + 1).padStart(2, '0');
+      newMonthKey = `${year}-${month}`;
       spotlightToMove.date = newDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
     } else {
       // Si pas de nouvelle date, utiliser l'ancienne pour déterminer le mois
       const currentDate = new Date(spotlightToMove.date);
-      newMonthKey = getMonthKey(currentDate.getFullYear(), currentDate.getMonth() + 1);
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      newMonthKey = `${year}-${month}`;
     }
 
     // Stocker startedAt et endsAt pour calculer la durée
     if (startedAt) {
-      (spotlightToMove as any).startedAt = startedAt;
+      spotlightToMove.startedAt = startedAt;
     }
     if (endsAt) {
-      (spotlightToMove as any).endsAt = endsAt;
+      spotlightToMove.endsAt = endsAt;
     }
     if (duration !== undefined) {
-      (spotlightToMove as any).duration = duration;
+      spotlightToMove.duration = duration;
     }
 
-    // Si le mois a changé, déplacer le spotlight
+    // Mettre à jour le spotlight dans toutes les évaluations concernées
+    // Si le mois a changé, déplacer le spotlight de l'ancien mois vers le nouveau
+    const allMembers = await memberRepository.findAll();
+    const activeMembers = allMembers.filter(m => m.isActive !== false);
+
     if (newMonthKey && newMonthKey !== oldMonthKey) {
-      // IMPORTANT: Ajouter d'abord au nouveau mois pour éviter la perte de données
-      // 1. Ajouter au nouveau mois
-      let newSectionAData = await loadSectionAData(newMonthKey);
-      if (!newSectionAData) {
-        // Créer les données du mois si elles n'existent pas
-        newSectionAData = {
-          month: newMonthKey,
-          spotlights: [],
-          events: [],
-          raidPoints: {},
-          spotlightBonus: {},
-          lastUpdated: new Date().toISOString(),
-        };
-      }
+      // Déplacer le spotlight : supprimer de l'ancien mois, ajouter au nouveau mois
       
-      // Vérifier que le spotlight n'existe pas déjà dans le nouveau mois
-      const existingIndex = newSectionAData.spotlights.findIndex(s => s.id === spotlightId);
-      if (existingIndex === -1) {
-        newSectionAData.spotlights.push(spotlightToMove);
-      } else {
-        // Si déjà présent, mettre à jour
-        newSectionAData.spotlights[existingIndex] = spotlightToMove;
-      }
-      
-      newSectionAData.lastUpdated = new Date().toISOString();
-      
-      // Sauvegarder le nouveau mois AVANT de supprimer l'ancien
-      await saveSectionAData(newSectionAData);
-      
-      // Vérifier que la sauvegarde a réussi en rechargeant
-      const verifyNewData = await loadSectionAData(newMonthKey);
-      if (!verifyNewData || !verifyNewData.spotlights.find(s => s.id === spotlightId)) {
-        console.error(`[Spotlight Update] ERREUR: Le spotlight ${spotlightId} n'a pas été correctement ajouté au mois ${newMonthKey}`);
-        return NextResponse.json(
-          { error: 'Erreur lors de l\'ajout au nouveau mois. Le spotlight n\'a pas été supprimé de l\'ancien mois.' },
-          { status: 500 }
-        );
+      // 1. Supprimer de l'ancien mois
+      if (oldMonthKey) {
+        const oldEvaluations = await evaluationRepository.findByMonth(oldMonthKey);
+        for (const eval of oldEvaluations) {
+          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const updatedSpotlights = eval.spotlightEvaluations.filter(
+              (s: any) => s.id !== spotlightId
+            );
+            
+            if (updatedSpotlights.length !== eval.spotlightEvaluations.length) {
+              // Le spotlight a été trouvé et supprimé
+              await evaluationRepository.update(eval.id, {
+                spotlightEvaluations: updatedSpotlights,
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
       }
 
-      // 2. Supprimer du mois ancien (seulement si l'ajout au nouveau mois a réussi)
-      oldSectionAData.spotlights.splice(spotlightIndex, 1);
-      oldSectionAData.lastUpdated = new Date().toISOString();
-      await saveSectionAData(oldSectionAData);
+      // 2. Ajouter au nouveau mois
+      const newMonthDate = `${newMonthKey}-01`;
+      for (const member of activeMembers) {
+        let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, newMonthKey);
+        
+        let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
+        
+        // Vérifier si ce spotlight existe déjà dans l'évaluation
+        const existingIndex = spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
+        
+        if (existingIndex >= 0) {
+          // Mettre à jour l'entrée existante
+          spotlightEvaluations[existingIndex] = spotlightToMove;
+        } else {
+          // Ajouter la nouvelle entrée
+          spotlightEvaluations.push(spotlightToMove);
+        }
+
+        // Mettre à jour ou créer l'évaluation
+        await evaluationRepository.upsert({
+          month: new Date(newMonthDate),
+          twitchLogin: member.twitchLogin.toLowerCase(),
+          spotlightEvaluations,
+          updatedAt: new Date(),
+        });
+      }
       
       console.log(`[Spotlight Update] Spotlight ${spotlightId} (${spotlightToMove.streamerTwitchLogin}) déplacé de ${oldMonthKey} vers ${newMonthKey}`);
     } else {
       // Même mois, juste mettre à jour
-      oldSectionAData.spotlights[spotlightIndex] = spotlightToMove;
-      oldSectionAData.lastUpdated = new Date().toISOString();
-      await saveSectionAData(oldSectionAData);
+      const evaluations = await evaluationRepository.findByMonth(newMonthKey || oldMonthKey || '');
+      
+      for (const eval of evaluations) {
+        if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+          const spotlightIndex = eval.spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
+          
+          if (spotlightIndex >= 0) {
+            const updatedSpotlights = [...eval.spotlightEvaluations];
+            updatedSpotlights[spotlightIndex] = spotlightToMove;
+            
+            await evaluationRepository.update(eval.id, {
+              spotlightEvaluations: updatedSpotlights,
+              updatedAt: new Date(),
+            });
+          }
+        }
+      }
     }
 
     return NextResponse.json({ 
@@ -195,20 +224,27 @@ export async function GET(
 
     // Chercher le spotlight dans les 24 derniers mois
     const now = new Date();
-    const monthsToCheck: string[] = [];
     
     for (let i = 0; i < 24; i++) {
       const checkDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      monthsToCheck.push(getMonthKey(checkDate.getFullYear(), checkDate.getMonth() + 1));
-    }
-
-    for (const month of monthsToCheck) {
-      const data = await loadSectionAData(month);
-      if (data && data.spotlights) {
-        const spotlight = data.spotlights.find(s => s.id === spotlightId);
-        if (spotlight) {
-          return NextResponse.json({ spotlight });
+      const year = checkDate.getFullYear();
+      const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+      
+      try {
+        const evaluations = await evaluationRepository.findByMonth(monthKey);
+        
+        // Chercher le spotlight dans toutes les évaluations
+        for (const eval of evaluations) {
+          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const spotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+            if (spotlight) {
+              return NextResponse.json({ spotlight });
+            }
+          }
         }
+      } catch (error) {
+        // Ignorer les erreurs
       }
     }
 
