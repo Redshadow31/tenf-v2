@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getActiveSpotlight, 
-  getSpotlightEvaluation, 
-  saveSpotlightEvaluation 
-} from '@/lib/spotlightStorage';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { spotlightRepository, evaluationRepository } from '@/lib/repositories';
 
 /**
  * GET - Récupère l'évaluation du spotlight actif
@@ -16,13 +12,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json({ evaluation: null });
     }
 
-    const evaluation = await getSpotlightEvaluation(spotlight.id);
-    return NextResponse.json({ evaluation });
+    const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
+    
+    if (!evaluation) {
+      return NextResponse.json({ evaluation: null });
+    }
+
+    // Convertir au format attendu par le frontend
+    const formattedEvaluation = {
+      spotlightId: evaluation.spotlightId,
+      streamerTwitchLogin: evaluation.streamerTwitchLogin,
+      criteria: evaluation.criteria,
+      totalScore: evaluation.totalScore,
+      maxScore: evaluation.maxScore,
+      moderatorComments: evaluation.moderatorComments,
+      evaluatedAt: evaluation.evaluatedAt.toISOString(),
+      evaluatedBy: evaluation.evaluatedBy,
+    };
+
+    return NextResponse.json({ evaluation: formattedEvaluation });
   } catch (error) {
     console.error('[Spotlight Evaluation API] Erreur GET:', error);
     return NextResponse.json(
@@ -49,34 +62,45 @@ export async function POST(request: NextRequest) {
 
     let spotlight;
     
+    let targetSpotlight;
+    
     if (spotlightId) {
-      // Si un spotlightId est fourni, charger depuis la section A
-      // Chercher dans les 6 derniers mois
-      try {
-        const { loadSectionAData } = await import('@/lib/evaluationStorage');
+      // Si un spotlightId est fourni, chercher dans la base de données
+      targetSpotlight = await spotlightRepository.findById(spotlightId);
+      
+      if (!targetSpotlight) {
+        // Si pas trouvé dans spotlights, chercher dans les évaluations mensuelles
         const now = new Date();
-        
         for (let i = 0; i <= 6; i++) {
           const checkDate = new Date(now);
           checkDate.setMonth(checkDate.getMonth() - i);
           const checkMonthKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}`;
-          const sectionAData = await loadSectionAData(checkMonthKey);
-          const matchingSpotlight = sectionAData?.spotlights?.find((s: any) => s.id === spotlightId);
+          const evaluations = await evaluationRepository.findByMonth(checkMonthKey);
           
-          if (matchingSpotlight) {
-            spotlight = {
-              id: matchingSpotlight.id,
-              streamerTwitchLogin: matchingSpotlight.streamerTwitchLogin,
-              date: matchingSpotlight.date,
-            };
-            break;
+          for (const eval of evaluations) {
+            if (eval.spotlightEvaluations) {
+              const matchingSpotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+              if (matchingSpotlight) {
+                targetSpotlight = {
+                  id: matchingSpotlight.id,
+                  streamerTwitchLogin: matchingSpotlight.streamerTwitchLogin,
+                  startedAt: new Date(matchingSpotlight.date),
+                  endsAt: new Date(matchingSpotlight.date),
+                  status: 'completed' as const,
+                  moderatorDiscordId: matchingSpotlight.moderatorDiscordId,
+                  moderatorUsername: matchingSpotlight.moderatorUsername,
+                  createdAt: new Date(matchingSpotlight.createdAt || matchingSpotlight.date),
+                  createdBy: matchingSpotlight.createdBy,
+                };
+                break;
+              }
+            }
           }
+          if (targetSpotlight) break;
         }
-      } catch (error) {
-        console.error("Erreur recherche spotlight:", error);
       }
       
-      if (!spotlight) {
+      if (!targetSpotlight) {
         return NextResponse.json(
           { error: 'Spotlight non trouvé' },
           { status: 404 }
@@ -84,8 +108,8 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Sinon, utiliser le spotlight actif
-      spotlight = await getActiveSpotlight();
-      if (!spotlight) {
+      targetSpotlight = await spotlightRepository.findActive();
+      if (!targetSpotlight) {
         return NextResponse.json(
           { error: 'Aucun spotlight actif et aucun spotlightId fourni' },
           { status: 404 }
@@ -94,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le spotlight n'est pas annulé (seulement pour spotlight actif)
-    if (!spotlightId && spotlight.status === 'cancelled') {
+    if (!spotlightId && targetSpotlight.status === 'cancelled') {
       return NextResponse.json(
         { error: 'Ce spotlight a été annulé' },
         { status: 400 }
@@ -111,22 +135,33 @@ export async function POST(request: NextRequest) {
     const totalScore = criteria.reduce((sum, crit) => sum + (crit.value || 0), 0);
     const maxScore = criteria.reduce((sum, crit) => sum + (crit.maxValue || 0), 0);
 
-    const evaluation = {
-      spotlightId: spotlight.id,
-      streamerTwitchLogin: spotlight.streamerTwitchLogin,
+    const evaluation = await spotlightRepository.saveEvaluation({
+      spotlightId: targetSpotlight.id,
+      streamerTwitchLogin: targetSpotlight.streamerTwitchLogin,
       criteria,
       totalScore,
       maxScore,
       moderatorComments: moderatorComments || '',
-      evaluatedAt: new Date().toISOString(),
+      evaluatedAt: new Date(),
       evaluatedBy: admin.id,
-    };
+      validated: false,
+    });
 
-    await saveSpotlightEvaluation(evaluation);
+    // Convertir au format attendu par le frontend
+    const formattedEvaluation = {
+      spotlightId: evaluation.spotlightId,
+      streamerTwitchLogin: evaluation.streamerTwitchLogin,
+      criteria: evaluation.criteria,
+      totalScore: evaluation.totalScore,
+      maxScore: evaluation.maxScore,
+      moderatorComments: evaluation.moderatorComments,
+      evaluatedAt: evaluation.evaluatedAt.toISOString(),
+      evaluatedBy: evaluation.evaluatedBy,
+    };
 
     return NextResponse.json({ 
       success: true, 
-      evaluation,
+      evaluation: formattedEvaluation,
       message: 'Évaluation enregistrée avec succès' 
     });
   } catch (error) {
