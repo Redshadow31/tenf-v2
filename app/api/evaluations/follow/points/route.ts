@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
-import { listStaffFollowValidations } from '@/lib/followStorage';
-import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { requirePermission } from '@/lib/requireAdmin';
+import { memberRepository, evaluationRepository } from '@/lib/repositories';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,63 +80,14 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
 }
 
 /**
- * Liste tous les mois disponibles et retourne le plus récent
+ * Trouve le mois le plus récent avec des validations de follow dans les évaluations
+ * Pour l'instant, on utilise le mois actuel par défaut
  */
-async function getLatestMonth(): Promise<string | null> {
+async function getLatestMonthWithFollowValidations(): Promise<string | null> {
   try {
-    const { getStore } = await import('@netlify/blobs');
-    const isNetlify = typeof getStore === 'function' || 
-                      !!process.env.NETLIFY || 
-                      !!process.env.NETLIFY_DEV;
-    
-    if (isNetlify) {
-      const store = getStore('tenf-follow-validations');
-      const list = await store.list();
-      
-      // Extraire tous les mois uniques depuis les clés (format: YYYY-MM/staffSlug.json)
-      const months = new Set<string>();
-      for (const item of list.blobs ?? []) {
-        const parts = item.key.split('/');
-        if (parts.length >= 2 && parts[0].match(/^\d{4}-\d{2}$/)) {
-          months.add(parts[0]);
-        }
-      }
-      
-      if (months.size === 0) return null;
-      
-      // Trier les mois et retourner le plus récent
-      const sortedMonths = Array.from(months).sort((a, b) => {
-        const [yearA, monthA] = a.split('-').map(Number);
-        const [yearB, monthB] = b.split('-').map(Number);
-        if (yearA !== yearB) return yearB - yearA;
-        return monthB - monthA;
-      });
-      
-      return sortedMonths[0];
-    } else {
-      // Développement local : lister les dossiers dans data/follow-validations
-      const fs = await import('fs');
-      const path = await import('path');
-      const dataDir = path.default.join(process.cwd(), 'data', 'follow-validations');
-      
-      if (!fs.default.existsSync(dataDir)) return null;
-      
-      const dirs = fs.default.readdirSync(dataDir).filter((dir: string) => {
-        return dir.match(/^\d{4}-\d{2}$/) && fs.default.statSync(path.default.join(dataDir, dir)).isDirectory();
-      });
-      
-      if (dirs.length === 0) return null;
-      
-      // Trier et retourner le plus récent
-      const sortedDirs = dirs.sort((a, b) => {
-        const [yearA, monthA] = a.split('-').map(Number);
-        const [yearB, monthB] = b.split('-').map(Number);
-        if (yearA !== yearB) return yearB - yearA;
-        return monthB - monthA;
-      });
-      
-      return sortedDirs[0];
-    }
+    // Pour simplifier, on utilise le mois actuel
+    // Si besoin, on pourra ajouter une requête Supabase pour trouver tous les mois uniques
+    return getCurrentMonthKey();
   } catch (error) {
     console.error('[Follow Points API] Erreur récupération dernier mois:', error);
     return null;
@@ -150,28 +100,58 @@ async function getLatestMonth(): Promise<string | null> {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
-    // Trouver le mois le plus récent avec des validations
-    const latestMonth = await getLatestMonth();
+    const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get('month');
     
-    if (!latestMonth) {
+    // Déterminer le mois à utiliser
+    let monthKey: string | null;
+    if (monthParam && monthParam.match(/^\d{4}-\d{2}$/)) {
+      monthKey = monthParam;
+    } else {
+      // Trouver le mois le plus récent avec des validations
+      monthKey = await getLatestMonthWithFollowValidations();
+    }
+    
+    if (!monthKey) {
       return NextResponse.json({ success: true, points: {}, month: null, message: "Aucune évaluation Follow trouvée" });
     }
 
-    // Charger les membres actifs
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
+    // Charger les membres actifs depuis Supabase
+    const allMembers = await memberRepository.findAll();
     const memberLogins = allMembers
-      .filter((m: any) => m.isActive !== false && m.twitchLogin)
-      .map((m: any) => m.twitchLogin.toLowerCase());
+      .filter(m => m.isActive !== false && m.twitchLogin)
+      .map(m => m.twitchLogin.toLowerCase());
 
-    // Récupérer toutes les validations pour ce mois
-    const validations = await listStaffFollowValidations(latestMonth);
+    // Récupérer toutes les évaluations du mois avec followValidations
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    
+    // Convertir les followValidations en format de feuilles de validation
+    const validations: any[] = [];
+    evaluations.forEach(eval => {
+      if (eval.followValidations && eval.followValidations.length > 0) {
+        eval.followValidations.forEach(validation => {
+          // Créer une feuille de validation au format attendu par computeScores
+          const sheet: any = {
+            staffDiscordId: validation.staffDiscordId,
+            staffTwitchLogin: validation.staffTwitchLogin,
+            validatedAt: validation.validatedAt,
+            members: {}, // Format B: { "login": { followsMe: true } }
+          };
+          
+          // Convertir les follows en format membres
+          Object.entries(validation.follows).forEach(([login, follows]) => {
+            sheet.members[login.toLowerCase()] = { followsMe: follows };
+          });
+          
+          validations.push(sheet);
+        });
+      }
+    });
 
     // Calculer les scores (même logique que la page C)
     const scores = computeScores(memberLogins, validations, 5);
@@ -185,8 +165,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       points: pointsMap, 
-      month: latestMonth,
-      message: `Dernière évaluation trouvée : ${latestMonth}`
+      month: monthKey,
+      message: `Évaluation trouvée : ${monthKey}`
     });
   } catch (error) {
     console.error('[API Evaluations Follow Points GET] Erreur:', error);
