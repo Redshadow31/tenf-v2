@@ -1,0 +1,52 @@
+feat: Migration V2 → V3 - Supabase avec Repositories Pattern
+
+Migration complète de TENF-V2 vers Supabase (V3) avec pattern Repository.
+
+## Repositories créés
+- MemberRepository: Gestion complète des membres (CRUD)
+- EventRepository: Gestion des événements et inscriptions
+- SpotlightRepository: Gestion des spotlights, présences et évaluations
+- EvaluationRepository: Gestion des évaluations mensuelles
+- VipRepository: Gestion de l'historique VIP
+
+## Routes API migrées (5/5)
+- /api/members/public → MemberRepository
+- /api/vip-members → VipRepository + MemberRepository
+- /api/events → EventRepository
+- /api/admin/members → MemberRepository (CRUD complet)
+- /api/spotlight/active → SpotlightRepository
+
+## Infrastructure
+- Schéma Drizzle ORM pour Supabase
+- Migrations SQL appliquées
+- Clients Supabase avec initialisation lazy
+- Configuration Drizzle Kit
+
+## Tests
+✅ Tous les tests passent (15/15)
+- 204 membres actifs récupérés
+- 46 membres VIP
+- 15 événements
+- 212 membres (admin)
+- 1 spotlight
+
+## Documentation
+- Guide complet de migration
+- Documentation des repositories
+- Scripts de test et migration
+- Résultats des tests
+
+## Dépendances ajoutées
+- @supabase/supabase-js
+- drizzle-orm, drizzle-kit
+- @upstash/redis
+- zod
+- postgres
+
+## Variables d'environnement requises
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- DATABASE_URL
+
+Voir migration/COMMIT_MESSAGE.md pour plus de détails.

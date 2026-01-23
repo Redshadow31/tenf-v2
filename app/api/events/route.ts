@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSectionAccess } from '@/lib/requireAdmin';
-import { loadEvents, createEvent, Event } from '@/lib/eventStorage';
+import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
 /**
@@ -21,17 +21,23 @@ export async function GET(request: NextRequest) {
       isAdmin = true;
     }
     
-    const events = await loadEvents();
+    // Récupérer les événements depuis Supabase
+    const events = isAdmin 
+      ? await eventRepository.findAll()
+      : await eventRepository.findPublished();
     
-    // Si admin, retourner tous les événements, sinon seulement les publiés
-    const filteredEvents = isAdmin 
-      ? events 
-      : events.filter(e => e.isPublished);
+    // Convertir les dates en ISO string pour compatibilité avec le frontend
+    const formattedEvents = events.map(event => ({
+      ...event,
+      date: event.date instanceof Date ? event.date.toISOString() : event.date,
+      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
+      updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
+    }));
     
     // Trier par date (plus récent en premier)
-    filteredEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    formattedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    return NextResponse.json({ events: filteredEvents });
+    return NextResponse.json({ events: formattedEvents });
   } catch (error) {
     console.error('[Events API] Erreur GET:', error);
     return NextResponse.json(
@@ -61,20 +67,33 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const newEvent = await createEvent({
+    // Générer un ID unique pour l'événement
+    const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const newEvent = await eventRepository.create({
+      id: eventId,
       title,
       description: description || '',
       image,
-      date,
+      date: new Date(date),
       category,
       location,
       invitedMembers: invitedMembers || [],
       isPublished: isPublished ?? false,
       createdBy: admin.discordId,
+      createdAt: new Date(),
     });
     
+    // Convertir les dates en ISO string pour compatibilité
+    const formattedEvent = {
+      ...newEvent,
+      date: newEvent.date instanceof Date ? newEvent.date.toISOString() : newEvent.date,
+      createdAt: newEvent.createdAt instanceof Date ? newEvent.createdAt.toISOString() : newEvent.createdAt,
+      updatedAt: newEvent.updatedAt ? (newEvent.updatedAt instanceof Date ? newEvent.updatedAt.toISOString() : newEvent.updatedAt) : undefined,
+    };
+    
     // Logger l'action avec before/after optimisés
-    const { previousValue, newValue } = prepareAuditValues(undefined, newEvent);
+    const { previousValue, newValue } = prepareAuditValues(undefined, formattedEvent);
     await logAction({
       action: "event.create",
       resourceType: "event",
@@ -84,7 +103,7 @@ export async function POST(request: NextRequest) {
       metadata: { sourcePage: "/admin/events" },
     });
     
-    return NextResponse.json({ event: newEvent, success: true });
+    return NextResponse.json({ event: formattedEvent, success: true });
   } catch (error) {
     console.error('[Events API] Erreur POST:', error);
     return NextResponse.json(

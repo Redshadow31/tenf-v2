@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllVipMemberData, initializeMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository, vipRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
-import fs from 'fs';
-import path from 'path';
 
 export const runtime = 'nodejs';
 // Cache ISR de 30 secondes pour les membres VIP
 export const revalidate = 30;
-
-const VIP_MONTH_STORE_NAME = 'tenf-vip-month';
 
 interface VipMember {
   discordId: string;
@@ -23,80 +19,29 @@ interface VipMember {
   consecutiveMonths?: number;
 }
 
-// Initialiser les données au démarrage du serveur
-let initialized = false;
-if (!initialized) {
-  initializeMemberData();
-  initialized = true;
-}
-
-function isNetlify(): boolean {
-  try {
-    return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV || typeof window === 'undefined';
-  } catch {
-    return false;
-  }
-}
-
-async function getCurrentMonthVipLogins(): Promise<string[] | null> {
-  try {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const monthKey = `${year}-${month}`;
-
-    try {
-      if (isNetlify()) {
-        const { getStore } = await import('@netlify/blobs');
-        const store = getStore(VIP_MONTH_STORE_NAME);
-        const data = await store.get(`${monthKey}.json`, { type: 'json' }).catch(() => null);
-        if (data && typeof data === 'object' && 'vipLogins' in data) {
-          return (data as any).vipLogins || [];
-        }
-      }
-    } catch (blobError) {
-      console.warn('[VIP Members API] Blobs non disponible, utilisation du système de fichiers:', blobError);
-    }
-
-    // Fallback: système de fichiers local
-    const dataDir = path.join(process.cwd(), 'data', 'vip-month');
-    const filePath = path.join(dataDir, `${monthKey}.json`);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(content);
-      return data.vipLogins || [];
-    }
-  } catch (error) {
-    console.error('[VIP Members API] Erreur récupération VIP du mois:', error);
-  }
-  return null;
-}
-
 /**
- * Récupère les membres VIP Elite depuis le dashboard (memberData)
- * Priorité : VIP du mois actuel (blob) > Membres avec isVip=true
+ * Récupère les membres VIP Elite depuis Supabase
+ * Priorité : VIP du mois actuel (vip_history) > Membres avec isVip=true
  */
 export async function GET(request: NextRequest) {
   try {
-    // Charger les données depuis le stockage persistant (Blobs ou fichier)
-    await loadMemberDataFromStorage();
-    
-    // Essayer de récupérer les VIP du mois actuel depuis le blob
-    const currentMonthVipLogins = await getCurrentMonthVipLogins();
+    // Essayer de récupérer les VIP du mois actuel depuis Supabase
+    const currentMonthVips = await vipRepository.findCurrentMonth();
     
     let vipMemberData;
     
-    if (currentMonthVipLogins && currentMonthVipLogins.length > 0) {
-      // Utiliser les VIP du mois actuel depuis le blob
-      const allMembers = getAllMemberData();
-      vipMemberData = allMembers.filter((member: any) => 
+    if (currentMonthVips && currentMonthVips.length > 0) {
+      // Utiliser les VIP du mois actuel depuis Supabase
+      const vipLogins = currentMonthVips.map(vip => vip.twitchLogin.toLowerCase());
+      const allMembers = await memberRepository.findAll();
+      vipMemberData = allMembers.filter((member) => 
         member.isActive !== false && 
-        currentMonthVipLogins.includes(member.twitchLogin?.toLowerCase() || '')
+        vipLogins.includes(member.twitchLogin?.toLowerCase() || '')
       );
-      console.log(`[VIP Members API] Utilisation des VIP du mois actuel (${currentMonthVipLogins.length} membres)`);
+      console.log(`[VIP Members API] Utilisation des VIP du mois actuel (${currentMonthVips.length} membres)`);
     } else {
-      // Fallback : utiliser tous les membres VIP depuis le dashboard
-      vipMemberData = getAllVipMemberData();
+      // Fallback : utiliser tous les membres VIP depuis Supabase
+      vipMemberData = await memberRepository.findVip();
       console.log(`[VIP Members API] Utilisation des membres avec isVip=true (${vipMemberData.length} membres)`);
     }
     

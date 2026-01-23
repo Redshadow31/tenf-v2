@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMemberData, getAllActiveMemberData, getAllActiveMemberDataFromAllLists, loadMemberDataFromStorage } from '@/lib/memberData';
-import { initializeMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
@@ -9,23 +8,13 @@ import { getMemberDescription } from '@/lib/memberDescriptions';
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
 export const revalidate = 60; // Revalidation toutes les 60 secondes
 
-// Initialiser les données au démarrage du serveur
-let initialized = false;
-if (!initialized) {
-  initializeMemberData();
-  initialized = true;
-}
-
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
  */
 export async function GET() {
   try {
-    // Charger les données depuis le stockage persistant (Blobs ou fichier)
-    await loadMemberDataFromStorage();
-    
-    // Récupérer tous les membres actifs de toutes les listes (1, 2, et 3) depuis la base de données centralisée
-    const activeMembers = getAllActiveMemberDataFromAllLists();
+    // Récupérer tous les membres actifs depuis Supabase via le repository
+    const activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
     
     // Récupérer tous les logins Twitch uniques
     const twitchLogins = activeMembers

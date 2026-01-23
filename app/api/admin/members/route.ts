@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isFounder, hasAdminDashboardAccess, hasPermission } from "@/lib/adminRoles";
-import {
-  getAllMemberData,
-  getMemberData,
-  updateMemberData,
-  createMemberData,
-  deleteMemberData,
-  initializeMemberData,
-  loadMemberDataFromStorage,
-} from "@/lib/memberData";
+import { memberRepository } from "@/lib/repositories";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
@@ -16,21 +7,11 @@ import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Initialiser les données au démarrage du serveur
-let initialized = false;
-if (!initialized) {
-  initializeMemberData();
-  initialized = true;
-}
-
 /**
  * GET - Récupère tous les membres ou un membre spécifique
  */
 export async function GET(request: NextRequest) {
   try {
-    // Charger les données depuis le stockage persistant (Blobs ou fichier)
-    await loadMemberDataFromStorage();
-    
     // Authentification NextAuth robuste
     const admin = await requireAdmin();
     
@@ -43,10 +24,11 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const twitchLogin = searchParams.get("twitchLogin");
+    const discordId = searchParams.get("discordId");
 
     if (twitchLogin) {
-      // Récupérer un membre spécifique
-      const member = getMemberData(twitchLogin);
+      // Récupérer un membre spécifique par login Twitch
+      const member = await memberRepository.findByTwitchLogin(twitchLogin);
       if (!member) {
         return NextResponse.json(
           { error: "Membre non trouvé" },
@@ -63,8 +45,27 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Récupérer tous les membres
-    const members = getAllMemberData();
+    if (discordId) {
+      // Récupérer un membre spécifique par ID Discord
+      const member = await memberRepository.findByDiscordId(discordId);
+      if (!member) {
+        return NextResponse.json(
+          { error: "Membre non trouvé" },
+          { status: 404 }
+        );
+      }
+      const response = NextResponse.json({ member });
+      
+      // Désactiver le cache côté client
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      return response;
+    }
+
+    // Récupérer tous les membres depuis Supabase
+    const members = await memberRepository.findAll();
     const response = NextResponse.json({ members });
     
     // Désactiver le cache côté client
@@ -120,8 +121,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Charger les données depuis le stockage persistant
-    await loadMemberDataFromStorage();
+    // Vérifier si le membre existe déjà
+    const existingMember = await memberRepository.findByTwitchLogin(twitchLogin);
+    if (existingMember) {
+      return NextResponse.json(
+        { error: "Un membre avec ce login Twitch existe déjà" },
+        { status: 400 }
+      );
+    }
     
     // Résoudre automatiquement l'ID Twitch si twitchLogin est fourni
     let twitchId: string | undefined = undefined;
@@ -139,23 +146,23 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const newMember = await createMemberData(
-      {
-        twitchLogin,
-        twitchId,
-        displayName,
-        twitchUrl,
-        discordId,
-        discordUsername,
-        role: role || "Affilié",
-        isVip: isVip || false,
-        isActive: isActive !== undefined ? isActive : true,
-        badges: badges || [],
-        description,
-        customBio,
-      },
-      admin.discordId
-    );
+    const newMember = await memberRepository.create({
+      twitchLogin,
+      twitchId,
+      displayName,
+      twitchUrl,
+      discordId,
+      discordUsername,
+      role: role || "Affilié",
+      isVip: isVip || false,
+      isActive: isActive !== undefined ? isActive : true,
+      badges: badges || [],
+      description,
+      customBio,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: admin.discordId,
+    });
 
     // Logger l'action avec before/after optimisés
     const { previousValue, newValue } = prepareAuditValues(undefined, newMember);
@@ -202,25 +209,17 @@ export async function PUT(request: NextRequest) {
       ...updates 
     } = body;
 
-    // Charger les données depuis le stockage persistant AVANT de récupérer le membre
-    await loadMemberDataFromStorage();
-    
     // Identifier le membre par son identifiant stable (discordId ou twitchId) en priorité
-    const { findMemberByIdentifier } = await import('@/lib/memberData');
-    let existingMember: any = null;
+    let existingMember = null;
     
-    if (originalDiscordId || originalTwitchId) {
-      // Chercher par identifiant stable (priorité)
-      existingMember = findMemberByIdentifier({
-        discordId: originalDiscordId,
-        twitchId: originalTwitchId,
-        twitchLogin: twitchLogin, // Fallback si les IDs ne sont pas disponibles
-      });
-      console.log(`[Update Member API] Recherche par identifiant stable - discordId: ${originalDiscordId}, twitchId: ${originalTwitchId}`);
+    if (originalDiscordId) {
+      // Chercher par ID Discord (priorité)
+      existingMember = await memberRepository.findByDiscordId(originalDiscordId);
+      console.log(`[Update Member API] Recherche par Discord ID: ${originalDiscordId}`);
     } else if (twitchLogin) {
-      // Fallback: chercher par twitchLogin (mode legacy)
-      existingMember = getMemberData(twitchLogin);
-      console.log(`[Update Member API] Recherche par twitchLogin (legacy): ${twitchLogin}`);
+      // Fallback: chercher par twitchLogin
+      existingMember = await memberRepository.findByTwitchLogin(twitchLogin);
+      console.log(`[Update Member API] Recherche par Twitch login: ${twitchLogin}`);
     }
     
     if (!existingMember) {
@@ -350,15 +349,27 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Préparer l'identifiant pour updateMemberData (utiliser identifiant stable si disponible)
-    // Utiliser l'ancien twitchLogin pour identifier le membre, pas le nouveau
-    const memberIdentifier = originalDiscordId || originalTwitchId
-      ? { discordId: originalDiscordId, twitchId: originalTwitchId, twitchLogin: existingMember.twitchLogin }
-      : existingMember.twitchLogin;
+    // Gérer roleHistory si le rôle change
+    if (updates.role && updates.role !== existingMember.role) {
+      const roleHistory = existingMember.roleHistory || [];
+      updates.roleHistory = [
+        ...roleHistory,
+        {
+          fromRole: existingMember.role,
+          toRole: updates.role,
+          changedAt: new Date().toISOString(),
+          changedBy: admin.discordId || "admin",
+          reason: (updates as any).roleChangeReason,
+        },
+      ];
+    }
+
+    // Ajouter updatedBy et updatedAt
+    updates.updatedBy = admin.discordId;
+    updates.updatedAt = new Date();
 
     // Log pour déboguer
     console.log(`[Update Member API] ${originalLogin}:`, {
-      identifier: memberIdentifier,
       existingDiscordId: existingMember.discordId,
       newDiscordId: updates.discordId,
       existingDiscordUsername: existingMember.discordUsername,
@@ -369,7 +380,7 @@ export async function PUT(request: NextRequest) {
       newParrain: updates.parrain,
     });
 
-    const updatedMember = await updateMemberData(memberIdentifier, updates, admin.discordId);
+    const updatedMember = await memberRepository.update(originalLogin, updates);
     
     // Log après mise à jour
     console.log(`[Update Member API] ✅ Après mise à jour:`, {
@@ -378,13 +389,6 @@ export async function PUT(request: NextRequest) {
       twitchLogin: updatedMember?.twitchLogin,
       parrain: updatedMember?.parrain,
     });
-
-    if (!updatedMember) {
-      return NextResponse.json(
-        { error: "Erreur lors de la mise à jour" },
-        { status: 500 }
-      );
-    }
 
     // Identifier les champs modifiés
     const fieldsChanged: string[] = [];
@@ -446,10 +450,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Charger les données depuis le stockage persistant
-    await loadMemberDataFromStorage();
-    
-    const member = getMemberData(twitchLogin);
+    const member = await memberRepository.findByTwitchLogin(twitchLogin);
     if (!member) {
       return NextResponse.json(
         { error: "Membre non trouvé" },
@@ -457,7 +458,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await deleteMemberData(twitchLogin, admin.discordId);
+    await memberRepository.delete(twitchLogin);
 
     if (!success) {
       return NextResponse.json(

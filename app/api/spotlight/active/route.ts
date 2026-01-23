@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveSpotlight, createActiveSpotlight, getSpotlightData } from '@/lib/spotlightStorage';
+import { spotlightRepository } from '@/lib/repositories';
+import { memberRepository } from '@/lib/repositories';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { getMemberData, loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
-import { cookies } from 'next/headers';
 
 /**
  * GET - Récupère le spotlight actif
@@ -14,14 +13,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     
     if (!spotlight) {
       return NextResponse.json({ spotlight: null });
     }
 
-    // Récupérer les données complètes
-    const data = await getSpotlightData(spotlight.id);
+    // Récupérer les données complètes (présences et évaluation)
+    const presences = await spotlightRepository.getPresences(spotlight.id);
+    const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
+
+    // Formater les données pour compatibilité avec le frontend
+    const data = {
+      spotlight: {
+        ...spotlight,
+        startedAt: spotlight.startedAt instanceof Date ? spotlight.startedAt.toISOString() : spotlight.startedAt,
+        endsAt: spotlight.endsAt instanceof Date ? spotlight.endsAt.toISOString() : spotlight.endsAt,
+        createdAt: spotlight.createdAt instanceof Date ? spotlight.createdAt.toISOString() : spotlight.createdAt,
+      },
+      presences: presences.map(p => ({
+        ...p,
+        addedAt: p.addedAt instanceof Date ? p.addedAt.toISOString() : p.addedAt,
+      })),
+      evaluation: evaluation ? {
+        ...evaluation,
+        evaluatedAt: evaluation.evaluatedAt instanceof Date ? evaluation.evaluatedAt.toISOString() : evaluation.evaluatedAt,
+        validatedAt: evaluation.validatedAt ? (evaluation.validatedAt instanceof Date ? evaluation.validatedAt.toISOString() : evaluation.validatedAt) : undefined,
+      } : undefined,
+      validated: evaluation?.validated || false,
+      validatedAt: evaluation?.validatedAt ? (evaluation.validatedAt instanceof Date ? evaluation.validatedAt.toISOString() : evaluation.validatedAt) : undefined,
+    };
     
     return NextResponse.json({ spotlight: data });
   } catch (error) {
@@ -44,8 +65,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    // Vérifier qu'il n'y a pas déjà un spotlight actif (pas annulé ni complété)
-    const existing = await getActiveSpotlight();
+    // Vérifier qu'il n'y a pas déjà un spotlight actif
+    const existing = await spotlightRepository.findActive();
     if (existing && existing.status === 'active') {
       return NextResponse.json(
         { error: 'Un spotlight est déjà en cours' },
@@ -68,38 +89,47 @@ export async function POST(request: NextRequest) {
     const finalModeratorUsername = moderatorUsername || admin.username;
 
     // Vérifier que le login Twitch correspond à un membre enregistré
-    await loadMemberDataFromStorage();
-    const member = getMemberData(streamerTwitchLogin.trim().toLowerCase());
+    const member = await memberRepository.findByTwitchLogin(streamerTwitchLogin.trim().toLowerCase());
     
     if (!member) {
-      // Essayer aussi avec getAllMemberData pour être sûr
-      const allMembers = getAllMemberData();
-      const foundMember = allMembers.find(
-        m => m.twitchLogin.toLowerCase() === streamerTwitchLogin.trim().toLowerCase()
+      return NextResponse.json(
+        { 
+          error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré. Veuillez vérifier le nom de la chaîne dans la page Gestion Membres.` 
+        },
+        { status: 400 }
       );
-      
-      if (!foundMember) {
-        return NextResponse.json(
-          { 
-            error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré. Veuillez vérifier le nom de la chaîne dans la page Gestion Membres.` 
-          },
-          { status: 400 }
-        );
-      }
     }
 
     // Utiliser le displayName du membre si disponible
-    const finalDisplayName = member?.displayName || streamerDisplayName || streamerTwitchLogin;
+    const finalDisplayName = member.displayName || streamerDisplayName || streamerTwitchLogin;
 
-    const spotlight = await createActiveSpotlight(
-      streamerTwitchLogin.trim().toLowerCase(),
-      finalDisplayName,
-      finalModeratorDiscordId,
-      finalModeratorUsername,
-      admin.id
-    );
+    // Créer le spotlight
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 heures
+    const spotlightId = `spotlight-${Date.now()}`;
 
-    return NextResponse.json({ spotlight });
+    const spotlight = await spotlightRepository.create({
+      id: spotlightId,
+      streamerTwitchLogin: streamerTwitchLogin.trim().toLowerCase(),
+      streamerDisplayName: finalDisplayName,
+      startedAt: now,
+      endsAt: endsAt,
+      status: 'active',
+      moderatorDiscordId: finalModeratorDiscordId,
+      moderatorUsername: finalModeratorUsername,
+      createdAt: now,
+      createdBy: admin.id,
+    });
+
+    // Formater pour compatibilité avec le frontend
+    const formattedSpotlight = {
+      ...spotlight,
+      startedAt: spotlight.startedAt instanceof Date ? spotlight.startedAt.toISOString() : spotlight.startedAt,
+      endsAt: spotlight.endsAt instanceof Date ? spotlight.endsAt.toISOString() : spotlight.endsAt,
+      createdAt: spotlight.createdAt instanceof Date ? spotlight.createdAt.toISOString() : spotlight.createdAt,
+    };
+
+    return NextResponse.json({ spotlight: formattedSpotlight });
   } catch (error) {
     console.error('[Spotlight API] Erreur POST:', error);
     return NextResponse.json(
@@ -120,7 +150,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
@@ -138,11 +168,17 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { saveActiveSpotlight } = await import('@/lib/spotlightStorage');
-    const updated = { ...spotlight, status };
-    await saveActiveSpotlight(updated);
+    const updated = await spotlightRepository.update(spotlight.id, { status });
 
-    return NextResponse.json({ spotlight: updated });
+    // Formater pour compatibilité avec le frontend
+    const formattedSpotlight = {
+      ...updated,
+      startedAt: updated.startedAt instanceof Date ? updated.startedAt.toISOString() : updated.startedAt,
+      endsAt: updated.endsAt instanceof Date ? updated.endsAt.toISOString() : updated.endsAt,
+      createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : updated.createdAt,
+    };
+
+    return NextResponse.json({ spotlight: formattedSpotlight });
   } catch (error) {
     console.error('[Spotlight API] Erreur PATCH:', error);
     return NextResponse.json(
