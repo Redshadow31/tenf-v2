@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { loadSectionAData, getCurrentMonthKey } from '@/lib/evaluationStorage';
-import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { getCurrentMonthKey } from '@/lib/evaluationStorage';
+import { evaluationRepository, memberRepository, spotlightRepository } from '@/lib/repositories';
 
 /**
  * GET - Récupère les données mensuelles de présence aux spotlights
@@ -33,12 +33,26 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les données du mois
-    await loadMemberDataFromStorage();
-    const sectionAData = await loadSectionAData(monthKey);
-    const allMembers = getAllMemberData();
+    // Charger les données du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    const allMembers = await memberRepository.findAll();
+    const activeMembers = allMembers.filter(m => m.isActive !== false);
 
-    if (!sectionAData || !sectionAData.spotlights || sectionAData.spotlights.length === 0) {
+    // Agréger les spotlightEvaluations depuis toutes les évaluations
+    const spotlightsMap = new Map<string, any>();
+    evaluations.forEach(eval => {
+      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+        eval.spotlightEvaluations.forEach((spotlight: any) => {
+          if (spotlight.validated && !spotlightsMap.has(spotlight.id)) {
+            spotlightsMap.set(spotlight.id, spotlight);
+          }
+        });
+      }
+    });
+
+    const spotlights = Array.from(spotlightsMap.values());
+
+    if (spotlights.length === 0) {
       return NextResponse.json({
         month: monthKey,
         totalSpotlights: 0,
@@ -51,8 +65,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const spotlights = sectionAData.spotlights.filter(s => s.validated);
-
     // Préparer les données pour les graphiques
     const presenceBySpotlight = spotlights.map(spotlight => ({
       id: spotlight.id,
@@ -62,33 +74,26 @@ export async function GET(request: NextRequest) {
       presenceCount: spotlight.members?.filter((m: any) => m.present).length || 0,
     }));
 
-    // Récupérer les évaluations streamer depuis le stockage spotlight
+    // Récupérer les évaluations streamer depuis Supabase
     const streamerScores: Array<{ id: string; date: string; streamer: string; score: number; maxScore: number }> = [];
     
-    // Pour chaque spotlight, essayer de récupérer l'évaluation
+    // Pour chaque spotlight, récupérer l'évaluation depuis spotlight_evaluations
     for (const spotlight of spotlights) {
       try {
-        const { getStore } = await import('@netlify/blobs');
-        const isNetlify = typeof getStore === 'function' || 
-                          !!process.env.NETLIFY || 
-                          !!process.env.NETLIFY_DEV;
+        const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
         
-        if (isNetlify) {
-          const store = getStore('tenf-spotlights');
-          const evaluation = await store.get(`${spotlight.id}/evaluation.json`, { type: 'json' }).catch(() => null);
-          
-          if (evaluation) {
-            streamerScores.push({
-              id: spotlight.id,
-              date: spotlight.date,
-              streamer: spotlight.streamerTwitchLogin,
-              score: evaluation.totalScore || 0,
-              maxScore: evaluation.maxScore || 20,
-            });
-          }
+        if (evaluation) {
+          streamerScores.push({
+            id: spotlight.id,
+            date: spotlight.date,
+            streamer: spotlight.streamerTwitchLogin,
+            score: evaluation.totalScore || 0,
+            maxScore: evaluation.maxScore || 20,
+          });
         }
       } catch (error) {
         // Ignorer les erreurs
+        console.warn(`[Spotlight Presence Monthly] Erreur récupération évaluation pour ${spotlight.id}:`, error);
       }
     }
 
@@ -107,19 +112,17 @@ export async function GET(request: NextRequest) {
       }>;
     }>();
 
-    // Initialiser tous les membres
-    allMembers.forEach(member => {
-      if (member.isActive !== false) {
-        memberStatsMap.set(member.twitchLogin.toLowerCase(), {
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName,
-          role: member.role,
-          totalSpotlights: spotlights.length,
-          presences: 0,
-          lastSpotlightDate: null,
-          spotlightDetails: [],
-        });
-      }
+    // Initialiser tous les membres actifs
+    activeMembers.forEach(member => {
+      memberStatsMap.set(member.twitchLogin.toLowerCase(), {
+        twitchLogin: member.twitchLogin,
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        role: member.role,
+        totalSpotlights: spotlights.length,
+        presences: 0,
+        lastSpotlightDate: null,
+        spotlightDetails: [],
+      });
     });
 
     // Compter les présences
