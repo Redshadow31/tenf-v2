@@ -170,6 +170,54 @@ export class SpotlightRepository {
   }
 
   /**
+   * Supprime une présence d'un spotlight
+   */
+  async deletePresence(spotlightId: string, twitchLogin: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('spotlight_presences')
+      .delete()
+      .eq('spotlight_id', spotlightId)
+      .eq('twitch_login', twitchLogin.toLowerCase());
+
+    if (error) throw error;
+  }
+
+  /**
+   * Remplace toutes les présences d'un spotlight
+   */
+  async replacePresences(spotlightId: string, presences: Partial<SpotlightPresence>[]): Promise<SpotlightPresence[]> {
+    // Supprimer toutes les présences existantes
+    const { error: deleteError } = await supabaseAdmin
+      .from('spotlight_presences')
+      .delete()
+      .eq('spotlight_id', spotlightId);
+
+    if (deleteError) throw deleteError;
+
+    // Insérer les nouvelles présences
+    if (presences.length === 0) {
+      return [];
+    }
+
+    const presenceRecords = presences.map(p => ({
+      spotlight_id: spotlightId,
+      twitch_login: p.twitchLogin,
+      display_name: p.displayName || null,
+      added_at: p.addedAt?.toISOString() || new Date().toISOString(),
+      added_by: p.addedBy || '',
+    }));
+
+    const { data, error } = await supabaseAdmin
+      .from('spotlight_presences')
+      .insert(presenceRecords)
+      .select();
+
+    if (error) throw error;
+
+    return (data || []).map(this.mapToPresence);
+  }
+
+  /**
    * Récupère l'évaluation d'un spotlight
    */
   async getEvaluation(spotlightId: string): Promise<SpotlightEvaluation | null> {

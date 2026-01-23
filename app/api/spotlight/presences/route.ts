@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getActiveSpotlight, 
-  getSpotlightPresences, 
-  saveSpotlightPresences,
-  addSpotlightPresence 
-} from '@/lib/spotlightStorage';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { spotlightRepository } from '@/lib/repositories';
 
 /**
  * GET - Récupère les présences du spotlight actif
@@ -17,13 +12,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json({ presences: [] });
     }
 
-    const presences = await getSpotlightPresences(spotlight.id);
-    return NextResponse.json({ presences });
+    const presences = await spotlightRepository.getPresences(spotlight.id);
+    
+    // Convertir au format attendu par le frontend
+    const formattedPresences = presences.map(p => ({
+      twitchLogin: p.twitchLogin,
+      displayName: p.displayName,
+      addedAt: p.addedAt.toISOString(),
+      addedBy: p.addedBy,
+    }));
+
+    return NextResponse.json({ presences: formattedPresences });
   } catch (error) {
     console.error('[Spotlight Presences API] Erreur GET:', error);
     return NextResponse.json(
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
@@ -70,10 +74,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await addSpotlightPresence(spotlight.id, twitchLogin, displayName, admin.id);
+    await spotlightRepository.addPresence({
+      spotlightId: spotlight.id,
+      twitchLogin: twitchLogin.toLowerCase(),
+      displayName,
+      addedBy: admin.id,
+      addedAt: new Date(),
+    });
 
-    const presences = await getSpotlightPresences(spotlight.id);
-    return NextResponse.json({ presences });
+    const presences = await spotlightRepository.getPresences(spotlight.id);
+    
+    // Convertir au format attendu par le frontend
+    const formattedPresences = presences.map(p => ({
+      twitchLogin: p.twitchLogin,
+      displayName: p.displayName,
+      addedAt: p.addedAt.toISOString(),
+      addedBy: p.addedBy,
+    }));
+
+    return NextResponse.json({ presences: formattedPresences });
   } catch (error) {
     console.error('[Spotlight Presences API] Erreur POST:', error);
     return NextResponse.json(
@@ -94,7 +113,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
@@ -120,11 +139,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    await saveSpotlightPresences(spotlight.id, presences);
+    // Convertir les présences au format attendu par le repository
+    const presenceRecords = presences.map((p: any) => ({
+      spotlightId: spotlight.id,
+      twitchLogin: p.twitchLogin?.toLowerCase() || '',
+      displayName: p.displayName,
+      addedBy: p.addedBy || admin.id,
+      addedAt: p.addedAt ? new Date(p.addedAt) : new Date(),
+    }));
+
+    await spotlightRepository.replacePresences(spotlight.id, presenceRecords);
+
+    const updatedPresences = await spotlightRepository.getPresences(spotlight.id);
+    
+    // Convertir au format attendu par le frontend
+    const formattedPresences = updatedPresences.map(p => ({
+      twitchLogin: p.twitchLogin,
+      displayName: p.displayName,
+      addedAt: p.addedAt.toISOString(),
+      addedBy: p.addedBy,
+    }));
 
     return NextResponse.json({ 
       success: true, 
-      presences,
+      presences: formattedPresences,
       message: 'Présences enregistrées avec succès' 
     });
   } catch (error) {
@@ -147,7 +185,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const spotlight = await getActiveSpotlight();
+    const spotlight = await spotlightRepository.findActive();
     if (!spotlight) {
       return NextResponse.json(
         { error: 'Aucun spotlight actif' },
@@ -173,20 +211,23 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Récupérer les présences actuelles
-    const presences = await getSpotlightPresences(spotlight.id);
-    
-    // Filtrer pour supprimer la présence
-    const updatedPresences = presences.filter(
-      p => p.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
-    );
+    // Supprimer la présence
+    await spotlightRepository.deletePresence(spotlight.id, twitchLogin);
 
-    // Sauvegarder les présences mises à jour
-    await saveSpotlightPresences(spotlight.id, updatedPresences);
+    // Récupérer les présences mises à jour
+    const presences = await spotlightRepository.getPresences(spotlight.id);
+    
+    // Convertir au format attendu par le frontend
+    const formattedPresences = presences.map(p => ({
+      twitchLogin: p.twitchLogin,
+      displayName: p.displayName,
+      addedAt: p.addedAt.toISOString(),
+      addedBy: p.addedBy,
+    }));
 
     return NextResponse.json({ 
       success: true, 
-      presences: updatedPresences,
+      presences: formattedPresences,
       message: 'Présence supprimée avec succès' 
     });
   } catch (error) {
