@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (members: Array<{ nom: string; discord: string; twitch: string; discordId?: string }>) => void;
+}
+
+interface ParsedMember {
+  nom: string;
+  discord: string;
+  twitch: string;
+  discordId?: string;
+  isDuplicateInList?: boolean; // Doublon dans la liste d'import
+  isExistingMember?: boolean; // Membre existant dans la base
+  existingMemberInfo?: { displayName: string; twitchLogin: string; discordUsername?: string }; // Info du membre existant
+  duplicateIndex?: number; // Index du doublon dans la liste
 }
 
 export default function BulkImportModal({
@@ -14,14 +26,44 @@ export default function BulkImportModal({
   onImport,
 }: BulkImportModalProps) {
   const [importText, setImportText] = useState("");
-  const [parsedMembers, setParsedMembers] = useState<Array<{ nom: string; discord: string; twitch: string; discordId?: string }>>([]);
+  const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
+  const [existingMembers, setExistingMembers] = useState<any[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+
+  // Charger les membres existants quand le modal s'ouvre
+  useEffect(() => {
+    if (isOpen) {
+      loadExistingMembers();
+    }
+  }, [isOpen]);
+
+  const loadExistingMembers = async () => {
+    setLoadingExisting(true);
+    try {
+      const response = await fetch("/api/admin/members", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExistingMembers(data.members || []);
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des membres existants:", error);
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   const parseImportText = () => {
     const lines = importText.split("\n").filter(line => line.trim());
-    const members: Array<{ nom: string; discord: string; twitch: string; discordId?: string }> = [];
+    const members: ParsedMember[] = [];
 
+    // Parser les membres
     for (const line of lines) {
       // Format attendu: @PseudoDiscord : https://www.twitch.tv/channel
       // ou: @PseudoDiscord (Nom alternatif) : https://www.twitch.tv/channel
@@ -40,6 +82,79 @@ export default function BulkImportModal({
       }
     }
 
+    // Détecter les doublons dans la liste elle-même
+    const twitchSet = new Set<string>();
+    const discordSet = new Set<string>();
+    
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+      const twitchLower = member.twitch.toLowerCase();
+      const discordLower = member.discord.toLowerCase();
+      
+      // Vérifier si c'est un doublon dans la liste
+      if (twitchSet.has(twitchLower)) {
+        // Trouver l'index du premier membre avec ce Twitch
+        const firstIndex = members.findIndex(m => m.twitch.toLowerCase() === twitchLower);
+        members[i].isDuplicateInList = true;
+        members[i].duplicateIndex = firstIndex;
+        if (firstIndex !== i) {
+          members[firstIndex].isDuplicateInList = true;
+          members[firstIndex].duplicateIndex = firstIndex;
+        }
+      } else {
+        twitchSet.add(twitchLower);
+      }
+      
+      // Vérifier aussi par Discord si présent
+      if (discordLower && discordSet.has(discordLower)) {
+        const firstIndex = members.findIndex(m => m.discord.toLowerCase() === discordLower);
+        members[i].isDuplicateInList = true;
+        if (firstIndex !== i) {
+          members[firstIndex].isDuplicateInList = true;
+        }
+      } else if (discordLower) {
+        discordSet.add(discordLower);
+      }
+    }
+
+    // Comparer avec les membres existants
+    const existingTwitchLogins = new Set(
+      existingMembers.map(m => (m.twitchLogin || m.twitch || '').toLowerCase())
+    );
+    const existingDiscordIds = new Set(
+      existingMembers.map(m => (m.discordId || '').toLowerCase()).filter(Boolean)
+    );
+    const existingDiscordUsernames = new Set(
+      existingMembers.map(m => (m.discordUsername || m.discord || '').toLowerCase()).filter(Boolean)
+    );
+
+    for (const member of members) {
+      const twitchLower = member.twitch.toLowerCase();
+      const discordLower = member.discord.toLowerCase();
+      
+      // Vérifier si le membre existe déjà
+      if (existingTwitchLogins.has(twitchLower) || 
+          existingDiscordUsernames.has(discordLower) ||
+          (member.discordId && existingDiscordIds.has(member.discordId.toLowerCase()))) {
+        member.isExistingMember = true;
+        
+        // Trouver les infos du membre existant
+        const existing = existingMembers.find(m => 
+          (m.twitchLogin || m.twitch || '').toLowerCase() === twitchLower ||
+          (m.discordUsername || m.discord || '').toLowerCase() === discordLower ||
+          (member.discordId && m.discordId === member.discordId)
+        );
+        
+        if (existing) {
+          member.existingMemberInfo = {
+            displayName: existing.displayName || existing.nom || '',
+            twitchLogin: existing.twitchLogin || existing.twitch || '',
+            discordUsername: existing.discordUsername || existing.discord || '',
+          };
+        }
+      }
+    }
+
     setParsedMembers(members);
   };
 
@@ -50,11 +165,35 @@ export default function BulkImportModal({
       return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir importer ${parsedMembers.length} membre(s) ?`)) {
+    // Filtrer les membres valides (non doublons dans la liste et non existants)
+    const validMembers = parsedMembers.filter(m => 
+      !m.isDuplicateInList && !m.isExistingMember
+    );
+
+    if (validMembers.length === 0) {
+      const duplicateCount = parsedMembers.filter(m => m.isDuplicateInList).length;
+      const existingCount = parsedMembers.filter(m => m.isExistingMember).length;
+      alert(`Aucun nouveau membre à importer.\n- ${duplicateCount} doublon(s) dans la liste\n- ${existingCount} membre(s) existant(s) déjà`);
       return;
     }
 
-    onImport(parsedMembers);
+    const duplicateCount = parsedMembers.filter(m => m.isDuplicateInList).length;
+    const existingCount = parsedMembers.filter(m => m.isExistingMember).length;
+    
+    let confirmMessage = `Importer ${validMembers.length} nouveau(x) membre(s) ?`;
+    if (duplicateCount > 0 || existingCount > 0) {
+      confirmMessage += `\n\n⚠️ ${duplicateCount} doublon(s) dans la liste seront ignorés`;
+      if (existingCount > 0) {
+        confirmMessage += `\n⚠️ ${existingCount} membre(s) existant(s) seront ignorés`;
+      }
+    }
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    // Passer uniquement les membres valides
+    onImport(validMembers);
     setImportText("");
     setParsedMembers([]);
   };
@@ -111,22 +250,78 @@ export default function BulkImportModal({
             />
           </div>
 
-          {parsedMembers.length > 0 && (
+          {loadingExisting && (
             <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
-              <p className="text-sm text-gray-300 mb-2">
-                {parsedMembers.length} membre(s) détecté(s) :
-              </p>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {parsedMembers.slice(0, 20).map((member, index) => (
-                  <div key={index} className="text-xs text-gray-400">
-                    {member.nom} (@{member.discord}) → {member.twitch}
-                  </div>
-                ))}
-                {parsedMembers.length > 20 && (
-                  <div className="text-xs text-gray-500">
-                    ... et {parsedMembers.length - 20} autre(s)
-                  </div>
-                )}
+              <p className="text-sm text-gray-400">Chargement des membres existants...</p>
+            </div>
+          )}
+
+          {parsedMembers.length > 0 && (
+            <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-300">
+                  {parsedMembers.length} membre(s) détecté(s)
+                </p>
+                <div className="flex gap-4 text-xs">
+                  {parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length > 0 && (
+                    <span className="text-green-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length} nouveau(x)
+                    </span>
+                  )}
+                  {parsedMembers.filter(m => m.isDuplicateInList).length > 0 && (
+                    <span className="text-yellow-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {parsedMembers.filter(m => m.isDuplicateInList).length} doublon(s) dans la liste
+                    </span>
+                  )}
+                  {parsedMembers.filter(m => m.isExistingMember).length > 0 && (
+                    <span className="text-red-400 flex items-center gap-1">
+                      <XCircle className="w-3 h-3" />
+                      {parsedMembers.filter(m => m.isExistingMember).length} existant(s)
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {parsedMembers.map((member, index) => {
+                  const isValid = !member.isDuplicateInList && !member.isExistingMember;
+                  const isDuplicate = member.isDuplicateInList;
+                  const isExisting = member.isExistingMember;
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={`text-xs p-2 rounded border ${
+                        isValid
+                          ? "text-green-300 border-green-500/30 bg-green-500/10"
+                          : isDuplicate
+                          ? "text-yellow-300 border-yellow-500/30 bg-yellow-500/10"
+                          : "text-red-300 border-red-500/30 bg-red-500/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isValid && <CheckCircle2 className="w-3 h-3 text-green-400" />}
+                        {isDuplicate && <AlertCircle className="w-3 h-3 text-yellow-400" />}
+                        {isExisting && <XCircle className="w-3 h-3 text-red-400" />}
+                        <span className="font-medium">{member.nom}</span>
+                        <span className="text-gray-500">(@{member.discord})</span>
+                        <span className="text-gray-400">→</span>
+                        <span className="text-gray-400">{member.twitch}</span>
+                      </div>
+                      {isDuplicate && (
+                        <div className="text-yellow-400/70 mt-1 ml-5 text-xs">
+                          ⚠️ Doublon dans la liste (ligne {member.duplicateIndex !== undefined ? member.duplicateIndex + 1 : '?'})
+                        </div>
+                      )}
+                      {isExisting && member.existingMemberInfo && (
+                        <div className="text-red-400/70 mt-1 ml-5 text-xs">
+                          ⚠️ Existe déjà : {member.existingMemberInfo.displayName} ({member.existingMemberInfo.twitchLogin})
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -134,10 +329,21 @@ export default function BulkImportModal({
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={parsedMembers.length === 0}
+              disabled={parsedMembers.length === 0 || parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length === 0}
               className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
             >
-              Importer {parsedMembers.length > 0 ? `${parsedMembers.length} membre(s)` : ""}
+              {parsedMembers.length > 0 ? (
+                <>
+                  Importer {parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length} membre(s)
+                  {(parsedMembers.filter(m => m.isDuplicateInList || m.isExistingMember).length > 0) && (
+                    <span className="text-xs block mt-1 opacity-75">
+                      ({parsedMembers.filter(m => m.isDuplicateInList || m.isExistingMember).length} ignoré(s))
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Aucun membre à importer"
+              )}
             </button>
             <button
               type="button"

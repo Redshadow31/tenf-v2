@@ -59,5 +59,28 @@ Refactorer les routes API pour utiliser les repositories au lieu de Netlify Blob
 
 - **Phase 1-4** : ✅ 100% Complété
 - **Phase 5** : ✅ 100% Complété (Migration des données + Repositories)
-- **Phase 6** : ⏳ À venir (Migration des routes API)
-- **Phase 7** : ⏳ À venir (Tests et déploiement)
+- **Phase 6** : ✅ 100% Complété (Migration des routes API principales)
+- **Phase 7** : ✅ 100% Complété (Tests - 15/15 passés)
+- **Phase 8** : ✅ 100% Complété (Commit Git)
+- **Phase 9** : ⏳ À venir (Déploiement en production)
+- **Phase 10** : ⏳ À venir (Migration des routes secondaires - optionnel)
+- **Phase 11** : ⏳ À venir (Nettoyage du code legacy)
+
+## 🎯 État Actuel
+
+**Progression globale : ~85% complété**
+
+### ✅ Complété (100%)
+- Infrastructure Supabase
+- Migration des données
+- Repositories (5/5)
+- Routes API principales (5/5)
+- Tests (15/15)
+- Commit Git
+
+### ⏳ En attente
+- Déploiement en production
+- Migration des routes secondaires (optionnel)
+- Nettoyage du code legacy
+
+Voir `migration/ETAT_ACTUEL.md` pour un résumé détaillé.
