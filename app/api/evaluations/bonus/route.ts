@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, logAction } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
-import { loadEvaluationBonusData, saveEvaluationBonusData, updateMemberBonus, getAllBonuses } from '@/lib/evaluationBonusStorage';
-import type { MemberBonus } from '@/lib/evaluationBonusHelpers';
+import { requirePermission } from '@/lib/requireAdmin';
+import { logAction, prepareAuditValues } from '@/lib/admin/logger';
+import { evaluationRepository } from '@/lib/repositories';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 export async function GET(request: NextRequest) {
   try {
-    const { requirePermission } = await import('@/lib/adminAuth');
     const admin = await requirePermission("read");
     if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
@@ -17,7 +15,30 @@ export async function GET(request: NextRequest) {
     const monthParam = searchParams.get('month');
     const monthKey = monthParam || getCurrentMonthKey();
 
-    const bonuses = await getAllBonuses(monthKey);
+    // Récupérer toutes les évaluations du mois depuis Supabase
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    
+    // Agréger tous les bonus de toutes les évaluations
+    const bonuses: Array<{
+      id: string;
+      twitchLogin: string;
+      points: number;
+      reason: string;
+      type: 'decalage-horaire' | 'implication-qualitative' | 'conseils-remarquables' | 'autre';
+      createdBy: string;
+      createdAt: string;
+    }> = [];
+
+    evaluations.forEach(eval => {
+      if (eval.bonuses && Array.isArray(eval.bonuses)) {
+        eval.bonuses.forEach((bonus: any) => {
+          bonuses.push({
+            ...bonus,
+            twitchLogin: eval.twitchLogin, // S'assurer que le twitchLogin est présent
+          });
+        });
+      }
+    });
 
     return NextResponse.json({ success: true, bonuses, month: monthKey });
   } catch (error) {
