@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/requireAdmin';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { memberRepository, evaluationRepository } from '@/lib/repositories';
 import type { MemberRole } from '@/lib/memberRoles';
+import { logApi, logEvaluation } from '@/lib/logging/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,11 @@ interface SynthesisSaveRequest {
  * POST - Sauvegarde les notes finales et statuts pour une évaluation mensuelle
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const admin = await requirePermission('write');
     if (!admin) {
+      logApi.route('POST', '/api/evaluations/synthesis/save', 403);
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

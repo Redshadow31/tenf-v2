@@ -2,6 +2,7 @@
 import { supabaseAdmin } from '../db/supabase';
 import type { MemberData } from '../memberData';
 import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
+import { logDatabase, logCache } from '../logging/logger';
 
 export class MemberRepository {
   /**
@@ -11,12 +12,15 @@ export class MemberRepository {
    */
   async findAll(limit = 100, offset = 0): Promise<MemberData[]> {
     const cacheKeyStr = cacheKey('members', 'all', limit, offset);
+    const startTime = Date.now();
     
     // Essayer de récupérer du cache
     const cached = await cacheGet<MemberData[]>(cacheKeyStr);
     if (cached) {
+      logCache.hit(cacheKeyStr);
       return cached;
     }
+    logCache.miss(cacheKeyStr);
 
     const { data, error } = await supabaseAdmin
       .from('members')
@@ -24,7 +28,13 @@ export class MemberRepository {
       .order('updated_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      logDatabase.error('SELECT', 'members', error);
+      throw error;
+    }
+
+    const duration = Date.now() - startTime;
+    logDatabase.query('SELECT', 'members', duration, { limit, offset, count: data?.length || 0 });
 
     const members = (data || []).map(this.mapToMemberData);
     

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSectionAccess } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
+import { logApi, logEvent } from '@/lib/logging/logger';
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
@@ -11,6 +12,7 @@ export const revalidate = 60;
  * GET - Récupère tous les événements publiés (public) ou tous les événements (admin)
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const { searchParams } = new URL(request.url);
     const adminOnly = searchParams.get('admin') === 'true';
@@ -20,6 +22,7 @@ export async function GET(request: NextRequest) {
     if (adminOnly) {
       const admin = await requireSectionAccess('/admin/events/planification');
       if (!admin) {
+        logApi.route('GET', '/api/events', 403);
         return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
       }
       isAdmin = true;
@@ -55,9 +58,13 @@ export async function GET(request: NextRequest) {
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     }
     
+    const duration = Date.now() - startTime;
+    logApi.route('GET', '/api/events', 200, duration, undefined, { isAdmin, count: formattedEvents.length });
+    
     return response;
   } catch (error) {
-    console.error('[Events API] Erreur GET:', error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/events', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Erreur serveur' },
       { status: 500 }
@@ -69,9 +76,11 @@ export async function GET(request: NextRequest) {
  * POST - Crée un nouvel événement (admin uniquement)
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const admin = await requireSectionAccess('/admin/events/planification');
     if (!admin) {
+      logApi.route('POST', '/api/events', 403);
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     

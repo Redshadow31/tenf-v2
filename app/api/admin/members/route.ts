@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { memberRepository } from "@/lib/repositories";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
+import { logApi, logMember } from "@/lib/logging/logger";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -11,11 +12,13 @@ export const revalidate = 0;
  * GET - Récupère tous les membres ou un membre spécifique
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
     // Authentification NextAuth robuste
     const admin = await requireAdmin();
     
     if (!admin) {
+      logApi.route('GET', '/api/admin/members', 401);
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
@@ -74,9 +77,13 @@ export async function GET(request: NextRequest) {
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
     
+    const duration = Date.now() - startTime;
+    logApi.route('GET', '/api/admin/members', 200, duration, admin.id, { count: members.length });
+    
     return response;
   } catch (error) {
-    console.error("Error fetching members:", error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }
@@ -88,10 +95,12 @@ export async function GET(request: NextRequest) {
  * POST - Crée un nouveau membre
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const admin = await requireAdmin();
     
     if (!admin) {
+      logApi.route('POST', '/api/admin/members', 401);
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
@@ -167,6 +176,11 @@ export async function POST(request: NextRequest) {
 
     // Logger l'action avec before/after optimisés
     const { previousValue, newValue } = prepareAuditValues(undefined, newMember);
+    
+    const duration = Date.now() - startTime;
+    logMember.create(twitchLogin, admin.id);
+    logApi.route('POST', '/api/admin/members', 200, duration, admin.id, { twitchLogin });
+    
     await logAction({
       action: "member.create",
       resourceType: "member",
@@ -178,7 +192,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ member: newMember, success: true });
   } catch (error) {
-    console.error("Error creating member:", error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }
@@ -190,11 +205,13 @@ export async function POST(request: NextRequest) {
  * PUT - Met à jour un membre existant
  */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
   try {
     // Authentification NextAuth + permission write
     const admin = await requirePermission("write");
     
     if (!admin) {
+      logApi.route('PUT', '/api/admin/members', 401);
       return NextResponse.json(
         { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
@@ -404,6 +421,11 @@ export async function PUT(request: NextRequest) {
 
     // Logger l'action avec before/after optimisés (état complet avant/après)
     const { previousValue, newValue } = prepareAuditValues(existingMember, updatedMember);
+    
+    const duration = Date.now() - startTime;
+    logMember.update(originalLogin, admin.id);
+    logApi.route('PUT', '/api/admin/members', 200, duration, admin.id, { twitchLogin: originalLogin, fieldsChanged });
+    
     await logAction({
       action: "member.update",
       resourceType: "member",
@@ -418,7 +440,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ member: updatedMember, success: true });
   } catch (error) {
-    console.error("Error updating member:", error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }
@@ -471,6 +494,11 @@ export async function DELETE(request: NextRequest) {
 
     // Logger l'action avec before optimisé (état complet avant suppression)
     const { previousValue } = prepareAuditValues(member, undefined);
+    
+    const duration = Date.now() - startTime;
+    logMember.delete(twitchLogin, admin.id);
+    logApi.route('DELETE', '/api/admin/members', 200, duration, admin.id, { twitchLogin });
+    
     await logAction({
       action: "member.delete",
       resourceType: "member",
@@ -481,7 +509,8 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting member:", error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }
