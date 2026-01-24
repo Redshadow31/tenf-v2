@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

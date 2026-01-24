@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const adminParam = searchParams.get('admin') === 'true';
     
     const admin = await getCurrentAdmin();
-    const isAdmin = !!(admin && hasAdminDashboardAccess(admin.discordId));
+    const isAdmin = !!(admin && hasAdminDashboardAccess(admin.id));
     
     const allIntegrations = await loadIntegrations();
     
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     

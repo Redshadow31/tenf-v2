@@ -22,7 +22,7 @@ export async function GET(
     
     // Vérifier si l'utilisateur est admin ou si l'intégration est publiée
     const admin = await getCurrentAdmin();
-    const isAdmin = admin && hasAdminDashboardAccess(admin.discordId);
+    const isAdmin = admin && hasAdminDashboardAccess(admin.id);
     
     if (!integration.isPublished && !isAdmin) {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function PUT(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     
@@ -85,7 +85,7 @@ export async function DELETE(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
     

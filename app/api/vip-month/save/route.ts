@@ -44,7 +44,7 @@ async function getVipMonthStore() {
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.discordId, "write")) {
+    if (!admin || !hasPermission(admin.id, "write")) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.discordId, "read")) {
+    if (!admin || !hasPermission(admin.id, "read")) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 

@@ -10,7 +10,7 @@ import { evaluationRepository, memberRepository, spotlightRepository } from '@/l
 export async function GET(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

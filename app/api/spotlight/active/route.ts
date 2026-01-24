@@ -9,7 +9,7 @@ import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 export async function GET(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
+    if (!admin || !hasAdminDashboardAccess(admin.id)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
