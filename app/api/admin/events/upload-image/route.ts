@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSectionAccess } from '@/lib/requireAdmin';
-import { getStore } from '@netlify/blobs';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 /**
  * POST - Upload une image pour un événement
@@ -41,8 +41,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir le fichier en ArrayBuffer
+    // Convertir le fichier en Blob
     const arrayBuffer = await file.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: file.type });
 
     // Générer un nom de fichier unique
     const timestamp = Date.now();
@@ -50,18 +51,33 @@ export async function POST(request: NextRequest) {
     const extension = file.name.split('.').pop() || 'jpg';
     const fileName = `event-${timestamp}-${randomStr}.${extension}`;
 
-    // Stocker dans Netlify Blobs
-    const store = getStore('tenf-events-images');
-    await store.set(fileName, arrayBuffer, {
-      metadata: {
+    // Upload vers Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from('events-images')
+      .upload(fileName, blob, {
         contentType: file.type,
-        originalName: file.name,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: admin.discordId,
-      },
-    });
+        upsert: true,
+        metadata: {
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: admin.discordId,
+        },
+      });
 
-    // Retourner l'URL de l'image (on utilisera une route API pour servir l'image)
+    if (error) {
+      console.error('[Event Image Upload] Erreur Supabase:', error);
+      return NextResponse.json(
+        { error: 'Erreur lors de l\'upload', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    // Récupérer l'URL publique
+    const { data: { publicUrl } } = supabaseAdmin.storage
+      .from('events-images')
+      .getPublicUrl(fileName);
+
+    // Retourner l'URL publique Supabase (ou l'URL de la route API pour compatibilité)
     const imageUrl = `/api/admin/events/images/${fileName}`;
 
     return NextResponse.json({

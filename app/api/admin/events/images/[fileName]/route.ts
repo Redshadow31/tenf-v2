@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStore } from '@netlify/blobs';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 /**
  * GET - Récupère une image d'événement
@@ -18,11 +18,13 @@ export async function GET(
       );
     }
 
-    // Récupérer l'image depuis Netlify Blobs
-    const store = getStore('tenf-events-images');
-    const image = await store.get(fileName, { type: 'blob' });
+    // Récupérer l'image depuis Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from('events-images')
+      .download(fileName);
 
-    if (!image) {
+    if (error || !data) {
+      console.error('[Event Image API] Erreur Supabase:', error);
       return NextResponse.json(
         { error: 'Image non trouvée' },
         { status: 404 }
@@ -48,23 +50,12 @@ export async function GET(
       default:
         contentType = 'image/jpeg';
     }
-    
-    // Essayer de récupérer le Content-Type depuis les métadonnées si disponible
-    try {
-      const metadata = await store.getMetadata(fileName);
-      if (metadata?.metadata) {
-        const customMetadata = metadata.metadata as Record<string, any>;
-        if (customMetadata.contentType) {
-          contentType = customMetadata.contentType;
-        }
-      }
-    } catch (error) {
-      // Si on ne peut pas récupérer les métadonnées, utiliser le type déterminé par l'extension
-      console.warn('[Event Image API] Impossible de récupérer les métadonnées:', error);
-    }
+
+    // Convertir Blob en ArrayBuffer pour NextResponse
+    const arrayBuffer = await data.arrayBuffer();
 
     // Retourner l'image
-    return new NextResponse(image, {
+    return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
