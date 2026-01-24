@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/requireAdmin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { memberRepository, evaluationRepository } from '@/lib/repositories';
 import { calculateNoteEcrit, calculateNoteVocal, calculateNoteFinale } from '@/lib/discordEngagement';
+import { getDiscordEngagementData } from '@/lib/discordEngagementStorage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,18 +43,41 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Charger les évaluations du mois depuis Supabase
-    const evaluations = await evaluationRepository.findByMonth(monthKey);
+    // PRIORITÉ 1: Charger depuis Netlify Blobs (discordEngagementStorage)
+    // C'est la source de vérité car c'est là que les données sont importées
+    const engagementData = await getDiscordEngagementData(monthKey);
     
-    if (evaluations.length === 0) {
-      return NextResponse.json({ success: true, points: {}, month: monthKey });
-    }
-
-    // Construire la map des points Discord depuis les évaluations
     const pointsMap: Record<string, number> = {};
+    
+    if (engagementData && engagementData.dataByMember) {
+      // Parcourir les données depuis Netlify Blobs
+      Object.entries(engagementData.dataByMember).forEach(([discordId, engagement]) => {
+        const twitchLogin = discordIdToTwitchLogin.get(discordId);
+        if (twitchLogin) {
+          const nbMessages = engagement.nbMessages || 0;
+          const nbVocalMinutes = engagement.nbVocalMinutes || 0;
+          const noteEcrit = calculateNoteEcrit(nbMessages);
+          const noteVocal = calculateNoteVocal(nbVocalMinutes);
+          const noteFinale = calculateNoteFinale(noteEcrit, noteVocal);
+          
+          pointsMap[twitchLogin.toLowerCase()] = noteFinale;
+        }
+      });
+    }
+    
+    // PRIORITÉ 2: Compléter avec les données depuis Supabase (si pas dans Blobs)
+    // Cela permet de récupérer les données qui auraient été migrées
+    const evaluations = await evaluationRepository.findByMonth(monthKey);
     
     evaluations.forEach((evaluation) => {
       if (evaluation.discordEngagement && evaluation.twitchLogin) {
+        const login = evaluation.twitchLogin.toLowerCase();
+        
+        // Ne pas écraser si on a déjà une valeur depuis Blobs
+        if (pointsMap[login] !== undefined) {
+          return;
+        }
+        
         const engagement = evaluation.discordEngagement;
         let noteFinale: number;
         
@@ -71,7 +95,7 @@ export async function GET(request: NextRequest) {
           noteFinale = calculateNoteFinale(noteEcrit, noteVocal);
         }
         
-        pointsMap[evaluation.twitchLogin.toLowerCase()] = noteFinale;
+        pointsMap[login] = noteFinale;
       }
     });
 
