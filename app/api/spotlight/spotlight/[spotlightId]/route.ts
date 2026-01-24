@@ -45,8 +45,8 @@ export async function PUT(
         
         // Chercher le spotlight dans toutes les évaluations
         for (const evaluation of evaluations) {
-          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+          if (evaluation?.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s?.id === spotlightId);
             if (spotlight) {
               oldMonthKey = monthKey;
               spotlightToMove = { ...spotlight };
@@ -117,9 +117,9 @@ export async function PUT(
       if (oldMonthKey) {
         const oldEvaluations = await evaluationRepository.findByMonth(oldMonthKey);
         for (const evaluation of oldEvaluations) {
-          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+          if (evaluation?.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
             const updatedSpotlights = evaluation.spotlightEvaluations.filter(
-              (s: any) => s.id !== spotlightId
+              (s: any) => s?.id !== spotlightId
             );
             
             if (updatedSpotlights.length !== evaluation.spotlightEvaluations.length) {
@@ -169,8 +169,8 @@ export async function PUT(
       
       // Mettre à jour toutes les évaluations en parallèle (évite N+1 queries)
       const updatePromises = evaluations.map(async (evaluation) => {
-        if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
-          const spotlightIndex = evaluation.spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
+        if (evaluation?.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+          const spotlightIndex = evaluation.spotlightEvaluations.findIndex((s: any) => s?.id === spotlightId);
           
           if (spotlightIndex >= 0) {
             const updatedSpotlights = [...evaluation.spotlightEvaluations];
@@ -182,6 +182,7 @@ export async function PUT(
             });
           }
         }
+        return null;
       });
       
       await Promise.all(updatePromises.filter(Boolean));
@@ -242,8 +243,8 @@ export async function GET(
         
         // Chercher le spotlight dans toutes les évaluations
         for (const evaluation of evaluations) {
-          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+          if (evaluation?.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s?.id === spotlightId);
             if (spotlight) {
               return NextResponse.json({ spotlight });
             }
