@@ -1,6 +1,7 @@
-// Repository pour les membres - Utilise Supabase
+// Repository pour les membres - Utilise Supabase avec cache Redis
 import { supabaseAdmin } from '../db/supabase';
 import type { MemberData } from '../memberData';
+import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
 
 export class MemberRepository {
   /**
@@ -9,6 +10,14 @@ export class MemberRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findAll(limit = 100, offset = 0): Promise<MemberData[]> {
+    const cacheKeyStr = cacheKey('members', 'all', limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -17,13 +26,26 @@ export class MemberRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToMemberData);
+    const members = (data || []).map(this.mapToMemberData);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_ALL);
+
+    return members;
   }
 
   /**
    * Récupère un membre par son login Twitch
    */
   async findByTwitchLogin(login: string): Promise<MemberData | null> {
+    const cacheKeyStr = cacheKey('members', 'twitch', login.toLowerCase());
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -35,13 +57,28 @@ export class MemberRepository {
       throw error;
     }
 
-    return data ? this.mapToMemberData(data) : null;
+    const member = data ? this.mapToMemberData(data) : null;
+    
+    // Mettre en cache si trouvé
+    if (member) {
+      await cacheSetWithNamespace('members', cacheKeyStr, member, CACHE_TTL.MEMBERS_ACTIVE);
+    }
+
+    return member;
   }
 
   /**
    * Récupère un membre par son ID Discord
    */
   async findByDiscordId(discordId: string): Promise<MemberData | null> {
+    const cacheKeyStr = cacheKey('members', 'discord', discordId);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -53,13 +90,28 @@ export class MemberRepository {
       throw error;
     }
 
-    return data ? this.mapToMemberData(data) : null;
+    const member = data ? this.mapToMemberData(data) : null;
+    
+    // Mettre en cache si trouvé
+    if (member) {
+      await cacheSetWithNamespace('members', cacheKeyStr, member, CACHE_TTL.MEMBERS_ACTIVE);
+    }
+
+    return member;
   }
 
   /**
    * Récupère les membres actifs avec pagination
    */
   async findActive(limit = 50, offset = 0): Promise<MemberData[]> {
+    const cacheKeyStr = cacheKey('members', 'active', limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -69,7 +121,12 @@ export class MemberRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToMemberData);
+    const members = (data || []).map(this.mapToMemberData);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_ACTIVE);
+
+    return members;
   }
 
   /**
@@ -78,6 +135,14 @@ export class MemberRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findVip(limit = 50, offset = 0): Promise<MemberData[]> {
+    const cacheKeyStr = cacheKey('members', 'vip', limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -88,7 +153,12 @@ export class MemberRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToMemberData);
+    const members = (data || []).map(this.mapToMemberData);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_VIP);
+
+    return members;
   }
 
   /**
@@ -98,6 +168,14 @@ export class MemberRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findByRole(role: string, limit = 50, offset = 0): Promise<MemberData[]> {
+    const cacheKeyStr = cacheKey('members', 'role', role, limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<MemberData[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
@@ -108,7 +186,12 @@ export class MemberRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToMemberData);
+    const members = (data || []).map(this.mapToMemberData);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_ACTIVE);
+
+    return members;
   }
 
   /**
@@ -125,7 +208,12 @@ export class MemberRepository {
 
     if (error) throw error;
 
-    return this.mapToMemberData(data);
+    const newMember = this.mapToMemberData(data);
+    
+    // Invalider le cache des membres
+    await cacheInvalidateNamespace('members');
+
+    return newMember;
   }
 
   /**
@@ -145,7 +233,12 @@ export class MemberRepository {
     if (error) throw error;
     if (!data) throw new Error(`Member not found: ${login}`);
 
-    return this.mapToMemberData(data);
+    const updatedMember = this.mapToMemberData(data);
+    
+    // Invalider le cache des membres
+    await cacheInvalidateNamespace('members');
+
+    return updatedMember;
   }
 
   /**
@@ -158,19 +251,35 @@ export class MemberRepository {
       .eq('twitch_login', login.toLowerCase());
 
     if (error) throw error;
+    
+    // Invalider le cache des membres
+    await cacheInvalidateNamespace('members');
   }
 
   /**
    * Compte le nombre total de membres actifs
    */
   async countActive(): Promise<number> {
+    const cacheKeyStr = cacheKey('members', 'count', 'active');
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<number>(cacheKeyStr);
+    if (cached !== null) {
+      return cached;
+    }
+
     const { count, error } = await supabaseAdmin
       .from('members')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
 
     if (error) throw error;
-    return count || 0;
+    const result = count || 0;
+    
+    // Mettre en cache pour 1 minute (stats changent moins souvent)
+    await cacheSet(cacheKeyStr, result, 60);
+
+    return result;
   }
 
   /**

@@ -3,6 +3,10 @@ import { requireSectionAccess } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
+// Activer le cache ISR de 60 secondes pour les requêtes publiques
+// Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
+export const revalidate = 60;
+
 /**
  * GET - Récupère tous les événements publiés (public) ou tous les événements (admin)
  */
@@ -37,7 +41,21 @@ export async function GET(request: NextRequest) {
     // Trier par date (plus récent en premier)
     formattedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    return NextResponse.json({ events: formattedEvents });
+    const response = NextResponse.json({ events: formattedEvents });
+    
+    // Configurer les headers de cache ISR uniquement pour les requêtes publiques
+    // Les requêtes admin ne sont pas mises en cache
+    if (!isAdmin) {
+      response.headers.set(
+        'Cache-Control',
+        'public, s-maxage=60, stale-while-revalidate=300'
+      );
+    } else {
+      // Désactiver le cache pour les requêtes admin
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+    
+    return response;
   } catch (error) {
     console.error('[Events API] Erreur GET:', error);
     return NextResponse.json(

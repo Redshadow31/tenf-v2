@@ -71,27 +71,32 @@
 **Problème** : Certaines routes sont appelées fréquemment sans cache
 
 **Actions** :
-- [ ] **Activer ISR sur les routes publiques**
+- [x] **Activer ISR sur les routes publiques** ✅ **APPLIQUÉ**
   ```typescript
   // app/api/members/public/route.ts
   export const revalidate = 60; // Revalidation toutes les 60 secondes
   ```
+  - ✅ `/api/members/public` : revalidate = 60s
+  - ✅ `/api/vip-members` : revalidate = 30s
+  - ✅ `/api/stats` : revalidate = 30s
+  - ✅ `/api/home` : revalidate = 30s
+  - ✅ `/api/events` : revalidate = 60s (GET public uniquement)
 
-- [ ] **Utiliser Redis (Upstash) pour le cache**
+- [x] **Utiliser Redis (Upstash) pour le cache** ✅ **IMPLÉMENTÉ**
   - Cache des données fréquemment accédées (membres, événements)
   - Cache des résultats de requêtes complexes
   - TTL adaptatif selon le type de données
 
-- [ ] **Implémenter un système de cache dans les repositories**
+- [x] **Implémenter un système de cache dans les repositories** ✅ **IMPLÉMENTÉ**
   ```typescript
-  // Exemple : cache avec Redis
+  // Exemple : cache avec Redis (déjà implémenté)
   async findActive(limit = 50, offset = 0): Promise<MemberData[]> {
-    const cacheKey = `members:active:${limit}:${offset}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    const cacheKey = cacheKey('members', 'active', limit, offset);
+    const cached = await cacheGet<MemberData[]>(cacheKey);
+    if (cached) return cached;
     
     const data = await supabaseAdmin.from('members')...;
-    await redis.setex(cacheKey, 300, JSON.stringify(data)); // 5 min
+    await cacheSetWithNamespace('members', cacheKey, data, CACHE_TTL.MEMBERS_ACTIVE);
     return data;
   }
   ```

@@ -1,5 +1,6 @@
-// Repository pour les événements - Utilise Supabase
+// Repository pour les événements - Utilise Supabase avec cache Redis
 import { supabaseAdmin } from '../db/supabase';
+import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
 
 export interface Event {
   id: string;
@@ -34,6 +35,14 @@ export class EventRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findAll(limit = 50, offset = 0): Promise<Event[]> {
+    const cacheKeyStr = cacheKey('events', 'all', limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<Event[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
@@ -42,13 +51,26 @@ export class EventRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToEvent);
+    const events = (data || []).map(this.mapToEvent);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_ALL);
+
+    return events;
   }
 
   /**
    * Récupère un événement par son ID
    */
   async findById(id: string): Promise<Event | null> {
+    const cacheKeyStr = cacheKey('events', 'id', id);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<Event>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
@@ -60,7 +82,14 @@ export class EventRepository {
       throw error;
     }
 
-    return data ? this.mapToEvent(data) : null;
+    const event = data ? this.mapToEvent(data) : null;
+    
+    // Mettre en cache si trouvé
+    if (event) {
+      await cacheSetWithNamespace('events', cacheKeyStr, event, CACHE_TTL.EVENTS_PUBLISHED);
+    }
+
+    return event;
   }
 
   /**
@@ -69,6 +98,14 @@ export class EventRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findPublished(limit = 20, offset = 0): Promise<Event[]> {
+    const cacheKeyStr = cacheKey('events', 'published', limit, offset);
+    
+    // Essayer de récupérer du cache
+    const cached = await cacheGet<Event[]>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
@@ -78,7 +115,12 @@ export class EventRepository {
 
     if (error) throw error;
 
-    return (data || []).map(this.mapToEvent);
+    const events = (data || []).map(this.mapToEvent);
+    
+    // Mettre en cache avec namespace
+    await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_PUBLISHED);
+
+    return events;
   }
 
   /**
@@ -115,7 +157,12 @@ export class EventRepository {
 
     if (error) throw error;
 
-    return this.mapToEvent(data);
+    const newEvent = this.mapToEvent(data);
+    
+    // Invalider le cache des événements
+    await cacheInvalidateNamespace('events');
+
+    return newEvent;
   }
 
   /**
@@ -135,7 +182,12 @@ export class EventRepository {
     if (error) throw error;
     if (!data) throw new Error(`Event not found: ${id}`);
 
-    return this.mapToEvent(data);
+    const updatedEvent = this.mapToEvent(data);
+    
+    // Invalider le cache des événements
+    await cacheInvalidateNamespace('events');
+
+    return updatedEvent;
   }
 
   /**
@@ -148,6 +200,9 @@ export class EventRepository {
       .eq('id', id);
 
     if (error) throw error;
+    
+    // Invalider le cache des événements
+    await cacheInvalidateNamespace('events');
   }
 
   /**
