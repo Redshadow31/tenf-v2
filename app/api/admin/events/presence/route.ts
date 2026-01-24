@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
         const monthEvaluations = await evaluationRepository.findByMonth(monthKey);
         
         // Trouver les spotlights du mois dans les évaluations
-        const allSpotlights = monthEvaluations.flatMap(eval => eval.spotlightEvaluations || []);
+        const allSpotlights = monthEvaluations.flatMap(evaluation => evaluation.spotlightEvaluations || []);
         
         // Trouver le spotlight correspondant (le plus proche de la date de l'événement)
         const eventTime = eventDate.getTime();
@@ -361,7 +361,7 @@ export async function DELETE(request: NextRequest) {
         const monthEvaluations = await evaluationRepository.findByMonth(monthKey);
         
         // Trouver les spotlights du mois dans les évaluations
-        const allSpotlights = monthEvaluations.flatMap(eval => eval.spotlightEvaluations || []);
+        const allSpotlights = monthEvaluations.flatMap(evaluation => evaluation.spotlightEvaluations || []);
         
         // Trouver le spotlight correspondant
         const eventTime = eventDate.getTime();

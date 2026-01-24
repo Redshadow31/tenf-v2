@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
     const spotlightBonus: Record<string, number> = {};
     let lastUpdated: string | undefined = undefined;
 
-    evaluations.forEach(eval => {
+    evaluations.forEach(evaluation => {
       // Collecter les spotlightEvaluations (dédupliqués par ID)
-      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-        eval.spotlightEvaluations.forEach((spotlight: any) => {
+      if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+        evaluation.spotlightEvaluations.forEach((spotlight: any) => {
           if (!spotlights.find(s => s.id === spotlight.id)) {
             spotlights.push(spotlight);
           }
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Collecter les eventEvaluations (dédupliqués par ID)
-      if (eval.eventEvaluations && Array.isArray(eval.eventEvaluations)) {
-        eval.eventEvaluations.forEach((event: any) => {
+      if (evaluation.eventEvaluations && Array.isArray(evaluation.eventEvaluations)) {
+        evaluation.eventEvaluations.forEach((event: any) => {
           if (!events.find(e => e.id === event.id)) {
             events.push(event);
           }
@@ -47,18 +47,18 @@ export async function GET(request: NextRequest) {
       }
 
       // Collecter les raidPoints
-      if (eval.raidPoints !== undefined && eval.raidPoints !== null) {
-        raidPoints[eval.twitchLogin.toLowerCase()] = eval.raidPoints;
+      if (evaluation.raidPoints !== undefined && evaluation.raidPoints !== null) {
+        raidPoints[evaluation.twitchLogin.toLowerCase()] = evaluation.raidPoints;
       }
 
       // Collecter les spotlightBonus
-      if (eval.spotlightBonus !== undefined && eval.spotlightBonus !== null) {
-        spotlightBonus[eval.twitchLogin.toLowerCase()] = eval.spotlightBonus;
+      if (evaluation.spotlightBonus !== undefined && evaluation.spotlightBonus !== null) {
+        spotlightBonus[evaluation.twitchLogin.toLowerCase()] = evaluation.spotlightBonus;
       }
 
       // Garder la date de mise à jour la plus récente
-      if (eval.updatedAt && (!lastUpdated || eval.updatedAt.toISOString() > lastUpdated)) {
-        lastUpdated = eval.updatedAt.toISOString();
+      if (evaluation.updatedAt && (!lastUpdated || evaluation.updatedAt.toISOString() > lastUpdated)) {
+        lastUpdated = evaluation.updatedAt.toISOString();
       }
     });
 
@@ -137,19 +137,19 @@ export async function POST(request: NextRequest) {
         // Mettre à jour toutes les évaluations qui contiennent cette spotlight
         const evaluations = await evaluationRepository.findByMonth(month);
         
-        for (const eval of evaluations) {
-          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const spotlightIndex = eval.spotlightEvaluations.findIndex((s: any) => s.id === payload.id);
+        for (const evaluation of evaluations) {
+          if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+            const spotlightIndex = evaluation.spotlightEvaluations.findIndex((s: any) => s.id === payload.id);
             if (spotlightIndex >= 0) {
-              eval.spotlightEvaluations[spotlightIndex] = {
-                ...eval.spotlightEvaluations[spotlightIndex],
+              evaluation.spotlightEvaluations[spotlightIndex] = {
+                ...evaluation.spotlightEvaluations[spotlightIndex],
                 ...payload,
               };
 
               await evaluationRepository.upsert({
                 month: new Date(monthDate),
-                twitchLogin: eval.twitchLogin,
-                spotlightEvaluations: eval.spotlightEvaluations,
+                twitchLogin: evaluation.twitchLogin,
+                spotlightEvaluations: evaluation.spotlightEvaluations,
                 updatedAt: new Date(),
               });
             }
@@ -193,19 +193,19 @@ export async function POST(request: NextRequest) {
         // Mettre à jour toutes les évaluations qui contiennent cet événement
         const evaluations = await evaluationRepository.findByMonth(month);
         
-        for (const eval of evaluations) {
-          if (eval.eventEvaluations && Array.isArray(eval.eventEvaluations)) {
-            const eventIndex = eval.eventEvaluations.findIndex((e: any) => e.id === payload.id);
+        for (const evaluation of evaluations) {
+          if (evaluation.eventEvaluations && Array.isArray(evaluation.eventEvaluations)) {
+            const eventIndex = evaluation.eventEvaluations.findIndex((e: any) => e.id === payload.id);
             if (eventIndex >= 0) {
-              eval.eventEvaluations[eventIndex] = {
-                ...eval.eventEvaluations[eventIndex],
+              evaluation.eventEvaluations[eventIndex] = {
+                ...evaluation.eventEvaluations[eventIndex],
                 ...payload,
               };
 
               await evaluationRepository.upsert({
                 month: new Date(monthDate),
-                twitchLogin: eval.twitchLogin,
-                eventEvaluations: eval.eventEvaluations,
+                twitchLogin: evaluation.twitchLogin,
+                eventEvaluations: evaluation.eventEvaluations,
                 updatedAt: new Date(),
               });
             }
@@ -226,29 +226,29 @@ export async function POST(request: NextRequest) {
     const spotlightBonus: Record<string, number> = {};
     let lastUpdated: string | undefined = undefined;
 
-    evaluations.forEach(eval => {
-      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-        eval.spotlightEvaluations.forEach((spotlight: any) => {
+    evaluations.forEach(evaluation => {
+      if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+        evaluation.spotlightEvaluations.forEach((spotlight: any) => {
           if (!spotlights.find(s => s.id === spotlight.id)) {
             spotlights.push(spotlight);
           }
         });
       }
-      if (eval.eventEvaluations && Array.isArray(eval.eventEvaluations)) {
-        eval.eventEvaluations.forEach((event: any) => {
+      if (evaluation.eventEvaluations && Array.isArray(evaluation.eventEvaluations)) {
+        evaluation.eventEvaluations.forEach((event: any) => {
           if (!events.find(e => e.id === event.id)) {
             events.push(event);
           }
         });
       }
-      if (eval.raidPoints !== undefined && eval.raidPoints !== null) {
-        raidPoints[eval.twitchLogin.toLowerCase()] = eval.raidPoints;
+      if (evaluation.raidPoints !== undefined && evaluation.raidPoints !== null) {
+        raidPoints[evaluation.twitchLogin.toLowerCase()] = evaluation.raidPoints;
       }
-      if (eval.spotlightBonus !== undefined && eval.spotlightBonus !== null) {
-        spotlightBonus[eval.twitchLogin.toLowerCase()] = eval.spotlightBonus;
+      if (evaluation.spotlightBonus !== undefined && evaluation.spotlightBonus !== null) {
+        spotlightBonus[evaluation.twitchLogin.toLowerCase()] = evaluation.spotlightBonus;
       }
-      if (eval.updatedAt && (!lastUpdated || eval.updatedAt.toISOString() > lastUpdated)) {
-        lastUpdated = eval.updatedAt.toISOString();
+      if (evaluation.updatedAt && (!lastUpdated || evaluation.updatedAt.toISOString() > lastUpdated)) {
+        lastUpdated = evaluation.updatedAt.toISOString();
       }
     });
 

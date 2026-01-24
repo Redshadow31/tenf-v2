@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
     // Construire la map des points Discord depuis les évaluations
     const pointsMap: Record<string, number> = {};
     
-    evaluations.forEach((eval) => {
-      if (eval.discordEngagement && eval.twitchLogin) {
-        const engagement = eval.discordEngagement;
+    evaluations.forEach((evaluation) => {
+      if (evaluation.discordEngagement && evaluation.twitchLogin) {
+        const engagement = evaluation.discordEngagement;
         let noteFinale: number;
         
         // Si noteFinale existe déjà dans discordEngagement, l'utiliser
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
           noteFinale = calculateNoteFinale(noteEcrit, noteVocal);
         }
         
-        pointsMap[eval.twitchLogin.toLowerCase()] = noteFinale;
+        pointsMap[evaluation.twitchLogin.toLowerCase()] = noteFinale;
       }
     });
 

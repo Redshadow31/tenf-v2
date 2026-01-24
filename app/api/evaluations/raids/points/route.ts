@@ -115,14 +115,14 @@ export async function GET(request: NextRequest) {
     const evaluations = await evaluationRepository.findByMonth(monthKey);
     const manualPointsMap = new Map<string, number>();
     
-    evaluations.forEach((eval) => {
+    evaluations.forEach((evaluation) => {
       // Priorité 1: raidPointsManual (champ dédié aux points manuels)
-      if (eval.raidPointsManual !== undefined && eval.raidPointsManual !== null) {
-        manualPointsMap.set(eval.twitchLogin.toLowerCase(), eval.raidPointsManual);
+      if (evaluation.raidPointsManual !== undefined && evaluation.raidPointsManual !== null) {
+        manualPointsMap.set(evaluation.twitchLogin.toLowerCase(), evaluation.raidPointsManual);
       }
       // Priorité 2: raidNotes.manualPoints (ancien système de notes)
-      else if (eval.raidNotes?.manualPoints !== undefined && eval.raidNotes.manualPoints !== null) {
-        manualPointsMap.set(eval.twitchLogin.toLowerCase(), eval.raidNotes.manualPoints);
+      else if (evaluation.raidNotes?.manualPoints !== undefined && evaluation.raidNotes.manualPoints !== null) {
+        manualPointsMap.set(evaluation.twitchLogin.toLowerCase(), evaluation.raidNotes.manualPoints);
       }
     });
 

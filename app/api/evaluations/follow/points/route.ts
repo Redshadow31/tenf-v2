@@ -133,9 +133,9 @@ export async function GET(request: NextRequest) {
     
     // Convertir les followValidations en format de feuilles de validation
     const validations: any[] = [];
-    evaluations.forEach(eval => {
-      if (eval.followValidations && eval.followValidations.length > 0) {
-        eval.followValidations.forEach(validation => {
+    evaluations.forEach(evaluation => {
+      if (evaluation.followValidations && evaluation.followValidations.length > 0) {
+        evaluation.followValidations.forEach(validation => {
           // Créer une feuille de validation au format attendu par computeScores
           const sheet: any = {
             staffDiscordId: validation.staffDiscordId,

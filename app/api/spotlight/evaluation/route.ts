@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
           const checkMonthKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}`;
           const evaluations = await evaluationRepository.findByMonth(checkMonthKey);
           
-          for (const eval of evaluations) {
-            if (eval.spotlightEvaluations) {
-              const matchingSpotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+          for (const evaluation of evaluations) {
+            if (evaluation.spotlightEvaluations) {
+              const matchingSpotlight = evaluation.spotlightEvaluations.find((s: any) => s.id === spotlightId);
               if (matchingSpotlight) {
                 targetSpotlight = {
                   id: matchingSpotlight.id,

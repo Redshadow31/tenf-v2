@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
 
     // Extraire les spotlights validés depuis les évaluations
     const allSpotlights: any[] = [];
-    evaluations.forEach((eval) => {
-      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-        eval.spotlightEvaluations.forEach((se: any) => {
+    evaluations.forEach((evaluation) => {
+      if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+        evaluation.spotlightEvaluations.forEach((se: any) => {
           if (se.validated) {
             // Vérifier si ce spotlight n'est pas déjà dans la liste
             const exists = allSpotlights.some(s => s.id === se.id);

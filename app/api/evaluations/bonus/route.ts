@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
       createdAt: string;
     }> = [];
 
-    evaluations.forEach(eval => {
-      if (eval.bonuses && Array.isArray(eval.bonuses)) {
-        eval.bonuses.forEach((bonus: any) => {
+    evaluations.forEach(evaluation => {
+      if (evaluation.bonuses && Array.isArray(evaluation.bonuses)) {
+        evaluation.bonuses.forEach((bonus: any) => {
           bonuses.push({
             ...bonus,
-            twitchLogin: eval.twitchLogin, // S'assurer que le twitchLogin est présent
+            twitchLogin: evaluation.twitchLogin, // S'assurer que le twitchLogin est présent
           });
         });
       }

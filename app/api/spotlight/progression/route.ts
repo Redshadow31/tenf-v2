@@ -37,9 +37,9 @@ export async function GET() {
         
         // Agréger les spotlightEvaluations depuis toutes les évaluations
         const spotlightsMap = new Map<string, any>();
-        evaluations.forEach(eval => {
-          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            eval.spotlightEvaluations.forEach((spotlight: any) => {
+        evaluations.forEach(evaluation => {
+          if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+            evaluation.spotlightEvaluations.forEach((spotlight: any) => {
               if (spotlight.validated && !spotlightsMap.has(spotlight.id)) {
                 spotlightsMap.set(spotlight.id, spotlight);
               }

@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     const notes: Record<string, string> = {};
     let lastUpdated: string | undefined = undefined;
     
-    evaluations.forEach(eval => {
-      if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-        eval.spotlightEvaluations.forEach((spotlightEval: any) => {
+    evaluations.forEach(evaluation => {
+      if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+        evaluation.spotlightEvaluations.forEach((spotlightEval: any) => {
           if (spotlightEval.members && Array.isArray(spotlightEval.members)) {
             spotlightEval.members.forEach((member: any) => {
               if (member.twitchLogin && member.comment) {

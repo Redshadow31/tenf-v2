@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     const notes: Record<string, { note?: string; manualPoints?: number; lastUpdated?: string; updatedBy?: string }> = {};
     let lastUpdated: string | undefined = undefined;
     
-    evaluations.forEach(eval => {
-      if (eval.raidNotes && Array.isArray(eval.raidNotes)) {
-        eval.raidNotes.forEach((raidNote: any) => {
+    evaluations.forEach(evaluation => {
+      if (evaluation.raidNotes && Array.isArray(evaluation.raidNotes)) {
+        evaluation.raidNotes.forEach((raidNote: any) => {
           if (raidNote.twitchLogin) {
             notes[raidNote.twitchLogin.toLowerCase()] = {
               note: raidNote.note,

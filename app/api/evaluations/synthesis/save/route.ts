@@ -196,12 +196,12 @@ export async function GET(request: NextRequest) {
     // Construire l'objet finalNotes au format attendu
     const finalNotes: Record<string, { finalNote?: number; savedAt: string; savedBy: string }> = {};
     
-    evaluations.forEach((eval) => {
-      if (eval.finalNote !== undefined && eval.finalNote !== null) {
-        finalNotes[eval.twitchLogin.toLowerCase()] = {
-          finalNote: eval.finalNote,
-          savedAt: eval.finalNoteSavedAt?.toISOString() || new Date().toISOString(),
-          savedBy: eval.finalNoteSavedBy || '',
+    evaluations.forEach((evaluation) => {
+      if (evaluation.finalNote !== undefined && evaluation.finalNote !== null) {
+        finalNotes[evaluation.twitchLogin.toLowerCase()] = {
+          finalNote: evaluation.finalNote,
+          savedAt: evaluation.finalNoteSavedAt?.toISOString() || new Date().toISOString(),
+          savedBy: evaluation.finalNoteSavedBy || '',
         };
       }
     });

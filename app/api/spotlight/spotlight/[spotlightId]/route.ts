@@ -44,9 +44,9 @@ export async function PUT(
         const evaluations = await evaluationRepository.findByMonth(monthKey);
         
         // Chercher le spotlight dans toutes les évaluations
-        for (const eval of evaluations) {
-          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const spotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+        for (const evaluation of evaluations) {
+          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s.id === spotlightId);
             if (spotlight) {
               oldMonthKey = monthKey;
               spotlightToMove = { ...spotlight };
@@ -116,15 +116,15 @@ export async function PUT(
       // 1. Supprimer de l'ancien mois
       if (oldMonthKey) {
         const oldEvaluations = await evaluationRepository.findByMonth(oldMonthKey);
-        for (const eval of oldEvaluations) {
-          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const updatedSpotlights = eval.spotlightEvaluations.filter(
+        for (const evaluation of oldEvaluations) {
+          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const updatedSpotlights = evaluation.spotlightEvaluations.filter(
               (s: any) => s.id !== spotlightId
             );
             
-            if (updatedSpotlights.length !== eval.spotlightEvaluations.length) {
+            if (updatedSpotlights.length !== evaluation.spotlightEvaluations.length) {
               // Le spotlight a été trouvé et supprimé
-              await evaluationRepository.update(eval.id, {
+              await evaluationRepository.update(evaluation.id, {
                 spotlightEvaluations: updatedSpotlights,
                 updatedAt: new Date(),
               });
@@ -168,15 +168,15 @@ export async function PUT(
       const evaluations = await evaluationRepository.findByMonth(newMonthKey || oldMonthKey || '');
       
       // Mettre à jour toutes les évaluations en parallèle (évite N+1 queries)
-      const updatePromises = evaluations.map(async (eval) => {
-        if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-          const spotlightIndex = eval.spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
+      const updatePromises = evaluations.map(async (evaluation) => {
+        if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
+          const spotlightIndex = evaluation.spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
           
           if (spotlightIndex >= 0) {
-            const updatedSpotlights = [...eval.spotlightEvaluations];
+            const updatedSpotlights = [...evaluation.spotlightEvaluations];
             updatedSpotlights[spotlightIndex] = spotlightToMove;
             
-            return evaluationRepository.update(eval.id, {
+            return evaluationRepository.update(evaluation.id, {
               spotlightEvaluations: updatedSpotlights,
               updatedAt: new Date(),
             });
@@ -241,9 +241,9 @@ export async function GET(
         const evaluations = await evaluationRepository.findByMonth(monthKey);
         
         // Chercher le spotlight dans toutes les évaluations
-        for (const eval of evaluations) {
-          if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
-            const spotlight = eval.spotlightEvaluations.find((s: any) => s.id === spotlightId);
+        for (const evaluation of evaluations) {
+          if (evaluation.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
+            const spotlight = evaluation.spotlightEvaluations.find((s: any) => s.id === spotlightId);
             if (spotlight) {
               return NextResponse.json({ spotlight });
             }
