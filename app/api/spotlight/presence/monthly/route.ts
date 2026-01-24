@@ -75,10 +75,7 @@ export async function GET(request: NextRequest) {
       presenceCount: spotlight.members?.filter((m: any) => m.present).length || 0,
     }));
 
-    // Récupérer les évaluations streamer depuis Supabase
-    const streamerScores: Array<{ id: string; date: string; streamer: string; score: number; maxScore: number }> = [];
-    
-    // Pour chaque spotlight, récupérer l'évaluation depuis spotlight_evaluations en parallèle (évite N+1 queries)
+    // Récupérer les évaluations streamer depuis Supabase en parallèle (évite N+1 queries)
     const evaluationPromises = spotlights.map(async (spotlight) => {
       try {
         const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
