@@ -87,6 +87,7 @@ export async function getCurrentAdmin() {
 
     return {
       id: userId,
+      discordId: userId, // Alias de id pour compatibilité (id est le Discord ID dans ce système)
       username: username || "Unknown",
       role,
     };

@@ -58,7 +58,7 @@ export async function PUT(
       maxScore,
       moderatorComments: moderatorComments || '',
       evaluatedAt: new Date(), // Mettre à jour la date d'évaluation
-      evaluatedBy: admin.discordId, // Mettre à jour l'évaluateur
+      evaluatedBy: admin.id, // Mettre à jour l'évaluateur
       validated: existingEvaluation.validated,
       validatedAt: existingEvaluation.validatedAt,
     });

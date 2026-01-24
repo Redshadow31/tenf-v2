@@ -7,6 +7,7 @@ import { logAdminAction } from "./adminAudit";
 
 export interface AdminUser {
   id: string;
+  discordId: string; // Alias de id pour compatibilité (id est le Discord ID dans ce système)
   username: string;
   role: AdminRole;
 }
@@ -46,6 +47,7 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
 
     return {
       id: userId,
+      discordId: userId, // Alias de id pour compatibilité (id est le Discord ID dans ce système)
       username: username || "Unknown",
       role,
     };
