@@ -103,6 +103,9 @@ class Logger {
    */
   private async saveToSupabase(entry: LogEntry): Promise<void> {
     try {
+      // Extraire la route depuis entry.route ou entry.details.route
+      const route = entry.route || entry.details?.route || null;
+      
       const { error } = await supabaseAdmin.from('structured_logs').insert({
         timestamp: entry.timestamp,
         category: entry.category,
@@ -113,7 +116,7 @@ class Logger {
         actor_role: entry.metadata?.actorRole,
         resource_type: entry.metadata?.resourceType,
         resource_id: entry.metadata?.resourceId,
-        route: entry.route,
+        route: route,
         duration_ms: entry.duration,
         status_code: entry.metadata?.statusCode,
       });
@@ -466,9 +469,19 @@ export const logApi = {
   route: (method: string, path: string, status: number, duration?: number, userId?: string, details?: any) => 
     logger.route(method, path, status, duration, userId, details),
   error: (path: string, error: Error, userId?: string) => 
-    logger.error(LogCategory.API_ERROR, `API Error: ${path}`, { path, error: error.message, stack: error.stack, userId }),
+    logger.error(LogCategory.API_ERROR, `API Error: ${path}`, { 
+      path, 
+      error: error.message, 
+      stack: error.stack, 
+      userId,
+      route: path, // Inclure la route dans les détails
+    }),
   success: (path: string, duration?: number) => 
-    logger.info(LogCategory.API_SUCCESS, `API Success: ${path}`, { path, duration }),
+    logger.info(LogCategory.API_SUCCESS, `API Success: ${path}`, { 
+      path, 
+      duration,
+      route: path, // Inclure la route dans les détails
+    }),
 };
 
 export const logDatabase = {
