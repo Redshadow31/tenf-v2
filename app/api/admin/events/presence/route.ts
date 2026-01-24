@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
         if (matchingSpotlight) {
           // Mettre à jour la présence dans le spotlight
           const memberIndex = matchingSpotlight.members.findIndex(
-            m => m.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
+            (m: any) => m.twitchLogin.toLowerCase() === member.twitchLogin.toLowerCase()
           );
 
           if (memberIndex !== -1) {
