@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
         points: Number(bonus.points) || 0,
         reason: bonus.reason || '',
         type: bonus.type || 'autre',
-        createdBy: admin.id,
+        createdBy: admin.discordId,
         createdAt: bonus.createdAt || new Date().toISOString(),
       };
 
