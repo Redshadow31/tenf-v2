@@ -70,31 +70,32 @@ export default function LivesPage() {
           },
         });
         
-        if (!membersResponse.ok) {
-          // Essayer de récupérer le message d'erreur de l'API
-          let errorMessage = "Failed to fetch members";
-          try {
-            const errorData = await membersResponse.json();
-            errorMessage = errorData.error || errorMessage;
-            console.error('[Lives Page] Erreur API membres:', errorMessage, errorData);
-          } catch (e) {
-            console.error('[Lives Page] Erreur API membres (status):', membersResponse.status, membersResponse.statusText);
-          }
-          throw new Error(errorMessage);
-        }
-        
+        // L'API retourne toujours 200 maintenant, même en cas d'erreur
         const membersData = await membersResponse.json();
         const activeMembers = membersData.members || [];
         
         if (!Array.isArray(activeMembers)) {
           console.error('[Lives Page] Format de données invalide:', membersData);
-          throw new Error("Format de données invalide depuis l'API");
+          setError("Format de données invalide depuis l'API");
+          setLiveMembers([]);
+          setLoading(false);
+          return;
         }
         
-        // Si l'API retourne une erreur mais avec une liste vide, afficher un message d'avertissement
-        if (activeMembers.length === 0 && membersData.error) {
-          console.warn('[Lives Page] Aucun membre récupéré:', membersData.error);
+        // Si l'API retourne une erreur (même avec status 200), afficher un message d'avertissement
+        if (membersData.error) {
+          console.warn('[Lives Page] Erreur API membres:', membersData.error);
           setError(`Impossible de charger les membres: ${membersData.error}`);
+        }
+        
+        // Si aucun membre n'a été récupéré, afficher un message
+        if (activeMembers.length === 0) {
+          if (!membersData.error) {
+            setError("Aucun membre actif trouvé");
+          }
+          setLiveMembers([]);
+          setLoading(false);
+          return;
         }
         
         const twitchLogins = activeMembers

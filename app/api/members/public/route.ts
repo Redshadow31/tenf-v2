@@ -60,40 +60,75 @@ export async function GET() {
     
     // Mapper vers un format simplifié pour la page publique avec avatars Twitch
     const publicMembers = activeMembers.map((member) => {
-      // Récupérer l'avatar depuis le map (déjà récupéré en batch)
-      let avatar: string | undefined = avatarMap.get(member.twitchLogin.toLowerCase());
-      
-      // Si pas d'avatar Twitch, utiliser Discord en fallback
-      if (!avatar && member.discordId) {
-        // Utiliser l'avatar Discord par défaut (sans hash, Discord générera un avatar par défaut)
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+      try {
+        // Récupérer l'avatar depuis le map (déjà récupéré en batch)
+        let avatar: string | undefined = avatarMap.get(member.twitchLogin.toLowerCase());
+        
+        // Si pas d'avatar Twitch, utiliser Discord en fallback
+        if (!avatar && member.discordId) {
+          try {
+            // Utiliser l'avatar Discord par défaut (sans hash, Discord générera un avatar par défaut)
+            avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
+          } catch (e) {
+            // Ignorer les erreurs de parsing Discord ID
+          }
+        }
+
+        // Calculer le badge VIP+N si le membre est VIP
+        let vipBadge: string | undefined = undefined;
+        try {
+          vipBadge = member.isVip ? getVipBadgeText(member.twitchLogin) : undefined;
+        } catch (e) {
+          console.warn(`[Members Public API] Erreur récupération badge VIP pour ${member.twitchLogin}:`, e);
+        }
+
+        // Générer la description (personnalisée ou générique)
+        let description: string | undefined = undefined;
+        try {
+          description = getMemberDescription({
+            description: member.description,
+            displayName: member.displayName || member.siteUsername || member.twitchLogin,
+            role: member.role,
+          });
+        } catch (e) {
+          console.warn(`[Members Public API] Erreur génération description pour ${member.twitchLogin}:`, e);
+          description = member.description || undefined;
+        }
+
+        return {
+          twitchLogin: member.twitchLogin,
+          twitchUrl: member.twitchUrl,
+          displayName: member.displayName || member.siteUsername || member.twitchLogin,
+          role: member.role,
+          isVip: member.isVip,
+          isActive: member.isActive, // Inclure isActive pour les filtres côté client
+          vipBadge: vipBadge,
+          badges: member.badges || [],
+          discordId: member.discordId,
+          discordUsername: member.discordUsername,
+          avatar: avatar,
+          description: description,
+          createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
+        };
+      } catch (memberError) {
+        console.error(`[Members Public API] Erreur mapping membre ${member.twitchLogin}:`, memberError);
+        // Retourner un membre minimal en cas d'erreur
+        return {
+          twitchLogin: member.twitchLogin || '',
+          twitchUrl: member.twitchUrl || '',
+          displayName: member.displayName || member.siteUsername || member.twitchLogin || 'Unknown',
+          role: member.role || 'Affilié',
+          isVip: member.isVip || false,
+          isActive: member.isActive !== false,
+          vipBadge: undefined,
+          badges: member.badges || [],
+          discordId: member.discordId,
+          discordUsername: member.discordUsername,
+          avatar: undefined,
+          description: member.description,
+          createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
+        };
       }
-
-      // Calculer le badge VIP+N si le membre est VIP
-      const vipBadge = member.isVip ? getVipBadgeText(member.twitchLogin) : undefined;
-
-      // Générer la description (personnalisée ou générique)
-      const description = getMemberDescription({
-        description: member.description,
-        displayName: member.displayName || member.siteUsername || member.twitchLogin,
-        role: member.role,
-      });
-
-      return {
-        twitchLogin: member.twitchLogin,
-        twitchUrl: member.twitchUrl,
-        displayName: member.displayName || member.siteUsername || member.twitchLogin,
-        role: member.role,
-        isVip: member.isVip,
-        isActive: member.isActive, // Inclure isActive pour les filtres côté client
-        vipBadge: vipBadge,
-        badges: member.badges || [],
-        discordId: member.discordId,
-        discordUsername: member.discordUsername,
-        avatar: avatar,
-        description: description,
-        createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
-      };
     });
 
     const response = NextResponse.json({ 
@@ -116,10 +151,11 @@ export async function GET() {
     const duration = Date.now() - startTime;
     logApi.error('/api/members/public', error instanceof Error ? error : new Error(String(error)));
     
-    // Retourner une réponse d'erreur détaillée en développement, générique en production
+    // Retourner une réponse d'erreur mais avec status 200 pour permettre au client de continuer
+    // Le client pourra afficher un message d'erreur mais la page ne plantera pas
     const errorMessage = process.env.NODE_ENV === 'development' 
       ? (error instanceof Error ? error.message : 'Unknown error')
-      : "Erreur serveur";
+      : "Erreur temporaire de récupération des membres";
     
     return NextResponse.json(
       { 
@@ -130,7 +166,7 @@ export async function GET() {
           details: error instanceof Error ? error.stack : String(error) 
         })
       },
-      { status: 500 }
+      { status: 200 } // Retourner 200 pour permettre au client de continuer
     );
   }
 }
