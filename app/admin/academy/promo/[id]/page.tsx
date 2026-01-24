@@ -30,13 +30,21 @@ interface Access {
   accessedAt: string;
 }
 
+interface AccessWithMember extends Access {
+  member?: {
+    displayName: string;
+    twitchLogin: string;
+    discordUsername?: string;
+  };
+}
+
 export default function PromoManagementPage() {
   const params = useParams();
   const router = useRouter();
   const promoId = params.id as string;
   
   const [promo, setPromo] = useState<Promo | null>(null);
-  const [accesses, setAccesses] = useState<Access[]>([]);
+  const [accesses, setAccesses] = useState<AccessWithMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Member[]>([]);
@@ -65,7 +73,37 @@ export default function PromoManagementPage() {
 
       if (accessesRes.ok) {
         const accessesData = await accessesRes.json();
-        setAccesses(accessesData.accesses || []);
+        const rawAccesses = accessesData.accesses || [];
+        
+        // Récupérer les informations des membres pour chaque accès
+        const accessesWithMembers = await Promise.all(
+          rawAccesses.map(async (access: Access) => {
+            try {
+              // Récupérer le membre par Discord ID
+              const memberRes = await fetch(`/api/admin/members?discordId=${access.userId}`, {
+                cache: 'no-store',
+              });
+              
+              if (memberRes.ok) {
+                const memberData = await memberRes.json();
+                return {
+                  ...access,
+                  member: memberData.member ? {
+                    displayName: memberData.member.displayName || memberData.member.twitchLogin,
+                    twitchLogin: memberData.member.twitchLogin,
+                    discordUsername: memberData.member.discordUsername,
+                  } : undefined,
+                };
+              }
+            } catch (error) {
+              console.error(`Erreur récupération membre pour ${access.userId}:`, error);
+            }
+            
+            return access;
+          })
+        );
+        
+        setAccesses(accessesWithMembers);
       }
     } catch (error) {
       console.error("Erreur chargement promo:", error);
@@ -275,12 +313,42 @@ export default function PromoManagementPage() {
                 className="p-4 bg-[#0e0e10] rounded-lg border border-gray-700"
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-semibold">Discord ID: {access.userId}</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Rôle: {access.role} | Accès: {access.accessType}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                  <div className="flex-1">
+                    {access.member ? (
+                      <>
+                        <p className="text-white font-semibold text-lg">
+                          {access.member.displayName}
+                        </p>
+                        <div className="text-sm text-gray-400 mt-1 space-y-1">
+                          <p>
+                            <span className="text-gray-500">Twitch:</span> {access.member.twitchLogin}
+                            {access.member.discordUsername && (
+                              <span className="ml-4">
+                                <span className="text-gray-500">Discord:</span> {access.member.discordUsername}
+                              </span>
+                            )}
+                          </p>
+                          <p>
+                            <span className="text-gray-500">Rôle:</span> {access.role} | 
+                            <span className="text-gray-500 ml-2">Accès:</span> {access.accessType}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Discord ID: {access.userId}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-white font-semibold">Discord ID: {access.userId}</p>
+                        <p className="text-sm text-yellow-400 mt-1">
+                          ⚠️ Membre non trouvé dans la base de données
+                        </p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Rôle: {access.role} | Accès: {access.accessType}
+                        </p>
+                      </>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
                       Ajouté le: {new Date(access.accessedAt).toLocaleString('fr-FR')}
                     </p>
                   </div>
