@@ -177,7 +177,7 @@ export default function EvaluationDPage() {
         fetch(`/api/discord/raids/data-v2?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/evaluations/discord/points?month=${selectedMonth}`, { cache: 'no-store' }),
         fetch(`/api/admin/events/presence?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
-        fetch(`/api/evaluations/follow/points`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
+        fetch(`/api/evaluations/follow/points?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
         fetch(`/api/evaluations/bonus?month=${selectedMonth}`, { cache: 'no-store' }),
       ]);
 
