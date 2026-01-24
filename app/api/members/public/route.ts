@@ -3,6 +3,7 @@ import { memberRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
+import { logApi, LogCategory } from '@/lib/logging/logger';
 
 // Activer le cache avec revalidation ISR de 60 secondes
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
@@ -12,8 +13,9 @@ export const revalidate = 60; // Revalidation toutes les 60 secondes
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
  */
 export async function GET() {
+  const startTime = Date.now();
   try {
-    console.log('[Members Public API] Début récupération membres actifs');
+    logApi.info('/api/members/public', 'Début récupération membres actifs');
     
     // Récupérer tous les membres actifs depuis Supabase via le repository
     const activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
@@ -93,11 +95,12 @@ export async function GET() {
       'public, s-maxage=60, stale-while-revalidate=300'
     );
 
-    console.log(`[Members Public API] Réponse finale: ${publicMembers.length} membres`);
+    const duration = Date.now() - startTime;
+    logApi.success('/api/members/public', duration);
     return response;
   } catch (error) {
-    console.error("[Members Public API] Erreur fatale:", error);
-    console.error("[Members Public API] Stack trace:", error instanceof Error ? error.stack : 'N/A');
+    const duration = Date.now() - startTime;
+    logApi.error('/api/members/public', error instanceof Error ? error : new Error(String(error)));
     
     // Retourner une réponse d'erreur détaillée en développement, générique en production
     const errorMessage = process.env.NODE_ENV === 'development' 

@@ -32,7 +32,7 @@ interface LegacyLog {
   ipAddress?: string;
 }
 
-type LogTab = "audit" | "legacy";
+type LogTab = "audit" | "legacy" | "structured";
 
 export default function LogCenterPage() {
   const [activeTab, setActiveTab] = useState<LogTab>("audit");
