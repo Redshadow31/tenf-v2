@@ -121,8 +121,14 @@ export async function GET(request: NextRequest) {
         manualPointsMap.set(evaluation.twitchLogin.toLowerCase(), evaluation.raidPointsManual);
       }
       // Priorité 2: raidNotes.manualPoints (ancien système de notes)
-      else if (evaluation.raidNotes?.manualPoints !== undefined && evaluation.raidNotes.manualPoints !== null) {
-        manualPointsMap.set(evaluation.twitchLogin.toLowerCase(), evaluation.raidNotes.manualPoints);
+      // raidNotes est un tableau, on cherche la note correspondant au membre
+      else if (evaluation.raidNotes && Array.isArray(evaluation.raidNotes)) {
+        const memberNote = evaluation.raidNotes.find((note: any) => 
+          note.twitchLogin?.toLowerCase() === evaluation.twitchLogin.toLowerCase()
+        );
+        if (memberNote?.manualPoints !== undefined && memberNote.manualPoints !== null) {
+          manualPointsMap.set(evaluation.twitchLogin.toLowerCase(), memberNote.manualPoints);
+        }
       }
     });
 

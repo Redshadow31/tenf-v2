@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       image: image || undefined,
       invitedMembers: invitedMembers || undefined,
       isPublished: isPublished ?? false,
-    }, admin.discordId);
+    }, admin.id);
     
     return NextResponse.json({
       integration: newIntegration,

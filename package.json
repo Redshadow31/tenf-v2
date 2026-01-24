@@ -10,7 +10,8 @@
     "export-manual": "node scripts/export-manual-changes.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "verify-admin": "tsx scripts/verify-admin-properties.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^4.2.0",

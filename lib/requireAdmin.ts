@@ -17,6 +17,7 @@ import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache"
 import { loadSectionPermissionsCache, hasSectionAccess } from "./sectionPermissions";
 
 export interface AuthenticatedAdmin {
+  id: string; // Alias de discordId pour compatibilité avec le code legacy
   discordId: string;
   username: string;
   avatar: string | null;
@@ -63,6 +64,7 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     }
 
     return {
+      id: discordId, // Alias pour compatibilité avec le code legacy
       discordId,
       username,
       avatar,
