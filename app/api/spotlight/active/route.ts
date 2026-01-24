@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le modérateur est fourni ou utiliser l'admin actuel
-    const finalModeratorDiscordId = moderatorDiscordId || admin.discordId;
+    const finalModeratorDiscordId = moderatorDiscordId || admin.id;
     const finalModeratorUsername = moderatorUsername || admin.username;
 
     // Vérifier que le login Twitch correspond à un membre enregistré
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       moderatorDiscordId: finalModeratorDiscordId,
       moderatorUsername: finalModeratorUsername,
       createdAt: now,
-      createdBy: admin.discordId,
+      createdBy: admin.id,
     });
 
     // Formater pour compatibilité avec le frontend

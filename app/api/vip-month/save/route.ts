@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       month,
       vipLogins: vipLogins.map((login: string) => login.toLowerCase()),
       savedAt: new Date().toISOString(),
-      savedBy: admin.discordId,
+      savedBy: admin.id,
     };
 
     try {
