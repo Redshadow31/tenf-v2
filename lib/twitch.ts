@@ -301,6 +301,11 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
     for (let i = 0; i < toFetch.length; i += BATCH_SIZE) {
       const batch = toFetch.slice(i, i + BATCH_SIZE);
       
+      // Ajouter un petit délai entre les batches pour respecter les rate limits (sauf pour le premier batch)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // 100ms de délai entre batches
+      }
+      
       const queryParams = batch
         .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
         .join("&");
