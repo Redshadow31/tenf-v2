@@ -226,15 +226,20 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          // Trouver l'évaluation correspondante et mettre à jour
-          for (const evalData of monthEvaluations) {
+          // Trouver l'évaluation correspondante et mettre à jour (break après le premier match, donc pas de N+1)
+          const evalDataToUpdate = monthEvaluations.find(evalData => {
             if (evalData.spotlightEvaluations) {
               const spotlightIndex = evalData.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
-              if (spotlightIndex !== -1) {
-                evalData.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
-                await evaluationRepository.upsert(evalData);
-                break;
-              }
+              return spotlightIndex !== -1;
+            }
+            return false;
+          });
+          
+          if (evalDataToUpdate && evalDataToUpdate.spotlightEvaluations) {
+            const spotlightIndex = evalDataToUpdate.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
+            if (spotlightIndex !== -1) {
+              evalDataToUpdate.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
+              await evaluationRepository.upsert(evalDataToUpdate);
             }
           }
         }
@@ -380,15 +385,20 @@ export async function DELETE(request: NextRequest) {
             m => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
           );
 
-          // Trouver l'évaluation correspondante et mettre à jour
-          for (const evalData of monthEvaluations) {
+          // Trouver l'évaluation correspondante et mettre à jour (break après le premier match, donc pas de N+1)
+          const evalDataToUpdate = monthEvaluations.find(evalData => {
             if (evalData.spotlightEvaluations) {
               const spotlightIndex = evalData.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
-              if (spotlightIndex !== -1) {
-                evalData.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
-                await evaluationRepository.upsert(evalData);
-                break;
-              }
+              return spotlightIndex !== -1;
+            }
+            return false;
+          });
+          
+          if (evalDataToUpdate && evalDataToUpdate.spotlightEvaluations) {
+            const spotlightIndex = evalDataToUpdate.spotlightEvaluations.findIndex(s => s.id === matchingSpotlight.id);
+            if (spotlightIndex !== -1) {
+              evalDataToUpdate.spotlightEvaluations[spotlightIndex] = matchingSpotlight;
+              await evaluationRepository.upsert(evalDataToUpdate);
             }
           }
         }

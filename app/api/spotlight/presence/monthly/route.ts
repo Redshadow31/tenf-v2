@@ -78,25 +78,29 @@ export async function GET(request: NextRequest) {
     // Récupérer les évaluations streamer depuis Supabase
     const streamerScores: Array<{ id: string; date: string; streamer: string; score: number; maxScore: number }> = [];
     
-    // Pour chaque spotlight, récupérer l'évaluation depuis spotlight_evaluations
-    for (const spotlight of spotlights) {
+    // Pour chaque spotlight, récupérer l'évaluation depuis spotlight_evaluations en parallèle (évite N+1 queries)
+    const evaluationPromises = spotlights.map(async (spotlight) => {
       try {
         const evaluation = await spotlightRepository.getEvaluation(spotlight.id);
         
         if (evaluation) {
-          streamerScores.push({
+          return {
             id: spotlight.id,
             date: spotlight.date,
             streamer: spotlight.streamerTwitchLogin,
             score: evaluation.totalScore || 0,
             maxScore: evaluation.maxScore || 20,
-          });
+          };
         }
       } catch (error) {
         // Ignorer les erreurs
         console.warn(`[Spotlight Presence Monthly] Erreur récupération évaluation pour ${spotlight.id}:`, error);
       }
-    }
+      return null;
+    });
+    
+    const evaluationResults = await Promise.all(evaluationPromises);
+    const streamerScores = evaluationResults.filter((result): result is NonNullable<typeof result> => result !== null);
 
     // Calculer les statistiques par membre
     const memberStatsMap = new Map<string, {

@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
     const evaluations = await evaluationRepository.findByMonth(monthKey);
     const monthDate = `${monthKey}-01`;
 
-    // Pour chaque membre actif, mettre à jour son évaluation
-    for (const member of activeMembers) {
+    // Pour chaque membre actif, mettre à jour son évaluation en parallèle (évite N+1 queries)
+    const updatePromises = activeMembers.map(async (member) => {
       let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
       
       let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
@@ -111,13 +111,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Mettre à jour ou créer l'évaluation
-      await evaluationRepository.upsert({
+      return evaluationRepository.upsert({
         month: new Date(monthDate),
         twitchLogin: member.twitchLogin.toLowerCase(),
         spotlightEvaluations,
         updatedAt: new Date(),
       });
-    }
+    });
+    
+    await Promise.all(updatePromises);
 
     // Marquer le spotlight comme complété
     await spotlightRepository.update(spotlight.id, { status: 'completed' });

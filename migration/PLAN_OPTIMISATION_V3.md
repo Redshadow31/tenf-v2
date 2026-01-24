@@ -52,9 +52,10 @@
   - ✅ Limiter les résultats par défaut (ex: 50-100 éléments)
   - ✅ Mettre à jour les appels API nécessitant tous les résultats
 
-- [ ] **Utiliser des requêtes batch pour les données liées**
-  - Éviter les N+1 queries
-  - Utiliser `Promise.all()` pour les requêtes parallèles
+- [x] **Utiliser des requêtes batch pour les données liées**
+  - ✅ Éviter les N+1 queries
+  - ✅ Utiliser `Promise.all()` pour les requêtes parallèles
+  - ✅ 6 routes optimisées (registrations, finalize, manual, spotlightId, presence, monthly)
 
 **Fichiers à modifier** :
 - `lib/repositories/MemberRepository.ts` - Ajouter pagination

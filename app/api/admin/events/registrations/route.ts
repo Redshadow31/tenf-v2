@@ -17,24 +17,31 @@ export async function GET(request: NextRequest) {
     // Récupérer tous les événements (limite élevée pour l'admin)
     const events = await eventRepository.findAll(1000, 0);
     
-    // Récupérer toutes les inscriptions pour tous les événements
+    // Récupérer toutes les inscriptions pour tous les événements en parallèle (évite N+1 queries)
+    const registrationPromises = events.map(event => 
+      eventRepository.getRegistrations(event.id).then(registrations => ({
+        eventId: event.id,
+        registrations: registrations.map(reg => ({
+          id: reg.id,
+          eventId: reg.eventId,
+          twitchLogin: reg.twitchLogin,
+          displayName: reg.displayName,
+          discordId: reg.discordId,
+          discordUsername: reg.discordUsername,
+          notes: reg.notes,
+          registeredAt: reg.registeredAt.toISOString(),
+        }))
+      }))
+    );
+    
+    const registrationResults = await Promise.all(registrationPromises);
     const allRegistrationsMap: Record<string, any[]> = {};
     let totalRegistrations = 0;
     
-    for (const event of events) {
-      const registrations = await eventRepository.getRegistrations(event.id);
-      allRegistrationsMap[event.id] = registrations.map(reg => ({
-        id: reg.id,
-        eventId: reg.eventId,
-        twitchLogin: reg.twitchLogin,
-        displayName: reg.displayName,
-        discordId: reg.discordId,
-        discordUsername: reg.discordUsername,
-        notes: reg.notes,
-        registeredAt: reg.registeredAt.toISOString(),
-      }));
+    registrationResults.forEach(({ eventId, registrations }) => {
+      allRegistrationsMap[eventId] = registrations;
       totalRegistrations += registrations.length;
-    }
+    });
     
     // Enrichir avec les informations des événements
     const result = events.map(event => ({

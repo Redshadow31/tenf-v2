@@ -133,9 +133,9 @@ export async function PUT(
         }
       }
 
-      // 2. Ajouter au nouveau mois
+      // 2. Ajouter au nouveau mois en parallèle (évite N+1 queries)
       const newMonthDate = `${newMonthKey}-01`;
-      for (const member of activeMembers) {
+      const updatePromises = activeMembers.map(async (member) => {
         let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, newMonthKey);
         
         let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
@@ -152,20 +152,23 @@ export async function PUT(
         }
 
         // Mettre à jour ou créer l'évaluation
-        await evaluationRepository.upsert({
+        return evaluationRepository.upsert({
           month: new Date(newMonthDate),
           twitchLogin: member.twitchLogin.toLowerCase(),
           spotlightEvaluations,
           updatedAt: new Date(),
         });
-      }
+      });
+      
+      await Promise.all(updatePromises);
       
       console.log(`[Spotlight Update] Spotlight ${spotlightId} (${spotlightToMove.streamerTwitchLogin}) déplacé de ${oldMonthKey} vers ${newMonthKey}`);
     } else {
       // Même mois, juste mettre à jour
       const evaluations = await evaluationRepository.findByMonth(newMonthKey || oldMonthKey || '');
       
-      for (const eval of evaluations) {
+      // Mettre à jour toutes les évaluations en parallèle (évite N+1 queries)
+      const updatePromises = evaluations.map(async (eval) => {
         if (eval.spotlightEvaluations && Array.isArray(eval.spotlightEvaluations)) {
           const spotlightIndex = eval.spotlightEvaluations.findIndex((s: any) => s.id === spotlightId);
           
@@ -173,13 +176,15 @@ export async function PUT(
             const updatedSpotlights = [...eval.spotlightEvaluations];
             updatedSpotlights[spotlightIndex] = spotlightToMove;
             
-            await evaluationRepository.update(eval.id, {
+            return evaluationRepository.update(eval.id, {
               spotlightEvaluations: updatedSpotlights,
               updatedAt: new Date(),
             });
           }
         }
-      }
+      });
+      
+      await Promise.all(updatePromises.filter(Boolean));
     }
 
     return NextResponse.json({ 

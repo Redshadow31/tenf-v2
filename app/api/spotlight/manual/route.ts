@@ -183,8 +183,8 @@ export async function POST(request: NextRequest) {
       createdBy: createdSpotlight.createdBy,
     };
 
-    // Mettre à jour toutes les évaluations du mois pour inclure ce spotlight
-    for (const member of activeMembers) {
+    // Mettre à jour toutes les évaluations du mois pour inclure ce spotlight en parallèle (évite N+1 queries)
+    const updatePromises = activeMembers.map(async (member) => {
       let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
       
       let spotlightEvaluations = evaluation?.spotlightEvaluations || [];
@@ -201,13 +201,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Mettre à jour ou créer l'évaluation
-      await evaluationRepository.upsert({
+      return evaluationRepository.upsert({
         month: new Date(monthDate),
         twitchLogin: member.twitchLogin.toLowerCase(),
         spotlightEvaluations,
         updatedAt: new Date(),
       });
-    }
+    });
+    
+    await Promise.all(updatePromises);
 
     // Récupérer les présences et l'évaluation pour la réponse
     const savedPresences = await spotlightRepository.getPresences(createdSpotlight.id);
