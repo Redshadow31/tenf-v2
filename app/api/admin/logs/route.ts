@@ -21,20 +21,23 @@ export async function GET(request: NextRequest) {
     const level = searchParams.get('level') as LogLevel | null;
     const since = searchParams.get('since');
     const limit = searchParams.get('limit');
+    const offset = searchParams.get('offset');
 
     const filters: any = {};
     if (category) filters.category = category;
     if (level) filters.level = level;
     if (since) filters.since = new Date(since);
     if (limit) filters.limit = parseInt(limit, 10);
+    if (offset) filters.offset = parseInt(offset, 10);
 
-    const logs = logger.getLogs(filters);
-    const stats = logger.getStats();
+    const logs = await logger.getLogs(filters);
+    const stats = await logger.getStats();
 
     return NextResponse.json({
       logs,
       stats,
-      total: logs.length,
+      total: stats.total,
+      hasMore: logs.length === (filters.limit || 50),
     });
   } catch (error) {
     console.error('[API Admin Logs] Erreur:', error);
@@ -59,7 +62,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    logger.clear();    return NextResponse.json({ success: true, message: "Logs vidés" });
+    await logger.clear();
+    
+    return NextResponse.json({ success: true, message: "Logs vidés" });
   } catch (error) {
     console.error('[API Admin Logs] Erreur:', error);
     return NextResponse.json(
