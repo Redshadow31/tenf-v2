@@ -56,7 +56,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Format de mois invalide (attendu: YYYY-MM)" }, { status: 400 });
       }
 
-      const allEvents = await eventRepository.findAll();
+      // Récupérer tous les événements du mois (limite élevée)
+      const allEvents = await eventRepository.findAll(1000, 0);
       const monthEvents = allEvents.filter(event => {
         const eventDate = event.date;
         const eventYear = eventDate.getFullYear();

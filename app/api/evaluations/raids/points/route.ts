@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Charger les membres depuis Supabase pour la conversion Discord ID -> Twitch Login
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres (limite élevée pour conversion Discord ID)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const discordIdToMember = new Map<string, any>();
     allMembers.forEach((m) => {
       if (m.discordId && m.twitchLogin) {

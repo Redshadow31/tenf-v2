@@ -122,7 +122,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Charger les membres actifs depuis Supabase
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres actifs (limite élevée)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const memberLogins = allMembers
       .filter(m => m.isActive !== false && m.twitchLogin)
       .map(m => m.twitchLogin.toLowerCase());

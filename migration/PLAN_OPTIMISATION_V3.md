@@ -47,9 +47,10 @@
   CREATE INDEX idx_event_presences_event_id ON event_presences(event_id);
   ```
 
-- [ ] **Optimiser les requêtes avec pagination**
-  - Implémenter la pagination dans tous les `findAll()` et `findActive()`
-  - Limiter les résultats par défaut (ex: 50-100 éléments)
+- [x] **Optimiser les requêtes avec pagination**
+  - ✅ Implémenter la pagination dans tous les `findAll()` et `findActive()`
+  - ✅ Limiter les résultats par défaut (ex: 50-100 éléments)
+  - ✅ Mettre à jour les appels API nécessitant tous les résultats
 
 - [ ] **Utiliser des requêtes batch pour les données liées**
   - Éviter les N+1 queries

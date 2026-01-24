@@ -93,7 +93,8 @@ export async function GET(
       
       if (!activeSpotlight) {
         // Essayer de trouver un spotlight complété récent
-        const allSpotlightsFromDb = await spotlightRepository.findAll();
+        // Récupérer tous les spotlights (limite élevée)
+        const allSpotlightsFromDb = await spotlightRepository.findAll(1000, 0);
         const recentCompleted = allSpotlightsFromDb
           .filter(s => s.status === 'completed')
           .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())[0];

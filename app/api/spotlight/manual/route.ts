@@ -152,7 +152,8 @@ export async function POST(request: NextRequest) {
     const monthDate = `${monthKey}-01`;
 
     // Charger tous les membres actifs pour inclure les absents
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres (limite élevée pour traitement complet)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const activeMembers = allMembers.filter(m => m.isActive !== false);
     
     // Créer un Set des membres présents pour vérification rapide

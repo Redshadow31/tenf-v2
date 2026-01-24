@@ -82,13 +82,16 @@ export class SpotlightRepository {
   }
 
   /**
-   * Récupère tous les spotlights
+   * Récupère tous les spotlights avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 50)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findAll(): Promise<Spotlight[]> {
+  async findAll(limit = 50, offset = 0): Promise<Spotlight[]> {
     const { data, error } = await supabaseAdmin
       .from('spotlights')
       .select('*')
-      .order('started_at', { ascending: false });
+      .order('started_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 

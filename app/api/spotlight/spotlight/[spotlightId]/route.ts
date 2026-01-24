@@ -106,7 +106,8 @@ export async function PUT(
 
     // Mettre à jour le spotlight dans toutes les évaluations concernées
     // Si le mois a changé, déplacer le spotlight de l'ancien mois vers le nouveau
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres (limite élevée pour traitement complet)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const activeMembers = allMembers.filter(m => m.isActive !== false);
 
     if (newMonthKey && newMonthKey !== oldMonthKey) {

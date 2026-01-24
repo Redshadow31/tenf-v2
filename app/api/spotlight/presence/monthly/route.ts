@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
 
     // Charger les données du mois depuis Supabase
     const evaluations = await evaluationRepository.findByMonth(monthKey);
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres (limite élevée pour traitement complet)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const activeMembers = allMembers.filter(m => m.isActive !== false);
 
     // Agréger les spotlightEvaluations depuis toutes les évaluations

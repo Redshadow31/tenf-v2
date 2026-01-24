@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     const evaluations = await evaluationRepository.findByMonth(monthKey);
     
     // Charger tous les membres actifs depuis Supabase
-    const allMembers = await memberRepository.findAll();
+    // Récupérer tous les membres actifs (limite élevée)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const activeMembers = allMembers.filter(m => m.isActive !== false);
 
     // Extraire les spotlights validés depuis les évaluations

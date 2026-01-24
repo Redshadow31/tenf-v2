@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     if (currentMonthVips && currentMonthVips.length > 0) {
       // Utiliser les VIP du mois actuel depuis Supabase
       const vipLogins = currentMonthVips.map(vip => vip.twitchLogin.toLowerCase());
-      const allMembers = await memberRepository.findAll();
+      // Récupérer tous les membres (limite élevée pour filtrage VIP)
+      const allMembers = await memberRepository.findAll(1000, 0);
       vipMemberData = allMembers.filter((member) => 
         member.isActive !== false && 
         vipLogins.includes(member.twitchLogin?.toLowerCase() || '')

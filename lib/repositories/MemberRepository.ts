@@ -4,13 +4,16 @@ import type { MemberData } from '../memberData';
 
 export class MemberRepository {
   /**
-   * Récupère tous les membres
+   * Récupère tous les membres avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 100)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findAll(): Promise<MemberData[]> {
+  async findAll(limit = 100, offset = 0): Promise<MemberData[]> {
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -70,15 +73,18 @@ export class MemberRepository {
   }
 
   /**
-   * Récupère les membres VIP
+   * Récupère les membres VIP avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 50)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findVip(): Promise<MemberData[]> {
+  async findVip(limit = 50, offset = 0): Promise<MemberData[]> {
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
       .eq('is_vip', true)
       .eq('is_active', true)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -86,15 +92,19 @@ export class MemberRepository {
   }
 
   /**
-   * Récupère les membres par rôle
+   * Récupère les membres par rôle avec pagination
+   * @param role - Rôle à rechercher
+   * @param limit - Nombre maximum de résultats (défaut: 50)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findByRole(role: string): Promise<MemberData[]> {
+  async findByRole(role: string, limit = 50, offset = 0): Promise<MemberData[]> {
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
       .eq('role', role)
       .eq('is_active', true)
-      .order('display_name', { ascending: true });
+      .order('display_name', { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 

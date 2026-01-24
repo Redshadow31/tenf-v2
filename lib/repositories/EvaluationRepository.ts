@@ -36,9 +36,12 @@ export interface Evaluation {
 
 export class EvaluationRepository {
   /**
-   * Récupère toutes les évaluations d'un mois
+   * Récupère toutes les évaluations d'un mois avec pagination
+   * @param month - Mois au format YYYY-MM
+   * @param limit - Nombre maximum de résultats (défaut: 100)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findByMonth(month: string): Promise<Evaluation[]> {
+  async findByMonth(month: string, limit = 100, offset = 0): Promise<Evaluation[]> {
     // month format: YYYY-MM
     const monthDate = `${month}-01`;
     
@@ -46,7 +49,8 @@ export class EvaluationRepository {
       .from('evaluations')
       .select('*')
       .eq('month', monthDate)
-      .order('total_points', { ascending: false });
+      .order('total_points', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 

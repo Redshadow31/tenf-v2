@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
     }
     
-    const events = await eventRepository.findAll();
+    // Récupérer tous les événements (limite élevée pour l'admin)
+    const events = await eventRepository.findAll(1000, 0);
     
     // Récupérer toutes les inscriptions pour tous les événements
     const allRegistrationsMap: Record<string, any[]> = {};

@@ -29,13 +29,16 @@ export interface EventRegistration {
 
 export class EventRepository {
   /**
-   * Récupère tous les événements
+   * Récupère tous les événements avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 50)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findAll(): Promise<Event[]> {
+  async findAll(limit = 50, offset = 0): Promise<Event[]> {
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -61,14 +64,17 @@ export class EventRepository {
   }
 
   /**
-   * Récupère les événements publiés
+   * Récupère les événements publiés avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 20)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findPublished(): Promise<Event[]> {
+  async findPublished(limit = 20, offset = 0): Promise<Event[]> {
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
       .eq('is_published', true)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -76,16 +82,19 @@ export class EventRepository {
   }
 
   /**
-   * Récupère les événements à venir
+   * Récupère les événements à venir avec pagination
+   * @param limit - Nombre maximum de résultats (défaut: 10)
+   * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
-  async findUpcoming(): Promise<Event[]> {
+  async findUpcoming(limit = 10, offset = 0): Promise<Event[]> {
     const now = new Date().toISOString();
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('*')
       .eq('is_published', true)
       .gte('date', now)
-      .order('date', { ascending: true });
+      .order('date', { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 

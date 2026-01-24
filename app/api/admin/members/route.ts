@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Récupérer tous les membres depuis Supabase
-    const members = await memberRepository.findAll();
+    // Récupérer tous les membres (limite élevée pour l'admin)
+    const members = await memberRepository.findAll(1000, 0);
     const response = NextResponse.json({ members });
     
     // Désactiver le cache côté client
