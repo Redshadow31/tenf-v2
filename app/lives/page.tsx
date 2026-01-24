@@ -69,11 +69,33 @@ export default function LivesPage() {
             'Cache-Control': 'no-cache',
           },
         });
+        
         if (!membersResponse.ok) {
-          throw new Error("Failed to fetch members");
+          // Essayer de récupérer le message d'erreur de l'API
+          let errorMessage = "Failed to fetch members";
+          try {
+            const errorData = await membersResponse.json();
+            errorMessage = errorData.error || errorMessage;
+            console.error('[Lives Page] Erreur API membres:', errorMessage, errorData);
+          } catch (e) {
+            console.error('[Lives Page] Erreur API membres (status):', membersResponse.status, membersResponse.statusText);
+          }
+          throw new Error(errorMessage);
         }
+        
         const membersData = await membersResponse.json();
         const activeMembers = membersData.members || [];
+        
+        if (!Array.isArray(activeMembers)) {
+          console.error('[Lives Page] Format de données invalide:', membersData);
+          throw new Error("Format de données invalide depuis l'API");
+        }
+        
+        // Si l'API retourne une erreur mais avec une liste vide, afficher un message d'avertissement
+        if (activeMembers.length === 0 && membersData.error) {
+          console.warn('[Lives Page] Aucun membre récupéré:', membersData.error);
+          setError(`Impossible de charger les membres: ${membersData.error}`);
+        }
         
         const twitchLogins = activeMembers
           .map((member: any) => member.twitchLogin)

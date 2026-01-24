@@ -16,9 +16,25 @@ export async function GET() {
   const startTime = Date.now();
   try {
     // Récupérer tous les membres actifs depuis Supabase via le repository
-    const activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
-    
-    console.log(`[Members Public API] Membres actifs récupérés: ${activeMembers.length}`);
+    let activeMembers: any[] = [];
+    try {
+      activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
+      console.log(`[Members Public API] Membres actifs récupérés: ${activeMembers.length}`);
+    } catch (dbError) {
+      console.error('[Members Public API] Erreur récupération membres depuis Supabase:', dbError);
+      // Retourner une liste vide plutôt que d'échouer complètement
+      // Cela permet à la page de continuer à fonctionner même si la base de données est temporairement indisponible
+      return NextResponse.json(
+        { 
+          members: [], 
+          total: 0,
+          error: process.env.NODE_ENV === 'development' 
+            ? (dbError instanceof Error ? dbError.message : 'Database error')
+            : "Erreur temporaire de récupération des membres"
+        },
+        { status: 200 } // Retourner 200 pour permettre au client de continuer
+      );
+    }
     
     // Récupérer tous les logins Twitch uniques
     const twitchLogins = activeMembers
