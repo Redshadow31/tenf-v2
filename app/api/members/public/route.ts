@@ -13,16 +13,29 @@ export const revalidate = 60; // Revalidation toutes les 60 secondes
  */
 export async function GET() {
   try {
+    console.log('[Members Public API] Début récupération membres actifs');
+    
     // Récupérer tous les membres actifs depuis Supabase via le repository
     const activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
+    
+    console.log(`[Members Public API] Membres actifs récupérés: ${activeMembers.length}`);
     
     // Récupérer tous les logins Twitch uniques
     const twitchLogins = activeMembers
       .map(member => member.twitchLogin)
       .filter(Boolean) as string[];
     
+    console.log(`[Members Public API] Logins Twitch: ${twitchLogins.length}`);
+    
     // Récupérer tous les avatars Twitch en batch (beaucoup plus rapide)
-    const twitchUsers = await getTwitchUsers(twitchLogins);
+    let twitchUsers: any[] = [];
+    try {
+      twitchUsers = await getTwitchUsers(twitchLogins);
+      console.log(`[Members Public API] Avatars Twitch récupérés: ${twitchUsers.length}`);
+    } catch (twitchError) {
+      console.error('[Members Public API] Erreur récupération avatars Twitch:', twitchError);
+      // Continuer sans avatars Twitch (on utilisera les fallbacks)
+    }
     
     // Créer un map pour un accès rapide par login
     const avatarMap = new Map(
@@ -80,11 +93,26 @@ export async function GET() {
       'public, s-maxage=60, stale-while-revalidate=300'
     );
 
+    console.log(`[Members Public API] Réponse finale: ${publicMembers.length} membres`);
     return response;
   } catch (error) {
-    console.error("Error fetching public members:", error);
+    console.error("[Members Public API] Erreur fatale:", error);
+    console.error("[Members Public API] Stack trace:", error instanceof Error ? error.stack : 'N/A');
+    
+    // Retourner une réponse d'erreur détaillée en développement, générique en production
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? (error instanceof Error ? error.message : 'Unknown error')
+      : "Erreur serveur";
+    
     return NextResponse.json(
-      { error: "Erreur serveur", members: [], total: 0 },
+      { 
+        error: errorMessage, 
+        members: [], 
+        total: 0,
+        ...(process.env.NODE_ENV === 'development' && { 
+          details: error instanceof Error ? error.stack : String(error) 
+        })
+      },
       { status: 500 }
     );
   }

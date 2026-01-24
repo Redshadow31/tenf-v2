@@ -107,26 +107,42 @@ export class MemberRepository {
     const cacheKeyStr = cacheKey('members', 'active', limit, offset);
     
     // Essayer de récupérer du cache
-    const cached = await cacheGet<MemberData[]>(cacheKeyStr);
-    if (cached) {
-      return cached;
+    try {
+      const cached = await cacheGet<MemberData[]>(cacheKeyStr);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        return cached;
+      }
+    } catch (cacheError) {
+      console.warn('[MemberRepository] Erreur cache, passage direct à Supabase:', cacheError);
+      // Continuer sans cache en cas d'erreur
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('members')
-      .select('*')
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('members')
+        .select('*')
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+      if (error) {
+        console.error('[MemberRepository] Erreur Supabase findActive:', error);
+        throw error;
+      }
 
-    const members = (data || []).map(this.mapToMemberData);
-    
-    // Mettre en cache avec namespace
-    await cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_ACTIVE);
+      const members = (data || []).map(this.mapToMemberData);
+      
+      // Mettre en cache avec namespace (en arrière-plan, ne pas bloquer en cas d'erreur)
+      cacheSetWithNamespace('members', cacheKeyStr, members, CACHE_TTL.MEMBERS_ACTIVE)
+        .catch(cacheError => {
+          console.warn('[MemberRepository] Erreur mise en cache (non bloquant):', cacheError);
+        });
 
-    return members;
+      return members;
+    } catch (error) {
+      console.error('[MemberRepository] Erreur fatale findActive:', error);
+      throw error;
+    }
   }
 
   /**
