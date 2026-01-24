@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
         note: note || undefined,
         manualPoints: validatedManualPoints,
         lastUpdated: now,
-        updatedBy: admin.id,
+        updatedBy: admin.discordId,
       }];
     }
 
