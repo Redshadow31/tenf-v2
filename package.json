@@ -14,7 +14,8 @@
     "verify-admin": "tsx scripts/verify-admin-properties.ts",
     "migration:verify-images": "tsx migration/verifier-images-events.ts",
     "migration:migrate-images": "tsx migration/migrer-images-blobs-vers-supabase.ts",
-    "test:redis": "tsx scripts/test-redis.ts"
+    "test:redis": "tsx scripts/test-redis.ts",
+    "test:routes-evaluation-d": "tsx migration/test-routes-evaluation-d.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^4.2.0",

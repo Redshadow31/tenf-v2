@@ -78,8 +78,17 @@ export default function EvaluationBDiscordPage() {
         const response = await fetch('/api/members/public', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
-          const members: ActiveMember[] = (data.members || [])
-            .filter((m: any) => m.isActive !== false && m.discordId)
+          console.log('[Discord Page] Membres reçus de l\'API:', data.members?.length || 0);
+          
+          // Filtrer les membres actifs avec Discord ID
+          const allMembers = data.members || [];
+          const membersWithDiscord = allMembers.filter((m: any) => m.discordId);
+          const activeMembersWithDiscord = membersWithDiscord.filter((m: any) => m.isActive !== false);
+          
+          console.log('[Discord Page] Membres avec Discord ID:', membersWithDiscord.length);
+          console.log('[Discord Page] Membres actifs avec Discord ID:', activeMembersWithDiscord.length);
+          
+          const members: ActiveMember[] = activeMembersWithDiscord
             .map((m: any) => ({
               discordId: m.discordId,
               displayName: m.displayName || m.twitchLogin,
@@ -90,6 +99,7 @@ export default function EvaluationBDiscordPage() {
             }))
             .sort((a: ActiveMember, b: ActiveMember) => a.displayName.localeCompare(b.displayName));
 
+          console.log('[Discord Page] Membres finaux après mapping:', members.length);
           setActiveMembers(members);
 
           // Créer le map pour le matching
@@ -102,9 +112,11 @@ export default function EvaluationBDiscordPage() {
             });
           }
           setMembersMap(map);
+        } else {
+          console.error('[Discord Page] Erreur réponse API:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error("Erreur chargement membres:", error);
+        console.error("[Discord Page] Erreur chargement membres:", error);
       }
     }
     loadMembers();

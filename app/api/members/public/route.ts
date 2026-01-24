@@ -56,6 +56,7 @@ export async function GET() {
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         role: member.role,
         isVip: member.isVip,
+        isActive: member.isActive, // Inclure isActive pour les filtres côté client
         vipBadge: vipBadge,
         badges: member.badges || [],
         discordId: member.discordId,
