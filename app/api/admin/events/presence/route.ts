@@ -382,7 +382,7 @@ export async function DELETE(request: NextRequest) {
         if (matchingSpotlight) {
           // Supprimer le membre du spotlight
           matchingSpotlight.members = matchingSpotlight.members.filter(
-            m => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
+            (m: any) => m.twitchLogin.toLowerCase() !== twitchLogin.toLowerCase()
           );
 
           // Trouver l'évaluation correspondante et mettre à jour (break après le premier match, donc pas de N+1)
