@@ -287,7 +287,7 @@ export const vipHistory = pgTable('vip_history', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Table: logs (audit)
+// Table: logs (audit legacy)
 export const logs = pgTable('logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   action: text('action').notNull(),
@@ -296,6 +296,23 @@ export const logs = pgTable('logs', {
   details: jsonb('details').$type<Record<string, any>>(),
   ipAddress: text('ip_address'),
   timestamp: timestamp('timestamp').defaultNow(),
+});
+
+// Table: structured_logs (nouveau système de logging)
+export const structuredLogs = pgTable('structured_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  category: text('category').notNull(), // LogCategory
+  level: text('level').notNull(), // LogLevel
+  message: text('message').notNull(),
+  details: jsonb('details').$type<Record<string, any>>(),
+  actorDiscordId: text('actor_discord_id'), // Qui a initié l'action (si admin)
+  actorRole: text('actor_role'),
+  resourceType: text('resource_type'), // Type de ressource affectée (ex: 'member', 'event')
+  resourceId: text('resource_id'), // ID de la ressource affectée
+  route: text('route'), // Route API concernée
+  durationMs: integer('duration_ms'), // Durée de l'opération en millisecondes
+  statusCode: integer('status_code'), // Code HTTP de la réponse
 });
 
 // ============================================

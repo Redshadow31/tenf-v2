@@ -1,7 +1,10 @@
 /**
  * Système de logging structuré par catégories
  * Permet de suivre les actions, routes, et systèmes du site
+ * Les logs sont enregistrés dans Supabase pour persistance
  */
+
+import { supabaseAdmin } from '../db/supabase';
 
 export enum LogCategory {
   // Actions utilisateur
@@ -57,25 +60,30 @@ export interface LogEntry {
 
 class Logger {
   private logs: LogEntry[] = [];
-  private maxLogs = 1000; // Limite de logs en mémoire
+  private maxLogs = 1000; // Limite de logs en mémoire (cache)
   private listeners: Array<(log: LogEntry) => void> = [];
 
   /**
-   * Ajoute un log
+   * Ajoute un log (en mémoire ET dans Supabase)
    */
-  log(entry: Omit<LogEntry, 'timestamp'>): void {
+  async log(entry: Omit<LogEntry, 'timestamp'>): Promise<void> {
     const logEntry: LogEntry = {
       ...entry,
       timestamp: new Date().toISOString(),
     };
 
-    // Ajouter au tableau (FIFO)
+    // Ajouter au tableau (FIFO) pour cache en mémoire
     this.logs.push(logEntry);
     
     // Limiter la taille
     if (this.logs.length > this.maxLogs) {
       this.logs.shift();
     }
+
+    // Enregistrer dans Supabase (asynchrone, ne bloque pas)
+    this.saveToSupabase(logEntry).catch(error => {
+      console.error('[Logger] Erreur sauvegarde Supabase:', error);
+    });
 
     // Notifier les listeners
     this.listeners.forEach(listener => {
@@ -91,10 +99,38 @@ class Logger {
   }
 
   /**
+   * Sauvegarde un log dans Supabase
+   */
+  private async saveToSupabase(entry: LogEntry): Promise<void> {
+    try {
+      const { error } = await supabaseAdmin.from('structured_logs').insert({
+        timestamp: entry.timestamp,
+        category: entry.category,
+        level: entry.level,
+        message: entry.message,
+        details: entry.details || {},
+        actor_discord_id: entry.userId,
+        actor_role: entry.metadata?.actorRole,
+        resource_type: entry.metadata?.resourceType,
+        resource_id: entry.metadata?.resourceId,
+        route: entry.route,
+        duration_ms: entry.duration,
+        status_code: entry.metadata?.statusCode,
+      });
+
+      if (error) {
+        console.error('[Logger] Erreur insertion Supabase:', error);
+      }
+    } catch (error) {
+      console.error('[Logger] Erreur inattendue Supabase:', error);
+    }
+  }
+
+  /**
    * Log de debug
    */
-  debug(category: LogCategory, message: string, details?: any): void {
-    this.log({
+  async debug(category: LogCategory, message: string, details?: any): Promise<void> {
+    await this.log({
       category,
       level: LogLevel.DEBUG,
       message,
@@ -105,8 +141,8 @@ class Logger {
   /**
    * Log d'information
    */
-  info(category: LogCategory, message: string, details?: any): void {
-    this.log({
+  async info(category: LogCategory, message: string, details?: any): Promise<void> {
+    await this.log({
       category,
       level: LogLevel.INFO,
       message,
@@ -117,8 +153,8 @@ class Logger {
   /**
    * Log d'avertissement
    */
-  warn(category: LogCategory, message: string, details?: any): void {
-    this.log({
+  async warn(category: LogCategory, message: string, details?: any): Promise<void> {
+    await this.log({
       category,
       level: LogLevel.WARN,
       message,
@@ -129,8 +165,8 @@ class Logger {
   /**
    * Log d'erreur
    */
-  error(category: LogCategory, message: string, details?: any): void {
-    this.log({
+  async error(category: LogCategory, message: string, details?: any): Promise<void> {
+    await this.log({
       category,
       level: LogLevel.ERROR,
       message,
@@ -141,21 +177,21 @@ class Logger {
   /**
    * Log d'une route API
    */
-  route(
+  async route(
     method: string,
     path: string,
     status: number,
     duration?: number,
     userId?: string,
     details?: any
-  ): void {
+  ): Promise<void> {
     const level = status >= 500 
       ? LogLevel.ERROR 
       : status >= 400 
       ? LogLevel.WARN 
       : LogLevel.INFO;
 
-    this.log({
+    await this.log({
       category: LogCategory.API_ROUTE,
       level,
       message: `${method} ${path} - ${status}`,
@@ -166,19 +202,23 @@ class Logger {
         status,
         ...details,
       },
+      metadata: {
+        statusCode: status,
+        ...details,
+      },
     });
   }
 
   /**
    * Log d'une requête base de données
    */
-  query(
+  async query(
     operation: string,
     table: string,
     duration?: number,
     details?: any
-  ): void {
-    this.log({
+  ): Promise<void> {
+    await this.log({
       category: LogCategory.QUERY,
       level: LogLevel.DEBUG,
       message: `${operation} on ${table}`,
@@ -194,19 +234,19 @@ class Logger {
   /**
    * Log d'un test système
    */
-  systemTest(
+  async systemTest(
     system: string,
     status: 'success' | 'error' | 'warning',
     message: string,
     details?: any
-  ): void {
+  ): Promise<void> {
     const level = status === 'error' 
       ? LogLevel.ERROR 
       : status === 'warning' 
       ? LogLevel.WARN 
       : LogLevel.INFO;
 
-    this.log({
+    await this.log({
       category: LogCategory.SYSTEM_TEST,
       level,
       message: `[${system}] ${message}`,
@@ -219,9 +259,74 @@ class Logger {
   }
 
   /**
-   * Récupère les logs filtrés
+   * Récupère les logs filtrés depuis Supabase
    */
-  getLogs(filters?: {
+  async getLogs(filters?: {
+    category?: LogCategory;
+    level?: LogLevel;
+    since?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<LogEntry[]> {
+    try {
+      let query = supabaseAdmin
+        .from('structured_logs')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (filters?.category) {
+        query = query.eq('category', filters.category);
+      }
+
+      if (filters?.level) {
+        query = query.eq('level', filters.level);
+      }
+
+      if (filters?.since) {
+        query = query.gte('timestamp', filters.since.toISOString());
+      }
+
+      const limit = filters?.limit || 100;
+      const offset = filters?.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[Logger] Erreur récupération logs Supabase:', error);
+        // Fallback sur les logs en mémoire
+        return this.getLogsFromMemory(filters);
+      }
+
+      // Convertir les données Supabase en LogEntry
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        timestamp: row.timestamp,
+        category: row.category as LogCategory,
+        level: row.level as LogLevel,
+        message: row.message,
+        details: row.details || {},
+        userId: row.actor_discord_id,
+        route: row.route,
+        duration: row.duration_ms,
+        metadata: {
+          actorRole: row.actor_role,
+          resourceType: row.resource_type,
+          resourceId: row.resource_id,
+          statusCode: row.status_code,
+        },
+      }));
+    } catch (error) {
+      console.error('[Logger] Erreur inattendue récupération logs:', error);
+      // Fallback sur les logs en mémoire
+      return this.getLogsFromMemory(filters);
+    }
+  }
+
+  /**
+   * Récupère les logs depuis la mémoire (fallback)
+   */
+  private getLogsFromMemory(filters?: {
     category?: LogCategory;
     level?: LogLevel;
     since?: Date;
