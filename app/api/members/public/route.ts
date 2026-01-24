@@ -15,8 +15,6 @@ export const revalidate = 60; // Revalidation toutes les 60 secondes
 export async function GET() {
   const startTime = Date.now();
   try {
-    logApi.info('/api/members/public', 'Début récupération membres actifs');
-    
     // Récupérer tous les membres actifs depuis Supabase via le repository
     const activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
     

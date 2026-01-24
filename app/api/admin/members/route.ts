@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
       // Récupérer un membre spécifique par login Twitch
       const member = await memberRepository.findByTwitchLogin(twitchLogin);
       if (!member) {
+        const duration = Date.now() - startTime;
+        logApi.route('GET', '/api/admin/members', 404, duration);
         return NextResponse.json(
           { error: "Membre non trouvé" },
           { status: 404 }
@@ -44,6 +46,9 @@ export async function GET(request: NextRequest) {
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       response.headers.set('Pragma', 'no-cache');
       response.headers.set('Expires', '0');
+      
+      const duration = Date.now() - startTime;
+      logApi.route('GET', '/api/admin/members', 200, duration, admin.id, { twitchLogin });
       
       return response;
     }
@@ -52,6 +57,8 @@ export async function GET(request: NextRequest) {
       // Récupérer un membre spécifique par ID Discord
       const member = await memberRepository.findByDiscordId(discordId);
       if (!member) {
+        const duration = Date.now() - startTime;
+        logApi.route('GET', '/api/admin/members', 404, duration);
         return NextResponse.json(
           { error: "Membre non trouvé" },
           { status: 404 }
@@ -63,6 +70,9 @@ export async function GET(request: NextRequest) {
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       response.headers.set('Pragma', 'no-cache');
       response.headers.set('Expires', '0');
+      
+      const duration = Date.now() - startTime;
+      logApi.route('GET', '/api/admin/members', 200, duration, admin.id, { discordId });
       
       return response;
     }
@@ -453,11 +463,13 @@ export async function PUT(request: NextRequest) {
  * DELETE - Supprime un membre
  */
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
   try {
     // Authentification NextAuth + permission write
     const admin = await requirePermission("write");
     
     if (!admin) {
+      logApi.route('DELETE', '/api/admin/members', 401);
       return NextResponse.json(
         { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
