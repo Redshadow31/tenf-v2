@@ -1,6 +1,7 @@
 // Repository pour les événements - Utilise Supabase avec cache Redis
 import { supabaseAdmin } from '../db/supabase';
 import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
+import { logDatabase, logCache } from '../logging/logger';
 
 export interface Event {
   id: string;
@@ -36,12 +37,15 @@ export class EventRepository {
    */
   async findAll(limit = 50, offset = 0): Promise<Event[]> {
     const cacheKeyStr = cacheKey('events', 'all', limit, offset);
+    const startTime = Date.now();
     
     // Essayer de récupérer du cache
     const cached = await cacheGet<Event[]>(cacheKeyStr);
     if (cached) {
+      logCache.hit(cacheKeyStr);
       return cached;
     }
+    logCache.miss(cacheKeyStr);
 
     const { data, error } = await supabaseAdmin
       .from('events')
@@ -49,7 +53,13 @@ export class EventRepository {
       .order('date', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      logDatabase.error('SELECT', 'events', error);
+      throw error;
+    }
+
+    const duration = Date.now() - startTime;
+    logDatabase.query('SELECT', 'events', duration, { limit, offset, count: data?.length || 0 });
 
     const events = (data || []).map(this.mapToEvent);
     

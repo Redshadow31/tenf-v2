@@ -147,6 +147,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const duration = Date.now() - startTime;
+    logEvaluation.save(month, `${results.notesUpdated} notes, ${results.statusUpdated} statuts`, admin.id);
+    logApi.route('POST', '/api/evaluations/synthesis/save', 200, duration, admin.id, { month, ...results });
+    
     return NextResponse.json({
       success: true,
       message: 'Modifications enregistrées avec succès',
@@ -157,7 +161,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[API Evaluations Synthesis Save] Erreur:', error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/evaluations/synthesis/save', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erreur serveur' },
       { status: 500 }

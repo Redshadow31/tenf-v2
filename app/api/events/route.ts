@@ -121,6 +121,11 @@ export async function POST(request: NextRequest) {
     
     // Logger l'action avec before/after optimisés
     const { previousValue, newValue } = prepareAuditValues(undefined, formattedEvent);
+    
+    const duration = Date.now() - startTime;
+    logEvent.create(eventId, admin.id);
+    logApi.route('POST', '/api/events', 200, duration, admin.id, { eventId, title });
+    
     await logAction({
       action: "event.create",
       resourceType: "event",
@@ -132,7 +137,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ event: formattedEvent, success: true });
   } catch (error) {
-    console.error('[Events API] Erreur POST:', error);
+    const duration = Date.now() - startTime;
+    logApi.error('/api/events', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
