@@ -8,7 +8,7 @@ import { spotlightRepository } from '@/lib/repositories';
 export async function GET(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       spotlightId: spotlight.id,
       twitchLogin: twitchLogin.toLowerCase(),
       displayName,
-      addedBy: admin.id,
+      addedBy: admin.discordId,
       addedAt: new Date(),
     });
 
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
       spotlightId: spotlight.id,
       twitchLogin: p.twitchLogin?.toLowerCase() || '',
       displayName: p.displayName,
-      addedBy: p.addedBy || admin.id,
+      addedBy: p.addedBy || admin.discordId,
       addedAt: p.addedAt ? new Date(p.addedAt) : new Date(),
     }));
 
@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

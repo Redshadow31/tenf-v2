@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

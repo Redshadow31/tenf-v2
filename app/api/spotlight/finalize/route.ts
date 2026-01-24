@@ -10,7 +10,7 @@ import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

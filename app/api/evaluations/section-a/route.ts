@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
           ...payload,
           id: payload.id || `spotlight-${Date.now()}`,
           date: payload.date || new Date().toISOString(),
-          createdBy: admin.id,
+          createdBy: admin.discordId,
         };
 
         // Si un twitchLogin est fourni, mettre à jour l'évaluation de ce membre
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
           ...payload,
           id: payload.id || `event-${Date.now()}`,
           createdAt: payload.createdAt || new Date().toISOString(),
-          createdBy: admin.id,
+          createdBy: admin.discordId,
         };
 
         // Si un twitchLogin est fourni, mettre à jour l'évaluation de ce membre

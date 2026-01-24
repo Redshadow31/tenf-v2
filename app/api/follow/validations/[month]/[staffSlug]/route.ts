@@ -190,7 +190,7 @@ export async function POST(
       members: validatedMembers,
       moderatorComments: moderatorComments || '',
       validatedAt: new Date().toISOString(),
-      validatedBy: admin.id,
+      validatedBy: admin.discordId,
       staffTwitchId,
       staffDiscordId,
       stats: {

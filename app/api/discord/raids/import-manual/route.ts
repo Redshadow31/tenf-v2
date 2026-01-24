@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier les permissions : write pour importer
-    if (!hasPermission(admin.id, "write")) {
+    if (!hasPermission(admin.discordId, "write")) {
       return NextResponse.json(
         { error: "Accès refusé. Permissions insuffisantes." },
         { status: 403 }

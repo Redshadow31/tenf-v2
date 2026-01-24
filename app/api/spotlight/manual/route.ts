@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que l'utilisateur est fondateur
-    if (!isFounder(admin.id)) {
+    if (!isFounder(admin.discordId)) {
       return NextResponse.json(
         { error: 'Accès refusé. Cette fonctionnalité est réservée aux fondateurs.' },
         { status: 403 }
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
       startedAt: startDate,
       endsAt: endDate,
       status: 'completed',
-      moderatorDiscordId: admin.id,
+      moderatorDiscordId: admin.discordId,
       moderatorUsername: username,
       createdAt: new Date(),
-      createdBy: admin.id,
+      createdBy: admin.discordId,
     });
 
     // Enregistrer les présences
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         twitchLogin: p.twitchLogin?.toLowerCase() || '',
         displayName: p.displayName,
         addedAt: startDate,
-        addedBy: admin.id,
+        addedBy: admin.discordId,
       }));
 
       await spotlightRepository.replacePresences(createdSpotlight.id, presenceEntries);
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         maxScore,
         moderatorComments: evaluation.moderatorComments || '',
         evaluatedAt: new Date(),
-        evaluatedBy: admin.id,
+        evaluatedBy: admin.discordId,
         validated: true,
         validatedAt: new Date(),
       });

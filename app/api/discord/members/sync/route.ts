@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isFounder(admin.id)) {
+    if (!isFounder(admin.discordId)) {
       return NextResponse.json(
         { error: "Accès refusé. Réservé aux fondateurs." },
         { status: 403 }

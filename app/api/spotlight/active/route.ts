@@ -9,7 +9,7 @@ import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 export async function GET(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le modérateur est fourni ou utiliser l'admin actuel
-    const finalModeratorDiscordId = moderatorDiscordId || admin.id;
+    const finalModeratorDiscordId = moderatorDiscordId || admin.discordId;
     const finalModeratorUsername = moderatorUsername || admin.username;
 
     // Vérifier que le login Twitch correspond à un membre enregistré
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       moderatorDiscordId: finalModeratorDiscordId,
       moderatorUsername: finalModeratorUsername,
       createdAt: now,
-      createdBy: admin.id,
+      createdBy: admin.discordId,
     });
 
     // Formater pour compatibilité avec le frontend
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

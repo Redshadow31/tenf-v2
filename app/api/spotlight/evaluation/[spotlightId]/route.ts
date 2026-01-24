@@ -12,7 +12,7 @@ export async function PUT(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -58,7 +58,7 @@ export async function PUT(
       maxScore,
       moderatorComments: moderatorComments || '',
       evaluatedAt: new Date(), // Mettre à jour la date d'évaluation
-      evaluatedBy: admin.id, // Mettre à jour l'évaluateur
+      evaluatedBy: admin.discordId, // Mettre à jour l'évaluateur
       validated: existingEvaluation.validated,
       validatedAt: existingEvaluation.validatedAt,
     });
@@ -98,7 +98,7 @@ export async function GET(
 ) {
   try {
     const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    if (!admin || !hasAdminDashboardAccess(admin.discordId)) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

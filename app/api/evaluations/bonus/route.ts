@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
         points: Number(b.points) || 0,
         reason: b.reason || '',
         type: b.type || 'autre',
-        createdBy: b.createdBy || admin.id,
+        createdBy: b.createdBy || admin.discordId,
         createdAt: b.createdAt || new Date().toISOString(),
       }));
     }
