@@ -11,7 +11,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "verify-admin": "tsx scripts/verify-admin-properties.ts"
+    "verify-admin": "tsx scripts/verify-admin-properties.ts",
+    "migration:verify-images": "tsx migration/verifier-images-events.ts",
+    "migration:migrate-images": "tsx migration/migrer-images-blobs-vers-supabase.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^4.2.0",

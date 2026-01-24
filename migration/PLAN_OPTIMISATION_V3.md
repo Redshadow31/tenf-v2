@@ -33,7 +33,7 @@
 **Problème** : Certaines requêtes peuvent être lentes avec beaucoup de données
 
 **Actions** :
-- [ ] **Créer des index sur les colonnes fréquemment utilisées**
+- [x] **Créer des index sur les colonnes fréquemment utilisées** ✅ **APPLIQUÉ**
   ```sql
   -- Index pour les recherches fréquentes
   CREATE INDEX idx_members_twitch_login ON members(twitch_login);
@@ -62,7 +62,7 @@
 - `lib/repositories/EventRepository.ts` - Optimiser les requêtes
 - `lib/repositories/EvaluationRepository.ts` - Optimiser les jointures
 
-**Impact** : ⚡ Réduction de 50-80% du temps de réponse des requêtes
+**Impact** : ⚡ Réduction de 50-80% du temps de réponse des requêtes ✅ **APPLIQUÉ**
 
 ---
 
