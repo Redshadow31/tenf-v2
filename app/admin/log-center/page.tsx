@@ -162,6 +162,28 @@ export default function LogCenterPage() {
     }
   }, [legacyPage, legacyFilters]);
 
+  // Charger les logs au montage et quand l'onglet change
+  useEffect(() => {
+    if (activeTab === "audit") {
+      loadAuditLogs(true);
+    } else if (activeTab === "legacy") {
+      loadLegacyLogs(true);
+    }
+  }, [activeTab, loadAuditLogs, loadLegacyLogs]);
+
+  // Recharger les logs quand les filtres changent
+  useEffect(() => {
+    if (activeTab === "audit") {
+      loadAuditLogs(true);
+    }
+  }, [auditFilters, loadAuditLogs]);
+
+  useEffect(() => {
+    if (activeTab === "legacy") {
+      loadLegacyLogs(true);
+    }
+  }, [legacyFilters, loadLegacyLogs]);
+
   function handleLoadMore() {
     if (activeTab === "audit") {
       setAuditPage(p => p + 1);
