@@ -10,7 +10,7 @@ export async function DELETE(request: NextRequest) {
   try {
     // Vérifier les permissions (fondateurs uniquement)
     const admin = await getCurrentAdmin();
-    if (!admin || !isFounder(admin.id)) {
+    if (!admin || !isFounder(admin.discordId)) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent supprimer tous les raids non reconnus." },
         { status: 403 }
