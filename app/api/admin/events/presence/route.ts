@@ -66,17 +66,25 @@ export async function GET(request: NextRequest) {
       // Log des dates des événements pour debug
       if (allEvents.length > 0) {
         console.log(`[API Event Presence] Dates des premiers événements:`, 
-          allEvents.slice(0, 5).map(e => ({
-            id: e.id,
-            title: e.title,
-            date: e.date.toISOString(),
-            month: `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`
-          }))
+          allEvents.slice(0, 5).map(e => {
+            const date = e.date instanceof Date ? e.date : new Date(e.date);
+            return {
+              id: e.id,
+              title: e.title,
+              date: date.toISOString(),
+              month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+            };
+          })
         );
       }
       
       const monthEvents = allEvents.filter(event => {
-        const eventDate = event.date;
+        // Gérer le cas où event.date peut être une string (depuis le cache Redis)
+        const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+        if (isNaN(eventDate.getTime())) {
+          console.error(`[API Event Presence] Date invalide pour événement ${event.id}:`, event.date);
+          return false;
+        }
         const eventYear = eventDate.getFullYear();
         const eventMonth = String(eventDate.getMonth() + 1).padStart(2, '0');
         const eventMonthKey = `${eventYear}-${eventMonth}`;
@@ -110,19 +118,24 @@ export async function GET(request: NextRequest) {
               })));
             }
             
+            // Gérer les dates qui peuvent être des strings (depuis le cache Redis)
+            const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+            const createdAt = event.createdAt instanceof Date ? event.createdAt : new Date(event.createdAt);
+            const updatedAt = event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt : new Date(event.updatedAt)) : undefined;
+            
             return {
               id: event.id,
               title: event.title,
               description: event.description,
               image: event.image,
-              date: event.date.toISOString(),
+              date: eventDate.toISOString(),
               category: event.category,
               location: event.location,
               invitedMembers: event.invitedMembers,
               isPublished: event.isPublished,
-              createdAt: event.createdAt.toISOString(),
+              createdAt: createdAt.toISOString(),
               createdBy: event.createdBy,
-              updatedAt: event.updatedAt?.toISOString(),
+              updatedAt: updatedAt?.toISOString(),
               presences: presences || [],
               registrations: (registrations || []).map(reg => {
                 try {
@@ -149,19 +162,24 @@ export async function GET(request: NextRequest) {
           } catch (eventError) {
             console.error(`[API Event Presence] Erreur chargement événement ${event.id}:`, eventError);
             // Retourner l'événement avec des listes vides plutôt que de faire échouer toute la requête
+            // Gérer les dates qui peuvent être des strings (depuis le cache Redis)
+            const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+            const createdAt = event.createdAt instanceof Date ? event.createdAt : new Date(event.createdAt);
+            const updatedAt = event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt : new Date(event.updatedAt)) : undefined;
+            
             return {
               id: event.id,
               title: event.title,
               description: event.description,
               image: event.image,
-              date: event.date.toISOString(),
+              date: eventDate.toISOString(),
               category: event.category,
               location: event.location,
               invitedMembers: event.invitedMembers,
               isPublished: event.isPublished,
-              createdAt: event.createdAt.toISOString(),
+              createdAt: createdAt.toISOString(),
               createdBy: event.createdBy,
-              updatedAt: event.updatedAt?.toISOString(),
+              updatedAt: updatedAt?.toISOString(),
               presences: [],
               registrations: [],
             };
