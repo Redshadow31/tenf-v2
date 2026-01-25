@@ -834,12 +834,21 @@ export default function FollowMemberPage() {
                                 {member.displayName.charAt(0).toUpperCase()}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-white font-medium truncate">
-                                  {member.displayName}
-                                </p>
-                                <p className="text-gray-400 text-xs truncate">
-                                  {twitchLogin}
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-white font-medium truncate">
+                                    {member.displayName}
+                                  </p>
+                                  {twitchLogin && twitchLogin.toLowerCase() !== member.displayName.toLowerCase() && (
+                                    <span className="text-[#9146ff] text-xs font-mono bg-[#9146ff]/10 px-2 py-0.5 rounded border border-[#9146ff]/30">
+                                      @{twitchLogin}
+                                    </span>
+                                  )}
+                                </div>
+                                {twitchLogin && (
+                                  <p className="text-gray-400 text-xs truncate mt-1">
+                                    twitch.tv/{twitchLogin}
+                                  </p>
+                                )}
                                 {member.role && (
                                   <p className="text-gray-500 text-xs mt-1">
                                     {member.role}
