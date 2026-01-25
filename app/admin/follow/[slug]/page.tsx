@@ -811,49 +811,60 @@ export default function FollowMemberPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {remainingMembers.map((member) => (
-                        <a
-                          key={member.twitchLogin}
-                          href={`https://twitch.tv/${member.twitchLogin}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 hover:border-[#9146ff] transition-colors cursor-pointer block"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                              {member.displayName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-medium truncate">
-                                {member.displayName}
-                              </p>
-                              <p className="text-gray-400 text-xs truncate">
-                                {member.twitchLogin}
-                              </p>
-                              {member.role && (
-                                <p className="text-gray-500 text-xs mt-1">
-                                  {member.role}
+                      {remainingMembers.map((member) => {
+                        // S'assurer d'utiliser le twitchLogin original depuis la liste des membres
+                        const twitchLogin = member.twitchLogin || '';
+                        const twitchUrl = twitchLogin ? `https://twitch.tv/${twitchLogin}` : '#';
+                        
+                        return (
+                          <a
+                            key={member.twitchLogin}
+                            href={twitchUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 hover:border-[#9146ff] transition-colors cursor-pointer block"
+                            onClick={(e) => {
+                              if (!twitchLogin) {
+                                e.preventDefault();
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {member.displayName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white font-medium truncate">
+                                  {member.displayName}
                                 </p>
-                              )}
+                                <p className="text-gray-400 text-xs truncate">
+                                  {twitchLogin}
+                                </p>
+                                {member.role && (
+                                  <p className="text-gray-500 text-xs mt-1">
+                                    {member.role}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex-shrink-0">
+                                <svg 
+                                  className="w-5 h-5 text-gray-400 hover:text-[#9146ff] transition-colors" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                                  />
+                                </svg>
+                              </div>
                             </div>
-                            <div className="flex-shrink-0">
-                              <svg 
-                                className="w-5 h-5 text-gray-400 hover:text-[#9146ff] transition-colors" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
-                              >
-                                <path 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round" 
-                                  strokeWidth={2} 
-                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
-                                />
-                              </svg>
-                            </div>
-                          </div>
-                        </a>
-                      ))}
+                          </a>
+                        );
+                      })}
                     </div>
 
                     {/* Liste textuelle pour copier */}
@@ -864,7 +875,7 @@ export default function FollowMemberPage() {
                         </p>
                         <button
                           onClick={() => {
-                            const textList = remainingMembers.map(m => m.twitchLogin).join('\n');
+                            const textList = remainingMembers.map(m => m.twitchLogin || '').filter(login => login).join('\n');
                             navigator.clipboard.writeText(textList);
                             alert('Liste copiée dans le presse-papiers !');
                           }}
@@ -875,7 +886,7 @@ export default function FollowMemberPage() {
                       </div>
                       <textarea
                         readOnly
-                        value={remainingMembers.map(m => m.twitchLogin).join('\n')}
+                        value={remainingMembers.map(m => m.twitchLogin || '').filter(login => login).join('\n')}
                         className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white text-sm font-mono min-h-[150px] resize-none"
                       />
                     </div>
