@@ -216,8 +216,11 @@ export default function GestionMembresPage() {
             });
           }
           
+          // Filtrer les membres inactifs (soft deleted) - ne pas afficher les membres supprimés
+          const activeMembers = centralMembers.filter((member: any) => member.isActive !== false);
+          
           // Mapper les membres centralisés vers le format Member avec avatars Twitch
-          const mappedMembers: Member[] = centralMembers.map((member: any, index: number) => {
+          const mappedMembers: Member[] = activeMembers.map((member: any, index: number) => {
             // Récupérer l'avatar depuis le map (déjà récupéré en batch)
             let avatar = avatarMap.get(member.twitchLogin.toLowerCase());
             
