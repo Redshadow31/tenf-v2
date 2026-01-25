@@ -240,22 +240,38 @@ export class EventRepository {
       firstFew: data?.slice(0, 3).map(r => ({
         id: r.id,
         event_id: r.event_id,
+        event_id_type: typeof r.event_id,
+        event_id_matches: r.event_id === eventId,
         twitch_login: r.twitch_login,
         display_name: r.display_name,
       })) || [],
     });
 
-    const registrations = (data || []).map(this.mapToRegistration);
-    console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions mappées pour événement ${eventId}`);
-    
     // Vérifier s'il y a des inscriptions pour d'autres événements (pour debug)
-    if (registrations.length === 0) {
+    if ((data?.length || 0) === 0) {
       const { data: allRegistrations } = await supabaseAdmin
         .from('event_registrations')
-        .select('event_id, twitch_login')
-        .limit(10);
-      console.log(`[EventRepository] Debug: Exemples d'inscriptions dans la table (premiers 10):`, allRegistrations);
+        .select('event_id, twitch_login, display_name')
+        .limit(20);
+      console.log(`[EventRepository] Debug: Aucune inscription trouvée pour ${eventId}. Exemples d'inscriptions dans la table (premiers 20):`, {
+        total: allRegistrations?.length || 0,
+        uniqueEventIds: [...new Set(allRegistrations?.map(r => r.event_id) || [])],
+        sample: allRegistrations?.slice(0, 5) || [],
+      });
+      
+      // Vérifier si l'eventId existe dans les inscriptions mais avec un format différent
+      const matchingRegistrations = allRegistrations?.filter(r => {
+        return r.event_id === eventId || 
+               String(r.event_id) === String(eventId) ||
+               r.event_id?.toString() === eventId?.toString();
+      });
+      if (matchingRegistrations && matchingRegistrations.length > 0) {
+        console.log(`[EventRepository] ⚠️ Trouvé ${matchingRegistrations.length} inscription(s) avec event_id qui correspond (format différent?)`, matchingRegistrations);
+      }
     }
+
+    const registrations = (data || []).map(this.mapToRegistration);
+    console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions mappées pour événement ${eventId}`);
     
     return registrations;
   }
