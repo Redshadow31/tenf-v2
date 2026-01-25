@@ -219,15 +219,24 @@ export class EventRepository {
    * Récupère les inscriptions à un événement
    */
   async getRegistrations(eventId: string): Promise<EventRegistration[]> {
+    // Récupérer toutes les inscriptions sans limite (ou avec une limite très élevée)
+    // Supabase a une limite par défaut de 1000, donc on utilise une limite explicite élevée
     const { data, error } = await supabaseAdmin
       .from('event_registrations')
       .select('*')
       .eq('event_id', eventId)
-      .order('registered_at', { ascending: false });
+      .order('registered_at', { ascending: false })
+      .limit(10000); // Limite élevée pour récupérer toutes les inscriptions
 
-    if (error) throw error;
+    if (error) {
+      console.error(`[EventRepository] Erreur récupération inscriptions pour événement ${eventId}:`, error);
+      throw error;
+    }
 
-    return (data || []).map(this.mapToRegistration);
+    const registrations = (data || []).map(this.mapToRegistration);
+    console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions pour événement ${eventId}`);
+    
+    return registrations;
   }
 
   /**

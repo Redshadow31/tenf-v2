@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
           const presences = await eventRepository.getPresences(event.id);
           const registrations = await eventRepository.getRegistrations(event.id);
           
+          console.log(`[API Event Presence] Événement ${event.id} (${event.title}): ${presences.length} présences, ${registrations.length} inscriptions`);
+          
           return {
             id: event.id,
             title: event.title,
