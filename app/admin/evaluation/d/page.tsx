@@ -693,15 +693,29 @@ export default function EvaluationDPage() {
   return (
     <div className="min-h-screen p-8" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
       <div className="mb-8">
-        <Link
-          href="/admin/evaluation"
-          className="mb-4 inline-block transition-colors"
-          style={{ color: 'var(--color-text-secondary)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
-        >
-          ← Retour au Hub Évaluation
-        </Link>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <Link
+            href="/admin/evaluation"
+            className="transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+          >
+            ← Retour au Hub Évaluation
+          </Link>
+          <Link
+            href="/admin/migration/evaluations"
+            className="px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            style={{
+              backgroundColor: '#9146ff',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#7c3aed'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#9146ff'; }}
+          >
+            🔄 Migration des Évaluations
+          </Link>
+        </div>
         <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>D. Synthèse & Bonus</h1>
         <p style={{ color: 'var(--color-text-secondary)' }}>Synthèse globale et bonus</p>
       </div>
