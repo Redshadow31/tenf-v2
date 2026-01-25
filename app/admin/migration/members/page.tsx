@@ -71,7 +71,7 @@ export default function MembersMigrationPage() {
         setSyncData(data.data);
         // Sélectionner automatiquement tous les membres manquants selon la source
         const missingMembers = data.data[source === 'merged' ? 'merged' : source === 'admin' ? 'adminMembers' : 'botMembers'].missingInSupabase;
-        const missingLogins = new Set(missingMembers.map((m: MemberInfo) => m.twitchLogin.toLowerCase()));
+        const missingLogins = new Set<string>(missingMembers.map((m: MemberInfo) => m.twitchLogin.toLowerCase()));
         setSelectedLogins(missingLogins);
       } else {
         throw new Error(data.error || 'Erreur lors de la vérification');
@@ -130,7 +130,7 @@ export default function MembersMigrationPage() {
     if (!syncData) return;
     
     const missingMembers = syncData[source === 'merged' ? 'merged' : source === 'admin' ? 'adminMembers' : 'botMembers'].missingInSupabase;
-    const allLogins = new Set(missingMembers.map(m => m.twitchLogin.toLowerCase()));
+    const allLogins = new Set<string>(missingMembers.map(m => m.twitchLogin.toLowerCase()));
     setSelectedLogins(allLogins);
   };
 
