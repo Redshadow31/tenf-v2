@@ -219,11 +219,15 @@ export default function FollowMemberPage() {
           });
           
           // Fusionner avec les membres chargés pour s'assurer que tous les membres ont une entrée
+          // Utiliser activeMembers qui vient d'être chargé dans cette fonction
           const mergedFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
-          members.forEach((m: Member) => {
+          activeMembers.forEach((m: Member) => {
             const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
             if (normalizedLogin) {
-              mergedFollows[normalizedLogin] = follows[normalizedLogin] || { jeSuis: false, meSuit: null };
+              // Chercher dans follows avec normalisation, mais aussi avec le login original comme fallback
+              mergedFollows[normalizedLogin] = follows[normalizedLogin] || 
+                follows[m.twitchLogin?.toLowerCase().trim() || ''] || 
+                { jeSuis: false, meSuit: null };
             }
           });
           

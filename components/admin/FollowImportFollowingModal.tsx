@@ -43,6 +43,7 @@ export default function FollowImportFollowingModal({
   }>>([]);
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
   const [showChanges, setShowChanges] = useState(false);
+  const [manualMatches, setManualMatches] = useState<Record<string, string>>({}); // normalizedLogin -> twitchLogin
 
   // Charger les membres au montage
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function FollowImportFollowingModal({
     const parsed: ParsedLine[] = [];
     const memberMap = new Map<string, { twitchLogin: string; displayName: string }>();
     
-    // Créer un map des membres TENF normalisés
+    // Créer un map des membres TENF normalisés par twitchLogin
     members.forEach(m => {
       const normalized = normalizeLogin(m.twitchLogin);
       memberMap.set(normalized, m);
@@ -367,6 +368,7 @@ export default function FollowImportFollowingModal({
       setSelectedChanges(new Set());
       setRawText("");
       setParsedLines([]);
+      setManualMatches({});
     } catch (error) {
       console.error("Erreur application import:", error);
       alert("Erreur lors de l'application de l'import");
@@ -375,10 +377,30 @@ export default function FollowImportFollowingModal({
     }
   }
 
+  function handleManualMatch(normalizedLogin: string, twitchLogin: string) {
+    setManualMatches(prev => ({
+      ...prev,
+      [normalizedLogin]: twitchLogin,
+    }));
+    
+    // Mettre à jour le statut de la ligne
+    setParsedLines(prev => prev.map(line => {
+      if (line.normalizedLogin === normalizedLogin) {
+        const matchedMember = members.find(m => normalizeLogin(m.twitchLogin) === normalizeLogin(twitchLogin));
+        return {
+          ...line,
+          matchedMember: matchedMember || { twitchLogin, displayName: twitchLogin },
+          status: 'matched',
+        };
+      }
+      return line;
+    }));
+  }
+
   if (!isOpen) return null;
 
-  const matchedLines = parsedLines.filter(l => l.status === 'matched');
-  const unmatchedLines = parsedLines.filter(l => l.status === 'unmatched');
+  const matchedLines = parsedLines.filter(l => l.status === 'matched' || manualMatches[l.normalizedLogin]);
+  const unmatchedLines = parsedLines.filter(l => l.status === 'unmatched' && !manualMatches[l.normalizedLogin]);
 
   return (
     <div
@@ -494,20 +516,76 @@ export default function FollowImportFollowingModal({
                 </div>
               )}
 
-              {/* Lignes ignorées */}
+              {/* Lignes ignorées avec possibilité d'association */}
               {unmatchedLines.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">
-                    Lignes ignorées (hors TENF) ({unmatchedLines.length})
+                    Membres non reconnus ({unmatchedLines.length})
                   </h3>
-                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
-                    <div className="space-y-2">
-                      {unmatchedLines.map((line, index) => (
-                        <div key={index} className="text-gray-400 text-sm font-mono">
-                          {line.login}
-                        </div>
-                      ))}
-                    </div>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Ces pseudos ne correspondent à aucun membre TENF. Vous pouvez les associer manuellement à un membre existant.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-700">
+                          <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Pseudo importé</th>
+                          <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Date follow</th>
+                          <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Associer à</th>
+                          <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unmatchedLines.map((line, index) => {
+                          const manualMatch = manualMatches[line.normalizedLogin];
+                          return (
+                            <tr key={index} className="border-b border-gray-700 hover:bg-[#0e0e10]">
+                              <td className="py-2 px-3 text-gray-400 text-sm font-mono">{line.login}</td>
+                              <td className="py-2 px-3 text-gray-400 text-sm">
+                                {line.followedAt
+                                  ? new Date(line.followedAt).toLocaleDateString('fr-FR')
+                                  : "—"}
+                              </td>
+                              <td className="py-2 px-3">
+                                <select
+                                  value={manualMatch || ""}
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleManualMatch(line.normalizedLogin, e.target.value);
+                                    } else {
+                                      setManualMatches(prev => {
+                                        const updated = { ...prev };
+                                        delete updated[line.normalizedLogin];
+                                        return updated;
+                                      });
+                                    }
+                                  }}
+                                  className="bg-[#0e0e10] border border-gray-700 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-[#9146ff] min-w-[200px]"
+                                >
+                                  <option value="">Sélectionner un membre...</option>
+                                  {members.map(m => (
+                                    <option key={m.twitchLogin} value={m.twitchLogin}>
+                                      {m.displayName} (@{m.twitchLogin})
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="py-2 px-3">
+                                {manualMatch ? (
+                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                                    ✅ Associé
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                                    ❓ Non associé
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}

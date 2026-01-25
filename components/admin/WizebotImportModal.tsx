@@ -443,8 +443,8 @@ export default function WizebotImportModal({
 
   if (!isOpen) return null;
 
-  const matchedCount = parsedLines.filter(l => l.status === 'matched').length;
-  const unmatchedCount = parsedLines.filter(l => l.status === 'unmatched').length;
+  const matchedCount = parsedLines.filter(l => l.status === 'matched' || manualMatches[l.normalizedLogin]).length;
+  const unmatchedCount = parsedLines.filter(l => l.status === 'unmatched' && !manualMatches[l.normalizedLogin]).length;
 
   return (
     <div
@@ -501,7 +501,7 @@ export default function WizebotImportModal({
             </div>
           </div>
 
-          {/* Tableau d'aperçu */}
+              {/* Tableau d'aperçu */}
           {parsedLines.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -514,54 +514,72 @@ export default function WizebotImportModal({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-700">
-                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Login</th>
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Pseudo importé</th>
                       <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Date follow</th>
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Membre TENF</th>
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Pseudo Twitch</th>
                       <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Statut</th>
                       <th className="text-left py-2 px-3 text-sm font-semibold text-gray-300">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {parsedLines.map((line, index) => (
-                      <tr key={index} className="border-b border-gray-700 hover:bg-[#0e0e10]">
-                        <td className="py-2 px-3 text-white text-sm font-mono">{line.login}</td>
-                        <td className="py-2 px-3 text-gray-400 text-sm">
-                          {line.followedAt
-                            ? new Date(line.followedAt).toLocaleString('fr-FR')
-                            : "—"}
-                        </td>
-                        <td className="py-2 px-3">
-                          {line.status === 'matched' ? (
-                            <span className="px-2 py-1 rounded text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
-                              ✅ Reconnu ({line.matchedMember?.displayName})
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-500/20 text-gray-300 border border-gray-500/30">
-                              ❓ Inconnu
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {line.status === 'unmatched' && (
-                            <select
-                              value={manualMatches[line.normalizedLogin] || ""}
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleManualMatch(line.normalizedLogin, e.target.value);
-                                }
-                              }}
-                              className="bg-[#0e0e10] border border-gray-700 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#9146ff]"
-                            >
-                              <option value="">Associer...</option>
-                              {members.map(m => (
-                                <option key={m.twitchLogin} value={m.twitchLogin}>
-                                  {m.displayName} ({m.twitchLogin})
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {parsedLines.map((line, index) => {
+                      const isMatched = line.status === 'matched' || manualMatches[line.normalizedLogin];
+                      const matchedMember = line.matchedMember || (manualMatches[line.normalizedLogin] ? members.find(m => normalizeLogin(m.twitchLogin) === normalizeLogin(manualMatches[line.normalizedLogin])) : undefined);
+                      return (
+                        <tr key={index} className="border-b border-gray-700 hover:bg-[#0e0e10]">
+                          <td className="py-2 px-3 text-white text-sm font-mono">{line.login}</td>
+                          <td className="py-2 px-3 text-gray-400 text-sm">
+                            {line.followedAt
+                              ? new Date(line.followedAt).toLocaleString('fr-FR')
+                              : "—"}
+                          </td>
+                          <td className="py-2 px-3 text-white text-sm">
+                            {matchedMember ? matchedMember.displayName : "—"}
+                          </td>
+                          <td className="py-2 px-3 text-gray-400 text-sm font-mono">
+                            {matchedMember ? `@${matchedMember.twitchLogin}` : "—"}
+                          </td>
+                          <td className="py-2 px-3">
+                            {isMatched ? (
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                                ✅ Reconnu
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                                ❓ Non reconnu
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
+                            {!isMatched && (
+                              <select
+                                value={manualMatches[line.normalizedLogin] || ""}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleManualMatch(line.normalizedLogin, e.target.value);
+                                  } else {
+                                    setManualMatches(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[line.normalizedLogin];
+                                      return updated;
+                                    });
+                                  }
+                                }}
+                                className="bg-[#0e0e10] border border-gray-700 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#9146ff] min-w-[200px]"
+                              >
+                                <option value="">Sélectionner un membre...</option>
+                                {members.map(m => (
+                                  <option key={m.twitchLogin} value={m.twitchLogin}>
+                                    {m.displayName} (@{m.twitchLogin})
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
