@@ -486,26 +486,59 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const member = await memberRepository.findByTwitchLogin(twitchLogin);
+    // Chercher le membre dans Supabase
+    let member = await memberRepository.findByTwitchLogin(twitchLogin);
+    
+    // Si pas trouvé dans Supabase, chercher dans les Blobs
+    let memberFromBlobs = null;
     if (!member) {
+      try {
+        const { loadMemberDataFromStorage, getMemberData } = await import('@/lib/memberData');
+        await loadMemberDataFromStorage();
+        memberFromBlobs = getMemberData(twitchLogin);
+      } catch (error) {
+        console.warn(`[Delete Member] Erreur lors de la recherche dans les Blobs pour ${twitchLogin}:`, error);
+      }
+    }
+
+    // Si le membre n'existe ni dans Supabase ni dans les Blobs
+    if (!member && !memberFromBlobs) {
       return NextResponse.json(
         { error: "Membre non trouvé" },
         { status: 404 }
       );
     }
 
-    try {
-      await memberRepository.delete(twitchLogin);
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-      return NextResponse.json(
-        { error: "Erreur lors de la suppression" },
-        { status: 500 }
-      );
+    // Utiliser le membre de Supabase en priorité, sinon celui des Blobs
+    const memberToDelete = member || memberFromBlobs;
+
+    // Supprimer de Supabase si présent
+    if (member) {
+      try {
+        await memberRepository.delete(twitchLogin);
+        console.log(`[Delete Member] ✅ Membre supprimé de Supabase: ${twitchLogin}`);
+      } catch (error) {
+        console.error(`[Delete Member] ❌ Erreur lors de la suppression de Supabase pour ${twitchLogin}:`, error);
+        // Continuer quand même pour supprimer des Blobs
+      }
+    }
+
+    // Supprimer des Blobs si présent
+    if (memberFromBlobs || member) {
+      try {
+        const { deleteMemberData } = await import('@/lib/memberData');
+        const deletedFromBlobs = await deleteMemberData(twitchLogin, admin.discordId);
+        if (deletedFromBlobs) {
+          console.log(`[Delete Member] ✅ Membre supprimé des Blobs: ${twitchLogin}`);
+        }
+      } catch (error) {
+        console.error(`[Delete Member] ❌ Erreur lors de la suppression des Blobs pour ${twitchLogin}:`, error);
+        // Ne pas bloquer si la suppression des Blobs échoue
+      }
     }
 
     // Logger l'action avec before optimisé (état complet avant suppression)
-    const { previousValue } = prepareAuditValues(member, undefined);
+    const { previousValue } = prepareAuditValues(memberToDelete, undefined);
     
     const duration = Date.now() - startTime;
     logMember.delete(twitchLogin, admin.id);
