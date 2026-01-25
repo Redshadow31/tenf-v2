@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS "spotlight_evaluations" (
 	"validated_at" timestamp
 );
 
-CREATE TABLE "spotlight_presences" (
+CREATE TABLE IF NOT EXISTS "spotlight_presences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"spotlight_id" uuid NOT NULL,
 	"twitch_login" text NOT NULL,
