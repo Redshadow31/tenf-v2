@@ -220,9 +220,11 @@ export default function FollowMemberPage() {
           
           // Fusionner avec les membres chargés pour s'assurer que tous les membres ont une entrée
           const mergedFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
-          activeMembers.forEach((m: Member) => {
+          members.forEach((m: Member) => {
             const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
-            mergedFollows[normalizedLogin] = follows[normalizedLogin] || { jeSuis: false, meSuit: null };
+            if (normalizedLogin) {
+              mergedFollows[normalizedLogin] = follows[normalizedLogin] || { jeSuis: false, meSuit: null };
+            }
           });
           
           setMemberFollows(mergedFollows);
