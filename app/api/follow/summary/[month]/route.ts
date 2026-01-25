@@ -58,13 +58,14 @@ export async function GET(
     const obsoleteValidations = allValidations.filter(v => isValidationObsolete(v.validatedAt));
 
     // Calculer les statistiques globales (uniquement à partir des validations à jour)
-    let totalFollowed = 0;
-    let totalMembers = 0;
+    // Utiliser totalRetour et totalJeSuis pour correspondre aux données des pages individuelles
+    let totalFollowed = 0; // Total des follows retour (totalRetour)
+    let totalMembers = 0; // Total des membres suivis (totalJeSuis)
     
     validValidations.forEach(validation => {
       const stats = calculateFollowStats(validation);
-      totalFollowed += stats.followedCount;
-      totalMembers += stats.totalMembers;
+      totalFollowed += stats.totalRetour; // Utiliser totalRetour au lieu de followedCount
+      totalMembers += stats.totalJeSuis; // Utiliser totalJeSuis au lieu de totalMembers
     });
 
     const averageFollowRate = totalMembers > 0 
@@ -81,9 +82,9 @@ export async function GET(
         staffSlug: slug,
         staffName: STAFF_MEMBERS[slug],
         lastValidationDate: validation?.validatedAt || null,
-        followRate: stats?.followRate || null,
-        followedCount: stats?.followedCount || null,
-        totalMembers: stats?.totalMembers || null,
+        followRate: stats?.tauxRetour || null, // Utiliser tauxRetour au lieu de followRate
+        followedCount: stats?.totalRetour || null, // Utiliser totalRetour (follows retour) au lieu de followedCount
+        totalMembers: stats?.totalJeSuis || null, // Utiliser totalJeSuis (membres suivis) au lieu de totalMembers
         status: validation 
           ? (isObsolete ? 'obsolete' : 'up_to_date')
           : 'not_validated',
