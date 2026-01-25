@@ -169,11 +169,13 @@ export default function FollowMemberPage() {
     try {
       setLoading(true);
       
+      let activeMembers: Member[] = [];
+      
       // Charger les membres TENF
       const membersResponse = await fetch('/api/members/public', { cache: 'no-store' });
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        const activeMembers = (membersData.members || [])
+        activeMembers = (membersData.members || [])
           .filter((m: any) => m.isActive !== false)
           .map((m: any) => ({
             twitchLogin: m.twitchLogin || '',
@@ -221,7 +223,7 @@ export default function FollowMemberPage() {
           // Fusionner avec les membres chargés pour s'assurer que tous les membres ont une entrée
           // Utiliser activeMembers qui vient d'être chargé dans cette fonction
           const mergedFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
-          // Utiliser activeMembers qui est dans la portée de la fonction
+          // Utiliser activeMembers si disponible, sinon fallback sur members du state
           const membersToProcess = activeMembers.length > 0 ? activeMembers : members;
           membersToProcess.forEach((m: Member) => {
             const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
