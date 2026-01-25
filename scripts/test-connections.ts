@@ -15,9 +15,13 @@ import { resolve } from 'path';
 const envPath = resolve(process.cwd(), '.env.local');
 try {
   const result = config({ path: envPath });
-  if (result.error && result.error.code !== 'ENOENT') {
-    console.warn('⚠️  Erreur chargement .env.local:', result.error.message);
-  } else if (!result.error) {
+  if (result.error) {
+    // Vérifier si c'est une erreur "fichier non trouvé" (acceptable) ou une autre erreur
+    const errorMessage = result.error.message || '';
+    if (!errorMessage.includes('ENOENT') && !errorMessage.includes('not found')) {
+      console.warn('⚠️  Erreur chargement .env.local:', errorMessage);
+    }
+  } else {
     console.log('✅ Variables d\'environnement chargées depuis .env.local');
   }
 } catch (e) {
