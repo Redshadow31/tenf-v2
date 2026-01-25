@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Si aucun spotlight trouvé dans les évaluations, essayer de récupérer depuis l'API de présence mensuelle
+    // Cette API utilise la même logique mais peut avoir des données plus récentes
     if (allSpotlights.length === 0) {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
@@ -61,39 +62,33 @@ export async function GET(request: NextRequest) {
         if (presenceResponse.ok) {
           const presenceData = await presenceResponse.json();
           const spotlightsFromPresence = presenceData.spotlights || [];
+          const membersFromPresence = presenceData.members || [];
           
-          // Convertir les données de présence en format spotlightEvaluations
+          // Construire les spotlights depuis les données de présence
           if (spotlightsFromPresence.length > 0) {
-            // Récupérer les membres depuis les données de présence
-            const membersFromPresence = presenceData.members || [];
-            
-            // Construire les spotlights depuis les données de présence
+            // Créer un map des membres avec leurs détails de présence
+            const memberPresenceMap = new Map<string, any>();
+            membersFromPresence.forEach((m: any) => {
+              memberPresenceMap.set(m.twitchLogin.toLowerCase(), m);
+            });
+
+            // Construire les spotlights avec leurs membres
             spotlightsFromPresence.forEach((spotlight: any) => {
-              // Trouver les membres présents pour ce spotlight
-              const spotlightMembers = membersFromPresence
-                .filter((m: any) => 
-                  m.spotlightDetails?.some((detail: any) => 
-                    detail.date === spotlight.date && 
-                    detail.streamer === spotlight.streamerTwitchLogin &&
-                    detail.present === true
-                  )
-                )
-                .map((m: any) => ({
-                  twitchLogin: m.twitchLogin,
-                  present: true,
-                }));
+              const spotlightMembers: any[] = [];
               
-              // Ajouter aussi les membres absents pour avoir la liste complète
+              // Pour chaque membre actif, vérifier s'il était présent à ce spotlight
               activeMembers.forEach(member => {
-                const isPresent = spotlightMembers.some((m: any) => 
-                  m.twitchLogin?.toLowerCase() === member.twitchLogin.toLowerCase()
-                );
-                if (!isPresent) {
-                  spotlightMembers.push({
-                    twitchLogin: member.twitchLogin,
-                    present: false,
-                  });
-                }
+                const memberPresence = memberPresenceMap.get(member.twitchLogin.toLowerCase());
+                const isPresent = memberPresence?.spotlightDetails?.some((detail: any) => 
+                  detail.date === spotlight.date && 
+                  detail.streamer === spotlight.streamerTwitchLogin &&
+                  detail.present === true
+                ) || false;
+
+                spotlightMembers.push({
+                  twitchLogin: member.twitchLogin,
+                  present: isPresent,
+                });
               });
 
               allSpotlights.push({
@@ -104,11 +99,15 @@ export async function GET(request: NextRequest) {
                 validated: true, // Considérer comme validé si présent dans l'API de présence
               });
             });
+            
+            console.log(`[API Evaluations Spotlights Points] Récupéré ${allSpotlights.length} spotlights depuis presence/monthly pour ${monthKey}`);
           }
         }
       } catch (error) {
         console.warn('[API Evaluations Spotlights Points] Erreur lors de la récupération depuis presence/monthly:', error);
       }
+    } else {
+      console.log(`[API Evaluations Spotlights Points] Récupéré ${allSpotlights.length} spotlights depuis evaluations pour ${monthKey}`);
     }
 
     if (allSpotlights.length === 0) {
