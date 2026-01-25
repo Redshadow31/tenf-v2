@@ -151,6 +151,9 @@ export default function EventPresencePage() {
           // Vérifier si c'est un problème de mois ou si vraiment il n'y a pas d'événements
           if (data.debug) {
             console.warn(`[Presence Page] Total événements en DB: ${data.debug.totalEventsInDb}, Événements pour le mois: ${data.debug.eventsForMonth}`);
+            if (data.debug.totalEventsInDb > 0 && data.debug.eventsForMonth === 0) {
+              console.warn(`[Presence Page] ⚠️ Il y a ${data.debug.totalEventsInDb} événement(s) en DB mais aucun pour le mois ${selectedMonth}. Essayez de changer de mois.`);
+            }
           }
         }
         
