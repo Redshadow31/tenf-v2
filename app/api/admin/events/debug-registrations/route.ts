@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         event: {
           id: event.id,
           title: event.title,
-          date: event.date.toISOString(),
+          date: event.date instanceof Date ? event.date.toISOString() : new Date(event.date).toISOString(),
         },
         registrationsForThisEvent: {
           count: registrationsByEventId?.length || 0,
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         .map(e => ({
           id: e.id,
           title: e.title,
-          date: e.date.toISOString(),
+          date: e.date instanceof Date ? e.date.toISOString() : new Date(e.date).toISOString(),
           registrationsCount: registrationsByEvent[e.id],
         }));
 
