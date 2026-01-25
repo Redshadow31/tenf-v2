@@ -79,16 +79,39 @@ export async function resolveAndCacheTwitchId(
     return null;
   }
 
-  // Sauvegarder dans memberData
+  // Sauvegarder dans memberData (Blobs) et/ou Supabase
   try {
     await updateMemberData(twitchLogin, { twitchId }, 'system');
-    console.log(`[Twitch ID Resolver] ✅ ID résolu et mis en cache: ${twitchLogin} -> ${twitchId}`);
-    return twitchId;
-  } catch (error) {
-    console.error(`[Twitch ID Resolver] ❌ Erreur lors de la sauvegarde de l'ID pour ${twitchLogin}:`, error);
-    // Retourner quand même l'ID résolu même si la sauvegarde échoue
-    return twitchId;
+    console.log(`[Twitch ID Resolver] ✅ ID résolu et mis en cache (Blobs): ${twitchLogin} -> ${twitchId}`);
+  } catch (updateError) {
+    // Si la mise à jour dans les Blobs échoue, essayer Supabase directement
+    console.warn(`[Twitch ID Resolver] Échec mise à jour Blobs pour ${twitchLogin}, tentative Supabase...`);
+    try {
+      const { MemberRepository } = await import('@/lib/repositories/MemberRepository');
+      const memberRepo = new MemberRepository();
+      const supabaseMember = await memberRepo.findByTwitchLogin(twitchLogin);
+      if (supabaseMember) {
+        await memberRepo.update(supabaseMember.twitchLogin, { twitchId: twitchId });
+        console.log(`[Twitch ID Resolver] ✅ ID mis à jour dans Supabase: ${twitchLogin} -> ${twitchId}`);
+      } else {
+        // Si le membre n'existe pas dans Supabase, le créer
+        await memberRepo.create({
+          twitchLogin: member.twitchLogin,
+          twitchId: twitchId,
+          displayName: member.displayName || member.twitchLogin,
+          role: member.role || 'AFFILIE',
+          isActive: member.isActive !== false,
+          isVip: member.isVip || false,
+        });
+        console.log(`[Twitch ID Resolver] ✅ Membre créé dans Supabase: ${twitchLogin} -> ${twitchId}`);
+      }
+    } catch (supabaseError) {
+      console.error(`[Twitch ID Resolver] ❌ Erreur mise à jour Supabase pour ${twitchLogin}:`, supabaseError);
+      // Continuer quand même car l'ID a été résolu
+    }
   }
+  
+  return twitchId;
 }
 
 /**
