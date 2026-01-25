@@ -86,6 +86,7 @@ export default function FollowMemberPage() {
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showWizebotImport, setShowWizebotImport] = useState(false);
   const [showFollowingImport, setShowFollowingImport] = useState(false);
+  const [showRemainingMembers, setShowRemainingMembers] = useState(false);
   const [twitchConnected, setTwitchConnected] = useState<boolean | null>(null);
 
   const memberName = STAFF_MEMBERS[slug] || slug;
@@ -547,6 +548,16 @@ export default function FollowMemberPage() {
           >
             📥 Importer following (Je suis)
           </button>
+          <button
+            onClick={() => setShowRemainingMembers(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+          >
+            📝 Membres restants à suivre ({members.filter(m => {
+              const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+              const follow = memberFollows[normalizedLogin] || memberFollows[m.twitchLogin] || { jeSuis: false, meSuit: null };
+              return !follow.jeSuis;
+            }).length})
+          </button>
         </div>
       </div>
 
@@ -740,15 +751,130 @@ export default function FollowMemberPage() {
         />
       )}
 
-      {/* Modal import Following */}
-      {showFollowingImport && (
-        <FollowImportFollowingModal
-          isOpen={showFollowingImport}
-          onClose={() => setShowFollowingImport(false)}
-          monthKey={monthKey}
-          staffSlug={slug}
-          onImportComplete={loadData}
-        />
+      {/* Modal membres restants à suivre */}
+      {showRemainingMembers && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setShowRemainingMembers(false)}
+        >
+          <div
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  Membres restants à suivre
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  Liste des membres TENF que {memberName} ne suit pas encore
+                </p>
+              </div>
+              <button
+                onClick={() => setShowRemainingMembers(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {(() => {
+                const remainingMembers = members.filter(m => {
+                  const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+                  const follow = memberFollows[normalizedLogin] || memberFollows[m.twitchLogin] || { jeSuis: false, meSuit: null };
+                  return !follow.jeSuis;
+                });
+
+                if (remainingMembers.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <p className="text-gray-400 text-lg">
+                        ✅ Tous les membres sont suivis !
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <p className="text-white font-semibold">
+                        {remainingMembers.length} membre{remainingMembers.length > 1 ? 's' : ''} restant{remainingMembers.length > 1 ? 's' : ''} à suivre
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {remainingMembers.map((member) => (
+                        <div
+                          key={member.twitchLogin}
+                          className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 hover:border-[#9146ff] transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              {member.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium truncate">
+                                {member.displayName}
+                              </p>
+                              <p className="text-gray-400 text-xs truncate">
+                                {member.twitchLogin}
+                              </p>
+                              {member.role && (
+                                <p className="text-gray-500 text-xs mt-1">
+                                  {member.role}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Liste textuelle pour copier */}
+                    <div className="mt-6 bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-gray-300">
+                          Liste textuelle (pour copier)
+                        </p>
+                        <button
+                          onClick={() => {
+                            const textList = remainingMembers.map(m => m.twitchLogin).join('\n');
+                            navigator.clipboard.writeText(textList);
+                            alert('Liste copiée dans le presse-papiers !');
+                          }}
+                          className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors"
+                        >
+                          📋 Copier
+                        </button>
+                      </div>
+                      <textarea
+                        readOnly
+                        value={remainingMembers.map(m => m.twitchLogin).join('\n')}
+                        className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white text-sm font-mono min-h-[150px] resize-none"
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex-shrink-0 flex items-center justify-end">
+              <button
+                onClick={() => setShowRemainingMembers(false)}
+                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
