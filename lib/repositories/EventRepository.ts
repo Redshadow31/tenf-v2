@@ -221,6 +221,8 @@ export class EventRepository {
   async getRegistrations(eventId: string): Promise<EventRegistration[]> {
     // Récupérer toutes les inscriptions sans limite (ou avec une limite très élevée)
     // Supabase a une limite par défaut de 1000, donc on utilise une limite explicite élevée
+    console.log(`[EventRepository] Récupération inscriptions pour événement ${eventId}...`);
+    
     const { data, error } = await supabaseAdmin
       .from('event_registrations')
       .select('*')
@@ -233,8 +235,27 @@ export class EventRepository {
       throw error;
     }
 
+    console.log(`[EventRepository] Données brutes Supabase pour événement ${eventId}:`, {
+      count: data?.length || 0,
+      firstFew: data?.slice(0, 3).map(r => ({
+        id: r.id,
+        event_id: r.event_id,
+        twitch_login: r.twitch_login,
+        display_name: r.display_name,
+      })) || [],
+    });
+
     const registrations = (data || []).map(this.mapToRegistration);
-    console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions pour événement ${eventId}`);
+    console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions mappées pour événement ${eventId}`);
+    
+    // Vérifier s'il y a des inscriptions pour d'autres événements (pour debug)
+    if (registrations.length === 0) {
+      const { data: allRegistrations } = await supabaseAdmin
+        .from('event_registrations')
+        .select('event_id, twitch_login')
+        .limit(10);
+      console.log(`[EventRepository] Debug: Exemples d'inscriptions dans la table (premiers 10):`, allRegistrations);
+    }
     
     return registrations;
   }
