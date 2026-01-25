@@ -262,7 +262,10 @@ async function migrateMonth(monthKey: string): Promise<{
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const monthsParam = searchParams.get('months');

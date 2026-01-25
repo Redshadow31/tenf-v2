@@ -88,7 +88,10 @@ async function listMonthsInBlobs(): Promise<string[]> {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
 
     // 1. Lister les mois dans Blobs
     const monthsInBlobs = await listMonthsInBlobs();
