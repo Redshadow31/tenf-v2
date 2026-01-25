@@ -96,6 +96,27 @@ export async function GET() {
           description = member.description || undefined;
         }
 
+        // Gérer createdAt qui peut être un Date ou une string (depuis le cache Redis)
+        let createdAtISO: string | undefined = undefined;
+        if (member.createdAt) {
+          if (member.createdAt instanceof Date) {
+            createdAtISO = member.createdAt.toISOString();
+          } else if (typeof member.createdAt === 'string') {
+            // Si c'est déjà une string ISO, l'utiliser directement
+            createdAtISO = member.createdAt;
+          } else {
+            // Sinon, essayer de convertir
+            try {
+              const date = new Date(member.createdAt);
+              if (!isNaN(date.getTime())) {
+                createdAtISO = date.toISOString();
+              }
+            } catch (e) {
+              // Ignorer les erreurs de conversion
+            }
+          }
+        }
+
         return {
           twitchLogin: member.twitchLogin,
           twitchUrl: member.twitchUrl,
@@ -109,7 +130,7 @@ export async function GET() {
           discordUsername: member.discordUsername,
           avatar: avatar,
           description: description,
-          createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
+          createdAt: createdAtISO,
         };
       } catch (memberError) {
         console.error(`[Members Public API] Erreur mapping membre ${member.twitchLogin}:`, memberError);
@@ -127,7 +148,13 @@ export async function GET() {
           discordUsername: member.discordUsername,
           avatar: undefined,
           description: member.description,
-          createdAt: member.createdAt ? member.createdAt.toISOString() : undefined,
+          createdAt: member.createdAt 
+            ? (member.createdAt instanceof Date 
+                ? member.createdAt.toISOString() 
+                : typeof member.createdAt === 'string' 
+                  ? member.createdAt 
+                  : new Date(member.createdAt).toISOString())
+            : undefined,
         };
       }
     });
