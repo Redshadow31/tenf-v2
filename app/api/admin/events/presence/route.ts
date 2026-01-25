@@ -59,13 +59,31 @@ export async function GET(request: NextRequest) {
       }
 
       // Récupérer tous les événements du mois (limite élevée)
+      console.log(`[API Event Presence] Récupération des événements pour le mois ${monthParam}...`);
       const allEvents = await eventRepository.findAll(1000, 0);
+      console.log(`[API Event Presence] Total événements récupérés: ${allEvents.length}`);
+      
+      // Log des dates des événements pour debug
+      if (allEvents.length > 0) {
+        console.log(`[API Event Presence] Dates des premiers événements:`, 
+          allEvents.slice(0, 5).map(e => ({
+            id: e.id,
+            title: e.title,
+            date: e.date.toISOString(),
+            month: `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`
+          }))
+        );
+      }
+      
       const monthEvents = allEvents.filter(event => {
         const eventDate = event.date;
         const eventYear = eventDate.getFullYear();
         const eventMonth = String(eventDate.getMonth() + 1).padStart(2, '0');
-        return `${eventYear}-${eventMonth}` === monthParam;
+        const eventMonthKey = `${eventYear}-${eventMonth}`;
+        return eventMonthKey === monthParam;
       });
+      
+      console.log(`[API Event Presence] Événements pour le mois ${monthParam}: ${monthEvents.length}`);
 
       // Charger les présences pour chaque événement
       const eventsWithPresences = await Promise.all(
@@ -135,9 +153,16 @@ export async function GET(request: NextRequest) {
         })
       );
 
+      console.log(`[API Event Presence] Retour de ${eventsWithPresences.length} événements avec présences pour le mois ${monthParam}`);
+      
       const response = NextResponse.json({
         month: monthParam,
         events: eventsWithPresences,
+        debug: process.env.NODE_ENV === 'development' ? {
+          totalEventsInDb: allEvents.length,
+          eventsForMonth: monthEvents.length,
+          eventsWithPresences: eventsWithPresences.length,
+        } : undefined,
       });
       
       // Ajouter des headers de cache pour améliorer les performances

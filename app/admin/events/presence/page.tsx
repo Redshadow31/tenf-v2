@@ -140,6 +140,20 @@ export default function EventPresencePage() {
       if (eventsResponse.ok) {
         const data = await eventsResponse.json();
         const loadedEvents = data.events || [];
+        
+        console.log(`[Presence Page] Événements reçus pour ${selectedMonth}:`, loadedEvents.length);
+        if (data.debug) {
+          console.log(`[Presence Page] Debug:`, data.debug);
+        }
+        
+        if (loadedEvents.length === 0) {
+          console.warn(`[Presence Page] Aucun événement trouvé pour le mois ${selectedMonth}`);
+          // Vérifier si c'est un problème de mois ou si vraiment il n'y a pas d'événements
+          if (data.debug) {
+            console.warn(`[Presence Page] Total événements en DB: ${data.debug.totalEventsInDb}, Événements pour le mois: ${data.debug.eventsForMonth}`);
+          }
+        }
+        
         setEvents(loadedEvents);
         
         // Si un événement est ouvert dans le modal, mettre à jour ses données
@@ -150,7 +164,8 @@ export default function EventPresencePage() {
           }
         }
       } else {
-        console.error("Erreur lors du chargement des événements:", eventsResponse.status, eventsResponse.statusText);
+        const errorData = await eventsResponse.json().catch(() => ({}));
+        console.error("Erreur lors du chargement des événements:", eventsResponse.status, eventsResponse.statusText, errorData);
       }
 
       // Charger les membres seulement si le modal n'est pas encore ouvert (lazy loading)
