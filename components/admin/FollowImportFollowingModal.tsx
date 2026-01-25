@@ -34,6 +34,15 @@ export default function FollowImportFollowingModal({
   const [members, setMembers] = useState<Array<{ twitchLogin: string; displayName: string }>>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [changes, setChanges] = useState<Array<{
+    twitchLogin: string;
+    displayName: string;
+    currentValue: boolean;
+    newValue: boolean;
+    action: 'update' | 'add';
+  }>>([]);
+  const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
+  const [showChanges, setShowChanges] = useState(false);
 
   // Charger les membres au montage
   useEffect(() => {
@@ -151,7 +160,104 @@ export default function FollowImportFollowingModal({
     }
   }
 
-  async function handleApply() {
+  async function handleAnalyzeAndDetectChanges() {
+    if (parsedLines.length === 0) {
+      alert("Aucune ligne à analyser. Veuillez d'abord analyser.");
+      return;
+    }
+
+    const matchedLines = parsedLines.filter(line => line.status === 'matched');
+    if (matchedLines.length === 0) {
+      alert("Aucun membre TENF détecté dans l'import.");
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      // Récupérer les données actuelles
+      const validationResponse = await fetch(`/api/follow/validations/${monthKey}/${staffSlug}`, {
+        cache: 'no-store',
+      });
+      
+      let currentMembers: any[] = [];
+      
+      if (validationResponse.ok) {
+        const validationData = await validationResponse.json();
+        if (validationData.validation?.members) {
+          currentMembers = validationData.validation.members;
+        }
+      }
+
+      // Si pas de validation existante, charger les membres depuis l'API publique
+      if (currentMembers.length === 0) {
+        const membersResponse = await fetch('/api/members/public', { cache: 'no-store' });
+        if (membersResponse.ok) {
+          const membersData = await membersResponse.json();
+          currentMembers = (membersData.members || [])
+            .filter((m: any) => m.isActive !== false)
+            .map((m: any) => ({
+              twitchLogin: m.twitchLogin,
+              displayName: m.displayName || m.twitchLogin,
+              role: m.role,
+              status: 'unknown' as const,
+              jeSuis: false,
+              meSuit: null,
+            }));
+        }
+      }
+
+      // Créer un set des logins TENF qui sont dans l'import
+      const importedLogins = new Set<string>();
+      matchedLines.forEach(line => {
+        if (line.matchedMember) {
+          importedLogins.add(normalizeLogin(line.matchedMember.twitchLogin));
+        }
+      });
+
+      // Détecter les changements
+      const detectedChanges: Array<{
+        twitchLogin: string;
+        displayName: string;
+        currentValue: boolean;
+        newValue: boolean;
+        action: 'update' | 'add';
+      }> = [];
+
+      currentMembers.forEach((m: any) => {
+        const normalizedLogin = normalizeLogin(m.twitchLogin);
+        const isInImport = importedLogins.has(normalizedLogin);
+        const currentValue = m.jeSuis ?? false;
+        const newValue = isInImport;
+        
+        if (currentValue !== newValue) {
+          detectedChanges.push({
+            twitchLogin: m.twitchLogin,
+            displayName: m.displayName || m.twitchLogin,
+            currentValue,
+            newValue,
+            action: 'update',
+          });
+        }
+      });
+
+      // Si des changements sont détectés, les afficher pour confirmation
+      if (detectedChanges.length > 0) {
+        setChanges(detectedChanges);
+        setSelectedChanges(new Set(detectedChanges.map(c => c.twitchLogin)));
+        setShowChanges(true);
+      } else {
+        // Si aucun changement, appliquer directement
+        await handleApplyDirect();
+      }
+    } catch (error) {
+      console.error("Erreur détection changements:", error);
+      alert("Erreur lors de la détection des changements");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  async function handleApplyDirect() {
     if (parsedLines.length === 0) {
       alert("Aucune ligne à appliquer. Veuillez d'abord analyser.");
       return;
@@ -207,16 +313,37 @@ export default function FollowImportFollowingModal({
         }
       });
 
-      // Mettre à jour les membres : jeSuis = true pour les membres dans l'import, false pour les autres
-      const updatedMembers = currentMembers.map((m: any) => {
-        const normalizedLogin = normalizeLogin(m.twitchLogin);
-        const isInImport = importedLogins.has(normalizedLogin);
+      // Appliquer uniquement les changements sélectionnés (si showChanges est true)
+      let updatedMembers: any[];
+      
+      if (showChanges && changes.length > 0) {
+        const changesToApply = changes.filter(c => selectedChanges.has(c.twitchLogin));
         
-        return {
-          ...m,
-          jeSuis: isInImport,
-        };
-      });
+        updatedMembers = currentMembers.map((m: any) => {
+          const normalizedLogin = normalizeLogin(m.twitchLogin);
+          const change = changesToApply.find(c => normalizeLogin(c.twitchLogin) === normalizedLogin);
+          
+          if (change) {
+            return {
+              ...m,
+              jeSuis: change.newValue,
+            };
+          }
+          
+          return m;
+        });
+      } else {
+        // Appliquer tous les changements (comportement original)
+        updatedMembers = currentMembers.map((m: any) => {
+          const normalizedLogin = normalizeLogin(m.twitchLogin);
+          const isInImport = importedLogins.has(normalizedLogin);
+          
+          return {
+            ...m,
+            jeSuis: isInImport,
+          };
+        });
+      }
 
       // Sauvegarder via l'API
       const saveResponse = await fetch(`/api/follow/validations/${monthKey}/${staffSlug}`, {
@@ -232,9 +359,12 @@ export default function FollowImportFollowingModal({
         throw new Error("Erreur lors de la sauvegarde");
       }
 
-      alert(`Import réussi : ${matchedLines.length} membres TENF mis à jour (${parsedLines.length - matchedLines.length} lignes ignorées)`);
+      const appliedCount = showChanges ? changes.filter(c => selectedChanges.has(c.twitchLogin)).length : matchedLines.length;
+      alert(`Import réussi : ${appliedCount} changement(s) appliqué(s) (${parsedLines.length - matchedLines.length} lignes ignorées)`);
       onImportComplete();
-      onClose();
+      setShowChanges(false);
+      setChanges([]);
+      setSelectedChanges(new Set());
       setRawText("");
       setParsedLines([]);
     } catch (error) {
@@ -293,13 +423,24 @@ export default function FollowImportFollowingModal({
             <p className="text-xs text-gray-500 mt-2">
               Format : pseudo (tab ou espaces) date (optionnel, YYYY-MM-DD) autres colonnes (ignorées)
             </p>
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing || !rawText.trim()}
-              className="mt-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {analyzing ? "Analyse..." : "Analyser"}
-            </button>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing || !rawText.trim()}
+                className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {analyzing ? "Analyse..." : "Analyser"}
+              </button>
+              {parsedLines.length > 0 && (
+                <button
+                  onClick={handleAnalyzeAndDetectChanges}
+                  disabled={analyzing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {analyzing ? "Détection..." : "Détecter les changements"}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Résultats de l'analyse */}
@@ -372,6 +513,85 @@ export default function FollowImportFollowingModal({
               )}
             </div>
           )}
+
+          {/* Affichage des changements détectés */}
+          {showChanges && changes.length > 0 && (
+            <div className="bg-orange-500/20 border border-orange-500 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-400 mb-2">
+                    ⚠️ Changements détectés ({changes.length})
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    Les données suivantes vont être modifiées. Sélectionnez les changements à appliquer.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedChanges(new Set(changes.map(c => c.twitchLogin)))}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
+                  >
+                    Tout sélectionner
+                  </button>
+                  <button
+                    onClick={() => setSelectedChanges(new Set())}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
+                  >
+                    Tout ignorer
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+                {changes.map((change, idx) => {
+                  const isSelected = selectedChanges.has(change.twitchLogin);
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3 border rounded transition-all ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-500/10'
+                          : 'border-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            const newSelected = new Set(selectedChanges);
+                            if (isSelected) {
+                              newSelected.delete(change.twitchLogin);
+                            } else {
+                              newSelected.add(change.twitchLogin);
+                            }
+                            setSelectedChanges(newSelected);
+                          }}
+                          className="w-4 h-4 text-orange-500 border-gray-600 rounded focus:ring-orange-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{change.displayName}</span>
+                            <span className="text-gray-500 text-xs">({change.twitchLogin})</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            <span className="text-red-300">
+                              Actuel: {change.currentValue ? 'Je suis' : 'Je ne suis pas'}
+                            </span>
+                            {' → '}
+                            <span className="text-green-300">
+                              Nouveau: {change.newValue ? 'Je suis' : 'Je ne suis pas'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -382,13 +602,35 @@ export default function FollowImportFollowingModal({
           >
             Annuler
           </button>
-          <button
-            onClick={handleApply}
-            disabled={applying || parsedLines.length === 0 || matchedLines.length === 0}
-            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {applying ? "Enregistrement..." : `Enregistrer (${matchedLines.length} membre(s))`}
-          </button>
+          {showChanges ? (
+            <>
+              <button
+                onClick={() => {
+                  setShowChanges(false);
+                  setChanges([]);
+                  setSelectedChanges(new Set());
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleApplyDirect}
+                disabled={applying || selectedChanges.size === 0}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {applying ? "Application..." : `Appliquer ${selectedChanges.size} changement(s)`}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleApplyDirect}
+              disabled={applying || parsedLines.length === 0 || matchedLines.length === 0}
+              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {applying ? "Enregistrement..." : `Enregistrer (${matchedLines.length} membre(s))`}
+            </button>
+          )}
         </div>
       </div>
     </div>

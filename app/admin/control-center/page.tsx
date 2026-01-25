@@ -138,6 +138,12 @@ const utilityPages: QuickLink[] = [
     icon: <FileText className="w-6 h-6" />,
     description: "Visualisation des logs structurés",
   },
+  {
+    href: "/admin/migration/follows",
+    label: "Migration Follows",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les validations de follow depuis Blobs vers Supabase",
+  },
 ];
 
 

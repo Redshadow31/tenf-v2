@@ -203,6 +203,37 @@ export async function POST(
 
     await saveStaffFollowValidation(validation);
 
+    // Transfert automatique sur le mois suivant si la validation n'existe pas déjà
+    try {
+      const [year, month] = month.split('-').map(Number);
+      let nextMonth = month + 1;
+      let nextYear = year;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear++;
+      }
+      const nextMonthKey = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+      
+      // Vérifier si une validation existe déjà pour le mois suivant
+      const nextMonthValidation = await getStaffFollowValidation(staffSlug, nextMonthKey);
+      
+      if (!nextMonthValidation) {
+        // Créer une validation pour le mois suivant avec les mêmes données
+        const nextMonthValidationData: StaffFollowValidation = {
+          ...validation,
+          month: nextMonthKey,
+          validatedAt: new Date().toISOString(),
+          // Note: On garde les mêmes données de follow, mais on met à jour la date de validation
+        };
+        
+        await saveStaffFollowValidation(nextMonthValidationData);
+        console.log(`[Follow Validations] Données transférées automatiquement vers ${nextMonthKey}`);
+      }
+    } catch (transferError) {
+      // Ne pas faire échouer la sauvegarde principale si le transfert échoue
+      console.warn('[Follow Validations] Erreur lors du transfert vers le mois suivant:', transferError);
+    }
+
     return NextResponse.json({
       success: true,
       validation,
