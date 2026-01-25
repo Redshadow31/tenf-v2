@@ -32,9 +32,40 @@ export async function POST(request: NextRequest) {
     
     if (twitchLogin) {
       // Synchroniser un seul membre
-      const member = allMembers.find(m => 
+      // Chercher d'abord dans les Blobs
+      let member = allMembers.find(m => 
         m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
       );
+      
+      // Si pas trouvé dans les Blobs, chercher dans Supabase
+      if (!member) {
+        try {
+          const { MemberRepository } = await import('@/lib/repositories/MemberRepository');
+          const memberRepo = new MemberRepository();
+          const supabaseMember = await memberRepo.findByTwitchLogin(twitchLogin);
+          
+          if (supabaseMember) {
+            // Convertir le membre Supabase en format MemberData
+            member = {
+              twitchLogin: supabaseMember.twitchLogin,
+              twitchId: supabaseMember.twitchId,
+              twitchUrl: supabaseMember.twitchUrl || `https://twitch.tv/${supabaseMember.twitchLogin}`,
+              discordId: supabaseMember.discordId,
+              discordUsername: supabaseMember.discordUsername,
+              displayName: supabaseMember.displayName,
+              role: supabaseMember.role,
+              isVip: supabaseMember.isVip || false,
+              isActive: supabaseMember.isActive !== false,
+              badges: supabaseMember.badges,
+              createdAt: supabaseMember.createdAt,
+              updatedAt: supabaseMember.updatedAt,
+            };
+          }
+        } catch (error) {
+          console.error(`[Sync Twitch ID] Erreur lors de la recherche dans Supabase pour ${twitchLogin}:`, error);
+        }
+      }
+      
       if (!member) {
         return NextResponse.json(
           { error: `Membre non trouvé: ${twitchLogin}` },
@@ -81,7 +112,37 @@ export async function POST(request: NextRequest) {
 
         if (twitchId) {
           // Mettre à jour le membre avec l'ID résolu
-          await updateMemberData(member.twitchLogin, { twitchId }, admin.discordId);
+          // Essayer d'abord via memberData (Blobs), puis Supabase si nécessaire
+          try {
+            await updateMemberData(member.twitchLogin, { twitchId }, admin.discordId);
+          } catch (updateError) {
+            // Si la mise à jour dans les Blobs échoue, essayer Supabase directement
+            console.warn(`[Sync Twitch ID] Échec mise à jour Blobs pour ${member.twitchLogin}, tentative Supabase...`);
+            try {
+              const { MemberRepository } = await import('@/lib/repositories/MemberRepository');
+              const memberRepo = new MemberRepository();
+              const supabaseMember = await memberRepo.findByTwitchLogin(member.twitchLogin);
+              if (supabaseMember) {
+                await memberRepo.update(supabaseMember.twitchLogin, { twitchId: twitchId });
+                console.log(`[Sync Twitch ID] ✅ ID mis à jour dans Supabase: ${member.twitchLogin} -> ${twitchId}`);
+              } else {
+                // Créer le membre dans Supabase s'il n'existe pas
+                await memberRepo.create({
+                  twitchLogin: member.twitchLogin,
+                  twitchId: twitchId,
+                  displayName: member.displayName || member.twitchLogin,
+                  role: member.role || 'AFFILIE',
+                  isActive: member.isActive !== false,
+                  isVip: member.isVip || false,
+                });
+                console.log(`[Sync Twitch ID] ✅ Membre créé dans Supabase: ${member.twitchLogin} -> ${twitchId}`);
+              }
+            } catch (supabaseError) {
+              console.error(`[Sync Twitch ID] ❌ Erreur mise à jour Supabase pour ${member.twitchLogin}:`, supabaseError);
+              // Continuer quand même car l'ID a été résolu
+            }
+          }
+          
           results.push({
             twitchLogin: member.twitchLogin,
             success: true,

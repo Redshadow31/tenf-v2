@@ -24,10 +24,40 @@ export async function resolveAndCacheTwitchId(
   await loadMemberDataFromStorage();
   const allMembers = getAllMemberData();
   
-  // Chercher le membre
-  const member = allMembers.find(m => 
+  // Chercher le membre dans les Blobs
+  let member = allMembers.find(m => 
     m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase().trim()
   );
+
+  // Si pas trouvé dans les Blobs, chercher dans Supabase
+  if (!member) {
+    try {
+      const { MemberRepository } = await import('@/lib/repositories/MemberRepository');
+      const memberRepo = new MemberRepository();
+      const supabaseMember = await memberRepo.findByTwitchLogin(twitchLogin);
+      
+      if (supabaseMember) {
+        // Convertir le membre Supabase en format MemberData
+        member = {
+          twitchLogin: supabaseMember.twitchLogin,
+          twitchId: supabaseMember.twitchId,
+          twitchUrl: supabaseMember.twitchUrl || `https://twitch.tv/${supabaseMember.twitchLogin}`,
+          discordId: supabaseMember.discordId,
+          discordUsername: supabaseMember.discordUsername,
+          displayName: supabaseMember.displayName,
+          role: supabaseMember.role,
+          isVip: supabaseMember.isVip || false,
+          isActive: supabaseMember.isActive !== false,
+          badges: supabaseMember.badges,
+          createdAt: supabaseMember.createdAt,
+          updatedAt: supabaseMember.updatedAt,
+        };
+        console.log(`[Twitch ID Resolver] Membre trouvé dans Supabase: ${twitchLogin}`);
+      }
+    } catch (error) {
+      console.error(`[Twitch ID Resolver] Erreur lors de la recherche dans Supabase pour ${twitchLogin}:`, error);
+    }
+  }
 
   if (!member) {
     console.warn(`[Twitch ID Resolver] Membre non trouvé pour login: ${twitchLogin}`);
