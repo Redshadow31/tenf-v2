@@ -812,9 +812,12 @@ export default function FollowMemberPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {remainingMembers.map((member) => (
-                        <div
+                        <a
                           key={member.twitchLogin}
-                          className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 hover:border-[#9146ff] transition-colors"
+                          href={`https://twitch.tv/${member.twitchLogin}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 hover:border-[#9146ff] transition-colors cursor-pointer block"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
@@ -833,8 +836,23 @@ export default function FollowMemberPage() {
                                 </p>
                               )}
                             </div>
+                            <div className="flex-shrink-0">
+                              <svg 
+                                className="w-5 h-5 text-gray-400 hover:text-[#9146ff] transition-colors" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  strokeWidth={2} 
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                                />
+                              </svg>
+                            </div>
                           </div>
-                        </div>
+                        </a>
                       ))}
                     </div>
 
