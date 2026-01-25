@@ -10,6 +10,7 @@ interface ParsedLine {
   matchedMember?: {
     twitchLogin: string;
     displayName: string;
+    role?: string;
   };
   status: 'matched' | 'unmatched';
 }
@@ -31,7 +32,7 @@ export default function FollowImportFollowingModal({
 }: FollowImportFollowingModalProps) {
   const [rawText, setRawText] = useState("");
   const [parsedLines, setParsedLines] = useState<ParsedLine[]>([]);
-  const [members, setMembers] = useState<Array<{ twitchLogin: string; displayName: string }>>([]);
+  const [members, setMembers] = useState<Array<{ twitchLogin: string; displayName: string; role?: string }>>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [changes, setChanges] = useState<Array<{
@@ -62,6 +63,7 @@ export default function FollowImportFollowingModal({
           .map((m: any) => ({
             twitchLogin: m.twitchLogin || '',
             displayName: m.displayName || m.twitchLogin || '',
+            role: m.role || 'Affilié',
           }))
           .filter((m: any) => m.twitchLogin);
         setMembers(activeMembers);
@@ -96,7 +98,7 @@ export default function FollowImportFollowingModal({
   function parseFollowingText(text: string): ParsedLine[] {
     const lines = text.split('\n').filter(line => line.trim());
     const parsed: ParsedLine[] = [];
-    const memberMap = new Map<string, { twitchLogin: string; displayName: string }>();
+    const memberMap = new Map<string, { twitchLogin: string; displayName: string; role?: string }>();
     
     // Créer un map des membres TENF normalisés par twitchLogin
     members.forEach(m => {
