@@ -74,7 +74,7 @@ export default function EventsMigrationPage() {
       if (data.success) {
         setSyncData(data.data);
         // Sélectionner automatiquement tous les événements manquants
-        const missingIds = new Set(data.data.events.missingInSupabase.map((e: BlobEvent) => e.id));
+        const missingIds = new Set<string>(data.data.events.missingInSupabase.map((e: BlobEvent) => e.id));
         setSelectedEvents(missingIds);
       } else {
         throw new Error(data.error || 'Erreur lors de la vérification');
@@ -133,7 +133,7 @@ export default function EventsMigrationPage() {
 
   const selectAll = () => {
     if (!syncData) return;
-    const allMissing = new Set(syncData.events.missingInSupabase.map(e => e.id));
+    const allMissing = new Set<string>(syncData.events.missingInSupabase.map(e => e.id));
     setSelectedEvents(allMissing);
   };
 
