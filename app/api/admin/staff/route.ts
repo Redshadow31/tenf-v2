@@ -3,6 +3,8 @@ import { requireAdmin } from '@/lib/requireAdmin';
 import { getAllAdminIds, getAdminRole } from '@/lib/adminRoles';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Récupère la liste des membres du staff (admins, modos) pour sélection
  */

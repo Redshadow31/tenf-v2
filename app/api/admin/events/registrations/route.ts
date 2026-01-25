@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Récupère toutes les inscriptions pour tous les événements (admin uniquement)
  */

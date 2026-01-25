@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Recherche de membres pour autocomplétion
  * Query params: ?q=searchTerm

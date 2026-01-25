@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Recherche de membres (lecture seule)
  * Filtre par pseudo Twitch, pseudo Discord, displayName, etc.

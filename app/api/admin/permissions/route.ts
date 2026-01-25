@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/requireAdmin";
 import type { AdminRole } from "@/lib/adminRoles";
 
+export const dynamic = 'force-dynamic';
+
 interface SectionPermission {
   href: string;
   label: string;

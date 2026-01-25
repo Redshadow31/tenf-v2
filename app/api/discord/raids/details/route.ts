@@ -7,6 +7,8 @@ import {
 } from '@/lib/raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Récupère les détails des raids d'un membre (avec dates)
  * Query params: ?member=twitchLogin&month=YYYY-MM

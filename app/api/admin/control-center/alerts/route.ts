@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * API pour récupérer les compteurs d'alertes pour le Centre de contrôle
  * Lecture seule, aucune modification de données

@@ -8,6 +8,8 @@ import {
 } from '@/lib/raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Récupère les données de raids pour le dashboard
  * Query params: ?month=YYYY-MM

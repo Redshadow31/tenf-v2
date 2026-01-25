@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/admin';
 import { saveTwitchOAuthTokens } from '@/lib/twitchOAuth';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - Callback OAuth Twitch pour Red
  * Reçoit le code d'autorisation et échange contre un access_token

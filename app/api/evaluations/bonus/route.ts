@@ -5,6 +5,8 @@ import { evaluationRepository } from '@/lib/repositories';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { getAllBonuses, updateMemberBonus } from '@/lib/evaluationBonusStorage';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await requirePermission("read");
