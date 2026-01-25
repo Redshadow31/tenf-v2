@@ -431,7 +431,14 @@ export default function GestionMembresPage() {
         };
       });
 
-      setMembers(mappedMembers);
+      // Filtrer les membres inactifs (soft deleted) - ne pas afficher les membres supprimés
+      const activeMappedMembers = mappedMembers.filter((member: Member) => {
+        // Si le membre vient de la base centralisée, vérifier isActive
+        const centralMember = centralByTwitchLogin.get(member.twitch.toLowerCase());
+        return centralMember ? centralMember.isActive !== false : true; // Par défaut, garder les membres Discord si pas dans la base
+      });
+
+      setMembers(activeMappedMembers);
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
       const errorMessage = error instanceof Error ? error.message : "Erreur inconnue lors du chargement des membres";
