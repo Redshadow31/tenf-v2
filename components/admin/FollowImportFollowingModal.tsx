@@ -306,12 +306,38 @@ export default function FollowImportFollowingModal({
         }
       }
 
-      // Créer un set des logins TENF qui sont dans l'import
+      // Créer un set des logins TENF qui sont dans l'import (y compris les associations manuelles)
       const importedLogins = new Set<string>();
+      const importedMembersMap = new Map<string, { twitchLogin: string; displayName: string; role?: string }>();
+      
       matchedLines.forEach(line => {
         if (line.matchedMember) {
-          importedLogins.add(normalizeLogin(line.matchedMember.twitchLogin));
+          const normalizedLogin = normalizeLogin(line.matchedMember.twitchLogin);
+          importedLogins.add(normalizedLogin);
+          importedMembersMap.set(normalizedLogin, {
+            twitchLogin: line.matchedMember.twitchLogin,
+            displayName: line.matchedMember.displayName,
+          });
+        } else if (manualMatches[line.normalizedLogin]) {
+          // Gérer les associations manuelles
+          const matchedMember = members.find(m => normalizeLogin(m.twitchLogin) === normalizeLogin(manualMatches[line.normalizedLogin]));
+          if (matchedMember) {
+            const normalizedLogin = normalizeLogin(matchedMember.twitchLogin);
+            importedLogins.add(normalizedLogin);
+            importedMembersMap.set(normalizedLogin, {
+              twitchLogin: matchedMember.twitchLogin,
+              displayName: matchedMember.displayName,
+              role: matchedMember.role,
+            });
+          }
         }
+      });
+
+      // Créer un map des membres actuels pour recherche rapide
+      const currentMembersMap = new Map<string, any>();
+      currentMembers.forEach((m: any) => {
+        const normalizedLogin = normalizeLogin(m.twitchLogin);
+        currentMembersMap.set(normalizedLogin, m);
       });
 
       // Appliquer uniquement les changements sélectionnés (si showChanges est true)
@@ -333,8 +359,27 @@ export default function FollowImportFollowingModal({
           
           return m;
         });
+        
+        // Ajouter les membres qui ne sont pas encore dans currentMembers mais qui sont dans les changements sélectionnés
+        changesToApply.forEach(change => {
+          const normalizedLogin = normalizeLogin(change.twitchLogin);
+          if (!currentMembersMap.has(normalizedLogin)) {
+            const member = members.find(m => normalizeLogin(m.twitchLogin) === normalizedLogin);
+            if (member) {
+              updatedMembers.push({
+                twitchLogin: member.twitchLogin,
+                displayName: member.displayName || member.twitchLogin,
+                role: member.role,
+                status: 'unknown' as const,
+                jeSuis: change.newValue,
+                meSuit: null,
+              });
+            }
+          }
+        });
       } else {
         // Appliquer tous les changements (comportement original)
+        // Mettre à jour les membres existants
         updatedMembers = currentMembers.map((m: any) => {
           const normalizedLogin = normalizeLogin(m.twitchLogin);
           const isInImport = importedLogins.has(normalizedLogin);
@@ -343,6 +388,24 @@ export default function FollowImportFollowingModal({
             ...m,
             jeSuis: isInImport,
           };
+        });
+        
+        // Ajouter les membres qui sont dans l'import mais pas encore dans currentMembers
+        importedMembersMap.forEach((memberInfo, normalizedLogin) => {
+          if (!currentMembersMap.has(normalizedLogin)) {
+            // Chercher le membre complet dans la liste des membres TENF
+            const fullMember = members.find(m => normalizeLogin(m.twitchLogin) === normalizedLogin);
+            if (fullMember) {
+              updatedMembers.push({
+                twitchLogin: fullMember.twitchLogin,
+                displayName: fullMember.displayName || fullMember.twitchLogin,
+                role: fullMember.role,
+                status: 'unknown' as const,
+                jeSuis: true, // Ils sont dans l'import, donc jeSuis = true
+                meSuit: null,
+              });
+            }
+          }
         });
       }
 
