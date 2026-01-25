@@ -86,74 +86,87 @@ export async function GET() {
       }
     });
 
-    // Enrichir avec les informations Discord (username, avatar)
+    // Fonction helper pour récupérer les infos Discord d'un utilisateur
+    const getDiscordUserInfo = async (discordId: string): Promise<{ username: string; avatar: string | null }> => {
+      const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+      if (!DISCORD_BOT_TOKEN) {
+        return { username: 'Inconnu', avatar: null };
+      }
+
+      try {
+        // Essayer d'abord de récupérer depuis le serveur (guild member)
+        const memberResponse = await fetch(
+          `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discordId}`,
+          {
+            headers: {
+              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+            },
+          }
+        );
+
+        if (memberResponse.ok) {
+          const member = await memberResponse.json();
+          const user = member.user || member;
+          const username = member.nick || user.global_name || user.username || 'Inconnu';
+          const avatarHash = user.avatar;
+          const avatar = avatarHash
+            ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`
+            : null;
+          
+          return { username, avatar };
+        }
+
+        // Si le membre n'est pas dans le serveur, essayer l'API Users
+        if (memberResponse.status === 404) {
+          const userResponse = await fetch(
+            `https://discord.com/api/v10/users/${discordId}`,
+            {
+              headers: {
+                Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+              },
+            }
+          );
+
+          if (userResponse.ok) {
+            const user = await userResponse.json();
+            const username = user.global_name || user.username || 'Inconnu';
+            const avatarHash = user.avatar;
+            const avatar = avatarHash
+              ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`
+              : null;
+            
+            return { username, avatar };
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching Discord info for ${discordId}:`, error);
+      }
+      
+      return { username: 'Inconnu', avatar: null };
+    };
+
+    // Enrichir avec les informations Discord (username, avatar) pour tous les membres
     const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
     if (DISCORD_BOT_TOKEN) {
       try {
-        // Récupérer les informations pour chaque membre
+        // Récupérer les informations pour chaque membre (utilisateur et ajouté par)
         const enrichedList = await Promise.all(
           accessList.map(async (access) => {
-            try {
-              // Essayer d'abord de récupérer depuis le serveur (guild member)
-              const memberResponse = await fetch(
-                `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${access.discordId}`,
-                {
-                  headers: {
-                    Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-                  },
-                }
-              );
-
-              if (memberResponse.ok) {
-                const member = await memberResponse.json();
-                const user = member.user || member;
-                const username = user.nick || user.global_name || user.username || 'Inconnu';
-                const avatarHash = user.avatar;
-                const avatar = avatarHash
-                  ? `https://cdn.discordapp.com/avatars/${access.discordId}/${avatarHash}.png`
-                  : null;
-                
-                return {
-                  ...access,
-                  username,
-                  avatar,
-                };
-              }
-
-              // Si le membre n'est pas dans le serveur, essayer l'API Users
-              if (memberResponse.status === 404) {
-                const userResponse = await fetch(
-                  `https://discord.com/api/v10/users/${access.discordId}`,
-                  {
-                    headers: {
-                      Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-                    },
-                  }
-                );
-
-                if (userResponse.ok) {
-                  const user = await userResponse.json();
-                  const username = user.global_name || user.username || 'Inconnu';
-                  const avatarHash = user.avatar;
-                  const avatar = avatarHash
-                    ? `https://cdn.discordapp.com/avatars/${access.discordId}/${avatarHash}.png`
-                    : null;
-                  
-                  return {
-                    ...access,
-                    username,
-                    avatar,
-                  };
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching Discord info for ${access.discordId}:`, error);
+            // Récupérer les infos de l'utilisateur principal
+            const userInfo = await getDiscordUserInfo(access.discordId);
+            
+            // Récupérer les infos de "ajouté par" si ce n'est pas "system"
+            let addedByUsername = access.addedBy;
+            if (access.addedBy !== 'system' && access.addedBy) {
+              const addedByInfo = await getDiscordUserInfo(access.addedBy);
+              addedByUsername = addedByInfo.username;
             }
             
             return {
               ...access,
-              username: 'Inconnu',
-              avatar: null,
+              username: userInfo.username,
+              avatar: userInfo.avatar,
+              addedByUsername: addedByUsername, // Nouveau champ pour le nom d'utilisateur
             };
           })
         );

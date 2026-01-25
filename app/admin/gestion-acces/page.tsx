@@ -11,6 +11,7 @@ interface AdminAccess {
   addedBy: string;
   username?: string;
   avatar?: string;
+  addedByUsername?: string; // Nom d'utilisateur de la personne qui a ajouté l'accès
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -518,7 +519,16 @@ export default function GestionAccesPage() {
                           : 'Initial'}
                       </td>
                       <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        {access.addedBy === 'system' ? 'Système' : access.addedBy}
+                        {access.addedBy === 'system' ? (
+                          'Système'
+                        ) : (
+                          <div>
+                            <div className="font-medium" style={{ color: 'var(--color-text)' }}>
+                              {access.addedByUsername || 'Inconnu'}
+                            </div>
+                            <div className="text-xs opacity-70">{access.addedBy}</div>
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right">
                         {access.role === "FOUNDER" || (access.addedBy === 'system' && new Date(access.addedAt).getTime() === 0) ? (
