@@ -1,12 +1,28 @@
 -- Migration complète pour TENF V3
 -- Copier TOUT ce contenu dans le SQL Editor de Supabase
+-- ⚠️ Si les types existent déjà, cette partie peut être ignorée
 
-CREATE TYPE "public"."bonus_type" AS ENUM('decalage-horaire', 'implication-qualitative', 'conseils-remarquables', 'autre');
-CREATE TYPE "public"."event_category" AS ENUM('Spotlight', 'Soirées communautaires', 'Ateliers créateurs', 'Aventura 2025');
-CREATE TYPE "public"."member_role" AS ENUM('Affilié', 'Développement', 'Modérateur Junior', 'Mentor', 'Admin', 'Admin Adjoint', 'Créateur Junior', 'Communauté');
-CREATE TYPE "public"."spotlight_status" AS ENUM('active', 'completed', 'cancelled');
+-- Créer les types seulement s'ils n'existent pas déjà
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bonus_type') THEN
+        CREATE TYPE "public"."bonus_type" AS ENUM('decalage-horaire', 'implication-qualitative', 'conseils-remarquables', 'autre');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_category') THEN
+        CREATE TYPE "public"."event_category" AS ENUM('Spotlight', 'Soirées communautaires', 'Ateliers créateurs', 'Aventura 2025');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'member_role') THEN
+        CREATE TYPE "public"."member_role" AS ENUM('Affilié', 'Développement', 'Modérateur Junior', 'Mentor', 'Admin', 'Admin Adjoint', 'Créateur Junior', 'Communauté');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'spotlight_status') THEN
+        CREATE TYPE "public"."spotlight_status" AS ENUM('active', 'completed', 'cancelled');
+    END IF;
+END $$;
 
-CREATE TABLE "evaluations" (
+CREATE TABLE IF NOT EXISTS "evaluations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"month" date NOT NULL,
 	"twitch_login" text NOT NULL,
@@ -33,7 +49,7 @@ CREATE TABLE "evaluations" (
 	"updated_at" timestamp DEFAULT now()
 );
 
-CREATE TABLE "event_registrations" (
+CREATE TABLE IF NOT EXISTS "event_registrations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"event_id" uuid NOT NULL,
 	"twitch_login" text NOT NULL,
@@ -44,7 +60,7 @@ CREATE TABLE "event_registrations" (
 	"registered_at" timestamp DEFAULT now()
 );
 
-CREATE TABLE "events" (
+CREATE TABLE IF NOT EXISTS "events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" text NOT NULL,
 	"description" text NOT NULL,
@@ -59,7 +75,7 @@ CREATE TABLE "events" (
 	"updated_at" timestamp
 );
 
-CREATE TABLE "logs" (
+CREATE TABLE IF NOT EXISTS "logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"action" text NOT NULL,
 	"user_id" text,
@@ -69,7 +85,7 @@ CREATE TABLE "logs" (
 	"timestamp" timestamp DEFAULT now()
 );
 
-CREATE TABLE "members" (
+CREATE TABLE IF NOT EXISTS "members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"twitch_login" text NOT NULL,
 	"twitch_id" text,
@@ -97,7 +113,7 @@ CREATE TABLE "members" (
 	CONSTRAINT "members_discord_id_unique" UNIQUE("discord_id")
 );
 
-CREATE TABLE "spotlight_evaluations" (
+CREATE TABLE IF NOT EXISTS "spotlight_evaluations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"spotlight_id" uuid NOT NULL,
 	"streamer_twitch_login" text NOT NULL,
@@ -120,7 +136,7 @@ CREATE TABLE "spotlight_presences" (
 	"added_by" text NOT NULL
 );
 
-CREATE TABLE "spotlights" (
+CREATE TABLE IF NOT EXISTS "spotlights" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"streamer_twitch_login" text NOT NULL,
 	"streamer_display_name" text,
@@ -133,7 +149,7 @@ CREATE TABLE "spotlights" (
 	"created_by" text NOT NULL
 );
 
-CREATE TABLE "vip_history" (
+CREATE TABLE IF NOT EXISTS "vip_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"month" date NOT NULL,
 	"twitch_login" text NOT NULL,
@@ -143,6 +159,36 @@ CREATE TABLE "vip_history" (
 	"created_at" timestamp DEFAULT now()
 );
 
-ALTER TABLE "event_registrations" ADD CONSTRAINT "event_registrations_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "spotlight_evaluations" ADD CONSTRAINT "spotlight_evaluations_spotlight_id_spotlights_id_fk" FOREIGN KEY ("spotlight_id") REFERENCES "public"."spotlights"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "spotlight_presences" ADD CONSTRAINT "spotlight_presences_spotlight_id_spotlights_id_fk" FOREIGN KEY ("spotlight_id") REFERENCES "public"."spotlights"("id") ON DELETE cascade ON UPDATE no action;
+-- Ajouter les contraintes de clés étrangères seulement si elles n'existent pas
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'event_registrations_event_id_events_id_fk'
+    ) THEN
+        ALTER TABLE "event_registrations" 
+        ADD CONSTRAINT "event_registrations_event_id_events_id_fk" 
+        FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") 
+        ON DELETE cascade ON UPDATE no action;
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spotlight_evaluations_spotlight_id_spotlights_id_fk'
+    ) THEN
+        ALTER TABLE "spotlight_evaluations" 
+        ADD CONSTRAINT "spotlight_evaluations_spotlight_id_spotlights_id_fk" 
+        FOREIGN KEY ("spotlight_id") REFERENCES "public"."spotlights"("id") 
+        ON DELETE cascade ON UPDATE no action;
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spotlight_presences_spotlight_id_spotlights_id_fk'
+    ) THEN
+        ALTER TABLE "spotlight_presences" 
+        ADD CONSTRAINT "spotlight_presences_spotlight_id_spotlights_id_fk" 
+        FOREIGN KEY ("spotlight_id") REFERENCES "public"."spotlights"("id") 
+        ON DELETE cascade ON UPDATE no action;
+    END IF;
+END $$;
