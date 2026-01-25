@@ -1,7 +1,29 @@
 /**
  * Script de test des connexions aux services
  * Vérifie Supabase, Netlify Blobs, et Upstash Redis
+ * 
+ * Note: Ce script nécessite les variables d'environnement configurées.
+ * En local, assurez-vous d'avoir un fichier .env.local avec les variables nécessaires.
+ * Sur Netlify, les variables sont automatiquement chargées.
  */
+
+// Charger les variables d'environnement depuis .env.local si disponible
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Essayer de charger .env.local
+const envPath = resolve(process.cwd(), '.env.local');
+try {
+  const result = config({ path: envPath });
+  if (result.error && result.error.code !== 'ENOENT') {
+    console.warn('⚠️  Erreur chargement .env.local:', result.error.message);
+  } else if (!result.error) {
+    console.log('✅ Variables d\'environnement chargées depuis .env.local');
+  }
+} catch (e) {
+  // Ignorer si le fichier n'existe pas
+  console.warn('⚠️  Fichier .env.local non trouvé - les variables d\'environnement doivent être configurées');
+}
 
 import { getSupabaseAdmin } from '@/lib/db/supabase';
 import { getRedisClient } from '@/lib/cache';
@@ -31,6 +53,15 @@ async function testSupabase() {
 async function testNetlifyBlobs() {
   console.log('\n🔍 Test Netlify Blobs...');
   try {
+    // Vérifier si on est dans l'environnement Netlify
+    const isNetlify = process.env.NETLIFY === 'true' || process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+    
+    if (!isNetlify) {
+      console.warn('⚠️  Netlify Blobs: Non testable en local (nécessite l\'environnement Netlify)');
+      console.warn('   Pour tester, exécutez ce script sur Netlify ou dans un environnement Netlify');
+      return null; // null = non testable, pas une erreur
+    }
+    
     const store = getBlobStore('tenf-members');
     const testKey = 'test-connection';
     await store.set(testKey, JSON.stringify({ test: true, timestamp: Date.now() }));
@@ -45,7 +76,12 @@ async function testNetlifyBlobs() {
       return false;
     }
   } catch (error) {
-    console.error('❌ Erreur Netlify Blobs:', error instanceof Error ? error.message : String(error));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Not in Netlify environment')) {
+      console.warn('⚠️  Netlify Blobs: Non testable en local (nécessite l\'environnement Netlify)');
+      return null; // null = non testable, pas une erreur
+    }
+    console.error('❌ Erreur Netlify Blobs:', errorMessage);
     return false;
   }
 }
@@ -100,17 +136,26 @@ async function main() {
     netlifyBlobs: await testNetlifyBlobs(),
     upstashRedis: await testUpstashRedis(),
     eventRepository: await testEventRepository(),
+  } as {
+    supabase: boolean;
+    netlifyBlobs: boolean | null;
+    upstashRedis: boolean;
+    eventRepository: boolean;
   };
   
   console.log('\n📊 Résumé:');
   console.log(`   Supabase: ${results.supabase ? '✅' : '❌'}`);
-  console.log(`   Netlify Blobs: ${results.netlifyBlobs ? '✅' : '❌'}`);
+  console.log(`   Netlify Blobs: ${results.netlifyBlobs === null ? '⚠️  (non testable en local)' : (results.netlifyBlobs ? '✅' : '❌')}`);
   console.log(`   Upstash Redis: ${results.upstashRedis ? '✅' : '⚠️  (optionnel)'}`);
   console.log(`   EventRepository: ${results.eventRepository ? '✅' : '❌'}`);
   
-  const allCritical = results.supabase && results.netlifyBlobs && results.eventRepository;
+  // Netlify Blobs peut être null (non testable en local), ce n'est pas une erreur
+  const allCritical = results.supabase && results.eventRepository && (results.netlifyBlobs !== false);
   if (allCritical) {
     console.log('\n✅ Toutes les connexions critiques fonctionnent');
+    if (results.netlifyBlobs === null) {
+      console.log('   Note: Netlify Blobs ne peut être testé que sur Netlify');
+    }
   } else {
     console.log('\n❌ Certaines connexions critiques échouent');
     process.exit(1);
