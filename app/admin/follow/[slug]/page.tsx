@@ -5,30 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
+import { STAFF_MEMBERS, getStaffName } from "@/lib/followStaff";
 import WizebotImportModal from "@/components/admin/WizebotImportModal";
 import FollowImportFollowingModal from "@/components/admin/FollowImportFollowingModal";
-
-const STAFF_MEMBERS: Record<string, string> = {
-  red: "Red",
-  clara: "Clara",
-  nexou: "Nexou",
-  tabs: "Tabs",
-  nangel: "Nangel",
-  jenny: "Jenny",
-  selena: "Selena",
-  dark: "Dark",
-  yaya: "Yaya",
-  rubby: "Rubby",
-  livio: "Livio",
-  rebelle: "Rebelle",
-  sigurdson: "Sigurdson",
-  nico: "Nico",
-  willy: "Willy",
-  b1nx: "B1nx",
-  spydy: "Spydy",
-  simon: "Simon",
-  zylkao: "Zylkao",
-};
 
 type FollowStatus = 'followed' | 'not_followed' | 'unknown';
 
@@ -93,7 +72,7 @@ export default function FollowMemberPage() {
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  const memberName = STAFF_MEMBERS[slug] || slug;
+  const memberName = getStaffName(slug);
   const isRed = slug === 'red';
 
   useEffect(() => {

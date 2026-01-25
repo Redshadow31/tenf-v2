@@ -5,28 +5,7 @@ import {
   isValidationObsolete,
   calculateFollowStats 
 } from '@/lib/followStorage';
-
-const STAFF_MEMBERS: Record<string, string> = {
-  red: "Red",
-  clara: "Clara",
-  nexou: "Nexou",
-  tabs: "Tabs",
-  nangel: "Nangel",
-  jenny: "Jenny",
-  selena: "Selena",
-  dark: "Dark",
-  yaya: "Yaya",
-  rubby: "Rubby",
-  livio: "Livio",
-  rebelle: "Rebelle",
-  sigurdson: "Sigurdson",
-  nico: "Nico",
-  willy: "Willy",
-  b1nx: "B1nx",
-  spydy: "Spydy",
-  simon: "Simon",
-  zylkao: "Zylkao",
-};
+import { STAFF_MEMBERS } from '@/lib/followStaff';
 
 /**
  * GET - Récupère le résumé des validations pour un mois donné
