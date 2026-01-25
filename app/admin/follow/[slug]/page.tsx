@@ -202,14 +202,26 @@ export default function FollowMemberPage() {
           setModeratorComments(validationData.validation.moderatorComments || '');
           
           // Charger les statuts depuis la validation
+          // Normaliser les logins pour être cohérent avec l'import
           const follows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
           validationData.validation.members.forEach((m: any) => {
-            follows[m.twitchLogin] = {
-              jeSuis: m.jeSuis ?? (m.status === 'followed'), // Compatibilité avec ancien format
-              meSuit: m.meSuit ?? null,
-            };
+            const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+            if (normalizedLogin) {
+              follows[normalizedLogin] = {
+                jeSuis: m.jeSuis ?? (m.status === 'followed'), // Compatibilité avec ancien format
+                meSuit: m.meSuit ?? null,
+              };
+            }
           });
-          setMemberFollows(follows);
+          
+          // Fusionner avec les membres chargés pour s'assurer que tous les membres ont une entrée
+          const mergedFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
+          activeMembers.forEach((m: Member) => {
+            const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+            mergedFollows[normalizedLogin] = follows[normalizedLogin] || { jeSuis: false, meSuit: null };
+          });
+          
+          setMemberFollows(mergedFollows);
         }
       }
     } catch (error) {
@@ -292,20 +304,24 @@ export default function FollowMemberPage() {
   }
 
   function handleJeSuisChange(twitchLogin: string, value: boolean) {
+    // Normaliser le login pour être cohérent
+    const normalizedLogin = (twitchLogin || '').toLowerCase().trim();
     setMemberFollows(prev => ({
       ...prev,
-      [twitchLogin]: {
-        ...prev[twitchLogin],
+      [normalizedLogin]: {
+        ...prev[normalizedLogin] || prev[twitchLogin] || { jeSuis: false, meSuit: null },
         jeSuis: value,
       },
     }));
   }
 
   function handleMeSuitChange(twitchLogin: string, value: boolean | null) {
+    // Normaliser le login pour être cohérent
+    const normalizedLogin = (twitchLogin || '').toLowerCase().trim();
     setMemberFollows(prev => ({
       ...prev,
-      [twitchLogin]: {
-        ...prev[twitchLogin],
+      [normalizedLogin]: {
+        ...prev[normalizedLogin] || prev[twitchLogin] || { jeSuis: false, meSuit: null },
         meSuit: value,
       },
     }));
@@ -319,9 +335,11 @@ export default function FollowMemberPage() {
       
       // S'assurer que tous les membres sont inclus, même ceux sans données de follow
       const memberFollowsArray: MemberFollow[] = members.map(m => {
-        const followData = memberFollows[m.twitchLogin] || { jeSuis: false, meSuit: null };
+        // Normaliser le login pour la recherche (cohérence avec l'import)
+        const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+        const followData = memberFollows[normalizedLogin] || memberFollows[m.twitchLogin] || { jeSuis: false, meSuit: null };
         return {
-          twitchLogin: m.twitchLogin,
+          twitchLogin: m.twitchLogin, // Garder le login original pour l'API
           displayName: m.displayName,
           role: m.role,
           status: followData.jeSuis ? 'followed' : 'not_followed', // Compatibilité
@@ -576,8 +594,13 @@ export default function FollowMemberPage() {
             <tbody>
               {members.length > 0 ? (
                 members.map((member) => {
-                  const follow = memberFollows[member.twitchLogin] || { jeSuis: false, meSuit: null };
-                  const validationMember = validation?.members.find(m => m.twitchLogin === member.twitchLogin);
+                  // Normaliser le login pour la recherche (cohérence avec l'import)
+                  const normalizedLogin = (member.twitchLogin || '').toLowerCase().trim();
+                  const follow = memberFollows[normalizedLogin] || memberFollows[member.twitchLogin] || { jeSuis: false, meSuit: null };
+                  const validationMember = validation?.members.find(m => 
+                    (m.twitchLogin || '').toLowerCase().trim() === normalizedLogin || 
+                    m.twitchLogin === member.twitchLogin
+                  );
                   
                   return (
                     <tr
