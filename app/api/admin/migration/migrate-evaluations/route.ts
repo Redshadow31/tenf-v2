@@ -15,6 +15,7 @@ import { loadRaidEvaluationData } from '@/lib/raidEvaluationStorage';
 import { loadSpotlightEvaluationData } from '@/lib/spotlightEvaluationStorage';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes pour la migration
 
 const EVALUATION_STORE_NAME = 'tenf-evaluations';
 
@@ -237,8 +238,15 @@ async function migrateMonth(monthKey: string): Promise<{
           
           evaluationsSkipped++;
         } else {
-          await evaluationRepository.upsert(evaluationData);
-          evaluationsMigrated++;
+          try {
+            await evaluationRepository.upsert(evaluationData);
+            evaluationsMigrated++;
+          } catch (upsertError) {
+            const upsertErrorMsg = `Erreur upsert ${twitchLogin} pour ${monthKey}: ${upsertError instanceof Error ? upsertError.message : 'Erreur inconnue'}`;
+            errors.push(upsertErrorMsg);
+            console.error(upsertErrorMsg, upsertError);
+            // Continuer avec le membre suivant même en cas d'erreur
+          }
         }
       } catch (memberError) {
         const errorMsg = `Erreur migration ${twitchLogin} pour ${monthKey}: ${memberError instanceof Error ? memberError.message : 'Erreur inconnue'}`;

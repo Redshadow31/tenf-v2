@@ -25,6 +25,19 @@ ADD COLUMN IF NOT EXISTS final_note_saved_at TIMESTAMP;
 ALTER TABLE evaluations 
 ADD COLUMN IF NOT EXISTS final_note_saved_by TEXT;
 
+-- Ajouter la contrainte unique sur (twitch_login, month) si elle n'existe pas
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'evaluations_twitch_login_month_unique'
+    ) THEN
+        ALTER TABLE "evaluations" 
+        ADD CONSTRAINT "evaluations_twitch_login_month_unique" 
+        UNIQUE("twitch_login", "month");
+    END IF;
+END $$;
+
 -- ============================================
 -- Vérification : Lister toutes les colonnes de la table evaluations
 -- ============================================

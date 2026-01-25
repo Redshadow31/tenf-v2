@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS "evaluations" (
 	"calculated_at" timestamp,
 	"calculated_by" text,
 	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now()
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "evaluations_twitch_login_month_unique" UNIQUE("twitch_login", "month")
 );
 
 CREATE TABLE IF NOT EXISTS "event_registrations" (
