@@ -205,8 +205,10 @@ export async function POST(
 
     // Transfert automatique sur le mois suivant si la validation n'existe pas déjà
     try {
-      const [year, month] = month.split('-').map(Number);
-      let nextMonth = month + 1;
+      const [yearStr, monthStr] = month.split('-');
+      const year = parseInt(yearStr, 10);
+      const monthNum = parseInt(monthStr, 10);
+      let nextMonth = monthNum + 1;
       let nextYear = year;
       if (nextMonth > 12) {
         nextMonth = 1;
