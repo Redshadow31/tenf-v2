@@ -94,6 +94,22 @@ export async function GET(request: NextRequest) {
             
             console.log(`[API Event Presence] Événement ${event.id} (${event.title}): ${presences.length} présences, ${registrations.length} inscriptions`);
             
+            // Log détaillé des premières inscriptions et présences pour debug
+            if (registrations.length > 0) {
+              console.log(`[API Event Presence] Premières inscriptions:`, registrations.slice(0, 3).map(r => ({
+                id: r.id,
+                twitchLogin: r.twitchLogin,
+                displayName: r.displayName,
+              })));
+            }
+            if (presences.length > 0) {
+              console.log(`[API Event Presence] Premières présences:`, presences.slice(0, 3).map(p => ({
+                id: p.id,
+                twitchLogin: p.twitchLogin,
+                present: p.present,
+              })));
+            }
+            
             return {
               id: event.id,
               title: event.title,

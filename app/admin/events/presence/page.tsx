@@ -146,6 +146,15 @@ export default function EventPresencePage() {
           console.log(`[Presence Page] Debug:`, data.debug);
         }
         
+        // Log détaillé pour chaque événement
+        loadedEvents.forEach((event: Event) => {
+          console.log(`[Presence Page] Événement ${event.id} (${event.title}):`, {
+            registrations: event.registrations?.length || 0,
+            presences: event.presences?.length || 0,
+            presencesPresent: event.presences?.filter((p: EventPresence) => p.present).length || 0,
+          });
+        });
+        
         if (loadedEvents.length === 0) {
           console.warn(`[Presence Page] Aucun événement trouvé pour le mois ${selectedMonth}`);
           // Vérifier si c'est un problème de mois ou si vraiment il n'y a pas d'événements
