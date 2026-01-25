@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
 import { eventRepository, evaluationRepository, spotlightRepository } from '@/lib/repositories';
 
+export const dynamic = 'force-dynamic';
+
 // Helper pour obtenir le monthKey au format YYYY-MM
 function getMonthKey(year: number, month: number): string {
   const m = String(month).padStart(2, '0');
@@ -153,8 +155,16 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('[API Event Presence] Erreur GET:', error);
+    // Log détaillé pour diagnostiquer
+    if (error instanceof Error) {
+      console.error('[API Event Presence] Message d\'erreur:', error.message);
+      console.error('[API Event Presence] Stack:', error.stack);
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { 
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
+      },
       { status: 500 }
     );
   }
