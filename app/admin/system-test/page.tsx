@@ -13,11 +13,33 @@ interface TestResults {
   [key: string]: SystemTestResult | Record<string, SystemTestResult>;
 }
 
+interface ConnectionTestResult {
+  service: string;
+  status: 'success' | 'error' | 'warning' | 'not-testable';
+  message: string;
+  details?: any;
+}
+
+interface ConnectionTestResponse {
+  timestamp: string;
+  environment: Record<string, string>;
+  summary: {
+    total: number;
+    success: number;
+    errors: number;
+    warnings: number;
+    notTestable: number;
+  };
+  results: ConnectionTestResult[];
+}
+
 export default function SystemTestPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<TestResults | null>(null);
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [connectionResults, setConnectionResults] = useState<ConnectionTestResponse | null>(null);
+  const [testingConnections, setTestingConnections] = useState(false);
 
   const runTests = async (system?: string) => {
     setLoading(true);
@@ -43,6 +65,29 @@ export default function SystemTestPage() {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testConnections = async () => {
+    setTestingConnections(true);
+    setError(null);
+    setConnectionResults(null);
+
+    try {
+      const response = await fetch('/api/admin/system-test/connections', {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setConnectionResults(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setTestingConnections(false);
     }
   };
 
@@ -182,6 +227,14 @@ export default function SystemTestPage() {
           >
             {loading ? 'Test en cours...' : 'Lancer les tests'}
           </button>
+          <button
+            onClick={testConnections}
+            disabled={testingConnections}
+            className="rounded-lg px-6 py-2 text-white font-semibold transition-colors disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+          >
+            {testingConnections ? 'Test en cours...' : 'Tester les connexions'}
+          </button>
         </div>
       </div>
 
@@ -210,6 +263,116 @@ export default function SystemTestPage() {
           <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
             Cliquez sur "Lancer les tests" pour commencer
           </p>
+        </div>
+      )}
+
+      {/* Section Test des Connexions */}
+      {connectionResults && (
+        <div className="space-y-4 mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              Test des Connexions
+            </h2>
+            <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {new Date(connectionResults.timestamp).toLocaleString('fr-FR')}
+            </div>
+          </div>
+
+          {/* Résumé */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="p-4 rounded-lg border bg-blue-500/10 border-blue-500/20">
+              <div className="text-2xl font-bold text-blue-500">{connectionResults.summary.total}</div>
+              <div className="text-sm text-gray-500">Total</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/20">
+              <div className="text-2xl font-bold text-green-500">{connectionResults.summary.success}</div>
+              <div className="text-sm text-gray-500">Succès</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/20">
+              <div className="text-2xl font-bold text-red-500">{connectionResults.summary.errors}</div>
+              <div className="text-sm text-gray-500">Erreurs</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-yellow-500/10 border-yellow-500/20">
+              <div className="text-2xl font-bold text-yellow-500">{connectionResults.summary.warnings}</div>
+              <div className="text-sm text-gray-500">Avertissements</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-gray-500/10 border-gray-500/20">
+              <div className="text-2xl font-bold text-gray-500">{connectionResults.summary.notTestable}</div>
+              <div className="text-sm text-gray-500">Non testable</div>
+            </div>
+          </div>
+
+          {/* Environnement */}
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Environnement</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              {Object.entries(connectionResults.environment).map(([key, value]) => (
+                <div key={key}>
+                  <span className="text-gray-500">{key}:</span>{' '}
+                  <span style={{ color: 'var(--color-text)' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Résultats détaillés */}
+          <div className="space-y-3">
+            {connectionResults.results.map((result) => (
+              <div
+                key={result.service}
+                className={`p-4 rounded-lg border ${
+                  result.status === 'success' ? 'bg-green-500/10 border-green-500/20' :
+                  result.status === 'error' ? 'bg-red-500/10 border-red-500/20' :
+                  result.status === 'warning' ? 'bg-yellow-500/10 border-yellow-500/20' :
+                  'bg-gray-500/10 border-gray-500/20'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                      {result.service}
+                    </h3>
+                    <p className={`text-sm mt-1 ${
+                      result.status === 'success' ? 'text-green-500' :
+                      result.status === 'error' ? 'text-red-500' :
+                      result.status === 'warning' ? 'text-yellow-500' :
+                      'text-gray-500'
+                    }`}>
+                      {result.message}
+                    </p>
+                    {result.details && (
+                      <details className="mt-2">
+                        <summary className="text-xs cursor-pointer text-gray-500 hover:text-gray-400">
+                          Détails
+                        </summary>
+                        <pre className="mt-2 text-xs p-2 rounded bg-black/20 overflow-auto">
+                          {JSON.stringify(result.details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                  <div className="text-right ml-4">
+                    <span className={`text-xs font-medium px-2 py-1 rounded ${
+                      result.status === 'success' ? 'bg-green-500/20 text-green-500' :
+                      result.status === 'error' ? 'bg-red-500/20 text-red-500' :
+                      result.status === 'warning' ? 'bg-yellow-500/20 text-yellow-500' :
+                      'bg-gray-500/20 text-gray-500'
+                    }`}>
+                      {result.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {testingConnections && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Test des connexions en cours...
+          </div>
         </div>
       )}
     </div>
