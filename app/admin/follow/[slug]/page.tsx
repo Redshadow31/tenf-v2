@@ -183,10 +183,13 @@ export default function FollowMemberPage() {
           .filter((m: Member) => m.twitchLogin);
         setMembers(activeMembers);
         
-        // Initialiser les statuts follow
+        // Initialiser les statuts follow avec normalisation
         const initialFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
         activeMembers.forEach((m: Member) => {
-          initialFollows[m.twitchLogin] = { jeSuis: false, meSuit: null };
+          const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
+          if (normalizedLogin) {
+            initialFollows[normalizedLogin] = { jeSuis: false, meSuit: null };
+          }
         });
         setMemberFollows(initialFollows);
       }
