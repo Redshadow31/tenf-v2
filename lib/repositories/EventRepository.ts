@@ -325,6 +325,17 @@ export class EventRepository {
   }
 
   private mapToRegistration(row: any): EventRegistration {
+    // Gérer registered_at qui peut être une string ou un Date
+    let registeredAt: Date;
+    if (row.registered_at instanceof Date) {
+      registeredAt = row.registered_at;
+    } else if (typeof row.registered_at === 'string') {
+      registeredAt = new Date(row.registered_at);
+    } else {
+      // Fallback si la date est invalide
+      registeredAt = new Date();
+    }
+
     return {
       id: row.id,
       eventId: row.event_id,
@@ -333,7 +344,7 @@ export class EventRepository {
       discordId: row.discord_id || undefined,
       discordUsername: row.discord_username || undefined,
       notes: row.notes || undefined,
-      registeredAt: new Date(row.registered_at),
+      registeredAt,
     };
   }
 

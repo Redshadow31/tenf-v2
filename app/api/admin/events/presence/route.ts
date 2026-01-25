@@ -68,36 +68,68 @@ export async function GET(request: NextRequest) {
       // Charger les présences pour chaque événement
       const eventsWithPresences = await Promise.all(
         monthEvents.map(async (event) => {
-          const presences = await eventRepository.getPresences(event.id);
-          const registrations = await eventRepository.getRegistrations(event.id);
-          
-          console.log(`[API Event Presence] Événement ${event.id} (${event.title}): ${presences.length} présences, ${registrations.length} inscriptions`);
-          
-          return {
-            id: event.id,
-            title: event.title,
-            description: event.description,
-            image: event.image,
-            date: event.date.toISOString(),
-            category: event.category,
-            location: event.location,
-            invitedMembers: event.invitedMembers,
-            isPublished: event.isPublished,
-            createdAt: event.createdAt.toISOString(),
-            createdBy: event.createdBy,
-            updatedAt: event.updatedAt?.toISOString(),
-            presences: presences || [],
-            registrations: registrations.map(reg => ({
-              id: reg.id,
-              eventId: reg.eventId,
-              twitchLogin: reg.twitchLogin,
-              displayName: reg.displayName,
-              discordId: reg.discordId,
-              discordUsername: reg.discordUsername,
-              notes: reg.notes,
-              registeredAt: reg.registeredAt.toISOString(),
-            })) || [],
-          };
+          try {
+            const presences = await eventRepository.getPresences(event.id);
+            const registrations = await eventRepository.getRegistrations(event.id);
+            
+            console.log(`[API Event Presence] Événement ${event.id} (${event.title}): ${presences.length} présences, ${registrations.length} inscriptions`);
+            
+            return {
+              id: event.id,
+              title: event.title,
+              description: event.description,
+              image: event.image,
+              date: event.date.toISOString(),
+              category: event.category,
+              location: event.location,
+              invitedMembers: event.invitedMembers,
+              isPublished: event.isPublished,
+              createdAt: event.createdAt.toISOString(),
+              createdBy: event.createdBy,
+              updatedAt: event.updatedAt?.toISOString(),
+              presences: presences || [],
+              registrations: (registrations || []).map(reg => {
+                try {
+                  return {
+                    id: reg.id,
+                    eventId: reg.eventId,
+                    twitchLogin: reg.twitchLogin,
+                    displayName: reg.displayName,
+                    discordId: reg.discordId,
+                    discordUsername: reg.discordUsername,
+                    notes: reg.notes,
+                    registeredAt: reg.registeredAt instanceof Date 
+                      ? reg.registeredAt.toISOString() 
+                      : (typeof reg.registeredAt === 'string' 
+                          ? reg.registeredAt 
+                          : new Date(reg.registeredAt).toISOString()),
+                  };
+                } catch (regError) {
+                  console.error(`[API Event Presence] Erreur mapping inscription ${reg.id}:`, regError);
+                  return null;
+                }
+              }).filter((reg: any) => reg !== null) || [],
+            };
+          } catch (eventError) {
+            console.error(`[API Event Presence] Erreur chargement événement ${event.id}:`, eventError);
+            // Retourner l'événement avec des listes vides plutôt que de faire échouer toute la requête
+            return {
+              id: event.id,
+              title: event.title,
+              description: event.description,
+              image: event.image,
+              date: event.date.toISOString(),
+              category: event.category,
+              location: event.location,
+              invitedMembers: event.invitedMembers,
+              isPublished: event.isPublished,
+              createdAt: event.createdAt.toISOString(),
+              createdBy: event.createdBy,
+              updatedAt: event.updatedAt?.toISOString(),
+              presences: [],
+              registrations: [],
+            };
+          }
         })
       );
 
