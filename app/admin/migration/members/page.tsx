@@ -146,9 +146,12 @@ export default function MembersMigrationPage() {
   const getStats = () => {
     if (!syncData) return null;
     const stats = syncData[source === 'merged' ? 'merged' : source === 'admin' ? 'adminMembers' : 'botMembers'];
+    // Le type 'merged' utilise totalInBlobs/totalInSupabase, les autres utilisent inBlobs/inSupabase
+    const inBlobs = 'totalInBlobs' in stats ? stats.totalInBlobs : stats.inBlobs;
+    const inSupabase = 'totalInSupabase' in stats ? stats.totalInSupabase : stats.inSupabase;
     return {
-      inBlobs: stats.inBlobs,
-      inSupabase: stats.inSupabase,
+      inBlobs,
+      inSupabase,
       missing: stats.missingInSupabase.length,
     };
   };
