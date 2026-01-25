@@ -144,6 +144,12 @@ const utilityPages: QuickLink[] = [
     icon: <Database className="w-6 h-6" />,
     description: "Migrer les validations de follow depuis Blobs vers Supabase",
   },
+  {
+    href: "/admin/migration/members",
+    label: "Migration Membres",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les données des membres depuis Blobs vers Supabase",
+  },
 ];
 
 
