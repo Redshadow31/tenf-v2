@@ -109,6 +109,12 @@ const quickLinks: QuickLink[] = [
 // Pages utilitaires (migration, tests, etc.)
 const utilityPages: QuickLink[] = [
   {
+    href: "/admin/migration/all",
+    label: "Migration Globale",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer tous les blobs vers Supabase en une fois",
+  },
+  {
     href: "/admin/migration/events",
     label: "Migration Événements",
     icon: <Database className="w-6 h-6" />,
@@ -119,6 +125,18 @@ const utilityPages: QuickLink[] = [
     label: "Migration Évaluations",
     icon: <Database className="w-6 h-6" />,
     description: "Migrer les évaluations depuis Blobs vers Supabase",
+  },
+  {
+    href: "/admin/migration/follows",
+    label: "Migration Follows",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les validations de follow depuis Blobs vers Supabase",
+  },
+  {
+    href: "/admin/migration/members",
+    label: "Migration Membres",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les données des membres depuis Blobs vers Supabase",
   },
   {
     href: "/admin/system-test",
@@ -137,18 +155,6 @@ const utilityPages: QuickLink[] = [
     label: "Logs Structurés",
     icon: <FileText className="w-6 h-6" />,
     description: "Visualisation des logs structurés",
-  },
-  {
-    href: "/admin/migration/follows",
-    label: "Migration Follows",
-    icon: <Database className="w-6 h-6" />,
-    description: "Migrer les validations de follow depuis Blobs vers Supabase",
-  },
-  {
-    href: "/admin/migration/members",
-    label: "Migration Membres",
-    icon: <Database className="w-6 h-6" />,
-    description: "Migrer les données des membres depuis Blobs vers Supabase",
   },
 ];
 
