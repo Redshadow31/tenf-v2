@@ -5,9 +5,10 @@ import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
 import { logApi, LogCategory } from '@/lib/logging/logger';
 
-// Activer le cache avec revalidation ISR de 60 secondes
+// Désactiver le cache ISR pour cette route critique (page /lives doit toujours fonctionner)
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
-export const revalidate = 60; // Revalidation toutes les 60 secondes
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Pas de cache ISR pour garantir la disponibilité
 
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
@@ -136,12 +137,11 @@ export async function GET() {
       total: publicMembers.length 
     });
 
-    // Configurer les headers de cache pour Next.js ISR
-    // Revalidation de 60 secondes côté serveur (ISR)
-    // Cache de 60 secondes côté client/CDN avec revalidation en arrière-plan
+    // Cache minimal côté client uniquement (pas de cache serveur pour garantir la disponibilité)
+    // La page /lives doit toujours pouvoir récupérer les données même si la DB est temporairement indisponible
     response.headers.set(
       'Cache-Control',
-      'public, s-maxage=60, stale-while-revalidate=300'
+      'public, max-age=30, stale-while-revalidate=60'
     );
 
     const duration = Date.now() - startTime;

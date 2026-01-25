@@ -82,40 +82,59 @@ export default function LivesPage() {
           return;
         }
         
-        // Si l'API retourne une erreur (même avec status 200), afficher un message d'avertissement
-        if (membersData.error) {
+        // Si l'API retourne une erreur mais qu'on a quand même des membres (cache), continuer
+        if (membersData.error && activeMembers.length === 0) {
           console.warn('[Lives Page] Erreur API membres:', membersData.error);
-          setError(`Impossible de charger les membres: ${membersData.error}`);
+          // Ne pas bloquer la page, juste afficher un avertissement discret
+          setError(`⚠️ Données membres temporairement indisponibles. Affichage des streams disponibles...`);
         }
         
-        // Si aucun membre n'a été récupéré, afficher un message
+        // Si aucun membre n'a été récupéré, essayer de continuer quand même avec les streams
+        // La page peut fonctionner sans la liste complète des membres (pour afficher les streams)
         if (activeMembers.length === 0) {
-          if (!membersData.error) {
-            setError("Aucun membre actif trouvé");
-          }
-          setLiveMembers([]);
-          setLoading(false);
-          return;
+          console.warn('[Lives Page] Aucun membre récupéré, continuation avec streams uniquement');
+          // Ne pas retourner immédiatement, continuer pour récupérer les streams
+          // Les streams peuvent être affichés même sans la liste complète des membres
         }
         
         const twitchLogins = activeMembers
           .map((member: any) => member.twitchLogin)
           .filter(Boolean);
 
+        // Si on n'a pas de membres mais qu'on peut quand même récupérer les streams, continuer
+        // Cela permet à la page de fonctionner même si la DB est temporairement indisponible
         if (twitchLogins.length === 0) {
+          console.warn('[Lives Page] Aucun membre disponible, tentative de récupération des streams sans filtrage');
+          // Essayer de récupérer les streams sans filtrage par membres (si l'API le permet)
+          // Sinon, afficher une liste vide mais ne pas bloquer la page
           setLiveMembers([]);
           setLoading(false);
+          if (membersData.error) {
+            // Si c'est une erreur DB, afficher un message mais ne pas bloquer
+            setError(`⚠️ Données membres temporairement indisponibles. Réessayez dans quelques instants.`);
+          }
           return;
         }
 
         // Récupérer les streams en cours depuis l'API Twitch
         const userLoginsParam = twitchLogins.join(',');
         const response = await fetch(
-          `/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`
+          `/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`,
+          {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          }
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch live streams");
+          // Si l'API Twitch échoue, continuer avec une liste vide plutôt que de planter
+          console.error('[Lives Page] Erreur récupération streams Twitch:', response.status, response.statusText);
+          setError(`⚠️ Impossible de récupérer les streams en direct. Réessayez dans quelques instants.`);
+          setLiveMembers([]);
+          setLoading(false);
+          return;
         }
 
         const data = await response.json();
