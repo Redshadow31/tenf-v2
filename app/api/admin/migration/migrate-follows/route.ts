@@ -214,9 +214,9 @@ async function migrateMonth(
 
     // Créer un map des validations Supabase par staffSlug
     const supabaseValidationsByStaff = new Map<string, any>();
-    supabaseEvaluations.forEach(eval => {
-      if (eval.followValidations && Array.isArray(eval.followValidations)) {
-        eval.followValidations.forEach((fv: any) => {
+    supabaseEvaluations.forEach(evaluation => {
+      if (evaluation.followValidations && Array.isArray(evaluation.followValidations)) {
+        evaluation.followValidations.forEach((fv: any) => {
           const staffSlug = (fv.staffTwitchLogin || '').toLowerCase();
           if (staffSlug) {
             supabaseValidationsByStaff.set(staffSlug, fv);
@@ -363,9 +363,9 @@ export async function GET(request: NextRequest) {
     let totalInSupabase = 0;
     for (const month of monthsToMigrate) {
       const monthEvals = await evaluationRepository.findByMonth(month, 10000, 0);
-      monthEvals.forEach(eval => {
-        if (eval.followValidations && Array.isArray(eval.followValidations)) {
-          totalInSupabase += eval.followValidations.length;
+      monthEvals.forEach(evaluation => {
+        if (evaluation.followValidations && Array.isArray(evaluation.followValidations)) {
+          totalInSupabase += evaluation.followValidations.length;
         }
       });
     }

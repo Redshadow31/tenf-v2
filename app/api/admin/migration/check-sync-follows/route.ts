@@ -128,9 +128,9 @@ export async function GET(request: NextRequest) {
       const supabaseStaffSet = new Set<string>();
       const supabaseMembersByStaff: Record<string, number> = {};
       
-      (supabaseEvals || []).forEach((eval: any) => {
-        if (eval.follow_validations && Array.isArray(eval.follow_validations)) {
-          eval.follow_validations.forEach((fv: any) => {
+      (supabaseEvals || []).forEach((evaluation: any) => {
+        if (evaluation.follow_validations && Array.isArray(evaluation.follow_validations)) {
+          evaluation.follow_validations.forEach((fv: any) => {
             const staffSlug = fv.staffTwitchLogin?.toLowerCase() || '';
             if (staffSlug) {
               supabaseStaffSet.add(staffSlug);
