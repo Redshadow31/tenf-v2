@@ -101,7 +101,7 @@ export default function FollowMemberPage() {
     if (monthKey && hasAccess) {
       loadData();
     }
-  }, [monthKey, hasAccess]);
+  }, [monthKey, hasAccess, slug]);
 
   useEffect(() => {
     if (isRed && hasAccess) {
@@ -197,9 +197,13 @@ export default function FollowMemberPage() {
         setMemberFollows(initialFollows);
       }
 
-      // Charger la validation existante
+      // Charger la validation existante (forcer le rechargement pour avoir les dernières données)
       const validationResponse = await fetch(`/api/follow/validations/${monthKey}/${slug}`, {
         cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
       });
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();

@@ -67,6 +67,12 @@ export async function GET(
     return NextResponse.json({
       validation,
       staffName: STAFF_MEMBERS[staffSlug],
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error) {
     console.error('[Follow Validations API] Erreur GET:', error);
@@ -240,6 +246,12 @@ export async function POST(
       success: true,
       validation,
       message: 'Validation enregistrée avec succès',
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error) {
     console.error('[Follow Validations API] Erreur POST:', error);
