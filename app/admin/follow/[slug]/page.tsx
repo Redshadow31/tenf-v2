@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
 import WizebotImportModal from "@/components/admin/WizebotImportModal";
 import FollowImportFollowingModal from "@/components/admin/FollowImportFollowingModal";
@@ -88,6 +89,9 @@ export default function FollowMemberPage() {
   const [showFollowingImport, setShowFollowingImport] = useState(false);
   const [showRemainingMembers, setShowRemainingMembers] = useState(false);
   const [twitchConnected, setTwitchConnected] = useState<boolean | null>(null);
+  type SortableColumn = "displayName" | "twitchLogin" | "role" | "jeSuis" | "meSuit" | "validatedAt";
+  const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const memberName = STAFF_MEMBERS[slug] || slug;
   const isRed = slug === 'red';
@@ -438,6 +442,84 @@ export default function FollowMemberPage() {
     ? Math.round((totalRetour / totalJeSuis) * 100 * 10) / 10 
     : 0;
 
+  // Fonction pour gérer le tri
+  const handleSort = (column: SortableColumn) => {
+    if (sortColumn === column) {
+      // Inverser la direction si on clique sur la même colonne
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Nouvelle colonne, trier par ordre croissant
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  // Composant pour les en-têtes triables
+  const SortableHeader = ({ column, label }: { column: SortableColumn; label: string }) => (
+    <th 
+      className="text-left py-3 px-4 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center gap-2">
+        {label}
+        {sortColumn === column && (
+          <span className="text-purple-400">
+            {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        )}
+      </div>
+    </th>
+  );
+
+  // Trier les membres selon la colonne sélectionnée
+  const sortedMembers = [...members].sort((a, b) => {
+    if (!sortColumn) return 0;
+
+    const normalizedLoginA = (a.twitchLogin || '').toLowerCase().trim();
+    const normalizedLoginB = (b.twitchLogin || '').toLowerCase().trim();
+    const followA = memberFollows[normalizedLoginA] || memberFollows[a.twitchLogin] || { jeSuis: false, meSuit: null };
+    const followB = memberFollows[normalizedLoginB] || memberFollows[b.twitchLogin] || { jeSuis: false, meSuit: null };
+    const validationA = validation?.members.find(m => 
+      (m.twitchLogin || '').toLowerCase().trim() === normalizedLoginA || 
+      m.twitchLogin === a.twitchLogin
+    );
+    const validationB = validation?.members.find(m => 
+      (m.twitchLogin || '').toLowerCase().trim() === normalizedLoginB || 
+      m.twitchLogin === b.twitchLogin
+    );
+
+    let comparison = 0;
+
+    switch (sortColumn) {
+      case "displayName":
+        comparison = (a.displayName || '').localeCompare(b.displayName || '', 'fr', { sensitivity: 'base' });
+        break;
+      case "twitchLogin":
+        comparison = (a.twitchLogin || '').localeCompare(b.twitchLogin || '', 'fr', { sensitivity: 'base' });
+        break;
+      case "role":
+        comparison = (a.role || '').localeCompare(b.role || '', 'fr', { sensitivity: 'base' });
+        break;
+      case "jeSuis":
+        comparison = (followA.jeSuis ? 1 : 0) - (followB.jeSuis ? 1 : 0);
+        break;
+      case "meSuit":
+        const meSuitA = followA.meSuit === true ? 2 : followA.meSuit === false ? 1 : 0;
+        const meSuitB = followB.meSuit === true ? 2 : followB.meSuit === false ? 1 : 0;
+        comparison = meSuitA - meSuitB;
+        break;
+      case "validatedAt":
+        const dateA = validationA?.validatedAt ? new Date(validationA.validatedAt).getTime() : 0;
+        const dateB = validationB?.validatedAt ? new Date(validationB.validatedAt).getTime() : 0;
+        comparison = dateA - dateB;
+        break;
+      default:
+        return 0;
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
   if (loading && !validation) {
     return (
       <div className="text-white">
@@ -602,29 +684,17 @@ export default function FollowMemberPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Pseudo
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Chaîne Twitch
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Rôle
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Je suis
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Me suit
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
-                  Date de validation
-                </th>
+                <SortableHeader column="displayName" label="Pseudo" />
+                <SortableHeader column="twitchLogin" label="Chaîne Twitch" />
+                <SortableHeader column="role" label="Rôle" />
+                <SortableHeader column="jeSuis" label="Je suis" />
+                <SortableHeader column="meSuit" label="Me suit" />
+                <SortableHeader column="validatedAt" label="Date de validation" />
               </tr>
             </thead>
             <tbody>
-              {members.length > 0 ? (
-                members.map((member) => {
+              {sortedMembers.length > 0 ? (
+                sortedMembers.map((member) => {
                   // Normaliser le login pour la recherche (cohérence avec l'import)
                   const normalizedLogin = (member.twitchLogin || '').toLowerCase().trim();
                   const follow = memberFollows[normalizedLogin] || memberFollows[member.twitchLogin] || { jeSuis: false, meSuit: null };
