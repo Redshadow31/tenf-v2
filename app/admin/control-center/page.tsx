@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, Info, Users, ClipboardList, Star, Calendar, ShoppingCart, FileText, ArrowRight, Clock } from "lucide-react";
+import { AlertTriangle, Info, Users, ClipboardList, Star, Calendar, ShoppingCart, FileText, ArrowRight, Clock, Database, Settings, TestTube } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AlertCard {
@@ -103,6 +103,40 @@ const quickLinks: QuickLink[] = [
     label: "Logs",
     icon: <FileText className="w-6 h-6" />,
     description: "Historique des actions",
+  },
+];
+
+// Pages utilitaires (migration, tests, etc.)
+const utilityPages: QuickLink[] = [
+  {
+    href: "/admin/migration/events",
+    label: "Migration Événements",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les événements depuis Blobs vers Supabase",
+  },
+  {
+    href: "/admin/migration/evaluations",
+    label: "Migration Évaluations",
+    icon: <Database className="w-6 h-6" />,
+    description: "Migrer les évaluations depuis Blobs vers Supabase",
+  },
+  {
+    href: "/admin/system-test",
+    label: "Tests Système",
+    icon: <TestTube className="w-6 h-6" />,
+    description: "Tests de connexion et vérification système",
+  },
+  {
+    href: "/admin/log-center",
+    label: "Centre de Logs",
+    icon: <FileText className="w-6 h-6" />,
+    description: "Logs structurés et détaillés",
+  },
+  {
+    href: "/admin/logs-structured",
+    label: "Logs Structurés",
+    icon: <FileText className="w-6 h-6" />,
+    description: "Visualisation des logs structurés",
   },
 ];
 
@@ -406,6 +440,21 @@ export default function ControlCenterPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {quickLinks.map((link) => (
+              <QuickLinkCard key={link.href} link={link} />
+            ))}
+          </div>
+        </section>
+
+        {/* Section Pages Utilitaires */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
+            Pages Utilitaires
+          </h2>
+          <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+            Pages de migration, tests et outils techniques
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {utilityPages.map((link) => (
               <QuickLinkCard key={link.href} link={link} />
             ))}
           </div>
