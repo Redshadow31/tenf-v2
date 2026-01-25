@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 
 const EVENTS_STORE_NAME = 'tenf-events';
 const EVENTS_KEY = 'events.json';
+const EVENT_PRESENCE_STORE_NAME = 'tenf-event-presences';
 
 interface BlobEvent {
   id: string;
@@ -41,6 +42,27 @@ interface BlobRegistration {
   discordUsername?: string;
   registeredAt: string;
   notes?: string;
+}
+
+interface BlobPresence {
+  id: string;
+  twitchLogin: string;
+  displayName: string;
+  discordId?: string;
+  discordUsername?: string;
+  isRegistered: boolean;
+  present: boolean;
+  note?: string;
+  validatedAt?: string;
+  validatedBy?: string;
+  addedManually: boolean;
+  createdAt: string;
+}
+
+interface BlobPresenceData {
+  eventId: string;
+  presences: BlobPresence[];
+  lastUpdated: string;
 }
 
 async function loadEventsFromBlobs(): Promise<BlobEvent[]> {
@@ -85,6 +107,38 @@ async function checkEventExistsInSupabase(eventId: string): Promise<boolean> {
 async function checkRegistrationExistsInSupabase(eventId: string, twitchLogin: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from('event_registrations')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('twitch_login', twitchLogin.toLowerCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') {
+    throw error;
+  }
+  
+  return !!data;
+}
+
+async function loadPresencesFromBlobs(eventId: string): Promise<BlobPresence[]> {
+  try {
+    const store = getBlobStore(EVENT_PRESENCE_STORE_NAME);
+    const key = `${eventId}/presence.json`;
+    const data = await store.get(key, { type: 'json' });
+    if (data && (data as BlobPresenceData).presences) {
+      return (data as BlobPresenceData).presences || [];
+    }
+    return [];
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not found')) {
+      return [];
+    }
+    return [];
+  }
+}
+
+async function checkPresenceExistsInSupabase(eventId: string, twitchLogin: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('event_presences')
     .select('id')
     .eq('event_id', eventId)
     .eq('twitch_login', twitchLogin.toLowerCase())
@@ -157,6 +211,38 @@ async function migrateRegistration(blobReg: BlobRegistration): Promise<boolean> 
   return true;
 }
 
+async function migratePresence(blobPresence: BlobPresence, eventId: string): Promise<boolean> {
+  const exists = await checkPresenceExistsInSupabase(eventId, blobPresence.twitchLogin);
+  if (exists) {
+    return false;
+  }
+
+  const presenceRecord: any = {
+    event_id: eventId,
+    twitch_login: blobPresence.twitchLogin.toLowerCase(),
+    display_name: blobPresence.displayName,
+    discord_id: blobPresence.discordId || null,
+    discord_username: blobPresence.discordUsername || null,
+    is_registered: blobPresence.isRegistered,
+    present: blobPresence.present,
+    note: blobPresence.note || null,
+    validated_at: blobPresence.validatedAt || null,
+    validated_by: blobPresence.validatedBy || null,
+    added_manually: blobPresence.addedManually || false,
+  };
+
+  const { error } = await supabaseAdmin
+    .from('event_presences')
+    .insert(presenceRecord);
+
+  if (error) {
+    console.error(`Erreur insertion présence ${blobPresence.id}:`, error);
+    return false;
+  }
+
+  return true;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est admin
@@ -177,10 +263,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Aucun événement trouvé dans Blobs',
-        eventsMigrated: 0,
-        eventsSkipped: 0,
-        registrationsMigrated: 0,
-        registrationsSkipped: 0,
+        summary: {
+          eventsInBlobs: 0,
+          eventsMigrated: 0,
+          eventsSkipped: 0,
+          totalRegistrations: 0,
+          registrationsMigrated: 0,
+          registrationsSkipped: 0,
+          totalPresences: 0,
+          presencesMigrated: 0,
+          presencesSkipped: 0,
+          totalEventsInSupabase: 0,
+          totalRegistrationsInSupabase: 0,
+          totalPresencesInSupabase: 0,
+        },
       });
     }
 
@@ -219,13 +315,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 4. Vérification finale
+    // 4. Migrer les présences
+    let totalPresences = 0;
+    let presencesMigrated = 0;
+    let presencesSkipped = 0;
+
+    for (const blobEvent of blobEvents) {
+      const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
+      totalPresences += blobPresences.length;
+
+      for (const blobPresence of blobPresences) {
+        const migrated = await migratePresence(blobPresence, blobEvent.id);
+        if (migrated) {
+          presencesMigrated++;
+        } else {
+          presencesSkipped++;
+        }
+      }
+    }
+
+    // 5. Vérification finale
     const { data: supabaseEvents } = await supabaseAdmin
       .from('events')
       .select('id', { count: 'exact' });
 
     const { data: supabaseRegs } = await supabaseAdmin
       .from('event_registrations')
+      .select('id', { count: 'exact' });
+
+    const { data: supabasePresences } = await supabaseAdmin
+      .from('event_presences')
       .select('id', { count: 'exact' });
 
     return NextResponse.json({
@@ -238,8 +357,12 @@ export async function GET(request: NextRequest) {
         totalRegistrations,
         registrationsMigrated,
         registrationsSkipped,
+        totalPresences,
+        presencesMigrated,
+        presencesSkipped,
         totalEventsInSupabase: supabaseEvents?.length || 0,
         totalRegistrationsInSupabase: supabaseRegs?.length || 0,
+        totalPresencesInSupabase: supabasePresences?.length || 0,
       },
       eventResults: eventResults.slice(0, 20), // Limiter à 20 pour la réponse
     });

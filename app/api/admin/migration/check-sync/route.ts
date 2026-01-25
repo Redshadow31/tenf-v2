@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 
 const EVENTS_STORE_NAME = 'tenf-events';
 const EVENTS_KEY = 'events.json';
+const EVENT_PRESENCE_STORE_NAME = 'tenf-event-presences';
 
 interface BlobEvent {
   id: string;
@@ -31,6 +32,17 @@ interface SyncCheckResult {
     extraInSupabase: string[];
   };
   registrations: {
+    totalInBlobs: number;
+    totalInSupabase: number;
+    byEvent: Array<{
+      eventId: string;
+      eventTitle: string;
+      inBlobs: number;
+      inSupabase: number;
+      missingInSupabase: number;
+    }>;
+  };
+  presences: {
     totalInBlobs: number;
     totalInSupabase: number;
     byEvent: Array<{
@@ -60,6 +72,20 @@ async function loadRegistrationsFromBlobs(eventId: string): Promise<any[]> {
     const key = `registrations/${eventId}.json`;
     const data = await store.get(key, { type: 'json' });
     return (data as any[]) || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+async function loadPresencesFromBlobs(eventId: string): Promise<any[]> {
+  try {
+    const store = getBlobStore(EVENT_PRESENCE_STORE_NAME);
+    const key = `${eventId}/presence.json`;
+    const data = await store.get(key, { type: 'json' });
+    if (data && (data as any).presences) {
+      return (data as any).presences || [];
+    }
+    return [];
   } catch (error) {
     return [];
   }
@@ -144,6 +170,50 @@ export async function GET(request: NextRequest) {
 
     const totalRegistrationsInSupabase = allSupabaseRegs?.length || 0;
 
+    // 7. Vérifier les présences pour chaque événement
+    const presencesByEvent: Array<{
+      eventId: string;
+      eventTitle: string;
+      inBlobs: number;
+      inSupabase: number;
+      missingInSupabase: number;
+    }> = [];
+
+    for (const blobEvent of blobEvents) {
+      const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
+      
+      const { data: supabasePresences, error: presencesError } = await supabaseAdmin
+        .from('event_presences')
+        .select('id')
+        .eq('event_id', blobEvent.id);
+
+      if (presencesError) {
+        console.error(`Erreur récupération présences pour ${blobEvent.id}:`, presencesError);
+        continue;
+      }
+
+      const inBlobs = blobPresences.length;
+      const inSupabase = supabasePresences?.length || 0;
+      const missingInSupabase = Math.max(0, inBlobs - inSupabase);
+
+      presencesByEvent.push({
+        eventId: blobEvent.id,
+        eventTitle: blobEvent.title,
+        inBlobs,
+        inSupabase,
+        missingInSupabase,
+      });
+    }
+
+    // 8. Compter les présences totales
+    const totalPresencesInBlobs = presencesByEvent.reduce((sum, p) => sum + p.inBlobs, 0);
+    
+    const { data: allSupabasePresences, error: allPresencesError } = await supabaseAdmin
+      .from('event_presences')
+      .select('id', { count: 'exact' });
+
+    const totalPresencesInSupabase = allSupabasePresences?.length || 0;
+
     const result: SyncCheckResult = {
       events: {
         inBlobs: blobEvents.length,
@@ -161,6 +231,11 @@ export async function GET(request: NextRequest) {
         totalInBlobs: totalRegistrationsInBlobs,
         totalInSupabase: totalRegistrationsInSupabase,
         byEvent: registrationsByEvent,
+      },
+      presences: {
+        totalInBlobs: totalPresencesInBlobs,
+        totalInSupabase: totalPresencesInSupabase,
+        byEvent: presencesByEvent,
       },
     };
 

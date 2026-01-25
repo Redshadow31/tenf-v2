@@ -28,6 +28,17 @@ interface SyncCheckResult {
       missingInSupabase: number;
     }>;
   };
+  presences: {
+    totalInBlobs: number;
+    totalInSupabase: number;
+    byEvent: Array<{
+      eventId: string;
+      eventTitle: string;
+      inBlobs: number;
+      inSupabase: number;
+      missingInSupabase: number;
+    }>;
+  };
 }
 
 interface MigrationResult {
@@ -40,8 +51,12 @@ interface MigrationResult {
     totalRegistrations: number;
     registrationsMigrated: number;
     registrationsSkipped: number;
+    totalPresences?: number;
+    presencesMigrated?: number;
+    presencesSkipped?: number;
     totalEventsInSupabase: number;
     totalRegistrationsInSupabase: number;
+    totalPresencesInSupabase?: number;
   };
   eventResults?: string[];
   error?: string;
@@ -74,8 +89,21 @@ export default function EventsMigrationPage() {
       if (data.success) {
         setSyncData(data.data);
         // Sélectionner automatiquement tous les événements manquants
-        const missingIds = new Set<string>(data.data.events.missingInSupabase.map((e: BlobEvent) => e.id));
-        setSelectedEvents(missingIds);
+        // OU les événements qui ont des inscriptions ou présences manquantes
+        const missingEventIds = new Set<string>(data.data.events.missingInSupabase.map((e: BlobEvent) => e.id));
+        const eventsWithMissingRegs = new Set<string>(
+          data.data.registrations.byEvent
+            .filter((r: any) => r.missingInSupabase > 0)
+            .map((r: any) => r.eventId)
+        );
+        const eventsWithMissingPresences = new Set<string>(
+          data.data.presences.byEvent
+            .filter((p: any) => p.missingInSupabase > 0)
+            .map((p: any) => p.eventId)
+        );
+        // Combiner tous les sets
+        const allToMigrate = new Set<string>([...missingEventIds, ...eventsWithMissingRegs, ...eventsWithMissingPresences]);
+        setSelectedEvents(allToMigrate);
       } else {
         throw new Error(data.error || 'Erreur lors de la vérification');
       }
@@ -87,8 +115,26 @@ export default function EventsMigrationPage() {
   };
 
   const runMigration = async () => {
-    if (selectedEvents.size === 0) {
+    // Permettre la migration même sans sélection si tous les événements sont présents
+    // mais qu'il y a des inscriptions manquantes
+    if (!syncData) {
+      setError('Veuillez d\'abord vérifier la synchronisation');
+      return;
+    }
+    
+    const hasMissingEvents = syncData.events.missingInSupabase.length > 0;
+    const hasMissingRegistrations = syncData.registrations.totalInBlobs > syncData.registrations.totalInSupabase;
+    const hasMissingPresences = syncData.presences.totalInBlobs > syncData.presences.totalInSupabase;
+    
+    if (selectedEvents.size === 0 && hasMissingEvents) {
       setError('Veuillez sélectionner au moins un événement à migrer');
+      return;
+    }
+    
+    // Si tous les événements sont présents mais qu'il y a des inscriptions ou présences manquantes,
+    // on peut migrer quand même (la route migrera les inscriptions et présences)
+    if (selectedEvents.size === 0 && !hasMissingEvents && !hasMissingRegistrations && !hasMissingPresences) {
+      setError('Aucune donnée à migrer');
       return;
     }
 
@@ -133,8 +179,20 @@ export default function EventsMigrationPage() {
 
   const selectAll = () => {
     if (!syncData) return;
-    const allMissing = new Set<string>(syncData.events.missingInSupabase.map(e => e.id));
-    setSelectedEvents(allMissing);
+    // Sélectionner tous les événements manquants OU ceux avec des inscriptions ou présences manquantes
+    const missingEventIds = new Set<string>(syncData.events.missingInSupabase.map(e => e.id));
+    const eventsWithMissingRegs = new Set<string>(
+      syncData.registrations.byEvent
+        .filter(r => r.missingInSupabase > 0)
+        .map(r => r.eventId)
+    );
+    const eventsWithMissingPresences = new Set<string>(
+      syncData.presences.byEvent
+        .filter(p => p.missingInSupabase > 0)
+        .map(p => p.eventId)
+    );
+    const allToMigrate = new Set<string>([...missingEventIds, ...eventsWithMissingRegs, ...eventsWithMissingPresences]);
+    setSelectedEvents(allToMigrate);
   };
 
   const deselectAll = () => {
@@ -177,7 +235,7 @@ export default function EventsMigrationPage() {
       {syncData && (
         <div className="space-y-6">
           {/* Résumé */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
               <h3 className="text-lg font-bold text-white mb-4">Événements</h3>
               <div className="space-y-2">
@@ -223,6 +281,40 @@ export default function EventsMigrationPage() {
                     {syncData.registrations.totalInBlobs - syncData.registrations.totalInSupabase}
                   </span>
                 </div>
+                {syncData.registrations.totalInBlobs > syncData.registrations.totalInSupabase && (
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <p className="text-orange-400 text-sm">
+                      ⚠️ {syncData.registrations.totalInBlobs - syncData.registrations.totalInSupabase} inscription(s) à migrer
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-white mb-4">Présences</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total dans Blobs:</span>
+                  <span className="text-white font-semibold">{syncData.presences.totalInBlobs}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total dans Supabase:</span>
+                  <span className="text-white font-semibold">{syncData.presences.totalInSupabase}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Manquantes:</span>
+                  <span className="text-orange-400 font-semibold">
+                    {syncData.presences.totalInBlobs - syncData.presences.totalInSupabase}
+                  </span>
+                </div>
+                {syncData.presences.totalInBlobs > syncData.presences.totalInSupabase && (
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <p className="text-orange-400 text-sm">
+                      ⚠️ {syncData.presences.totalInBlobs - syncData.presences.totalInSupabase} présence(s) à migrer
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -297,6 +389,20 @@ export default function EventsMigrationPage() {
                                 </span>
                               </div>
                             )}
+                            {(() => {
+                              const eventPresences = syncData.presences.byEvent.find(p => p.eventId === event.id);
+                              return eventPresences && eventPresences.missingInSupabase > 0 && (
+                                <div className="mt-2">
+                                  <span className="text-orange-400">
+                                    {eventPresences.missingInSupabase} présence(s) à migrer
+                                  </span>
+                                  {' '}
+                                  <span className="text-gray-500">
+                                    ({eventPresences.inBlobs} dans Blobs, {eventPresences.inSupabase} dans Supabase)
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -308,7 +414,9 @@ export default function EventsMigrationPage() {
           )}
 
           {/* Bouton de migration */}
-          {syncData.events.missingInSupabase.length > 0 && (
+          {(syncData.events.missingInSupabase.length > 0 || 
+            (syncData.registrations.totalInBlobs > syncData.registrations.totalInSupabase) ||
+            (syncData.presences.totalInBlobs > syncData.presences.totalInSupabase)) && (
             <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -316,14 +424,27 @@ export default function EventsMigrationPage() {
                     Lancer la Migration
                   </h3>
                   <p className="text-gray-400 text-sm">
-                    {selectedEvents.size > 0
-                      ? `${selectedEvents.size} événement(s) sélectionné(s)`
-                      : 'Sélectionnez au moins un événement à migrer'}
+                    {syncData.events.missingInSupabase.length > 0 ? (
+                      selectedEvents.size > 0
+                        ? `${selectedEvents.size} événement(s) sélectionné(s)`
+                        : 'Sélectionnez au moins un événement à migrer'
+                    ) : (
+                      <>
+                        {syncData.registrations.totalInBlobs > syncData.registrations.totalInSupabase && (
+                          <span>{syncData.registrations.totalInBlobs - syncData.registrations.totalInSupabase} inscription(s) manquante(s)</span>
+                        )}
+                        {syncData.registrations.totalInBlobs > syncData.registrations.totalInSupabase && 
+                         syncData.presences.totalInBlobs > syncData.presences.totalInSupabase && ' + '}
+                        {syncData.presences.totalInBlobs > syncData.presences.totalInSupabase && (
+                          <span>{syncData.presences.totalInBlobs - syncData.presences.totalInSupabase} présence(s) manquante(s)</span>
+                        )}
+                      </>
+                    )}
                   </p>
                 </div>
                 <button
                   onClick={runMigration}
-                  disabled={loading || selectedEvents.size === 0}
+                  disabled={loading || (syncData.events.missingInSupabase.length > 0 && selectedEvents.size === 0)}
                   className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Migration en cours...' : '🚀 Migrer les Données'}
@@ -333,7 +454,9 @@ export default function EventsMigrationPage() {
           )}
 
           {/* Message si tout est synchronisé */}
-          {syncData.events.missingInSupabase.length === 0 && (
+          {syncData.events.missingInSupabase.length === 0 && 
+           syncData.registrations.totalInBlobs === syncData.registrations.totalInSupabase &&
+           syncData.presences.totalInBlobs === syncData.presences.totalInSupabase && (
             <div className="bg-green-500/20 border border-green-500 rounded-lg p-6">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">✅</span>
@@ -391,6 +514,22 @@ export default function EventsMigrationPage() {
                     {migrationResult.summary.totalRegistrationsInSupabase}
                   </span>
                 </div>
+                {migrationResult.summary.totalPresences !== undefined && (
+                  <>
+                    <div>
+                      <span className="text-gray-400">Présences migrées:</span>
+                      <span className="text-white font-semibold ml-2">
+                        {migrationResult.summary.presencesMigrated || 0}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Total présences dans Supabase:</span>
+                      <span className="text-white font-semibold ml-2">
+                        {migrationResult.summary.totalPresencesInSupabase || 0}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
