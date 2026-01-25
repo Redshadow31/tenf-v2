@@ -21,7 +21,8 @@
     "test:redis": "tsx scripts/test-redis.ts",
     "test:routes-evaluation-d": "tsx migration/test-routes-evaluation-d.ts",
     "test:routes-spotlight-events-follow": "tsx migration/test-routes-evaluation-spotlight-events-follow.ts",
-    "test:connections": "tsx scripts/test-connections.ts"
+    "test:connections": "tsx scripts/test-connections.ts",
+    "migration:migrate-events": "tsx migration/migrate-events-blobs-to-supabase.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^4.2.0",
