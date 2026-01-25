@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
     // Vérification finale - compter toutes les évaluations pour les mois migrés
     let totalInSupabase = 0;
     for (const month of monthsToMigrate) {
-      const { data: monthEvals } = await evaluationRepository.findByMonth(month, 10000, 0);
+      const monthEvals = await evaluationRepository.findByMonth(month, 10000, 0);
       totalInSupabase += monthEvals?.length || 0;
     }
 
