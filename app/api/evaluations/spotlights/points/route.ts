@@ -47,7 +47,72 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Si aucun spotlight trouvé dans les évaluations, essayer de récupérer depuis l'API de présence mensuelle
     if (allSpotlights.length === 0) {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+        const presenceResponse = await fetch(`${baseUrl}/api/spotlight/presence/monthly?month=${monthKey}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+
+        if (presenceResponse.ok) {
+          const presenceData = await presenceResponse.json();
+          const spotlightsFromPresence = presenceData.spotlights || [];
+          
+          // Convertir les données de présence en format spotlightEvaluations
+          if (spotlightsFromPresence.length > 0) {
+            // Récupérer les membres depuis les données de présence
+            const membersFromPresence = presenceData.members || [];
+            
+            // Construire les spotlights depuis les données de présence
+            spotlightsFromPresence.forEach((spotlight: any) => {
+              // Trouver les membres présents pour ce spotlight
+              const spotlightMembers = membersFromPresence
+                .filter((m: any) => 
+                  m.spotlightDetails?.some((detail: any) => 
+                    detail.date === spotlight.date && 
+                    detail.streamer === spotlight.streamerTwitchLogin &&
+                    detail.present === true
+                  )
+                )
+                .map((m: any) => ({
+                  twitchLogin: m.twitchLogin,
+                  present: true,
+                }));
+              
+              // Ajouter aussi les membres absents pour avoir la liste complète
+              activeMembers.forEach(member => {
+                const isPresent = spotlightMembers.some((m: any) => 
+                  m.twitchLogin?.toLowerCase() === member.twitchLogin.toLowerCase()
+                );
+                if (!isPresent) {
+                  spotlightMembers.push({
+                    twitchLogin: member.twitchLogin,
+                    present: false,
+                  });
+                }
+              });
+
+              allSpotlights.push({
+                id: spotlight.id || `spotlight-${spotlight.date}-${spotlight.streamerTwitchLogin}`,
+                date: spotlight.date,
+                streamerTwitchLogin: spotlight.streamerTwitchLogin,
+                members: spotlightMembers,
+                validated: true, // Considérer comme validé si présent dans l'API de présence
+              });
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('[API Evaluations Spotlights Points] Erreur lors de la récupération depuis presence/monthly:', error);
+      }
+    }
+
+    if (allSpotlights.length === 0) {
+      console.warn(`[API Evaluations Spotlights Points] Aucun spotlight trouvé pour le mois ${monthKey}`);
       return NextResponse.json({ success: true, points: {}, month: monthKey });
     }
 
