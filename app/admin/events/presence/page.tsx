@@ -139,7 +139,16 @@ export default function EventPresencePage() {
 
       if (eventsResponse.ok) {
         const data = await eventsResponse.json();
-        setEvents(data.events || []);
+        const loadedEvents = data.events || [];
+        setEvents(loadedEvents);
+        
+        // Si un événement est ouvert dans le modal, mettre à jour ses données
+        if (selectedEvent) {
+          const updatedEvent = loadedEvents.find((e: Event) => e.id === selectedEvent.id);
+          if (updatedEvent) {
+            setSelectedEvent(updatedEvent);
+          }
+        }
       } else {
         console.error("Erreur lors du chargement des événements:", eventsResponse.status, eventsResponse.statusText);
       }
@@ -279,6 +288,11 @@ export default function EventPresencePage() {
         // En cas d'erreur, recharger les données pour restaurer l'état correct
         const error = await response.json();
         alert(`Erreur : ${error.error || 'Erreur inconnue'}`);
+        await loadData();
+      } else {
+        // Même en cas de succès, recharger les données depuis le serveur pour s'assurer de la synchronisation
+        // Cela évite les problèmes de désynchronisation quand plusieurs présences sont ajoutées rapidement
+        // Le loadData() mettra automatiquement à jour selectedEvent si l'événement est ouvert
         await loadData();
       }
     } catch (error) {

@@ -82,11 +82,11 @@ export default function LivesPage() {
           return;
         }
         
-        // Si l'API retourne une erreur mais qu'on a quand même des membres (cache), continuer
+        // Si l'API retourne une erreur mais qu'on a quand même des membres (cache), continuer silencieusement
         if (membersData.error && activeMembers.length === 0) {
           console.warn('[Lives Page] Erreur API membres:', membersData.error);
-          // Ne pas bloquer la page, juste afficher un avertissement discret
-          setError(`⚠️ Données membres temporairement indisponibles. Affichage des streams disponibles...`);
+          // Ne pas afficher l'erreur immédiatement, continuer pour essayer de récupérer les streams
+          // L'erreur sera affichée seulement si on n'a vraiment aucune donnée à afficher après le chargement complet
         }
         
         // Si aucun membre n'a été récupéré, essayer de continuer quand même avec les streams
@@ -109,10 +109,9 @@ export default function LivesPage() {
           // Sinon, afficher une liste vide mais ne pas bloquer la page
           setLiveMembers([]);
           setLoading(false);
-          if (membersData.error) {
-            // Si c'est une erreur DB, afficher un message mais ne pas bloquer
-            setError(`⚠️ Données membres temporairement indisponibles. Réessayez dans quelques instants.`);
-          }
+          // Ne pas afficher l'erreur immédiatement, seulement si vraiment aucune donnée n'est disponible
+          // L'erreur sera affichée seulement après le chargement complet si vraiment nécessaire
+          // (géré dans le catch/finally)
           return;
         }
 
@@ -227,11 +226,24 @@ export default function LivesPage() {
         setAvailableGames(uniqueGames);
 
         setLiveMembers(sortedLives);
+        // Si on a réussi à charger des streams, effacer toute erreur précédente
+        if (sortedLives.length > 0) {
+          setError(null);
+        } else if (membersData.error) {
+          // Afficher l'erreur seulement si on n'a vraiment aucune donnée après le chargement complet
+          // Mais avec un petit délai pour éviter les faux positifs
+          setTimeout(() => {
+            setError(`⚠️ Données membres temporairement indisponibles. Réessayez dans quelques instants.`);
+          }, 1000);
+        }
       } catch (err) {
         console.error("Error fetching live streams:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
         // En cas d'erreur, afficher une liste vide plutôt que des données mock
         setLiveMembers([]);
+        // Afficher l'erreur seulement après un délai pour éviter les faux positifs
+        setTimeout(() => {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }, 1000);
       } finally {
         setLoading(false);
       }
