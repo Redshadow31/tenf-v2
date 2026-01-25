@@ -12,6 +12,8 @@ import { requireAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { supabaseAdmin } from '@/lib/db/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const EVENTS_STORE_NAME = 'tenf-events';
 const EVENTS_KEY = 'events.json';
 
