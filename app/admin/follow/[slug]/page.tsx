@@ -594,6 +594,9 @@ export default function FollowMemberPage() {
                   Pseudo
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
+                  Chaîne Twitch
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
                   Rôle
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">
@@ -632,6 +635,34 @@ export default function FollowMemberPage() {
                             {member.displayName}
                           </span>
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {member.twitchLogin ? (
+                          <a
+                            href={`https://twitch.tv/${member.twitchLogin}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#9146ff] hover:text-[#7c3aed] hover:underline transition-colors flex items-center gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="text-sm font-mono">@{member.twitchLogin}</span>
+                            <svg 
+                              className="w-3.5 h-3.5 text-gray-400" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                              />
+                            </svg>
+                          </a>
+                        ) : (
+                          <span className="text-gray-500 text-sm">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">
                         {member.role || "—"}
@@ -685,7 +716,7 @@ export default function FollowMemberPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-gray-400">
+                  <td colSpan={6} className="py-12 text-center text-gray-400">
                     Aucun membre trouvé
                   </td>
                 </tr>
