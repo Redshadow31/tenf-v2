@@ -109,6 +109,15 @@ export default function ListeEventsPage() {
         const result = await response.json();
         const eventsData = result.eventsWithRegistrations || [];
         
+        console.log(`[Liste Events Page] Événements reçus: ${eventsData.length}`, {
+          totalEvents: result.totalEvents,
+          totalRegistrations: result.totalRegistrations,
+        });
+        
+        if (eventsData.length === 0) {
+          console.warn('[Liste Events Page] Aucun événement reçu de l\'API');
+        }
+        
         // Charger les présences pour chaque événement
         const eventsWithPresences = await Promise.all(
           eventsData.map(async (item: EventWithRegistrations) => {

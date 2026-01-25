@@ -67,17 +67,22 @@ export async function GET(request: NextRequest) {
     });
     
     // Enrichir avec les informations des événements
-    const result = events.map(event => ({
-      event: {
-        id: event.id,
-        title: event.title,
-        date: event.date.toISOString(),
-        category: event.category,
-        isPublished: event.isPublished,
-      },
-      registrations: allRegistrationsMap[event.id] || [],
-      registrationCount: (allRegistrationsMap[event.id] || []).length,
-    }));
+    const result = events.map(event => {
+      // Gérer les dates qui peuvent être des strings (depuis le cache Redis)
+      const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+      
+      return {
+        event: {
+          id: event.id,
+          title: event.title,
+          date: eventDate.toISOString(),
+          category: event.category,
+          isPublished: event.isPublished,
+        },
+        registrations: allRegistrationsMap[event.id] || [],
+        registrationCount: (allRegistrationsMap[event.id] || []).length,
+      };
+    });
     
     return NextResponse.json({ 
       eventsWithRegistrations: result,
