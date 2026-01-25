@@ -1,103 +1,43 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getAllMemberData } from '@/lib/memberData';
-import { isFounder, isAdmin, isModerator } from '@/lib/admin';
-import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
+import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
+import { hasAdminDashboardAccess } from '@/lib/adminRoles';
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
+    // Utiliser NextAuth pour l'authentification (cohérent avec le reste du système)
+    const admin = await getAuthenticatedAdmin();
 
-    console.log('User role check - Discord ID:', userId);
-
-    if (!userId) {
-      console.log('User role check - No Discord ID found in cookies');
+    if (!admin) {
+      console.log('User role check - Not authenticated via NextAuth');
       return NextResponse.json({ hasAdminAccess: false, role: null });
     }
 
-    // Vérifier d'abord les fondateurs (hardcodés)
-    if (isFounder(userId)) {
-      console.log('User role check - Found as Founder');
-      return NextResponse.json({ 
-        hasAdminAccess: true,
-        role: "Admin",
-      });
-    }
+    const userId = admin.discordId;
+    console.log('User role check - Discord ID:', userId);
 
-    console.log('User role check - Checking memberDataStore...');
+    // Vérifier si l'admin a accès au dashboard
+    const hasAccess = hasAdminDashboardAccess(userId) || admin.role !== null;
 
-    // Vérifier d'abord dans memberDataStore (source de vérité)
-    const memberData = getAllMemberData();
-    const member = memberData.find(m => m.discordId === userId);
+    // Mapper le rôle AdminRole vers le format attendu par le frontend
+    const roleMap: Record<string, string> = {
+      'FOUNDER': 'Admin',
+      'ADMIN_ADJOINT': 'Admin Adjoint',
+      'MODO_MENTOR': 'Mentor',
+      'MODO_JUNIOR': 'Modérateur Junior',
+    };
 
-    if (member) {
-      const role = member.role;
-      // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
-      const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
-      const hasAdminAccess = allowedRoles.includes(role);
+    const frontendRole = roleMap[admin.role] || admin.role || null;
 
-      console.log('User role check - Found in memberDataStore:', { role, hasAdminAccess });
-      return NextResponse.json({ 
-        hasAdminAccess,
-        role,
-      });
-    }
+    console.log('User role check - Authenticated via NextAuth:', { 
+      role: admin.role, 
+      frontendRole, 
+      hasAccess 
+    });
 
-    // Ensuite vérifier les rôles hardcodés (pour compatibilité)
-    if (isAdmin(userId)) {
-      console.log('User role check - Found as Admin (hardcoded)');
-      return NextResponse.json({ 
-        hasAdminAccess: true,
-        role: "Admin",
-      });
-    }
-
-    if (isModerator(userId)) {
-      console.log('User role check - Found as Moderator (hardcoded)');
-      return NextResponse.json({ 
-        hasAdminAccess: true,
-        role: "Modérateur Junior",
-      });
-    }
-
-    // Si pas trouvé dans Blobs, vérifier directement via Discord API
-    console.log('User role check - Not in Blobs cache, checking Discord API...');
-    const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-    
-    if (DISCORD_BOT_TOKEN) {
-      try {
-        const memberResponse = await fetch(
-          `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${userId}`,
-          {
-            headers: {
-              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-            },
-          }
-        );
-
-        if (memberResponse.ok) {
-          const discordMember = await memberResponse.json();
-          const { role: siteRole } = mapDiscordRoleToSiteRole(discordMember.roles || []);
-          
-          // Admin, Admin Adjoint, Mentor, ou Modérateur Junior
-          const allowedRoles = ["Admin", "Admin Adjoint", "Mentor", "Modérateur Junior"];
-          const hasAdminAccess = allowedRoles.includes(siteRole);
-
-          console.log('User role check - Found via Discord API:', { role: siteRole, hasAdminAccess });
-          return NextResponse.json({ 
-            hasAdminAccess,
-            role: siteRole,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching Discord member:', error);
-      }
-    }
-
-    // Si pas trouvé, retourner false
-    console.log('User role check - Not found anywhere');
-    return NextResponse.json({ hasAdminAccess: false, role: null });
+    return NextResponse.json({ 
+      hasAdminAccess: hasAccess,
+      role: frontendRole,
+    });
   } catch (error) {
     console.error('Error fetching user role:', error);
     return NextResponse.json({ hasAdminAccess: false, role: null });
