@@ -57,9 +57,6 @@ export default function TwitchRulesPage() {
       return next;
     });
   };
-
-  // Slides de présentation
-  const presentationSlides = [
     // Slide 1 - Titre
     {
       id: 1,
