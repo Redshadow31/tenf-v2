@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, Presentation } from "lucide-react";
+
+type TabType = "discours" | "presentation";
 
 export default function TwitchRulesPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("discours");
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
@@ -36,39 +41,101 @@ export default function TwitchRulesPage() {
           </p>
         </div>
 
-        <div className="rounded-lg border p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-          <div className="flex items-center gap-4 mb-6">
-            <div
-              className="p-4 rounded-lg"
-              style={{
-                backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-primary)',
-              }}
+        {/* Onglets */}
+        <div className="mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveTab("discours")}
+              className={`px-6 py-3 font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === "discours"
+                  ? "border-[#9146ff] text-white"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
             >
-              <BookOpen className="w-8 h-8" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>
-                Contenu de la formation
-              </h2>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Cette page sera bientôt disponible avec le contenu complet de la formation
-              </p>
-            </div>
+              <FileText className="w-5 h-5" />
+              Discours
+            </button>
+            <button
+              onClick={() => setActiveTab("presentation")}
+              className={`px-6 py-3 font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === "presentation"
+                  ? "border-[#9146ff] text-white"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              <Presentation className="w-5 h-5" />
+              Présentation
+            </button>
           </div>
+        </div>
 
-          <div className="space-y-4" style={{ color: 'var(--color-text-secondary)' }}>
-            <p>
-              Cette section contiendra :
-            </p>
-            <ul className="list-disc list-inside space-y-2 ml-4">
-              <li>Les règles et conditions d'utilisation de Twitch</li>
-              <li>Les fonctionnalités principales de la plateforme</li>
-              <li>Les bonnes pratiques pour les streamers</li>
-              <li>Les guidelines spécifiques à TENF</li>
-              <li>Des ressources et outils utiles</li>
-            </ul>
-          </div>
+        {/* Contenu des onglets */}
+        <div className="rounded-lg border p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          {activeTab === "discours" && (
+            <div>
+              <div className="flex items-center gap-4 mb-6">
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-primary)',
+                  }}
+                >
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>
+                    Discours
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    Contenu du discours pour la formation Twitch
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4" style={{ color: 'var(--color-text-secondary)' }}>
+                <p>
+                  Cette section contiendra le contenu du discours pour la formation sur Twitch et ses règles.
+                </p>
+                <p className="text-sm italic" style={{ color: 'var(--color-text-secondary)' }}>
+                  Le contenu sera ajouté prochainement.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "presentation" && (
+            <div>
+              <div className="flex items-center gap-4 mb-6">
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-primary)',
+                  }}
+                >
+                  <Presentation className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>
+                    Présentation
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    Présentation visuelle pour la formation Twitch
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4" style={{ color: 'var(--color-text-secondary)' }}>
+                <p>
+                  Cette section contiendra la présentation visuelle pour la formation sur Twitch et ses règles.
+                </p>
+                <p className="text-sm italic" style={{ color: 'var(--color-text-secondary)' }}>
+                  Le contenu sera ajouté prochainement.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
