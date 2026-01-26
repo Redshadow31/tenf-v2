@@ -63,6 +63,34 @@ export function PresentationHTML() {
           color: var(--text);
         }
 
+        .presentation-container:fullscreen {
+          background: var(--bg);
+          padding: 0;
+        }
+
+        .presentation-container:fullscreen .app {
+          width: 100vw;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .presentation-container:fullscreen .stage {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .presentation-container:fullscreen .deck {
+          width: 100vw;
+          height: 100vh;
+          max-width: 100vw;
+          max-height: 100vh;
+          aspect-ratio: 16/9;
+        }
+
         .presentation-container kbd {
           padding: 0.15rem 0.45rem;
           border: 1px solid var(--border);
@@ -1124,8 +1152,14 @@ export function PresentationHTML() {
 
         btnFullscreen?.addEventListener("click", async () => {
           try {
-            if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
-            else await document.exitFullscreen();
+            const appElement = document.getElementById("app");
+            if (!appElement) return;
+            
+            if (!document.fullscreenElement) {
+              await appElement.requestFullscreen();
+            } else {
+              await document.exitFullscreen();
+            }
           } catch (_) {}
         });
 
