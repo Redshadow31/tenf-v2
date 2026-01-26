@@ -40,7 +40,19 @@ export function PresentationSlides({ slides, currentSlide, onSlideChange, isFull
   const aspectRatio = 16 / 9;
 
   return (
-    <div className="relative">
+    <div 
+      className="relative"
+      style={isFullscreen ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        backgroundColor: '#0e0e10',
+        padding: '2rem',
+      } : {}}
+    >
       {/* Contrôles */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
