@@ -23,6 +23,7 @@ import {
   SlideComparison,
   SlideNumber,
 } from "./presentation-slides";
+import { PresentationHTML } from "./presentation-html";
 
 type TabType = "discours" | "presentation";
 
@@ -754,13 +755,7 @@ export default function TwitchRulesPage() {
                 </div>
               </div>
 
-              <PresentationSlides
-                slides={presentationSlides}
-                currentSlide={currentSlide}
-                onSlideChange={setCurrentSlide}
-                isFullscreen={isFullscreen}
-                onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-              />
+              <PresentationHTML />
             </div>
           )}
         </div>
