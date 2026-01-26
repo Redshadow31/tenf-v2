@@ -304,7 +304,24 @@ export const adminNavigation: NavItem[] = [
     ],
   },
 
-  // 13. 🔎 Recherche
+  // 13. 📚 Formation TENF
+  {
+    href: "/admin/formation",
+    label: "Formation TENF",
+    icon: "📚",
+    children: [
+      {
+        href: "/admin/formation",
+        label: "Hub",
+      },
+      {
+        href: "/admin/formation/twitch-rules",
+        label: "TENF Academy : Comprendre Twitch et ses règles",
+      },
+    ],
+  },
+
+  // 14. 🔎 Recherche
   {
     href: "/admin/search",
     label: "Recherche membre",
