@@ -274,11 +274,12 @@ export default function PlanificationPage() {
     try {
       setSaving(true);
       
+      // Envoyer la date en ISO (moment correct en heure locale) pour éviter le décalage +1h côté serveur (UTC)
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: formData.date,
+        date: new Date(formData.date).toISOString(),
         location: formData.location,
         isPublished: formData.isPublished,
         image: finalImageUrl || undefined,

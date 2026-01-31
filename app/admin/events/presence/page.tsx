@@ -62,6 +62,7 @@ export default function EventPresencePage() {
   const [editingNote, setEditingNote] = useState<{ eventId: string; twitchLogin: string; note: string } | null>(null);
   const [sortBy, setSortBy] = useState<"date" | "presences" | "inscriptions" | "absents" | "category">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkAccess() {
@@ -442,6 +443,35 @@ export default function EventPresencePage() {
     }
   }
 
+  async function handleDeleteEvent(event: Event) {
+    const confirmed = window.confirm(
+      `Supprimer définitivement l'événement « ${event.title } » ?\n\nLes inscriptions et présences associées seront également supprimées. Cette action est irréversible.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingEventId(event.id);
+      const response = await fetch(`/api/admin/events/${event.id}`, { method: 'DELETE' });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Erreur lors de la suppression de l\'événement');
+        return;
+      }
+
+      setEvents(prev => prev.filter(e => e.id !== event.id));
+      if (selectedEvent?.id === event.id) {
+        setIsEventModalOpen(false);
+        setSelectedEvent(null);
+      }
+    } catch (error) {
+      console.error('Erreur suppression événement:', error);
+      alert('Erreur lors de la suppression de l\'événement');
+    } finally {
+      setDeletingEventId(null);
+    }
+  }
+
   if (loading && !events.length) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -622,16 +652,31 @@ export default function EventPresencePage() {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedEvent(event);
-                    setIsEventModalOpen(true);
-                    setSearchQuery("");
-                  }}
-                  className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-                >
-                  Gérer les présences
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedEvent(event);
+                      setIsEventModalOpen(true);
+                      setSearchQuery("");
+                    }}
+                    className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    Gérer les présences
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEvent(event)}
+                    disabled={deletingEventId === event.id}
+                    className="bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-1"
+                    title="Supprimer l'événement (annulé)"
+                  >
+                    {deletingEventId === event.id ? (
+                      <span className="animate-spin">...</span>
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    Supprimer
+                  </button>
+                </div>
               </div>
 
               {/* Aperçu des présences */}
@@ -703,16 +748,31 @@ export default function EventPresencePage() {
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedEvent(event);
-                              setIsEventModalOpen(true);
-                              setSearchQuery("");
-                            }}
-                            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-                          >
-                            Gérer les présences
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setIsEventModalOpen(true);
+                                setSearchQuery("");
+                              }}
+                              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                            >
+                              Gérer les présences
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEvent(event)}
+                              disabled={deletingEventId === event.id}
+                              className="bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-1"
+                              title="Supprimer l'événement (annulé)"
+                            >
+                              {deletingEventId === event.id ? (
+                                <span className="animate-spin">...</span>
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
 
                         {/* Aperçu des présences */}
@@ -1230,12 +1290,17 @@ function CreateEventModal({
 
     try {
       setSaving(true);
+      // Envoyer la date en ISO (moment correct en heure locale) pour éviter le décalage +1h côté serveur (UTC)
+      const payload = {
+        ...formData,
+        date: new Date(formData.date).toISOString(),
+      };
       const response = await fetch('/api/admin/events/presence', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {

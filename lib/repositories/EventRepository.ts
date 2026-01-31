@@ -201,16 +201,33 @@ export class EventRepository {
   }
 
   /**
-   * Supprime un événement
+   * Supprime un événement (présences et inscriptions supprimées en premier pour éviter les FK)
    */
   async delete(id: string): Promise<void> {
+    // Supprimer d'abord les présences puis les inscriptions (ou laisser CASCADE si configuré)
+    const { error: errPresences } = await supabaseAdmin
+      .from('event_presences')
+      .delete()
+      .eq('event_id', id);
+    if (errPresences) {
+      console.warn('[EventRepository] Erreur suppression presences (peut être CASCADE):', errPresences.message);
+    }
+
+    const { error: errRegistrations } = await supabaseAdmin
+      .from('event_registrations')
+      .delete()
+      .eq('event_id', id);
+    if (errRegistrations) {
+      console.warn('[EventRepository] Erreur suppression inscriptions (peut être CASCADE):', errRegistrations.message);
+    }
+
     const { error } = await supabaseAdmin
       .from('events')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
-    
+
     // Invalider le cache des événements
     await cacheInvalidateNamespace('events');
   }
