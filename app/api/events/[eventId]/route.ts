@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin } from '@/lib/admin';
 import { requireSectionAccess } from '@/lib/requireAdmin';
-import { getEvent, updateEvent, deleteEvent } from '@/lib/eventStorage';
+import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 
 /**
@@ -13,32 +13,37 @@ export async function GET(
 ) {
   try {
     const { eventId } = params;
-    const event = await getEvent(eventId);
-    
+    const event = await eventRepository.findById(eventId);
+
     if (!event) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
         { status: 404 }
       );
     }
-    
+
     // Vérifier si l'utilisateur est admin ou si l'événement est publié
     const admin = await getCurrentAdmin();
     let isAdmin = false;
     if (admin) {
-      // Vérifier si l'admin a accès à la section events
       const sectionAdmin = await requireSectionAccess('/admin/events/planification');
       isAdmin = sectionAdmin !== null;
     }
-    
+
     if (!event.isPublished && !isAdmin) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
         { status: 404 }
       );
     }
-    
-    return NextResponse.json({ event });
+
+    const formattedEvent = {
+      ...event,
+      date: event.date instanceof Date ? event.date.toISOString() : event.date,
+      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
+      updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
+    };
+    return NextResponse.json({ event: formattedEvent });
   } catch (error) {
     console.error('[Event API] Erreur GET:', error);
     return NextResponse.json(
@@ -50,6 +55,7 @@ export async function GET(
 
 /**
  * PUT - Met à jour un événement (admin uniquement)
+ * Utilise Supabase (eventRepository) pour que la modification soit visible dans la liste chargée depuis /api/events.
  */
 export async function PUT(
   request: NextRequest,
@@ -60,30 +66,38 @@ export async function PUT(
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
-    
+
     const { eventId } = params;
     const body = await request.json();
-    
-    // Capturer l'état avant la mise à jour
-    const existingEvent = await getEvent(eventId);
+
+    const existingEvent = await eventRepository.findById(eventId);
     if (!existingEvent) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
         { status: 404 }
       );
     }
-    
-    const updatedEvent = await updateEvent(eventId, body);
-    
-    if (!updatedEvent) {
-      return NextResponse.json(
-        { error: 'Événement non trouvé' },
-        { status: 404 }
-      );
-    }
-    
-    // Logger l'action avec before/after optimisés
-    const { previousValue, newValue } = prepareAuditValues(existingEvent, updatedEvent);
+
+    // Passer les champs à mettre à jour (date en ISO si string, conservée telle quelle par le repository)
+    const updates: Record<string, unknown> = {};
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.image !== undefined) updates.image = body.image;
+    if (body.date !== undefined) updates.date = typeof body.date === 'string' ? body.date : (body.date instanceof Date ? body.date.toISOString() : body.date);
+    if (body.category !== undefined) updates.category = body.category;
+    if (body.location !== undefined) updates.location = body.location;
+    if (body.isPublished !== undefined) updates.isPublished = body.isPublished;
+
+    const updatedEvent = await eventRepository.update(eventId, updates as Parameters<typeof eventRepository.update>[1]);
+
+    const formattedEvent = {
+      ...updatedEvent,
+      date: updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date,
+      createdAt: updatedEvent.createdAt instanceof Date ? updatedEvent.createdAt.toISOString() : updatedEvent.createdAt,
+      updatedAt: updatedEvent.updatedAt ? (updatedEvent.updatedAt instanceof Date ? updatedEvent.updatedAt.toISOString() : updatedEvent.updatedAt) : undefined,
+    };
+
+    const { previousValue, newValue } = prepareAuditValues(existingEvent, formattedEvent);
     await logAction({
       action: "event.update",
       resourceType: "event",
@@ -92,8 +106,8 @@ export async function PUT(
       newValue,
       metadata: { sourcePage: "/admin/events" },
     });
-    
-    return NextResponse.json({ event: updatedEvent, success: true });
+
+    return NextResponse.json({ event: formattedEvent, success: true });
   } catch (error) {
     console.error('[Event API] Erreur PUT:', error);
     return NextResponse.json(
@@ -115,29 +129,20 @@ export async function DELETE(
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
-    
+
     const { eventId } = params;
-    
-    // Capturer l'état avant la suppression
-    const existingEvent = await getEvent(eventId);
+
+    const existingEvent = await eventRepository.findById(eventId);
     if (!existingEvent) {
       return NextResponse.json(
         { error: 'Événement non trouvé' },
         { status: 404 }
       );
     }
-    
-    const deleted = await deleteEvent(eventId);
-    
-    if (!deleted) {
-      return NextResponse.json(
-        { error: 'Événement non trouvé' },
-        { status: 404 }
-      );
-    }
-    
-    // Logger l'action avec before optimisé
-    const { previousValue } = prepareAuditValues(existingEvent, undefined);
+
+    await eventRepository.delete(eventId);
+
+    const previousValue = prepareAuditValues(existingEvent, undefined).previousValue;
     await logAction({
       action: "event.delete",
       resourceType: "event",
@@ -145,7 +150,7 @@ export async function DELETE(
       previousValue,
       metadata: { sourcePage: "/admin/events" },
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[Event API] Erreur DELETE:', error);
