@@ -32,7 +32,7 @@ export default function DiscordEngagementImportModal({
   const [manualMappings, setManualMappings] = useState<Record<number, string>>({});
 
   const membersList = useMemo(
-    () => Array.from(membersMap.entries()).map(([discordId, m]) => ({ discordId, ...m })),
+    () => Array.from(membersMap.values()),
     [membersMap]
   );
 
