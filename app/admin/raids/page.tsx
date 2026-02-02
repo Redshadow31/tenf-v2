@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { getDiscordUser } from "@/lib/discord";
 import { hasAdminDashboardAccess, isFounder } from "@/lib/admin";
 import Link from "next/link";
 import { computeRaidStats, ComputedRaidStats } from "@/lib/computeRaidStats";
 import RaidStatsCard from "@/components/RaidStatsCard";
 import RaidCharts from "@/components/RaidCharts";
+import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 import RaidAlertBadge from "@/components/RaidAlertBadge";
 import RaidDetailsModal from "@/components/admin/RaidDetailsModal";
 import RaidImportModal from "@/components/admin/RaidImportModal";
@@ -407,6 +408,47 @@ export default function RaidsPage() {
     }
   }
 
+  /** Données quotidiennes pour le graphique (raids faits / reçus par jour du mois) */
+  const dailyChartData = useMemo((): DailyRaidPoint[] => {
+    if (!rawRaidsData || !selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) return [];
+    const [year, monthNum] = selectedMonth.split("-").map((n) => parseInt(n, 10));
+    const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+    const filterSource = (raid: any) => {
+      const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+      if (source === "discord") return false;
+      if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
+      if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
+      return sourceFilters.twitch;
+    };
+    const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterSource);
+    const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterSource);
+
+    const byDay = new Map<number, { raidsFaits: number; raidsRecus: number }>();
+    for (let d = 1; d <= daysInMonth; d++) byDay.set(d, { raidsFaits: 0, raidsRecus: 0 });
+
+    filteredFaits.forEach((raid: any) => {
+      const date = new Date(raid.date);
+      if (date.getFullYear() !== year || date.getMonth() + 1 !== monthNum) return;
+      const day = date.getDate();
+      const cur = byDay.get(day)!;
+      cur.raidsFaits += raid.count || 1;
+    });
+    filteredRecus.forEach((raid: any) => {
+      const date = new Date(raid.date);
+      if (date.getFullYear() !== year || date.getMonth() + 1 !== monthNum) return;
+      const day = date.getDate();
+      const cur = byDay.get(day)!;
+      cur.raidsRecus += 1;
+    });
+
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const cur = byDay.get(day)!;
+      return { day, raidsFaits: cur.raidsFaits, raidsRecus: cur.raidsRecus };
+    });
+  }, [rawRaidsData, selectedMonth, sourceFilters.twitch, sourceFilters.manual]);
+
   const handleSort = (column: 'membre' | 'done' | 'received') => {
     if (sortColumn === column) {
       // Inverser la direction si on clique sur la même colonne
@@ -638,6 +680,9 @@ export default function RaidsPage() {
             getMemberDisplayName={getMemberDisplayName}
           />
         )}
+
+        {/* Bandeau : raids par jour (courbes faits / reçus) */}
+        <RaidDailyChart month={selectedMonth} data={dailyChartData} />
 
         {/* Graphiques */}
         {Object.keys(raids).length > 0 && (

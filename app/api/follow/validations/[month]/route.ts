@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/adminAuth';
-import { listStaffFollowValidations } from '@/lib/followStorage';
+import { listStaffFollowValidations, getLastMonthWithData } from '@/lib/followStorage';
 
 /**
  * GET - Récupère toutes les validations de follow pour un mois donné
@@ -25,10 +25,19 @@ export async function GET(
       );
     }
 
-    const validations = await listStaffFollowValidations(month);
+    let validations = await listStaffFollowValidations(month);
+    let dataSourceMonth = month;
+    if (validations.length === 0) {
+      const fallbackMonth = await getLastMonthWithData(month);
+      if (fallbackMonth) {
+        validations = await listStaffFollowValidations(fallbackMonth);
+        dataSourceMonth = fallbackMonth;
+      }
+    }
 
     return NextResponse.json({
       month,
+      dataSourceMonth,
       totalSheets: validations.length,
       validations,
     });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/adminAuth';
 import { 
   getAllFollowValidationsForMonth,
+  getLastMonthWithData,
   isValidationObsolete,
   calculateFollowStats 
 } from '@/lib/followStorage';
@@ -30,7 +31,15 @@ export async function GET(
       );
     }
 
-    const allValidations = await getAllFollowValidationsForMonth(month);
+    let allValidations = await getAllFollowValidationsForMonth(month);
+    let dataSourceMonth = month;
+    if (allValidations.length === 0) {
+      const fallbackMonth = await getLastMonthWithData(month);
+      if (fallbackMonth) {
+        allValidations = await getAllFollowValidationsForMonth(fallbackMonth);
+        dataSourceMonth = fallbackMonth;
+      }
+    }
 
     // Séparer les validations à jour et obsolètes
     const validValidations = allValidations.filter(v => !isValidationObsolete(v.validatedAt));
@@ -72,6 +81,7 @@ export async function GET(
 
     return NextResponse.json({
       month,
+      dataSourceMonth,
       globalStats: {
         averageFollowRate,
         totalFollowed,

@@ -26,6 +26,7 @@ export default function FollowHubPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [monthKey, setMonthKey] = useState("");
+  const [dataSourceMonth, setDataSourceMonth] = useState<string | null>(null);
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const [summary, setSummary] = useState<SummaryItem[]>([]);
 
@@ -76,6 +77,7 @@ export default function FollowHubPage() {
         const data = await response.json();
         setGlobalStats(data.globalStats);
         setSummary(data.summary);
+        setDataSourceMonth(data.dataSourceMonth || null);
       } else {
         console.error("Erreur chargement résumé:", response.statusText);
       }
@@ -139,7 +141,7 @@ export default function FollowHubPage() {
         <p className="text-gray-400 mb-4">
           Vue globale consultative du suivi follow du staff
         </p>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <label className="text-sm font-semibold text-gray-300">
             Mois analysé :
           </label>
@@ -154,6 +156,11 @@ export default function FollowHubPage() {
               </option>
             ))}
           </select>
+          {dataSourceMonth && dataSourceMonth !== monthKey && (
+            <span className="text-amber-400 text-sm">
+              Données affichées : {formatMonthKey(dataSourceMonth)} (aucune donnée pour {formatMonthKey(monthKey)})
+            </span>
+          )}
         </div>
       </div>
 

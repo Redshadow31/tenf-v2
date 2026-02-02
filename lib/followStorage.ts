@@ -197,6 +197,29 @@ export async function getAllFollowValidationsForMonth(
 }
 
 /**
+ * Retourne le dernier mois (au sens chronologique, ≤ beforeOrEqualMonth) pour lequel il existe au moins une validation.
+ * Utile pour qu'un mois sans données (ex. février) reprenne les dernières données enregistrées (ex. janvier).
+ */
+export async function getLastMonthWithData(beforeOrEqualMonth: string): Promise<string | null> {
+  const [yearStr, monthStr] = beforeOrEqualMonth.split('-');
+  let year = parseInt(yearStr, 10);
+  let month = parseInt(monthStr, 10);
+  const maxAttempts = 12;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    const validations = await getAllFollowValidationsForMonth(key);
+    if (validations.length > 0) return key;
+  }
+  return null;
+}
+
+/**
  * Type souple pour supporter plusieurs formats de stockage
  */
 export type StaffFollowValidationAny = {

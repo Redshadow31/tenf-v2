@@ -60,6 +60,7 @@ export default function FollowMemberPage() {
   const [memberFollows, setMemberFollows] = useState<Record<string, { jeSuis: boolean; meSuit: boolean | null }>>({});
   const [moderatorComments, setModeratorComments] = useState("");
   const [monthKey, setMonthKey] = useState("");
+  const [dataSourceMonth, setDataSourceMonth] = useState<string | null>(null);
   const [validation, setValidation] = useState<Validation | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -190,8 +191,9 @@ export default function FollowMemberPage() {
       });
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();
+        setDataSourceMonth(validationData.dataSourceMonth || null);
+        setValidation(validationData.validation ?? null);
         if (validationData.validation) {
-          setValidation(validationData.validation);
           setModeratorComments(validationData.validation.moderatorComments || '');
           
           // Charger les statuts depuis la validation
@@ -223,6 +225,9 @@ export default function FollowMemberPage() {
           });
           
           setMemberFollows(mergedFollows);
+        } else {
+          setModeratorComments('');
+          setMemberFollows({});
         }
       }
     } catch (error) {
@@ -540,7 +545,7 @@ export default function FollowMemberPage() {
               Analyse du retour de follow des membres TENF
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="text-sm font-semibold text-gray-300">
               Mois :
             </label>
@@ -555,6 +560,11 @@ export default function FollowMemberPage() {
                 </option>
               ))}
             </select>
+            {dataSourceMonth && dataSourceMonth !== monthKey && (
+              <span className="text-amber-400 text-sm">
+                Données affichées : {formatMonthKey(dataSourceMonth)} (aucune donnée pour {formatMonthKey(monthKey)})
+              </span>
+            )}
           </div>
         </div>
       </div>

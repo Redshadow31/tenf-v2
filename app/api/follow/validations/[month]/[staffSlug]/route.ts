@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission, requireAuth } from '@/lib/adminAuth';
 import { 
   getStaffFollowValidation, 
+  getLastMonthWithData,
   saveStaffFollowValidation,
   type StaffFollowValidation,
   type MemberFollowValidation,
@@ -62,11 +63,20 @@ export async function GET(
       );
     }
 
-    const validation = await getStaffFollowValidation(staffSlug, month);
+    let validation = await getStaffFollowValidation(staffSlug, month);
+    let dataSourceMonth = month;
+    if (!validation) {
+      const fallbackMonth = await getLastMonthWithData(month);
+      if (fallbackMonth) {
+        validation = await getStaffFollowValidation(staffSlug, fallbackMonth);
+        dataSourceMonth = fallbackMonth;
+      }
+    }
 
     return NextResponse.json({
       validation,
       staffName: STAFF_MEMBERS[staffSlug],
+      dataSourceMonth,
     }, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
