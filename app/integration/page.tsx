@@ -150,14 +150,7 @@ export default function Page() {
     });
   };
 
-  // Mettre à jour le mois actuel en fonction des intégrations
-  useEffect(() => {
-    if (integrations.length > 0) {
-      const firstIntegrationDate = new Date(integrations[0].date);
-      setCurrentMonth(new Date(firstIntegrationDate.getFullYear(), firstIntegrationDate.getMonth(), 1));
-    }
-  }, [integrations]);
-
+  // Rester sur le mois en cours à l'arrivée sur la page (ne pas basculer sur le mois du premier/dernier événement)
   const calendarDays = generateCalendar();
   const monthNames = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
