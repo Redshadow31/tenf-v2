@@ -40,6 +40,9 @@ export default function RaidsPage() {
   const [rawRaidsData, setRawRaidsData] = useState<any>(null); // Stocker les données brutes pour le filtrage
   const [sortColumn, setSortColumn] = useState<'membre' | 'done' | 'received'>('done');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [duplicatesList, setDuplicatesList] = useState<Array<{ key: string; raider: string; target: string; date: string; count: number; raiderDisplay?: string; targetDisplay?: string }>>([]);
+  const [deduplicating, setDeduplicating] = useState(false);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -345,6 +348,65 @@ export default function RaidsPage() {
     return false;
   };
 
+  /** Vérifier les doublons : même raider, même cible, même date/heure */
+  function checkDuplicates() {
+    if (!rawRaidsData?.raidsFaits?.length) {
+      setDuplicatesList([]);
+      setShowDuplicatesModal(true);
+      return;
+    }
+    const raidsFaits = rawRaidsData.raidsFaits as Array<{ raider: string; target: string; date: string; raiderDisplayName?: string; targetDisplayName?: string; raiderTwitchLogin?: string; targetTwitchLogin?: string }>;
+    const groupKey = (r: typeof raidsFaits[0]) => `${r.raider}|${r.target}|${r.date}`;
+    const byKey = new Map<string, typeof raidsFaits>();
+    raidsFaits.forEach((r) => {
+      const key = groupKey(r);
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(r);
+    });
+    const duplicates = Array.from(byKey.entries())
+      .filter(([, items]) => items.length > 1)
+      .map(([key, items]) => {
+        const first = items[0];
+        return {
+          key,
+          raider: first.raider,
+          target: first.target,
+          date: first.date,
+          count: items.length,
+          raiderDisplay: first.raiderDisplayName || first.raiderTwitchLogin || first.raider,
+          targetDisplay: first.targetDisplayName || first.targetTwitchLogin || first.target,
+        };
+      });
+    setDuplicatesList(duplicates);
+    setShowDuplicatesModal(true);
+  }
+
+  async function removeDuplicates() {
+    if (duplicatesList.length === 0) return;
+    if (!confirm(`Supprimer les doublons pour ce mois ?\n\n${duplicatesList.length} groupe(s) de doublons seront réduits à une seule entrée (même personne, même date/heure).`)) return;
+    setDeduplicating(true);
+    try {
+      const response = await fetch("/api/discord/raids/deduplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: selectedMonth }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`✅ ${data.message || "Doublons supprimés."}\n\nEntrées supprimées : ${data.removed?.total ?? 0}`);
+        setShowDuplicatesModal(false);
+        setDuplicatesList([]);
+        loadData(selectedMonth);
+      } else {
+        alert(`❌ ${data.error || "Erreur lors de la suppression des doublons."}`);
+      }
+    } catch (e) {
+      alert(`❌ ${e instanceof Error ? e.message : "Erreur réseau"}`);
+    } finally {
+      setDeduplicating(false);
+    }
+  }
+
   const handleSort = (column: 'membre' | 'done' | 'received') => {
     if (sortColumn === column) {
       // Inverser la direction si on clique sur la même colonne
@@ -460,6 +522,13 @@ export default function RaidsPage() {
               title="Importer des raids manuellement depuis du texte (avec détection automatique des doublons)"
             >
               📥 Importer des raids manuellement
+            </button>
+            <button
+              onClick={checkDuplicates}
+              className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              title="Détecter les doublons : même personne, même date, même heure"
+            >
+              🔍 Vérifier les doublons
             </button>
             <Link
               href={`/admin/raids/review?month=${selectedMonth}`}
@@ -738,6 +807,59 @@ export default function RaidsPage() {
           }}
           getMemberDisplayName={getMemberDisplayName}
         />
+
+        {/* Modal vérification des doublons (même personne, même date, même heure) */}
+        {showDuplicatesModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowDuplicatesModal(false)}>
+            <div className="bg-[#1a1a1d] border border-gray-700 rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b border-gray-700">
+                <h2 className="text-xl font-bold text-white">Vérification des doublons</h2>
+                <p className="text-gray-400 text-sm mt-1">Même raideur, même cible, même date/heure</p>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1">
+                {duplicatesList.length === 0 ? (
+                  <p className="text-gray-300">Aucun doublon trouvé pour ce mois.</p>
+                ) : (
+                  <>
+                    <p className="text-gray-300 mb-4">
+                      {duplicatesList.length} groupe(s) de doublons détecté(s). Vous pouvez les supprimer en conservant une seule entrée par groupe.
+                    </p>
+                    <ul className="space-y-2">
+                      {duplicatesList.map((dup) => (
+                        <li key={dup.key} className="flex items-center justify-between gap-4 py-2 px-3 bg-gray-800/50 rounded-lg text-sm">
+                          <span className="text-white">
+                            {getMemberDisplayName(dup.raiderDisplay ?? dup.raider)} → {getMemberDisplayName(dup.targetDisplay ?? dup.target)}
+                          </span>
+                          <span className="text-gray-400 shrink-0">{dup.date}</span>
+                          <span className="text-amber-400 font-medium shrink-0">{dup.count} entrée(s)</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-700 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicatesModal(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium"
+                >
+                  Fermer
+                </button>
+                {duplicatesList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={removeDuplicates}
+                    disabled={deduplicating}
+                    className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium"
+                  >
+                    {deduplicating ? "Suppression…" : "Supprimer les doublons"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </>
