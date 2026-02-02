@@ -216,11 +216,11 @@ export default function GestionMembresPage() {
             });
           }
           
-          // Filtrer les membres inactifs (soft deleted) - ne pas afficher les membres supprimés
-          const activeMembers = centralMembers.filter((member: any) => member.isActive !== false);
+          // Afficher tous les membres (actifs et inactifs) pour permettre de réactiver une chaîne désactivée
+          const allMembers = centralMembers;
           
           // Mapper les membres centralisés vers le format Member avec avatars Twitch
-          const mappedMembers: Member[] = activeMembers.map((member: any, index: number) => {
+          const mappedMembers: Member[] = allMembers.map((member: any, index: number) => {
             // Récupérer l'avatar depuis le map (déjà récupéré en batch)
             let avatar = avatarMap.get(member.twitchLogin.toLowerCase());
             
@@ -431,14 +431,8 @@ export default function GestionMembresPage() {
         };
       });
 
-      // Filtrer les membres inactifs (soft deleted) - ne pas afficher les membres supprimés
-      const activeMappedMembers = mappedMembers.filter((member: Member) => {
-        // Si le membre vient de la base centralisée, vérifier isActive
-        const centralMember = centralByTwitchLogin.get(member.twitch.toLowerCase());
-        return centralMember ? centralMember.isActive !== false : true; // Par défaut, garder les membres Discord si pas dans la base
-      });
-
-      setMembers(activeMappedMembers);
+      // Afficher tous les membres (actifs et inactifs) pour permettre de réactiver une chaîne désactivée
+      setMembers(mappedMembers);
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
       const errorMessage = error instanceof Error ? error.message : "Erreur inconnue lors du chargement des membres";
