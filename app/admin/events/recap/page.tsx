@@ -29,9 +29,15 @@ interface RecapData {
   }>;
 }
 
+type ViewMode = "all" | "month";
+
 export default function RecapPage() {
   const [data, setData] = useState<RecapData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
 
   useEffect(() => {
     loadData();
@@ -115,10 +121,23 @@ export default function RecapPage() {
     }
   };
 
-  const getCategoryStats = () => {
-    if (!data) return {};
+  // Filtrage par mois ou tout
+  const displayedEvents = !data ? [] : viewMode === "all"
+    ? data.eventsWithRegistrations
+    : data.eventsWithRegistrations.filter((item: any) => {
+        const d = new Date(item.event.date);
+        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+      });
+  const viewData: RecapData | null = data ? {
+    totalEvents: displayedEvents.length,
+    totalRegistrations: displayedEvents.reduce((s, i) => s + i.registrationCount, 0),
+    eventsWithRegistrations: displayedEvents,
+  } : null;
+
+  const getCategoryStats = (source: RecapData | null = viewData) => {
+    if (!source) return {};
     const stats: Record<string, { count: number; registrations: number; totalPresences: number }> = {};
-    data.eventsWithRegistrations.forEach((item) => {
+    source.eventsWithRegistrations.forEach((item) => {
       const cat = item.event.category;
       if (!stats[cat]) {
         stats[cat] = { count: 0, registrations: 0, totalPresences: 0 };
@@ -131,30 +150,27 @@ export default function RecapPage() {
     return stats;
   };
 
-  const getAveragePresences = () => {
-    if (!data || data.totalEvents === 0) return 0;
-    // Calculer le total des présences (présents) pour tous les événements
-    const totalPresences = data.eventsWithRegistrations.reduce(
+  const getAveragePresences = (source: RecapData | null = viewData) => {
+    if (!source || source.totalEvents === 0) return 0;
+    const totalPresences = source.eventsWithRegistrations.reduce(
       (sum, item) => sum + (item.presenceCount || 0),
       0
     );
-    return Math.round((totalPresences / data.totalEvents) * 10) / 10;
+    return Math.round((totalPresences / source.totalEvents) * 10) / 10;
   };
 
-  // Calculer le nombre total de présences (chaque présence compte)
-  const getTotalPresences = () => {
-    if (!data) return 0;
-    return data.eventsWithRegistrations.reduce(
+  const getTotalPresences = (source: RecapData | null = viewData) => {
+    if (!source) return 0;
+    return source.eventsWithRegistrations.reduce(
       (sum, item) => sum + (item.presenceCount || 0),
       0
     );
   };
 
-  // Calculer le nombre de participants uniques (présents uniquement)
-  const getUniqueParticipants = () => {
-    if (!data) return 0;
+  const getUniqueParticipants = (source: RecapData | null = viewData) => {
+    if (!source) return 0;
     const uniqueLogins = new Set<string>();
-    data.eventsWithRegistrations.forEach((item) => {
+    source.eventsWithRegistrations.forEach((item) => {
       // Compter uniquement les présents
       if (item.presences) {
         item.presences.forEach((presence: EventPresence) => {
@@ -169,6 +185,10 @@ export default function RecapPage() {
 
   const totalPresences = getTotalPresences();
   const uniqueParticipants = getUniqueParticipants();
+
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+  const currentYear = now.getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
   if (loading) {
     return (
@@ -199,9 +219,69 @@ export default function RecapPage() {
         </p>
       </div>
 
-      {!data || data.totalEvents === 0 ? (
+      {/* Filtre Tout / Par mois */}
+      {data && data.eventsWithRegistrations.length > 0 && (
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4 mb-6 flex flex-wrap items-center gap-4">
+          <span className="text-gray-400 text-sm font-medium">Afficher :</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode("all")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === "all"
+                  ? "bg-[#9146ff] text-white"
+                  : "bg-[#0e0e10] text-gray-400 hover:text-white border border-gray-700"
+              }`}
+            >
+              Tout
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("month")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === "month"
+                  ? "bg-[#9146ff] text-white"
+                  : "bg-[#0e0e10] text-gray-400 hover:text-white border border-gray-700"
+              }`}
+            >
+              Par mois
+            </button>
+          </div>
+          {viewMode === "month" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                {monthNames.map((name, i) => (
+                  <option key={i} value={i}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <span className="text-gray-400 text-sm">
+                {monthNames[selectedMonth]} {selectedYear}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!viewData || viewData.totalEvents === 0 ? (
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
-          <p className="text-gray-400">Aucune donnée disponible</p>
+          <p className="text-gray-400">
+            {viewMode === "month"
+              ? `Aucun événement pour ${monthNames[selectedMonth]} ${selectedYear}`
+              : "Aucune donnée disponible"}
+          </p>
         </div>
       ) : (
         <>
@@ -215,7 +295,7 @@ export default function RecapPage() {
                 </h3>
               </div>
               <p className="text-3xl font-bold text-white">
-                {data.totalEvents}
+                {viewData.totalEvents}
               </p>
             </div>
 
@@ -227,7 +307,7 @@ export default function RecapPage() {
                 </h3>
               </div>
               <p className="text-3xl font-bold text-white">
-                {data.totalRegistrations}
+                {viewData.totalRegistrations}
               </p>
             </div>
 
@@ -325,7 +405,7 @@ export default function RecapPage() {
               Événements les plus populaires
             </h2>
             <div className="space-y-3">
-              {[...data.eventsWithRegistrations]
+              {[...viewData.eventsWithRegistrations]
                 .sort((a, b) => (b.presenceCount || 0) - (a.presenceCount || 0))
                 .slice(0, 5)
                 .map((item) => (
