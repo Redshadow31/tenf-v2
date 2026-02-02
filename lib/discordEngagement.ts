@@ -10,8 +10,10 @@ export interface EngagementRow {
 
 export interface EngagementParseResult {
   rows: EngagementRow[];
+  /** Lignes valides mais non matchées à un membre TENF (pour association manuelle ou ignorer) */
+  ignoredRows: EngagementRow[];
   errors: Array<{ line: number; reason: string }>;
-  ignoredNotMember: string[]; // Pseudos ignorés car non-membres
+  ignoredNotMember: string[]; // Pseudos ignorés (dérivé de ignoredRows)
   matched: number; // Nombre de lignes matchées avec des membres TENF
   totalLines: number;
 }
@@ -105,8 +107,8 @@ export function parseDiscordEngagementTSV(
 ): EngagementParseResult {
   const lines = text.split('\n');
   const rows: EngagementRow[] = [];
+  const ignoredRows: EngagementRow[] = [];
   const errors: Array<{ line: number; reason: string }> = [];
-  const ignoredNotMember: string[] = [];
   let matched = 0;
 
   for (let i = 0; i < lines.length; i++) {
@@ -183,9 +185,14 @@ export function parseDiscordEngagementTSV(
       }
     }
 
-    // Si pas de match, ignorer
+    // Si pas de match : ligne ignorée (pour association manuelle ou ignorer)
     if (!matchedMemberId) {
-      ignoredNotMember.push(pseudo);
+      ignoredRows.push({
+        rank,
+        pseudo,
+        discordId,
+        value,
+      });
       continue;
     }
 
@@ -201,8 +208,9 @@ export function parseDiscordEngagementTSV(
 
   return {
     rows,
+    ignoredRows,
     errors,
-    ignoredNotMember,
+    ignoredNotMember: ignoredRows.map((r) => r.pseudo),
     matched,
     totalLines: lines.length,
   };

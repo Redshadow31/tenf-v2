@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { X } from "lucide-react";
 import {
   parseDiscordEngagementTSV,
@@ -28,6 +28,13 @@ export default function DiscordEngagementImportModal({
   const [text, setText] = useState("");
   const [parseResult, setParseResult] = useState<EngagementParseResult | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  /** Index dans ignoredRows -> discordId du membre associé (ou vide = garder ignoré) */
+  const [manualMappings, setManualMappings] = useState<Record<number, string>>({});
+
+  const membersList = useMemo(
+    () => Array.from(membersMap.entries()).map(([discordId, m]) => ({ discordId, ...m })),
+    [membersMap]
+  );
 
   if (!isOpen) return null;
 
@@ -39,19 +46,44 @@ export default function DiscordEngagementImportModal({
 
     const result = parseDiscordEngagementTSV(text, membersMap);
     setParseResult(result);
+    setManualMappings({});
+  };
+
+  const setMapping = (ignoredIndex: number, discordId: string) => {
+    if (!discordId) {
+      const next = { ...manualMappings };
+      delete next[ignoredIndex];
+      setManualMappings(next);
+    } else {
+      setManualMappings((prev) => ({ ...prev, [ignoredIndex]: discordId }));
+    }
   };
 
   const handleApply = () => {
-    if (!parseResult || parseResult.rows.length === 0) {
-      alert("Aucune donnée valide à importer");
+    if (!parseResult) {
+      alert("Aucune donnée à importer");
+      return;
+    }
+
+    const rowsToImport: EngagementRow[] = [...parseResult.rows];
+    parseResult.ignoredRows.forEach((row, idx) => {
+      const assignedId = manualMappings[idx];
+      if (assignedId) {
+        rowsToImport.push({ ...row, matchedMemberId: assignedId });
+      }
+    });
+
+    if (rowsToImport.length === 0) {
+      alert("Aucune donnée valide à importer (associez des lignes ignorées à un membre ou importez des lignes matchées)");
       return;
     }
 
     setIsApplying(true);
     try {
-      onImport(parseResult.rows);
+      onImport(rowsToImport);
       setText("");
       setParseResult(null);
+      setManualMappings({});
       onClose();
     } catch (error) {
       console.error("Erreur lors de l'import:", error);
@@ -60,6 +92,11 @@ export default function DiscordEngagementImportModal({
       setIsApplying(false);
     }
   };
+
+  const appliedCount = parseResult
+    ? parseResult.rows.length + Object.keys(manualMappings).length
+    : 0;
+  const canApply = parseResult && appliedCount > 0 && !isApplying;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -81,7 +118,7 @@ export default function DiscordEngagementImportModal({
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
             <p className="text-blue-200 text-sm">
               Seuls les membres TENF actifs (présents sur le site) sont comptabilisés.
-              Les autres lignes sont ignorées.
+              Les lignes non matchées peuvent être <strong>associées à un membre</strong> ou <strong>ignorées</strong> avant validation.
             </p>
             <p className="text-blue-300 text-xs mt-2">
               Format attendu : RANG (tab) PSEUDO (tab) DISCORD_ID (tab) VALEUR
@@ -128,8 +165,8 @@ export default function DiscordEngagementImportModal({
                     <p className="text-green-400 font-semibold">{parseResult.matched}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400">Ignorés (non-membres)</p>
-                    <p className="text-yellow-400 font-semibold">{parseResult.ignoredNotMember.length}</p>
+                    <p className="text-gray-400">Ignorés (associables ou à ignorer)</p>
+                    <p className="text-yellow-400 font-semibold">{parseResult.ignoredRows.length}</p>
                   </div>
                   <div>
                     <p className="text-gray-400">Erreurs</p>
@@ -178,19 +215,59 @@ export default function DiscordEngagementImportModal({
                 </div>
               )}
 
-              {/* Lignes ignorées */}
-              {parseResult.ignoredNotMember.length > 0 && (
+              {/* Lignes ignorées : associer à un membre ou garder ignorées */}
+              {parseResult.ignoredRows.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-gray-300 mb-2">
-                    Lignes ignorées (hors TENF) ({parseResult.ignoredNotMember.length})
+                    Lignes non matchées — associer à un membre ou ignorer ({parseResult.ignoredRows.length})
                   </h3>
-                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4 max-h-32 overflow-y-auto">
-                    <div className="flex flex-wrap gap-2">
-                      {parseResult.ignoredNotMember.map((pseudo, idx) => (
-                        <span key={idx} className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
-                          {pseudo}
-                        </span>
-                      ))}
+                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#0a0a0c] sticky top-0">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-gray-300">Pseudo</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Discord ID</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Valeur</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Associer à un membre</th>
+                            <th className="px-4 py-2 text-left text-gray-300">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parseResult.ignoredRows.map((row, idx) => {
+                            const assignedId = manualMappings[idx];
+                            const member = assignedId ? membersMap.get(assignedId) : null;
+                            return (
+                              <tr key={idx} className="border-t border-gray-700">
+                                <td className="px-4 py-2 text-gray-300">{row.pseudo}</td>
+                                <td className="px-4 py-2 text-gray-400 font-mono text-xs">{row.discordId || "—"}</td>
+                                <td className="px-4 py-2 text-gray-300">{row.value}</td>
+                                <td className="px-4 py-2">
+                                  <select
+                                    value={assignedId || ""}
+                                    onChange={(e) => setMapping(idx, e.target.value)}
+                                    className="bg-[#1a1a1d] border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#9146ff] min-w-[180px]"
+                                  >
+                                    <option value="">— Garder ignoré</option>
+                                    {membersList.map((m) => (
+                                      <option key={m.discordId} value={m.discordId}>
+                                        {m.displayName} ({m.twitchLogin})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-2">
+                                  {assignedId ? (
+                                    <span className="text-green-400 text-xs">→ {member?.displayName ?? assignedId}</span>
+                                  ) : (
+                                    <span className="text-gray-500 text-xs">Ignoré</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -232,10 +309,10 @@ export default function DiscordEngagementImportModal({
           </button>
           <button
             onClick={handleApply}
-            disabled={!parseResult || parseResult.rows.length === 0 || isApplying}
+            disabled={!canApply}
             className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isApplying ? "Application..." : "Appliquer"}
+            {isApplying ? "Application..." : `Appliquer (${appliedCount} ligne(s))`}
           </button>
         </div>
       </div>
