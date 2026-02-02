@@ -21,6 +21,7 @@ interface ActiveMember {
   role?: string;
   createdAt?: string;
   avatar?: string;
+  isActive?: boolean;
 }
 
 export default function EvaluationBDiscordPage() {
@@ -71,18 +72,17 @@ export default function EvaluationBDiscordPage() {
     checkAccess();
   }, []);
 
-  // Charger les membres actifs (pour le tableau)
+  // Charger TOUS les membres avec Discord ID (même source que /admin/membres/gestion)
+  // Tableau + menu "Associer à un membre" utilisent cette liste
   useEffect(() => {
-    async function loadActiveMembers() {
+    if (!hasAccess) return;
+    async function loadMembers() {
       try {
-        const response = await fetch('/api/members/public', { cache: 'no-store' });
+        const response = await fetch('/api/admin/members', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
-          const allMembers = data.members || [];
-          const membersWithDiscord = allMembers.filter((m: any) => m.discordId);
-          const activeMembersWithDiscord = membersWithDiscord.filter((m: any) => m.isActive !== false);
-
-          const members: ActiveMember[] = activeMembersWithDiscord
+          const all = (data.members || []).filter((m: any) => m.discordId);
+          const members: ActiveMember[] = all
             .map((m: any) => ({
               discordId: m.discordId,
               displayName: m.displayName || m.twitchLogin,
@@ -90,26 +90,11 @@ export default function EvaluationBDiscordPage() {
               role: m.role,
               createdAt: m.createdAt,
               avatar: m.avatar,
+              isActive: m.isActive !== false,
             }))
             .sort((a: ActiveMember, b: ActiveMember) => a.displayName.localeCompare(b.displayName));
           setActiveMembers(members);
-        }
-      } catch (error) {
-        console.error("[Discord Page] Erreur chargement membres actifs:", error);
-      }
-    }
-    loadActiveMembers();
-  }, []);
 
-  // Charger TOUS les membres avec Discord ID pour le menu "Associer à un membre" (actifs + inactifs)
-  useEffect(() => {
-    if (!hasAccess) return;
-    async function loadAllMembersForModal() {
-      try {
-        const response = await fetch('/api/admin/members', { cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
-          const all = (data.members || []).filter((m: any) => m.discordId);
           const map = new Map<string, { discordId: string; displayName: string; twitchLogin: string }>();
           for (const m of all) {
             map.set(m.discordId, {
@@ -121,10 +106,10 @@ export default function EvaluationBDiscordPage() {
           setMembersMap(map);
         }
       } catch (error) {
-        console.error("[Discord Page] Erreur chargement liste membres (modal):", error);
+        console.error("[Discord Page] Erreur chargement membres:", error);
       }
     }
-    loadAllMembersForModal();
+    loadMembers();
   }, [hasAccess]);
 
   // Charger les données d'engagement pour le mois sélectionné
@@ -461,6 +446,7 @@ export default function EvaluationBDiscordPage() {
               <tr>
                 <th className="px-4 py-3 text-left text-gray-300 font-semibold">Membre</th>
                 <th className="px-4 py-3 text-left text-gray-300 font-semibold">Rôle</th>
+                <th className="px-4 py-3 text-left text-gray-300 font-semibold">Statut</th>
                 <th className="px-4 py-3 text-left text-gray-300 font-semibold">Membre depuis</th>
                 <th className="px-4 py-3 text-left text-gray-300 font-semibold">Messages</th>
                 <th className="px-4 py-3 text-left text-gray-300 font-semibold">Vocaux (min)</th>
@@ -482,6 +468,11 @@ export default function EvaluationBDiscordPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-300">{member.role || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded ${member.isActive !== false ? "bg-green-900/40 text-green-300" : "bg-gray-700 text-gray-400"}`}>
+                      {member.isActive !== false ? "Actif" : "Inactif"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-gray-300">{formatMemberSince(member.createdAt)}</td>
                   <td className="px-4 py-3 text-gray-300">{member.nbMessages || 0}</td>
                   <td className="px-4 py-3 text-gray-300">{member.nbVocalMinutes ? Math.round(member.nbVocalMinutes * 100) / 100 : 0}</td>
