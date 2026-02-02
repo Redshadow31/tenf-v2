@@ -71,23 +71,17 @@ export default function EvaluationBDiscordPage() {
     checkAccess();
   }, []);
 
-  // Charger les membres actifs
+  // Charger les membres actifs (pour le tableau)
   useEffect(() => {
-    async function loadMembers() {
+    async function loadActiveMembers() {
       try {
         const response = await fetch('/api/members/public', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
-          console.log('[Discord Page] Membres reçus de l\'API:', data.members?.length || 0);
-          
-          // Filtrer les membres actifs avec Discord ID
           const allMembers = data.members || [];
           const membersWithDiscord = allMembers.filter((m: any) => m.discordId);
           const activeMembersWithDiscord = membersWithDiscord.filter((m: any) => m.isActive !== false);
-          
-          console.log('[Discord Page] Membres avec Discord ID:', membersWithDiscord.length);
-          console.log('[Discord Page] Membres actifs avec Discord ID:', activeMembersWithDiscord.length);
-          
+
           const members: ActiveMember[] = activeMembersWithDiscord
             .map((m: any) => ({
               discordId: m.discordId,
@@ -98,29 +92,40 @@ export default function EvaluationBDiscordPage() {
               avatar: m.avatar,
             }))
             .sort((a: ActiveMember, b: ActiveMember) => a.displayName.localeCompare(b.displayName));
-
-          console.log('[Discord Page] Membres finaux après mapping:', members.length);
           setActiveMembers(members);
+        }
+      } catch (error) {
+        console.error("[Discord Page] Erreur chargement membres actifs:", error);
+      }
+    }
+    loadActiveMembers();
+  }, []);
 
-          // Créer le map pour le matching
+  // Charger TOUS les membres avec Discord ID pour le menu "Associer à un membre" (actifs + inactifs)
+  useEffect(() => {
+    if (!hasAccess) return;
+    async function loadAllMembersForModal() {
+      try {
+        const response = await fetch('/api/admin/members', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          const all = (data.members || []).filter((m: any) => m.discordId);
           const map = new Map<string, { discordId: string; displayName: string; twitchLogin: string }>();
-          for (const member of members) {
-            map.set(member.discordId, {
-              discordId: member.discordId,
-              displayName: member.displayName,
-              twitchLogin: member.twitchLogin,
+          for (const m of all) {
+            map.set(m.discordId, {
+              discordId: m.discordId,
+              displayName: m.displayName || m.twitchLogin,
+              twitchLogin: m.twitchLogin,
             });
           }
           setMembersMap(map);
-        } else {
-          console.error('[Discord Page] Erreur réponse API:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error("[Discord Page] Erreur chargement membres:", error);
+        console.error("[Discord Page] Erreur chargement liste membres (modal):", error);
       }
     }
-    loadMembers();
-  }, []);
+    loadAllMembersForModal();
+  }, [hasAccess]);
 
   // Charger les données d'engagement pour le mois sélectionné
   useEffect(() => {
