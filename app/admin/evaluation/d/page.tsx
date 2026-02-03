@@ -264,11 +264,12 @@ export default function EvaluationDPage() {
         }
       }
       
-      // Populate events map (simplifié - à compléter selon l'API réelle)
-      // Pour l'instant, placeholder
-      const eventsTotal = eventsData.events?.length || 0;
-      if (eventsData.events) {
-        for (const event of eventsData.events) {
+      // Events serveur : hors Spotlight, présences validées uniquement (present === true)
+      // 2 points si au moins une présence validée à un event du mois (hors Spotlight)
+      const nonSpotlightEvents = (eventsData.events || []).filter((e: any) => (e.category || "") !== "Spotlight");
+      const eventsTotal = nonSpotlightEvents.length;
+      if (nonSpotlightEvents.length > 0) {
+        for (const event of nonSpotlightEvents) {
           if (event.presences) {
             for (const presence of event.presences) {
               const login = presence.twitchLogin?.toLowerCase();
@@ -297,11 +298,9 @@ export default function EvaluationDPage() {
         // Discord - Récupérer les points depuis l'API (note finale calculée depuis /admin/evaluation/b/discord)
         const discordPoints = discordPointsMap.get(login) || 0;
         
-        // Events (simplifié - sur /2 pour l'instant, à adapter selon l'API réelle)
+        // Events serveur : 2 pts si au moins une présence validée (hors Spotlight), sinon 0
         const eventsInfo = eventsMap.get(login) || { presences: 0, total: eventsTotal };
-        // Calcul simplifié : si présent à au moins 50% des events = 2, sinon proportionnel
-        const eventsRate = eventsInfo.total > 0 ? eventsInfo.presences / eventsInfo.total : 0;
-        const eventsPoints = Math.round(eventsRate * 2 * 100) / 100;
+        const eventsPoints = eventsInfo.presences >= 1 ? 2 : 0;
         
         // Follow - Récupérer les points depuis l'API (dernière évaluation connue depuis /admin/evaluation/c)
         const followPoints = followPointsMap.get(login) || 0;
