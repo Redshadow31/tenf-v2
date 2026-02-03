@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { X } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { X, Search } from "lucide-react";
 import {
   parseDiscordEngagementTSV,
   type EngagementParseResult,
@@ -35,6 +35,43 @@ export default function DiscordEngagementImportModal({
     () => Array.from(membersMap.values()),
     [membersMap]
   );
+
+  /** Ligne dont le menu "Associer à un membre" est ouvert (recherche rapide) */
+  const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const comboRef = useRef<HTMLDivElement>(null);
+
+  /** Filtrer les membres par recherche (displayName, twitchLogin) */
+  const filteredMembers = useMemo(() => {
+    const q = (searchQuery || "").trim().toLowerCase();
+    if (!q) return membersList;
+    return membersList.filter(
+      (m) =>
+        (m.displayName || "").toLowerCase().includes(q) ||
+        (m.twitchLogin || "").toLowerCase().includes(q) ||
+        (m.discordId || "").includes(q)
+    );
+  }, [membersList, searchQuery]);
+
+  useEffect(() => {
+    if (openRowIndex !== null) {
+      setSearchQuery("");
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  }, [openRowIndex]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+        setOpenRowIndex(null);
+      }
+    }
+    if (openRowIndex !== null) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openRowIndex]);
 
   if (!isOpen) return null;
 
@@ -242,19 +279,66 @@ export default function DiscordEngagementImportModal({
                                 <td className="px-4 py-2 text-gray-300">{row.pseudo}</td>
                                 <td className="px-4 py-2 text-gray-400 font-mono text-xs">{row.discordId || "—"}</td>
                                 <td className="px-4 py-2 text-gray-300">{row.value}</td>
-                                <td className="px-4 py-2">
-                                  <select
-                                    value={assignedId || ""}
-                                    onChange={(e) => setMapping(idx, e.target.value)}
-                                    className="bg-[#1a1a1d] border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#9146ff] min-w-[180px]"
-                                  >
-                                    <option value="">— Garder ignoré</option>
-                                    {membersList.map((m) => (
-                                      <option key={m.discordId} value={m.discordId}>
-                                        {m.displayName} ({m.twitchLogin})
-                                      </option>
-                                    ))}
-                                  </select>
+                                <td className="px-4 py-2 align-top">
+                                  <div ref={openRowIndex === idx ? comboRef : undefined} className="relative min-w-[200px]">
+                                    {openRowIndex === idx ? (
+                                      <div className="border border-[#9146ff] rounded-lg bg-[#1a1a1d] shadow-lg overflow-hidden">
+                                        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-700">
+                                          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                                          <input
+                                            ref={searchInputRef}
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="Rechercher un membre…"
+                                            className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-gray-500 min-w-0"
+                                          />
+                                        </div>
+                                        <div className="max-h-48 overflow-y-auto">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setMapping(idx, "");
+                                              setOpenRowIndex(null);
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+                                          >
+                                            — Garder ignoré
+                                          </button>
+                                          {filteredMembers.length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-gray-500">Aucun membre trouvé</div>
+                                          ) : (
+                                            filteredMembers.map((m) => (
+                                              <button
+                                                key={m.discordId}
+                                                type="button"
+                                                onClick={() => {
+                                                  setMapping(idx, m.discordId);
+                                                  setOpenRowIndex(null);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#9146ff]/30 transition-colors"
+                                              >
+                                                {m.displayName} ({m.twitchLogin})
+                                              </button>
+                                            ))
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenRowIndex(idx)}
+                                        className="w-full flex items-center gap-2 bg-[#1a1a1d] border border-gray-600 rounded px-2 py-1.5 text-left text-sm text-white hover:border-[#9146ff] focus:outline-none focus:border-[#9146ff] min-w-[180px]"
+                                      >
+                                        <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                        {member ? (
+                                          <span className="truncate">{member.displayName} ({member.twitchLogin})</span>
+                                        ) : (
+                                          <span className="text-gray-500">— Garder ignoré</span>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-2">
                                   {assignedId ? (
