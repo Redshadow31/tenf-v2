@@ -155,14 +155,16 @@ export default function LivesPage() {
             return null;
           }
 
+          // Afficher le pseudo de la chaîne Twitch (userName depuis l'API streams, sinon login)
+          const twitchDisplayName = stream.userName || member.twitchLogin;
           // Utiliser l'avatar depuis l'API (déjà récupéré en batch)
           // Si pas d'avatar, utiliser un placeholder
-          const avatar = member.avatar || `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`;
+          const avatar = member.avatar || `https://placehold.co/40x40?text=${twitchDisplayName.charAt(0)}`;
 
           return {
             twitchLogin: member.twitchLogin,
             twitchUrl: member.twitchUrl,
-            displayName: member.displayName,
+            displayName: twitchDisplayName,
             game: stream.gameName,
             viewerCount: stream.viewerCount,
             thumbnailUrl: stream.thumbnailUrl
