@@ -41,6 +41,8 @@ export default function GestionVipPage() {
   } | null>(null);
   const [selectedUnmatched, setSelectedUnmatched] = useState<Record<string, string>>({});
   const [savingMonth, setSavingMonth] = useState(false);
+  // VIP du mois depuis le blob (source de vérité après "Enregistrer VIP du mois")
+  const [vipMonthLogins, setVipMonthLogins] = useState<string[] | null>(null);
 
   // Fonctions de chargement
   async function loadMembers() {
@@ -103,6 +105,25 @@ export default function GestionVipPage() {
     }
   }
 
+  async function loadVipMonthForSelectedMonth() {
+    if (!selectedMonth) {
+      setVipMonthLogins(null);
+      return;
+    }
+    try {
+      const response = await fetch(`/api/vip-month/save?month=${encodeURIComponent(selectedMonth)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVipMonthLogins(Array.isArray(data.vipLogins) ? data.vipLogins : []);
+      } else {
+        setVipMonthLogins(null);
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des VIP du mois (blob):", error);
+      setVipMonthLogins(null);
+    }
+  }
+
   useEffect(() => {
     async function initialize() {
       const user = await getDiscordUser();
@@ -145,6 +166,9 @@ export default function GestionVipPage() {
   useEffect(() => {
     if (selectedMonth) {
       loadVipHistory();
+      loadVipMonthForSelectedMonth();
+    } else {
+      setVipMonthLogins(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
@@ -523,7 +547,9 @@ export default function GestionVipPage() {
       });
 
       if (response.ok) {
-        // Synchroniser aussi avec l'historique VIP
+        // Mettre à jour la liste du blob pour que le KPI et la liste s'affichent immédiatement
+        setVipMonthLogins(vipLogins);
+        // Synchroniser aussi avec l'historique VIP (fichier / autre stockage)
         for (const login of vipLogins) {
           await addVipToMonth(login, selectedMonth);
         }
@@ -547,12 +573,14 @@ export default function GestionVipPage() {
     }
   }
 
-  // Statistiques
+  // Statistiques (priorité au blob vip-month pour le mois sélectionné, puis vip-history)
   const stats = useMemo(() => {
     const vipCount = members.filter((m) => m.isVip && m.isActive).length;
-    const currentMonthVips = selectedMonth ? (vipHistory[selectedMonth] || []).length : 0;
+    const currentMonthVips = selectedMonth
+      ? (vipMonthLogins !== null ? vipMonthLogins.length : (vipHistory[selectedMonth] || []).length)
+      : 0;
     return { vipCount, currentMonthVips, totalActive: members.filter((m) => m.isActive).length };
-  }, [members, selectedMonth, vipHistory]);
+  }, [members, selectedMonth, vipHistory, vipMonthLogins]);
 
   if (loading) {
     return (
@@ -718,8 +746,8 @@ export default function GestionVipPage() {
             </button>
           </div>
           <div className="space-y-2">
-            {vipHistory[selectedMonth] && vipHistory[selectedMonth].length > 0 ? (
-              vipHistory[selectedMonth].map((login) => {
+            {((vipMonthLogins !== null ? vipMonthLogins : vipHistory[selectedMonth]) || []).length > 0 ? (
+              (vipMonthLogins !== null ? vipMonthLogins : vipHistory[selectedMonth] || []).map((login) => {
                 const member = members.find((m) => m.twitchLogin.toLowerCase() === login.toLowerCase());
                 return (
                   <div

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
+
+const IGNORED_STORAGE_KEY_PREFIX = "evaluation-c-ignored-";
 
 // Fonction de normalisation pour les logins
 function normalizeLogin(x: string): string {
@@ -50,8 +52,11 @@ function memberFollowsStaffInSheet(sheet: any, memberLogin: string): boolean {
   return false;
 }
 
-function computeScores(members: string[], sheets: any[], maxPoints = 5) {
-  const totalSheets = sheets.length;
+function computeScores(members: string[], sheets: any[], maxPoints = 5, excludedSlugs?: Set<string>) {
+  const activeSheets = excludedSlugs
+    ? sheets.filter((s: any) => !excludedSlugs.has((s.staffSlug || "").toLowerCase()))
+    : sheets;
+  const totalSheets = activeSheets.length;
 
   // aucune feuille → tout à 0
   if (totalSheets === 0) {
@@ -70,7 +75,7 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
 
   const results = members.map(login => {
     let count = 0;
-    for (const s of sheets) {
+    for (const s of activeSheets) {
       if (memberFollowsStaffInSheet(s, login)) count++;
     }
     const taux = count / totalSheets;
@@ -88,12 +93,19 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
   return { totalSheets, results, avgScore, avgTaux };
 }
 
+/** Compte pour une feuille donnée combien de membres (de la liste) ont "me suit" */
+function countFollowsInSheet(sheet: any, members: string[]): number {
+  return members.filter(login => memberFollowsStaffInSheet(sheet, login)).length;
+}
+
 export default function EvaluationCPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("2026-01");
   const [maxPoints, setMaxPoints] = useState(5);
   const [dataLoading, setDataLoading] = useState(false);
+  const [sheets, setSheets] = useState<any[]>([]);
+  const [ignoredSlugs, setIgnoredSlugs] = useState<Set<string>>(new Set());
   const [totalSheets, setTotalSheets] = useState(0);
   const [avgScore, setAvgScore] = useState(0);
   const [avgTaux, setAvgTaux] = useState(0);
@@ -145,7 +157,23 @@ export default function EvaluationCPage() {
     }
   }, [hasAccess]);
 
-  // Charger les validations et calculer les scores
+  // Charger les feuilles ignorées depuis le localStorage (par mois)
+  useEffect(() => {
+    try {
+      const key = IGNORED_STORAGE_KEY_PREFIX + selectedMonth;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        setIgnoredSlugs(new Set((arr || []).map((s: string) => s.toLowerCase())));
+      } else {
+        setIgnoredSlugs(new Set());
+      }
+    } catch {
+      setIgnoredSlugs(new Set());
+    }
+  }, [selectedMonth]);
+
+  // Charger les validations (feuilles) et calculer les scores
   useEffect(() => {
     let cancelled = false;
 
@@ -164,23 +192,11 @@ export default function EvaluationCPage() {
         }
 
         const json = await res.json();
-        const sheets = json?.validations ?? [];
-        const computed = computeScores(members, sheets, maxPoints);
-
-        if (!cancelled) {
-          setTotalSheets(computed.totalSheets);
-          setAvgScore(computed.avgScore);
-          setAvgTaux(computed.avgTaux);
-          setResults(computed.results);
-        }
+        const rawSheets = json?.validations ?? [];
+        if (!cancelled) setSheets(rawSheets);
       } catch (error) {
         console.error("Erreur chargement validations:", error);
-        if (!cancelled) {
-          setTotalSheets(0);
-          setAvgScore(0);
-          setAvgTaux(0);
-          setResults([]);
-        }
+        if (!cancelled) setSheets([]);
       } finally {
         if (!cancelled) setDataLoading(false);
       }
@@ -188,7 +204,23 @@ export default function EvaluationCPage() {
 
     loadValidations();
     return () => { cancelled = true; };
-  }, [selectedMonth, members, maxPoints, hasAccess]);
+  }, [selectedMonth, members.length, hasAccess]);
+
+  // Recalcul des scores quand sheets, members, maxPoints ou ignoredSlugs changent
+  useEffect(() => {
+    if (members.length === 0 || sheets.length === 0) {
+      setTotalSheets(0);
+      setAvgScore(0);
+      setAvgTaux(0);
+      setResults([]);
+      return;
+    }
+    const computed = computeScores(members, sheets, maxPoints, ignoredSlugs);
+    setTotalSheets(computed.totalSheets);
+    setAvgScore(computed.avgScore);
+    setAvgTaux(computed.avgTaux);
+    setResults(computed.results);
+  }, [sheets, members, maxPoints, ignoredSlugs]);
 
   function getMonthOptions(): string[] {
     const options: string[] = [];
@@ -210,6 +242,37 @@ export default function EvaluationCPage() {
     ];
     return `${monthNames[parseInt(month) - 1]} ${year}`;
   }
+
+  function getSheetLabel(sheet: any): string {
+    return (sheet.staffName || sheet.staffSlug || "Feuille").trim() || "Sans nom";
+  }
+
+  function toggleIgnoreSheet(slug: string) {
+    const lower = slug.toLowerCase();
+    setIgnoredSlugs((prev) => {
+      const next = new Set(prev);
+      if (next.has(lower)) next.delete(lower);
+      else next.add(lower);
+      try {
+        const key = IGNORED_STORAGE_KEY_PREFIX + selectedMonth;
+        localStorage.setItem(key, JSON.stringify(Array.from(next)));
+      } catch (e) {
+        console.warn("localStorage setItem failed", e);
+      }
+      return next;
+    });
+  }
+
+  const sheetStats = useMemo(() => {
+    return sheets.map((sheet) => {
+      const slug = (sheet.staffSlug || "").toLowerCase();
+      const label = getSheetLabel(sheet);
+      const count = countFollowsInSheet(sheet, members);
+      const total = members.length;
+      const isIgnored = ignoredSlugs.has(slug);
+      return { slug, label, count, total, isIgnored };
+    });
+  }, [sheets, members, ignoredSlugs]);
 
   if (loading) {
     return (
@@ -292,10 +355,67 @@ export default function EvaluationCPage() {
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <p className="text-sm text-gray-400 mb-2">Données sources</p>
           <p className="text-3xl font-bold text-gray-400">
-            {dataLoading ? "—" : `${totalSheets} feuille${totalSheets > 1 ? 's' : ''}`}
+            {dataLoading ? "—" : `${totalSheets} feuille${totalSheets > 1 ? 's' : ''} utilisée${totalSheets > 1 ? 's' : ''}${ignoredSlugs.size > 0 ? ` (${ignoredSlugs.size} ignorée${ignoredSlugs.size > 1 ? 's' : ''})` : ""}`}
           </p>
         </div>
       </div>
+
+      {/* Résultats par feuille + ignorer manuellement */}
+      {!dataLoading && sheetStats.length > 0 && (
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-gray-700">
+            <h3 className="text-lg font-semibold text-white">Résultats par feuille</h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Retours &quot;me suit&quot; par membre du staff. Vous pouvez ignorer une feuille entière pour exclure ses données du calcul des notes.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#0e0e10]">
+                <tr className="text-left">
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Feuille (staff)</th>
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Membres qui me suivent</th>
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Statut</th>
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sheetStats.map((row) => (
+                  <tr
+                    key={row.slug}
+                    className={`border-t border-gray-700 transition-colors ${row.isIgnored ? "opacity-60 bg-gray-900/40" : "hover:bg-gray-800/50"}`}
+                  >
+                    <td className="px-6 py-3 text-white font-medium">{row.label}</td>
+                    <td className="px-6 py-3 text-gray-300">
+                      {row.count} / {row.total}
+                    </td>
+                    <td className="px-6 py-3">
+                      {row.isIgnored ? (
+                        <span className="text-amber-400">Ignorée</span>
+                      ) : (
+                        <span className="text-green-400">Incluse</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleIgnoreSheet(row.slug)}
+                        className={
+                          row.isIgnored
+                            ? "text-green-400 hover:text-green-300 underline text-left"
+                            : "text-amber-400 hover:text-amber-300 underline text-left"
+                        }
+                      >
+                        {row.isIgnored ? "Inclure cette feuille" : "Ignorer cette feuille"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Tableau des résultats */}
       {!dataLoading && results.length > 0 && (
