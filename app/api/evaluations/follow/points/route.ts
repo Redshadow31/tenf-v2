@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/requireAdmin';
-import { memberRepository, evaluationRepository } from '@/lib/repositories';
+import { memberRepository } from '@/lib/repositories';
+import { getAllFollowValidationsForMonth, getLastMonthWithData } from '@/lib/followStorage';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 export const runtime = 'nodejs';
@@ -80,23 +81,8 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
 }
 
 /**
- * Trouve le mois le plus récent avec des validations de follow dans les évaluations
- * Pour l'instant, on utilise le mois actuel par défaut
- */
-async function getLatestMonthWithFollowValidations(): Promise<string | null> {
-  try {
-    // Pour simplifier, on utilise le mois actuel
-    // Si besoin, on pourra ajouter une requête Supabase pour trouver tous les mois uniques
-    return getCurrentMonthKey();
-  } catch (error) {
-    console.error('[Follow Points API] Erreur récupération dernier mois:', error);
-    return null;
-  }
-}
-
-/**
- * GET - Récupère les points Follow depuis la dernière évaluation connue
- * (pas par mois, mais la dernière évaluation disponible)
+ * GET - Récupère les points Follow pour le mois demandé depuis /admin/follow
+ * (validations followStorage = même source que https://teamnewfamily.netlify.app/admin/follow)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -107,67 +93,51 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
-    
-    // Déterminer le mois à utiliser
-    let monthKey: string | null;
-    if (monthParam && monthParam.match(/^\d{4}-\d{2}$/)) {
-      monthKey = monthParam;
-    } else {
-      // Trouver le mois le plus récent avec des validations
-      monthKey = await getLatestMonthWithFollowValidations();
-    }
-    
+
+    let monthKey: string | null =
+      monthParam && monthParam.match(/^\d{4}-\d{2}$/) ? monthParam : getCurrentMonthKey();
+
     if (!monthKey) {
-      return NextResponse.json({ success: true, points: {}, month: null, message: "Aucune évaluation Follow trouvée" });
+      return NextResponse.json({ success: true, points: {}, month: null, dataSourceMonth: null });
     }
 
-    // Charger les membres actifs depuis Supabase
-    // Récupérer tous les membres actifs (limite élevée)
+    // Charger les validations du mois depuis followStorage (même source que admin/follow)
+    let allValidations = await getAllFollowValidationsForMonth(monthKey);
+    let dataSourceMonth = monthKey;
+    if (allValidations.length === 0) {
+      const fallbackMonth = await getLastMonthWithData(monthKey);
+      if (fallbackMonth) {
+        allValidations = await getAllFollowValidationsForMonth(fallbackMonth);
+        dataSourceMonth = fallbackMonth;
+      }
+    }
+
+    // Charger les membres (actifs) pour la liste des logins
     const allMembers = await memberRepository.findAll(1000, 0);
     const memberLogins = allMembers
       .filter(m => m.isActive !== false && m.twitchLogin)
       .map(m => m.twitchLogin.toLowerCase());
 
-    // Récupérer toutes les évaluations du mois avec followValidations
-    const evaluations = await evaluationRepository.findByMonth(monthKey);
-    
-    // Convertir les followValidations en format de feuilles de validation
-    const validations: any[] = [];
-    evaluations.forEach(evaluation => {
-      if (evaluation.followValidations && evaluation.followValidations.length > 0) {
-        evaluation.followValidations.forEach(validation => {
-          // Créer une feuille de validation au format attendu par computeScores
-          const sheet: any = {
-            staffDiscordId: validation.staffDiscordId,
-            staffTwitchLogin: validation.staffTwitchLogin,
-            validatedAt: validation.validatedAt,
-            members: {}, // Format B: { "login": { followsMe: true } }
-          };
-          
-          // Convertir les follows en format membres
-          Object.entries(validation.follows).forEach(([login, follows]) => {
-            sheet.members[login.toLowerCase()] = { followsMe: follows };
-          });
-          
-          validations.push(sheet);
-        });
-      }
-    });
+    // Convertir chaque validation staff en "sheet" pour computeScores (format D: members array avec meSuit)
+    const sheets = allValidations.map((v: any) => ({
+      members: Array.isArray(v.members) ? v.members : [],
+    }));
 
-    // Calculer les scores (même logique que la page C)
-    const scores = computeScores(memberLogins, validations, 5);
+    const scores = computeScores(memberLogins, sheets, 5);
 
-    // Convertir en map { twitchLogin: score }
     const pointsMap: Record<string, number> = {};
     scores.forEach(({ login, score }) => {
       pointsMap[login] = score;
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      points: pointsMap, 
+    return NextResponse.json({
+      success: true,
+      points: pointsMap,
       month: monthKey,
-      message: `Évaluation trouvée : ${monthKey}`
+      dataSourceMonth: dataSourceMonth !== monthKey ? dataSourceMonth : undefined,
+      message: dataSourceMonth !== monthKey
+        ? `Données Follow du mois ${dataSourceMonth} (aucune donnée pour ${monthKey})`
+        : `Données Follow : ${monthKey}`,
     });
   } catch (error) {
     console.error('[API Evaluations Follow Points GET] Erreur:', error);
