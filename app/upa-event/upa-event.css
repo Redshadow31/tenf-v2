@@ -1,29 +1,10 @@
 /* ==========================================================================
    UPA EVENT — Styles dédiés (scoped via .upa-page)
-   Ne pas modifier les styles globaux du site TENF.
+   Couleurs officielles UPA : Bleu #004aad | Vert #00aa00 | Blanc #ffffff | Noir #000000
    Tous les sélecteurs sont préfixés par .upa-page pour isolation totale.
    ========================================================================== */
 
-/* ---------- Reset & Base ---------- */
-.upa-page {
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #f0f7ff;
-  color: #1e293b;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-}
-
-.upa-page *,
-.upa-page *::before,
-.upa-page *::after {
-  box-sizing: border-box;
-}
-
-/* ---------- Variables ---------- */
+/* ---------- Variables UPA officielles ---------- */
 .upa-page {
   --upa-blue: #004aad;
   --upa-blue-dark: #003580;
@@ -34,6 +15,7 @@
   --upa-green-light: #33cc33;
   --upa-green-pale: #d4ffd4;
   --upa-white: #ffffff;
+  --upa-black: #000000;
   --upa-gray-50: #f8fafc;
   --upa-gray-100: #f1f5f9;
   --upa-gray-200: #e2e8f0;
@@ -46,24 +28,26 @@
   --upa-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ---------- Base (scoped dans le layout TENF) ---------- */
+.upa-page {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* On laisse le fond du layout TENF visible, pas de override global */
+}
+
+.upa-page *,
+.upa-page *::before,
+.upa-page *::after {
+  box-sizing: border-box;
+}
+
 /* ---------- Container ---------- */
 .upa-page .upa-container {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 20px;
-}
-
-/* ---------- Breadcrumb ---------- */
-.upa-page .upa-breadcrumb {
-  padding: 16px 0;
-  font-size: 0.85rem;
-  color: var(--upa-gray-600);
-  letter-spacing: 0.02em;
-}
-
-.upa-page .upa-breadcrumb span {
-  opacity: 0.5;
-  margin: 0 6px;
 }
 
 /* ---------- Hero ---------- */
@@ -74,6 +58,7 @@
   text-align: center;
   position: relative;
   overflow: hidden;
+  border-radius: 0 0 var(--upa-radius) var(--upa-radius);
 }
 
 .upa-page .upa-hero::before {
@@ -126,14 +111,8 @@
     height: 120px;
     padding: 12px;
   }
-
-  .upa-page .upa-hero-logos {
-    gap: 28px;
-  }
-
-  .upa-page .upa-hero-logos-x {
-    font-size: 2.5rem;
-  }
+  .upa-page .upa-hero-logos { gap: 28px; }
+  .upa-page .upa-hero-logos-x { font-size: 2.5rem; }
 }
 
 .upa-page .upa-hero-badge {
@@ -178,9 +157,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.upa-page .upa-hero-cause svg {
-  flex-shrink: 0;
-}
+.upa-page .upa-hero-cause svg { flex-shrink: 0; }
 
 /* ---------- Sections ---------- */
 .upa-page .upa-section {
@@ -248,9 +225,7 @@
   font-weight: 500;
 }
 
-.upa-page .upa-about-list-item svg {
-  flex-shrink: 0;
-}
+.upa-page .upa-about-list-item svg { flex-shrink: 0; }
 
 .upa-page .upa-about-cta-card {
   text-align: center;
@@ -267,70 +242,6 @@
 
 .upa-page .upa-about-cta-card p {
   color: var(--upa-gray-800);
-}
-
-/* ---------- Ce que propose UPA ---------- */
-.upa-page .upa-offers-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-
-@media (min-width: 600px) {
-  .upa-page .upa-offers-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.upa-page .upa-offer-item {
-  background: var(--upa-white);
-  border-radius: var(--upa-radius-sm);
-  padding: 28px;
-  box-shadow: var(--upa-shadow);
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  transition: transform var(--upa-transition), box-shadow var(--upa-transition);
-}
-
-.upa-page .upa-offer-item:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--upa-shadow-lg);
-}
-
-.upa-page .upa-offer-icon {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.3rem;
-}
-
-.upa-page .upa-offer-icon.blue {
-  background: var(--upa-blue-pale);
-  color: var(--upa-blue);
-}
-
-.upa-page .upa-offer-icon.green {
-  background: var(--upa-green-pale);
-  color: var(--upa-green);
-}
-
-.upa-page .upa-offer-item h3 {
-  margin: 0 0 4px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--upa-gray-800);
-}
-
-.upa-page .upa-offer-item p {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--upa-gray-600);
-  line-height: 1.5;
 }
 
 /* ---------- Valeurs ---------- */
@@ -412,9 +323,7 @@
 .upa-page .upa-participate-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 5px;
 }
 
@@ -577,9 +486,7 @@
   box-shadow: var(--upa-shadow);
 }
 
-.upa-page .upa-link-btn svg {
-  flex-shrink: 0;
-}
+.upa-page .upa-link-btn svg { flex-shrink: 0; }
 
 /* ---------- Rôle TENF ---------- */
 .upa-page .upa-tenf-role {
@@ -618,13 +525,14 @@
   line-height: 1.7;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- Footer UPA ---------- */
 .upa-page .upa-footer {
   background: var(--upa-gray-800);
   color: rgba(255, 255, 255, 0.6);
   text-align: center;
   padding: 32px 20px;
   font-size: 0.85rem;
+  border-radius: var(--upa-radius) var(--upa-radius) 0 0;
 }
 
 .upa-page .upa-footer a {
@@ -638,43 +546,22 @@
 
 /* ---------- Animations ---------- */
 @keyframes upa-fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.upa-page .upa-animate {
-  animation: upa-fadeUp 0.6s ease-out both;
-}
-
+.upa-page .upa-animate { animation: upa-fadeUp 0.6s ease-out both; }
 .upa-page .upa-animate-delay-1 { animation-delay: 0.1s; }
 .upa-page .upa-animate-delay-2 { animation-delay: 0.2s; }
 .upa-page .upa-animate-delay-3 { animation-delay: 0.3s; }
 .upa-page .upa-animate-delay-4 { animation-delay: 0.4s; }
 
-/* ---------- Responsive fine-tuning ---------- */
+/* ---------- Responsive ---------- */
 @media (max-width: 599px) {
-  .upa-page .upa-hero {
-    padding: 48px 16px 40px;
-  }
-
-  .upa-page .upa-section {
-    padding: 48px 0;
-  }
-
-  .upa-page .upa-about-card {
-    padding: 28px 24px;
-  }
-
-  .upa-page .upa-participate-card {
-    padding: 32px 24px;
-  }
-
+  .upa-page .upa-hero { padding: 48px 16px 40px; }
+  .upa-page .upa-section { padding: 48px 0; }
+  .upa-page .upa-about-card { padding: 28px 24px; }
+  .upa-page .upa-participate-card { padding: 32px 24px; }
   .upa-page .upa-tenf-role {
     flex-direction: column;
     padding: 28px 24px;

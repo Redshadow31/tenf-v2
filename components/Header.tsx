@@ -7,7 +7,7 @@ import { socialLinks } from "@/lib/socialLinks";
 import ThemeToggle from "./ThemeToggle";
 
 const publicLinks = [
-  { href: "/a-propos", label: "À propos" },
+  { href: "/upa-event", label: "UPA Events" },
   { href: "/membres", label: "Membres" },
   { href: "/lives", label: "Lives" },
   { href: "/events", label: "Événements" },
