@@ -482,6 +482,12 @@
   margin-top: 2px;
 }
 
+.upa-page .upa-warning-blue {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e3a8a;
+}
+
 .upa-page .upa-btn {
   display: inline-flex;
   align-items: center;
