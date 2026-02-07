@@ -87,17 +87,53 @@
   pointer-events: none;
 }
 
-/* Logo UPA dans le hero */
+/* Logos partenariat dans le hero */
+.upa-page .upa-hero-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
 .upa-page .upa-hero-logo {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
-  padding: 12px;
-  margin-bottom: 24px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  transition: transform var(--upa-transition);
+}
+
+.upa-page .upa-hero-logo:hover {
+  transform: scale(1.08);
+}
+
+.upa-page .upa-hero-logos-x {
+  font-size: 2rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1;
+  user-select: none;
+}
+
+@media (min-width: 600px) {
+  .upa-page .upa-hero-logo {
+    width: 120px;
+    height: 120px;
+    padding: 12px;
+  }
+
+  .upa-page .upa-hero-logos {
+    gap: 28px;
+  }
+
+  .upa-page .upa-hero-logos-x {
+    font-size: 2.5rem;
+  }
 }
 
 .upa-page .upa-hero-badge {
