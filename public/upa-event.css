@@ -526,6 +526,20 @@
   box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35);
 }
 
+.upa-page .upa-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 420px) {
+  .upa-page .upa-btn-group {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
 /* ---------- Liens officiels ---------- */
 .upa-page .upa-links-grid {
   display: grid;
