@@ -1330,6 +1330,58 @@ export default function GestionMembresPage() {
                 </button>
                 <button
                   onClick={async () => {
+                    // 1. Analyser les doublons discord_
+                    const analyzeResponse = await fetch("/api/admin/members/cleanup-discord-duplicates");
+                    if (!analyzeResponse.ok) {
+                      alert(`Erreur analyse: ${analyzeResponse.status}`);
+                      return;
+                    }
+                    const analyzeData = await analyzeResponse.json();
+                    if (!analyzeData.success || analyzeData.total === 0) {
+                      alert("Aucun doublon discord_ trouvé.");
+                      return;
+                    }
+
+                    const withDup = analyzeData.withRealDuplicate;
+                    const orphans = analyzeData.orphans;
+                    const total = analyzeData.total;
+
+                    const details = analyzeData.duplicates
+                      .slice(0, 15)
+                      .map((d: any) => `  ${d.displayName} (${d.discordLogin})${d.hasRealMember ? ` → vrai: ${d.realMemberLogin}` : ' [orphelin]'}`)
+                      .join('\n');
+
+                    const msg = `${total} entrée(s) discord_ trouvée(s):\n` +
+                      `- ${withDup} avec un vrai doublon (suppression sûre)\n` +
+                      `- ${orphans} orphelin(s)\n\n` +
+                      `Exemples:\n${details}` +
+                      (analyzeData.duplicates.length > 15 ? `\n  ... et ${analyzeData.duplicates.length - 15} autre(s)` : '') +
+                      `\n\nVoulez-vous supprimer TOUTES les ${total} entrées discord_ ?`;
+
+                    if (!confirm(msg)) return;
+
+                    // 2. Supprimer
+                    const deleteResponse = await fetch("/api/admin/members/cleanup-discord-duplicates", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ deleteOrphans: true }),
+                    });
+                    const deleteData = await deleteResponse.json();
+                    if (deleteResponse.ok && deleteData.success) {
+                      alert(`${deleteData.message}`);
+                      await loadMembers();
+                    } else {
+                      alert(`Erreur: ${deleteData.error || "Erreur inconnue"}`);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  title="Supprimer les membres avec twitchLogin discord_XXXX (doublons du bot)"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Nettoyer doublons discord_
+                </button>
+                <button
+                  onClick={async () => {
                     if (!confirm("Voulez-vous sauvegarder toutes les données des membres de façon durable ?")) {
                       return;
                     }
