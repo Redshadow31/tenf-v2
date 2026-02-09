@@ -166,7 +166,7 @@ async function getVipMembersData() {
         avatar: avatar,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         twitchLogin: member.twitchLogin,
-        twitchUrl: member.twitchUrl,
+        twitchUrl: `https://www.twitch.tv/${member.twitchLogin}`,
         twitchAvatar: twitchAvatar,
       };
     });
@@ -201,7 +201,7 @@ async function getActiveMembersData() {
 
       return {
         twitchLogin: member.twitchLogin,
-        twitchUrl: member.twitchUrl,
+        twitchUrl: `https://www.twitch.tv/${member.twitchLogin}`,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         avatar: avatar,
       };
@@ -273,7 +273,7 @@ async function getLiveStreams(twitchLogins: string[], activeMembers: any[]): Pro
         username: member?.displayName || stream.userName,
         game: stream.gameName || "Just Chatting",
         thumbnail: stream.thumbnailUrl || "/api/placeholder/400/225",
-        twitchUrl: member?.twitchUrl || `https://www.twitch.tv/${stream.userLogin}`,
+        twitchUrl: `https://www.twitch.tv/${stream.userLogin}`,
       };
     });
 

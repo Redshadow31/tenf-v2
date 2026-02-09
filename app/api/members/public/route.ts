@@ -119,7 +119,7 @@ export async function GET() {
 
         return {
           twitchLogin: member.twitchLogin,
-          twitchUrl: member.twitchUrl,
+          twitchUrl: `https://www.twitch.tv/${member.twitchLogin}`,
           displayName: member.displayName || member.siteUsername || member.twitchLogin,
           role: member.role,
           isVip: member.isVip,
@@ -137,7 +137,7 @@ export async function GET() {
         // Retourner un membre minimal en cas d'erreur
         return {
           twitchLogin: member.twitchLogin || '',
-          twitchUrl: member.twitchUrl || '',
+          twitchUrl: member.twitchLogin ? `https://www.twitch.tv/${member.twitchLogin}` : '',
           displayName: member.displayName || member.siteUsername || member.twitchLogin || 'Unknown',
           role: member.role || 'Affilié',
           isVip: member.isVip || false,

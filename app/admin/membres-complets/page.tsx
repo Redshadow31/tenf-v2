@@ -247,7 +247,7 @@ export default function MembresCompletsPage() {
                     <td className="py-4 px-6">
                       <div className="flex flex-col">
                         <a
-                          href={member.twitchUrl}
+                          href={`https://www.twitch.tv/${member.twitchLogin}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-[#9146ff] hover:text-[#5a32b4] font-medium"
@@ -255,12 +255,12 @@ export default function MembresCompletsPage() {
                           {member.twitchLogin}
                         </a>
                         <a
-                          href={member.twitchUrl}
+                          href={`https://www.twitch.tv/${member.twitchLogin}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-gray-400 hover:text-gray-300 mt-1 truncate max-w-xs"
                         >
-                          {member.twitchUrl}
+                          {`https://www.twitch.tv/${member.twitchLogin}`}
                         </a>
                       </div>
                     </td>

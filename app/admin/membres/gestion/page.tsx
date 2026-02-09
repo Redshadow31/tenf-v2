@@ -1448,7 +1448,7 @@ export default function GestionMembresPage() {
                             <div className="text-xs text-gray-400">
                               Twitch:{" "}
                               <a
-                                href={member.twitchUrl || `https://www.twitch.tv/${member.twitch}`}
+                                href={`https://www.twitch.tv/${member.twitch}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[#9146ff] hover:text-[#5a32b4]"

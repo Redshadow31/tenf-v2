@@ -151,7 +151,7 @@ export default function Page() {
       avatar: avatar,
       twitchLogin: member.twitchLogin,
       description: member.description || `Membre ${member.role} de la communauté TENF.`,
-      twitchUrl: member.twitchUrl,
+      twitchUrl: `https://www.twitch.tv/${member.twitchLogin}`,
       discordId: member.discordId,
       isVip: member.isVip,
       vipBadge: member.vipBadge,

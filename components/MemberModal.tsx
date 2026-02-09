@@ -204,7 +204,7 @@ export default function MemberModal({
           <div className="w-full space-y-3">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Chaîne Twitch</h3>
             <Link
-              href={member.twitchUrl || `https://twitch.tv/${member.twitchLogin}`}
+              href={`https://www.twitch.tv/${member.twitchLogin}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-colors"

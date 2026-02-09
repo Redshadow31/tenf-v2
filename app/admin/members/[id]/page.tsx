@@ -227,7 +227,7 @@ export default function Member360Page() {
                   <div className="flex items-center gap-2">
                     <span>Twitch:</span>
                     <a
-                      href={member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`}
+                      href={`https://www.twitch.tv/${member.twitchLogin}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-[#9146ff] hover:underline"
