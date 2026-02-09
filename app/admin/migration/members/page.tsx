@@ -99,26 +99,69 @@ export default function MembersMigrationPage() {
     setMigrationResult(null);
 
     try {
-      const response = await fetch('/api/admin/migration/migrate-members', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source,
-          selectedLogins: Array.from(selectedLogins),
-        }),
+      // Envoyer par batch de 20 pour éviter les timeouts 504 Netlify
+      const BATCH_SIZE = 20;
+      const allLogins = Array.from(selectedLogins);
+      let totalMigrated = 0;
+      let totalSkipped = 0;
+      let totalErrors = 0;
+      const allErrors: string[] = [];
+
+      for (let i = 0; i < allLogins.length; i += BATCH_SIZE) {
+        const batch = allLogins.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(allLogins.length / BATCH_SIZE);
+
+        // Mettre à jour le résultat intermédiaire pour le feedback visuel
+        setMigrationResult({
+          success: true,
+          message: `Batch ${batchNum}/${totalBatches} en cours... (${i}/${allLogins.length} traités)`,
+          summary: {
+            totalInBlobs: allLogins.length,
+            migrated: totalMigrated,
+            skipped: totalSkipped,
+            errors: totalErrors,
+          },
+        });
+
+        const response = await fetch('/api/admin/migration/migrate-members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source,
+            selectedLogins: batch,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status} (batch ${batchNum}/${totalBatches})`);
+        }
+
+        const data = await response.json();
+        if (data.summary) {
+          totalMigrated += data.summary.migrated || 0;
+          totalSkipped += data.summary.skipped || 0;
+          totalErrors += data.summary.errors || 0;
+        }
+        if (data.errors) {
+          allErrors.push(...data.errors);
+        }
+      }
+
+      setMigrationResult({
+        success: true,
+        message: `Migration terminée: ${totalMigrated} migré(s), ${totalSkipped} ignoré(s)${totalErrors > 0 ? `, ${totalErrors} erreur(s)` : ''}`,
+        summary: {
+          totalInBlobs: allLogins.length,
+          migrated: totalMigrated,
+          skipped: totalSkipped,
+          errors: totalErrors,
+        },
+        errors: allErrors.length > 0 ? allErrors : undefined,
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setMigrationResult(data);
-      
-      if (data.success) {
-        // Recharger la synchronisation après migration
-        await checkSync();
-      }
+      // Recharger la synchronisation après migration
+      await checkSync();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
@@ -328,7 +371,7 @@ export default function MembersMigrationPage() {
                     disabled={loading || selectedLogins.size === 0}
                     className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {loading ? 'Migration...' : `Migrer ${selectedLogins.size} membre(s)`}
+                    {loading ? `Migration en cours... (par batch de 20)` : `Migrer ${selectedLogins.size} membre(s)`}
                   </button>
                 </div>
               </div>

@@ -115,10 +115,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Créer le membre dans Supabase
+        // Toujours construire twitchUrl depuis twitchLogin (évite les URLs incorrectes en base)
         await memberRepository.create({
           twitchLogin: member.twitchLogin.toLowerCase(),
           twitchId: member.twitchId,
-          twitchUrl: member.twitchUrl,
+          twitchUrl: `https://www.twitch.tv/${member.twitchLogin.toLowerCase()}`,
           discordId: member.discordId,
           displayName: member.displayName,
           siteUsername: member.siteUsername,
