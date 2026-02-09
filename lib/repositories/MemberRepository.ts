@@ -283,6 +283,35 @@ export class MemberRepository {
   }
 
   /**
+   * Supprime définitivement un membre de la base (hard delete)
+   */
+  async hardDelete(login: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('members')
+      .delete()
+      .eq('twitch_login', login.toLowerCase());
+
+    if (error) throw error;
+    
+    // Invalider le cache des membres
+    await cacheInvalidateNamespace('members');
+  }
+
+  /**
+   * Trouve tous les membres dont le twitch_login commence par un préfixe donné
+   */
+  async findByTwitchLoginPrefix(prefix: string): Promise<MemberData[]> {
+    const { data, error } = await supabaseAdmin
+      .from('members')
+      .select('*')
+      .like('twitch_login', `${prefix.toLowerCase()}%`);
+
+    if (error) throw error;
+
+    return (data || []).map(this.mapToMemberData);
+  }
+
+  /**
    * Compte le nombre total de membres actifs
    */
   async countActive(): Promise<number> {

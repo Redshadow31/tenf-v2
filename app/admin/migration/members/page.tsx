@@ -42,6 +42,20 @@ interface MigrationResult {
   error?: string;
 }
 
+interface CleanupPreview {
+  total: number;
+  withRealDuplicate: number;
+  orphans: number;
+  duplicates: Array<{
+    discordLogin: string;
+    discordId: string | null;
+    displayName: string;
+    hasRealMember: boolean;
+    realMemberLogin?: string;
+    realMemberName?: string;
+  }>;
+}
+
 export default function MembersMigrationPage() {
   const [loading, setLoading] = useState(false);
   const [checkingSync, setCheckingSync] = useState(false);
@@ -50,6 +64,9 @@ export default function MembersMigrationPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedLogins, setSelectedLogins] = useState<Set<string>>(new Set());
   const [source, setSource] = useState<'admin' | 'bot' | 'merged'>('merged');
+  const [cleanupPreview, setCleanupPreview] = useState<CleanupPreview | null>(null);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
 
   const checkSync = async () => {
     setCheckingSync(true);
@@ -166,6 +183,55 @@ export default function MembersMigrationPage() {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // === Nettoyage des doublons discord_ ===
+  const previewCleanup = async () => {
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/members/cleanup-discord-duplicates');
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+      if (data.success) {
+        setCleanupPreview(data);
+      } else {
+        throw new Error(data.error || 'Erreur');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
+  const runCleanup = async (deleteOrphans: boolean) => {
+    if (!cleanupPreview) return;
+    const count = deleteOrphans ? cleanupPreview.total : cleanupPreview.withRealDuplicate;
+    if (count === 0) {
+      setCleanupResult('Aucun doublon à supprimer.');
+      return;
+    }
+    if (!confirm(`Supprimer définitivement ${count} entrée(s) discord_ ?`)) return;
+
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    try {
+      const response = await fetch('/api/admin/members/cleanup-discord-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteOrphans }),
+      });
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+      setCleanupResult(data.message);
+      setCleanupPreview(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setCleanupLoading(false);
     }
   };
 
@@ -424,6 +490,95 @@ export default function MembersMigrationPage() {
             )}
           </div>
         )}
+        {/* === Section nettoyage doublons discord_ === */}
+        <div className="mt-12 border-t border-gray-700 pt-8">
+          <h2 className="text-2xl font-bold mb-2">Nettoyage des doublons discord_</h2>
+          <p className="text-gray-400 mb-6">
+            Supprime les membres dont le login Twitch commence par &quot;discord_&quot; (créés par le bot quand le vrai login n&apos;était pas connu).
+          </p>
+
+          <button
+            onClick={previewCleanup}
+            disabled={cleanupLoading}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 mb-6"
+          >
+            {cleanupLoading ? 'Analyse...' : '🔍 Analyser les doublons discord_'}
+          </button>
+
+          {cleanupResult && (
+            <div className="bg-green-500/20 border border-green-500 rounded-lg p-4 mb-6">
+              <p className="text-green-300">{cleanupResult}</p>
+            </div>
+          )}
+
+          {cleanupPreview && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+                  <p className="text-sm text-gray-400 mb-2">Entrées discord_ trouvées</p>
+                  <p className="text-3xl font-bold text-orange-400">{cleanupPreview.total}</p>
+                </div>
+                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+                  <p className="text-sm text-gray-400 mb-2">Avec vrai doublon (suppression sûre)</p>
+                  <p className="text-3xl font-bold text-green-400">{cleanupPreview.withRealDuplicate}</p>
+                </div>
+                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+                  <p className="text-sm text-gray-400 mb-2">Orphelins (pas de vrai membre)</p>
+                  <p className="text-3xl font-bold text-yellow-400">{cleanupPreview.orphans}</p>
+                </div>
+              </div>
+
+              {/* Liste des doublons */}
+              <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-h-96 overflow-y-auto">
+                <h3 className="text-lg font-semibold mb-4">Détail des entrées discord_</h3>
+                <div className="space-y-2">
+                  {cleanupPreview.duplicates.map((dup) => (
+                    <div
+                      key={dup.discordLogin}
+                      className={`p-3 border rounded flex items-center justify-between ${
+                        dup.hasRealMember ? 'border-green-700 bg-green-900/10' : 'border-yellow-700 bg-yellow-900/10'
+                      }`}
+                    >
+                      <div>
+                        <span className="text-white font-medium">{dup.displayName}</span>
+                        <span className="text-gray-400 text-sm ml-2">({dup.discordLogin})</span>
+                      </div>
+                      {dup.hasRealMember ? (
+                        <span className="text-green-300 text-sm">
+                          Vrai membre : {dup.realMemberName} ({dup.realMemberLogin})
+                        </span>
+                      ) : (
+                        <span className="text-yellow-300 text-sm">Orphelin - pas de vrai membre trouvé</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Boutons d'action */}
+              <div className="flex gap-4">
+                {cleanupPreview.withRealDuplicate > 0 && (
+                  <button
+                    onClick={() => runCleanup(false)}
+                    disabled={cleanupLoading}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Supprimer les {cleanupPreview.withRealDuplicate} doublon(s) sûrs
+                  </button>
+                )}
+                {cleanupPreview.orphans > 0 && (
+                  <button
+                    onClick={() => runCleanup(true)}
+                    disabled={cleanupLoading}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Supprimer TOUT ({cleanupPreview.total}) y compris orphelins
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
