@@ -2,24 +2,57 @@
  * API Route pour nettoyer les membres avec twitchLogin commençant par "discord_"
  * Ces entrées sont des doublons créés par le bot Discord quand le login Twitch n'était pas connu.
  * 
+ * Optimisé : charge TOUS les membres en une seule requête puis traite en mémoire.
+ * 
  * GET  - Preview: liste les membres discord_ et indique lesquels ont un vrai doublon
  * POST - Exécute la suppression des doublons discord_
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/requireAdmin';
-import { memberRepository } from '@/lib/repositories';
+import { supabaseAdmin } from '@/lib/db/supabase';
+import { cacheInvalidateNamespace } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 interface DiscordDuplicate {
-  discordLogin: string;       // Le login discord_XXXX
-  discordId: string | null;   // L'ID Discord associé
+  discordLogin: string;
+  discordId: string | null;
   displayName: string;
-  hasRealMember: boolean;     // true si un vrai membre existe avec le même discordId
-  realMemberLogin?: string;   // Le vrai twitchLogin si trouvé
-  realMemberName?: string;    // Le vrai displayName si trouvé
+  hasRealMember: boolean;
+  realMemberLogin?: string;
+  realMemberName?: string;
+}
+
+/**
+ * Charge TOUS les membres en une seule requête Supabase
+ * et sépare les discord_ des vrais membres
+ */
+async function loadAllMembers() {
+  const { data, error } = await supabaseAdmin
+    .from('members')
+    .select('twitch_login, discord_id, display_name');
+
+  if (error) throw error;
+
+  const discordPrefixed: Array<{ twitchLogin: string; discordId: string | null; displayName: string }> = [];
+  const realByDiscordId = new Map<string, { twitchLogin: string; displayName: string }>();
+
+  for (const row of (data || [])) {
+    const twitchLogin = row.twitch_login || '';
+    const discordId = row.discord_id || null;
+    const displayName = row.display_name || twitchLogin;
+
+    if (twitchLogin.startsWith('discord_')) {
+      discordPrefixed.push({ twitchLogin, discordId, displayName });
+    } else if (discordId) {
+      // Stocker les vrais membres par discordId pour matching rapide
+      realByDiscordId.set(discordId, { twitchLogin, displayName });
+    }
+  }
+
+  return { discordPrefixed, realByDiscordId };
 }
 
 export async function GET() {
@@ -29,42 +62,27 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    // Trouver tous les membres avec discord_ prefix
-    const discordMembers = await memberRepository.findByTwitchLoginPrefix('discord_');
+    const { discordPrefixed, realByDiscordId } = await loadAllMembers();
 
-    // Pour chaque membre discord_, chercher si un vrai membre existe avec le même discordId
-    const duplicates: DiscordDuplicate[] = [];
+    // Matcher en mémoire (pas de requêtes supplémentaires)
+    const duplicates: DiscordDuplicate[] = discordPrefixed.map(member => {
+      // Extraire le discordId depuis le champ ou depuis le twitchLogin
+      const discordId = member.discordId || member.twitchLogin.replace('discord_', '');
+      const realMember = discordId ? realByDiscordId.get(discordId) : undefined;
 
-    for (const member of discordMembers) {
-      const discordId = member.discordId || member.twitchLogin?.replace('discord_', '');
-      
-      let hasRealMember = false;
-      let realMemberLogin: string | undefined;
-      let realMemberName: string | undefined;
-
-      if (discordId) {
-        // Chercher un membre avec le même discordId mais un vrai twitchLogin
-        const realMember = await memberRepository.findByDiscordId(discordId);
-        if (realMember && !realMember.twitchLogin?.startsWith('discord_')) {
-          hasRealMember = true;
-          realMemberLogin = realMember.twitchLogin;
-          realMemberName = realMember.displayName;
-        }
-      }
-
-      duplicates.push({
-        discordLogin: member.twitchLogin || '',
-        discordId: discordId || null,
-        displayName: member.displayName || member.twitchLogin || '',
-        hasRealMember,
-        realMemberLogin,
-        realMemberName,
-      });
-    }
+      return {
+        discordLogin: member.twitchLogin,
+        discordId,
+        displayName: member.displayName,
+        hasRealMember: !!realMember,
+        realMemberLogin: realMember?.twitchLogin,
+        realMemberName: realMember?.displayName,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      total: discordMembers.length,
+      total: duplicates.length,
       withRealDuplicate: duplicates.filter(d => d.hasRealMember).length,
       orphans: duplicates.filter(d => !d.hasRealMember).length,
       duplicates,
@@ -86,48 +104,58 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { deleteOrphans = false, selectedLogins } = body;
+    const { deleteOrphans = false } = body;
 
-    // Trouver tous les membres avec discord_ prefix
-    const discordMembers = await memberRepository.findByTwitchLoginPrefix('discord_');
+    const { discordPrefixed, realByDiscordId } = await loadAllMembers();
 
-    let deleted = 0;
+    // Déterminer quels logins supprimer
+    const loginsToDelete: string[] = [];
     let skipped = 0;
-    const errors: string[] = [];
 
-    for (const member of discordMembers) {
-      // Si une liste est fournie, ne supprimer que ceux sélectionnés
-      if (selectedLogins && !selectedLogins.includes(member.twitchLogin?.toLowerCase())) {
-        skipped++;
-        continue;
-      }
+    for (const member of discordPrefixed) {
+      const discordId = member.discordId || member.twitchLogin.replace('discord_', '');
+      const hasRealMember = discordId ? realByDiscordId.has(discordId) : false;
 
-      const discordId = member.discordId || member.twitchLogin?.replace('discord_', '');
-      
-      let hasRealMember = false;
-      if (discordId) {
-        const realMember = await memberRepository.findByDiscordId(discordId);
-        if (realMember && !realMember.twitchLogin?.startsWith('discord_')) {
-          hasRealMember = true;
-        }
-      }
-
-      // Supprimer seulement si un vrai doublon existe OU si deleteOrphans est activé
       if (hasRealMember || deleteOrphans) {
-        try {
-          await memberRepository.hardDelete(member.twitchLogin!);
-          deleted++;
-        } catch (err) {
-          errors.push(`Erreur suppression ${member.twitchLogin}: ${err instanceof Error ? err.message : 'Erreur'}`);
-        }
+        loginsToDelete.push(member.twitchLogin);
       } else {
         skipped++;
       }
     }
 
+    if (loginsToDelete.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'Aucun doublon à supprimer.',
+        summary: { total: discordPrefixed.length, deleted: 0, skipped, errors: 0 },
+      });
+    }
+
+    // Suppression en batch (par groupes de 50 pour éviter les limites Supabase)
+    let deleted = 0;
+    const errors: string[] = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < loginsToDelete.length; i += BATCH_SIZE) {
+      const batch = loginsToDelete.slice(i, i + BATCH_SIZE);
+      try {
+        const { error } = await supabaseAdmin
+          .from('members')
+          .delete()
+          .in('twitch_login', batch);
+
+        if (error) {
+          errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
+        } else {
+          deleted += batch.length;
+        }
+      } catch (err) {
+        errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${err instanceof Error ? err.message : 'Erreur'}`);
+      }
+    }
+
     // Invalider le cache
     try {
-      const { cacheInvalidateNamespace } = await import('@/lib/cache');
       await cacheInvalidateNamespace('members');
     } catch (e) {
       // Pas critique
@@ -135,9 +163,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Nettoyage terminé: ${deleted} supprimé(s), ${skipped} ignoré(s)`,
+      message: `Nettoyage terminé: ${deleted} supprimé(s), ${skipped} ignoré(s)${errors.length > 0 ? `, ${errors.length} erreur(s)` : ''}`,
       summary: {
-        total: discordMembers.length,
+        total: discordPrefixed.length,
         deleted,
         skipped,
         errors: errors.length,
