@@ -163,7 +163,7 @@ export default function LivesPage() {
 
           return {
             twitchLogin: member.twitchLogin,
-            twitchUrl: member.twitchUrl,
+            twitchUrl: `https://www.twitch.tv/${stream.userLogin}`,
             displayName: twitchDisplayName,
             game: stream.gameName,
             viewerCount: stream.viewerCount,
