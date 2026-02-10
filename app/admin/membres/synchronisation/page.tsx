@@ -38,7 +38,7 @@ export default function SynchronisationMembresPage() {
     id: number;
     avatar: string;
     nom: string;
-    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
     statut: "Actif" | "Inactif";
     discord: string;
     discordId?: string;
@@ -291,7 +291,7 @@ export default function SynchronisationMembresPage() {
         id: 0, // Pas utilisé dans la synchronisation
         avatar,
         nom: fullMemberData.displayName || fullMemberData.twitchLogin,
-        role: ((fullMemberData.role as any) || "Affilié") as "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior",
+        role: ((fullMemberData.role as any) || "Affilié") as "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté",
         statut: (fullMemberData.isActive ? "Actif" : "Inactif") as "Actif" | "Inactif",
         discord: fullMemberData.discordUsername || "",
         discordId: fullMemberData.discordId,
@@ -319,7 +319,7 @@ export default function SynchronisationMembresPage() {
     id: number;
     avatar: string;
     nom: string;
-    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
     statut: "Actif" | "Inactif";
     discord: string;
     discordId?: string;

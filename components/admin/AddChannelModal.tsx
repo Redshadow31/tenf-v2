@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
 
 interface AddChannelModalProps {
   isOpen: boolean;
