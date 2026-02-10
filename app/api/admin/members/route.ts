@@ -512,11 +512,11 @@ export async function DELETE(request: NextRequest) {
     // Utiliser le membre de Supabase en priorité, sinon celui des Blobs
     const memberToDelete = member || memberFromBlobs;
 
-    // Supprimer de Supabase si présent
+    // Supprimer définitivement de Supabase (hard delete, pas soft delete)
     if (member) {
       try {
-        await memberRepository.delete(twitchLogin);
-        console.log(`[Delete Member] ✅ Membre supprimé de Supabase: ${twitchLogin}`);
+        await memberRepository.hardDelete(twitchLogin);
+        console.log(`[Delete Member] ✅ Membre supprimé définitivement de Supabase: ${twitchLogin}`);
       } catch (error) {
         console.error(`[Delete Member] ❌ Erreur lors de la suppression de Supabase pour ${twitchLogin}:`, error);
         // Continuer quand même pour supprimer des Blobs
