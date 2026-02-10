@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
 
 interface Member {
   id: number;
@@ -335,10 +335,19 @@ export default function EditMemberModal({
                           </button>
                         )}
                       </div>
+                      {originalRole === "Communauté" && (
+                        <div className="mb-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                          <p className="text-xs text-orange-300">
+                            ⚠️ Rôle &quot;Communauté&quot; forcé par l&apos;évaluation mensuelle. Changez le rôle ci-dessous pour le retirer.
+                          </p>
+                        </div>
+                      )}
                       <select
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value as MemberRole })}
-                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                        className={`w-full bg-[#0e0e10] border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500 ${
+                          formData.role === "Communauté" ? 'border-orange-500/50' : 'border-gray-700'
+                        }`}
                       >
                         <option value="Affilié">Affilié</option>
                         <option value="Développement">Développement</option>
@@ -347,6 +356,7 @@ export default function EditMemberModal({
                         <option value="Admin">Admin</option>
                         <option value="Admin Adjoint">Admin Adjoint</option>
                         <option value="Créateur Junior">Créateur Junior</option>
+                        <option value="Communauté">Communauté (évaluation)</option>
                       </select>
                       {formData.role !== originalRole && (
                         <div className="mt-2">
