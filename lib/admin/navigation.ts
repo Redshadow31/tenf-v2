@@ -73,6 +73,10 @@ export const adminNavigation: NavItem[] = [
         label: "Synchronisation des données",
       },
       {
+        href: "/admin/membres/validation-profil",
+        label: "Validation des profils",
+      },
+      {
         href: "/admin/membres/badges",
         label: "Badges & rôles",
       },

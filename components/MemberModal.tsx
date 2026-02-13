@@ -18,6 +18,7 @@ type MemberModalProps = {
       discord?: string;
       instagram?: string;
       twitter?: string;
+      tiktok?: string;
       youtube?: string;
     };
     isVip?: boolean;
