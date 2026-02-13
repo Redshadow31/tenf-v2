@@ -298,6 +298,16 @@ export const logs = pgTable('logs', {
   timestamp: timestamp('timestamp').defaultNow(),
 });
 
+// Table: public_reviews (avis TENF et soutien Nexou)
+export const publicReviews = pgTable('public_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  type: text('type').notNull(), // 'tenf' | 'nexou'
+  pseudo: text('pseudo').notNull(),
+  message: text('message').notNull(),
+  hearts: integer('hearts'), // 1-5, uniquement pour type 'tenf'
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Table: structured_logs (nouveau système de logging)
 export const structuredLogs = pgTable('structured_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
