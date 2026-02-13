@@ -43,6 +43,13 @@
       "when": 1771020589427,
       "tag": "0005_tranquil_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771023736684,
+      "tag": "0006_cuddly_red_hulk",
+      "breakpoints": true
     }
   ]
 }

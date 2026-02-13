@@ -90,6 +90,12 @@ export interface MemberData {
   description?: string; // Description personnalisée du membre
   customBio?: string; // Bio personnalisée (remplace la bio Twitch si définie)
   
+  // Réseaux sociaux (remplis par le membre, validés par admin)
+  instagram?: string;
+  tiktok?: string;
+  twitter?: string;
+  profileValidationStatus?: 'non_soumis' | 'en_cours_examen' | 'valide';
+  
   // Métadonnées
   createdAt?: Date;
   updatedAt?: Date;

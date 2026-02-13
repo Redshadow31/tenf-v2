@@ -78,6 +78,14 @@ export const members = pgTable('members', {
   description: text('description'),
   customBio: text('custom_bio'),
   
+  // Réseaux sociaux (remplis par le membre, validés par admin)
+  instagram: text('instagram'),
+  tiktok: text('tiktok'),
+  twitter: text('twitter'),
+  
+  // Statut de validation du profil (pour affichage sur /membres)
+  profileValidationStatus: text('profile_validation_status').default('non_soumis'), // 'non_soumis' | 'en_cours_examen' | 'valide'
+  
   // Métadonnées
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -296,6 +304,21 @@ export const logs = pgTable('logs', {
   details: jsonb('details').$type<Record<string, any>>(),
   ipAddress: text('ip_address'),
   timestamp: timestamp('timestamp').defaultNow(),
+});
+
+// Table: member_profile_pending (modifications profil en attente de validation admin)
+export const memberProfilePending = pgTable('member_profile_pending', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  twitchLogin: text('twitch_login').notNull(),
+  discordId: text('discord_id'),
+  description: text('description'),
+  instagram: text('instagram'),
+  tiktok: text('tiktok'),
+  twitter: text('twitter'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'approved' | 'rejected'
+  submittedAt: timestamp('submitted_at').defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewedBy: text('reviewed_by'), // Discord ID admin
 });
 
 // Table: public_reviews (avis TENF et soutien Nexou)

@@ -19,6 +19,9 @@ interface PublicMember {
   discordUsername?: string;
   avatar?: string;
   description?: string;
+  instagram?: string;
+  tiktok?: string;
+  twitter?: string;
 }
 
 export default function Page() {
@@ -156,6 +159,12 @@ export default function Page() {
       isVip: member.isVip,
       vipBadge: member.vipBadge,
       badges: member.badges || [],
+      socials: {
+        discord: member.discordId ? `https://discord.com/users/${member.discordId}` : undefined,
+        instagram: member.instagram ? (member.instagram.startsWith('http') ? member.instagram : `https://instagram.com/${member.instagram.replace(/^@/, '')}`) : undefined,
+        twitter: member.twitter ? (member.twitter.startsWith('http') ? member.twitter : `https://twitter.com/${member.twitter.replace(/^@/, '')}`) : undefined,
+        tiktok: member.tiktok ? (member.tiktok.startsWith('http') ? member.tiktok : `https://tiktok.com/@${member.tiktok.replace(/^@/, '')}`) : undefined,
+      },
     });
     setIsModalOpen(true);
   };

@@ -32,6 +32,13 @@ export default function MembresHubPage() {
       icon: "🔄",
       color: "from-purple-500 to-purple-600",
     },
+    {
+      href: "/admin/membres/validation-profil",
+      title: "Validation des profils",
+      description: "Valider les modifications proposées par les membres",
+      icon: "✅",
+      color: "from-green-500 to-green-600",
+    },
   ];
 
   return (

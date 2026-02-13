@@ -19,8 +19,10 @@ export async function GET() {
     // Récupérer tous les membres actifs depuis Supabase via le repository
     let activeMembers: any[] = [];
     try {
-      activeMembers = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
-      console.log(`[Members Public API] Membres actifs récupérés: ${activeMembers.length}`);
+      const allActive = await memberRepository.findActive(1000, 0); // Récupérer jusqu'à 1000 membres actifs
+      // Ne garder que les membres dont le profil a été validé par le staff (visible sur /membres)
+      activeMembers = allActive.filter((m) => m.profileValidationStatus === 'valide');
+      console.log(`[Members Public API] Membres actifs récupérés: ${allActive.length}, profils validés: ${activeMembers.length}`);
     } catch (dbError) {
       console.error('[Members Public API] Erreur récupération membres depuis Supabase:', dbError);
       // Retourner une liste vide plutôt que d'échouer complètement
@@ -131,6 +133,11 @@ export async function GET() {
           avatar: avatar,
           description: description,
           createdAt: createdAtISO,
+          // Réseaux sociaux (affichés uniquement si validés et renseignés)
+          instagram: member.instagram || undefined,
+          tiktok: member.tiktok || undefined,
+          twitter: member.twitter || undefined,
+          profileValidationStatus: member.profileValidationStatus,
         };
       } catch (memberError) {
         console.error(`[Members Public API] Erreur mapping membre ${member.twitchLogin}:`, memberError);

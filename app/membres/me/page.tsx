@@ -1,496 +1,458 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Twitch, 
-  MessageCircle, 
-  Instagram, 
-  Music2, 
+import React, { useState, useEffect } from "react";
+import {
+  Twitch,
+  MessageCircle,
+  Instagram,
+  Music2,
   Twitter,
   Calendar,
   TrendingUp,
   Mic,
   MessageSquare,
   Users,
-  FileText
+  Send,
+  Loader2,
 } from "lucide-react";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
 
-// ============================================
-// DONNÉES MOCK
-// ============================================
+const MAX_DESCRIPTION = 800;
 
-const mockMemberProfile = {
-  displayName: "Streamer Exemple",
-  twitchLogin: "streamerexemple",
-  role: "Affilié",
-  memberId: "MEM-2024-001",
-  avatar: "https://via.placeholder.com/120x120/9146ff/ffffff?text=SE",
-  bio: "Streamer passionné et membre actif de la New Family depuis 2023.",
-  memberSince: "Janvier 2023",
+type ProfileStatus = "non_soumis" | "en_cours_examen" | "valide";
+
+interface MemberProfile {
+  displayName: string;
+  twitchLogin: string;
+  memberId: string;
+  avatar: string;
+  role: string;
+  bio: string;
+  memberSince: string | null;
+  profileValidationStatus: ProfileStatus;
   socials: {
-    twitch: "",
-    discord: "",
-    instagram: "",
-    tiktok: "",
-    twitter: "",
-  },
-  tenfSummary: {
-    role: "Affilié",
-    status: "Actif",
-    integration: {
-      integrated: true,
-      date: "15/03/2023",
-    },
-    parrain: "NeXou31",
-  },
-};
-
-const mockMonthlyStats = {
-  raidsTENF: 10,
-  spotlightPresence: {
-    present: 2,
-    total: 15,
-    rate: 13,
-  },
-  messagesRanking: {
-    rank: 20,
-    lastUpdate: "17/01/2026",
-  },
-  vocalRanking: {
-    rank: 8,
-    lastUpdate: "17/01/2026",
-  },
-};
-
-const mockChannelDescription = {
-  text: "",
-  status: "Non soumis" as "Non soumis" | "En attente" | "Validé",
-  characterCount: 0,
-  maxCharacters: 800,
-};
-
-// ============================================
-// COMPOSANTS
-// ============================================
-
-interface SocialLinkFieldProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  placeholder: string;
-}
-
-function SocialLinkField({ icon, label, value, placeholder }: SocialLinkFieldProps) {
-  const isEmpty = !value.trim();
-
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-      <div className="flex-shrink-0 text-gray-400">
-        {icon}
-      </div>
-      <label className="flex-shrink-0 text-sm font-medium min-w-[80px]" style={{ color: 'var(--color-text-secondary)' }}>
-        {label}
-      </label>
-      <input
-        type="text"
-        value={value}
-        readOnly
-        placeholder={placeholder}
-        className="flex-1 px-3 py-2 rounded border text-sm bg-transparent"
-        style={{ 
-          borderColor: 'var(--color-border)', 
-          color: 'var(--color-text)',
-          cursor: 'not-allowed',
-          opacity: 0.7,
-        }}
-      />
-      {isEmpty && (
-        <span className="flex-shrink-0 text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>
-          Non renseigné
-        </span>
-      )}
-    </div>
-  );
-}
-
-interface MonthlyStatCardProps {
-  icon: React.ReactNode;
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  color?: string;
-}
-
-function MonthlyStatCard({ icon, title, value, subtitle, color = "#9146ff" }: MonthlyStatCardProps) {
-  return (
-    <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}20`, color }}>
-            {icon}
-          </div>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-            {title}
-          </h3>
-        </div>
-      </div>
-      <div className="mb-2">
-        <p className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>
-          {value}
-        </p>
-      </div>
-      {subtitle && (
-        <p className="text-xs mt-2" style={{ color: 'var(--color-text-secondary)' }}>
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
-
-interface ProfileHeaderCardProps {
-  member: typeof mockMemberProfile;
-}
-
-function ProfileHeaderCard({ member }: ProfileHeaderCardProps) {
-  const roleStyles = getRoleBadgeStyles(member.role);
-
-  return (
-    <div className="rounded-lg border p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Section gauche : Avatar + Infos */}
-        <div className="lg:col-span-2">
-          <div className="flex items-start gap-6">
-            <div className="flex-shrink-0">
-              <img
-                src={member.avatar}
-                alt={member.displayName}
-                className="w-24 h-24 rounded-full object-cover border-2"
-                style={{ borderColor: 'var(--color-primary)' }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-3xl font-bold mb-3" style={{ color: 'var(--color-text)' }}>
-                {member.displayName}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                <span
-                  className="px-3 py-1 rounded-full text-xs font-semibold border"
-                  style={{
-                    backgroundColor: roleStyles.bg,
-                    color: roleStyles.text,
-                    borderColor: roleStyles.border || roleStyles.bg,
-                  }}
-                >
-                  {member.role}
-                </span>
-                <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>
-                  ID : {member.memberId}
-                </span>
-              </div>
-              <p className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                {member.bio}
-              </p>
-              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                <Calendar className="w-4 h-4" />
-                <span>Membre depuis {member.memberSince}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section droite : Réseaux */}
-        <div className="lg:col-span-1">
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
-            Réseaux
-          </h2>
-          <div className="space-y-2">
-            <SocialLinkField
-              icon={<Twitch className="w-5 h-5" />}
-              label="Twitch"
-              value={member.socials.twitch}
-              placeholder="twitch.tv/username ou username"
-            />
-            <SocialLinkField
-              icon={<MessageCircle className="w-5 h-5" />}
-              label="Discord"
-              value={member.socials.discord}
-              placeholder="Pseudo Discord ou URL"
-            />
-            <SocialLinkField
-              icon={<Instagram className="w-5 h-5" />}
-              label="Instagram"
-              value={member.socials.instagram}
-              placeholder="@username"
-            />
-            <SocialLinkField
-              icon={<Music2 className="w-5 h-5" />}
-              label="TikTok"
-              value={member.socials.tiktok}
-              placeholder="@username"
-            />
-            <SocialLinkField
-              icon={<Twitter className="w-5 h-5" />}
-              label="X/Twitter"
-              value={member.socials.twitter}
-              placeholder="@username"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface ChannelDescriptionCardProps {
-  description: typeof mockChannelDescription;
-}
-
-function ChannelDescriptionCard({ description }: ChannelDescriptionCardProps) {
-  const [localText, setLocalText] = useState(description.text);
-  const characterCount = localText.length;
-  const isOverLimit = characterCount > description.maxCharacters;
-
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case "En attente":
-        return { bg: "#f59e0b20", text: "#f59e0b", border: "#f59e0b30" };
-      case "Validé":
-        return { bg: "#10b98120", text: "#10b981", border: "#10b98130" };
-      default:
-        return { bg: "var(--color-surface)", text: "var(--color-text-secondary)", border: "var(--color-border)" };
-    }
+    twitch: string;
+    discord: string;
+    instagram: string;
+    tiktok: string;
+    twitter: string;
   };
+  tenfSummary: {
+    role: string;
+    status: string;
+    integration: { integrated: boolean; date: string | null };
+    parrain: string | null;
+  };
+}
 
-  // Le statut reste fixe pour l'UI (pas de logique de soumission)
-  const currentStatus = description.status;
-  const statusStyle = getStatusBadgeStyle(currentStatus);
+interface PendingData {
+  description: string;
+  instagram: string;
+  tiktok: string;
+  twitter: string;
+}
 
+interface MonthlyStats {
+  monthKey: string;
+  raidsTENF: number;
+  spotlightPresence: { present: number; total: number; rate: number };
+  messagesRanking: { rank: number; lastUpdate: string };
+  vocalRanking: { rank: number; lastUpdate: string };
+}
+
+function StatusBadge({ status }: { status: ProfileStatus }) {
+  const config = {
+    non_soumis: { label: "Non soumis", bg: "#6b728020", text: "#6b7280", border: "#6b728030" },
+    en_cours_examen: { label: "En cours d'examen", bg: "#f59e0b20", text: "#f59e0b", border: "#f59e0b30" },
+    valide: { label: "Validé par le staff", bg: "#10b98120", text: "#10b981", border: "#10b98130" },
+  };
+  const c = config[status] || config.non_soumis;
   return (
-    <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-          Descriptif de chaîne
-        </h2>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          Tu pourras proposer un descriptif personnalisé. Il sera soumis à validation par les admins avant affichage public.
-        </p>
-      </div>
-
-      <div className="mb-4">
-        <textarea
-          value={localText}
-          onChange={(e) => setLocalText(e.target.value)}
-          placeholder="Décris ta chaîne, ton univers, tes jeux préférés, tes objectifs de stream... (max 800 caractères)"
-          maxLength={description.maxCharacters}
-          rows={6}
-          className="w-full px-4 py-3 rounded-lg border resize-none text-sm transition-colors"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderColor: isOverLimit ? '#dc2626' : 'var(--color-border)',
-            color: 'var(--color-text)',
-            outline: 'none',
-          }}
-          onFocus={(e) => {
-            if (!isOverLimit) {
-              e.currentTarget.style.borderColor = 'var(--color-primary)';
-            }
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = isOverLimit ? '#dc2626' : 'var(--color-border)';
-          }}
-        />
-        <div className="flex items-center justify-between mt-2">
-          <span className={`text-xs ${isOverLimit ? 'text-red-400' : ''}`} style={{ color: isOverLimit ? '#dc2626' : 'var(--color-text-secondary)' }}>
-            {characterCount} / {description.maxCharacters} caractères
-          </span>
-          <span
-            className="px-3 py-1 rounded-full text-xs font-semibold border"
-            style={{
-              backgroundColor: statusStyle.bg,
-              color: statusStyle.text,
-              borderColor: statusStyle.border,
-            }}
-          >
-            {currentStatus}
-          </span>
-        </div>
-      </div>
-
-      <button
-        disabled
-        className="px-6 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed border"
-        style={{ 
-          backgroundColor: 'transparent',
-          borderColor: 'var(--color-border)',
-          color: 'var(--color-text-secondary)',
-        }}
-        onMouseEnter={(e) => {
-          if (!e.currentTarget.disabled) {
-            e.currentTarget.style.borderColor = 'var(--color-primary)';
-            e.currentTarget.style.color = 'var(--color-primary)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!e.currentTarget.disabled) {
-            e.currentTarget.style.borderColor = 'var(--color-border)';
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-          }
-        }}
-      >
-        Proposer mon descriptif
-      </button>
-    </div>
+    <span
+      className="px-3 py-1 rounded-full text-xs font-semibold border"
+      style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+    >
+      {c.label}
+    </span>
   );
 }
 
-interface TenfSummaryCardProps {
-  summary: typeof mockMemberProfile.tenfSummary;
+function SocialLink({ icon: Icon, label, value, url }: { icon: any; label: string; value: string; url?: string }) {
+  if (!value?.trim()) return null;
+  const href = url || (value.startsWith("http") ? value : `https://${value}`);
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 p-2 rounded-lg border transition-colors hover:opacity-80"
+      style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+    >
+      <Icon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--color-text-secondary)" }} />
+      <span className="text-sm truncate" style={{ color: "var(--color-text)" }}>{value}</span>
+    </a>
+  );
 }
 
-function TenfSummaryCard({ summary }: TenfSummaryCardProps) {
-  const roleStyles = getRoleBadgeStyles(summary.role);
-  const statusColor = summary.status === "Actif" ? "#10b981" : "#6b7280";
+export default function MyProfilePage() {
+  const [member, setMember] = useState<MemberProfile | null>(null);
+  const [pending, setPending] = useState<PendingData | null>(null);
+  const [monthly, setMonthly] = useState<MonthlyStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [twitchSearch, setTwitchSearch] = useState("");
+  const [membersList, setMembersList] = useState<{ twitchLogin: string; displayName: string }[]>([]);
+  const [selectedTwitch, setSelectedTwitch] = useState<string | null>(null);
+
+  // Formulaire descriptif + réseaux
+  const [description, setDescription] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  useEffect(() => {
+    loadMembersList();
+  }, []);
+
+  useEffect(() => {
+    if (selectedTwitch || !twitchSearch) {
+      loadProfile();
+      loadMonthly();
+    }
+  }, [selectedTwitch, twitchSearch]);
+
+  async function loadMembersList() {
+    try {
+      const res = await fetch("/api/members/public", { cache: "no-store" });
+      const data = await res.json();
+      const list = (data.members || []).map((m: any) => ({
+        twitchLogin: m.twitchLogin,
+        displayName: m.displayName || m.twitchLogin,
+      }));
+      setMembersList(list);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadProfile() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedTwitch) params.set("twitchLogin", selectedTwitch);
+      const res = await fetch(`/api/members/me?${params}`, { cache: "no-store" });
+      if (!res.ok) {
+        setMember(null);
+        setPending(null);
+        return;
+      }
+      const data = await res.json();
+      setMember(data.member);
+      setPending(data.pending);
+      setDescription(data.pending?.description ?? data.member?.bio ?? "");
+      setInstagram(data.pending?.instagram ?? data.member?.socials?.instagram ?? "");
+      setTiktok(data.pending?.tiktok ?? data.member?.socials?.tiktok ?? "");
+      setTwitter(data.pending?.twitter ?? data.member?.socials?.twitter ?? "");
+    } catch (e) {
+      console.error(e);
+      setMember(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMonthly() {
+    if (!member && !selectedTwitch) return;
+    try {
+      const params = new URLSearchParams();
+      if (selectedTwitch) params.set("twitchLogin", selectedTwitch);
+      const res = await fetch(`/api/members/me/monthly?${params}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setMonthly(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleSubmitProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitSuccess(false);
+    try {
+      const res = await fetch("/api/members/me/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description,
+          instagram,
+          tiktok,
+          twitter,
+          twitchLogin: member?.twitchLogin || selectedTwitch,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSubmitSuccess(true);
+        loadProfile();
+      } else {
+        alert(data.error || "Erreur lors de la soumission");
+      }
+    } catch (e) {
+      alert("Erreur de connexion");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const filteredMembers = membersList.filter(
+    (m) =>
+      m.twitchLogin.toLowerCase().includes(twitchSearch.toLowerCase()) ||
+      m.displayName.toLowerCase().includes(twitchSearch.toLowerCase())
+  );
+
+  if (loading && !member) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--color-bg)" }}>
+        <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="min-h-screen px-8 py-8" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+        <h1 className="text-3xl font-bold mb-6">Mon Profil</h1>
+        <div className="rounded-xl border p-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <p className="mb-4" style={{ color: "var(--color-text-secondary)" }}>
+            Sélectionne ton pseudo Twitch pour accéder à ton profil.
+          </p>
+          <div className="relative max-w-md">
+            <input
+              type="text"
+              value={twitchSearch}
+              onChange={(e) => setTwitchSearch(e.target.value)}
+              placeholder="Rechercher ton pseudo..."
+              className="w-full px-4 py-3 rounded-lg border"
+              style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            />
+            {twitchSearch && filteredMembers.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border max-h-48 overflow-y-auto z-10" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                {filteredMembers.slice(0, 10).map((m) => (
+                  <button
+                    key={m.twitchLogin}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTwitch(m.twitchLogin);
+                      setTwitchSearch("");
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-opacity-80 transition-colors"
+                    style={{ color: "var(--color-text)" }}
+                  >
+                    {m.displayName} (@{m.twitchLogin})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const roleStyles = getRoleBadgeStyles(member.role);
+  const hasAnySocial = member.socials.instagram || member.socials.tiktok || member.socials.twitter || member.socials.discord;
 
   return (
-    <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--color-text)' }}>
-        Résumé TENF
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-            Rôle actuel
-          </label>
-          <span
-            className="inline-block px-3 py-2 rounded-full text-sm font-semibold border"
-            style={{
-              backgroundColor: roleStyles.bg,
-              color: roleStyles.text,
-              borderColor: roleStyles.border || roleStyles.bg,
-            }}
-          >
-            {summary.role}
-          </span>
-        </div>
+    <div className="min-h-screen px-8 py-8" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Mon Profil</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
+          Gère tes informations et consulte tes statistiques TENF
+        </p>
 
-        <div>
-          <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-            Statut
-          </label>
-          <span
-            className="inline-block px-3 py-2 rounded-full text-sm font-semibold"
-            style={{
-              backgroundColor: `${statusColor}20`,
-              color: statusColor,
-              border: `1px solid ${statusColor}30`,
-            }}
-          >
-            {summary.status}
-          </span>
-        </div>
+        {/* Header profil + badge statut */}
+        <div className="rounded-xl border p-6 mb-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex items-start gap-4">
+              <img src={member.avatar} alt={member.displayName} className="w-20 h-20 rounded-full object-cover border-2" style={{ borderColor: "var(--color-primary)" }} />
+              <div>
+                <h2 className="text-2xl font-bold mb-1">{member.displayName}</h2>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: roleStyles.bg, color: roleStyles.text, borderColor: roleStyles.border || roleStyles.bg }}>
+                    {member.role}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)" }}>
+                    ID : {member.memberId}
+                  </span>
+                  <StatusBadge status={member.profileValidationStatus as ProfileStatus} />
+                </div>
+                {member.memberSince && (
+                  <div className="flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    <Calendar className="w-4 h-4" />
+                    Membre depuis {member.memberSince}
+                  </div>
+                )}
+              </div>
+            </div>
 
-        <div>
-          <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-            Intégration
-          </label>
-          <div className="space-y-1">
-            <span className="text-sm" style={{ color: 'var(--color-text)' }}>
-              {summary.integration.integrated ? "Oui" : "Non"}
-            </span>
-            {summary.integration.integrated && summary.integration.date && (
-              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                Date : {summary.integration.date}
-              </p>
+            {/* Réseaux - affichés uniquement si renseignés */}
+            {hasAnySocial && (
+              <div className="lg:ml-auto lg:w-64">
+                <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-text-secondary)" }}>Réseaux</h3>
+                <div className="space-y-2">
+                  {member.socials.twitch && (
+                    <SocialLink icon={Twitch} label="Twitch" value={member.twitchLogin} url={member.socials.twitch} />
+                  )}
+                  {member.socials.discord && <SocialLink icon={MessageCircle} label="Discord" value={member.socials.discord} />}
+                  {member.socials.instagram && <SocialLink icon={Instagram} label="Instagram" value={member.socials.instagram} />}
+                  {member.socials.tiktok && <SocialLink icon={Music2} label="TikTok" value={member.socials.tiktok} />}
+                  {member.socials.twitter && <SocialLink icon={Twitter} label="X/Twitter" value={member.socials.twitter} />}
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        <div>
-          <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-            Parrain/Marraine
-          </label>
-          <span className="text-sm" style={{ color: 'var(--color-text)' }}>
-            {summary.parrain || "Non renseigné"}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// PAGE PRINCIPALE
-// ============================================
-
-export default function MyProfilePage() {
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* En-tête de page */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-            Mon Profil
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Gérez vos informations personnelles et consultez vos statistiques TENF
-          </p>
-        </div>
-
-        {/* Header profil */}
-        <div className="mb-8">
-          <ProfileHeaderCard member={mockMemberProfile} />
-        </div>
-
-        {/* Stats du mois en cours */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'var(--color-text)' }}>
-            TENF — Mois en cours
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <MonthlyStatCard
-              icon={<TrendingUp className="w-5 h-5" />}
-              title="Raids TENF"
-              value={mockMonthlyStats.raidsTENF}
-              subtitle="Raids effectués ce mois"
-              color="#9146ff"
-            />
-            <MonthlyStatCard
-              icon={<Users className="w-5 h-5" />}
-              title="Présence Spotlight"
-              value={`${mockMonthlyStats.spotlightPresence.rate}%`}
-              subtitle={`${mockMonthlyStats.spotlightPresence.present}/${mockMonthlyStats.spotlightPresence.total} spotlights`}
-              color="#10b981"
-            />
-            <MonthlyStatCard
-              icon={<MessageSquare className="w-5 h-5" />}
-              title="Classement Messages"
-              value={`#${mockMonthlyStats.messagesRanking.rank}`}
-              subtitle={`Dernière MAJ : ${mockMonthlyStats.messagesRanking.lastUpdate}`}
-              color="#5865F2"
-            />
-            <MonthlyStatCard
-              icon={<Mic className="w-5 h-5" />}
-              title="Classement Vocaux"
-              value={`#${mockMonthlyStats.vocalRanking.rank}`}
-              subtitle={`Dernière MAJ : ${mockMonthlyStats.vocalRanking.lastUpdate}`}
-              color="#f59e0b"
-            />
+        {/* TENF — Mois en cours */}
+        <h2 className="text-xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>TENF — Mois en cours</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5" style={{ color: "#9146ff" }} />
+              <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Raids TENF</span>
+            </div>
+            <p className="text-2xl font-bold">{monthly?.raidsTENF ?? 0}</p>
+          </div>
+          <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5" style={{ color: "#10b981" }} />
+              <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Présence Spotlight</span>
+            </div>
+            <p className="text-2xl font-bold">{monthly?.spotlightPresence?.rate ?? 0}%</p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              {monthly?.spotlightPresence?.present ?? 0}/{monthly?.spotlightPresence?.total ?? 0} spotlights
+            </p>
+          </div>
+          <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-5 h-5" style={{ color: "#5865F2" }} />
+              <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Classement Messages</span>
+            </div>
+            <p className="text-2xl font-bold">#{monthly?.messagesRanking?.rank || "-"}</p>
+          </div>
+          <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Mic className="w-5 h-5" style={{ color: "#f59e0b" }} />
+              <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Classement Vocaux</span>
+            </div>
+            <p className="text-2xl font-bold">#{monthly?.vocalRanking?.rank || "-"}</p>
           </div>
         </div>
 
-        {/* Descriptif de chaîne */}
-        <div className="mb-8">
-          <ChannelDescriptionCard description={mockChannelDescription} />
+        {/* Descriptif de chaîne + Réseaux à remplir */}
+        <div className="rounded-xl border p-6 mb-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <h2 className="text-xl font-semibold mb-2">Descriptif de chaîne</h2>
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
+            Remplis ici ton descriptif et tes réseaux. Les modifications seront soumises à validation par le staff avant affichage sur la page Membres.
+          </p>
+
+          <form onSubmit={handleSubmitProfile} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>Descriptif (max {MAX_DESCRIPTION} caractères)</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={MAX_DESCRIPTION}
+                rows={4}
+                placeholder="Décris ta chaîne, ton univers..."
+                className="w-full px-4 py-3 rounded-lg border resize-none"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              />
+              <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>{description.length}/{MAX_DESCRIPTION}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>Instagram</label>
+                <input
+                  type="text"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="@username"
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>TikTok</label>
+                <input
+                  type="text"
+                  value={tiktok}
+                  onChange={(e) => setTiktok(e.target.value)}
+                  placeholder="@username"
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>X / Twitter</label>
+                <input
+                  type="text"
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  placeholder="@username"
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
+            </div>
+
+            {submitSuccess && (
+              <p className="text-sm text-green-500">Modifications soumises pour validation par le staff.</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2 rounded-lg font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {submitting ? "Envoi..." : "Soumettre pour validation"}
+            </button>
+          </form>
         </div>
 
         {/* Résumé TENF */}
-        <div className="mb-8">
-          <TenfSummaryCard summary={mockMemberProfile.tenfSummary} />
+        <div className="rounded-xl border p-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <h2 className="text-xl font-semibold mb-4">Résumé TENF</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Rôle</p>
+              <span className="px-3 py-1 rounded-full text-sm font-semibold border" style={{ backgroundColor: roleStyles.bg, color: roleStyles.text, borderColor: roleStyles.border || roleStyles.bg }}>
+                {member.tenfSummary.role}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Statut</p>
+              <span className="text-sm font-semibold" style={{ color: member.tenfSummary.status === "Actif" ? "#10b981" : "#6b7280" }}>
+                {member.tenfSummary.status}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Intégration</p>
+              <p className="text-sm">{member.tenfSummary.integration.integrated ? `Oui (${member.tenfSummary.integration.date || "-"})` : "Non"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Parrain</p>
+              <p className="text-sm">{member.tenfSummary.parrain || "Non renseigné"}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

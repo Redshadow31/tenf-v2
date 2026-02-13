@@ -319,6 +319,23 @@ export default function MemberModal({
                   Twitter
                 </Link>
               )}
+              {member.socials?.tiktok && (
+                <Link
+                  href={member.socials.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: '#000000' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#333333';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#000000';
+                  }}
+                >
+                  TikTok
+                </Link>
+              )}
               {member.socials?.youtube && (
                 <Link
                   href={member.socials.youtube}
@@ -339,6 +356,7 @@ export default function MemberModal({
               {(!member.socials?.discord &&
                 !member.socials?.instagram &&
                 !member.socials?.twitter &&
+                !member.socials?.tiktok &&
                 !member.socials?.youtube) && (
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                   Aucun réseau social ajouté

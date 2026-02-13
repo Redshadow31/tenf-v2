@@ -358,6 +358,10 @@ export class MemberRepository {
       twitchStatus: row.twitch_status || undefined,
       description: row.description || undefined,
       customBio: row.custom_bio || undefined,
+      instagram: row.instagram || undefined,
+      tiktok: row.tiktok || undefined,
+      twitter: row.twitter || undefined,
+      profileValidationStatus: row.profile_validation_status || 'non_soumis',
       createdAt: row.created_at ? new Date(row.created_at) : undefined,
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
       updatedBy: row.updated_by || undefined,
@@ -389,6 +393,10 @@ export class MemberRepository {
     if (member.twitchStatus !== undefined) record.twitch_status = member.twitchStatus;
     if (member.description !== undefined) record.description = member.description;
     if (member.customBio !== undefined) record.custom_bio = member.customBio;
+    if (member.instagram !== undefined) record.instagram = member.instagram;
+    if (member.tiktok !== undefined) record.tiktok = member.tiktok;
+    if (member.twitter !== undefined) record.twitter = member.twitter;
+    if (member.profileValidationStatus !== undefined) record.profile_validation_status = member.profileValidationStatus;
     if (member.updatedBy !== undefined) record.updated_by = member.updatedBy;
     if (member.integrationDate !== undefined) {
       record.integration_date = member.integrationDate instanceof Date 
