@@ -187,10 +187,10 @@ export default function MemberModal({
             )}
           </div>
 
-          {/* Description Twitch */}
-          <div className="w-full space-y-2">
+          {/* Description Twitch - aligné à gauche, retours à la ligne préservés */}
+          <div className="w-full space-y-2 text-left">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
+            <p className="whitespace-pre-wrap text-left" style={{ color: 'var(--color-text-secondary)' }}>
               {member.description ||
                 "Aucune description disponible pour le moment."}
             </p>
