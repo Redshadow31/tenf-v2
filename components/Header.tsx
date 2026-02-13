@@ -14,7 +14,7 @@ const publicLinks = [
   { href: "/integration", label: "Intégration" },
   { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
-  { href: "/avis-tenf", label: "Avis TENF" },
+  { href: "/avis-tenf", label: "Témoignages" },
   { href: "/soutien-nexou", label: "Soutien Nexou" },
   { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
 ];

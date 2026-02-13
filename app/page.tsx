@@ -35,6 +35,14 @@ interface HomeData {
   lives: Live[];
 }
 
+interface Review {
+  id: string;
+  pseudo: string;
+  message: string;
+  hearts: number | null;
+  created_at: string;
+}
+
 /**
  * Page d'accueil - Server Component
  * Récupère toutes les données côté serveur avec cache ISR de 30 secondes
@@ -47,6 +55,7 @@ export default async function Page() {
     lives: [],
   };
 
+  let reviews: Review[] = [];
   try {
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/home`, {
@@ -55,6 +64,15 @@ export default async function Page() {
 
     if (response.ok) {
       homeData = await response.json();
+    }
+
+    // Charger les 3 derniers avis TENF pour la section témoignages
+    const reviewsRes = await fetch(`${baseUrl}/api/reviews?type=tenf`, {
+      next: { revalidate: 60 }, // Cache 1 min
+    });
+    if (reviewsRes.ok) {
+      const data = await reviewsRes.json();
+      reviews = (data.reviews || []).slice(0, 3);
     }
   } catch (error) {
     console.error('[Homepage] Error fetching home data:', error);
@@ -283,6 +301,74 @@ export default async function Page() {
             Découvrir le fonctionnement TENF
           </Link>
         </div>
+      </section>
+
+      {/* SECTION 4b — TÉMOIGNAGES / AVIS TENF */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-lg mb-2" style={{ color: 'var(--color-text-secondary)' }}>💜 Ce que disent les membres</p>
+            <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Ils parlent de TENF</h2>
+          </div>
+          <Link
+            href="/avis-tenf"
+            className="text-sm font-medium transition-colors home-link"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            Voir tous les avis →
+          </Link>
+        </div>
+        {reviews.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {reviews.map((r) => (
+              <div
+                key={r.id}
+                className="card border p-6 home-feature-card"
+                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{r.pseudo}</span>
+                  {r.hearts != null && (() => {
+                    const h = r.hearts as number;
+                    return (
+                      <span className="text-rose-500" aria-label={`${h} sur 5`}>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <span key={i} style={{ color: i < h ? '#e11d48' : 'var(--color-border)' }}>♥</span>
+                        ))}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <p className="text-sm line-clamp-3" style={{ color: 'var(--color-text-secondary)' }}>
+                  &quot;{r.message.length > 120 ? `${r.message.slice(0, 120)}…` : r.message}&quot;
+                </p>
+                <Link
+                  href="/avis-tenf"
+                  className="mt-4 inline-block text-sm font-medium transition-colors home-link"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  Lire la suite →
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-xl border p-8 text-center"
+            style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+          >
+            <p className="text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Soyez le premier à partager votre expérience TENF
+            </p>
+            <Link
+              href="/avis-tenf"
+              className="inline-block px-6 py-2 rounded-lg font-semibold text-white transition-all"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              Poster un avis
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* SECTION 5 — BOUTIQUE */}

@@ -208,8 +208,7 @@ export default function UpaEventPage() {
           </p>
 
           <div className="upa-links-grid">
-            {/* TODO: Remplacer href="#" par l'URL du site officiel UPA */}
-            <a href="#" className="upa-link-btn" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.upa-event.fr" className="upa-link-btn" target="_blank" rel="noopener noreferrer">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="2" y1="12" x2="22" y2="12" />
@@ -225,12 +224,20 @@ export default function UpaEventPage() {
               Discord UPA
             </a>
 
-            {/* TODO: Remplacer href="#" par l'URL de la chaîne Twitch officielle UPA */}
-            <a href="#" className="upa-link-btn" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.twitch.tv/upa_event" className="upa-link-btn" target="_blank" rel="noopener noreferrer">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
               </svg>
               Chaîne officielle
+            </a>
+
+            <a href="https://upa-event.carrd.co" className="upa-link-btn" target="_blank" rel="noopener noreferrer">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+              Leurs réseaux
             </a>
           </div>
         </div>

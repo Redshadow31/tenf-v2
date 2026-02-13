@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Page() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -176,6 +178,25 @@ export default function Page() {
                 Responsable technique, créatif et innovant. Gère l'automatisation, les visuels et les évolutions du projet.
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* Section : Témoignages */}
+        <section className="mb-16">
+          <div className="rounded-xl p-8 shadow-lg text-center" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+            <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+              💜 Ce que disent les membres
+            </h2>
+            <p className="leading-relaxed mb-6 max-w-2xl mx-auto" style={{ color: 'var(--color-text-secondary)' }}>
+              Découvre les avis et témoignages des créateurs qui font vivre la New Family.
+            </p>
+            <Link
+              href="/avis-tenf"
+              className="inline-block px-6 py-3 rounded-lg font-semibold text-white transition-colors"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              Voir tous les avis
+            </Link>
           </div>
         </section>
 
