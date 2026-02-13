@@ -136,16 +136,30 @@ export default function RecapPage() {
 
   const getCategoryStats = (source: RecapData | null = viewData) => {
     if (!source) return {};
-    const stats: Record<string, { count: number; registrations: number; totalPresences: number }> = {};
+    const stats: Record<string, { count: number; registrations: number; totalPresences: number; uniqueParticipants: number }> = {};
+    const uniqueLoginsByCategory: Record<string, Set<string>> = {};
     source.eventsWithRegistrations.forEach((item) => {
       const cat = item.event.category;
       if (!stats[cat]) {
-        stats[cat] = { count: 0, registrations: 0, totalPresences: 0 };
+        stats[cat] = { count: 0, registrations: 0, totalPresences: 0, uniqueParticipants: 0 };
+        uniqueLoginsByCategory[cat] = new Set();
       }
       stats[cat].count++;
       stats[cat].registrations += item.registrationCount;
       // Ajouter le nombre de présents pour cet événement
       stats[cat].totalPresences += item.presenceCount || 0;
+      // Collecter les participants uniques par catégorie
+      if (item.presences) {
+        item.presences.forEach((presence: EventPresence) => {
+          if (presence.present && presence.twitchLogin) {
+            uniqueLoginsByCategory[cat].add(presence.twitchLogin.toLowerCase());
+          }
+        });
+      }
+    });
+    // Affecter le nombre de participants uniques
+    Object.keys(stats).forEach((cat) => {
+      stats[cat].uniqueParticipants = uniqueLoginsByCategory[cat]?.size || 0;
     });
     return stats;
   };
@@ -383,6 +397,18 @@ export default function RecapPage() {
                       <span className="text-gray-400">Inscriptions:</span>
                       <span className="text-white font-semibold">
                         {stats.registrations}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Participation:</span>
+                      <span className="text-amber-400 font-semibold">
+                        {stats.totalPresences}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Participation unique:</span>
+                      <span className="text-green-400 font-semibold">
+                        {stats.uniqueParticipants}
                       </span>
                     </div>
                     {stats.count > 0 && (
