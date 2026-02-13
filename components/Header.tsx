@@ -15,7 +15,6 @@ const publicLinks = [
   { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
   { href: "/avis-tenf", label: "Témoignages" },
-  { href: "/soutien-nexou", label: "Soutien Nexou" },
   { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
 ];
 
