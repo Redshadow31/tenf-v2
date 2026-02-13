@@ -10,7 +10,7 @@ import {
   type RaidFait,
   type RaidRecu,
 } from '@/lib/raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import { getCurrentAdmin } from '@/lib/adminAuth';
 import { hasPermission } from '@/lib/adminRoles';
 
@@ -77,19 +77,12 @@ export async function POST(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les membres pour la conversion
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-
-    // Créer un map pour la recherche rapide
+    // Charger les membres depuis Supabase pour la conversion
+    const allMembers = await memberRepository.findAll(1000, 0);
     const memberMap = new Map<string, { discordId?: string; twitchLogin?: string }>();
     allMembers.forEach(m => {
-      if (m.twitchLogin) {
-        memberMap.set(m.twitchLogin.toLowerCase(), m);
-      }
-      if (m.discordId) {
-        memberMap.set(m.discordId, m);
-      }
+      if (m.twitchLogin) memberMap.set(m.twitchLogin.toLowerCase(), m);
+      if (m.discordId) memberMap.set(m.discordId, m);
     });
 
     const results = {

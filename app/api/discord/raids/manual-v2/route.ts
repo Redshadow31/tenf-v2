@@ -7,7 +7,7 @@ import {
   getMonthKey,
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 /**
  * POST - Ajoute un raid manuellement
@@ -44,29 +44,13 @@ export async function POST(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Vérifier que les membres existent
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Convertir Twitch Login en Discord ID si nécessaire
+    const allMembers = await memberRepository.findAll(1000, 0);
     let raiderId = raider;
     let targetId = target;
-    
-    const raiderMember = allMembers.find(m => 
-      m.twitchLogin?.toLowerCase() === raider.toLowerCase() || 
-      m.discordId === raider
-    );
-    const targetMember = allMembers.find(m => 
-      m.twitchLogin?.toLowerCase() === target.toLowerCase() || 
-      m.discordId === target
-    );
-
-    if (raiderMember?.discordId) {
-      raiderId = raiderMember.discordId;
-    }
-    if (targetMember?.discordId) {
-      targetId = targetMember.discordId;
-    }
+    const raiderMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === raider.toLowerCase() || m.discordId === raider);
+    const targetMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === target.toLowerCase() || m.discordId === target);
+    if (raiderMember?.discordId) raiderId = raiderMember.discordId;
+    if (targetMember?.discordId) targetId = targetMember.discordId;
 
     // Ajouter le raid (manual = true)
     await addRaidFait(monthKey, raiderId, targetId, date, true, undefined, "manual");
@@ -119,11 +103,7 @@ export async function PUT(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Vérifier que les membres existent
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Convertir Twitch Login en Discord ID si nécessaire
+    const allMembers = await memberRepository.findAll(1000, 0);
     let oldRaiderId = oldRaider;
     let oldTargetId = oldTarget;
     let newRaiderId = newRaider;
@@ -220,23 +200,11 @@ export async function DELETE(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Vérifier que les membres existent
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Convertir Twitch Login en Discord ID si nécessaire
+    const allMembers = await memberRepository.findAll(1000, 0);
     let raiderId = raider;
     let targetId = target;
-    
-    const raiderMember = allMembers.find(m => 
-      m.twitchLogin?.toLowerCase() === raider.toLowerCase() || 
-      m.discordId === raider
-    );
-    const targetMember = allMembers.find(m => 
-      m.twitchLogin?.toLowerCase() === target.toLowerCase() || 
-      m.discordId === target
-    );
-
+    const raiderMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === raider.toLowerCase() || m.discordId === raider);
+    const targetMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === target.toLowerCase() || m.discordId === target);
     if (raiderMember?.discordId) raiderId = raiderMember.discordId;
     if (targetMember?.discordId) targetId = targetMember.discordId;
 

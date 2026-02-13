@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMonthlyRaids, saveMonthlyRaids, getMonthKey, getCurrentMonthKey } from '@/lib/raids';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 /**
  * POST - Ajoute un raid manuellement
@@ -18,10 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Charger les membres
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
+    const allMembers = await memberRepository.findAll(1000, 0);
     // Trouver les membres
     const raider = allMembers.find(m => m.twitchLogin.toLowerCase() === raiderTwitchLogin.toLowerCase());
     const target = allMembers.find(m => m.twitchLogin.toLowerCase() === targetTwitchLogin.toLowerCase());
@@ -149,11 +146,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Charger les membres
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Trouver le membre
+    const allMembers = await memberRepository.findAll(1000, 0);
     const member = allMembers.find(m => m.twitchLogin.toLowerCase() === raiderTwitchLogin.toLowerCase());
     
     if (!member || !member.discordId) {

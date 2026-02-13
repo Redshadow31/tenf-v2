@@ -5,7 +5,7 @@ import {
   getMonthKey, 
   getCurrentMonthKey 
 } from '@/lib/raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,12 +47,8 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
     
-    // Charger les membres pour la conversion
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
-    // Trouver le membre par Twitch login
-    const member = allMembers.find(m => m.twitchLogin.toLowerCase() === memberTwitchLogin.toLowerCase());
+    // Charger le membre depuis Supabase
+    const member = await memberRepository.findByTwitchLogin(memberTwitchLogin);
     
     if (!member || !member.discordId) {
       return NextResponse.json(
@@ -87,13 +83,26 @@ export async function GET(request: NextRequest) {
     
     console.log(`[Raid Details] Raids trouvés pour ${member.twitchLogin}: ${memberRaidsFaits.length} faits, ${memberRaidsRecus.length} reçus`);
     
-    // Créer un map Discord ID -> Member pour la conversion
-    const discordIdToMember = new Map<string, any>();
+    // Créer les maps pour la conversion (depuis Supabase)
+    const allMembers = await memberRepository.findAll(1000, 0);
+    const discordIdToMember = new Map<string, { twitchLogin: string; displayName: string; discordId: string }>();
+    const twitchLoginToMember = new Map<string, { twitchLogin: string; displayName: string; discordId?: string }>();
+    const discordIdToTwitchLogin = new Map<string, string>();
     allMembers.forEach(m => {
+      const info = {
+        twitchLogin: m.twitchLogin,
+        displayName: m.displayName || m.siteUsername || m.twitchLogin,
+        discordId: m.discordId || '',
+      };
       if (m.discordId) {
-        discordIdToMember.set(m.discordId, m);
+        discordIdToMember.set(m.discordId, info);
+        discordIdToTwitchLogin.set(m.discordId, m.twitchLogin.toLowerCase());
       }
+      twitchLoginToMember.set(m.twitchLogin.toLowerCase(), info);
     });
+
+    const getMemberByRaiderOrTarget = (id: string) =>
+      discordIdToMember.get(id) || twitchLoginToMember.get(id?.toLowerCase?.() || '');
     
     // Convertir les RaidFait[] et RaidRecu[] vers le format RaidEntry[] attendu par le modal
     // Format RaidEntry: { targetDiscordId, timestamp, source, messageId? }
@@ -103,16 +112,9 @@ export async function GET(request: NextRequest) {
       source: "twitch-live" | "manual";
       messageId?: string;
     }> = memberRaidsFaits.map(raid => {
-      // Pour les raids faits, targetDiscordId est la cible du raid
       let targetDiscordId = raid.target;
-      
-      // Si target est un Twitch Login, chercher le Discord ID correspondant
-      const targetMember = discordIdToMember.get(raid.target) || 
-                          allMembers.find(m => m.twitchLogin?.toLowerCase() === raid.target.toLowerCase());
-      if (targetMember?.discordId) {
-        targetDiscordId = targetMember.discordId;
-      }
-      
+      const targetMember = getMemberByRaiderOrTarget(raid.target);
+      if (targetMember?.discordId) targetDiscordId = targetMember.discordId;
       return {
         targetDiscordId,
         timestamp: raid.date,
@@ -127,30 +129,15 @@ export async function GET(request: NextRequest) {
       source: "twitch-live" | "manual";
       messageId?: string;
     }> = memberRaidsRecus.map(raid => {
-      // Pour les raids reçus, targetDiscordId est le raider (celui qui a fait le raid)
       let raiderDiscordId = raid.raider;
-      
-      // Si raider est un Twitch Login, chercher le Discord ID correspondant
-      const raiderMember = discordIdToMember.get(raid.raider) || 
-                          allMembers.find(m => m.twitchLogin?.toLowerCase() === raid.raider.toLowerCase());
-      if (raiderMember?.discordId) {
-        raiderDiscordId = raiderMember.discordId;
-      }
-      
+      const raiderMember = getMemberByRaiderOrTarget(raid.raider);
+      if (raiderMember?.discordId) raiderDiscordId = raiderMember.discordId;
       return {
-        targetDiscordId: raiderDiscordId, // Pour les raids reçus, targetDiscordId = raider
+        targetDiscordId: raiderDiscordId,
         timestamp: raid.date,
         source: (raid.source === "manual" ? "manual" : "twitch-live") as "twitch-live" | "manual",
         messageId: raid.messageId,
       };
-    });
-    
-    // Créer un map Discord ID -> Twitch Login pour la conversion (compatibilité)
-    const discordIdToTwitchLogin = new Map<string, string>();
-    allMembers.forEach(m => {
-      if (m.discordId && m.twitchLogin) {
-        discordIdToTwitchLogin.set(m.discordId, m.twitchLogin.toLowerCase());
-      }
     });
     
     return NextResponse.json({

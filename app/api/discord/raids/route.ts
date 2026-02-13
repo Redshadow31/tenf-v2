@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllRaidStats, loadPendingRaids } from '@/lib/raids';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 /**
  * GET - Récupère les stats de raids pour le mois en cours avec conversion Discord ID -> Twitch Login
@@ -26,10 +26,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Charger les membres pour la conversion
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
+    const allMembers = await memberRepository.findAll(1000, 0);
     // Créer un map Discord ID -> Twitch Login
     const discordIdToTwitchLogin = new Map<string, string>();
     const discordIdToDisplayName = new Map<string, string>();

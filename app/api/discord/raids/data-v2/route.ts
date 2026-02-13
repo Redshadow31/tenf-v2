@@ -6,7 +6,7 @@ import {
   getMonthKey,
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,14 +38,17 @@ export async function GET(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    // Charger les membres pour la conversion
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    const discordIdToMember = new Map<string, any>();
+    // Charger les membres depuis Supabase pour la conversion Discord ID / Twitch → displayName
+    const allMembers = await memberRepository.findAll(1000, 0);
+    const discordIdToMember = new Map<string, { twitchLogin: string; displayName: string }>();
+    const twitchLoginToMember = new Map<string, { twitchLogin: string; displayName: string }>();
     allMembers.forEach(m => {
-      if (m.discordId) {
-        discordIdToMember.set(m.discordId, m);
-      }
+      const info = {
+        twitchLogin: m.twitchLogin,
+        displayName: m.displayName || m.siteUsername || m.twitchLogin,
+      };
+      if (m.discordId) discordIdToMember.set(m.discordId, info);
+      twitchLoginToMember.set(m.twitchLogin.toLowerCase(), info);
     });
 
     // Charger les données
@@ -58,29 +61,32 @@ export async function GET(request: NextRequest) {
     raidsRecus = raidsRecus.filter(raid => raid.source !== "discord");
     alerts = alerts.filter(alert => alert.source !== "discord");
 
-    // Convertir les Discord IDs en Twitch Logins pour l'affichage
+    const resolveMember = (id: string) =>
+      discordIdToMember.get(id) || twitchLoginToMember.get(id?.toLowerCase?.() || '');
+
+    // Convertir Discord IDs / Twitch en Twitch Logins et displayNames pour l'affichage
     const raidsFaitsFormatted = raidsFaits.map(raid => ({
       ...raid,
-      raiderTwitchLogin: discordIdToMember.get(raid.raider)?.twitchLogin || raid.raider,
-      targetTwitchLogin: discordIdToMember.get(raid.target)?.twitchLogin || raid.target,
-      raiderDisplayName: discordIdToMember.get(raid.raider)?.displayName || raid.raider,
-      targetDisplayName: discordIdToMember.get(raid.target)?.displayName || raid.target,
+      raiderTwitchLogin: resolveMember(raid.raider)?.twitchLogin || raid.raider,
+      targetTwitchLogin: resolveMember(raid.target)?.twitchLogin || raid.target,
+      raiderDisplayName: resolveMember(raid.raider)?.displayName || raid.raider,
+      targetDisplayName: resolveMember(raid.target)?.displayName || raid.target,
     }));
 
     const raidsRecusFormatted = raidsRecus.map(raid => ({
       ...raid,
-      raiderTwitchLogin: discordIdToMember.get(raid.raider)?.twitchLogin || raid.raider,
-      targetTwitchLogin: discordIdToMember.get(raid.target)?.twitchLogin || raid.target,
-      raiderDisplayName: discordIdToMember.get(raid.raider)?.displayName || raid.raider,
-      targetDisplayName: discordIdToMember.get(raid.target)?.displayName || raid.target,
+      raiderTwitchLogin: resolveMember(raid.raider)?.twitchLogin || raid.raider,
+      targetTwitchLogin: resolveMember(raid.target)?.twitchLogin || raid.target,
+      raiderDisplayName: resolveMember(raid.raider)?.displayName || raid.raider,
+      targetDisplayName: resolveMember(raid.target)?.displayName || raid.target,
     }));
 
     const alertsFormatted = alerts.map(alert => ({
       ...alert,
-      raiderTwitchLogin: discordIdToMember.get(alert.raider)?.twitchLogin || alert.raider,
-      targetTwitchLogin: discordIdToMember.get(alert.target)?.twitchLogin || alert.target,
-      raiderDisplayName: discordIdToMember.get(alert.raider)?.displayName || alert.raider,
-      targetDisplayName: discordIdToMember.get(alert.target)?.displayName || alert.target,
+      raiderTwitchLogin: resolveMember(alert.raider)?.twitchLogin || alert.raider,
+      targetTwitchLogin: resolveMember(alert.target)?.twitchLogin || alert.target,
+      raiderDisplayName: resolveMember(alert.raider)?.displayName || alert.raider,
+      targetDisplayName: resolveMember(alert.target)?.displayName || alert.target,
     }));
 
     // Calculer les statistiques
@@ -97,11 +103,11 @@ export async function GET(request: NextRequest) {
     const topRaiders = Object.entries(raiderCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([discordId, count], index) => ({
+      .map(([id, count], index) => ({
         rank: index + 1,
-        discordId,
-        twitchLogin: discordIdToMember.get(discordId)?.twitchLogin || discordId,
-        displayName: discordIdToMember.get(discordId)?.displayName || discordId,
+        discordId: id,
+        twitchLogin: resolveMember(id)?.twitchLogin || id,
+        displayName: resolveMember(id)?.displayName || id,
         count,
       }));
     const topRaider = topRaiders[0] || null;
@@ -114,11 +120,11 @@ export async function GET(request: NextRequest) {
     const topTargets = Object.entries(targetCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([discordId, count], index) => ({
+      .map(([id, count], index) => ({
         rank: index + 1,
-        discordId,
-        twitchLogin: discordIdToMember.get(discordId)?.twitchLogin || discordId,
-        displayName: discordIdToMember.get(discordId)?.displayName || discordId,
+        discordId: id,
+        twitchLogin: resolveMember(id)?.twitchLogin || id,
+        displayName: resolveMember(id)?.displayName || id,
         count,
       }));
     const topTarget = topTargets[0] || null;

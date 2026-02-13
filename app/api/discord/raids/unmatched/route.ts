@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadUnmatchedRaids, removeUnmatchedRaid, recordRaidByDiscordId } from '@/lib/raids';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import { getMonthKey } from '@/lib/raids';
 
 /**
@@ -64,10 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Vérifier que les membres existent
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
-    
+    const allMembers = await memberRepository.findAll(1000, 0);
     const raider = allMembers.find(m => m.discordId === raiderDiscordId);
     const target = allMembers.find(m => m.discordId === targetDiscordId);
     
