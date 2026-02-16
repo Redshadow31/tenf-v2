@@ -102,6 +102,11 @@ export async function POST(request: NextRequest) {
         skipped++;
         continue;
       }
+      // Ignorer les placeholders "discord_[ID]" (créés par le bot quand le login Twitch était inconnu)
+      if (member.twitchLogin.toLowerCase().startsWith("discord_")) {
+        skipped++;
+        continue;
+      }
 
       try {
         // Vérifier si le membre existe déjà
@@ -134,13 +139,15 @@ export async function POST(request: NextRequest) {
           integrationDate: member.integrationDate,
           roleHistory: member.roleHistory || [],
           parrain: member.parrain,
+          profileValidationStatus: "valide", // Membres migrés = visibles sur /membres
         });
 
         migrated++;
       } catch (error) {
-        const errorMsg = `Erreur migration ${member.twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+        const err = error instanceof Error ? error : new Error(String(error));
+        const errorMsg = `Erreur migration ${member.twitchLogin}: ${err.message}`;
         errors.push(errorMsg);
-        console.error(errorMsg, error);
+        console.error(`[Migration Members] ${errorMsg}`, err);
       }
     }
 

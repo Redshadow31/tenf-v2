@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { memberRepository } from "@/lib/repositories";
+import { getTwitchUsers } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
@@ -78,9 +79,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Récupérer tous les membres depuis Supabase
-    // Récupérer tous les membres (limite élevée pour l'admin)
     const members = await memberRepository.findAll(1000, 0);
-    const response = NextResponse.json({ members });
+
+    // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
+    // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
+    const twitchLogins = members.map((m) => m.twitchLogin).filter(Boolean) as string[];
+    let avatarMap = new Map<string, string>();
+    if (twitchLogins.length > 0) {
+      try {
+        const twitchUsers = await getTwitchUsers(twitchLogins);
+        twitchUsers.forEach((u) => {
+          if (u.profile_image_url) avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
+        });
+      } catch (e) {
+        console.warn("[Admin Members] Erreur récupération avatars Twitch:", e);
+      }
+    }
+
+    // Enrichir chaque membre avec son avatar
+    const membersWithAvatars = members.map((m) => {
+      let avatar = avatarMap.get((m.twitchLogin || "").toLowerCase());
+      if (!avatar && m.discordId) {
+        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(m.discordId) % 5}.png`;
+      }
+      if (!avatar) {
+        avatar = `https://placehold.co/64x64?text=${(m.displayName || m.twitchLogin || "?").charAt(0).toUpperCase()}`;
+      }
+      return { ...m, avatar };
+    });
+
+    const response = NextResponse.json({ members: membersWithAvatars });
     
     // Désactiver le cache côté client
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -179,6 +207,7 @@ export async function POST(request: NextRequest) {
       badges: badges || [],
       description,
       customBio,
+      profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
       createdAt: new Date(),
       updatedAt: new Date(),
       updatedBy: admin.discordId,

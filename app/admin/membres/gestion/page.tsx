@@ -198,41 +198,11 @@ export default function GestionMembresPage() {
           const centralData = await centralResponse.json();
           const centralMembers = centralData.members || [];
           
-          // Récupérer tous les avatars Twitch en batch depuis l'API publique
-          const publicMembersResponse = await fetch("/api/members/public", {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache',
-            },
-          });
-          
-          let avatarMap = new Map<string, string>();
-          if (publicMembersResponse.ok) {
-            const publicData = await publicMembersResponse.json();
-            publicData.members?.forEach((m: any) => {
-              if (m.avatar) {
-                avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
-              }
-            });
-          }
-          
-          // Afficher tous les membres (actifs et inactifs) pour permettre de réactiver une chaîne désactivée
+          // L'API admin renvoie déjà les avatars Twitch pour tous les membres (y compris non validés)
           const allMembers = centralMembers;
           
-          // Mapper les membres centralisés vers le format Member avec avatars Twitch
           const mappedMembers: Member[] = allMembers.map((member: any, index: number) => {
-            // Récupérer l'avatar depuis le map (déjà récupéré en batch)
-            let avatar = avatarMap.get(member.twitchLogin.toLowerCase());
-            
-            // Si pas d'avatar Twitch, utiliser Discord en fallback
-            if (!avatar && member.discordId) {
-              avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-            }
-            
-            // Dernier fallback : placeholder
-            if (!avatar) {
-              avatar = `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
-            }
+            const avatar = member.avatar || `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
             
             // Récupérer les stats de raids
             const raidStats = raidsStats[member.twitchLogin.toLowerCase()] || { done: 0, received: 0 };
@@ -365,44 +335,20 @@ export default function GestionMembresPage() {
           .map((m: any) => [m.twitchLogin?.toLowerCase(), m])
       );
 
-      // Récupérer tous les avatars Twitch en batch depuis l'API publique
-      const publicMembersResponse = await fetch("/api/members/public", {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      
-      let avatarMap = new Map<string, string>();
-      if (publicMembersResponse.ok) {
-        const publicData = await publicMembersResponse.json();
-        publicData.members?.forEach((m: any) => {
-          if (m.avatar) {
-            avatarMap.set(m.twitchLogin.toLowerCase(), m.avatar);
-          }
-        });
-      }
-
-      // Mapper les membres Discord vers le format Member avec avatars Twitch
+      // Mapper les membres Discord vers le format Member
+      // L'API admin renvoie déjà les avatars pour tous les membres centralisés
       const mappedMembers: Member[] = discordData.members.map((discordMember: any, index: number) => {
-        // Chercher le membre centralisé par Discord ID d'abord
         let centralMember = centralByDiscordId.get(discordMember.discordId);
-        
-        // Si pas trouvé par Discord ID, chercher par Twitch login
         if (!centralMember && discordMember.twitchLogin) {
           centralMember = centralByTwitchLogin.get(discordMember.twitchLogin.toLowerCase());
         }
         
-        // Utiliser l'ID Discord de la base de données centralisée si disponible, sinon celui de Discord
         const discordId = centralMember?.discordId || discordMember.discordId;
         
-        // Récupérer l'avatar depuis le map (déjà récupéré en batch) ou utiliser Discord
-        let avatar = discordMember.avatar; // Fallback Discord
-        if (discordMember.twitchLogin) {
-          const twitchAvatar = avatarMap.get(discordMember.twitchLogin.toLowerCase());
-          if (twitchAvatar) {
-            avatar = twitchAvatar;
-          }
+        // Avatar : priorité centralMember.avatar (Twitch), sinon discordMember.avatar (Discord)
+        let avatar = centralMember?.avatar || discordMember.avatar;
+        if (!avatar) {
+          avatar = `https://placehold.co/64x64?text=${(discordMember.discordNickname || discordMember.discordUsername || "?").charAt(0).toUpperCase()}`;
         }
         
         return {
