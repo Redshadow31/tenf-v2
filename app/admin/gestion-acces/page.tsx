@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Plus, Trash2, Shield, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Users, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle2, X } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AdminAccess {
@@ -33,6 +33,8 @@ export default function GestionAccesPage() {
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
   const [searchingDiscord, setSearchingDiscord] = useState(false);
+  const [showAccessListModal, setShowAccessListModal] = useState(false);
+  const [verifyingAccess, setVerifyingAccess] = useState(false);
 
   // Vérifier si l'utilisateur est fondateur
   useEffect(() => {
@@ -181,6 +183,20 @@ export default function GestionAccesPage() {
       console.error("Error adding access:", err);
       setError(err.message || "Erreur lors de l'ajout de l'accès");
       setSuccess(null);
+    }
+  }
+
+  async function handleVerifyAccess() {
+    try {
+      setVerifyingAccess(true);
+      setError(null);
+      await loadAccessList();
+      setShowAccessListModal(true);
+    } catch (err) {
+      console.error("Error verifying access:", err);
+      setError("Impossible de charger la liste des accès");
+    } finally {
+      setVerifyingAccess(false);
     }
   }
 
@@ -426,12 +442,30 @@ export default function GestionAccesPage() {
 
         {/* Liste des accès */}
         <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-          <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: 'var(--color-border)' }}>
-            <Users className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
-              Membres avec accès au dashboard ({accessList.length})
-            </h2>
+          <div className="p-4 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
+                Membres autorisés au dashboard admin ({accessList.length})
+              </h2>
+            </div>
+            <button
+              onClick={handleVerifyAccess}
+              disabled={verifyingAccess || loading}
+              className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                color: 'white',
+              }}
+              title="Vérifier et afficher la liste des personnes autorisées via cette page"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {verifyingAccess ? "Vérification..." : "Vérifier qui a accès"}
+            </button>
           </div>
+          <p className="px-4 pb-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            L'accès au dashboard admin est accordé uniquement aux personnes présentes dans cette liste (ajout/suppression sur cette page).
+          </p>
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -563,6 +597,89 @@ export default function GestionAccesPage() {
             </div>
           )}
         </div>
+
+        {/* Modal : liste des personnes ayant accès au dashboard admin */}
+        {showAccessListModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+            onClick={() => setShowAccessListModal(false)}
+          >
+            <div
+              className="rounded-xl border shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col"
+              style={{
+                backgroundColor: "var(--color-card)",
+                borderColor: "var(--color-border)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: "var(--color-border)" }}>
+                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: "var(--color-text)" }}>
+                  <ShieldCheck className="w-5 h-5" style={{ color: "var(--color-primary)" }} />
+                  Personnes autorisées au dashboard admin
+                </h3>
+                <button
+                  onClick={() => setShowAccessListModal(false)}
+                  className="p-2 rounded-lg hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                  aria-label="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="px-4 pt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                L'accès au dashboard admin est accordé uniquement aux personnes présentes dans la liste gérée sur cette page (Gestion des accès). Les rôles indiquent le niveau de permission de chaque personne autorisée.
+              </p>
+              <div className="p-4 overflow-y-auto flex-1">
+                <ul className="space-y-3">
+                  {accessList.map((access) => (
+                    <li
+                      key={access.discordId}
+                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      style={{
+                        backgroundColor: "var(--color-surface)",
+                        borderColor: "var(--color-border)",
+                      }}
+                    >
+                      {access.avatar ? (
+                        <img
+                          src={access.avatar}
+                          alt={access.username || "User"}
+                          className="w-10 h-10 rounded-full flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                          style={{
+                            background: "linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))",
+                          }}
+                        >
+                          {(access.username || "U").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate" style={{ color: "var(--color-text)" }}>
+                          {access.username || "Inconnu"}
+                        </div>
+                        <div className="text-xs truncate" style={{ color: "var(--color-text-secondary)" }}>
+                          {access.discordId}
+                        </div>
+                      </div>
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${getRoleBadgeClass(access.role)}`}
+                      >
+                        {ROLE_LABELS[access.role] || access.role}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-4 text-sm text-center" style={{ color: "var(--color-text-secondary)" }}>
+                  Total : {accessList.length} personne{accessList.length !== 1 ? "s" : ""} autorisée{accessList.length !== 1 ? "s" : ""} via cette page
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
