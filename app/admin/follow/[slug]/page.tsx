@@ -209,25 +209,6 @@ export default function FollowMemberPage() {
     }
   }
 
-  async function checkTwitchConnection() {
-    try {
-      const response = await fetch('/api/auth/twitch/red/status', {
-        cache: 'no-store',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTwitchConnected(data.connected);
-      }
-    } catch (error) {
-      console.error("Erreur vérification connexion Twitch:", error);
-      setTwitchConnected(false);
-    }
-  }
-
-  async function handleConnectTwitch() {
-    window.location.href = '/api/auth/twitch/red/start';
-  }
-
   function handleJeSuisChange(twitchLogin: string, value: boolean) {
     // Normaliser le login pour être cohérent
     const normalizedLogin = (twitchLogin || '').toLowerCase().trim();
