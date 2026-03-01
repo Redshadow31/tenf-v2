@@ -35,6 +35,14 @@ interface MemberLite {
   displayName?: string;
 }
 
+interface DuplicateEntry {
+  key: string;
+  raider: string;
+  target: string;
+  date: string;
+  count: number;
+}
+
 function isManualRaid(raid: RaidEntry): boolean {
   const source = raid.source || (raid.manual ? "manual" : "twitch-live");
   if (source === "discord") return false;
@@ -60,6 +68,9 @@ export default function Raids2Page() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<{ twitchLogin: string; displayName: string } | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [duplicatesList, setDuplicatesList] = useState<DuplicateEntry[]>([]);
+  const [deduplicating, setDeduplicating] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -232,6 +243,71 @@ export default function Raids2Page() {
     }
   };
 
+  function checkDuplicates() {
+    if (manualRaidsDone.length === 0) {
+      setDuplicatesList([]);
+      setShowDuplicatesModal(true);
+      return;
+    }
+
+    const byKey = new Map<string, RaidEntry[]>();
+    for (const raid of manualRaidsDone) {
+      const raider = raid.raiderTwitchLogin || raid.raider;
+      const target = raid.targetTwitchLogin || raid.target;
+      const date = raid.date;
+      const key = `${raider}|${target}|${date}`;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(raid);
+    }
+
+    const duplicates = Array.from(byKey.entries())
+      .filter(([, items]) => items.length > 1)
+      .map(([key, items]) => {
+        const first = items[0];
+        return {
+          key,
+          raider: first.raiderTwitchLogin || first.raider,
+          target: first.targetTwitchLogin || first.target,
+          date: first.date,
+          count: items.length,
+        };
+      });
+
+    setDuplicatesList(duplicates);
+    setShowDuplicatesModal(true);
+  }
+
+  async function removeDuplicates() {
+    if (duplicatesList.length === 0) return;
+    if (!confirm(`Supprimer les doublons pour ${selectedMonth} ?\n\n${duplicatesList.length} groupe(s) de doublons seront reduits a une seule entree.`)) {
+      return;
+    }
+
+    try {
+      setDeduplicating(true);
+      const response = await fetch("/api/discord/raids/deduplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: selectedMonth }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(`Erreur: ${data?.error || "Echec de la deduplication"}`);
+        return;
+      }
+
+      alert(`✅ ${data?.message || "Doublons supprimes"}\n\nEntrees supprimees: ${data?.removed?.total ?? 0}`);
+      setShowDuplicatesModal(false);
+      setDuplicatesList([]);
+      await loadData(selectedMonth);
+    } catch (error) {
+      alert(`Erreur: ${error instanceof Error ? error.message : "Erreur reseau"}`);
+    } finally {
+      setDeduplicating(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -270,6 +346,12 @@ export default function Raids2Page() {
             className="px-3 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700"
           >
             Import manuel
+          </button>
+          <button
+            onClick={checkDuplicates}
+            className="px-3 py-2 rounded-lg text-sm font-semibold bg-amber-600/20 text-amber-300 border border-amber-500/40 hover:bg-amber-600/30"
+          >
+            Verifier doublons
           </button>
         </div>
       </div>
@@ -464,6 +546,61 @@ export default function Raids2Page() {
         onImportComplete={() => loadData(selectedMonth)}
         getMemberDisplayName={getMemberDisplayName}
       />
+
+      {showDuplicatesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowDuplicatesModal(false)}>
+          <div
+            className="bg-[#1a1a1d] border border-gray-700 rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-bold text-white">Verification des doublons</h2>
+              <p className="text-gray-400 text-sm mt-1">Meme raider, meme cible, meme date/heure</p>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {duplicatesList.length === 0 ? (
+                <p className="text-gray-300">Aucun doublon trouve pour ce mois.</p>
+              ) : (
+                <>
+                  <p className="text-gray-300 mb-4">
+                    {duplicatesList.length} groupe(s) de doublons detecte(s). Tu peux les supprimer en conservant une seule entree par groupe.
+                  </p>
+                  <ul className="space-y-2">
+                    {duplicatesList.map((dup) => (
+                      <li key={dup.key} className="flex items-center justify-between gap-3 py-2 px-3 bg-gray-800/50 rounded-lg text-sm">
+                        <span className="text-white">
+                          {getMemberDisplayName(dup.raider)} → {getMemberDisplayName(dup.target)}
+                        </span>
+                        <span className="text-gray-400 shrink-0">{new Date(dup.date).toLocaleString("fr-FR")}</span>
+                        <span className="text-amber-400 font-medium shrink-0">{dup.count} entree(s)</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDuplicatesModal(false)}
+                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium"
+              >
+                Fermer
+              </button>
+              {duplicatesList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={removeDuplicates}
+                  disabled={deduplicating}
+                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium"
+                >
+                  {deduplicating ? "Suppression..." : "Supprimer les doublons"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
