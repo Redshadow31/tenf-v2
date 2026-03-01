@@ -69,12 +69,12 @@ export function calculateTotalAvecBonus(
 
 /**
  * Détermine le statut auto basé sur la note finale
- * - VIP si note finale > 16
+ * - VIP si note finale >= 16
  * - À surveiller si note finale < 5
  * - Neutre sinon
  */
 export function getAutoStatus(finalScore: number): 'vip' | 'surveiller' | 'neutre' {
-  if (finalScore > 16) return 'vip';
+  if (finalScore >= 16) return 'vip';
   if (finalScore < 5) return 'surveiller';
   return 'neutre';
 }

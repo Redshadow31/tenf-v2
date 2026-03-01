@@ -92,7 +92,7 @@ interface GeneralStats {
   spotlightParticipants: number; // Nombre de participants Spotlights
   
   // VIP / Alertes
-  vipCount: number; // Membres avec note finale > 16
+  vipCount: number; // Membres avec note finale >= 16
   surveillerCount: number; // Membres avec note finale < 5
 }
 
@@ -366,7 +366,9 @@ export default function EvaluationDPage() {
         
         // Calculs
         const { total: totalHorsBonus } = calculateTotalHorsBonus(spotlightPoints, raidsPoints, discordPoints, eventsPoints, followPoints);
-        const { total: finalScore } = calculateTotalAvecBonus(totalHorsBonus, bonusTotal.timezoneBonus, bonusTotal.moderationBonus);
+        const { total: calculatedFinalScore } = calculateTotalAvecBonus(totalHorsBonus, bonusTotal.timezoneBonus, bonusTotal.moderationBonus);
+        const manualFinalScore = currentFinalNotesData?.finalNotes?.[login]?.finalNote;
+        const finalScore = manualFinalScore ?? calculatedFinalScore;
         const autoStatus = getAutoStatus(finalScore);
         
         evaluationData.push({
@@ -455,7 +457,7 @@ export default function EvaluationDPage() {
     const spotlightPresenceRate = data.length > 0 ? (spotlightParticipants / data.length) * 100 : 0;
     
     // VIP / À surveiller
-    const vipCount = data.filter(m => m.finalScore > 16).length;
+    const vipCount = data.filter(m => m.finalScore >= 16).length;
     const surveillerCount = data.filter(m => m.finalScore < 5).length;
     
     setGeneralStats({
@@ -1161,7 +1163,7 @@ export default function EvaluationDPage() {
         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
           <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
             <strong>Note finale:</strong> Total hors bonus (/25) + Bonus (/7) = Note finale (/32). 
-            Une note finale &gt; 16 indique un statut VIP potentiel, une note &lt; 5 nécessite une attention particulière.
+            Une note finale &gt;= 16 indique un statut VIP potentiel, une note &lt; 5 nécessite une attention particulière.
           </p>
         </div>
       </div>
@@ -1246,12 +1248,18 @@ export default function EvaluationDPage() {
                   const currentTimezoneBonus = bonusInEdit?.timezone ?? member.timezoneBonusEnabled;
                   const currentModerationBonus = bonusInEdit?.moderation ?? member.moderationBonus;
                   const bonusTotal = (currentTimezoneBonus ? TIMEZONE_BONUS_POINTS : 0) + currentModerationBonus;
-                  const { total: finalScore } = calculateTotalAvecBonus(member.totalHorsBonus, currentTimezoneBonus ? TIMEZONE_BONUS_POINTS : 0, currentModerationBonus);
-                  const autoStatus = getAutoStatus(finalScore);
                   
                   // Notes finales et statuts en cours d'édition
                   const normalizedLogin = member.twitchLogin?.toLowerCase() || '';
                   const finalNoteInEdit = editingFinalNotes[normalizedLogin];
+                  const savedManualFinal = currentMonthFinalNotes[normalizedLogin]?.finalNote;
+                  const { total: calculatedFinalScore } = calculateTotalAvecBonus(
+                    member.totalHorsBonus,
+                    currentTimezoneBonus ? TIMEZONE_BONUS_POINTS : 0,
+                    currentModerationBonus
+                  );
+                  const finalScore = finalNoteInEdit ?? savedManualFinal ?? calculatedFinalScore;
+                  const autoStatus = getAutoStatus(finalScore);
                   const statusInEdit = editingStatuses[member.twitchLogin];
                   const roleInEdit = editingRoles[member.twitchLogin];
                   const vipInEdit = editingVips[normalizedLogin];
@@ -1387,7 +1395,7 @@ export default function EvaluationDPage() {
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
                         {bonusTotal.toFixed(2)}
                       </td>
-                      <td className={`px-4 ${compactMode ? "py-1.5" : "py-3"} text-center font-bold sticky right-0 z-10`} style={{ color: finalScore > 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)', backgroundColor: index % 2 === 0 ? 'var(--color-card)' : 'var(--color-surface)' }}>
+                      <td className={`px-4 ${compactMode ? "py-1.5" : "py-3"} text-center font-bold sticky right-0 z-10`} style={{ color: finalScore >= 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)', backgroundColor: index % 2 === 0 ? 'var(--color-card)' : 'var(--color-surface)' }}>
                         {finalScore.toFixed(2)} / 32
                       </td>
                       <td className="px-4 py-3 text-center font-medium">
