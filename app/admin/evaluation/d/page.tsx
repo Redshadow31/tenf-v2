@@ -54,6 +54,24 @@ interface MemberEvaluationData {
   followScore?: number;
 }
 
+interface FinalNoteRecord {
+  finalNote?: number;
+  savedAt: string;
+  savedBy: string;
+}
+
+interface OverrideLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  actorDiscordId: string;
+  actorUsername?: string;
+  resourceId?: string;
+  metadata?: Record<string, any>;
+  previousValue?: any;
+  newValue?: any;
+}
+
 interface GeneralStats {
   // Moyennes par domaine
   avgSpotlight: number;
@@ -76,6 +94,14 @@ interface GeneralStats {
   // VIP / Alertes
   vipCount: number; // Membres avec note finale > 16
   surveillerCount: number; // Membres avec note finale < 5
+}
+
+function getPreviousMonthKey(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  const prevYear = date.getFullYear();
+  const prevMonth = String(date.getMonth() + 1).padStart(2, "0");
+  return `${prevYear}-${prevMonth}`;
 }
 
 // ============================================
@@ -116,15 +142,23 @@ export default function EvaluationDPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [selectedPreset, setSelectedPreset] = useState<"all" | "surveiller" | "vip" | "manual" | "bonus">("all");
+  const [activeTab, setActiveTab] = useState<"pilotage" | "tableau" | "historique">("pilotage");
+  const [compactMode, setCompactMode] = useState(false);
+  const [showAdvancedColumns, setShowAdvancedColumns] = useState(false);
   
   // États pour les bonus (édition en ligne)
   const [editingBonuses, setEditingBonuses] = useState<Record<string, { timezone: boolean; moderation: number }>>({});
   
   // États pour les notes finales manuelles et statuts (édition en ligne)
   const [editingFinalNotes, setEditingFinalNotes] = useState<Record<string, number | null>>({});
+  const [editingFinalNoteReasons, setEditingFinalNoteReasons] = useState<Record<string, string>>({});
   const [editingStatuses, setEditingStatuses] = useState<Record<string, boolean>>({});
   const [editingRoles, setEditingRoles] = useState<Record<string, string>>({}); // Pour forcer Communauté/VIP
   const [editingVips, setEditingVips] = useState<Record<string, boolean>>({}); // Pour forcer VIP (isVip)
+  const [currentMonthFinalNotes, setCurrentMonthFinalNotes] = useState<Record<string, FinalNoteRecord>>({});
+  const [previousMonthFinalNotes, setPreviousMonthFinalNotes] = useState<Record<string, FinalNoteRecord>>({});
+  const [overrideLogs, setOverrideLogs] = useState<OverrideLog[]>([]);
 
   useEffect(() => {
     async function checkAccess() {
@@ -158,6 +192,8 @@ export default function EvaluationDPage() {
     
     setLoadingData(true);
     try {
+      const previousMonth = getPreviousMonthKey(selectedMonth);
+
       // Charger toutes les données en parallèle
       const [
         membersResponse,
@@ -167,6 +203,9 @@ export default function EvaluationDPage() {
         eventsResponse,
         followResponse,
         bonusesResponse,
+        currentFinalNotesResponse,
+        previousFinalNotesResponse,
+        overridesResponse,
       ] = await Promise.all([
         fetch("/api/admin/members", { cache: 'no-store' }),
         fetch(`/api/evaluations/raids/points?month=${selectedMonth}`, { cache: 'no-store' }),
@@ -175,6 +214,9 @@ export default function EvaluationDPage() {
         fetch(`/api/admin/events/presence?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
         fetch(`/api/evaluations/follow/points?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
         fetch(`/api/evaluations/bonus?month=${selectedMonth}`, { cache: 'no-store' }),
+        fetch(`/api/evaluations/synthesis/save?month=${selectedMonth}`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ finalNotes: {} }) })),
+        fetch(`/api/evaluations/synthesis/save?month=${previousMonth}`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ finalNotes: {} }) })),
+        fetch(`/api/evaluations/synthesis/overrides?month=${selectedMonth}&limit=200`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ logs: [] }) })),
       ]);
 
       // Parser les réponses
@@ -185,6 +227,13 @@ export default function EvaluationDPage() {
       const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] };
       const followPointsData = followResponse.ok ? (await followResponse.json()).points || {} : {};
       const bonusesData = bonusesResponse.ok ? (await bonusesResponse.json()).bonuses || {} : {};
+      const currentFinalNotesData = currentFinalNotesResponse.ok ? await currentFinalNotesResponse.json() : { finalNotes: {} };
+      const previousFinalNotesData = previousFinalNotesResponse.ok ? await previousFinalNotesResponse.json() : { finalNotes: {} };
+      const overridesData = overridesResponse.ok ? await overridesResponse.json() : { logs: [] };
+
+      setCurrentMonthFinalNotes(currentFinalNotesData.finalNotes || {});
+      setPreviousMonthFinalNotes(previousFinalNotesData.finalNotes || {});
+      setOverrideLogs(overridesData.logs || []);
 
       // Construire les données d'évaluation pour tous les membres (actifs ET inactifs/Communauté)
       const evaluationData: MemberEvaluationData[] = [];
@@ -469,6 +518,7 @@ export default function EvaluationDPage() {
           updates.push({
             twitchLogin: normalizedLogin,
             finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
+            finalNoteReason: editingFinalNoteReasons[login] || editingFinalNoteReasons[normalizedLogin] || "Override manuel depuis /admin/evaluation/d",
             isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
             role: editingRoles[login] !== undefined ? editingRoles[login] : undefined,
             isVip: editingVips[normalizedLogin] !== undefined ? editingVips[normalizedLogin] : undefined,
@@ -494,6 +544,7 @@ export default function EvaluationDPage() {
       await loadAllData();
       setEditingBonuses({});
       setEditingFinalNotes({});
+      setEditingFinalNoteReasons({});
       setEditingStatuses({});
       setEditingRoles({});
       setEditingVips({});
@@ -547,6 +598,14 @@ export default function EvaluationDPage() {
       };
     });
   }
+
+  function handleFinalNoteReasonChange(login: string, reason: string) {
+    const normalizedLogin = login.toLowerCase();
+    setEditingFinalNoteReasons((prev) => ({
+      ...prev,
+      [normalizedLogin]: reason,
+    }));
+  }
   
   function handleStatusChange(login: string, isActive: boolean) {
     setEditingStatuses(prev => ({
@@ -596,6 +655,7 @@ export default function EvaluationDPage() {
       const updates = Object.keys(editingFinalNotes).map(login => ({
         twitchLogin: login.toLowerCase(), // Normaliser en lowercase pour correspondre à l'API
         finalNote: editingFinalNotes[login],
+        finalNoteReason: editingFinalNoteReasons[login] || "Override manuel depuis /admin/evaluation/d",
       }));
       
       const response = await fetch('/api/evaluations/synthesis/save', {
@@ -615,6 +675,7 @@ export default function EvaluationDPage() {
       // Recharger les données
       await loadAllData();
       setEditingFinalNotes({});
+      setEditingFinalNoteReasons({});
       alert('✅ Notes finales manuelles enregistrées avec succès');
     } catch (error) {
       console.error("Erreur lors de la sauvegarde des notes finales manuelles:", error);
@@ -631,6 +692,105 @@ export default function EvaluationDPage() {
            Object.keys(editingStatuses).length +
            Object.keys(editingRoles).length +
            Object.keys(editingVips).length;
+  }
+
+  function getPendingChangesBreakdown() {
+    return {
+      bonuses: Object.keys(editingBonuses).length,
+      notes: Object.keys(editingFinalNotes).length,
+      statuts: Object.keys(editingStatuses).length,
+      roles: Object.keys(editingRoles).length,
+      vip: Object.keys(editingVips).length,
+    };
+  }
+
+  function getDataReliabilityBadge(member: MemberEvaluationData): { label: string; color: string; bg: string } {
+    const missingSources = [
+      member.spotlightTotal === 0,
+      member.eventsTotal === 0,
+      member.followScore === 0 && member.followPoints === 0,
+    ].filter(Boolean).length;
+
+    if (missingSources >= 2) {
+      return { label: "Partielle", color: "#f59e0b", bg: "#f59e0b20" };
+    }
+    if (missingSources === 1) {
+      return { label: "A surveiller", color: "#06b6d4", bg: "#06b6d420" };
+    }
+    return { label: "Complete", color: "#10b981", bg: "#10b98120" };
+  }
+
+  function getEntraideScore(member: MemberEvaluationData): { value: number; max: number } {
+    const eventsNormalized = (member.eventsPoints / 2) * 2;
+    const value = member.raidsPoints + member.discordPoints + eventsNormalized + member.followPoints;
+    return { value, max: 17 };
+  }
+
+  function getTrendDelta(member: MemberEvaluationData): number | null {
+    const login = member.twitchLogin.toLowerCase();
+    const previous = previousMonthFinalNotes[login]?.finalNote;
+    if (previous === undefined || previous === null) return null;
+    const inEdit = editingFinalNotes[login];
+    const current = inEdit ?? currentMonthFinalNotes[login]?.finalNote ?? member.finalScore;
+    if (current === undefined || current === null) return null;
+    return Math.round((current - previous) * 100) / 100;
+  }
+
+  function exportFilteredCsv() {
+    const headers = [
+      "Membre",
+      "Twitch",
+      "Role",
+      "Actif",
+      "Spotlight",
+      "Raids",
+      "Discord",
+      "Events",
+      "Follow",
+      "Total_hors_bonus",
+      "Bonus_total",
+      "Note_finale",
+      "Delta_M_1",
+      "Fiabilite",
+    ];
+    const rows = filteredMembers.map((member) => {
+      const normalizedLogin = member.twitchLogin.toLowerCase();
+      const bonusInEdit = editingBonuses[member.twitchLogin];
+      const timezoneBonus = bonusInEdit?.timezone ?? member.timezoneBonusEnabled;
+      const moderationBonus = bonusInEdit?.moderation ?? member.moderationBonus;
+      const bonusTotal = (timezoneBonus ? TIMEZONE_BONUS_POINTS : 0) + moderationBonus;
+      const finalInEdit = editingFinalNotes[normalizedLogin];
+      const finalScore = finalInEdit ?? currentMonthFinalNotes[normalizedLogin]?.finalNote ?? member.finalScore;
+      const delta = getTrendDelta(member);
+      const reliability = getDataReliabilityBadge(member).label;
+      return [
+        member.displayName,
+        member.twitchLogin,
+        member.role,
+        member.isActive ? "oui" : "non",
+        member.spotlightPoints.toFixed(2),
+        member.raidsPoints.toFixed(2),
+        member.discordPoints.toFixed(2),
+        member.eventsPoints.toFixed(2),
+        member.followPoints.toFixed(2),
+        member.totalHorsBonus.toFixed(2),
+        bonusTotal.toFixed(2),
+        (finalScore ?? 0).toFixed(2),
+        delta !== null ? delta.toFixed(2) : "",
+        reliability,
+      ];
+    });
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `evaluation-d-${selectedMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function getMonthOptions(): string[] {
@@ -672,9 +832,38 @@ export default function EvaluationDPage() {
         m.role.toLowerCase().includes(query)
       );
     }
+
+    if (selectedPreset !== "all") {
+      filtered = filtered.filter((m) => {
+        const normalizedLogin = m.twitchLogin.toLowerCase();
+        const bonusInEdit = editingBonuses[m.twitchLogin];
+        const timezoneBonus = bonusInEdit?.timezone ?? m.timezoneBonusEnabled;
+        const moderationBonus = bonusInEdit?.moderation ?? m.moderationBonus;
+        const bonusTotal = (timezoneBonus ? TIMEZONE_BONUS_POINTS : 0) + moderationBonus;
+        const finalInEdit = editingFinalNotes[normalizedLogin];
+        const displayedFinal = finalInEdit ?? (currentMonthFinalNotes[normalizedLogin]?.finalNote ?? m.finalScore);
+        const status = getAutoStatus(displayedFinal ?? 0);
+
+        if (selectedPreset === "surveiller") return status === "surveiller";
+        if (selectedPreset === "vip") return status === "vip";
+        if (selectedPreset === "manual") return finalInEdit !== undefined;
+        if (selectedPreset === "bonus") return bonusTotal > 0;
+        return true;
+      });
+    }
     
     return filtered;
-  }, [membersData, showActiveOnly, searchQuery]);
+  }, [membersData, showActiveOnly, searchQuery, selectedPreset, editingBonuses, editingFinalNotes, currentMonthFinalNotes]);
+
+  const pendingChanges = getPendingChangesBreakdown();
+  const entraideGlobal = useMemo(() => {
+    if (membersData.length === 0) return { avg: 0, max: 17 };
+    const total = membersData.reduce((sum, member) => sum + getEntraideScore(member).value, 0);
+    return {
+      avg: Math.round((total / membersData.length) * 100) / 100,
+      max: 17,
+    };
+  }, [membersData]);
 
   if (loading) {
     return (
@@ -748,8 +937,21 @@ export default function EvaluationDPage() {
             onChange={(e) => setShowActiveOnly(e.target.checked)}
             className="mr-2"
           />
-          Actifs seulement
+          Membres actifs (inclut Communaute)
         </label>
+
+        <select
+          value={selectedPreset}
+          onChange={(e) => setSelectedPreset(e.target.value as "all" | "surveiller" | "vip" | "manual" | "bonus")}
+          className="rounded-lg px-4 py-2 text-sm border"
+          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        >
+          <option value="all">Filtre: Tous</option>
+          <option value="surveiller">A surveiller</option>
+          <option value="vip">VIP</option>
+          <option value="manual">Overrides manuels</option>
+          <option value="bonus">Avec bonus</option>
+        </select>
         
         <input
           type="text"
@@ -759,10 +961,53 @@ export default function EvaluationDPage() {
           className="flex-1 max-w-xs rounded-lg px-4 py-2 text-sm border"
           style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         />
+
+        <button
+          onClick={() => setCompactMode((prev) => !prev)}
+          className="px-4 py-2 rounded-lg text-sm border"
+          style={{ backgroundColor: compactMode ? "#155e75" : "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+        >
+          {compactMode ? "Mode compact: ON" : "Mode compact: OFF"}
+        </button>
+        <button
+          onClick={() => setShowAdvancedColumns((prev) => !prev)}
+          className="px-4 py-2 rounded-lg text-sm border"
+          style={{ backgroundColor: showAdvancedColumns ? "#4c1d95" : "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+        >
+          {showAdvancedColumns ? "Colonnes avancees: ON" : "Colonnes avancees: OFF"}
+        </button>
+        <button
+          onClick={exportFilteredCsv}
+          className="px-4 py-2 rounded-lg text-sm font-medium"
+          style={{ backgroundColor: "#0ea5e9", color: "white" }}
+        >
+          Export CSV
+        </button>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {[
+          { id: "pilotage", label: "Pilotage" },
+          { id: "tableau", label: "Tableau edition" },
+          { id: "historique", label: "Historique overrides" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as "pilotage" | "tableau" | "historique")}
+            className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
+            style={{
+              backgroundColor: activeTab === tab.id ? "#9146ff" : "var(--color-card)",
+              color: activeTab === tab.id ? "white" : "var(--color-text)",
+              borderColor: activeTab === tab.id ? "#9146ff" : "var(--color-border)",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Statistiques générales */}
-      {generalStats && (
+      {activeTab === "pilotage" && generalStats && (
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
             Statistiques générales — {formatMonthKey(selectedMonth)}
@@ -829,10 +1074,29 @@ export default function EvaluationDPage() {
               </div>
             </div>
           </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3" style={{ color: "var(--color-text)" }}>Entraide pure</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <StatCard
+                title="Moyenne entraide pure"
+                value={`${entraideGlobal.avg.toFixed(2)} / ${entraideGlobal.max}`}
+                subtitle="Raids + Discord + Events + Follow"
+                color="#22c55e"
+              />
+              <StatCard
+                title="Modifications en attente"
+                value={getTotalPendingChanges()}
+                subtitle={`Notes ${pendingChanges.notes} · Bonus ${pendingChanges.bonuses} · Statuts ${pendingChanges.statuts} · Roles ${pendingChanges.roles} · VIP ${pendingChanges.vip}`}
+                color="#f59e0b"
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Encadré explicatif des critères de notation */}
+      {activeTab === "pilotage" && (
       <div className="mb-8 rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
         <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
           📋 Critères de notation
@@ -901,8 +1165,10 @@ export default function EvaluationDPage() {
           </p>
         </div>
       </div>
+      )}
 
       {/* Tableau récapitulatif */}
+      {activeTab === "tableau" && (
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h2 className="text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -934,6 +1200,9 @@ export default function EvaluationDPage() {
             </button>
           </div>
         </div>
+        <div className="mb-4 rounded-lg border p-3 text-xs" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+          Legende: vert = VIP potentiel, orange = a surveiller, rouge = regression. Le badge "Fiabilite" signale la qualite des donnees sources.
+        </div>
         
         {loadingData ? (
           <div className="flex items-center justify-center py-12">
@@ -948,21 +1217,24 @@ export default function EvaluationDPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--color-surface)', borderBottomColor: 'var(--color-border)' }} className="border-b">
-                  <th className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--color-text)' }}>Membre</th>
+                  <th className="px-4 py-3 text-left font-semibold sticky left-0 z-20" style={{ color: 'var(--color-text)', backgroundColor: "var(--color-surface)" }}>Membre</th>
                   <th className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--color-text)' }}>Statut / Rôle</th>
                   <th className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--color-text)' }}>Ancienneté</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Fiabilité</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Entraide (/17)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Spotlight (/5)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Raids (/5)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Discord (/5)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Events (/2)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Follow (/5)</th>
-                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus décalage</th>
-                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus modération</th>
+                  {showAdvancedColumns && <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus décalage</th>}
+                  {showAdvancedColumns && <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus modération</th>}
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Total (hors bonus)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus total</th>
-                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale</th>
+                  <th className="px-4 py-3 text-center font-semibold sticky right-0 z-20" style={{ color: 'var(--color-text)', backgroundColor: "var(--color-surface)" }}>Note finale</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Delta M-1</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale manuelle</th>
-                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut</th>
+                  {showAdvancedColumns && <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut</th>}
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut auto</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Actions</th>
                 </tr>
@@ -999,7 +1271,7 @@ export default function EvaluationDPage() {
                         borderBottomColor: 'var(--color-border)',
                       }}
                     >
-                      <td className="px-4 py-3">
+                      <td className={`px-4 ${compactMode ? "py-1.5" : "py-3"} sticky left-0 z-10`} style={{ backgroundColor: index % 2 === 0 ? 'var(--color-card)' : 'var(--color-surface)' }}>
                         <div className="flex items-center gap-3">
                           {member.avatar && (
                             <img
@@ -1031,21 +1303,49 @@ export default function EvaluationDPage() {
                       <td className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                         {calculateSeniority(member.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
-                        {member.spotlightPoints.toFixed(2)}
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const reliability = getDataReliabilityBadge(member);
+                          return (
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-semibold"
+                              style={{ backgroundColor: reliability.bg, color: reliability.color }}
+                            >
+                              {reliability.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium" style={{ color: '#22c55e' }}>
+                        {getEntraideScore(member).value.toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
-                        {member.raidsPoints.toFixed(2)}
+                        <span title={`Presences: ${member.spotlightPresences || 0}/${member.spotlightTotal || 0}`}>
+                          {member.spotlightPoints.toFixed(2)}
+                        </span>
+                        
                       </td>
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
-                        {member.discordPoints.toFixed(2)}
+                        <span title={`Raids faits: ${member.raidsDone || 0} · Raids recus: ${member.raidsReceived || 0}`}>
+                          {member.raidsPoints.toFixed(2)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
-                        {member.eventsPoints.toFixed(2)}
+                        <span title="Source: /api/evaluations/discord/points">
+                          {member.discordPoints.toFixed(2)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
-                        {member.followPoints.toFixed(2)}
+                        <span title={`Presences events: ${member.eventsPresences || 0}/${member.eventsTotal || 0}`}>
+                          {member.eventsPoints.toFixed(2)}
+                        </span>
                       </td>
+                      <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
+                        <span title="Source: derniere validation de suivi connue">
+                          {member.followPoints.toFixed(2)}
+                        </span>
+                      </td>
+                      {showAdvancedColumns && (
                       <td className="px-4 py-3 text-center">
                         <label className="flex items-center justify-center cursor-pointer">
                           <input
@@ -1057,6 +1357,8 @@ export default function EvaluationDPage() {
                           />
                         </label>
                       </td>
+                      )}
+                      {showAdvancedColumns && (
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <input
@@ -1078,14 +1380,26 @@ export default function EvaluationDPage() {
                           </button>
                         </div>
                       </td>
+                      )}
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
                         {member.totalHorsBonus.toFixed(2)} / 25
                       </td>
                       <td className="px-4 py-3 text-center font-medium" style={{ color: 'var(--color-text)' }}>
                         {bonusTotal.toFixed(2)}
                       </td>
-                      <td className="px-4 py-3 text-center font-bold" style={{ color: finalScore > 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)' }}>
+                      <td className={`px-4 ${compactMode ? "py-1.5" : "py-3"} text-center font-bold sticky right-0 z-10`} style={{ color: finalScore > 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)', backgroundColor: index % 2 === 0 ? 'var(--color-card)' : 'var(--color-surface)' }}>
                         {finalScore.toFixed(2)} / 32
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium">
+                        {(() => {
+                          const delta = getTrendDelta(member);
+                          if (delta === null) {
+                            return <span style={{ color: "var(--color-text-secondary)" }}>-</span>;
+                          }
+                          const color = delta > 0 ? "#10b981" : delta < 0 ? "#ef4444" : "var(--color-text-secondary)";
+                          const prefix = delta > 0 ? "+" : "";
+                          return <span style={{ color }}>{prefix}{delta.toFixed(2)}</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <input
@@ -1099,7 +1413,18 @@ export default function EvaluationDPage() {
                           className="w-20 px-2 py-1 rounded border text-center text-sm"
                           style={{ backgroundColor: finalNoteInEdit !== undefined ? '#10b98120' : 'var(--color-surface)', borderColor: finalNoteInEdit !== undefined ? '#10b981' : 'var(--color-border)', color: 'var(--color-text)' }}
                         />
+                        {finalNoteInEdit !== undefined && (
+                          <input
+                            type="text"
+                            value={editingFinalNoteReasons[normalizedLogin] || ""}
+                            onChange={(e) => handleFinalNoteReasonChange(member.twitchLogin, e.target.value)}
+                            placeholder="Pourquoi cet override ?"
+                            className="mt-1 w-40 px-2 py-1 rounded border text-xs"
+                            style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                          />
+                        )}
                       </td>
+                      {showAdvancedColumns && (
                       <td className="px-4 py-3 text-center">
                         <label className="flex items-center justify-center cursor-pointer">
                           <input
@@ -1117,6 +1442,7 @@ export default function EvaluationDPage() {
                           </span>
                         )}
                       </td>
+                      )}
                       <td className="px-4 py-3 text-center">
                         {autoStatus === 'vip' && (
                           <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#10b98120', color: '#10b981' }}>
@@ -1175,6 +1501,48 @@ export default function EvaluationDPage() {
           </div>
         )}
       </div>
+      )}
+
+      {activeTab === "historique" && (
+        <div className="mb-8 rounded-lg border p-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+            Historique des overrides ({overrideLogs.length})
+          </h2>
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
+            Trace qui / quand / pourquoi pour notes finales, bonus et changements de statut.
+          </p>
+          {overrideLogs.length === 0 ? (
+            <div className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Aucun override enregistre pour ce mois.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b" style={{ borderBottomColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                    <th className="px-4 py-3 text-left">Date</th>
+                    <th className="px-4 py-3 text-left">Action</th>
+                    <th className="px-4 py-3 text-left">Membre</th>
+                    <th className="px-4 py-3 text-left">Par</th>
+                    <th className="px-4 py-3 text-left">Pourquoi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overrideLogs.map((log) => (
+                    <tr key={log.id} className="border-b" style={{ borderBottomColor: "var(--color-border)" }}>
+                      <td className="px-4 py-3">{new Date(log.timestamp).toLocaleString("fr-FR")}</td>
+                      <td className="px-4 py-3">{log.action}</td>
+                      <td className="px-4 py-3">{log.resourceId || "-"}</td>
+                      <td className="px-4 py-3">{log.actorUsername || log.actorDiscordId || "-"}</td>
+                      <td className="px-4 py-3">{String(log.metadata?.reason || log.metadata?.sourcePage || "Non renseigne")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

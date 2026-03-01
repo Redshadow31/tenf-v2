@@ -13,6 +13,7 @@ interface SynthesisSaveRequest {
   updates: Array<{
     twitchLogin: string;
     finalNote?: number; // Note finale manuelle (optionnelle)
+    finalNoteReason?: string; // Raison de l'override manuel
     isActive?: boolean; // Statut actif/inactif
     role?: MemberRole; // Rôle forcé (optionnel, ex: 'Communauté')
     isVip?: boolean; // Statut VIP (optionnel)
@@ -59,13 +60,14 @@ export async function POST(request: NextRequest) {
     };
 
     for (const update of updates) {
-      const { twitchLogin, finalNote, isActive, role, isVip } = update;
+      const { twitchLogin, finalNote, finalNoteReason, isActive, role, isVip } = update;
 
       // Mettre à jour la note finale si fournie
       if (finalNote !== undefined && finalNote !== null) {
         try {
           // Récupérer ou créer l'évaluation pour ce membre et ce mois
           let evaluation = await evaluationRepository.findByMemberAndMonth(twitchLogin, month);
+          const previousFinalNote = evaluation?.finalNote ?? null;
           
           if (!evaluation) {
             // Créer une nouvelle évaluation si elle n'existe pas
@@ -85,6 +87,19 @@ export async function POST(request: NextRequest) {
               finalNoteSavedBy: admin.discordId,
             });
           }
+
+          await logAction({
+            action: "evaluation.override_final_note",
+            resourceType: "evaluation",
+            resourceId: twitchLogin,
+            previousValue: { finalNote: previousFinalNote, month },
+            newValue: { finalNote: Number(finalNote), month },
+            metadata: {
+              month,
+              reason: finalNoteReason?.trim() || "Override manuel depuis /admin/evaluation/d",
+              sourcePage: "/admin/evaluation/d",
+            },
+          });
           
           results.notesUpdated++;
         } catch (error) {
