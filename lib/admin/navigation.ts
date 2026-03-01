@@ -47,6 +47,10 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/gestion-acces/admin-avance",
         label: "Accès admin avancé",
       },
+      {
+        href: "/admin/follow/config",
+        label: "Configuration staff follow",
+      },
     ],
   },
 
@@ -383,16 +387,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/events/presence", label: "Présences" },
     ],
   },
-  {
-    href: "/admin/raids",
-    label: "Raids",
-    icon: "🚀",
-    children: [
-      { href: "/admin/raids", label: "Hub raids" },
-      { href: "/admin/raids/twitch", label: "Raids Twitch" },
-      { href: "/admin/raids/historique", label: "Historique" },
-    ],
-  },
+  { href: "/admin/follow", label: "Suivi de l'engagement", icon: "👁️" },
   { href: "/admin/search", label: "Recherche membre", icon: "🔎" },
 ];
 

@@ -9,28 +9,7 @@ import {
   type FollowStatus 
 } from '@/lib/followStorage';
 import { getAllMemberData } from '@/lib/memberData';
-
-const STAFF_MEMBERS: Record<string, string> = {
-  red: "Red",
-  clara: "Clara",
-  nexou: "Nexou",
-  tabs: "Tabs",
-  nangel: "Nangel",
-  jenny: "Jenny",
-  selena: "Selena",
-  dark: "Dark",
-  yaya: "Yaya",
-  rubby: "Rubby",
-  livio: "Livio",
-  rebelle: "Rebelle",
-  sigurdson: "Sigurdson",
-  nico: "Nico",
-  willy: "Willy",
-  b1nx: "B1nx",
-  spydy: "Spydy",
-  simon: "Simon",
-  zylkao: "Zylkao",
-};
+import { loadFollowStaffList } from '@/lib/followStaffStorage';
 
 /**
  * GET - Récupère la validation de follow pour un membre du staff et un mois
@@ -55,8 +34,9 @@ export async function GET(
       );
     }
 
-    // Vérifier que le staff slug est valide
-    if (!STAFF_MEMBERS[staffSlug]) {
+    const staffList = await loadFollowStaffList();
+    const staffEntry = staffList.find((s) => s.slug === staffSlug);
+    if (!staffEntry) {
       return NextResponse.json(
         { error: 'Membre du staff invalide' },
         { status: 400 }
@@ -75,7 +55,7 @@ export async function GET(
 
     return NextResponse.json({
       validation,
-      staffName: STAFF_MEMBERS[staffSlug],
+      staffName: staffEntry.displayName,
       dataSourceMonth,
     }, {
       headers: {
@@ -116,8 +96,9 @@ export async function POST(
       );
     }
 
-    // Vérifier que le staff slug est valide
-    if (!STAFF_MEMBERS[staffSlug]) {
+    const staffList = await loadFollowStaffList();
+    const staffEntry = staffList.find((s) => s.slug === staffSlug);
+    if (!staffEntry) {
       return NextResponse.json(
         { error: 'Membre du staff invalide' },
         { status: 400 }
@@ -201,7 +182,7 @@ export async function POST(
     // Créer ou mettre à jour la validation
     const validation: StaffFollowValidation = {
       staffSlug,
-      staffName: STAFF_MEMBERS[staffSlug],
+      staffName: staffEntry.displayName,
       month,
       members: validatedMembers,
       moderatorComments: moderatorComments || '',

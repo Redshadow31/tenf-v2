@@ -327,6 +327,7 @@ export default function WizebotImportModal({
         });
       } else {
         // Appliquer tous les changements (comportement original)
+        // ADDITIF : ne mettre meSuit=true que pour ceux dans l'import, ne jamais passer à false (retrait manuel uniquement)
         updatedMembers = currentMembers.map((m: any) => {
           const normalizedLogin = normalizeLogin(m.twitchLogin);
           const matchedLine = matchedLines.find(line => {
@@ -345,8 +346,7 @@ export default function WizebotImportModal({
               meSuit: true,
             };
           }
-          
-          return m;
+          return m; // Garder la valeur actuelle, pas de suppression
         });
       }
 

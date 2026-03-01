@@ -226,19 +226,20 @@ export default function FollowImportFollowingModal({
         action: 'update' | 'add';
       }> = [];
 
+      // ADDITIF : ne détecter que les ajouts (jeSuis: false -> true), jamais les retraits
       currentMembers.forEach((m: any) => {
         const normalizedLogin = normalizeLogin(m.twitchLogin);
         const isInImport = importedLogins.has(normalizedLogin);
         const currentValue = m.jeSuis ?? false;
         const newValue = isInImport;
-        
-        if (currentValue !== newValue) {
+        // Uniquement les passages à true (ajout), pas les passages à false (retrait manuel uniquement)
+        if (!currentValue && newValue) {
           detectedChanges.push({
             twitchLogin: m.twitchLogin,
             displayName: m.displayName || m.twitchLogin,
             currentValue,
             newValue,
-            action: 'update',
+            action: 'add',
           });
         }
       });
@@ -380,15 +381,15 @@ export default function FollowImportFollowingModal({
           }
         });
       } else {
-        // Appliquer tous les changements (comportement original)
-        // Mettre à jour les membres existants
+        // ADDITIF : ne mettre jeSuis=true que pour ceux dans l'import, ne jamais passer à false
         updatedMembers = currentMembers.map((m: any) => {
           const normalizedLogin = normalizeLogin(m.twitchLogin);
           const isInImport = importedLogins.has(normalizedLogin);
-          
+          const currentJeSuis = m.jeSuis ?? false;
+          // Si dans l'import -> true. Sinon -> garder la valeur actuelle (pas de suppression)
           return {
             ...m,
-            jeSuis: isInImport,
+            jeSuis: isInImport ? true : currentJeSuis,
           };
         });
         

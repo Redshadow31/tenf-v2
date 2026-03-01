@@ -6,7 +6,7 @@ import {
   isValidationObsolete,
   calculateFollowStats 
 } from '@/lib/followStorage';
-import { STAFF_MEMBERS } from '@/lib/followStaff';
+import { getActiveFollowStaff } from '@/lib/followStaffStorage';
 
 /**
  * GET - Récupère le résumé des validations pour un mois donné
@@ -60,15 +60,17 @@ export async function GET(
       ? Math.round((totalFollowed / totalMembers) * 100 * 10) / 10 
       : 0;
 
-    // Créer le tableau récapitulatif
-    const summary = Object.keys(STAFF_MEMBERS).map(slug => {
+    const staffList = await getActiveFollowStaff();
+
+    // Créer le tableau récapitulatif (tous les staff, actifs et inactifs)
+    const summary = staffList.map(({ slug, displayName }) => {
       const validation = allValidations.find(v => v.staffSlug === slug);
       const isObsolete = validation ? isValidationObsolete(validation.validatedAt) : false;
       const stats = validation ? calculateFollowStats(validation) : null;
 
       return {
         staffSlug: slug,
-        staffName: STAFF_MEMBERS[slug],
+        staffName: displayName,
         lastValidationDate: validation?.validatedAt || null,
         followRate: stats?.tauxRetour || null, // Utiliser tauxRetour au lieu de followRate
         followedCount: stats?.totalRetour || null, // Utiliser totalRetour (follows retour) au lieu de followedCount
