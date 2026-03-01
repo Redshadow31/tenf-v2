@@ -237,14 +237,6 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/raids",
         label: "Hub raids",
       },
-      {
-        href: "/admin/raids/twitch",
-        label: "Raids Twitch",
-      },
-      {
-        href: "/admin/raids/historique",
-        label: "Historique des raids",
-      },
     ],
   },
 

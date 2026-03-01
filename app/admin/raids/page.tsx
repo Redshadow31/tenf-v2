@@ -34,10 +34,6 @@ export default function RaidsPage() {
   const [selectedMember, setSelectedMember] = useState<{ twitchLogin: string; displayName: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [sourceFilters, setSourceFilters] = useState({
-    twitch: true,
-    manual: true,
-  });
   const [rawRaidsData, setRawRaidsData] = useState<any>(null); // Stocker les données brutes pour le filtrage
   const [sortColumn, setSortColumn] = useState<'membre' | 'done' | 'received'>('done');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -101,25 +97,17 @@ export default function RaidsPage() {
         // Stocker les données brutes pour le filtrage
         setRawRaidsData(data);
         
-        // Filtrer selon les sources sélectionnées (uniquement twitch-live et manual)
+        // Mode manuel uniquement : ignorer complètement les raids Twitch/EventSub
         const filteredRaidsFaits = (data.raidsFaits || []).filter((raid: any) => {
           const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-          // Ignorer les raids Discord
           if (source === "discord") return false;
-          if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
-          if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
-          // Par défaut, traiter comme twitch-live si source inconnue
-          return sourceFilters.twitch;
+          return source === "manual" || source === "admin" || raid.manual;
         });
         
         const filteredRaidsRecus = (data.raidsRecus || []).filter((raid: any) => {
           const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-          // Ignorer les raids Discord
           if (source === "discord") return false;
-          if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
-          if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
-          // Par défaut, traiter comme twitch-live si source inconnue
-          return sourceFilters.twitch;
+          return source === "manual" || source === "admin" || raid.manual;
         });
         
         // Grouper les raids faits par membre (après filtrage)
@@ -227,119 +215,11 @@ export default function RaidsPage() {
     loadData(newMonth);
   }
   
-  function handleSourceFilterChange(source: 'twitch' | 'manual') {
-    const newFilters = {
-      ...sourceFilters,
-      [source]: !sourceFilters[source],
-    };
-    setSourceFilters(newFilters);
-    
-    // Recalculer avec les nouveaux filtres
-    if (rawRaidsData) {
-      const filteredRaidsFaits = (rawRaidsData.raidsFaits || []).filter((raid: any) => {
-        const raidSource = raid.source || (raid.manual ? "manual" : "twitch-live");
-        // Ignorer les raids Discord
-        if (raidSource === "discord") return false;
-        if (raidSource === "twitch-live" || raidSource === "bot") return newFilters.twitch;
-        if (raidSource === "manual" || raid.manual) return newFilters.manual;
-        // Par défaut, traiter comme twitch-live
-        return newFilters.twitch;
-      });
-      
-      const filteredRaidsRecus = (rawRaidsData.raidsRecus || []).filter((raid: any) => {
-        const raidSource = raid.source || (raid.manual ? "manual" : "twitch-live");
-        // Ignorer les raids Discord
-        if (raidSource === "discord") return false;
-        if (raidSource === "twitch-live" || raidSource === "bot") return newFilters.twitch;
-        if (raidSource === "manual" || raid.manual) return newFilters.manual;
-        // Par défaut, traiter comme twitch-live
-        return newFilters.twitch;
-      });
-      
-      // Recalculer les stats
-      const raidsByMember: Record<string, any> = {};
-      filteredRaidsFaits.forEach((raid: any) => {
-        const memberKey = raid.raiderTwitchLogin || raid.raider;
-        if (!raidsByMember[memberKey]) {
-          raidsByMember[memberKey] = { done: 0, received: 0, targets: {} };
-        }
-        raidsByMember[memberKey].done += raid.count || 1;
-        const targetKey = raid.targetTwitchLogin || raid.target;
-        if (!raidsByMember[memberKey].targets[targetKey]) {
-          raidsByMember[memberKey].targets[targetKey] = 0;
-        }
-        raidsByMember[memberKey].targets[targetKey] += raid.count || 1;
-      });
-      
-      filteredRaidsRecus.forEach((raid: any) => {
-        const memberKey = raid.targetTwitchLogin || raid.target;
-        if (!raidsByMember[memberKey]) {
-          raidsByMember[memberKey] = { done: 0, received: 0, targets: {} };
-        }
-        raidsByMember[memberKey].received += 1;
-      });
-      
-      setRaids(raidsByMember);
-      
-      const totalRaidsFaits = filteredRaidsFaits.reduce((sum: number, r: any) => sum + (r.count || 1), 0);
-      const totalRaidsRecus = filteredRaidsRecus.length;
-      const raidersSet = new Set(filteredRaidsFaits.map((r: any) => r.raiderTwitchLogin || r.raider));
-      const targetsSet = new Set(filteredRaidsRecus.map((r: any) => r.targetTwitchLogin || r.target));
-      
-      const raiderCounts: Record<string, number> = {};
-      filteredRaidsFaits.forEach((r: any) => {
-        const key = r.raiderTwitchLogin || r.raider;
-        raiderCounts[key] = (raiderCounts[key] || 0) + (r.count || 1);
-      });
-      const topRaider = Object.entries(raiderCounts).sort(([, a], [, b]) => b - a)[0];
-      
-      const targetCounts: Record<string, number> = {};
-      filteredRaidsRecus.forEach((r: any) => {
-        const key = r.targetTwitchLogin || r.target;
-        targetCounts[key] = (targetCounts[key] || 0) + 1;
-      });
-      const topTarget = Object.entries(targetCounts).sort(([, a], [, b]) => b - a)[0];
-      
-      setComputedStats(prev => prev ? {
-        ...prev,
-        totalDone: totalRaidsFaits,
-        totalReceived: totalRaidsRecus,
-        activeRaidersCount: raidersSet.size,
-        uniqueTargetsCount: targetsSet.size,
-        topRaider: topRaider ? { name: topRaider[0], count: topRaider[1] } : null,
-        topTarget: topTarget ? { name: topTarget[0], count: topTarget[1] } : null,
-      } : null);
-    }
-  }
-
-
   const getMemberDisplayName = (twitchLogin: string): string => {
     const member = members.find(m => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase());
     return member?.displayName || twitchLogin;
   };
   
-  // Fonction pour obtenir la répartition des sources pour un membre (sans Discord)
-  const getMemberSourceBreakdown = (twitchLogin: string): { twitch: number; manual: number } => {
-    if (!rawRaidsData) return { twitch: 0, manual: 0 };
-    
-    const raidsFaits = (rawRaidsData.raidsFaits || []).filter((r: any) => {
-      const source = r.source || (r.manual ? "admin" : "twitch-live");
-      // Ignorer les raids Discord
-      if (source === "discord") return false;
-      return (r.raiderTwitchLogin || r.raider).toLowerCase() === twitchLogin.toLowerCase();
-    });
-    
-    const breakdown = { twitch: 0, manual: 0 };
-    raidsFaits.forEach((raid: any) => {
-      const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-      if (source === "twitch-live" || source === "bot") breakdown.twitch += raid.count || 1;
-      else if (source === "manual" || source === "admin" || raid.manual) breakdown.manual += raid.count || 1;
-      // Ignorer les raids Discord
-    });
-    
-    return breakdown;
-  };
-
   const hasExcessiveRaids = (stats: RaidStats): boolean => {
     for (const count of Object.values(stats.targets)) {
       if (count > 3) {
@@ -414,15 +294,13 @@ export default function RaidsPage() {
     const [year, monthNum] = selectedMonth.split("-").map((n) => parseInt(n, 10));
     const daysInMonth = new Date(year, monthNum, 0).getDate();
 
-    const filterSource = (raid: any) => {
+    const filterManualOnly = (raid: any) => {
       const source = raid.source || (raid.manual ? "admin" : "twitch-live");
       if (source === "discord") return false;
-      if (source === "twitch-live" || source === "bot") return sourceFilters.twitch;
-      if (source === "manual" || source === "admin" || raid.manual) return sourceFilters.manual;
-      return sourceFilters.twitch;
+      return source === "manual" || source === "admin" || raid.manual;
     };
-    const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterSource);
-    const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterSource);
+    const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterManualOnly);
+    const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterManualOnly);
 
     const byDay = new Map<number, { raidsFaits: number; raidsRecus: number }>();
     for (let d = 1; d <= daysInMonth; d++) byDay.set(d, { raidsFaits: 0, raidsRecus: 0 });
@@ -447,7 +325,7 @@ export default function RaidsPage() {
       const cur = byDay.get(day)!;
       return { day, raidsFaits: cur.raidsFaits, raidsRecus: cur.raidsRecus };
     });
-  }, [rawRaidsData, selectedMonth, sourceFilters.twitch, sourceFilters.manual]);
+  }, [rawRaidsData, selectedMonth]);
 
   const handleSort = (column: 'membre' | 'done' | 'received') => {
     if (sortColumn === column) {
@@ -501,13 +379,13 @@ export default function RaidsPage() {
   return (
     <>
       <div className="text-white">
-      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids</h1>
+      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids (manuel)</h1>
 
       {/* En-tête avec sélecteur de mois et boutons */}
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
-              Raids TENF
+              Raids TENF - mode manuel
             </h2>
             <div className="flex items-center gap-4">
               <label className="text-gray-400 text-sm">
@@ -532,29 +410,6 @@ export default function RaidsPage() {
                   );
                 })}
               </select>
-              
-              {/* Filtres de source */}
-              <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-700">
-                <span className="text-gray-400 text-sm">Sources :</span>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sourceFilters.twitch}
-                    onChange={() => handleSourceFilterChange('twitch')}
-                    className="w-4 h-4 text-[#9146ff] rounded"
-                  />
-                  <span className="text-gray-300 text-sm">Twitch EventSub</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sourceFilters.manual}
-                    onChange={() => handleSourceFilterChange('manual')}
-                    className="w-4 h-4 text-[#9146ff] rounded"
-                  />
-                  <span className="text-gray-300 text-sm">Manuel</span>
-                </label>
-              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -581,7 +436,7 @@ export default function RaidsPage() {
             {currentAdmin?.isFounder && (
               <button
                 onClick={async () => {
-                  const confirmMessage = `⚠️ ATTENTION : Cette action est irréversible !\n\nVoulez-vous supprimer TOUS les raids manuels pour le mois ${selectedMonth} ?\n\nCela supprimera uniquement les raids avec source="manual".\n\nLes raids EventSub ne seront pas affectés.`;
+                  const confirmMessage = `⚠️ ATTENTION : Cette action est irréversible !\n\nVoulez-vous supprimer TOUS les raids manuels pour le mois ${selectedMonth} ?`;
                   if (!confirm(confirmMessage)) {
                     return;
                   }
@@ -640,35 +495,6 @@ export default function RaidsPage() {
                 🗑️ Supprimer tous les raids non reconnus
               </button>
             )}
-            <button
-              onClick={async () => {
-                if (!confirm("Voulez-vous créer les subscriptions Twitch EventSub ?\n\nCela va créer des subscriptions EventSub pour tous les membres actifs avec un login Twitch.")) {
-                  return;
-                }
-                try {
-                  const response = await fetch("/api/twitch/eventsub/subscribe", {
-                    method: "POST",
-                  });
-                  const data = await response.json();
-                  if (response.ok) {
-                    const summary = data.summary || {};
-                    alert(`✅ ${data.message}\n\nRésumé:\n- Créées: ${summary.created || 0}\n- Déjà actives: ${summary.alreadyExists || 0}\n- Erreurs: ${summary.errors || 0}\n\nTotal: ${summary.total || 0} membres`);
-                  } else {
-                    const errorMsg = data.error || 'Erreur inconnue';
-                    const detailsMsg = data.message ? `\n\n${data.message}` : '';
-                    const configMsg = data.details ? `\n\n${data.details}` : '';
-                    alert(`❌ Erreur: ${errorMsg}${detailsMsg}${configMsg}`);
-                  }
-                } catch (error) {
-                  console.error("Erreur lors de la synchronisation:", error);
-                  alert("Erreur lors de la création des subscriptions Twitch EventSub\n\nVérifiez que les variables d'environnement sont configurées:\n- TWITCH_EVENTSUB_SECRET\n- TWITCH_APP_CLIENT_ID ou TWITCH_CLIENT_ID\n- TWITCH_CLIENT_SECRET");
-                }
-              }}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-              title="Créer les subscriptions Twitch EventSub"
-            >
-              🟣 Créer subscriptions EventSub
-            </button>
           </div>
         </div>
 
@@ -782,25 +608,7 @@ export default function RaidsPage() {
                             </button>
                           </td>
                           <td className="py-4 px-6">
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-semibold">
-                                {stats.done}
-                              </span>
-                              {(() => {
-                                const breakdown = getMemberSourceBreakdown(twitchLogin);
-                                const sources: string[] = [];
-                                if (breakdown.twitch > 0) sources.push(`Twitch: ${breakdown.twitch}`);
-                                if (breakdown.manual > 0) sources.push(`Manuel: ${breakdown.manual}`);
-                                if (sources.length > 0) {
-                                  return (
-                                    <span className="text-xs text-gray-500" title={sources.join(', ')}>
-                                      ({sources.length > 1 ? 'mixte' : sources[0].split(':')[0]})
-                                    </span>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
+                            <span className="text-white font-semibold">{stats.done}</span>
                           </td>
                           <td className="py-4 px-6">
                             <span className="text-white font-semibold">
