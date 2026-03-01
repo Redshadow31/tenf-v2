@@ -2,6 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+} from "recharts";
 
 interface MemberLite {
   twitchLogin: string;
@@ -24,6 +35,18 @@ interface MemberEventLite {
   source?: string;
   actor?: string;
   payload?: Record<string, unknown>;
+}
+
+interface RecapEvent {
+  event: {
+    id: string;
+    title: string;
+    date: string;
+    category: string;
+    isPublished: boolean;
+  };
+  registrationCount: number;
+  presenceCount: number;
 }
 
 interface WorkflowStep {
@@ -50,17 +73,33 @@ function completionPct(member: MemberLite): number {
   return Math.round((ok / checks.length) * 100);
 }
 
+function monthLabelFromDate(date: Date): string {
+  const names = ["Jan", "Fev", "Mar", "Avr", "Mai", "Juin", "Juil", "Aout", "Sep", "Oct", "Nov", "Dec"];
+  return `${names[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
+}
+
 export default function Dashboard2Page() {
   const [loading, setLoading] = useState(true);
+  const [loadingVisual, setLoadingVisual] = useState(true);
+  const [loadingRecap, setLoadingRecap] = useState(true);
   const [members, setMembers] = useState<MemberLite[]>([]);
   const [events, setEvents] = useState<MemberEventLite[]>([]);
   const [finalNotesCount, setFinalNotesCount] = useState(0);
   const [activeFollowStaffCount, setActiveFollowStaffCount] = useState(0);
+  const [discordGrowthData, setDiscordGrowthData] = useState<Array<{ month: string; value: number }>>([]);
+  const [monthlyActivityData, setMonthlyActivityData] = useState<Array<{ month: string; messages: number; vocals: number }>>([]);
+  const [spotlightProgressionData, setSpotlightProgressionData] = useState<Array<{ month: string; value: number }>>([]);
+  const [raidStats, setRaidStats] = useState<{
+    totalRaidsReceived: number;
+    totalRaidsSent: number;
+  }>({ totalRaidsReceived: 0, totalRaidsSent: 0 });
+  const [recapEvents, setRecapEvents] = useState<RecapEvent[]>([]);
+  const [recapMonthFilter, setRecapMonthFilter] = useState<"all" | string>("all");
 
   const currentMonth = monthKey();
 
   useEffect(() => {
-    async function loadData() {
+    async function loadOpsData() {
       try {
         const [membersRes, eventsRes, notesRes, followStaffRes] = await Promise.all([
           fetch("/api/admin/members", { cache: "no-store" }),
@@ -97,8 +136,118 @@ export default function Dashboard2Page() {
       }
     }
 
-    loadData();
+    loadOpsData();
   }, [currentMonth]);
+
+  useEffect(() => {
+    async function loadVisualData() {
+      try {
+        const [dashboardRes, spotlightRes, raidsRes] = await Promise.all([
+          fetch("/api/dashboard/data", { cache: "no-store" }),
+          fetch("/api/spotlight/progression", { cache: "no-store" }),
+          fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, { cache: "no-store" }),
+        ]);
+
+        if (dashboardRes.ok) {
+          const dashboardData = await dashboardRes.json();
+          const growth = dashboardData?.data?.discordGrowth || [];
+          const daily = dashboardData?.data?.discordDailyActivity || [];
+          setDiscordGrowthData(growth);
+
+          const byMonth = new Map<string, { date: Date; messages: number; vocals: number }>();
+          for (const day of daily) {
+            const d = new Date(day.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            const current = byMonth.get(key) || { date: new Date(d.getFullYear(), d.getMonth(), 1), messages: 0, vocals: 0 };
+            current.messages += Number(day.messages || 0);
+            current.vocals += Number(day.vocals || 0);
+            byMonth.set(key, current);
+          }
+          const aggregated = Array.from(byMonth.values())
+            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .slice(-12)
+            .map((it) => ({
+              month: monthLabelFromDate(it.date),
+              messages: it.messages,
+              vocals: Math.round(it.vocals * 10) / 10,
+            }));
+          setMonthlyActivityData(aggregated);
+        }
+
+        if (spotlightRes.ok) {
+          const spotlightData = await spotlightRes.json();
+          setSpotlightProgressionData(spotlightData?.data || []);
+        }
+
+        if (raidsRes.ok) {
+          const raidsData = await raidsRes.json();
+          setRaidStats({
+            totalRaidsReceived: raidsData?.stats?.totalRaidsRecus || 0,
+            totalRaidsSent: raidsData?.stats?.totalRaidsFaits || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Erreur chargement visual data:", error);
+      } finally {
+        setLoadingVisual(false);
+      }
+    }
+
+    loadVisualData();
+  }, [currentMonth]);
+
+  useEffect(() => {
+    async function loadEventsRecapData() {
+      try {
+        const registrationsRes = await fetch("/api/admin/events/registrations", { cache: "no-store" });
+        if (!registrationsRes.ok) {
+          setRecapEvents([]);
+          return;
+        }
+
+        const registrationsData = await registrationsRes.json();
+        const baseEvents = registrationsData.eventsWithRegistrations || [];
+        const now = new Date();
+        const pastEvents = baseEvents.filter((item: any) => new Date(item.event.date) < now);
+
+        const withPresences: RecapEvent[] = await Promise.all(
+          pastEvents.map(async (item: any) => {
+            try {
+              const presenceRes = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, { cache: "no-store" });
+              if (!presenceRes.ok) {
+                return {
+                  event: item.event,
+                  registrationCount: item.registrationCount || 0,
+                  presenceCount: 0,
+                };
+              }
+              const presenceData = await presenceRes.json();
+              const presenceCount = (presenceData.presences || []).filter((p: any) => p.present).length;
+              return {
+                event: item.event,
+                registrationCount: item.registrationCount || 0,
+                presenceCount,
+              };
+            } catch {
+              return {
+                event: item.event,
+                registrationCount: item.registrationCount || 0,
+                presenceCount: 0,
+              };
+            }
+          })
+        );
+
+        setRecapEvents(withPresences);
+      } catch (error) {
+        console.error("Erreur chargement recap events:", error);
+      } finally {
+        setLoadingRecap(false);
+      }
+    }
+
+    loadEventsRecapData();
+  }, []);
 
   const kpis = useMemo(() => {
     const activeMembers = members.filter((m) => m.isActive !== false);
@@ -128,6 +277,48 @@ export default function Dashboard2Page() {
       validatedProfiles,
     };
   }, [members]);
+
+  const filteredRecapEvents = useMemo(() => {
+    if (recapMonthFilter === "all") return recapEvents;
+    return recapEvents.filter((item) => item.event.date.startsWith(recapMonthFilter));
+  }, [recapEvents, recapMonthFilter]);
+
+  const recapCategoryStats = useMemo(() => {
+    const byCategory = new Map<string, { count: number; registrations: number; presences: number }>();
+    for (const item of filteredRecapEvents) {
+      const category = item.event.category || "Sans catégorie";
+      const current = byCategory.get(category) || { count: 0, registrations: 0, presences: 0 };
+      current.count += 1;
+      current.registrations += item.registrationCount;
+      current.presences += item.presenceCount;
+      byCategory.set(category, current);
+    }
+    return Array.from(byCategory.entries())
+      .map(([category, value]) => ({
+        category,
+        ...value,
+        avgPresence: value.count > 0 ? Math.round((value.presences / value.count) * 10) / 10 : 0,
+      }))
+      .sort((a, b) => b.presences - a.presences);
+  }, [filteredRecapEvents]);
+
+  const eventAnomalies = useMemo(() => {
+    return filteredRecapEvents
+      .map((item) => {
+        const rate = item.registrationCount > 0 ? (item.presenceCount / item.registrationCount) * 100 : 0;
+        return { ...item, rate: Math.round(rate * 10) / 10 };
+      })
+      .filter((item) => item.registrationCount > 0 && (item.presenceCount === 0 || item.rate < 30))
+      .sort((a, b) => a.rate - b.rate);
+  }, [filteredRecapEvents]);
+
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of recapEvents) {
+      set.add(item.event.date.slice(0, 7));
+    }
+    return Array.from(set).sort((a, b) => (a < b ? 1 : -1));
+  }, [recapEvents]);
 
   const workflow: WorkflowStep[] = useMemo(() => {
     return [
@@ -265,6 +456,80 @@ export default function Dashboard2Page() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3 text-center">Raids envoyés</h3>
+          <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsSent}</p>
+          <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
+        </div>
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3 text-center">Raids reçus</h3>
+          <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsReceived}</p>
+          <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
+        </div>
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3 text-center">Activité Discord</h3>
+          <p className="text-4xl font-bold text-center text-white">
+            {monthlyActivityData.length > 0
+              ? monthlyActivityData[monthlyActivityData.length - 1]?.messages?.toLocaleString()
+              : 0}
+          </p>
+          <p className="text-xs text-gray-500 text-center mt-2">Messages sur le dernier mois disponible</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3">Activité Discord</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyActivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
+                />
+                <Line type="monotone" dataKey="messages" stroke="#5865F2" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="vocals" stroke="#57F287" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3">Croissance Discord</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={discordGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3">Progression Spotlight</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={spotlightProgressionData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
+                />
+                <Bar dataKey="value" fill="#9146ff" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Workflow mensuel</h2>
@@ -334,6 +599,150 @@ export default function Dashboard2Page() {
                 </span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <h2 className="text-xl font-semibold">Suivi événements (tableaux)</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={recapMonthFilter}
+              onChange={(e) => setRecapMonthFilter(e.target.value)}
+              className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+            >
+              <option value="all">Tous les mois</option>
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <Link
+              href="/admin/events/recap"
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff]"
+            >
+              Ouvrir recap complet
+            </Link>
+          </div>
+        </div>
+
+        {loadingRecap ? (
+          <div className="py-10 text-center text-gray-400">Chargement recap événements...</div>
+        ) : filteredRecapEvents.length === 0 ? (
+          <div className="py-10 text-center text-gray-400">Aucune donnée événement disponible pour ce filtre.</div>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Top événements</h3>
+              <div className="overflow-x-auto rounded-lg border border-gray-700">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                      <th className="text-left py-3 px-4">Événement</th>
+                      <th className="text-left py-3 px-4">Catégorie</th>
+                      <th className="text-left py-3 px-4">Date</th>
+                      <th className="text-right py-3 px-4">Inscriptions</th>
+                      <th className="text-right py-3 px-4">Présents</th>
+                      <th className="text-right py-3 px-4">Taux</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...filteredRecapEvents]
+                      .map((item) => ({
+                        ...item,
+                        rate: item.registrationCount > 0 ? Math.round((item.presenceCount / item.registrationCount) * 1000) / 10 : 0,
+                      }))
+                      .sort((a, b) => b.rate - a.rate)
+                      .slice(0, 8)
+                      .map((item) => (
+                        <tr key={item.event.id} className="border-b border-gray-800">
+                          <td className="py-3 px-4">{item.event.title}</td>
+                          <td className="py-3 px-4 text-gray-400">{item.event.category}</td>
+                          <td className="py-3 px-4 text-gray-400">{new Date(item.event.date).toLocaleDateString("fr-FR")}</td>
+                          <td className="py-3 px-4 text-right">{item.registrationCount}</td>
+                          <td className="py-3 px-4 text-right">{item.presenceCount}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={item.rate >= 70 ? "text-green-400" : item.rate >= 40 ? "text-yellow-400" : "text-red-400"}>
+                              {item.rate.toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Statistiques par catégorie</h3>
+                <div className="overflow-x-auto rounded-lg border border-gray-700">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                        <th className="text-left py-3 px-4">Catégorie</th>
+                        <th className="text-right py-3 px-4">Events</th>
+                        <th className="text-right py-3 px-4">Inscriptions</th>
+                        <th className="text-right py-3 px-4">Présences</th>
+                        <th className="text-right py-3 px-4">Moyenne</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recapCategoryStats.map((row) => (
+                        <tr key={row.category} className="border-b border-gray-800">
+                          <td className="py-3 px-4">{row.category}</td>
+                          <td className="py-3 px-4 text-right">{row.count}</td>
+                          <td className="py-3 px-4 text-right">{row.registrations}</td>
+                          <td className="py-3 px-4 text-right">{row.presences}</td>
+                          <td className="py-3 px-4 text-right text-gray-300">{row.avgPresence.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Anomalies de suivi</h3>
+                <div className="overflow-x-auto rounded-lg border border-gray-700">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                        <th className="text-left py-3 px-4">Événement</th>
+                        <th className="text-right py-3 px-4">Inscrits</th>
+                        <th className="text-right py-3 px-4">Présents</th>
+                        <th className="text-right py-3 px-4">Taux</th>
+                        <th className="text-left py-3 px-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eventAnomalies.slice(0, 8).map((item) => (
+                        <tr key={item.event.id} className="border-b border-gray-800">
+                          <td className="py-3 px-4">{item.event.title}</td>
+                          <td className="py-3 px-4 text-right">{item.registrationCount}</td>
+                          <td className="py-3 px-4 text-right">{item.presenceCount}</td>
+                          <td className="py-3 px-4 text-right text-red-300">{item.rate.toFixed(1)}%</td>
+                          <td className="py-3 px-4">
+                            <Link href="/admin/events/presence" className="text-[#9146ff] hover:text-[#7c3aed]">
+                              Corriger
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                      {eventAnomalies.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-6 px-4 text-center text-gray-500">
+                            Aucune anomalie détectée 🎉
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
