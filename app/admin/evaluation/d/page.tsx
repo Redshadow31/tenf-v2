@@ -158,6 +158,7 @@ export default function EvaluationDPage() {
   const [editingVips, setEditingVips] = useState<Record<string, boolean>>({}); // Pour forcer VIP (isVip)
   const [currentMonthFinalNotes, setCurrentMonthFinalNotes] = useState<Record<string, FinalNoteRecord>>({});
   const [previousMonthFinalNotes, setPreviousMonthFinalNotes] = useState<Record<string, FinalNoteRecord>>({});
+  const [previousMonthCalculatedScores, setPreviousMonthCalculatedScores] = useState<Record<string, number>>({});
   const [overrideLogs, setOverrideLogs] = useState<OverrideLog[]>([]);
 
   useEffect(() => {
@@ -203,6 +204,11 @@ export default function EvaluationDPage() {
         eventsResponse,
         followResponse,
         bonusesResponse,
+        prevRaidsPointsResponse,
+        prevDiscordPointsResponse,
+        prevEventsResponse,
+        prevFollowResponse,
+        prevBonusesResponse,
         currentFinalNotesResponse,
         previousFinalNotesResponse,
         overridesResponse,
@@ -214,6 +220,11 @@ export default function EvaluationDPage() {
         fetch(`/api/admin/events/presence?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
         fetch(`/api/evaluations/follow/points?month=${selectedMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
         fetch(`/api/evaluations/bonus?month=${selectedMonth}`, { cache: 'no-store' }),
+        fetch(`/api/evaluations/raids/points?month=${previousMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
+        fetch(`/api/evaluations/discord/points?month=${previousMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
+        fetch(`/api/admin/events/presence?month=${previousMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ events: [] }) })),
+        fetch(`/api/evaluations/follow/points?month=${previousMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ points: {} }) })),
+        fetch(`/api/evaluations/bonus?month=${previousMonth}`, { cache: 'no-store' }).catch(() => ({ ok: false, json: () => ({ bonuses: {} }) })),
         fetch(`/api/evaluations/synthesis/save?month=${selectedMonth}`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ finalNotes: {} }) })),
         fetch(`/api/evaluations/synthesis/save?month=${previousMonth}`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ finalNotes: {} }) })),
         fetch(`/api/evaluations/synthesis/overrides?month=${selectedMonth}&limit=200`, { cache: "no-store" }).catch(() => ({ ok: false, json: () => ({ logs: [] }) })),
@@ -227,6 +238,11 @@ export default function EvaluationDPage() {
       const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] };
       const followPointsData = followResponse.ok ? (await followResponse.json()).points || {} : {};
       const bonusesData = bonusesResponse.ok ? (await bonusesResponse.json()).bonuses || {} : {};
+      const prevRaidsPointsData = prevRaidsPointsResponse.ok ? (await prevRaidsPointsResponse.json()).points || {} : {};
+      const prevDiscordPointsData = prevDiscordPointsResponse.ok ? (await prevDiscordPointsResponse.json()).points || {} : {};
+      const prevEventsData = prevEventsResponse.ok ? await prevEventsResponse.json() : { events: [] };
+      const prevFollowPointsData = prevFollowResponse.ok ? (await prevFollowResponse.json()).points || {} : {};
+      const prevBonusesData = prevBonusesResponse.ok ? (await prevBonusesResponse.json()).bonuses || {} : {};
       const currentFinalNotesData = currentFinalNotesResponse.ok ? await currentFinalNotesResponse.json() : { finalNotes: {} };
       const previousFinalNotesData = previousFinalNotesResponse.ok ? await previousFinalNotesResponse.json() : { finalNotes: {} };
       const overridesData = overridesResponse.ok ? await overridesResponse.json() : { logs: [] };
@@ -240,6 +256,64 @@ export default function EvaluationDPage() {
       
       // Inclure TOUS les membres (actifs et inactifs/Communauté)
       const allMembers = membersData.filter((m: any) => m.twitchLogin);
+
+      // Calculer les scores du mois précédent (M-1) pour le Delta.
+      const previousScoresMap: Record<string, number> = {};
+      const prevSpotlightEvents = (prevEventsData.events || []).filter((e: any) => (e.category || "") === "Spotlight");
+      const prevSpotlightTotalCount = prevSpotlightEvents.length;
+      const prevSpotlightPresencesMap = new Map<string, number>();
+      if (prevSpotlightEvents.length > 0) {
+        for (const event of prevSpotlightEvents) {
+          for (const presence of event.presences || []) {
+            const login = presence.twitchLogin?.toLowerCase();
+            if (login && presence.present) {
+              prevSpotlightPresencesMap.set(login, (prevSpotlightPresencesMap.get(login) || 0) + 1);
+            }
+          }
+        }
+      }
+      const prevNonSpotlightEvents = (prevEventsData.events || []).filter((e: any) => (e.category || "") !== "Spotlight");
+      const prevEventsTotal = prevNonSpotlightEvents.length;
+      const prevEventsPresenceMap = new Map<string, number>();
+      if (prevNonSpotlightEvents.length > 0) {
+        for (const event of prevNonSpotlightEvents) {
+          for (const presence of event.presences || []) {
+            const login = presence.twitchLogin?.toLowerCase();
+            if (login && presence.present) {
+              prevEventsPresenceMap.set(login, (prevEventsPresenceMap.get(login) || 0) + 1);
+            }
+          }
+        }
+      }
+      for (const member of allMembers) {
+        const login = (member.twitchLogin || "").toLowerCase();
+        if (!login) continue;
+        const prevSpotlightPresences = prevSpotlightPresencesMap.get(login) || 0;
+        const prevSpotlightPoints = prevSpotlightTotalCount > 0
+          ? Math.round((5 * prevSpotlightPresences / prevSpotlightTotalCount) * 100) / 100
+          : 0;
+        const prevRaidsPoints = typeof prevRaidsPointsData[login] === "number" ? prevRaidsPointsData[login] : 0;
+        const prevDiscordPoints = typeof prevDiscordPointsData[login] === "number" ? prevDiscordPointsData[login] : 0;
+        const prevEventsPoints = (prevEventsPresenceMap.get(login) || 0) >= 1 ? 2 : 0;
+        const prevFollowPoints = typeof prevFollowPointsData[login] === "number" ? prevFollowPointsData[login] : 0;
+        const prevBonusInfo: MemberBonus | null = prevBonusesData[login] || null;
+        const prevBonusTotal = calculateBonusTotal(prevBonusInfo);
+        const { total: prevTotalHorsBonus } = calculateTotalHorsBonus(
+          prevSpotlightPoints,
+          prevRaidsPoints,
+          prevDiscordPoints,
+          prevEventsPoints,
+          prevFollowPoints
+        );
+        const { total: prevCalculatedFinal } = calculateTotalAvecBonus(
+          prevTotalHorsBonus,
+          prevBonusTotal.timezoneBonus,
+          prevBonusTotal.moderationBonus
+        );
+        const prevManualFinal = previousFinalNotesData?.finalNotes?.[login]?.finalNote;
+        previousScoresMap[login] = prevManualFinal ?? prevCalculatedFinal;
+      }
+      setPreviousMonthCalculatedScores(previousScoresMap);
       
       // Créer des maps pour accès rapide
       const spotlightPointsMap = new Map<string, number>(); // Map des points Spotlight depuis l'API
@@ -730,7 +804,7 @@ export default function EvaluationDPage() {
 
   function getTrendDelta(member: MemberEvaluationData): number | null {
     const login = member.twitchLogin.toLowerCase();
-    const previous = previousMonthFinalNotes[login]?.finalNote;
+    const previous = previousMonthFinalNotes[login]?.finalNote ?? previousMonthCalculatedScores[login];
     if (previous === undefined || previous === null) return null;
     const inEdit = editingFinalNotes[login];
     const current = inEdit ?? currentMonthFinalNotes[login]?.finalNote ?? member.finalScore;

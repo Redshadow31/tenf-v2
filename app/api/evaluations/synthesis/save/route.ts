@@ -213,8 +213,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Récupérer toutes les évaluations du mois avec notes finales
-    const evaluations = await evaluationRepository.findByMonth(month);
+    // Récupérer toutes les évaluations du mois avec notes finales.
+    // Important: la limite par défaut du repository est 100, insuffisante pour TENF.
+    const evaluations = await evaluationRepository.findByMonth(month, 1000, 0);
     
     // Construire l'objet finalNotes au format attendu
     const finalNotes: Record<string, { finalNote?: number; savedAt: string; savedBy: string }> = {};
