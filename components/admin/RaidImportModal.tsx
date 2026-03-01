@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { normalizeHandle, normalizeHandleForDisplay, parseDate, DATE_PATTERN, RAID_PATTERN } from "@/lib/raidParserUtils";
+import { normalizeHandle, normalizeHandleForDisplay, parseDate, RAID_PATTERN } from "@/lib/raidParserUtils";
 
 interface DetectedRaid {
   raider: string; // Handle brut extrait
@@ -260,14 +260,15 @@ export default function RaidImportModal({
           continue;
         }
 
-        // Vérifier si la ligne contient une date (format: DD/MM/YYYY HH:mm)
-        const dateMatch = trimmedLine.match(DATE_PATTERN);
-        if (dateMatch) {
-          const parsedDate = parseDate(trimmedLine);
-          if (parsedDate) {
-            currentDate = parsedDate;
-            continue; // Passer à la ligne suivante
-          }
+        // Vérifier si la ligne contient un contexte de date (absolue ou relative)
+        // Exemples:
+        // - 27/02/2026 23:51
+        // - Hier à 23:43
+        // - Aujourd'hui à 00:02
+        const parsedDate = parseDate(trimmedLine);
+        if (parsedDate) {
+          currentDate = parsedDate;
+          continue; // Passer à la ligne suivante
         }
 
         // Chercher TOUS les raids dans la ligne (supporte plusieurs raids par ligne)

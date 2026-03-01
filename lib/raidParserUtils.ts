@@ -51,6 +51,14 @@ export function normalizeHandleForDisplay(handle: string): string {
 export const DATE_PATTERN = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/;
 
 /**
+ * Regex pour les dates relatives Discord:
+ * - Hier à HH:mm
+ * - Aujourd'hui à HH:mm
+ * Supporte aussi l'apostrophe typographique.
+ */
+export const RELATIVE_DATE_PATTERN = /(hier|aujourd['’]hui)\s+à\s+(\d{1,2}):(\d{2})/i;
+
+/**
  * Regex tolérante pour détecter les raids
  * Supporte:
  * - @X a raid @Y
@@ -76,21 +84,37 @@ export const RAID_PATTERN = /@([^\s@]+)\s+(?:(?:a|à|A)\s+)?raid(?:\s+(?:vers|ch
  * Parse une date depuis un string au format DD/MM/YYYY HH:mm
  */
 export function parseDate(dateStr: string): Date | null {
-  const match = dateStr.match(DATE_PATTERN);
-  if (!match) return null;
-  
-  const [, day, month, year, hour, minute] = match;
-  const date = new Date(
-    parseInt(year),
-    parseInt(month) - 1,
-    parseInt(day),
-    parseInt(hour),
-    parseInt(minute)
-  );
-  
-  // Vérifier que la date est valide
-  if (isNaN(date.getTime())) return null;
-  
-  return date;
+  const absoluteMatch = dateStr.match(DATE_PATTERN);
+  if (absoluteMatch) {
+    const [, day, month, year, hour, minute] = absoluteMatch;
+    const date = new Date(
+      parseInt(year, 10),
+      parseInt(month, 10) - 1,
+      parseInt(day, 10),
+      parseInt(hour, 10),
+      parseInt(minute, 10)
+    );
+
+    if (isNaN(date.getTime())) return null;
+    return date;
+  }
+
+  const relativeMatch = dateStr.match(RELATIVE_DATE_PATTERN);
+  if (relativeMatch) {
+    const [, keyword, hour, minute] = relativeMatch;
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const normalizedKeyword = keyword.toLowerCase();
+
+    if (normalizedKeyword === "hier") {
+      base.setDate(base.getDate() - 1);
+    }
+
+    base.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
+    if (isNaN(base.getTime())) return null;
+    return base;
+  }
+
+  return null;
 }
 
