@@ -1,13 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { adminNavigation, type NavItem } from "@/lib/admin/navigation";
+import { adminNavigationSimple, adminNavigationAvance, type NavItem } from "@/lib/admin/navigation";
+
+const ADMIN_MODE_COOKIE = "admin_mode";
+
+function getAdminModeCookie(): string {
+  if (typeof document === "undefined") return "simple";
+  const match = document.cookie.match(new RegExp(`(?:^|; )${ADMIN_MODE_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : "simple";
+}
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
+  const [canAccessAdvanced, setCanAccessAdvanced] = useState(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [navReady, setNavReady] = useState(false);
+
+  const navItems = isAdvancedMode ? adminNavigationAvance : adminNavigationSimple;
+
+  useEffect(() => {
+    async function loadAccess() {
+      try {
+        const res = await fetch("/api/admin/advanced-access?check=1", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setCanAccessAdvanced(!!data.canAccessAdvanced);
+        }
+      } catch (e) {
+        console.error("[AdminSidebar] Erreur vérification accès avancé:", e);
+      }
+      setIsAdvancedMode(getAdminModeCookie() === "advanced");
+      setNavReady(true);
+    }
+    loadAccess();
+  }, []);
+
+  useEffect(() => {
+    if (!navReady) return;
+    const newOpenMenus = new Set<string>();
+    navItems.forEach((item) => {
+      if (item.children && isParentActive(item)) {
+        newOpenMenus.add(item.href);
+        item.children?.forEach((child) => {
+          if (child.children && isParentActive(child)) {
+            newOpenMenus.add(child.href);
+          }
+        });
+      }
+    });
+    setOpenMenus(newOpenMenus);
+  }, [pathname, navReady, isAdvancedMode]);
 
   /**
    * Vérifie si un élément de navigation est actif
@@ -85,24 +132,6 @@ export default function AdminSidebar() {
     return pathname.startsWith(child.href + "/");
   }
 
-  // Ouvrir automatiquement les menus parents si on est sur une de leurs pages enfants
-  useEffect(() => {
-    const newOpenMenus = new Set<string>();
-    adminNavigation.forEach((item) => {
-      if (item.children && isParentActive(item)) {
-        newOpenMenus.add(item.href);
-        
-        // Ouvrir aussi les sous-menus si nécessaire (pour les enfants avec enfants)
-        item.children.forEach(child => {
-          if (child.children && isParentActive(child)) {
-            newOpenMenus.add(child.href);
-          }
-        });
-      }
-    });
-    setOpenMenus(newOpenMenus);
-  }, [pathname]);
-
   function toggleMenu(href: string) {
     setOpenMenus((prev) => {
       const newSet = new Set(prev);
@@ -127,7 +156,7 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="space-y-2">
-        {adminNavigation.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(item);
           const parentActive = isParentActive(item);
           const hasChildren = item.children && item.children.length > 0;
@@ -322,8 +351,54 @@ export default function AdminSidebar() {
         })}
       </nav>
 
+      {/* Bascule Admin simple / avancé */}
+      {navReady && canAccessAdvanced && (
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          {isAdvancedMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                document.cookie = `${ADMIN_MODE_COOKIE}=; path=/; max-age=0`;
+                setIsAdvancedMode(false);
+                router.refresh();
+              }}
+              className="flex w-full items-center gap-2 px-4 py-3 rounded-lg transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-text)';
+                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <span>←</span>
+              <span>Admin simple</span>
+            </button>
+          ) : (
+            <Link
+              href="/admin/avance"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-text)';
+                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <span>Admin avancé</span>
+              <span>→</span>
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Retour au site */}
-      <div className="mt-8 pt-8 border-t" style={{ borderColor: 'var(--color-border)' }}>
+      <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
         <Link
           href="/"
           className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"

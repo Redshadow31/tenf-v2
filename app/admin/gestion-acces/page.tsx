@@ -263,6 +263,7 @@ export default function GestionAccesPage() {
           { href: "/admin/gestion-acces", label: "Accès Dashboard", active: true },
           { href: "/admin/gestion-acces/dashboard", label: "Gestion du Dashboard" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
+          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
         ]}
       />
 

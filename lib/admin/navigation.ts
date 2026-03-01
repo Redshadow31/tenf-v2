@@ -43,6 +43,10 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/gestion-acces/permissions",
         label: "Permissions par section (Fondateurs)",
       },
+      {
+        href: "/admin/gestion-acces/admin-avance",
+        label: "Accès admin avancé",
+      },
     ],
   },
 
@@ -332,3 +336,67 @@ export const adminNavigation: NavItem[] = [
     icon: "🔎",
   },
 ];
+
+/**
+ * Navigation admin simple - pour les modérateurs qui débutent
+ * Menu allégé avec les sections essentielles de consultation
+ */
+export const adminNavigationSimple: NavItem[] = [
+  { href: "/admin/dashboard", label: "Tableau de bord", icon: "📊" },
+  { href: "/admin/control-center", label: "Centre de contrôle", icon: "📌" },
+  {
+    href: "/admin/membres",
+    label: "Membres",
+    icon: "👥",
+    children: [
+      { href: "/admin/membres", label: "Hub membres" },
+      { href: "/admin/membres/gestion", label: "Liste & gestion" },
+    ],
+  },
+  {
+    href: "/admin/spotlight",
+    label: "Spotlight",
+    icon: "🌟",
+    children: [
+      { href: "/admin/spotlight", label: "Hub Spotlight" },
+      { href: "/admin/spotlight/presence", label: "Présence & participation" },
+    ],
+  },
+  {
+    href: "/admin/evaluations",
+    label: "Intégration",
+    icon: "🚪",
+    children: [
+      { href: "/admin/evaluations", label: "Hub intégration" },
+      { href: "/admin/evaluations/planification", label: "Planification" },
+      { href: "/admin/evaluations/inscription", label: "Inscriptions" },
+      { href: "/admin/evaluations/presence-retour", label: "Présence & retours" },
+    ],
+  },
+  {
+    href: "/admin/events",
+    label: "Événements",
+    icon: "📅",
+    children: [
+      { href: "/admin/events", label: "Hub événements" },
+      { href: "/admin/events/liste", label: "Liste des événements" },
+      { href: "/admin/events/presence", label: "Présences" },
+    ],
+  },
+  {
+    href: "/admin/raids",
+    label: "Raids",
+    icon: "🚀",
+    children: [
+      { href: "/admin/raids", label: "Hub raids" },
+      { href: "/admin/raids/twitch", label: "Raids Twitch" },
+      { href: "/admin/raids/historique", label: "Historique" },
+    ],
+  },
+  { href: "/admin/search", label: "Recherche membre", icon: "🔎" },
+];
+
+/**
+ * Navigation admin avancé - menu complet
+ */
+export const adminNavigationAvance = adminNavigation;
