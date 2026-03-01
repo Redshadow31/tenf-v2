@@ -52,6 +52,7 @@ export default function Events2Page() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -129,6 +130,38 @@ export default function Events2Page() {
     const now = Date.now();
     return filteredEvents.filter((event) => new Date(event.date).getTime() < now);
   }, [filteredEvents]);
+
+  const calendarDays = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < startingDayOfWeek; i++) days.push(null);
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    return days;
+  }, [currentMonth]);
+
+  const monthTitle = useMemo(() => {
+    return currentMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }, [currentMonth]);
+
+  function getEventsForDate(date: Date | null): EventItem[] {
+    if (!date) return [];
+    return filteredEvents.filter((event) => {
+      const eventDate = new Date(event.date);
+      return (
+        eventDate.getDate() === date.getDate() &&
+        eventDate.getMonth() === date.getMonth() &&
+        eventDate.getFullYear() === date.getFullYear()
+      );
+    });
+  }
 
   async function handleRegister(eventId: string) {
     try {
@@ -295,6 +328,82 @@ export default function Events2Page() {
           placeholder="Rechercher un evenement..."
           className="w-full md:w-[420px] bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-sm text-white"
         />
+      </div>
+
+      <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-4 md:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-xl font-semibold capitalize">Calendrier - {monthTitle}</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+              className="px-3 py-2 rounded-lg text-sm bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff]"
+            >
+              ← Mois precedent
+            </button>
+            <button
+              onClick={() => setCurrentMonth(new Date())}
+              className="px-3 py-2 rounded-lg text-sm bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff]"
+            >
+              Aujourd'hui
+            </button>
+            <button
+              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+              className="px-3 py-2 rounded-lg text-sm bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff]"
+            >
+              Mois suivant →
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 text-xs md:text-sm text-gray-400">
+          {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
+            <div key={day} className="text-center py-1">
+              {day}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-2">
+          {calendarDays.map((date, idx) => {
+            const dayEvents = getEventsForDate(date);
+            const isToday =
+              date &&
+              date.getDate() === new Date().getDate() &&
+              date.getMonth() === new Date().getMonth() &&
+              date.getFullYear() === new Date().getFullYear();
+            return (
+              <div
+                key={`${idx}-${date ? date.toISOString() : "empty"}`}
+                className={`min-h-[90px] md:min-h-[110px] rounded-lg border p-2 ${
+                  date ? "bg-[#0e0e10] border-gray-700" : "border-transparent"
+                } ${isToday ? "ring-1 ring-[#9146ff]" : ""}`}
+              >
+                {date && (
+                  <>
+                    <div className={`text-xs md:text-sm mb-1 ${isToday ? "text-[#c7a4ff] font-semibold" : "text-gray-400"}`}>
+                      {date.getDate()}
+                    </div>
+                    <div className="space-y-1 max-h-[72px] md:max-h-[84px] overflow-y-auto">
+                      {dayEvents.slice(0, 3).map((event) => (
+                        <button
+                          key={event.id}
+                          onClick={() => openEventModal(event)}
+                          className={`w-full text-left text-[10px] md:text-xs px-2 py-1 rounded border ${categoryColor(event.category)}`}
+                          title={event.title}
+                        >
+                          {event.title}
+                        </button>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <div className="text-[10px] md:text-xs text-gray-500 px-1">+{dayEvents.length - 3} autre(s)</div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {message && (
