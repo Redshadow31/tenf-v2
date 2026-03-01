@@ -103,6 +103,13 @@ export interface MemberData {
   
   // Suivi staff
   integrationDate?: Date; // Date de réunion d'intégration validée
+  onboardingStatus?: "a_faire" | "en_cours" | "termine";
+  mentorTwitchLogin?: string;
+  primaryLanguage?: string;
+  timezone?: string;
+  countryCode?: string;
+  lastReviewAt?: Date;
+  nextReviewAt?: Date;
   roleHistory?: Array<{
     fromRole: string;
     toRole: string;

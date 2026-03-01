@@ -93,6 +93,13 @@ export const members = pgTable('members', {
   
   // Suivi staff
   integrationDate: timestamp('integration_date'),
+  onboardingStatus: text('onboarding_status').default('a_faire'), // 'a_faire' | 'en_cours' | 'termine'
+  mentorTwitchLogin: text('mentor_twitch_login'),
+  primaryLanguage: text('primary_language'),
+  timezone: text('timezone'), // IANA timezone, ex: Europe/Paris
+  countryCode: text('country_code'), // ISO-3166-1 alpha-2, ex: FR
+  lastReviewAt: timestamp('last_review_at'),
+  nextReviewAt: timestamp('next_review_at'),
   roleHistory: jsonb('role_history').$type<Array<{
     fromRole: string;
     toRole: string;

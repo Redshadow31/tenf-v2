@@ -49,6 +49,13 @@ interface Member {
   raidsReceived?: number; // Nombre de raids reçus ce mois
   createdAt?: string; // Date ISO de création
   integrationDate?: string; // Date ISO d'intégration
+  onboardingStatus?: "a_faire" | "en_cours" | "termine";
+  mentorTwitchLogin?: string;
+  primaryLanguage?: string;
+  timezone?: string;
+  countryCode?: string;
+  lastReviewAt?: string;
+  nextReviewAt?: string;
   roleHistory?: Array<{
     fromRole: string;
     toRole: string;
@@ -57,6 +64,7 @@ interface Member {
     reason?: string;
   }>;
   parrain?: string; // Pseudo/nom du membre parrain
+  profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
 }
 
 
@@ -72,7 +80,19 @@ export default function GestionMembresPage() {
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
-  type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive";
+  type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive" | "completude";
+  type PresetFilter = "all" | "nouveaux" | "incomplets" | "sans_twitch_id" | "sans_integration" | "vip" | "inactifs" | "revue_due";
+  const [presetFilter, setPresetFilter] = useState<PresetFilter>("all");
+  const [savedViews, setSavedViews] = useState<Array<{
+    id: string;
+    name: string;
+    searchQuery: string;
+    viewMode: "simple" | "complet";
+    sortColumn: SortableColumn | null;
+    sortDirection: "asc" | "desc";
+    presetFilter: PresetFilter;
+  }>>([]);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState<string>("");
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
@@ -86,6 +106,14 @@ export default function GestionMembresPage() {
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
   const [showMemberHistory, setShowMemberHistory] = useState(false);
   const [showVerifyTwitchNamesModal, setShowVerifyTwitchNamesModal] = useState(false);
+  const [selectedMemberLogins, setSelectedMemberLogins] = useState<string[]>([]);
+  const [bulkRole, setBulkRole] = useState<MemberRole | "">("");
+  const [bulkStatus, setBulkStatus] = useState<"" | "Actif" | "Inactif">("");
+  const [bulkOnboarding, setBulkOnboarding] = useState<"" | "a_faire" | "en_cours" | "termine">("");
+  const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
   // Lire le paramètre search de l'URL au chargement
   useEffect(() => {
@@ -152,6 +180,79 @@ export default function GestionMembresPage() {
       loadMembers();
     }
   }, [currentAdmin?.id]); // Charger quand l'admin change (tous les admins ont accès maintenant)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_VIEWS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setSavedViews(parsed);
+      }
+    } catch (error) {
+      console.warn("Impossible de charger les vues enregistrées:", error);
+    }
+  }, []);
+
+  function saveViewsToStorage(views: typeof savedViews) {
+    setSavedViews(views);
+    try {
+      localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(views));
+    } catch (error) {
+      console.warn("Impossible de sauvegarder les vues:", error);
+    }
+  }
+
+  function getMemberCompleteness(member: Member): { percent: number; missing: string[]; label: string } {
+    const checks = [
+      { key: "discordId", ok: !!member.discordId, label: "ID Discord" },
+      { key: "twitchId", ok: !!member.twitchId, label: "ID Twitch" },
+      { key: "integrationDate", ok: !!member.integrationDate, label: "Date intégration" },
+      { key: "parrain", ok: !!member.parrain, label: "Parrain" },
+      { key: "description", ok: !!member.description, label: "Description" },
+    ];
+    const valid = checks.filter((c) => c.ok).length;
+    const percent = Math.round((valid / checks.length) * 100);
+    const missing = checks.filter((c) => !c.ok).map((c) => c.label);
+    const label = percent >= 80 ? "Complet" : percent >= 50 ? "Partiel" : "Incomplet";
+    return { percent, missing, label };
+  }
+
+  function saveCurrentView() {
+    const name = prompt("Nom de la vue enregistrée :");
+    if (!name || !name.trim()) return;
+    const newView = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim(),
+      searchQuery,
+      viewMode,
+      sortColumn,
+      sortDirection,
+      presetFilter,
+    };
+    const nextViews = [newView, ...savedViews].slice(0, 20);
+    saveViewsToStorage(nextViews);
+    setSelectedSavedViewId(newView.id);
+  }
+
+  function applySavedView(viewId: string) {
+    setSelectedSavedViewId(viewId);
+    const view = savedViews.find((v) => v.id === viewId);
+    if (!view) return;
+    setSearchQuery(view.searchQuery);
+    setViewMode(view.viewMode);
+    setSortColumn(view.sortColumn);
+    setSortDirection(view.sortDirection);
+    setPresetFilter(view.presetFilter);
+  }
+
+  function deleteSavedView(viewId: string) {
+    const nextViews = savedViews.filter((v) => v.id !== viewId);
+    saveViewsToStorage(nextViews);
+    if (selectedSavedViewId === viewId) {
+      setSelectedSavedViewId("");
+    }
+  }
 
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
@@ -230,8 +331,16 @@ export default function GestionMembresPage() {
               raidsReceived: raidStats.received,
               createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
               integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
+              onboardingStatus: member.onboardingStatus,
+              mentorTwitchLogin: member.mentorTwitchLogin,
+              primaryLanguage: member.primaryLanguage,
+              timezone: member.timezone,
+              countryCode: member.countryCode,
+              lastReviewAt: member.lastReviewAt ? (typeof member.lastReviewAt === 'string' ? member.lastReviewAt : new Date(member.lastReviewAt).toISOString()) : undefined,
+              nextReviewAt: member.nextReviewAt ? (typeof member.nextReviewAt === 'string' ? member.nextReviewAt : new Date(member.nextReviewAt).toISOString()) : undefined,
               roleHistory: member.roleHistory || [],
               parrain: member.parrain,
+              profileValidationStatus: member.profileValidationStatus,
             };
           });
           
@@ -372,8 +481,16 @@ export default function GestionMembresPage() {
           twitchStatus: centralMember?.twitchStatus,
           createdAt: centralMember?.createdAt ? (typeof centralMember.createdAt === 'string' ? centralMember.createdAt : new Date(centralMember.createdAt).toISOString()) : undefined,
           integrationDate: centralMember?.integrationDate ? (typeof centralMember.integrationDate === 'string' ? centralMember.integrationDate : new Date(centralMember.integrationDate).toISOString()) : undefined,
+          onboardingStatus: centralMember?.onboardingStatus,
+          mentorTwitchLogin: centralMember?.mentorTwitchLogin,
+          primaryLanguage: centralMember?.primaryLanguage,
+          timezone: centralMember?.timezone,
+          countryCode: centralMember?.countryCode,
+          lastReviewAt: centralMember?.lastReviewAt ? (typeof centralMember.lastReviewAt === 'string' ? centralMember.lastReviewAt : new Date(centralMember.lastReviewAt).toISOString()) : undefined,
+          nextReviewAt: centralMember?.nextReviewAt ? (typeof centralMember.nextReviewAt === 'string' ? centralMember.nextReviewAt : new Date(centralMember.nextReviewAt).toISOString()) : undefined,
           roleHistory: centralMember?.roleHistory || [],
           parrain: centralMember?.parrain,
+          profileValidationStatus: centralMember?.profileValidationStatus,
         };
       });
 
@@ -460,6 +577,35 @@ export default function GestionMembresPage() {
     });
   }
 
+  // Filtres métier rapides
+  if (presetFilter !== "all") {
+    const now = new Date();
+    filteredMembers = filteredMembers.filter((member) => {
+      const completeness = getMemberCompleteness(member);
+      const createdAtMs = member.createdAt ? new Date(member.createdAt).getTime() : 0;
+      const daysSinceCreate = createdAtMs > 0 ? Math.floor((now.getTime() - createdAtMs) / (1000 * 60 * 60 * 24)) : 9999;
+      switch (presetFilter) {
+        case "nouveaux":
+          return daysSinceCreate <= 30;
+        case "incomplets":
+          return completeness.percent < 80 || member.profileValidationStatus !== "valide";
+        case "sans_twitch_id":
+          return !member.twitchId;
+        case "sans_integration":
+          return !member.integrationDate;
+        case "vip":
+          return !!member.isVip;
+        case "inactifs":
+          return member.statut === "Inactif";
+        case "revue_due":
+          if (!member.nextReviewAt) return false;
+          return new Date(member.nextReviewAt).getTime() <= now.getTime();
+        default:
+          return true;
+      }
+    });
+  }
+
   // Trier les membres
   if (sortColumn) {
     filteredMembers = [...filteredMembers].sort((a, b) => {
@@ -510,11 +656,29 @@ export default function GestionMembresPage() {
           const liveB = b.twitchStatus?.isLive ? 1 : 0;
           comparison = liveA - liveB;
           break;
+        case "completude":
+          comparison = getMemberCompleteness(a).percent - getMemberCompleteness(b).percent;
+          break;
       }
       
       return sortDirection === "asc" ? comparison : -comparison;
     });
   }
+
+  const reviewAlerts = (() => {
+    const now = new Date();
+    const in7days = new Date(now);
+    in7days.setDate(in7days.getDate() + 7);
+    let overdue = 0;
+    let dueSoon = 0;
+    for (const member of members) {
+      if (!member.nextReviewAt) continue;
+      const next = new Date(member.nextReviewAt);
+      if (next.getTime() <= now.getTime()) overdue++;
+      else if (next.getTime() <= in7days.getTime()) dueSoon++;
+    }
+    return { overdue, dueSoon };
+  })();
 
   // Fonction pour gérer le clic sur un en-tête de colonne
   const handleSort = (column: SortableColumn) => {
@@ -527,6 +691,80 @@ export default function GestionMembresPage() {
       setSortDirection("asc");
     }
   };
+
+  function toggleMemberSelection(twitchLogin: string, selected: boolean) {
+    setSelectedMemberLogins((prev) => {
+      if (selected) {
+        if (prev.includes(twitchLogin)) return prev;
+        return [...prev, twitchLogin];
+      }
+      return prev.filter((login) => login !== twitchLogin);
+    });
+  }
+
+  function toggleSelectAllFiltered(selected: boolean) {
+    if (!selected) {
+      setSelectedMemberLogins([]);
+      return;
+    }
+    setSelectedMemberLogins(filteredMembers.map((m) => m.twitch).filter(Boolean));
+  }
+
+  async function applyBulkChanges() {
+    if (!currentAdmin?.isFounder) {
+      alert("Seuls les fondateurs peuvent utiliser les actions de masse");
+      return;
+    }
+    if (selectedMemberLogins.length === 0) {
+      alert("Sélectionne au moins un membre");
+      return;
+    }
+    if (!bulkRole && !bulkStatus && !bulkOnboarding && !bulkNextReviewDate) {
+      alert("Aucune action de masse sélectionnée");
+      return;
+    }
+
+    setBulkLoading(true);
+    let success = 0;
+    const errors: string[] = [];
+
+    for (const login of selectedMemberLogins) {
+      try {
+        const member = members.find((m) => m.twitch.toLowerCase() === login.toLowerCase());
+        if (!member) continue;
+        const payload: any = {
+          twitchLogin: member.twitch,
+          originalDiscordId: member.discordId,
+        };
+        if (bulkRole) payload.role = bulkRole;
+        if (bulkStatus) payload.isActive = bulkStatus === "Actif";
+        if (bulkOnboarding) payload.onboardingStatus = bulkOnboarding;
+        if (bulkNextReviewDate) payload.nextReviewAt = new Date(bulkNextReviewDate).toISOString();
+
+        const response = await fetch("/api/admin/members", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Erreur API");
+        }
+        success++;
+      } catch (error) {
+        errors.push(`${login}: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+      }
+    }
+
+    setBulkLoading(false);
+    await loadMembers();
+
+    if (errors.length === 0) {
+      alert(`✅ Actions appliquées à ${success} membre(s)`);
+    } else {
+      alert(`⚠️ ${success} succès, ${errors.length} erreur(s)\n${errors.slice(0, 10).join("\n")}`);
+    }
+  }
 
   // Helper pour rendre un en-tête de colonne triable
   const SortableHeader = ({ column, label }: { column: SortableColumn; label: string }) => (
@@ -648,6 +886,13 @@ export default function GestionMembresPage() {
     isVip?: boolean;
     createdAt?: string;
     integrationDate?: string;
+    onboardingStatus?: "a_faire" | "en_cours" | "termine";
+    mentorTwitchLogin?: string;
+    primaryLanguage?: string;
+    timezone?: string;
+    countryCode?: string;
+    lastReviewAt?: string;
+    nextReviewAt?: string;
     parrain?: string;
     roleHistory?: Array<{
       fromRole: string;
@@ -682,6 +927,13 @@ export default function GestionMembresPage() {
       isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
       createdAt: updatedMember.createdAt || oldMember.createdAt,
       integrationDate: updatedMember.integrationDate || oldMember.integrationDate,
+      onboardingStatus: updatedMember.onboardingStatus !== undefined ? updatedMember.onboardingStatus : oldMember.onboardingStatus,
+      mentorTwitchLogin: updatedMember.mentorTwitchLogin !== undefined ? updatedMember.mentorTwitchLogin : oldMember.mentorTwitchLogin,
+      primaryLanguage: updatedMember.primaryLanguage !== undefined ? updatedMember.primaryLanguage : oldMember.primaryLanguage,
+      timezone: updatedMember.timezone !== undefined ? updatedMember.timezone : oldMember.timezone,
+      countryCode: updatedMember.countryCode !== undefined ? updatedMember.countryCode : oldMember.countryCode,
+      lastReviewAt: updatedMember.lastReviewAt !== undefined ? updatedMember.lastReviewAt : oldMember.lastReviewAt,
+      nextReviewAt: updatedMember.nextReviewAt !== undefined ? updatedMember.nextReviewAt : oldMember.nextReviewAt,
       parrain: updatedMember.parrain !== undefined ? updatedMember.parrain : oldMember.parrain,
       roleHistory: updatedMember.roleHistory || oldMember.roleHistory,
     };
@@ -709,6 +961,13 @@ export default function GestionMembresPage() {
             description: mergedMember.description,
             createdAt: mergedMember.createdAt,
             integrationDate: mergedMember.integrationDate,
+            onboardingStatus: mergedMember.onboardingStatus,
+            mentorTwitchLogin: mergedMember.mentorTwitchLogin,
+            primaryLanguage: mergedMember.primaryLanguage,
+            timezone: mergedMember.timezone,
+            countryCode: mergedMember.countryCode,
+            lastReviewAt: mergedMember.lastReviewAt,
+            nextReviewAt: mergedMember.nextReviewAt,
             parrain: mergedMember.parrain,
             roleChangeReason: updatedMember.roleChangeReason,
             // Identifiants stables pour identifier le membre (important si le pseudo change)
@@ -1058,6 +1317,50 @@ export default function GestionMembresPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 max-w-md bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
           />
+          <select
+            value={presetFilter}
+            onChange={(e) => setPresetFilter(e.target.value as PresetFilter)}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            title="Filtre métier rapide"
+          >
+            <option value="all">Tous</option>
+            <option value="nouveaux">Nouveaux (&lt; 30 jours)</option>
+            <option value="incomplets">Incomplets</option>
+            <option value="sans_twitch_id">Sans ID Twitch</option>
+            <option value="sans_integration">Sans intégration</option>
+            <option value="vip">VIP</option>
+            <option value="inactifs">Inactifs</option>
+            <option value="revue_due">Revue due</option>
+          </select>
+          <select
+            value={selectedSavedViewId}
+            onChange={(e) => applySavedView(e.target.value)}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            title="Vues enregistrées"
+          >
+            <option value="">Vues enregistrées</option>
+            {savedViews.map((view) => (
+              <option key={view.id} value={view.id}>
+                {view.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={saveCurrentView}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+            title="Enregistrer la vue actuelle"
+          >
+            Sauver vue
+          </button>
+          {selectedSavedViewId && (
+            <button
+              onClick={() => deleteSavedView(selectedSavedViewId)}
+              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+              title="Supprimer la vue sélectionnée"
+            >
+              Suppr vue
+            </button>
+          )}
           
           <div className="flex gap-2">
             {currentAdmin?.isFounder && (
@@ -1386,6 +1689,16 @@ export default function GestionMembresPage() {
                         {members.filter(m => m.statut === "Inactif").length}
                       </span> inactif{members.filter(m => m.statut === "Inactif").length > 1 ? 's' : ''}
                     </span>
+                    <span>
+                      <span className="text-yellow-400 font-semibold">
+                        {members.filter(m => getMemberCompleteness(m).percent < 80).length}
+                      </span> incomplet{members.filter(m => getMemberCompleteness(m).percent < 80).length > 1 ? 's' : ''}
+                    </span>
+                    <span>
+                      <span className="text-cyan-400 font-semibold">
+                        {members.filter(m => !m.twitchId).length}
+                      </span> sans ID Twitch
+                    </span>
                   </>
                 )}
               </div>
@@ -1393,24 +1706,109 @@ export default function GestionMembresPage() {
           </div>
         </div>
 
+        {(reviewAlerts.overdue > 0 || reviewAlerts.dueSoon > 0) && (
+          <div className="mb-6 bg-[#1a1a1d] border border-amber-500/40 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-amber-300 mb-2">Rappels revue staff</h3>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <span className="text-red-300">
+                <strong>{reviewAlerts.overdue}</strong> revue(s) en retard
+              </span>
+              <span className="text-yellow-300">
+                <strong>{reviewAlerts.dueSoon}</strong> revue(s) dans les 7 jours
+              </span>
+            </div>
+          </div>
+        )}
+
+        {currentAdmin?.isFounder && (
+          <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-200 mb-3">Actions de masse</h3>
+            <div className="flex flex-wrap gap-3 items-center">
+              <span className="text-sm text-gray-300">
+                {selectedMemberLogins.length} membre(s) sélectionné(s)
+              </span>
+              <select
+                value={bulkRole}
+                onChange={(e) => setBulkRole(e.target.value as MemberRole | "")}
+                className="bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
+              >
+                <option value="">Rôle (optionnel)</option>
+                <option value="Affilié">Affilié</option>
+                <option value="Développement">Développement</option>
+                <option value="Modérateur Junior">Modérateur Junior</option>
+                <option value="Mentor">Mentor</option>
+                <option value="Admin">Admin</option>
+                <option value="Admin Adjoint">Admin Adjoint</option>
+                <option value="Créateur Junior">Créateur Junior</option>
+                <option value="Communauté">Communauté</option>
+              </select>
+              <select
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value as "" | "Actif" | "Inactif")}
+                className="bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
+              >
+                <option value="">Statut (optionnel)</option>
+                <option value="Actif">Actif</option>
+                <option value="Inactif">Inactif</option>
+              </select>
+              <select
+                value={bulkOnboarding}
+                onChange={(e) => setBulkOnboarding(e.target.value as "" | "a_faire" | "en_cours" | "termine")}
+                className="bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
+              >
+                <option value="">Onboarding (optionnel)</option>
+                <option value="a_faire">A faire</option>
+                <option value="en_cours">En cours</option>
+                <option value="termine">Termine</option>
+              </select>
+              <input
+                type="date"
+                value={bulkNextReviewDate}
+                onChange={(e) => setBulkNextReviewDate(e.target.value)}
+                className="bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
+                title="Prochaine revue"
+              />
+              <button
+                onClick={applyBulkChanges}
+                disabled={bulkLoading || selectedMemberLogins.length === 0}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg text-sm"
+              >
+                {bulkLoading ? "Application..." : "Appliquer"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tableau des membres */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-700">
+                  {currentAdmin?.isFounder && (
+                    <th className="py-4 px-3 text-sm font-semibold text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={filteredMembers.length > 0 && filteredMembers.every((m) => selectedMemberLogins.includes(m.twitch))}
+                        onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                      />
+                    </th>
+                  )}
                   <SortableHeader column="nom" label="CRÉATEUR" />
                   {viewMode === "complet" && (
                     <>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Discord</th>
                       <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Twitch</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Onboarding</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Mentor</th>
                     </>
                   )}
                   <SortableHeader column="role" label="RÔLE" />
                   <SortableHeader column="statut" label="STATUT" />
                   <SortableHeader column="createdAt" label="MEMBRE DEPUIS" />
                   <SortableHeader column="integrationDate" label="INTÉGRATION" />
+                  <SortableHeader column="completude" label="COMPLÉTUDE" />
                   <SortableHeader column="parrain" label="PARRAIN" />
                   <SortableHeader column="lastLive" label="DERNIER LIVE" />
                   <SortableHeader column="raidsDone" label="Raids TENF faits" />
@@ -1430,6 +1828,15 @@ export default function GestionMembresPage() {
                     key={member.id}
                     className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
                   >
+                    {currentAdmin?.isFounder && (
+                      <td className="py-4 px-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedMemberLogins.includes(member.twitch)}
+                          onChange={(e) => toggleMemberSelection(member.twitch, e.target.checked)}
+                        />
+                      </td>
+                    )}
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <img
@@ -1527,6 +1934,24 @@ export default function GestionMembresPage() {
                             )}
                           </div>
                         </td>
+                        <td className="py-4 px-6">
+                          {member.onboardingStatus === "termine" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                              Terminé
+                            </span>
+                          ) : member.onboardingStatus === "en_cours" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                              En cours
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                              À faire
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-gray-300 text-sm">
+                          {member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"}
+                        </td>
                       </>
                     )}
                     <td className="py-4 px-6">
@@ -1562,6 +1987,28 @@ export default function GestionMembresPage() {
                           Non
                         </span>
                       )}
+                    </td>
+                    <td className="py-4 px-6">
+                      {(() => {
+                        const completeness = getMemberCompleteness(member);
+                        const colorClass =
+                          completeness.percent >= 80
+                            ? "bg-green-500/20 text-green-300 border-green-500/30"
+                            : completeness.percent >= 50
+                            ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+                            : "bg-red-500/20 text-red-300 border-red-500/30";
+                        const title = completeness.missing.length > 0
+                          ? `Champs manquants: ${completeness.missing.join(", ")}`
+                          : "Profil complet";
+                        return (
+                          <span
+                            title={title}
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${colorClass}`}
+                          >
+                            {completeness.percent}%
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-4 px-6 text-gray-300 text-sm">
                       {member.parrain || "—"}
@@ -1695,6 +2142,13 @@ export default function GestionMembresPage() {
               isVip: selectedMember.isVip,
               createdAt: selectedMember.createdAt,
               integrationDate: selectedMember.integrationDate,
+              onboardingStatus: selectedMember.onboardingStatus,
+              mentorTwitchLogin: selectedMember.mentorTwitchLogin,
+              primaryLanguage: selectedMember.primaryLanguage,
+              timezone: selectedMember.timezone,
+              countryCode: selectedMember.countryCode,
+              lastReviewAt: selectedMember.lastReviewAt,
+              nextReviewAt: selectedMember.nextReviewAt,
               roleHistory: selectedMember.roleHistory,
               parrain: selectedMember.parrain,
             }}

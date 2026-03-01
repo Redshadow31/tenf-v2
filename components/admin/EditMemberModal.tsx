@@ -20,6 +20,13 @@ interface Member {
   isVip?: boolean;
   createdAt?: string; // Date ISO de création (membre depuis)
   integrationDate?: string; // Date ISO d'intégration
+  onboardingStatus?: "a_faire" | "en_cours" | "termine";
+  mentorTwitchLogin?: string;
+  primaryLanguage?: string;
+  timezone?: string;
+  countryCode?: string;
+  lastReviewAt?: string;
+  nextReviewAt?: string;
   roleHistory?: Array<{
     fromRole: string;
     toRole: string;
@@ -48,6 +55,8 @@ export default function EditMemberModal({
   const [showRoleHistory, setShowRoleHistory] = useState(false);
   const [roleChangeReason, setRoleChangeReason] = useState("");
   const [availableMembers, setAvailableMembers] = useState<Array<{ nom: string; twitch: string }>>([]);
+  const [existingMembers, setExistingMembers] = useState<Array<{ twitchLogin: string; discordId?: string }>>([]);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [parrainSuggestions, setParrainSuggestions] = useState<string[]>([]);
   const [showParrainSuggestions, setShowParrainSuggestions] = useState(false);
   const originalRole = member.role;
@@ -59,8 +68,51 @@ export default function EditMemberModal({
       setRoleChangeReason("");
       // Charger la liste des membres actifs pour l'autocomplétion
       loadAvailableMembers();
+      loadExistingMembersForValidation();
     }
   }, [isOpen, member]);
+
+  useEffect(() => {
+    const errors: Record<string, string> = {};
+    const currentTwitch = (formData.twitch || "").trim().toLowerCase();
+    const currentDiscordId = (formData.discordId || "").trim();
+
+    if (!currentTwitch) {
+      errors.twitch = "Le pseudo Twitch est requis";
+    } else {
+      const duplicateTwitch = existingMembers.find(
+        (m) => m.twitchLogin?.toLowerCase() === currentTwitch && m.twitchLogin?.toLowerCase() !== member.twitch.toLowerCase()
+      );
+      if (duplicateTwitch) {
+        errors.twitch = "Ce pseudo Twitch est déjà utilisé par un autre membre";
+      }
+    }
+
+    if (currentDiscordId) {
+      const duplicateDiscord = existingMembers.find(
+        (m) =>
+          m.discordId === currentDiscordId &&
+          (member.discordId ? m.discordId !== member.discordId : true)
+      );
+      if (duplicateDiscord) {
+        errors.discordId = "Cet ID Discord est déjà lié à un autre membre";
+      }
+    }
+
+    const createdAt = formData.createdAt ? new Date(formData.createdAt) : null;
+    const integrationDate = formData.integrationDate ? new Date(formData.integrationDate) : null;
+    if (createdAt && integrationDate && integrationDate.getTime() < createdAt.getTime()) {
+      errors.integrationDate = "La date d'intégration ne peut pas être antérieure à la date de création";
+    }
+
+    const lastReviewAt = formData.lastReviewAt ? new Date(formData.lastReviewAt) : null;
+    const nextReviewAt = formData.nextReviewAt ? new Date(formData.nextReviewAt) : null;
+    if (lastReviewAt && nextReviewAt && nextReviewAt.getTime() < lastReviewAt.getTime()) {
+      errors.nextReviewAt = "La prochaine revue doit être postérieure à la dernière revue";
+    }
+
+    setValidationErrors(errors);
+  }, [formData.twitch, formData.discordId, formData.createdAt, formData.integrationDate, formData.lastReviewAt, formData.nextReviewAt, existingMembers, member.twitch, member.discordId]);
 
   const loadAvailableMembers = async () => {
     try {
@@ -82,6 +134,24 @@ export default function EditMemberModal({
       }
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
+    }
+  };
+
+  const loadExistingMembersForValidation = async () => {
+    try {
+      const response = await fetch("/api/admin/members", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const rows = (data.members || []).map((m: any) => ({
+        twitchLogin: (m.twitchLogin || "").toLowerCase(),
+        discordId: m.discordId || undefined,
+      }));
+      setExistingMembers(rows);
+    } catch (error) {
+      console.error("Erreur validation membres existants:", error);
     }
   };
 
@@ -112,6 +182,10 @@ export default function EditMemberModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (Object.keys(validationErrors).length > 0) {
+      alert("Impossible d'enregistrer : corrigez les erreurs du formulaire.");
+      return;
+    }
     // Si le rôle a changé, ajouter roleChangeReason aux données
     const dataToSave = { ...formData };
     if (formData.role !== originalRole) {
@@ -228,6 +302,9 @@ export default function EditMemberModal({
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
                         required
                       />
+                      {validationErrors.twitch && (
+                        <p className="text-xs text-red-400 mt-1">{validationErrors.twitch}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-300 mb-2">
@@ -309,6 +386,9 @@ export default function EditMemberModal({
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
                         placeholder="Ex: 535244297214361603"
                       />
+                      {validationErrors.discordId && (
+                        <p className="text-xs text-red-400 mt-1">{validationErrors.discordId}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -512,6 +592,9 @@ export default function EditMemberModal({
                         }}
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
                       />
+                      {validationErrors.integrationDate && (
+                        <p className="text-xs text-red-400 mt-1">{validationErrors.integrationDate}</p>
+                      )}
                       <p className="text-xs text-gray-500 mt-1">
                         Date de la réunion d'intégration validée
                       </p>
@@ -553,6 +636,98 @@ export default function EditMemberModal({
                       <p className="text-xs text-gray-500 mt-1">
                         Membre qui a parrainé ce membre dans TENF
                       </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Statut onboarding
+                      </label>
+                      <select
+                        value={formData.onboardingStatus || "a_faire"}
+                        onChange={(e) => setFormData({ ...formData, onboardingStatus: e.target.value as "a_faire" | "en_cours" | "termine" })}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="a_faire">A faire</option>
+                        <option value="en_cours">En cours</option>
+                        <option value="termine">Termine</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Mentor (login Twitch)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.mentorTwitchLogin || ""}
+                        onChange={(e) => setFormData({ ...formData, mentorTwitchLogin: e.target.value.toLowerCase().trim() })}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                        placeholder="Ex: redshadow31"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">
+                          Langue principale
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.primaryLanguage || ""}
+                          onChange={(e) => setFormData({ ...formData, primaryLanguage: e.target.value })}
+                          className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                          placeholder="Français"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">
+                          Fuseau horaire (IANA)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.timezone || ""}
+                          onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                          className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                          placeholder="Europe/Paris"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">
+                          Pays (ISO2)
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          value={formData.countryCode || ""}
+                          onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase().trim() })}
+                          className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                          placeholder="FR"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">
+                          Dernière revue
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.lastReviewAt ? formData.lastReviewAt.split("T")[0] : ""}
+                          onChange={(e) => setFormData({ ...formData, lastReviewAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                          className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Prochaine revue
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.nextReviewAt ? formData.nextReviewAt.split("T")[0] : ""}
+                        onChange={(e) => setFormData({ ...formData, nextReviewAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                      />
+                      {validationErrors.nextReviewAt && (
+                        <p className="text-xs text-red-400 mt-1">{validationErrors.nextReviewAt}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -599,7 +774,8 @@ export default function EditMemberModal({
           <button
             type="submit"
             form="edit-member-form"
-            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition-colors"
+            disabled={Object.keys(validationErrors).length > 0}
+            className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg transition-colors"
           >
             Enregistrer
           </button>

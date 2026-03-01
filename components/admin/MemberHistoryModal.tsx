@@ -57,6 +57,9 @@ export default function MemberHistoryModal({
   }
 
   const formatEventSummary = (event: MemberEvent): string => {
+    if (event.type.startsWith("audit:")) {
+      return `Audit admin: ${event.type.replace("audit:", "")}`;
+    }
     switch (event.type) {
       case 'role_changed':
         return `Rôle changé: ${event.payload?.fromRole || 'N/A'} → ${event.payload?.toRole || 'N/A'}`;
@@ -74,6 +77,9 @@ export default function MemberHistoryModal({
   };
 
   const getEventTypeColor = (type: string) => {
+    if (type.startsWith("audit:")) {
+      return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+    }
     switch (type) {
       case 'role_changed':
         return 'bg-purple-500/20 text-purple-300 border-purple-500/30';

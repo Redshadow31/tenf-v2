@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllEvents, getMemberEvents, recordMemberEvent } from '@/lib/memberEvents';
 import { requirePermission } from '@/lib/requireAdmin';
+import { getAllAuditLogs } from '@/lib/adminAudit';
 
 /**
  * GET - Récupère les événements avec filtres optionnels
@@ -34,7 +35,37 @@ export async function GET(request: Request) {
       limit,
     });
 
-    return NextResponse.json({ events });
+    // Timeline unifiée: fusionner les événements membres avec l'audit admin sur la ressource member.
+    let unifiedEvents: any[] = [...events];
+    if (memberId) {
+      const auditLogs = await getAllAuditLogs({
+        resourceType: 'member',
+        limit: 500,
+      });
+      const memberIdLower = memberId.toLowerCase();
+      const mappedAudit = auditLogs
+        .filter((log) => (log.resourceId || '').toLowerCase() === memberIdLower)
+        .map((log) => ({
+          id: `audit-${log.id}`,
+          memberId: memberIdLower,
+          type: `audit:${log.action}`,
+          createdAt: log.timestamp,
+          source: 'system' as const,
+          actor: log.actorUsername || log.actorDiscordId,
+          payload: {
+            metadata: log.metadata,
+            previousValue: log.previousValue,
+            newValue: log.newValue,
+          },
+        }));
+      unifiedEvents = [...unifiedEvents, ...mappedAudit];
+      unifiedEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      if (limit && Number.isFinite(limit)) {
+        unifiedEvents = unifiedEvents.slice(0, limit);
+      }
+    }
+
+    return NextResponse.json({ events: unifiedEvents });
   } catch (error) {
     console.error('Error fetching member events:', error);
     return NextResponse.json(

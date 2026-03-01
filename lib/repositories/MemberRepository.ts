@@ -366,6 +366,13 @@ export class MemberRepository {
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
       updatedBy: row.updated_by || undefined,
       integrationDate: row.integration_date ? new Date(row.integration_date) : undefined,
+      onboardingStatus: row.onboarding_status || undefined,
+      mentorTwitchLogin: row.mentor_twitch_login || undefined,
+      primaryLanguage: row.primary_language || undefined,
+      timezone: row.timezone || undefined,
+      countryCode: row.country_code || undefined,
+      lastReviewAt: row.last_review_at ? new Date(row.last_review_at) : undefined,
+      nextReviewAt: row.next_review_at ? new Date(row.next_review_at) : undefined,
       roleHistory: row.role_history || undefined,
       parrain: row.parrain || undefined,
     };
@@ -402,6 +409,21 @@ export class MemberRepository {
       record.integration_date = member.integrationDate instanceof Date 
         ? member.integrationDate.toISOString() 
         : member.integrationDate;
+    }
+    if (member.onboardingStatus !== undefined) record.onboarding_status = member.onboardingStatus;
+    if (member.mentorTwitchLogin !== undefined) record.mentor_twitch_login = member.mentorTwitchLogin;
+    if (member.primaryLanguage !== undefined) record.primary_language = member.primaryLanguage;
+    if (member.timezone !== undefined) record.timezone = member.timezone;
+    if (member.countryCode !== undefined) record.country_code = member.countryCode;
+    if (member.lastReviewAt !== undefined) {
+      record.last_review_at = member.lastReviewAt instanceof Date
+        ? member.lastReviewAt.toISOString()
+        : member.lastReviewAt;
+    }
+    if (member.nextReviewAt !== undefined) {
+      record.next_review_at = member.nextReviewAt instanceof Date
+        ? member.nextReviewAt.toISOString()
+        : member.nextReviewAt;
     }
     if (member.roleHistory !== undefined) record.role_history = member.roleHistory;
     if (member.parrain !== undefined) record.parrain = member.parrain;

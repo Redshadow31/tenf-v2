@@ -160,6 +160,13 @@ export async function POST(request: NextRequest) {
       badges,
       description,
       customBio,
+      onboardingStatus,
+      mentorTwitchLogin,
+      primaryLanguage,
+      timezone,
+      countryCode,
+      lastReviewAt,
+      nextReviewAt,
     } = body;
 
     if (!twitchLogin || !displayName || !twitchUrl) {
@@ -208,6 +215,13 @@ export async function POST(request: NextRequest) {
       description,
       customBio,
       profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
+      onboardingStatus: onboardingStatus || "a_faire",
+      mentorTwitchLogin,
+      primaryLanguage,
+      timezone,
+      countryCode,
+      lastReviewAt: lastReviewAt ? new Date(lastReviewAt) : undefined,
+      nextReviewAt: nextReviewAt ? new Date(nextReviewAt) : undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
       updatedBy: admin.discordId,
@@ -338,6 +352,42 @@ export async function PUT(request: NextRequest) {
       }
       // Sinon, garder la valeur string telle quelle
     }
+
+    // Normaliser champs Phase 2
+    if (updates.mentorTwitchLogin !== undefined) {
+      if (updates.mentorTwitchLogin === "" || updates.mentorTwitchLogin === null) {
+        updates.mentorTwitchLogin = undefined;
+      } else if (typeof updates.mentorTwitchLogin === "string") {
+        updates.mentorTwitchLogin = updates.mentorTwitchLogin.toLowerCase().trim();
+      }
+    }
+    if (updates.primaryLanguage !== undefined && (updates.primaryLanguage === "" || updates.primaryLanguage === null)) {
+      updates.primaryLanguage = undefined;
+    }
+    if (updates.timezone !== undefined && (updates.timezone === "" || updates.timezone === null)) {
+      updates.timezone = undefined;
+    }
+    if (updates.countryCode !== undefined) {
+      if (updates.countryCode === "" || updates.countryCode === null) {
+        updates.countryCode = undefined;
+      } else if (typeof updates.countryCode === "string") {
+        updates.countryCode = updates.countryCode.toUpperCase().trim();
+      }
+    }
+    if (updates.lastReviewAt !== undefined) {
+      if (updates.lastReviewAt === "" || updates.lastReviewAt === null) {
+        updates.lastReviewAt = undefined;
+      } else if (typeof updates.lastReviewAt === "string") {
+        updates.lastReviewAt = new Date(updates.lastReviewAt);
+      }
+    }
+    if (updates.nextReviewAt !== undefined) {
+      if (updates.nextReviewAt === "" || updates.nextReviewAt === null) {
+        updates.nextReviewAt = undefined;
+      } else if (typeof updates.nextReviewAt === "string") {
+        updates.nextReviewAt = new Date(updates.nextReviewAt);
+      }
+    }
     
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     // La gestion de roleHistory est faite automatiquement dans updateMemberData
@@ -457,6 +507,13 @@ export async function PUT(request: NextRequest) {
     if (updates.discordId !== undefined && updates.discordId !== existingMember.discordId) fieldsChanged.push("discordId");
     if (updates.badges !== undefined) fieldsChanged.push("badges");
     if (updates.parrain !== undefined) fieldsChanged.push("parrain");
+    if (updates.onboardingStatus !== undefined) fieldsChanged.push("onboardingStatus");
+    if (updates.mentorTwitchLogin !== undefined) fieldsChanged.push("mentorTwitchLogin");
+    if (updates.primaryLanguage !== undefined) fieldsChanged.push("primaryLanguage");
+    if (updates.timezone !== undefined) fieldsChanged.push("timezone");
+    if (updates.countryCode !== undefined) fieldsChanged.push("countryCode");
+    if (updates.lastReviewAt !== undefined) fieldsChanged.push("lastReviewAt");
+    if (updates.nextReviewAt !== undefined) fieldsChanged.push("nextReviewAt");
 
     // Logger l'action avec before/after optimisés (état complet avant/après)
     const { previousValue, newValue } = prepareAuditValues(existingMember, updatedMember);
