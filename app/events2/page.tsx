@@ -398,8 +398,8 @@ export default function Events2Page() {
   return (
     <div className="space-y-8 text-white">
       <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-6">
-        <h1 className="text-3xl font-bold mb-2">Events v2</h1>
-        <p className="text-gray-400 mb-4">Version test fonctionnelle pour valider une nouvelle UX avant remplacement.</p>
+        <h1 className="text-3xl font-bold mb-2">Événements communautaires</h1>
+        <p className="text-gray-400 mb-4">Retrouve les prochains événements, inscris-toi et propose tes idées à la communauté.</p>
         {nextEvent ? (
           <div className="text-sm text-gray-300">
             Prochain evenement: <span className="font-semibold text-white">{nextEvent.title}</span> - {formatEventDate(nextEvent.date)}
