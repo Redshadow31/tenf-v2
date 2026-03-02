@@ -138,6 +138,33 @@ export const eventRegistrations = pgTable('event_registrations', {
   registeredAt: timestamp('registered_at').defaultNow(),
 });
 
+// Table: event_proposals
+export const eventProposals = pgTable('event_proposals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  category: eventCategoryEnum('category').notNull(),
+  proposedDate: timestamp('proposed_date'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'approved' | 'rejected' | 'archived'
+  isAnonymous: boolean('is_anonymous').notNull().default(true),
+  proposedByDiscordId: text('proposed_by_discord_id').notNull(),
+  proposedByTwitchLogin: text('proposed_by_twitch_login'),
+  proposedByDisplayName: text('proposed_by_display_name'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Table: event_proposal_votes
+export const eventProposalVotes = pgTable('event_proposal_votes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  proposalId: uuid('proposal_id').notNull().references(() => eventProposals.id, { onDelete: 'cascade' }),
+  voterDiscordId: text('voter_discord_id').notNull(),
+  voterTwitchLogin: text('voter_twitch_login'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  uniqueVote: unique().on(table.proposalId, table.voterDiscordId),
+}));
+
 // Table: event_presences
 export const eventPresences = pgTable('event_presences', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -368,6 +395,17 @@ export const membersRelations = relations(members, ({ many }) => ({
 
 export const eventsRelations = relations(events, ({ many }) => ({
   registrations: many(eventRegistrations),
+}));
+
+export const eventProposalsRelations = relations(eventProposals, ({ many }) => ({
+  votes: many(eventProposalVotes),
+}));
+
+export const eventProposalVotesRelations = relations(eventProposalVotes, ({ one }) => ({
+  proposal: one(eventProposals, {
+    fields: [eventProposalVotes.proposalId],
+    references: [eventProposals.id],
+  }),
 }));
 
 export const eventRegistrationsRelations = relations(eventRegistrations, ({ one }) => ({

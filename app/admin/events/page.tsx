@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, List, BarChart3, Archive } from "lucide-react";
+import { Calendar, List, BarChart3, Archive, Lightbulb } from "lucide-react";
 
 const eventSections = [
   {
@@ -35,6 +35,14 @@ const eventSections = [
     icon: BarChart3,
     href: "/admin/events/recap",
     color: "from-green-600 to-green-800",
+  },
+  {
+    id: "propositions",
+    title: "Événements proposés",
+    description: "Modérer les propositions anonymes des membres",
+    icon: Lightbulb,
+    href: "/admin/events/propositions",
+    color: "from-violet-600 to-purple-800",
   },
 ];
 

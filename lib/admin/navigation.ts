@@ -266,6 +266,10 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/events/recap",
         label: "Récapitulatif",
       },
+      {
+        href: "/admin/events/propositions",
+        label: "Événements proposés",
+      },
     ],
   },
 
@@ -377,6 +381,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/events", label: "Hub événements" },
       { href: "/admin/events/liste", label: "Liste des événements" },
       { href: "/admin/events/presence", label: "Présences" },
+      { href: "/admin/events/propositions", label: "Événements proposés" },
     ],
   },
   { href: "/admin/follow", label: "Suivi de l'engagement", icon: "👁️" },
