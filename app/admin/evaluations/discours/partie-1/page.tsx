@@ -49,44 +49,43 @@ export default function Partie1Page() {
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Accueillir chaleureusement tous les participants</li>
-                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Présenter la New Family comme une famille, pas un simple Discord</li>
-                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Expliquer le but de cette réunion d&apos;intégration</li>
-                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Rassurer : pas de jugement, chacun à son rythme</li>
-                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Poser le ton : bienveillance et entraide avant tout</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Présenter la New Family comme une communauté humaine et structurée</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Expliquer l&apos;objectif clair de la réunion d&apos;intégration</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Introduire la notion de réciprocité (entraide dans les deux sens)</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Rassurer : chacun avance à son rythme</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Poser le ton : bienveillance + cadre cohérent</li>
               </ul>
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
               <div className="text-gray-300 leading-relaxed space-y-3">
-                <p>&quot;Salut tout le monde, et <strong>bienvenue officiellement</strong> dans la <span style={{color: '#7b4fd6'}}><strong>Twitch Entraide New Family</strong></span> !</p>
-                <p>Déjà, <strong>merci d&apos;être là</strong> aujourd&apos;hui. Le simple fait d&apos;avoir pris le temps de rejoindre cette réunion montre une chose importante :<br />
-                vous avez envie de <strong>comprendre</strong>, de <strong>vous intégrer</strong>, et de <strong>faire partie de quelque chose de collectif</strong>.</p>
-                <p>Ici, vous n&apos;avez pas rejoint <strong>un Discord parmi tant d&apos;autres</strong>. La New Family, c&apos;est avant tout une <span style={{color: '#7b4fd6'}}><strong>famille choisie</strong></span> : une communauté de streamers, de créateurs et de passionnés qui avancent <strong>ensemble</strong>, qui s&apos;entraident <strong>vraiment</strong>, et qui respectent <strong>le rythme de chacun</strong>.</p>
-                <p>Il n&apos;y a <strong>aucun jugement</strong> ici. Que vous débutiez, que vous streamiez depuis longtemps, que vous soyez très actifs ou plus discrets : <span style={{color: '#7b4fd6'}}><strong>vous avez votre place</strong></span>.</p>
-                <p>Cette réunion, c&apos;est votre <span style={{color: '#7b4fd6'}}><strong>porte d&apos;entrée dans la New Family</strong></span>. Le but n&apos;est pas de vous noyer sous des règles, mais de vous expliquer <strong>comment on fonctionne</strong>, <strong>pourquoi on fonctionne comme ça</strong>, et surtout <strong>comment la communauté peut vous aider à évoluer</strong>, dans votre streaming comme humainement.</p>
-                <p>Ici, l&apos;entraide n&apos;est pas un mot posé dans un titre.<br />
-                C&apos;est quelque chose qu&apos;on vit <strong>au quotidien</strong> :<br />
-                dans les lives, sur Discord, dans les échanges entre membres.</p>
-                <p>Prenez ce moment <strong>sans pression</strong>. Écoutez, posez-vous, et surtout retenez ceci : <span style={{color: '#7b4fd6'}}><strong>il n&apos;y a aucune question bête</strong></span>.</p>
-                <p>En résumé :<br />
-                vous êtes <strong>chez vous</strong>,<br />
-                vous avancez <strong>à votre rythme</strong>,<br />
-                et nous, on est là pour <strong>vous accompagner</strong>.</p>
+                <p>&quot;Salut tout le monde, et <strong>bienvenue officiellement</strong> dans la <span style={{ color: '#7b4fd6' }}><strong>Twitch Entraide New Family</strong></span> !</p>
+                <p>Merci d&apos;avoir pris le temps d&apos;être ici aujourd&apos;hui. Le simple fait de rejoindre cette réunion montre déjà une chose essentielle : vous avez envie de <strong>comprendre</strong>, de <strong>vous intégrer</strong> et de faire partie d&apos;un <strong>collectif</strong>.</p>
+                <p>Ici, vous n&apos;avez pas rejoint un Discord parmi tant d&apos;autres. La New Family, c&apos;est une <span style={{ color: '#7b4fd6' }}><strong>famille choisie</strong></span> : une communauté de streamers, de créateurs et de passionnés qui avancent <strong>ensemble</strong>, qui s&apos;entraident réellement et qui construisent quelque chose sur la <strong>durée</strong>.</p>
+                <p>Vous avez tous votre place ici. Mais notre fonctionnement repose sur un principe simple : l&apos;<strong>entraide fonctionne dans les deux sens</strong>.</p>
+                <p>La visibilité ne s&apos;achète pas, elle ne se donne pas au hasard : elle se construit par l&apos;<strong>implication</strong>, le <strong>respect</strong> et la <strong>participation</strong> à la vie collective.</p>
+                <p>Cette réunion n&apos;a pas pour but de vous noyer sous des règles, mais de vous expliquer pourquoi nous avons un <strong>cadre</strong>, comment il protège la communauté, et comment il peut vous aider à évoluer dans votre streaming et <strong>humainement</strong>.</p>
+                <p>Ici, l&apos;entraide n&apos;est pas un mot dans un titre. C&apos;est une <span style={{ color: '#7b4fd6' }}><strong>dynamique quotidienne</strong></span> : dans les lives, sur Discord, dans les vocaux, dans les formations et dans les moments plus légers.</p>
+                <p>Vous avancez à votre rythme. Mais si vous choisissez de vous engager, la communauté s&apos;engagera pour vous.</p>
                 <p>Encore <strong>bienvenue dans la New Family</strong> 💜<br />
-                On va maintenant voir ensemble <strong>comment tout ça fonctionne concrètement</strong>.&quot;</p>
+                On va maintenant voir ensemble comment tout cela fonctionne concrètement.&quot;</p>
               </div>
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
-                <li><strong>🎵 Ton chaleureux et souriant</strong> - Le premier contact est crucial</li>
-                <li><strong>👋 Saluez nominativement</strong> si possible les participants dans le vocal</li>
-                <li><strong>⏸️ Faites une pause</strong> après l&apos;intro pour laisser l&apos;ambiance s&apos;installer</li>
-                <li><strong>✅ Vérifiez</strong> que tout le monde entend bien et est à l&apos;aise</li>
-                <li><strong>😊 Souriez en parlant</strong> - ça s&apos;entend dans la voix</li>
+                <li><strong>🎵 Ton chaleureux et posé</strong> - Le premier contact donne le cadre</li>
+                <li><strong>👋 Saluez nominativement</strong> les participants si possible</li>
+                <li><strong>⏸️ Laissez un petit temps d&apos;installation</strong> au début</li>
+                <li><strong>🔊 Vérifiez</strong> que tout le monde entend bien et se sent à l&apos;aise</li>
+                <li><strong>🙂 Souriez en parlant</strong> - ça s&apos;entend</li>
+                <li><strong>📏 Soyez clairs et cohérents</strong> dans les explications du cadre</li>
               </ul>
+              <p className="mt-5 text-gray-200 leading-relaxed">
+                <strong className="text-green-300">Cette dernière ligne est essentielle :</strong> vous ne faites plus seulement <em>accueillir</em>, vous <strong>transmettez une structure</strong>.
+              </p>
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/BJN4Yrwq" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 1 HD</a>
