@@ -18,6 +18,7 @@ export default function BoutiqueAdminPage() {
   const [productForm, setProductForm] = useState({
     name: "",
     price: "",
+    isStartingPrice: false,
     description: "",
     categoryId: "",
     images: [""],
@@ -158,6 +159,7 @@ export default function BoutiqueAdminPage() {
     setProductForm({
       name: product.name,
       price: product.price.toString(),
+      isStartingPrice: product.isStartingPrice === true,
       description: product.description,
       categoryId: product.categoryId,
       images: product.images.length > 0 ? product.images : [""],
@@ -264,6 +266,7 @@ export default function BoutiqueAdminPage() {
     setProductForm({
       name: "",
       price: "",
+      isStartingPrice: false,
       description: "",
       categoryId: "",
       images: [""],
@@ -429,6 +432,19 @@ export default function BoutiqueAdminPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isStartingPrice"
+                    checked={productForm.isStartingPrice}
+                    onChange={(e) => setProductForm({ ...productForm, isStartingPrice: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                  <label htmlFor="isStartingPrice" className="text-sm" style={{ color: 'var(--color-text)' }}>
+                    Afficher le prix comme "A partir de"
+                  </label>
                 </div>
 
                 <div>
@@ -612,7 +628,7 @@ export default function BoutiqueAdminPage() {
                             )}
                           </td>
                           <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text)' }}>
-                            €{product.price.toFixed(2)}
+                            {product.isStartingPrice ? "A partir de " : ""}€{product.price.toFixed(2)}
                           </td>
                           <td className="py-4 px-6">
                             {product.featured ? (

@@ -9,6 +9,7 @@ type ProductModalProps = {
     id: string;
     name: string;
     price: number;
+    isStartingPrice?: boolean;
     description: string;
     images: string[];
     buyUrl?: string;
@@ -164,7 +165,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
               {/* Price */}
               <div>
                 <div className="text-3xl font-bold" style={{ color: "var(--color-primary)" }}>
-                  €{product.price.toFixed(2)}
+                  {product.isStartingPrice ? "A partir de " : ""}€{product.price.toFixed(2)}
                 </div>
               </div>
 

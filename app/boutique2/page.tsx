@@ -15,6 +15,7 @@ interface ShopProduct {
   id: string;
   name: string;
   price: number;
+  isStartingPrice?: boolean;
   description: string;
   categoryId: string;
   images: string[];
@@ -371,6 +372,7 @@ function ProductCard({
   const mainImage = product.images[0];
   const categoryColor = product.category?.color || "#8B5CF6";
   const isNew = isNewProduct(product.createdAt);
+  const priceLabel = `${product.isStartingPrice ? "A partir de " : ""}€${product.price.toFixed(2)}`;
 
   return (
     <article
@@ -423,7 +425,7 @@ function ProductCard({
 
         <div className="flex items-center justify-between gap-2">
           <p className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
-            €{product.price.toFixed(2)}
+            {priceLabel}
           </p>
           <a
             href={product.buyUrl || FOURTHWALL_ALL_PRODUCTS_URL}

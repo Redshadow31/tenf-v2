@@ -8,6 +8,7 @@ interface ShopProduct {
   id: string;
   name: string;
   price: number;
+  isStartingPrice?: boolean;
   description: string;
   categoryId: string;
   images: string[];
@@ -203,6 +204,7 @@ interface ProductCardProps {
 function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
   const categoryColor = product.category?.color || "#8B5CF6";
   const mainImage = product.images[0] || "";
+  const priceLabel = `${product.isStartingPrice ? "A partir de " : ""}€${product.price.toFixed(2)}`;
 
   return (
     <div
@@ -240,7 +242,7 @@ function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
         )}
         <div className="flex items-center justify-between">
           <span className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
-            €{product.price.toFixed(2)}
+            {priceLabel}
           </span>
           {product.buyUrl ? (
             <a

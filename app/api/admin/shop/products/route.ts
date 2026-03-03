@@ -18,6 +18,7 @@ export interface ShopProduct {
   id: string;
   name: string;
   price: number;
+  isStartingPrice?: boolean; // Si true, afficher "A partir de"
   description: string;
   categoryId: string;
   images: string[]; // Array of image URLs (up to 6)
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, price, description, categoryId, images, featured, buyUrl } = body;
+    const { name, price, description, categoryId, images, featured, buyUrl, isStartingPrice } = body;
 
     if (!name || price === undefined || !categoryId) {
       return NextResponse.json(
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest) {
       id,
       name,
       price: parseFloat(price),
+      isStartingPrice: isStartingPrice === true,
       description: description || '',
       categoryId,
       images,
@@ -178,7 +180,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, price, description, categoryId, images, featured, buyUrl } = body;
+    const { id, name, price, description, categoryId, images, featured, buyUrl, isStartingPrice } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -223,6 +225,7 @@ export async function PUT(request: NextRequest) {
       ...(images !== undefined && { images: images.length > 6 ? images.slice(0, 6) : images }),
       ...(featured !== undefined && { featured }),
       ...(buyUrl !== undefined && { buyUrl: buyUrl || undefined }),
+      ...(isStartingPrice !== undefined && { isStartingPrice: isStartingPrice === true }),
       updatedAt: new Date().toISOString(),
     };
 
