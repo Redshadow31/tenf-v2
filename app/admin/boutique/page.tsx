@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit2, X, Save, AlertCircle, CheckCircle2, Tag } from "lucide-react";
+import { Plus, Trash2, Edit2, X, Save, AlertCircle, CheckCircle2, Tag, ArrowUp, ArrowDown } from "lucide-react";
 import type { ShopProduct, ShopCategory } from "@/app/api/admin/shop/products/route";
 
 export default function BoutiqueAdminPage() {
@@ -295,6 +295,57 @@ export default function BoutiqueAdminPage() {
     setProductForm({ ...productForm, images: newImages });
   }
 
+  const sortedProducts = [...products]
+    .map((product, index) => ({
+      ...product,
+      __resolvedSortOrder:
+        typeof product.sortOrder === "number" && Number.isFinite(product.sortOrder)
+          ? product.sortOrder
+          : index + 1,
+    }))
+    .sort((a, b) => a.__resolvedSortOrder - b.__resolvedSortOrder);
+
+  async function handleMoveProduct(productId: string, direction: "up" | "down") {
+    const currentIndex = sortedProducts.findIndex((product) => product.id === productId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sortedProducts.length) return;
+
+    const reordered = [...sortedProducts];
+    const [movedProduct] = reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, movedProduct);
+
+    try {
+      setError(null);
+
+      await Promise.all(
+        reordered.map((product, index) =>
+          fetch("/api/admin/shop/products", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: product.id,
+              sortOrder: index + 1,
+            }),
+          }).then(async (response) => {
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || "Erreur lors du reordonnancement");
+            }
+          })
+        )
+      );
+
+      setSuccess("Ordre des produits mis a jour !");
+      await loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Error reordering products:", err);
+      setError(err.message || "Erreur lors du reordonnancement");
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -557,7 +608,7 @@ export default function BoutiqueAdminPage() {
           <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
-                Produits ({products.length})
+                Produits ({sortedProducts.length})
               </h2>
               {!isAddingProduct && (
                 <button
@@ -585,6 +636,7 @@ export default function BoutiqueAdminPage() {
                   <thead>
                     <tr className="border-b" style={{ borderColor: 'var(--color-border)' }}>
                       <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Produit</th>
+                      <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ordre</th>
                       <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Catégorie</th>
                       <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Prix</th>
                       <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Vedette</th>
@@ -592,7 +644,7 @@ export default function BoutiqueAdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((product) => {
+                    {sortedProducts.map((product, index) => {
                       const category = categories.find(c => c.id === product.categoryId);
                       return (
                         <tr
@@ -616,6 +668,9 @@ export default function BoutiqueAdminPage() {
                                 <div className="text-xs line-clamp-1" style={{ color: 'var(--color-text-secondary)' }}>{product.description}</div>
                               </div>
                             </div>
+                          </td>
+                          <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text)' }}>
+                            #{index + 1}
                           </td>
                           <td className="py-4 px-6">
                             {category ? (
@@ -641,6 +696,24 @@ export default function BoutiqueAdminPage() {
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleMoveProduct(product.id, "up")}
+                                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+                                title="Monter"
+                                disabled={index === 0}
+                              >
+                                <ArrowUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleMoveProduct(product.id, "down")}
+                                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+                                title="Descendre"
+                                disabled={index === sortedProducts.length - 1}
+                              >
+                                <ArrowDown className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => startEditProduct(product)}
                                 className="p-2 rounded-lg transition-colors"

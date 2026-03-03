@@ -19,6 +19,7 @@ export interface ShopProduct {
   name: string;
   price: number;
   isStartingPrice?: boolean; // Si true, afficher "A partir de"
+  sortOrder?: number; // Ordre d'affichage dans la boutique
   description: string;
   categoryId: string;
   images: string[]; // Array of image URLs (up to 6)
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, price, description, categoryId, images, featured, buyUrl, isStartingPrice } = body;
+    const { name, price, description, categoryId, images, featured, buyUrl, isStartingPrice, sortOrder } = body;
 
     if (!name || price === undefined || !categoryId) {
       return NextResponse.json(
@@ -131,11 +132,21 @@ export async function POST(request: NextRequest) {
     // Générer un ID unique
     const id = `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    const parsedSortOrder = Number.parseInt(String(sortOrder), 10);
+    const maxSortOrder = products.reduce((max, product, index) => {
+      const currentOrder =
+        typeof product.sortOrder === "number" && Number.isFinite(product.sortOrder)
+          ? product.sortOrder
+          : index + 1;
+      return Math.max(max, currentOrder);
+    }, 0);
+
     const newProduct: ShopProduct = {
       id,
       name,
       price: parseFloat(price),
       isStartingPrice: isStartingPrice === true,
+      sortOrder: Number.isFinite(parsedSortOrder) && parsedSortOrder > 0 ? parsedSortOrder : maxSortOrder + 1,
       description: description || '',
       categoryId,
       images,
@@ -180,7 +191,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, price, description, categoryId, images, featured, buyUrl, isStartingPrice } = body;
+    const { id, name, price, description, categoryId, images, featured, buyUrl, isStartingPrice, sortOrder } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -215,6 +226,8 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    const parsedSortOrder = Number.parseInt(String(sortOrder), 10);
+
     // Mettre à jour le produit
     const updatedProduct: ShopProduct = {
       ...products[productIndex],
@@ -226,6 +239,9 @@ export async function PUT(request: NextRequest) {
       ...(featured !== undefined && { featured }),
       ...(buyUrl !== undefined && { buyUrl: buyUrl || undefined }),
       ...(isStartingPrice !== undefined && { isStartingPrice: isStartingPrice === true }),
+      ...(sortOrder !== undefined &&
+        Number.isFinite(parsedSortOrder) &&
+        parsedSortOrder > 0 && { sortOrder: parsedSortOrder }),
       updatedAt: new Date().toISOString(),
     };
 

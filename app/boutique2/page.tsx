@@ -16,6 +16,7 @@ interface ShopProduct {
   name: string;
   price: number;
   isStartingPrice?: boolean;
+  sortOrder?: number;
   description: string;
   categoryId: string;
   images: string[];
@@ -45,6 +46,9 @@ export default function Boutique2Page() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
+  const [onlyFeatured, setOnlyFeatured] = useState(false);
+  const [onlyNew, setOnlyNew] = useState(false);
+  const [onlyStartingPrice, setOnlyStartingPrice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
@@ -96,7 +100,15 @@ export default function Boutique2Page() {
   }, [products, categories]);
 
   const filteredAndSorted = useMemo(() => {
-    let list = [...products];
+    let list = [...products]
+      .map((product, index) => ({
+        ...product,
+        __resolvedSortOrder:
+          typeof product.sortOrder === "number" && Number.isFinite(product.sortOrder)
+            ? product.sortOrder
+            : index + 1,
+      }))
+      .sort((a, b) => a.__resolvedSortOrder - b.__resolvedSortOrder);
 
     if (selectedCategory !== "all") {
       list = list.filter((p) => p.categoryId === selectedCategory);
@@ -108,6 +120,18 @@ export default function Boutique2Page() {
         const haystack = `${p.name} ${p.description} ${p.category?.name || ""}`.toLowerCase();
         return haystack.includes(q);
       });
+    }
+
+    if (onlyFeatured) {
+      list = list.filter((p) => p.featured);
+    }
+
+    if (onlyNew) {
+      list = list.filter((p) => isNewProduct(p.createdAt));
+    }
+
+    if (onlyStartingPrice) {
+      list = list.filter((p) => p.isStartingPrice);
     }
 
     switch (sortMode) {
@@ -129,7 +153,11 @@ export default function Boutique2Page() {
     }
 
     return list;
-  }, [products, selectedCategory, query, sortMode]);
+  }, [products, selectedCategory, query, sortMode, onlyFeatured, onlyNew, onlyStartingPrice]);
+
+  const activeQuickFilters = useMemo(() => {
+    return Number(onlyFeatured) + Number(onlyNew) + Number(onlyStartingPrice);
+  }, [onlyFeatured, onlyNew, onlyStartingPrice]);
 
   const topHighlights = useMemo(() => {
     const featured = filteredAndSorted.filter((p) => p.featured).slice(0, 6);
@@ -184,7 +212,10 @@ export default function Boutique2Page() {
           </div>
         </header>
 
-        <section className="rounded-xl border p-5 space-y-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+        <section
+          className="rounded-xl border p-5 space-y-4 sticky top-4 z-20 backdrop-blur"
+          style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2 relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--color-text-secondary)" }} />
@@ -230,9 +261,55 @@ export default function Boutique2Page() {
               />
             ))}
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <FilterPill
+              active={onlyFeatured}
+              onClick={() => setOnlyFeatured((v) => !v)}
+              label="En avant"
+              color="#8B5CF6"
+            />
+            <FilterPill
+              active={onlyNew}
+              onClick={() => setOnlyNew((v) => !v)}
+              label="Nouveautes"
+              color="#10b981"
+            />
+            <FilterPill
+              active={onlyStartingPrice}
+              onClick={() => setOnlyStartingPrice((v) => !v)}
+              label="A partir de"
+              color="#f59e0b"
+            />
+            {activeQuickFilters > 0 && (
+              <button
+                onClick={() => {
+                  setOnlyFeatured(false);
+                  setOnlyNew(false);
+                  setOnlyStartingPrice(false);
+                }}
+                className="px-3 py-2 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)" }}
+              >
+                Reinitialiser ({activeQuickFilters})
+              </button>
+            )}
+          </div>
         </section>
 
-        {!loading && topHighlights.length > 0 && (
+        {loading ? (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: "var(--color-text)" }}>
+              <Sparkles className="w-6 h-6" style={{ color: "var(--color-primary)" }} />
+              Selection rapide
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <SkeletonCard key={`highlight-skeleton-${index}`} />
+              ))}
+            </div>
+          </section>
+        ) : topHighlights.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: "var(--color-text)" }}>
               <Sparkles className="w-6 h-6" style={{ color: "var(--color-primary)" }} />
@@ -249,7 +326,7 @@ export default function Boutique2Page() {
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-              Produits
+              Produits ({filteredAndSorted.length})
             </h2>
             <a
               href={FOURTHWALL_ALL_PRODUCTS_URL}
@@ -264,8 +341,10 @@ export default function Boutique2Page() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-14">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: "var(--color-primary)" }} />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <SkeletonCard key={`product-skeleton-${index}`} />
+              ))}
             </div>
           ) : error ? (
             <div className="rounded-lg border p-4" style={{ borderColor: "#dc2626", backgroundColor: "rgba(220,38,38,0.08)", color: "var(--color-text)" }}>
@@ -376,7 +455,7 @@ function ProductCard({
 
   return (
     <article
-      className="rounded-xl overflow-hidden border transition-transform hover:scale-[1.01]"
+      className="rounded-xl overflow-hidden border transition-all hover:scale-[1.01] hover:shadow-lg"
       style={{ backgroundColor: "var(--color-card)", borderColor: categoryColor }}
     >
       <button onClick={() => onOpen(product)} className="w-full text-left">
@@ -423,7 +502,7 @@ function ProductCard({
           {product.description || "Aucune description"}
         </p>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="space-y-2">
           <p className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
             {priceLabel}
           </p>
@@ -431,7 +510,7 @@ function ProductCard({
             href={product.buyUrl || FOURTHWALL_ALL_PRODUCTS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-2 rounded-lg text-sm font-semibold text-white"
+            className="block w-full px-3 py-2 rounded-lg text-sm font-semibold text-white text-center"
             style={{ backgroundColor: "var(--color-primary)" }}
           >
             Acheter
@@ -439,6 +518,19 @@ function ProductCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-xl overflow-hidden border animate-pulse" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <div className="aspect-square w-full" style={{ backgroundColor: "var(--color-surface)" }} />
+      <div className="p-4 space-y-3">
+        <div className="h-4 rounded" style={{ backgroundColor: "var(--color-surface)" }} />
+        <div className="h-4 w-2/3 rounded" style={{ backgroundColor: "var(--color-surface)" }} />
+        <div className="h-10 rounded" style={{ backgroundColor: "var(--color-surface)" }} />
+      </div>
+    </div>
   );
 }
 

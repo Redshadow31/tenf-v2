@@ -9,6 +9,7 @@ interface ShopProduct {
   name: string;
   price: number;
   isStartingPrice?: boolean;
+  sortOrder?: number;
   description: string;
   categoryId: string;
   images: string[];
@@ -49,11 +50,21 @@ export default function BoutiquePage() {
     }
   }
 
-  const filteredProducts = selectedCategory
-    ? products.filter((p) => p.categoryId === selectedCategory)
-    : products;
+  const orderedProducts = [...products]
+    .map((product, index) => ({
+      ...product,
+      __resolvedSortOrder:
+        typeof product.sortOrder === "number" && Number.isFinite(product.sortOrder)
+          ? product.sortOrder
+          : index + 1,
+    }))
+    .sort((a, b) => a.__resolvedSortOrder - b.__resolvedSortOrder);
 
-  const featuredProducts = products.filter((p) => p.featured);
+  const filteredProducts = selectedCategory
+    ? orderedProducts.filter((p) => p.categoryId === selectedCategory)
+    : orderedProducts;
+
+  const featuredProducts = orderedProducts.filter((p) => p.featured);
   const regularProducts = filteredProducts.filter((p) => !p.featured);
 
   function handleProductClick(product: ShopProduct) {
