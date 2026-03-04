@@ -34,11 +34,29 @@ export function isLegacyMemberRole(role: string): role is LegacyMemberRole {
   return role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
 }
 
-export function toCanonicalMemberRole(role: MemberRole): MemberRole {
+const CANONICAL_MEMBER_ROLES: MemberRole[] = [
+  "Affilié",
+  "Développement",
+  "Admin",
+  "Admin Coordinateur",
+  "Modérateur",
+  "Modérateur en formation",
+  "Modérateur en activité réduite",
+  "Modérateur en pause",
+  "Soutien TENF",
+  "Contributeur TENF du Mois",
+  "Créateur Junior",
+  "Communauté",
+];
+
+export function toCanonicalMemberRole(role: string): MemberRole {
   if (isLegacyMemberRole(role)) {
     return LEGACY_ROLE_TO_CANONICAL[role];
   }
-  return role;
+  if (CANONICAL_MEMBER_ROLES.includes(role as MemberRole)) {
+    return role as MemberRole;
+  }
+  return "Affilié";
 }
 
 export interface MemberWithRole {
