@@ -260,10 +260,12 @@ export default function GestionMembresPage() {
       setLoading(true);
       setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
       
-      // Charger les stats de raids en parallèle
+      // Charger les stats de raids depuis la même source que /admin/raids (data-v2)
       let raidsStats: Record<string, { done: number; received: number }> = {};
       try {
-        const raidsResponse = await fetch("/api/discord/raids", {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const raidsResponse = await fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -271,13 +273,37 @@ export default function GestionMembresPage() {
         });
         if (raidsResponse.ok) {
           const raidsData = await raidsResponse.json();
-          const raids = raidsData.raids || {};
-          // Extraire les stats pour chaque membre
-          for (const [twitchLogin, stats] of Object.entries(raids)) {
-            raidsStats[twitchLogin.toLowerCase()] = {
-              done: (stats as any).done || 0,
-              received: (stats as any).received || 0,
-            };
+          // Même logique de filtrage que la page /admin/raids
+          const filteredRaidsFaits = (raidsData.raidsFaits || []).filter((raid: any) => {
+            const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+            if (source === "discord") return false;
+            return source === "manual" || source === "admin" || raid.manual;
+          });
+
+          const filteredRaidsRecus = (raidsData.raidsRecus || []).filter((raid: any) => {
+            const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+            if (source === "discord") return false;
+            return source === "manual" || source === "admin" || raid.manual;
+          });
+
+          // Agréger les raids faits (done) par login Twitch
+          for (const raid of filteredRaidsFaits) {
+            const raiderLogin = (raid.raiderTwitchLogin || raid.raider || "").toLowerCase();
+            if (!raiderLogin) continue;
+            if (!raidsStats[raiderLogin]) {
+              raidsStats[raiderLogin] = { done: 0, received: 0 };
+            }
+            raidsStats[raiderLogin].done += raid.count || 1;
+          }
+
+          // Agréger les raids reçus (received) par login Twitch
+          for (const raid of filteredRaidsRecus) {
+            const targetLogin = (raid.targetTwitchLogin || raid.target || "").toLowerCase();
+            if (!targetLogin) continue;
+            if (!raidsStats[targetLogin]) {
+              raidsStats[targetLogin] = { done: 0, received: 0 };
+            }
+            raidsStats[targetLogin].received += 1;
           }
         }
       } catch (err) {
@@ -973,6 +999,7 @@ export default function GestionMembresPage() {
             // Identifiants stables pour identifier le membre (important si le pseudo change)
             originalDiscordId: oldMember.discordId, // ID Discord original (stable)
             originalTwitchId: oldMember.twitchId, // ID Twitch original (stable)
+            originalTwitchLogin: oldMember.twitch, // Fallback si pas de discordId
           }),
       });
 

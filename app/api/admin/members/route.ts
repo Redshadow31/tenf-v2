@@ -277,6 +277,7 @@ export async function PUT(request: NextRequest) {
       memberId, // Identifiant stable (discordId) 
       originalDiscordId, // discordId original pour identifier le membre
       originalTwitchId, // twitchId original pour identifier le membre
+      originalTwitchLogin, // twitchLogin original pour identifier le membre si le pseudo change
       ...updates 
     } = body;
 
@@ -287,6 +288,10 @@ export async function PUT(request: NextRequest) {
       // Chercher par ID Discord (priorité)
       existingMember = await memberRepository.findByDiscordId(originalDiscordId);
       console.log(`[Update Member API] Recherche par Discord ID: ${originalDiscordId}`);
+    } else if (originalTwitchLogin) {
+      // Fallback robuste : chercher par ancien login Twitch si le pseudo a été modifié
+      existingMember = await memberRepository.findByTwitchLogin(originalTwitchLogin);
+      console.log(`[Update Member API] Recherche par Twitch login original: ${originalTwitchLogin}`);
     } else if (twitchLogin) {
       // Fallback: chercher par twitchLogin
       existingMember = await memberRepository.findByTwitchLogin(twitchLogin);
@@ -298,6 +303,7 @@ export async function PUT(request: NextRequest) {
         twitchLogin,
         originalDiscordId,
         originalTwitchId,
+        originalTwitchLogin,
       });
       return NextResponse.json(
         { error: "Membre non trouvé" },
