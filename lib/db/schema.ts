@@ -11,10 +11,17 @@ import { relations } from 'drizzle-orm';
 export const memberRoleEnum = pgEnum('member_role', [
   'Affilié',
   'Développement',
+  'Modérateur',
+  'Modérateur en formation',
+  'Modérateur en activité réduite',
+  'Modérateur en pause',
   'Modérateur Junior',
   'Mentor',
   'Admin',
+  'Admin Coordinateur',
   'Admin Adjoint',
+  'Soutien TENF',
+  'Contributeur TENF du Mois',
   'Créateur Junior',
   'Communauté'
 ]);
@@ -363,6 +370,24 @@ export const publicReviews = pgTable('public_reviews', {
   message: text('message').notNull(),
   hearts: integer('hearts'), // 1-5, uniquement pour type 'tenf'
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Table: staff_applications (candidatures staff)
+export const staffApplications = pgTable('staff_applications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  applicantDiscordId: text('applicant_discord_id').notNull(),
+  applicantUsername: text('applicant_username').notNull(),
+  applicantAvatar: text('applicant_avatar'),
+  answers: jsonb('answers').$type<Record<string, unknown>>().notNull(),
+  adminStatus: text('admin_status').notNull().default('nouveau'),
+  adminNotes: jsonb('admin_notes').$type<string[]>().default([]),
+  redFlags: jsonb('red_flags').$type<string[]>().default([]),
+  hasRedFlag: boolean('has_red_flag').notNull().default(false),
+  assignedTo: text('assigned_to'),
+  lastContactedAt: timestamp('last_contacted_at'),
+  score: integer('score'),
 });
 
 // Table: structured_logs (nouveau système de logging)

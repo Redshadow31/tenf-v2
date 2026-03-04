@@ -138,6 +138,24 @@ export default function UserSidebar() {
             Mon évaluation
           </Link>
 
+          <Link
+            href="/postuler"
+            className="block rounded-lg px-4 py-3 text-sm font-medium transition-colors border"
+            style={{
+              backgroundColor: 'var(--color-card)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-card)';
+            }}
+          >
+            Postuler (Modérateur / Soutien TENF)
+          </Link>
+
           {/* Section TENF Academy */}
           <div className="space-y-1">
             <Link

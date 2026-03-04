@@ -268,6 +268,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('invalid input value for enum') && message.includes('member_role')) {
+      return NextResponse.json(
+        { error: "La base n'est pas encore migrée pour les nouveaux rôles (member_role)." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }
@@ -572,6 +579,13 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('invalid input value for enum') && message.includes('member_role')) {
+      return NextResponse.json(
+        { error: "La base n'est pas encore migrée pour les nouveaux rôles (member_role)." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

@@ -1406,6 +1406,13 @@ export default function GestionMembresPage() {
           )}
           
           <div className="flex gap-2">
+            <Link
+              href="/admin/membres/postulations"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Postulations staff
+            </Link>
             {currentAdmin?.isFounder && (
               <>
                 <button

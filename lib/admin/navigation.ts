@@ -69,6 +69,10 @@ export const adminNavigation: NavItem[] = [
         label: "Liste & gestion des membres",
       },
       {
+        href: "/admin/membres/postulations",
+        label: "Postulations staff",
+      },
+      {
         href: "/admin/membres/incomplets",
         label: "Comptes incomplets",
       },
@@ -351,6 +355,7 @@ export const adminNavigationSimple: NavItem[] = [
     children: [
       { href: "/admin/membres", label: "Hub membres" },
       { href: "/admin/membres/gestion", label: "Liste & gestion" },
+      { href: "/admin/membres/postulations", label: "Postulations staff" },
     ],
   },
   {
