@@ -16,7 +16,7 @@ import {
   loadFinalResult
 } from "@/lib/evaluationStorage";
 import { getMonthKey } from "@/lib/raidStorage";
-import { eventRepository } from "@/lib/repositories";
+import { eventRepository, memberRepository } from "@/lib/repositories";
 
 function buildMonthKeys(months: number): string[] {
   const now = new Date();
@@ -63,6 +63,28 @@ function isLikelySanctionLog(log: any): boolean {
   return /(sanction|warn|warning|mute|ban|suspend|exclusion)/.test(text);
 }
 
+function buildMemberIdentifierSets(member: any, decodedId: string) {
+  const logins = new Set<string>();
+  const discordIds = new Set<string>();
+  const displayNames = new Set<string>();
+  const siteUsernames = new Set<string>();
+
+  const addLower = (set: Set<string>, value?: string) => {
+    if (value && String(value).trim()) set.add(String(value).trim().toLowerCase());
+  };
+
+  addLower(logins, member?.twitchLogin);
+  addLower(discordIds, member?.discordId);
+  addLower(displayNames, member?.displayName);
+  addLower(siteUsernames, member?.siteUsername);
+  addLower(logins, decodedId); // utile si URL contient twitch login
+  addLower(discordIds, decodedId); // utile si URL contient discordId
+  addLower(displayNames, decodedId);
+  addLower(siteUsernames, decodedId);
+
+  return { logins, discordIds, displayNames, siteUsernames };
+}
+
 /**
  * GET - Récupère toutes les données agrégées pour la fiche 360° d'un membre
  */
@@ -89,19 +111,31 @@ export async function GET(
 
     // Charger les données de base
     await loadMemberDataFromStorage();
+    const supabaseMembers = await memberRepository.findAll(2000, 0);
 
     // Trouver le membre
-    let member = findMemberByIdentifier({ twitchLogin: decodedId });
-    if (!member) {
-      member = findMemberByIdentifier({ discordId: decodedId });
-    }
-    if (!member && /^\d+$/.test(decodedId)) {
-      member = findMemberByIdentifier({ twitchId: decodedId });
-    }
+    // 1) Source canonique Supabase (plus fiable pour l'état courant)
+    const fromSupabase = supabaseMembers.find((m: any) => {
+      const id = decodedId.toLowerCase();
+      return (
+        String(m.twitchLogin || "").toLowerCase() === id ||
+        String(m.discordId || "").toLowerCase() === id ||
+        String(m.displayName || "").toLowerCase() === id ||
+        String(m.siteUsername || "").toLowerCase() === id ||
+        String(m.twitchId || "").toLowerCase() === id
+      );
+    }) || null;
+
+    // 2) Fallback memberData (compat historique)
+    let member = fromSupabase || findMemberByIdentifier({ twitchLogin: decodedId });
+    if (!member) member = findMemberByIdentifier({ discordId: decodedId });
+    if (!member && /^\d+$/.test(decodedId)) member = findMemberByIdentifier({ twitchId: decodedId });
     if (!member) {
       const allMembers = getAllMemberData();
       member = allMembers.find(
-        (m) => m.displayName?.toLowerCase() === decodedId.toLowerCase()
+        (m) =>
+          m.displayName?.toLowerCase() === decodedId.toLowerCase() ||
+          m.siteUsername?.toLowerCase() === decodedId.toLowerCase()
       ) || null;
     }
 
@@ -112,13 +146,26 @@ export async function GET(
       );
     }
 
-    const memberId = member.twitchLogin || member.discordId || member.displayName;
+    // Fusion canonique pour limiter les cas "id obsolète"
+    const memberCanonical = {
+      ...member,
+      ...fromSupabase,
+      // Prioriser les valeurs non vides
+      twitchLogin: fromSupabase?.twitchLogin || member.twitchLogin,
+      discordId: fromSupabase?.discordId || member.discordId,
+      displayName: fromSupabase?.displayName || member.displayName,
+      siteUsername: fromSupabase?.siteUsername || member.siteUsername,
+      twitchId: fromSupabase?.twitchId || member.twitchId,
+    };
+    const memberIds = buildMemberIdentifierSets(memberCanonical, decodedId);
+
+    const memberId = memberCanonical.twitchLogin || memberCanonical.discordId || memberCanonical.displayName;
     const result: any = {
       member: {
-        ...member,
-        createdAt: member.createdAt?.toISOString(),
-        updatedAt: member.updatedAt?.toISOString(),
-        integrationDate: member.integrationDate?.toISOString(),
+        ...memberCanonical,
+        createdAt: memberCanonical.createdAt?.toISOString?.() || memberCanonical.createdAt,
+        updatedAt: memberCanonical.updatedAt?.toISOString?.() || memberCanonical.updatedAt,
+        integrationDate: memberCanonical.integrationDate?.toISOString?.() || memberCanonical.integrationDate,
       },
     };
 
@@ -134,15 +181,16 @@ export async function GET(
         const memberLogs = allLogs.filter((log: any) => {
           const resourceId = String(log.resourceId || "").toLowerCase();
           const searchTerms = [
-            member.twitchLogin?.toLowerCase(),
-            member.discordId?.toLowerCase(),
-            member.displayName?.toLowerCase(),
+            ...Array.from(memberIds.logins),
+            ...Array.from(memberIds.discordIds),
+            ...Array.from(memberIds.displayNames),
+            ...Array.from(memberIds.siteUsernames),
           ].filter(Boolean);
 
           return (
             (log.resourceType === "member" && searchTerms.some(term => resourceId.includes(term || ""))) ||
-            (log.metadata && JSON.stringify(log.metadata).toLowerCase().includes(member.twitchLogin?.toLowerCase() || "")) ||
-            (log.action && log.action.toLowerCase().includes(member.twitchLogin?.toLowerCase() || ""))
+            (log.metadata && searchTerms.some((term: string) => JSON.stringify(log.metadata).toLowerCase().includes(term))) ||
+            (log.action && searchTerms.some((term: string) => String(log.action).toLowerCase().includes(term)))
           );
         }).slice(0, 20);
 
@@ -205,14 +253,14 @@ export async function GET(
             const validations = await getAllFollowValidationsForMonth(monthKey);
             const memberFollows = validations.filter((validation: any) => {
               return validation.members?.some((m: any) =>
-                m.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase()
+                memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
               );
             }).map((validation: any) => ({
               month: monthKey,
               staffSlug: validation.staffSlug,
               staffName: validation.staffName,
               status: validation.members?.find((m: any) =>
-                m.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase()
+                memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
               ),
             }));
             
@@ -235,15 +283,17 @@ export async function GET(
             const raidsRecus = await loadRaidsRecus(monthKey);
             
             const memberRaidsFaits = raidsFaits.filter((raid: any) =>
-              raid.raider === member.twitchLogin || 
-              raid.raider === member.discordId ||
-              (typeof raid.raider === "string" && raid.raider.toLowerCase() === member.twitchLogin?.toLowerCase())
+              memberIds.logins.has(String(raid.raider || "").toLowerCase()) ||
+              memberIds.discordIds.has(String(raid.raider || "").toLowerCase()) ||
+              memberIds.displayNames.has(String(raid.raider || "").toLowerCase()) ||
+              memberIds.siteUsernames.has(String(raid.raider || "").toLowerCase())
             );
             
             const memberRaidsRecus = raidsRecus.filter((raid: any) =>
-              raid.target === member.twitchLogin || 
-              raid.target === member.discordId ||
-              (typeof raid.target === "string" && raid.target.toLowerCase() === member.twitchLogin?.toLowerCase())
+              memberIds.logins.has(String(raid.target || "").toLowerCase()) ||
+              memberIds.discordIds.has(String(raid.target || "").toLowerCase()) ||
+              memberIds.displayNames.has(String(raid.target || "").toLowerCase()) ||
+              memberIds.siteUsernames.has(String(raid.target || "").toLowerCase())
             );
 
             const monthSent = memberRaidsFaits.reduce((sum: number, r: any) => sum + (r.count || 1), 0);
@@ -298,7 +348,7 @@ export async function GET(
             const finalResult = await loadFinalResult(monthKey);
             if (finalResult) {
               const memberScore = finalResult.scores?.find(
-                (s: any) => s.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase()
+                (s: any) => memberIds.logins.has(String(s.twitchLogin || "").toLowerCase())
               );
 
               if (memberScore) {
@@ -312,15 +362,15 @@ export async function GET(
                   score: memberScore,
                   details: {
                     sectionA: sectionA?.spotlights?.filter((s: any) =>
-                      s.streamerTwitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase()
+                      memberIds.logins.has(String(s.streamerTwitchLogin || "").toLowerCase())
                     ) || [],
                     sectionC: sectionC?.validations?.filter((v: any) =>
                       Object.keys(v.follows || {}).some(login =>
-                        login.toLowerCase() === member.twitchLogin?.toLowerCase()
+                        memberIds.logins.has(String(login || "").toLowerCase())
                       )
                     ) || [],
                     sectionDBonuses: sectionD?.bonuses?.filter((b: any) =>
-                      b.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase()
+                      memberIds.logins.has(String(b.twitchLogin || "").toLowerCase())
                     ) || [],
                   },
                 });
@@ -421,10 +471,10 @@ export async function GET(
         const memberLogs = allLogs.filter((log: any) => {
           const resourceId = String(log.resourceId || "").toLowerCase();
           const searchTerms = [
-            member.twitchLogin?.toLowerCase(),
-            member.discordId?.toLowerCase(),
-            member.displayName?.toLowerCase(),
-            member.siteUsername?.toLowerCase(),
+            ...Array.from(memberIds.logins),
+            ...Array.from(memberIds.discordIds),
+            ...Array.from(memberIds.displayNames),
+            ...Array.from(memberIds.siteUsernames),
           ].filter(Boolean);
           const payload = JSON.stringify({
             previousValue: log.previousValue,
