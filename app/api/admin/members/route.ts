@@ -4,7 +4,7 @@ import { getTwitchUsers } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
-import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -42,7 +42,13 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      const response = NextResponse.json({ member });
+      const response = NextResponse.json({
+        member: {
+          ...member,
+          role: toCanonicalMemberRole(member.role),
+          badges: toCanonicalBadges(member.badges),
+        },
+      });
       
       // Désactiver le cache côté client
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -66,7 +72,13 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      const response = NextResponse.json({ member });
+      const response = NextResponse.json({
+        member: {
+          ...member,
+          role: toCanonicalMemberRole(member.role),
+          badges: toCanonicalBadges(member.badges),
+        },
+      });
       
       // Désactiver le cache côté client
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -106,7 +118,12 @@ export async function GET(request: NextRequest) {
       if (!avatar) {
         avatar = `https://placehold.co/64x64?text=${(m.displayName || m.twitchLogin || "?").charAt(0).toUpperCase()}`;
       }
-      return { ...m, avatar };
+      return {
+        ...m,
+        role: toCanonicalMemberRole(m.role),
+        badges: toCanonicalBadges(m.badges),
+        avatar,
+      };
     });
 
     const response = NextResponse.json({ members: membersWithAvatars });
@@ -171,6 +188,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const normalizedRole = typeof role === "string" ? toCanonicalMemberRole(role) : undefined;
+    const normalizedBadges = toCanonicalBadges(badges);
 
     if (!twitchLogin || !displayName || !twitchUrl) {
       return NextResponse.json(
@@ -214,7 +232,7 @@ export async function POST(request: NextRequest) {
       role: normalizedRole || "Affilié",
       isVip: isVip || false,
       isActive: isActive !== undefined ? isActive : true,
-      badges: badges || [],
+      badges: normalizedBadges || [],
       description,
       customBio,
       profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
@@ -286,6 +304,9 @@ export async function PUT(request: NextRequest) {
 
     if (typeof updates.role === "string") {
       updates.role = toCanonicalMemberRole(updates.role);
+    }
+    if (Array.isArray(updates.badges)) {
+      updates.badges = toCanonicalBadges(updates.badges);
     }
 
     // Identifier le membre par son identifiant stable (discordId ou twitchId) en priorité

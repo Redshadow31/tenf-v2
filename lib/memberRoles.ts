@@ -30,6 +30,12 @@ const LEGACY_ROLE_TO_CANONICAL: Record<LegacyMemberRole, MemberRole> = {
   "Modérateur Junior": "Modérateur en formation",
 };
 
+const LEGACY_BADGE_TO_CANONICAL: Record<LegacyMemberRole, string> = {
+  "Admin Adjoint": "Admin Coordinateur",
+  Mentor: "Modérateur",
+  "Modérateur Junior": "Modérateur en formation",
+};
+
 export function isLegacyMemberRole(role: string): role is LegacyMemberRole {
   return role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
 }
@@ -57,6 +63,22 @@ export function toCanonicalMemberRole(role: string): MemberRole {
     return role as MemberRole;
   }
   return "Affilié";
+}
+
+export function toCanonicalBadgeLabel(badge: string): string {
+  if (isLegacyMemberRole(badge)) {
+    return LEGACY_BADGE_TO_CANONICAL[badge];
+  }
+  return badge;
+}
+
+export function toCanonicalBadges(badges?: string[]): string[] | undefined {
+  if (!Array.isArray(badges)) {
+    return badges;
+  }
+  return badges
+    .map((badge) => toCanonicalBadgeLabel(badge))
+    .filter((badge, index, self) => self.indexOf(badge) === index);
 }
 
 export interface MemberWithRole {
