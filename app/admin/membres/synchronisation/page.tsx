@@ -5,6 +5,7 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/admin";
 import Link from "next/link";
 import EditMemberModal from "@/components/admin/EditMemberModal";
+import type { MemberRole } from "@/lib/memberRoles";
 
 interface Member {
   twitchLogin: string;
@@ -26,6 +27,40 @@ interface SyncStatus {
   issues: string[];
 }
 
+interface EditableMember {
+  id: number;
+  avatar: string;
+  nom: string;
+  role: MemberRole;
+  statut: "Actif" | "Inactif";
+  discord: string;
+  discordId?: string;
+  twitch: string;
+  twitchId?: string;
+  notesInternes?: string;
+  description?: string;
+  badges?: string[];
+  isVip?: boolean;
+  createdAt?: string;
+  integrationDate?: string;
+  onboardingStatus?: "a_faire" | "en_cours" | "termine";
+  mentorTwitchLogin?: string;
+  primaryLanguage?: string;
+  timezone?: string;
+  countryCode?: string;
+  lastReviewAt?: string;
+  nextReviewAt?: string;
+  roleHistory?: Array<{
+    fromRole: string;
+    toRole: string;
+    changedAt: string;
+    changedBy: string;
+    reason?: string;
+  }>;
+  parrain?: string;
+  roleChangeReason?: string;
+}
+
 export default function SynchronisationMembresPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [syncStatuses, setSyncStatuses] = useState<SyncStatus[]>([]);
@@ -34,31 +69,7 @@ export default function SynchronisationMembresPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [syncing, setSyncing] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<{
-    id: number;
-    avatar: string;
-    nom: string;
-    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
-    statut: "Actif" | "Inactif";
-    discord: string;
-    discordId?: string;
-    twitch: string;
-    twitchId?: string;
-    notesInternes?: string;
-    description?: string;
-    badges?: string[];
-    isVip?: boolean;
-    createdAt?: string;
-    integrationDate?: string;
-    parrain?: string;
-    roleHistory?: Array<{
-      fromRole: string;
-      toRole: string;
-      changedAt: string;
-      changedBy: string;
-      reason?: string;
-    }>;
-  } | null>(null);
+  const [selectedMember, setSelectedMember] = useState<EditableMember | null>(null);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -291,7 +302,7 @@ export default function SynchronisationMembresPage() {
         id: 0, // Pas utilisé dans la synchronisation
         avatar,
         nom: fullMemberData.displayName || fullMemberData.twitchLogin,
-        role: ((fullMemberData.role as any) || "Affilié") as "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté",
+        role: ((fullMemberData.role as MemberRole) || "Affilié") as MemberRole,
         statut: (fullMemberData.isActive ? "Actif" : "Inactif") as "Actif" | "Inactif",
         discord: fullMemberData.discordUsername || "",
         discordId: fullMemberData.discordId,
@@ -315,32 +326,7 @@ export default function SynchronisationMembresPage() {
     }
   };
 
-  const handleSaveEdit = async (updatedMember: {
-    id: number;
-    avatar: string;
-    nom: string;
-    role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
-    statut: "Actif" | "Inactif";
-    discord: string;
-    discordId?: string;
-    twitch: string;
-    twitchId?: string;
-    notesInternes?: string;
-    description?: string;
-    badges?: string[];
-    isVip?: boolean;
-    createdAt?: string;
-    integrationDate?: string;
-    parrain?: string;
-    roleHistory?: Array<{
-      fromRole: string;
-      toRole: string;
-      changedAt: string;
-      changedBy: string;
-      reason?: string;
-    }>;
-    roleChangeReason?: string;
-  }) => {
+  const handleSaveEdit = async (updatedMember: EditableMember) => {
     if (!currentAdmin?.isFounder) {
       alert("Seuls les fondateurs peuvent modifier les membres");
       return;

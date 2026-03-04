@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
+import type { MemberRole } from '@/lib/memberRoles';
 
 interface DiscordMember {
   user: {
@@ -28,7 +29,7 @@ interface MemberWithDiscordRoles {
   avatar: string;
   roles: string[]; // IDs des rôles Discord
   roleNames: string[]; // Noms des rôles Discord
-  siteRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  siteRole: MemberRole;
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;
