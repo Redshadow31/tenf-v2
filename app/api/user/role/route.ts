@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
-import { hasAdminDashboardAccess } from '@/lib/adminRoles';
+import { hasAdminDashboardAccess, ROLE_PERMISSIONS } from '@/lib/adminRoles';
 
 export async function GET() {
   try {
@@ -22,22 +22,25 @@ export async function GET() {
     const roleMap: Record<string, string> = {
       'FOUNDER': 'Admin',
       'ADMIN_ADJOINT': 'Admin Adjoint',
-      'MODO_MENTOR': 'Mentor',
-      'MODO_JUNIOR': 'Modérateur Junior',
+      'MODO_MENTOR': 'Modérateur',
+      'MODO_JUNIOR': 'Modérateur en formation',
       'SOUTIEN_TENF': 'Soutien TENF',
     };
 
     const frontendRole = roleMap[admin.role] || admin.role || null;
+    const canWrite = (ROLE_PERMISSIONS[admin.role] || []).includes('write');
 
     console.log('User role check - Authenticated via NextAuth:', { 
       role: admin.role, 
       frontendRole, 
-      hasAccess 
+      hasAccess,
+      canWrite,
     });
 
     return NextResponse.json({ 
       hasAdminAccess: hasAccess,
       role: frontendRole,
+      canWrite,
     });
   } catch (error) {
     console.error('Error fetching user role:', error);

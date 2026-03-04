@@ -14,7 +14,7 @@ import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
-import { canPerformAction, isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/admin";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
@@ -93,7 +93,12 @@ export default function GestionMembresPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{
+    id: string;
+    username: string;
+    isFounder: boolean;
+    canWrite: boolean;
+  } | null>(null);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
   type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive" | "completude";
@@ -157,12 +162,19 @@ export default function GestionMembresPage() {
           
           const isAdminRole = roleData.role === "Admin";
           const isAdminAdjoint = roleData.role === "Admin Adjoint";
+          const canWriteRole =
+            roleData.canWrite === true ||
+            roleData.role === "Modérateur" ||
+            roleData.role === "Modérateur en formation" ||
+            roleData.role === "Mentor" ||
+            roleData.role === "Modérateur Junior";
           const founderStatus = isFounder(user.id);
           // Admin, Admin Adjoint et Fondateurs ont accès complet
           setCurrentAdmin({ 
             id: user.id, 
             username: user.username, 
-            isFounder: founderStatus || isAdminRole || isAdminAdjoint 
+            isFounder: founderStatus || isAdminRole || isAdminAdjoint,
+            canWrite: canWriteRole || founderStatus || isAdminRole || isAdminAdjoint,
           });
         } catch (err) {
           // Fallback si l'API de rôle ne fonctionne pas
@@ -174,7 +186,7 @@ export default function GestionMembresPage() {
             window.location.href = "/unauthorized";
             return;
           }
-          setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus });
+          setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus, canWrite: founderStatus });
         }
       } else {
         // Pas connecté, rediriger vers login
@@ -847,7 +859,12 @@ export default function GestionMembresPage() {
       return;
     }
 
-    if (!canPerformAction(currentAdmin.id, "write", safeModeEnabled)) {
+    if (!currentAdmin.canWrite) {
+      alert("Permissions insuffisantes: vous n'avez pas le droit de modifier les membres.");
+      return;
+    }
+
+    if (safeModeEnabled && !currentAdmin.isFounder) {
       alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
       return;
     }
@@ -904,8 +921,8 @@ export default function GestionMembresPage() {
   };
 
   const handleEdit = (member: Member) => {
-    if (!currentAdmin?.isFounder) {
-      alert("Seuls les fondateurs peuvent modifier les membres");
+    if (!currentAdmin?.canWrite) {
+      alert("Vous n'avez pas la permission de modifier les membres.");
       return;
     }
     setSelectedMember(member);
@@ -945,8 +962,8 @@ export default function GestionMembresPage() {
     }>;
     roleChangeReason?: string;
   }) => {
-    if (!currentAdmin?.isFounder) {
-      alert("Seuls les fondateurs peuvent modifier les membres");
+    if (!currentAdmin?.canWrite) {
+      alert("Vous n'avez pas la permission de modifier les membres.");
       return;
     }
 
@@ -2140,7 +2157,7 @@ export default function GestionMembresPage() {
                         >
                           {member.statut === "Actif" ? "Désactiver" : "Activer"}
                         </button>
-                        {currentAdmin?.isFounder && (
+                        {currentAdmin?.canWrite && (
                           <>
                             <button
                               onClick={() => handleEdit(member)}
@@ -2181,8 +2198,8 @@ export default function GestionMembresPage() {
           </>
         )}
 
-        {/* Modal d'édition (pour les fondateurs) */}
-        {isEditModalOpen && selectedMember && currentAdmin?.isFounder && (
+        {/* Modal d'édition (pour les rôles avec permission write) */}
+        {isEditModalOpen && selectedMember && currentAdmin?.canWrite && (
           <EditMemberModal
             isOpen={isEditModalOpen}
             onClose={() => {
