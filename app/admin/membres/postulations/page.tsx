@@ -14,12 +14,60 @@ type StaffApplication = {
   applicant_avatar?: string | null;
   answers: {
     pseudo_discord: string;
-    role_postule: "moderateur" | "soutien" | "les_deux";
-    motivation_560: string;
-    disponibilites: string;
     pseudo_twitch?: string;
-    pays_fuseau: string;
+    age?: number;
+    pays_fuseau?: string;
+    disponibilites?: string;
+    micro_ok?: boolean;
+    vocal_reunion?: "oui" | "non" | "parfois";
+    role_postule: "moderateur" | "soutien" | "les_deux";
+    experience_modo?: boolean;
+    experience_details?: string;
+    experience_similaire?: string;
+    pourquoi_tenf?: string;
+    pourquoi_role?: string;
+    motivation_560: string;
+    niveau_discord?: 1 | 2 | 3 | 4 | 5;
+    principes_proportionnalite?: boolean;
+    principes_proportionnalite_explication?: string;
+    difference_sanctions?: boolean;
+    difference_sanctions_exemple?: string;
+    redaction_cr?: boolean;
+    scenario_critique_staff?: string;
+    scenario_clash_vocal?: string;
+    scenario_dm_grave?: string;
+    scenario_spam_promo?: string;
+    scenario_modo_sec?: string;
+    scenario_manipulation?: string;
+    scenario_intrusif_vocal?: string;
+    style_communication?: "direct" | "empathique" | "structure" | "mixte" | "autre";
+    style_communication_autre?: string;
+    contradiction?: string;
+    quand_jai_tort?: string;
+    limites_declencheurs?: string;
+    prise_de_recul?: string;
+    energie_mentale?: 1 | 2 | 3 | 4 | 5;
+    periode_impact?: "non" | "oui_legere" | "oui_importante";
+    periode_gestion?: string;
+    reaction_stress?: string[];
+    reaction_stress_autre?: string;
+    preference_cadre?: "cadre" | "humain" | "mix";
+    preference_cadre_detail?: string;
+    passer_relais?: boolean;
+    passer_relais_exemple?: string;
+    desaccord_staff?: string;
+    accepte_pause_retrait?: boolean;
+    accepte_pause_retrait_pourquoi?: string;
+    accepte_confidentialite?: boolean;
+    ami_demande_infos?: string;
+    accepte_documenter?: boolean;
+    engagement_hebdo?: "2h" | "4h" | "6h" | "variable";
+    engagement_hebdo_variable?: string;
+    poles_interet?: string[];
     objectif_apprentissage: string;
+    consentement_traitement?: boolean;
+    comprend_entretien?: boolean;
+    commentaire_libre?: string;
   };
   admin_status: "nouveau" | "a_contacter" | "entretien_prevu" | "accepte" | "refuse" | "archive";
   admin_notes: string[];
@@ -152,6 +200,22 @@ export default function PostulationsStaffPage() {
       archive: "Archivé",
     };
     return map[status];
+  }
+
+  function formatBool(value?: boolean): string {
+    if (value === true) return "Oui";
+    if (value === false) return "Non";
+    return "-";
+  }
+
+  function formatText(value?: string): string {
+    if (!value || !value.trim()) return "-";
+    return value;
+  }
+
+  function formatList(values?: string[]): string {
+    if (!values || values.length === 0) return "-";
+    return values.join(", ");
   }
 
   const filtered = applications.filter((item) => {
@@ -298,16 +362,91 @@ export default function PostulationsStaffPage() {
                 <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(selected.admin_status)}</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <p><strong>Pseudo Twitch:</strong> {selected.answers.pseudo_twitch || "-"}</p>
-                <p><strong>Pays/fuseau:</strong> {selected.answers.pays_fuseau}</p>
-                <p><strong>Disponibilités:</strong> {selected.answers.disponibilites}</p>
-                <p><strong>Objectif:</strong> {selected.answers.objectif_apprentissage}</p>
-              </div>
+              <div className="space-y-3">
+                <details open className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                  <summary className="cursor-pointer font-semibold text-sm">A) Infos de base</summary>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <p><strong>Pseudo Discord:</strong> {formatText(selected.answers.pseudo_discord)}</p>
+                    <p><strong>Pseudo Twitch:</strong> {formatText(selected.answers.pseudo_twitch)}</p>
+                    <p><strong>Âge:</strong> {selected.answers.age ?? "-"}</p>
+                    <p><strong>Pays/fuseau:</strong> {formatText(selected.answers.pays_fuseau)}</p>
+                    <p><strong>Micro OK:</strong> {formatBool(selected.answers.micro_ok)}</p>
+                    <p><strong>Vocal réunion:</strong> {selected.answers.vocal_reunion || "-"}</p>
+                  </div>
+                  <p className="text-sm mt-3 whitespace-pre-wrap"><strong>Disponibilités:</strong> {formatText(selected.answers.disponibilites)}</p>
+                </details>
 
-              <div>
-                <p className="text-sm font-semibold mb-1">Motivation</p>
-                <p className="text-sm text-gray-300 whitespace-pre-wrap">{selected.answers.motivation_560}</p>
+                <details open className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                  <summary className="cursor-pointer font-semibold text-sm">B-C) Rôle demandé et expérience</summary>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <p><strong>Rôle postulé:</strong> {formatRole(selected.answers.role_postule)}</p>
+                    <p><strong>Expérience modération:</strong> {formatBool(selected.answers.experience_modo)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Détails expérience:</strong> {formatText(selected.answers.experience_details)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Expérience similaire:</strong> {formatText(selected.answers.experience_similaire)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Pourquoi TENF:</strong> {formatText(selected.answers.pourquoi_tenf)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Pourquoi ce rôle:</strong> {formatText(selected.answers.pourquoi_role)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Motivation:</strong> {formatText(selected.answers.motivation_560)}</p>
+                  </div>
+                </details>
+
+                <details open className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                  <summary className="cursor-pointer font-semibold text-sm">D-E) Compétences et scénarios</summary>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <p><strong>Niveau Discord:</strong> {selected.answers.niveau_discord ?? "-"}/5</p>
+                    <p><strong>Proportionnalité:</strong> {formatBool(selected.answers.principes_proportionnalite)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Explication proportionnalité:</strong> {formatText(selected.answers.principes_proportionnalite_explication)}</p>
+                    <p><strong>Différence sanctions:</strong> {formatBool(selected.answers.difference_sanctions)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Exemple sanctions:</strong> {formatText(selected.answers.difference_sanctions_exemple)}</p>
+                    <p><strong>Rédaction CR:</strong> {formatBool(selected.answers.redaction_cr)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario critique staff:</strong> {formatText(selected.answers.scenario_critique_staff)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario clash vocal:</strong> {formatText(selected.answers.scenario_clash_vocal)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario DM grave:</strong> {formatText(selected.answers.scenario_dm_grave)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario spam promo:</strong> {formatText(selected.answers.scenario_spam_promo)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario modération seul:</strong> {formatText(selected.answers.scenario_modo_sec)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario manipulation:</strong> {formatText(selected.answers.scenario_manipulation)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Scénario intrusif vocal:</strong> {formatText(selected.answers.scenario_intrusif_vocal)}</p>
+                  </div>
+                </details>
+
+                <details open className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                  <summary className="cursor-pointer font-semibold text-sm">F-G) Communication et stabilité</summary>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <p><strong>Style communication:</strong> {selected.answers.style_communication || "-"}</p>
+                    <p className="whitespace-pre-wrap"><strong>Style (autre):</strong> {formatText(selected.answers.style_communication_autre)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Contradiction:</strong> {formatText(selected.answers.contradiction)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Quand j'ai tort:</strong> {formatText(selected.answers.quand_jai_tort)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Limites/déclencheurs:</strong> {formatText(selected.answers.limites_declencheurs)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Prise de recul:</strong> {formatText(selected.answers.prise_de_recul)}</p>
+                    <p><strong>Énergie mentale:</strong> {selected.answers.energie_mentale ?? "-"}/5</p>
+                    <p><strong>Période impact:</strong> {selected.answers.periode_impact || "-"}</p>
+                    <p className="whitespace-pre-wrap"><strong>Gestion période:</strong> {formatText(selected.answers.periode_gestion)}</p>
+                    <p><strong>Réaction stress:</strong> {formatList(selected.answers.reaction_stress)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Réaction stress (autre):</strong> {formatText(selected.answers.reaction_stress_autre)}</p>
+                    <p><strong>Préférence cadre:</strong> {selected.answers.preference_cadre || "-"}</p>
+                    <p className="whitespace-pre-wrap"><strong>Détail cadre:</strong> {formatText(selected.answers.preference_cadre_detail)}</p>
+                    <p><strong>Passer relais:</strong> {formatBool(selected.answers.passer_relais)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Exemple relais:</strong> {formatText(selected.answers.passer_relais_exemple)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Désaccord staff:</strong> {formatText(selected.answers.desaccord_staff)}</p>
+                    <p><strong>Accepte pause/retrait:</strong> {formatBool(selected.answers.accepte_pause_retrait)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Pourquoi:</strong> {formatText(selected.answers.accepte_pause_retrait_pourquoi)}</p>
+                  </div>
+                </details>
+
+                <details open className="bg-[#0e0e10] border border-gray-700 rounded-lg p-3">
+                  <summary className="cursor-pointer font-semibold text-sm">H-I-J) Confidentialité, engagement, consentements</summary>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <p><strong>Accepte confidentialité:</strong> {formatBool(selected.answers.accepte_confidentialite)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Ami demande infos:</strong> {formatText(selected.answers.ami_demande_infos)}</p>
+                    <p><strong>Accepte documenter:</strong> {formatBool(selected.answers.accepte_documenter)}</p>
+                    <p><strong>Engagement hebdo:</strong> {selected.answers.engagement_hebdo || "-"}</p>
+                    <p className="whitespace-pre-wrap"><strong>Engagement variable:</strong> {formatText(selected.answers.engagement_hebdo_variable)}</p>
+                    <p><strong>Pôles intérêt:</strong> {formatList(selected.answers.poles_interet)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Objectif apprentissage:</strong> {formatText(selected.answers.objectif_apprentissage)}</p>
+                    <p><strong>Consentement traitement:</strong> {formatBool(selected.answers.consentement_traitement)}</p>
+                    <p><strong>Comprend entretien:</strong> {formatBool(selected.answers.comprend_entretien)}</p>
+                    <p className="whitespace-pre-wrap"><strong>Commentaire libre:</strong> {formatText(selected.answers.commentaire_libre)}</p>
+                  </div>
+                </details>
               </div>
 
               <div className="border-t border-gray-700 pt-4 space-y-3">
