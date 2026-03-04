@@ -76,6 +76,82 @@ const INTEREST_OPTIONS = [
   "autre",
 ] as const;
 
+const SCENARIO_FIELDS: Array<{
+  key:
+    | "scenario_critique_staff"
+    | "scenario_clash_vocal"
+    | "scenario_dm_grave"
+    | "scenario_spam_promo"
+    | "scenario_modo_sec"
+    | "scenario_manipulation"
+    | "scenario_intrusif_vocal";
+  label: string;
+  help: string;
+}> = [
+  {
+    key: "scenario_critique_staff",
+    label: "Scénario: un membre du staff perd son calme en public *",
+    help: "Explique les étapes: apaiser, sécuriser, puis remonter au staff.",
+  },
+  {
+    key: "scenario_clash_vocal",
+    label: "Scénario: gros clash en vocal entre 2 membres *",
+    help: "Décris comment tu sépares le conflit et rétablis le cadre.",
+  },
+  {
+    key: "scenario_dm_grave",
+    label: "Scénario: DM grave reçu (harcèlement/menace) *",
+    help: "Indique comment tu protèges la victime, gardes des preuves, et escalades.",
+  },
+  {
+    key: "scenario_spam_promo",
+    label: "Scénario: spam/promo agressive en boucle *",
+    help: "Précise la sanction graduée et le message envoyé.",
+  },
+  {
+    key: "scenario_modo_sec",
+    label: "Scénario: tu es seul en modération pendant une période tendue *",
+    help: "Explique comment tu priorises et quand tu demandes du renfort.",
+  },
+  {
+    key: "scenario_manipulation",
+    label: "Scénario: un membre tente de manipuler l'équipe *",
+    help: "Décris les signaux observés et ta réponse factuelle.",
+  },
+  {
+    key: "scenario_intrusif_vocal",
+    label: "Scénario: comportement intrusif en vocal (insistance, malaise) *",
+    help: "Explique comment tu poses la limite et protèges le groupe.",
+  },
+];
+
+const POSTURE_FIELDS: Array<{
+  key: "contradiction" | "quand_jai_tort" | "limites_declencheurs" | "prise_de_recul";
+  label: string;
+  help: string;
+}> = [
+  {
+    key: "contradiction",
+    label: "Quand un collègue te contredit devant les autres, que fais-tu ? *",
+    help: "Décris une posture pro: écouter, clarifier, et recadrer calmement.",
+  },
+  {
+    key: "quand_jai_tort",
+    label: "Si tu réalises que tu as eu tort, comment réagis-tu ? *",
+    help: "On attend une réponse responsable: reconnaître, corriger, documenter.",
+  },
+  {
+    key: "limites_declencheurs",
+    label: "Quelles situations te mettent le plus en difficulté en modération ? *",
+    help: "Reste général (pas intime): ex. provocations répétées, agressivité, surcharge.",
+  },
+  {
+    key: "prise_de_recul",
+    label: "Que fais-tu pour garder du recul quand c'est tendu ? *",
+    help: "Ex: pause courte, relais, reformulation factuelle, respiration.",
+  },
+];
+
 const INITIAL_FORM: FormState = {
   pseudo_discord: "",
   pseudo_twitch: "",
@@ -536,7 +612,7 @@ export default function PostulerPage() {
                   }
                   className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
                 >
-                  <option value="">Principes de proportionnalité *</option>
+                  <option value="">Sais-tu appliquer une sanction proportionnée ? *</option>
                   <option value="oui">Oui</option>
                   <option value="non">Non</option>
                 </select>
@@ -547,7 +623,7 @@ export default function PostulerPage() {
                   }
                   className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
                 >
-                  <option value="">Différence sanctions *</option>
+                  <option value="">Sais-tu distinguer avertissement / mute / exclusion ? *</option>
                   <option value="oui">Oui</option>
                   <option value="non">Non</option>
                 </select>
@@ -557,14 +633,14 @@ export default function PostulerPage() {
                 rows={3}
                 value={form.principes_proportionnalite_explication}
                 onChange={(e) => setField("principes_proportionnalite_explication", e.target.value)}
-                placeholder="Explication proportionnalité *"
+                placeholder="Explique comment tu choisis une sanction selon la gravité, le contexte et l'historique *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
               <textarea
                 rows={3}
                 value={form.difference_sanctions_exemple}
                 onChange={(e) => setField("difference_sanctions_exemple", e.target.value)}
-                placeholder="Exemple de sanctions *"
+                placeholder="Donne un exemple concret pour chaque niveau de sanction *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
 
@@ -578,23 +654,18 @@ export default function PostulerPage() {
                 <option value="non">Non</option>
               </select>
 
-              {[
-                "scenario_critique_staff",
-                "scenario_clash_vocal",
-                "scenario_dm_grave",
-                "scenario_spam_promo",
-                "scenario_modo_sec",
-                "scenario_manipulation",
-                "scenario_intrusif_vocal",
-              ].map((field) => (
-                <textarea
-                  key={field}
-                  rows={3}
-                  value={form[field as keyof FormState] as string}
-                  onChange={(e) => setField(field as keyof FormState, e.target.value as never)}
-                  placeholder={`${field.replaceAll("_", " ")} *`}
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
-                />
+              {SCENARIO_FIELDS.map((scenario) => (
+                <div key={scenario.key}>
+                  <label className="block text-sm text-gray-300 mb-1">{scenario.label}</label>
+                  <p className="text-xs text-gray-500 mb-2">{scenario.help}</p>
+                  <textarea
+                    rows={3}
+                    value={form[scenario.key]}
+                    onChange={(e) => setField(scenario.key, e.target.value)}
+                    placeholder="Réponse attendue: actions concrètes + justification (3 à 6 lignes)"
+                    className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
+                  />
+                </div>
               ))}
 
               <select
@@ -602,7 +673,7 @@ export default function PostulerPage() {
                 onChange={(e) => setField("style_communication", e.target.value as FormState["style_communication"])}
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               >
-                <option value="">Style de communication *</option>
+                <option value="">Ton style de communication principal *</option>
                 <option value="direct">Direct</option>
                 <option value="empathique">Empathique</option>
                 <option value="structure">Structuré</option>
@@ -618,15 +689,18 @@ export default function PostulerPage() {
                 />
               )}
 
-              {["contradiction", "quand_jai_tort", "limites_declencheurs", "prise_de_recul"].map((field) => (
-                <textarea
-                  key={field}
-                  rows={3}
-                  value={form[field as keyof FormState] as string}
-                  onChange={(e) => setField(field as keyof FormState, e.target.value as never)}
-                  placeholder={`${field.replaceAll("_", " ")} *`}
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
-                />
+              {POSTURE_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label className="block text-sm text-gray-300 mb-1">{field.label}</label>
+                  <p className="text-xs text-gray-500 mb-2">{field.help}</p>
+                  <textarea
+                    rows={3}
+                    value={form[field.key]}
+                    onChange={(e) => setField(field.key, e.target.value)}
+                    placeholder="Réponse courte et concrète"
+                    className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
+                  />
+                </div>
               ))}
 
               <select
@@ -644,7 +718,7 @@ export default function PostulerPage() {
                   rows={3}
                   value={form.periode_gestion}
                   onChange={(e) => setField("periode_gestion", e.target.value)}
-                  placeholder="Comment tu gères cette période (sans détail intime) *"
+                  placeholder="Comment tu t'organises pour rester fiable dans ce contexte ? (sans détail intime) *"
                   className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
                 />
               )}
@@ -671,7 +745,7 @@ export default function PostulerPage() {
                   <input
                     value={form.reaction_stress_autre}
                     onChange={(e) => setField("reaction_stress_autre", e.target.value)}
-                    placeholder="Précise autre"
+                    placeholder="Précise la réaction 'autre'"
                     className="mt-2 w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
                   />
                 )}
@@ -707,14 +781,14 @@ export default function PostulerPage() {
                 rows={2}
                 value={form.passer_relais_exemple}
                 onChange={(e) => setField("passer_relais_exemple", e.target.value)}
-                placeholder="Exemple de passage de relais *"
+                placeholder="Décris un cas où tu passes le relais (à qui, quand, pourquoi) *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
               <textarea
                 rows={2}
                 value={form.desaccord_staff}
                 onChange={(e) => setField("desaccord_staff", e.target.value)}
-                placeholder="Gestion d'un désaccord staff *"
+                placeholder="Comment gères-tu un désaccord avec un autre staff sans créer de tension publique ? *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
               <select
@@ -732,14 +806,14 @@ export default function PostulerPage() {
                 rows={2}
                 value={form.accepte_pause_retrait_pourquoi}
                 onChange={(e) => setField("accepte_pause_retrait_pourquoi", e.target.value)}
-                placeholder="Pourquoi ? *"
+                placeholder="Explique en quelques mots ta position *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
               <textarea
                 rows={3}
                 value={form.ami_demande_infos}
                 onChange={(e) => setField("ami_demande_infos", e.target.value)}
-                placeholder="Un ami demande des infos confidentielles, tu réponds quoi ? *"
+                placeholder="Un ami te demande des infos internes staff: que réponds-tu exactement ? *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
               <select
@@ -766,7 +840,7 @@ export default function PostulerPage() {
                 <input
                   value={form.engagement_hebdo_variable}
                   onChange={(e) => setField("engagement_hebdo_variable", e.target.value)}
-                  placeholder="Précision engagement variable"
+                  placeholder="Précise ton rythme (ex: 2 à 6h selon semaines) *"
                   className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
                 />
               )}
@@ -793,7 +867,7 @@ export default function PostulerPage() {
                 rows={2}
                 value={form.objectif_apprentissage}
                 onChange={(e) => setField("objectif_apprentissage", e.target.value)}
-                placeholder="Objectif d'apprentissage *"
+                placeholder="Quel point veux-tu progresser en priorité chez TENF ? *"
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white"
               />
             </section>
