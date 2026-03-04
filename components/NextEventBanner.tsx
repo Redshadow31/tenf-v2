@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { PARIS_TIMEZONE, formatEventDateTimeInTimezone, formatParisHour, getBrowserTimezone } from "@/lib/timezone";
 
 interface Event {
   id: string;
@@ -16,6 +17,7 @@ export default function NextEventBanner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [timezone, setTimezone] = useState(PARIS_TIMEZONE);
 
   // Vérifier prefers-reduced-motion
   useEffect(() => {
@@ -28,6 +30,10 @@ export default function NextEventBanner() {
 
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    setTimezone(getBrowserTimezone());
   }, []);
 
   // Charger le prochain événement
@@ -99,29 +105,6 @@ export default function NextEventBanner() {
     return null; // Ne rien afficher pendant le chargement
   }
 
-  // Formatage de la date et heure
-  const formatEventDate = (dateString: string): { date: string; time: string } => {
-    try {
-      const date = new Date(dateString);
-      const dateStr = date.toLocaleDateString("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-      const timeStr = date.toLocaleTimeString("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      return {
-        date: dateStr.charAt(0).toUpperCase() + dateStr.slice(1),
-        time: timeStr,
-      };
-    } catch {
-      return { date: dateString, time: "" };
-    }
-  };
-
   // Vérifier si l'événement est dans moins de 24h
   const isSoon = (dateString: string): boolean => {
     try {
@@ -173,7 +156,9 @@ export default function NextEventBanner() {
   }
 
   // Événement à venir trouvé
-  const { date: formattedDate, time } = formatEventDate(nextEvent.date);
+  const { dateLabel: formattedDate, timeLabel: time } = formatEventDateTimeInTimezone(nextEvent.date, timezone, "fr-FR");
+  const parisHour = formatParisHour(nextEvent.date);
+  const isParisViewer = timezone === PARIS_TIMEZONE;
   const soon = isSoon(nextEvent.date);
   const ongoing = isOngoing(nextEvent.date);
 
@@ -255,6 +240,10 @@ export default function NextEventBanner() {
             Voir l&apos;event
           </Link>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-1 text-[11px] text-gray-400">
+        {isParisViewer ? "Heure de Paris" : `Heure affichée: ${timezone} • Heure de Paris : ${parisHour}`}
       </div>
 
     </div>

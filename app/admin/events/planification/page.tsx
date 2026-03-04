@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Upload, X, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
+import {
+  PARIS_TIMEZONE,
+  formatEventDateTimeInTimezone,
+  parisLocalDateTimeToUtcIso,
+  utcIsoToParisDateTimeLocalInput,
+} from "@/lib/timezone";
 
 interface CategoryConfig {
   value: string;
@@ -169,14 +175,8 @@ export default function PlanificationPage() {
   };
 
   const handleStartEdit = (event: any) => {
-    // Convertir la date ISO en format datetime-local
-    const dateObj = new Date(event.date);
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const hours = String(dateObj.getHours()).padStart(2, '0');
-    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-    const dateTimeLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
+    // Le formulaire admin reste en heure de Paris.
+    const dateTimeLocal = utcIsoToParisDateTimeLocalInput(event.startAtUtc || event.date);
 
     setEditingEvent(event);
     setFormData({
@@ -274,12 +274,16 @@ export default function PlanificationPage() {
     try {
       setSaving(true);
       
-      // Envoyer la date en ISO (moment correct en heure locale) pour éviter le décalage +1h côté serveur (UTC)
+      // L'admin saisit en heure de Paris -> conversion explicite vers UTC avant envoi.
+      const startAtUtc = parisLocalDateTimeToUtcIso(formData.date);
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: new Date(formData.date).toISOString(),
+        startAtParisLocal: formData.date,
+        startAtUtc,
+        // Compatibilité avec les routes existantes qui lisent encore "date"
+        date: startAtUtc,
         location: formData.location,
         isPublished: formData.isPublished,
         image: finalImageUrl || undefined,
@@ -470,7 +474,7 @@ export default function PlanificationPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Date *
+                Date & heure (Europe/Paris) *
               </label>
               <input
                 type="datetime-local"
@@ -481,6 +485,9 @@ export default function PlanificationPage() {
                 className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Saisie en heure de Paris ({PARIS_TIMEZONE}), stockage en UTC.
+              </p>
             </div>
 
             <div>
@@ -554,13 +561,7 @@ export default function PlanificationPage() {
                         </p>
                       )}
                       <p className="text-sm text-gray-400 mb-2">
-                        {new Date(event.date).toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatEventDateTimeInTimezone(event.startAtUtc || event.date, PARIS_TIMEZONE).fullLabel}
                       </p>
                       {event.location && (
                         <p className="text-sm text-gray-400 mb-2">

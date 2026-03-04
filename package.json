@@ -21,6 +21,7 @@
     "test:redis": "tsx scripts/test-redis.ts",
     "test:routes-evaluation-d": "tsx migration/test-routes-evaluation-d.ts",
     "test:routes-spotlight-events-follow": "tsx migration/test-routes-evaluation-spotlight-events-follow.ts",
+    "test:timezone-events": "tsx scripts/test-event-timezone.ts",
     "test:connections": "tsx scripts/test-connections.ts",
     "migration:migrate-events": "tsx migration/migrate-events-blobs-to-supabase.ts"
   },
@@ -30,6 +31,8 @@
     "@tailwindcss/typography": "^0.5.19",
     "@upstash/redis": "^1.36.1",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",

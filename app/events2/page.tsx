@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import EventDateTime from "@/components/EventDateTime";
+import { formatEventDateTimeInTimezone, getBrowserTimezone } from "@/lib/timezone";
 
 type EventItem = {
   id: string;
@@ -30,18 +32,6 @@ const statusFilters = [
   { id: "past", label: "Termines" },
   { id: "all", label: "Tous" },
 ] as const;
-
-function formatEventDate(value: string): string {
-  const date = new Date(value);
-  return date.toLocaleString("fr-FR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function categoryColor(category: string): string {
   switch (category) {
@@ -82,6 +72,7 @@ export default function Events2Page() {
   const [proposalDescription, setProposalDescription] = useState("");
   const [proposalCategory, setProposalCategory] = useState("");
   const [proposalDate, setProposalDate] = useState("");
+  const browserTimezone = useMemo(() => getBrowserTimezone(), []);
 
   useEffect(() => {
     async function loadEvents() {
@@ -368,7 +359,7 @@ export default function Events2Page() {
           </div>
 
           <h3 className="text-lg font-semibold text-white line-clamp-2">{event.title}</h3>
-          <p className="text-sm text-gray-400">{formatEventDate(event.date)}</p>
+          <EventDateTime startUtc={event.date} className="text-sm text-gray-400" />
           <p className="text-sm text-gray-300 line-clamp-3">{event.description || "Aucune description."}</p>
 
           <div className="flex gap-2 pt-1">
@@ -402,7 +393,10 @@ export default function Events2Page() {
         <p className="text-gray-400 mb-4">Retrouve les prochains événements, inscris-toi et propose tes idées à la communauté.</p>
         {nextEvent ? (
           <div className="text-sm text-gray-300">
-            Prochain evenement: <span className="font-semibold text-white">{nextEvent.title}</span> - {formatEventDate(nextEvent.date)}
+            Prochain evenement:{" "}
+            <span className="font-semibold text-white">{nextEvent.title}</span>
+            {" - "}
+            {formatEventDateTimeInTimezone(nextEvent.date, browserTimezone, "fr-FR").fullLabel}
           </div>
         ) : (
           <div className="text-sm text-gray-400">Aucun evenement a venir pour le moment.</div>
@@ -672,7 +666,11 @@ export default function Events2Page() {
                     <span className={`inline-block text-xs px-2 py-1 rounded-full border ${categoryColor(proposal.category)}`}>
                       {proposal.category}
                     </span>
-                    {proposal.proposedDate && <p className="text-xs text-gray-400">Date suggérée: {formatEventDate(proposal.proposedDate)}</p>}
+                    {proposal.proposedDate && (
+                      <div className="text-xs text-gray-400">
+                        Date suggérée: <EventDateTime startUtc={proposal.proposedDate} showTimezoneLabel={false} />
+                      </div>
+                    )}
                     <p className="text-sm text-gray-300 whitespace-pre-wrap">{proposal.description}</p>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-gray-400">{proposal.votesCount} membre(s) intéressé(s)</p>
@@ -711,7 +709,7 @@ export default function Events2Page() {
               <span className={`inline-block text-xs px-2 py-1 rounded-full border ${categoryColor(selectedEvent.category)}`}>
                 {selectedEvent.category}
               </span>
-              <p className="text-sm text-gray-300">{formatEventDate(selectedEvent.date)}</p>
+              <EventDateTime startUtc={selectedEvent.date} className="text-sm text-gray-300" />
               <p className="text-gray-200 whitespace-pre-wrap">{selectedEvent.description || "Aucune description."}</p>
               {selectedEvent.location && (
                 <p className="text-sm text-gray-300">

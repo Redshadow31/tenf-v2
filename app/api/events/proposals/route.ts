@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { memberRepository } from "@/lib/repositories";
+import { parisLocalDateTimeToUtcIso } from "@/lib/timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       title: title.trim(),
       description: description.trim(),
       category: category.trim(),
-      proposed_date: proposedDate ? new Date(proposedDate).toISOString() : null,
+      proposed_date: proposedDate ? parisLocalDateTimeToUtcIso(proposedDate) : null,
       status: "pending",
       is_anonymous: true,
       proposed_by_discord_id: member.discordId || discordUserId,

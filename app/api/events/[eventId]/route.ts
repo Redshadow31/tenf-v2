@@ -3,6 +3,7 @@ import { getCurrentAdmin } from '@/lib/admin';
 import { requireSectionAccess } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
+import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalInput } from '@/lib/timezone';
 
 /**
  * GET - Récupère un événement spécifique
@@ -40,6 +41,9 @@ export async function GET(
     const formattedEvent = {
       ...event,
       date: event.date instanceof Date ? event.date.toISOString() : event.date,
+      startAtUtc: event.date instanceof Date ? event.date.toISOString() : event.date,
+      timezoneOrigin: PARIS_TIMEZONE,
+      startAtParisLocal: utcIsoToParisDateTimeLocalInput(event.date instanceof Date ? event.date.toISOString() : event.date),
       createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
       updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
     };
@@ -78,12 +82,18 @@ export async function PUT(
       );
     }
 
-    // Passer les champs à mettre à jour (date en ISO si string, conservée telle quelle par le repository)
+    // Passer les champs à mettre à jour (entrée admin en heure de Paris -> conversion UTC)
     const updates: Record<string, unknown> = {};
     if (body.title !== undefined) updates.title = body.title;
     if (body.description !== undefined) updates.description = body.description;
     if (body.image !== undefined) updates.image = body.image;
-    if (body.date !== undefined) updates.date = typeof body.date === 'string' ? body.date : (body.date instanceof Date ? body.date.toISOString() : body.date);
+    if (body.startAtParisLocal !== undefined && typeof body.startAtParisLocal === 'string' && body.startAtParisLocal) {
+      updates.date = parisLocalDateTimeToUtcIso(body.startAtParisLocal);
+    } else if (body.startAtUtc !== undefined) {
+      updates.date = body.startAtUtc;
+    } else if (body.date !== undefined) {
+      updates.date = typeof body.date === 'string' ? body.date : (body.date instanceof Date ? body.date.toISOString() : body.date);
+    }
     if (body.category !== undefined) updates.category = body.category;
     if (body.location !== undefined) updates.location = body.location;
     if (body.isPublished !== undefined) updates.isPublished = body.isPublished;
@@ -93,6 +103,9 @@ export async function PUT(
     const formattedEvent = {
       ...updatedEvent,
       date: updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date,
+      startAtUtc: updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date,
+      timezoneOrigin: PARIS_TIMEZONE,
+      startAtParisLocal: utcIsoToParisDateTimeLocalInput(updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date),
       createdAt: updatedEvent.createdAt instanceof Date ? updatedEvent.createdAt.toISOString() : updatedEvent.createdAt,
       updatedAt: updatedEvent.updatedAt ? (updatedEvent.updatedAt instanceof Date ? updatedEvent.updatedAt.toISOString() : updatedEvent.updatedAt) : undefined,
     };

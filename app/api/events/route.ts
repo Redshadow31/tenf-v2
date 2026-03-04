@@ -3,6 +3,7 @@ import { requireSectionAccess } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { logApi, logEvent } from '@/lib/logging/logger';
+import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalInput } from '@/lib/timezone';
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
@@ -37,6 +38,9 @@ export async function GET(request: NextRequest) {
     const formattedEvents = events.map(event => ({
       ...event,
       date: event.date instanceof Date ? event.date.toISOString() : event.date,
+      startAtUtc: event.date instanceof Date ? event.date.toISOString() : event.date,
+      timezoneOrigin: PARIS_TIMEZONE,
+      startAtParisLocal: utcIsoToParisDateTimeLocalInput(event.date instanceof Date ? event.date.toISOString() : event.date),
       createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
       updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
     }));
@@ -85,9 +89,9 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, image, date, category, location, invitedMembers, isPublished } = body;
+    const { title, description, image, date, startAtUtc, startAtParisLocal, category, location, invitedMembers, isPublished } = body;
     
-    if (!title || !date || !category) {
+    if (!title || (!date && !startAtUtc && !startAtParisLocal) || !category) {
       return NextResponse.json(
         { error: 'Titre, date et catégorie sont requis' },
         { status: 400 }
@@ -97,12 +101,24 @@ export async function POST(request: NextRequest) {
     // Générer un ID unique pour l'événement
     const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    const resolvedStartAtUtc =
+      typeof startAtParisLocal === "string" && startAtParisLocal
+        ? parisLocalDateTimeToUtcIso(startAtParisLocal)
+        : (startAtUtc || date);
+
+    if (!resolvedStartAtUtc) {
+      return NextResponse.json(
+        { error: 'Date/heure invalide (attendu: startAtParisLocal ou startAtUtc/date)' },
+        { status: 400 }
+      );
+    }
+
     const newEvent = await eventRepository.create({
       id: eventId,
       title,
       description: description || '',
       image,
-      date: new Date(date),
+      date: new Date(resolvedStartAtUtc),
       category,
       location,
       invitedMembers: invitedMembers || [],
@@ -115,6 +131,9 @@ export async function POST(request: NextRequest) {
     const formattedEvent = {
       ...newEvent,
       date: newEvent.date instanceof Date ? newEvent.date.toISOString() : newEvent.date,
+      startAtUtc: newEvent.date instanceof Date ? newEvent.date.toISOString() : newEvent.date,
+      timezoneOrigin: PARIS_TIMEZONE,
+      startAtParisLocal: utcIsoToParisDateTimeLocalInput(newEvent.date instanceof Date ? newEvent.date.toISOString() : newEvent.date),
       createdAt: newEvent.createdAt instanceof Date ? newEvent.createdAt.toISOString() : newEvent.createdAt,
       updatedAt: newEvent.updatedAt ? (newEvent.updatedAt instanceof Date ? newEvent.updatedAt.toISOString() : newEvent.updatedAt) : undefined,
     };
