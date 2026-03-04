@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
+import type { MemberRole } from '@/lib/memberRoles';
 
 const CHANNEL_ID = '1278838338199224462'; // #vos-chaînes-twitch
 
@@ -27,7 +28,7 @@ interface ParsedMember {
   twitchUrl: string;
   avatar: string;
   roles: string[];
-  siteRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  siteRole: MemberRole;
   badges: string[];
   isVip: boolean;
   isModeratorJunior: boolean;

@@ -4,6 +4,7 @@ import { getTwitchUsers } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
+import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -169,6 +170,8 @@ export async function POST(request: NextRequest) {
       nextReviewAt,
     } = body;
 
+    const normalizedRole = typeof role === "string" ? toCanonicalMemberRole(role) : undefined;
+
     if (!twitchLogin || !displayName || !twitchUrl) {
       return NextResponse.json(
         { error: "twitchLogin, displayName et twitchUrl sont requis" },
@@ -208,7 +211,7 @@ export async function POST(request: NextRequest) {
       twitchUrl,
       discordId,
       discordUsername,
-      role: role || "Affilié",
+      role: normalizedRole || "Affilié",
       isVip: isVip || false,
       isActive: isActive !== undefined ? isActive : true,
       badges: badges || [],
@@ -280,6 +283,10 @@ export async function PUT(request: NextRequest) {
       originalTwitchLogin, // twitchLogin original pour identifier le membre si le pseudo change
       ...updates 
     } = body;
+
+    if (typeof updates.role === "string") {
+      updates.role = toCanonicalMemberRole(updates.role);
+    }
 
     // Identifier le membre par son identifiant stable (discordId ou twitchId) en priorité
     let existingMember = null;

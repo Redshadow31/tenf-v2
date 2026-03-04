@@ -16,6 +16,7 @@ import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
 import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
+import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 type MemberRole =
   | "Affilié"
@@ -505,7 +506,7 @@ export default function GestionMembresPage() {
           id: index + 1,
           avatar,
           nom: discordMember.discordNickname || discordMember.discordUsername,
-          role: centralMember?.role || discordMember.siteRole,
+          role: toCanonicalMemberRole((centralMember?.role || discordMember.siteRole) as MemberRole),
           statut: (centralMember?.isActive !== false ? "Actif" : "Inactif") as MemberStatus,
           discord: centralMember?.discordUsername || discordMember.discordUsername,
           discordId: discordId, // Utiliser l'ID Discord de la base de données si disponible
@@ -995,7 +996,7 @@ export default function GestionMembresPage() {
             twitchUrl: mergedMember.twitchUrl || `https://www.twitch.tv/${mergedMember.twitch}`,
             discordId: mergedMember.discordId,
             discordUsername: mergedMember.discord,
-            role: mergedMember.role,
+            role: toCanonicalMemberRole(mergedMember.role),
             isActive: mergedMember.statut === "Actif",
             isVip: mergedMember.isVip || false,
             badges: mergedMember.badges || [],
@@ -1787,9 +1788,6 @@ export default function GestionMembresPage() {
                 <option value="Soutien TENF">Soutien TENF</option>
                 <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                 <option value="Communauté">Communauté</option>
-                <option value="Mentor">Mentor (legacy)</option>
-                <option value="Modérateur Junior">Modérateur Junior (legacy)</option>
-                <option value="Admin Adjoint">Admin Adjoint (legacy)</option>
               </select>
               <select
                 value={bulkStatus}

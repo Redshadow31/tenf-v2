@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 type MemberRole =
   | "Affilié"
@@ -78,7 +79,7 @@ export default function EditMemberModal({
 
   useEffect(() => {
     if (isOpen) {
-      setFormData(member);
+      setFormData({ ...member, role: toCanonicalMemberRole(member.role) });
       setBadgeInput("");
       setRoleChangeReason("");
       // Charger la liste des membres actifs pour l'autocomplétion
@@ -202,7 +203,7 @@ export default function EditMemberModal({
       return;
     }
     // Si le rôle a changé, ajouter roleChangeReason aux données
-    const dataToSave = { ...formData };
+    const dataToSave = { ...formData, role: toCanonicalMemberRole(formData.role) };
     if (formData.role !== originalRole) {
       (dataToSave as any).roleChangeReason = roleChangeReason || undefined;
     }
@@ -456,9 +457,6 @@ export default function EditMemberModal({
                         <option value="Soutien TENF">Soutien TENF</option>
                         <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                         <option value="Communauté">Communauté (évaluation)</option>
-                        <option value="Mentor">Mentor (legacy)</option>
-                        <option value="Modérateur Junior">Modérateur Junior (legacy)</option>
-                        <option value="Admin Adjoint">Admin Adjoint (legacy)</option>
                       </select>
                       {formData.role !== originalRole && (
                         <div className="mt-2">

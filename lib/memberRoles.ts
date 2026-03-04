@@ -22,6 +22,25 @@ export type MemberRole =
   | "Modérateur Junior";
 export type MemberStatus = "active" | "inactive" | "vip";
 
+export type LegacyMemberRole = "Admin Adjoint" | "Mentor" | "Modérateur Junior";
+
+const LEGACY_ROLE_TO_CANONICAL: Record<LegacyMemberRole, MemberRole> = {
+  "Admin Adjoint": "Admin Coordinateur",
+  Mentor: "Modérateur",
+  "Modérateur Junior": "Modérateur en formation",
+};
+
+export function isLegacyMemberRole(role: string): role is LegacyMemberRole {
+  return role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
+}
+
+export function toCanonicalMemberRole(role: MemberRole): MemberRole {
+  if (isLegacyMemberRole(role)) {
+    return LEGACY_ROLE_TO_CANONICAL[role];
+  }
+  return role;
+}
+
 export interface MemberWithRole {
   role: MemberRole;
   isVip: boolean;
