@@ -259,6 +259,50 @@ export default function PostulationsStaffPage() {
     URL.revokeObjectURL(url);
   }
 
+  function sanitizeFileName(value: string): string {
+    return value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9-_]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .toLowerCase();
+  }
+
+  function exportFullApplication(application: StaffApplication) {
+    const exportPayload = {
+      exportedAt: new Date().toISOString(),
+      application: {
+        id: application.id,
+        created_at: application.created_at,
+        updated_at: application.updated_at,
+        applicant_discord_id: application.applicant_discord_id,
+        applicant_username: application.applicant_username,
+        applicant_avatar: application.applicant_avatar || null,
+        role_postule_label: formatRole(application.answers.role_postule),
+        admin_status: application.admin_status,
+        admin_status_label: formatStatus(application.admin_status),
+        has_red_flag: application.has_red_flag,
+        red_flags: application.red_flags || [],
+        assigned_to: application.assigned_to || null,
+        last_contacted_at: application.last_contacted_at || null,
+        score: application.score ?? null,
+        admin_notes: application.admin_notes || [],
+        answers: application.answers,
+      },
+    };
+
+    const json = JSON.stringify(exportPayload, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const pseudo = sanitizeFileName(application.answers.pseudo_discord || application.applicant_username || "candidature");
+    a.href = url;
+    a.download = `fiche-postulation-${pseudo}-${application.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -359,7 +403,15 @@ export default function PostulationsStaffPage() {
                     {formatRole(selected.answers.role_postule)} · {new Date(selected.created_at).toLocaleString("fr-FR")}
                   </p>
                 </div>
-                <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(selected.admin_status)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(selected.admin_status)}</span>
+                  <button
+                    onClick={() => exportFullApplication(selected)}
+                    className="text-xs px-3 py-1 rounded bg-indigo-700 hover:bg-indigo-800 font-semibold"
+                  >
+                    Exporter fiche complète
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">
