@@ -27,15 +27,29 @@ function getRoleText(role: MemberRole): string {
     case "Affilié":
       return "Créateur Affilié";
     case "Modérateur Junior":
-      return "Modérateur Junior";
+      return "Modérateur en formation";
+    case "Modérateur en formation":
+      return "Modérateur en formation";
     case "Mentor":
-      return "Mentor";
+      return "Modérateur";
+    case "Modérateur":
+      return "Modérateur";
+    case "Modérateur en activité réduite":
+      return "Modérateur en activité réduite";
+    case "Modérateur en pause":
+      return "Modérateur en pause";
     case "Admin":
       return "Administrateur";
     case "Admin Adjoint":
-      return "Administrateur Adjoint";
+      return "Administrateur Coordinateur";
+    case "Admin Coordinateur":
+      return "Administrateur Coordinateur";
     case "Créateur Junior":
       return "Créateur Junior";
+    case "Soutien TENF":
+      return "Soutien TENF";
+    case "Contributeur TENF du Mois":
+      return "Contributeur TENF du Mois";
     default:
       return "membre";
   }

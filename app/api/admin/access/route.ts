@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le rôle est valide
-    const validRoles: AdminRole[] = ['FOUNDER', 'ADMIN_ADJOINT', 'MODO_MENTOR', 'MODO_JUNIOR'];
+    const validRoles: AdminRole[] = ['FOUNDER', 'ADMIN_ADJOINT', 'MODO_MENTOR', 'MODO_JUNIOR', 'SOUTIEN_TENF'];
     if (!validRoles.includes(role)) {
       return NextResponse.json(
         { error: "Rôle invalide" },

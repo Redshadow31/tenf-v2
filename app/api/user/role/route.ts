@@ -24,6 +24,7 @@ export async function GET() {
       'ADMIN_ADJOINT': 'Admin Adjoint',
       'MODO_MENTOR': 'Mentor',
       'MODO_JUNIOR': 'Modérateur Junior',
+      'SOUTIEN_TENF': 'Soutien TENF',
     };
 
     const frontendRole = roleMap[admin.role] || admin.role || null;

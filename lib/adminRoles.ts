@@ -5,7 +5,8 @@ export type AdminRole =
   | "FOUNDER" 
   | "ADMIN_ADJOINT" 
   | "MODO_MENTOR" 
-  | "MODO_JUNIOR";
+  | "MODO_JUNIOR"
+  | "SOUTIEN_TENF";
 
 export type Permission = 
   | "read" 
@@ -48,6 +49,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   ADMIN_ADJOINT: ["read", "write", "validate", "revert"],
   MODO_MENTOR: ["read", "write", "validate"],
   MODO_JUNIOR: ["read", "write"],
+  SOUTIEN_TENF: ["read"],
 };
 
 // ============================================
@@ -140,6 +142,7 @@ export function getRoleDisplayName(role: AdminRole): string {
     ADMIN_ADJOINT: "Admin Adjoint",
     MODO_MENTOR: "Modo Mentor",
     MODO_JUNIOR: "Modo Junior",
+    SOUTIEN_TENF: "Soutien TENF",
   };
   return names[role];
 }

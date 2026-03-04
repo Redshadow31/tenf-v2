@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
           'ADMIN_ADJOINT': 1,
           'MODO_MENTOR': 2,
           'MODO_JUNIOR': 3,
+          'SOUTIEN_TENF': 4,
         };
         return (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
       });

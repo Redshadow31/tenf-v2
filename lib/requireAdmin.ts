@@ -200,7 +200,7 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
   }
 
   // Vérifier si le rôle de l'admin a accès à cette section
-  return hasSectionAccess(sectionHref, admin.role);
+  return hasSectionAccess(sectionHref, admin.role, admin.discordId);
 }
 
 /**
@@ -225,7 +225,7 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
   }
 
   // Vérifier si le rôle de l'admin a accès à cette section
-  const hasAccess = hasSectionAccess(sectionHref, admin.role);
+  const hasAccess = hasSectionAccess(sectionHref, admin.role, admin.discordId);
 
   if (!hasAccess) {
     return null;

@@ -3,7 +3,23 @@
 
 import { allMembers } from "./members";
 
-export type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
+export type MemberRole =
+  | "Affilié"
+  | "Développement"
+  | "Admin"
+  | "Admin Coordinateur"
+  | "Modérateur"
+  | "Modérateur en formation"
+  | "Modérateur en activité réduite"
+  | "Modérateur en pause"
+  | "Soutien TENF"
+  | "Contributeur TENF du Mois"
+  | "Créateur Junior"
+  | "Communauté"
+  // Compatibilité legacy
+  | "Admin Adjoint"
+  | "Mentor"
+  | "Modérateur Junior";
 export type MemberStatus = "active" | "inactive" | "vip";
 
 export interface MemberWithRole {
@@ -53,13 +69,13 @@ function getRoleForMember(login: string): MemberRole {
     return "Admin";
   }
   if (ADMINS_ADJOINTS.includes(lowerLogin)) {
-    return "Admin Adjoint";
+    return "Admin Coordinateur";
   }
   if (MODOS_MENTORS.includes(lowerLogin)) {
-    return "Mentor";
+    return "Modérateur";
   }
   if (MODOS_JUNIORS.includes(lowerLogin)) {
-    return "Modérateur Junior";
+    return "Modérateur en formation";
   }
   
   return "Affilié";
@@ -76,19 +92,19 @@ export function getBadgesForMember(login: string): string[] {
     badges.push("VIP Élite");
   }
   
-  // Modérateur Junior est toujours un badge pour les membres dans cette liste
+  // Modérateur en formation est toujours un badge pour les membres dans cette liste
   if (MODOS_JUNIORS.includes(lowerLogin)) {
-    badges.push("Modérateur Junior");
+    badges.push("Modérateur en formation");
   }
   
-  // Modérateur Mentor est toujours un badge pour les membres dans cette liste
+  // Modérateur est toujours un badge pour les membres dans cette liste
   if (MODOS_MENTORS.includes(lowerLogin)) {
-    badges.push("Modérateur Mentor");
+    badges.push("Modérateur");
   }
   
-  // Admin Adjoint est toujours un badge pour les membres dans cette liste
+  // Admin Coordinateur est toujours un badge pour les membres dans cette liste
   if (ADMINS_ADJOINTS.includes(lowerLogin)) {
-    badges.push("Admin Adjoint");
+    badges.push("Admin Coordinateur");
   }
   
   // Admin Fondateurs est toujours un badge pour les membres dans cette liste

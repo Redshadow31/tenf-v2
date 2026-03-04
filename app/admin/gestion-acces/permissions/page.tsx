@@ -11,18 +11,26 @@ const ROLE_LABELS: Record<AdminRole, string> = {
   ADMIN_ADJOINT: "Admin Adjoint",
   MODO_MENTOR: "Modo Mentor",
   MODO_JUNIOR: "Modo Junior",
+  SOUTIEN_TENF: "Soutien TENF",
 };
 
 interface SectionPermission {
   href: string;
   label: string;
   roles: AdminRole[];
+  supportDiscordIds?: string[];
 }
 
 interface PermissionsData {
   sections: Record<string, SectionPermission>;
   lastUpdated?: string;
   updatedBy?: string;
+}
+
+interface AdminAccessEntry {
+  discordId: string;
+  role: AdminRole;
+  username?: string;
 }
 
 /**
@@ -63,6 +71,7 @@ export default function PermissionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isFounder, setIsFounder] = useState(false);
+  const [supportMembers, setSupportMembers] = useState<AdminAccessEntry[]>([]);
 
   // Extraire toutes les sections du dashboard
   const allSections = extractAllSections(adminNavigation);
@@ -92,8 +101,27 @@ export default function PermissionsPage() {
   // Charger les permissions
   useEffect(() => {
     if (!isFounder) return;
+    loadSupportMembers();
     loadPermissions();
   }, [isFounder]);
+
+  async function loadSupportMembers() {
+    try {
+      const response = await fetch("/api/admin/access", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+      const allAccess: AdminAccessEntry[] = data.accessList || [];
+      setSupportMembers(allAccess.filter((entry) => entry.role === "SOUTIEN_TENF"));
+    } catch (err) {
+      console.error("Error loading support members:", err);
+    }
+  }
 
   async function loadPermissions() {
     try {
@@ -125,6 +153,7 @@ export default function PermissionsPage() {
           href: section.href,
           label: section.label,
           roles: [], // Par défaut, tous les rôles ont accès (liste vide = tous autorisés)
+          supportDiscordIds: [],
         };
       });
 
@@ -232,7 +261,38 @@ export default function PermissionsPage() {
   function hasRestrictions(sectionHref: string): boolean {
     const section = permissions.sections[sectionHref];
     if (!section) return false;
-    return section.roles.length > 0;
+    return section.roles.length > 0 || (section.supportDiscordIds || []).length > 0;
+  }
+
+  function isSupportMemberAllowed(sectionHref: string, discordId: string): boolean {
+    const section = permissions.sections[sectionHref];
+    if (!section) return false;
+    const supportIds = section.supportDiscordIds || [];
+    return supportIds.includes(discordId);
+  }
+
+  function toggleSupportMemberAccess(sectionHref: string, discordId: string) {
+    setPermissions((prev) => {
+      const section = prev.sections[sectionHref];
+      if (!section) return prev;
+
+      const currentSupportIds = section.supportDiscordIds || [];
+      const hasAccess = currentSupportIds.includes(discordId);
+      const nextSupportIds = hasAccess
+        ? currentSupportIds.filter((id) => id !== discordId)
+        : [...currentSupportIds, discordId];
+
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [sectionHref]: {
+            ...section,
+            supportDiscordIds: nextSupportIds,
+          },
+        },
+      };
+    });
   }
 
   if (loading && !isFounder) {
@@ -339,6 +399,7 @@ export default function PermissionsPage() {
                 href: section.href,
                 label: section.label,
                 roles: [],
+                supportDiscordIds: [],
               };
               const restricted = hasRestrictions(section.href);
 
@@ -421,6 +482,8 @@ export default function PermissionsPage() {
                                 ? '#d97706'
                                 : role === 'MODO_MENTOR'
                                 ? '#ea580c'
+                                : role === 'SOUTIEN_TENF'
+                                ? '#0f766e'
                                 : '#1e40af'
                               : 'var(--color-surface)',
                             color: allowed ? 'white' : 'var(--color-text-secondary)',
@@ -439,14 +502,61 @@ export default function PermissionsPage() {
                     })}
                   </div>
 
+                  {isRoleAllowed(section.href, "SOUTIEN_TENF") && (
+                    <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                      <p className="mb-2 text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                        Acces individualise Soutien TENF (par competence)
+                      </p>
+                      {supportMembers.length === 0 ? (
+                        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                          Aucun membre avec le role Soutien TENF dans la gestion des acces.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {supportMembers.map((member) => {
+                            const allowed = isSupportMemberAllowed(section.href, member.discordId);
+                            return (
+                              <button
+                                key={`${section.href}-${member.discordId}`}
+                                onClick={() => toggleSupportMemberAccess(section.href, member.discordId)}
+                                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${allowed ? "opacity-100" : "opacity-50"}`}
+                                style={{
+                                  backgroundColor: allowed ? "#0f766e" : "var(--color-card)",
+                                  color: allowed ? "white" : "var(--color-text-secondary)",
+                                  border: `1px solid ${allowed ? "#0f766e" : "var(--color-border)"}`,
+                                }}
+                                title={allowed ? "Cliquer pour retirer l'acces" : "Cliquer pour autoriser l'acces"}
+                              >
+                                {(member.username || member.discordId).trim()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {restricted && (
                     <div className="mt-3 p-3 rounded text-xs" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>
-                      <strong>Accès restreint à :</strong> {sectionPerm.roles.map(r => ROLE_LABELS[r]).join(', ')}
+                      {sectionPerm.roles.length > 0 ? (
+                        <>
+                          <strong>Accès restreint à :</strong> {sectionPerm.roles.map(r => ROLE_LABELS[r]).join(', ')}
+                        </>
+                      ) : (
+                        <>
+                          <strong>Accès restreint :</strong> uniquement certains Soutiens TENF sont autorisés.
+                        </>
+                      )}
                     </div>
                   )}
                   {!restricted && (
                     <div className="mt-3 p-3 rounded text-xs" style={{ backgroundColor: '#10b98120', color: '#10b981' }}>
                       <strong>Tous les rôles admin ont accès à cette section</strong>
+                      {(sectionPerm.supportDiscordIds || []).length > 0 && (
+                        <span>
+                          {" "}sauf restriction individuelle des Soutiens TENF.
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

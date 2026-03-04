@@ -6,7 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AdminAccess {
   discordId: string;
-  role: "FOUNDER" | "ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR";
+  role: "FOUNDER" | "ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR" | "SOUTIEN_TENF";
   addedAt: string;
   addedBy: string;
   username?: string;
@@ -19,6 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN_ADJOINT: "Admin Adjoint",
   MODO_MENTOR: "Modo Mentor",
   MODO_JUNIOR: "Modo Junior",
+  SOUTIEN_TENF: "Soutien TENF",
 };
 
 export default function GestionAccesPage() {
@@ -29,7 +30,7 @@ export default function GestionAccesPage() {
   const [isFounder, setIsFounder] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newDiscordId, setNewDiscordId] = useState("");
-  const [newRole, setNewRole] = useState<"ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR">("MODO_JUNIOR");
+  const [newRole, setNewRole] = useState<"ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR" | "SOUTIEN_TENF">("MODO_JUNIOR");
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
   const [searchingDiscord, setSearchingDiscord] = useState(false);
@@ -239,6 +240,8 @@ export default function GestionAccesPage() {
         return "bg-orange-700 text-white border border-orange-600";
       case "MODO_JUNIOR":
         return "bg-blue-900 text-white border border-blue-600";
+      case "SOUTIEN_TENF":
+        return "bg-teal-900 text-white border border-teal-600";
       default:
         return "bg-gray-700 text-white";
     }
@@ -410,7 +413,7 @@ export default function GestionAccesPage() {
                 </label>
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as "ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR")}
+                  onChange={(e) => setNewRole(e.target.value as "ADMIN_ADJOINT" | "MODO_MENTOR" | "MODO_JUNIOR" | "SOUTIEN_TENF")}
                   className="w-full px-4 py-2 rounded-lg border"
                   style={{
                     backgroundColor: 'var(--color-surface)',
@@ -421,6 +424,7 @@ export default function GestionAccesPage() {
                   <option value="ADMIN_ADJOINT">Admin Adjoint</option>
                   <option value="MODO_MENTOR">Modo Mentor</option>
                   <option value="MODO_JUNIOR">Modo Junior</option>
+                  <option value="SOUTIEN_TENF">Soutien TENF</option>
                 </select>
               </div>
 

@@ -17,7 +17,22 @@ import { getDiscordUser } from "@/lib/discord";
 import { canPerformAction, isFounder } from "@/lib/admin";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 
-type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
+type MemberRole =
+  | "Affilié"
+  | "Développement"
+  | "Admin"
+  | "Admin Coordinateur"
+  | "Modérateur"
+  | "Modérateur en formation"
+  | "Modérateur en activité réduite"
+  | "Modérateur en pause"
+  | "Soutien TENF"
+  | "Contributeur TENF du Mois"
+  | "Créateur Junior"
+  | "Communauté"
+  | "Admin Adjoint" // legacy
+  | "Mentor" // legacy
+  | "Modérateur Junior"; // legacy
 type MemberStatus = "Actif" | "Inactif";
 
 interface Member {
@@ -351,8 +366,8 @@ export default function GestionMembresPage() {
               twitchStatus: member.twitchStatus,
               badges: member.badges || [],
               isVip: member.isVip || false,
-              isModeratorJunior: member.badges?.includes("Modérateur Junior") || false,
-              isModeratorMentor: member.badges?.includes("Modérateur Mentor") || false,
+              isModeratorJunior: member.badges?.includes("Modérateur en formation") || member.badges?.includes("Modérateur Junior") || false,
+              isModeratorMentor: member.badges?.includes("Modérateur") || member.badges?.includes("Modérateur Mentor") || false,
               raidsDone: raidStats.done,
               raidsReceived: raidStats.received,
               createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
@@ -1762,12 +1777,19 @@ export default function GestionMembresPage() {
                 <option value="">Rôle (optionnel)</option>
                 <option value="Affilié">Affilié</option>
                 <option value="Développement">Développement</option>
-                <option value="Modérateur Junior">Modérateur Junior</option>
-                <option value="Mentor">Mentor</option>
+                <option value="Modérateur">Modérateur</option>
+                <option value="Modérateur en formation">Modérateur en formation</option>
+                <option value="Modérateur en activité réduite">Modérateur en activité réduite</option>
+                <option value="Modérateur en pause">Modérateur en pause</option>
                 <option value="Admin">Admin</option>
-                <option value="Admin Adjoint">Admin Adjoint</option>
+                <option value="Admin Coordinateur">Admin Coordinateur</option>
                 <option value="Créateur Junior">Créateur Junior</option>
+                <option value="Soutien TENF">Soutien TENF</option>
+                <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                 <option value="Communauté">Communauté</option>
+                <option value="Mentor">Mentor (legacy)</option>
+                <option value="Modérateur Junior">Modérateur Junior (legacy)</option>
+                <option value="Admin Adjoint">Admin Adjoint (legacy)</option>
               </select>
               <select
                 value={bulkStatus}

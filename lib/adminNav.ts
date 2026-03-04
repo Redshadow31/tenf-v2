@@ -37,6 +37,7 @@ export function filterNavLinks(
         ADMIN_ADJOINT: 3,
         MODO_MENTOR: 2,
         MODO_JUNIOR: 1,
+        SOUTIEN_TENF: 0,
       };
       
       const userLevel = roleHierarchy[role] || 0;

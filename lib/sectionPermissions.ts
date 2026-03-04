@@ -9,6 +9,7 @@ export interface SectionPermission {
   href: string;
   label: string;
   roles: AdminRole[];
+  supportDiscordIds?: string[];
 }
 
 interface PermissionsData {
@@ -58,16 +59,38 @@ export async function loadSectionPermissionsCache(): Promise<void> {
  * @param role - Le rôle à vérifier
  * @returns true si le rôle a accès, false sinon
  */
-export function hasSectionAccess(sectionHref: string, role: AdminRole): boolean {
+export function hasSectionAccess(sectionHref: string, role: AdminRole, discordId?: string): boolean {
   const section = sectionPermissionsCache[sectionHref];
   
-  // Si la section n'a pas de permissions définies (pas dans le cache), tous les rôles ont accès par défaut
-  if (!section || !section.roles || section.roles.length === 0) {
+  // Si la section n'existe pas, tous les rôles ont accès par défaut.
+  if (!section) {
     return true;
   }
-  
-  // Si des rôles sont définis, vérifier que le rôle est dans la liste
-  return section.roles.includes(role);
+
+  // Si aucun rôle n'est défini, tous les rôles sont autorisés par défaut.
+  // Exception: on peut tout de même restreindre finement SOUTIEN_TENF via supportDiscordIds.
+  if (!section.roles || section.roles.length === 0) {
+    if (role !== "SOUTIEN_TENF") return true;
+    const supportList = section.supportDiscordIds || [];
+    if (supportList.length === 0) return true;
+    return !!discordId && supportList.includes(discordId);
+  }
+
+  // Si des rôles sont définis, vérifier que le rôle est dans la liste.
+  const roleAllowed = section.roles.includes(role);
+  if (!roleAllowed) return false;
+
+  // Pour les Soutiens TENF, on peut restreindre finement par utilisateur (Discord ID).
+  // Si une liste est définie pour la section, seuls les IDs présents sont autorisés.
+  if (role === "SOUTIEN_TENF") {
+    const supportList = section.supportDiscordIds || [];
+    if (supportList.length === 0) {
+      return true;
+    }
+    return !!discordId && supportList.includes(discordId);
+  }
+
+  return true;
 }
 
 /**
@@ -77,7 +100,8 @@ export function hasSectionAccess(sectionHref: string, role: AdminRole): boolean 
  */
 export function hasSectionRestrictions(sectionHref: string): boolean {
   const section = sectionPermissionsCache[sectionHref];
-  return section && section.roles && section.roles.length > 0;
+  if (!section) return false;
+  return (section.roles && section.roles.length > 0) || ((section.supportDiscordIds || []).length > 0);
 }
 
 /**

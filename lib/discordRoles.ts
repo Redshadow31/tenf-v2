@@ -51,7 +51,7 @@ function getHighestRole(discordRoleIds: string[]): string | null {
  * Pour les doubles rôles ou plus, on prend le rôle le plus haut dans la hiérarchie
  */
 export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
-  role: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior";
+  role: "Affilié" | "Développement" | "Modérateur en formation" | "Modérateur" | "Admin" | "Admin Coordinateur" | "Créateur Junior";
   badges: string[];
 } {
   const highestRoleId = getHighestRole(discordRoleIds);
@@ -62,20 +62,20 @@ export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
     return { role: "Affilié", badges };
   }
 
-  let mainRole: "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" = "Affilié";
+  let mainRole: "Affilié" | "Développement" | "Modérateur en formation" | "Modérateur" | "Admin" | "Admin Coordinateur" | "Créateur Junior" = "Affilié";
 
   switch (highestRoleId) {
     case DISCORD_ROLE_IDS.ADMIN_FONDATEURS:
       mainRole = "Admin";
       break;
     case DISCORD_ROLE_IDS.ADMIN_ADJOINT:
-      mainRole = "Admin Adjoint";
+      mainRole = "Admin Coordinateur";
       break;
     case DISCORD_ROLE_IDS.MODERATEUR_MENTOR:
-      mainRole = "Mentor";
+      mainRole = "Modérateur";
       break;
     case DISCORD_ROLE_IDS.MODERATEUR_JUNIOR:
-      mainRole = "Modérateur Junior";
+      mainRole = "Modérateur en formation";
       break;
     case DISCORD_ROLE_IDS.VIP_ELITE:
       // VIP Élite peut être un badge, mais si c'est le rôle le plus haut, on le traite comme badge seulement
@@ -99,17 +99,17 @@ export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
   if (discordRoleIds.includes(DISCORD_ROLE_IDS.VIP_ELITE)) {
     badges.push("VIP Élite");
   }
-  // Modérateur Junior est un badge s'il n'est pas le rôle principal
+  // Modérateur en formation est un badge s'il n'est pas le rôle principal
   if (discordRoleIds.includes(DISCORD_ROLE_IDS.MODERATEUR_JUNIOR) && highestRoleId !== DISCORD_ROLE_IDS.MODERATEUR_JUNIOR) {
-    badges.push("Modérateur Junior");
+    badges.push("Modérateur en formation");
   }
-  // Modérateur Mentor est un badge s'il n'est pas le rôle principal
+  // Modérateur est un badge s'il n'est pas le rôle principal
   if (discordRoleIds.includes(DISCORD_ROLE_IDS.MODERATEUR_MENTOR) && highestRoleId !== DISCORD_ROLE_IDS.MODERATEUR_MENTOR) {
-    badges.push("Modérateur Mentor");
+    badges.push("Modérateur");
   }
-  // Admin Adjoint est un badge s'il n'est pas le rôle principal
+  // Admin Coordinateur est un badge s'il n'est pas le rôle principal
   if (discordRoleIds.includes(DISCORD_ROLE_IDS.ADMIN_ADJOINT) && highestRoleId !== DISCORD_ROLE_IDS.ADMIN_ADJOINT) {
-    badges.push("Admin Adjoint");
+    badges.push("Admin Coordinateur");
   }
   // Admin Fondateurs est un badge s'il n'est pas le rôle principal
   if (discordRoleIds.includes(DISCORD_ROLE_IDS.ADMIN_FONDATEURS) && highestRoleId !== DISCORD_ROLE_IDS.ADMIN_FONDATEURS) {

@@ -8,6 +8,7 @@ interface SectionPermission {
   href: string;
   label: string;
   roles: AdminRole[];
+  supportDiscordIds?: string[];
 }
 
 interface PermissionsData {
@@ -101,12 +102,34 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      if (
+        sectionPerm.supportDiscordIds !== undefined &&
+        !Array.isArray(sectionPerm.supportDiscordIds)
+      ) {
+        return NextResponse.json(
+          { error: `supportDiscordIds invalide pour la section ${href}. Format attendu: string[]` },
+          { status: 400 }
+        );
+      }
+
       // Valider que tous les rôles sont valides
-      const validRoles: AdminRole[] = ["FOUNDER", "ADMIN_ADJOINT", "MODO_MENTOR", "MODO_JUNIOR"];
+      const validRoles: AdminRole[] = ["FOUNDER", "ADMIN_ADJOINT", "MODO_MENTOR", "MODO_JUNIOR", "SOUTIEN_TENF"];
       for (const role of sectionPerm.roles) {
         if (!validRoles.includes(role)) {
           return NextResponse.json(
             { error: `Rôle invalide "${role}" pour la section ${href}. Rôles valides: ${validRoles.join(", ")}` },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (Array.isArray(sectionPerm.supportDiscordIds)) {
+        const invalidIds = sectionPerm.supportDiscordIds.filter(
+          (id) => typeof id !== "string" || !id.trim()
+        );
+        if (invalidIds.length > 0) {
+          return NextResponse.json(
+            { error: `supportDiscordIds contient des valeurs invalides pour la section ${href}` },
             { status: 400 }
           );
         }

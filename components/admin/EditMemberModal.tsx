@@ -2,7 +2,22 @@
 
 import { useState, useEffect } from "react";
 
-type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
+type MemberRole =
+  | "Affilié"
+  | "Développement"
+  | "Admin"
+  | "Admin Coordinateur"
+  | "Modérateur"
+  | "Modérateur en formation"
+  | "Modérateur en activité réduite"
+  | "Modérateur en pause"
+  | "Soutien TENF"
+  | "Contributeur TENF du Mois"
+  | "Créateur Junior"
+  | "Communauté"
+  | "Admin Adjoint" // legacy
+  | "Mentor" // legacy
+  | "Modérateur Junior"; // legacy
 
 interface Member {
   id: number;
@@ -431,12 +446,19 @@ export default function EditMemberModal({
                       >
                         <option value="Affilié">Affilié</option>
                         <option value="Développement">Développement</option>
-                        <option value="Modérateur Junior">Modérateur Junior</option>
-                        <option value="Mentor">Mentor</option>
+                        <option value="Modérateur">Modérateur</option>
+                        <option value="Modérateur en formation">Modérateur en formation</option>
+                        <option value="Modérateur en activité réduite">Modérateur en activité réduite</option>
+                        <option value="Modérateur en pause">Modérateur en pause</option>
                         <option value="Admin">Admin</option>
-                        <option value="Admin Adjoint">Admin Adjoint</option>
+                        <option value="Admin Coordinateur">Admin Coordinateur</option>
                         <option value="Créateur Junior">Créateur Junior</option>
+                        <option value="Soutien TENF">Soutien TENF</option>
+                        <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                         <option value="Communauté">Communauté (évaluation)</option>
+                        <option value="Mentor">Mentor (legacy)</option>
+                        <option value="Modérateur Junior">Modérateur Junior (legacy)</option>
+                        <option value="Admin Adjoint">Admin Adjoint (legacy)</option>
                       </select>
                       {formData.role !== originalRole && (
                         <div className="mt-2">

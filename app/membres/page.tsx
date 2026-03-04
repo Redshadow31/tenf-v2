@@ -68,16 +68,31 @@ export default function Page() {
 
   // Fonction pour déterminer si un membre appartient à la catégorie "Staff"
   const isStaffCategory = (role: string): boolean => {
-    return role === "Admin" || role === "Admin Adjoint" || role === "Mentor" || role === "Modérateur Junior";
+    return (
+      role === "Admin" ||
+      role === "Admin Coordinateur" ||
+      role === "Admin Adjoint" || // compatibilité legacy
+      role === "Modérateur" ||
+      role === "Mentor" || // compatibilité legacy
+      role === "Modérateur en formation" ||
+      role === "Modérateur Junior" || // compatibilité legacy
+      role === "Modérateur en activité réduite" ||
+      role === "Modérateur en pause"
+    );
   };
 
   // Fonction pour obtenir l'ordre de tri des rôles Staff
   const getStaffRoleOrder = (role: string): number => {
     switch (role) {
       case "Admin": return 1;
+      case "Admin Coordinateur":
       case "Admin Adjoint": return 2;
+      case "Modérateur":
       case "Mentor": return 3;
-      case "Modérateur Junior": return 4;
+      case "Modérateur en activité réduite": return 4;
+      case "Modérateur en pause": return 5;
+      case "Modérateur en formation":
+      case "Modérateur Junior": return 6;
       default: return 999;
     }
   };
