@@ -2094,6 +2094,15 @@ export default function GestionMembresPage() {
                           <History className="w-3 h-3" />
                           Historique
                         </button>
+                        <Link
+                          href={`/admin/membres/fiche/${encodeURIComponent(
+                            member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
+                          )}`}
+                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 flex items-center gap-1"
+                          title="Voir la fiche membre"
+                        >
+                          👁️ Fiche
+                        </Link>
                         <button
                           onClick={() => handleToggleStatus(member.id)}
                           className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
