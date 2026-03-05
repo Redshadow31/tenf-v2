@@ -4,6 +4,7 @@ import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { memberRepository, evaluationRepository } from '@/lib/repositories';
 import type { MemberRole } from '@/lib/memberRoles';
 import { logApi, logEvaluation } from '@/lib/logging/logger';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -172,24 +173,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Persister le snapshot complet du mois (source des pages Résultats/Progression)
+    // en batch pour éviter les timeouts serveur en production.
     if (Array.isArray(snapshots) && snapshots.length > 0) {
-      for (const snapshot of snapshots) {
-        try {
-          await evaluationRepository.upsert({
-            month: new Date(`${month}-01`),
-            twitchLogin: snapshot.twitchLogin,
-            sectionAPoints: snapshot.sectionAPoints,
-            sectionBPoints: snapshot.sectionBPoints,
-            sectionCPoints: snapshot.sectionCPoints,
-            sectionDBonuses: snapshot.sectionDBonuses,
-            totalPoints: snapshot.totalPoints,
-            calculatedAt: new Date(),
-            calculatedBy: admin.discordId,
-          });
-          results.snapshotsUpdated++;
-        } catch (error) {
-          console.error(`Erreur snapshot pour ${snapshot.twitchLogin}:`, error);
-          results.errors.push(`Erreur snapshot pour ${snapshot.twitchLogin}`);
+      const monthDate = `${month}-01`;
+      const calculatedAtIso = new Date().toISOString();
+      const BATCH_SIZE = 200;
+
+      for (let i = 0; i < snapshots.length; i += BATCH_SIZE) {
+        const batch = snapshots.slice(i, i + BATCH_SIZE);
+        const rows = batch.map((snapshot) => ({
+          month: monthDate,
+          twitch_login: snapshot.twitchLogin.toLowerCase(),
+          section_a_points: snapshot.sectionAPoints,
+          section_b_points: snapshot.sectionBPoints,
+          section_c_points: snapshot.sectionCPoints,
+          section_d_bonuses: snapshot.sectionDBonuses,
+          total_points: snapshot.totalPoints,
+          calculated_at: calculatedAtIso,
+          calculated_by: admin.discordId,
+        }));
+
+        const { error } = await supabaseAdmin
+          .from('evaluations')
+          .upsert(rows, { onConflict: 'twitch_login,month' });
+
+        if (error) {
+          console.error('[API Evaluations Synthesis Save] Erreur batch snapshot:', error);
+          results.errors.push(`Erreur batch snapshots ${i + 1}-${i + batch.length}`);
+        } else {
+          results.snapshotsUpdated += batch.length;
         }
       }
     }
