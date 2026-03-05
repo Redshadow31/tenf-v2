@@ -1333,6 +1333,7 @@ export default function EvaluationDPage() {
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Total (hors bonus)</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Bonus total</th>
                   <th className="px-4 py-3 text-center font-semibold sticky right-0 z-20" style={{ color: 'var(--color-text)', backgroundColor: "var(--color-surface)" }}>Note finale</th>
+                  <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale retenue</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Delta M-1</th>
                   <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Note finale manuelle</th>
                   {showAdvancedColumns && <th className="px-4 py-3 text-center font-semibold" style={{ color: 'var(--color-text)' }}>Statut</th>}
@@ -1358,6 +1359,8 @@ export default function EvaluationDPage() {
                     currentModerationBonus
                   );
                   const finalScore = finalNoteInEdit ?? savedManualFinal ?? calculatedFinalScore;
+                  const retainedFinalNote = finalScore;
+                  const retainedFinalSource = (finalNoteInEdit !== undefined || savedManualFinal !== undefined) ? "manuelle" : "membre";
                   const autoStatus = getAutoStatus(finalScore);
                   const statusInEdit = editingStatuses[member.twitchLogin];
                   const roleInEdit = editingRoles[member.twitchLogin];
@@ -1496,6 +1499,14 @@ export default function EvaluationDPage() {
                       </td>
                       <td className={`px-4 ${compactMode ? "py-1.5" : "py-3"} text-center font-bold sticky right-0 z-10`} style={{ color: finalScore >= 16 ? '#10b981' : finalScore < 5 ? '#f59e0b' : 'var(--color-text)', backgroundColor: index % 2 === 0 ? 'var(--color-card)' : 'var(--color-surface)' }}>
                         {finalScore.toFixed(2)} / 32
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                          {retainedFinalNote.toFixed(2)} / 32
+                        </div>
+                        <div className="text-xs" style={{ color: retainedFinalSource === "manuelle" ? '#10b981' : 'var(--color-text-secondary)' }}>
+                          {retainedFinalSource === "manuelle" ? "Source: manuelle" : "Source: membre"}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center font-medium">
                         {(() => {
