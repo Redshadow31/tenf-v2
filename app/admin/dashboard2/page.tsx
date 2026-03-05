@@ -683,7 +683,7 @@ export default function Dashboard2Page() {
     { label: "Gestion membres", href: "/admin/membres/gestion" },
     { label: "Postulations staff", href: "/admin/membres/postulations" },
     { label: "Validation profils", href: "/admin/membres/validation-profil" },
-    { label: "Évaluation D", href: "/admin/evaluation/d" },
+    { label: "Synthèse évaluation", href: "/admin/evaluation/d" },
     { label: "Suivi follow", href: "/admin/follow" },
     { label: "Audit", href: "/admin/founders/audit" },
     { label: "Sync Discord", href: "/admin/membres/synchronisation" },

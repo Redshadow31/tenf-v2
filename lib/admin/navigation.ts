@@ -189,7 +189,11 @@ export const adminNavigation: NavItem[] = [
       },
       {
         href: "/admin/evaluation/result",
-        label: "Résultat final",
+        label: "Résultats validés",
+      },
+      {
+        href: "/admin/evaluation/progression",
+        label: "Progression",
       },
     ],
   },

@@ -101,4 +101,33 @@ export function calculateSeniority(createdAt?: string): string {
   }
 }
 
+/**
+ * Retourne le 1er jour du mois suivant (00:00:00 UTC) pour un monthKey YYYY-MM.
+ */
+export function getFirstDayOfNextMonth(monthKey: string): Date {
+  const [year, month] = monthKey.split("-").map((v) => parseInt(v, 10));
+  return new Date(Date.UTC(year, month, 1, 0, 0, 0));
+}
+
+/**
+ * Vérifie l'éligibilité d'un membre pour la vue progression:
+ * ancienneté strictement > 15 jours avant le 1er du mois suivant.
+ */
+export function isEligibleForProgression(
+  monthKey: string,
+  integrationDate?: Date | string | null,
+  createdAt?: Date | string | null
+): boolean {
+  const referenceRaw = integrationDate ?? createdAt;
+  if (!referenceRaw) return false;
+
+  const referenceDate = referenceRaw instanceof Date ? referenceRaw : new Date(referenceRaw);
+  if (Number.isNaN(referenceDate.getTime())) return false;
+
+  const firstOfNextMonth = getFirstDayOfNextMonth(monthKey);
+  const diffMs = firstOfNextMonth.getTime() - referenceDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays > 15;
+}
+
 

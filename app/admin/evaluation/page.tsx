@@ -90,7 +90,7 @@ export default function EvaluationHubPage() {
       icon: "👥",
     },
     {
-      title: "D. Synthèse & Bonus",
+      title: "Synthèse & Bonus",
       href: "/admin/evaluation/d",
       description: "Synthèse globale et bonus",
       icon: "⭐",
@@ -98,8 +98,14 @@ export default function EvaluationHubPage() {
     {
       title: "Résultat Final",
       href: "/admin/evaluation/result",
-      description: "Score final et classement",
+      description: "Tableaux validés et score final",
       icon: "🏆",
+    },
+    {
+      title: "Progression",
+      href: "/admin/evaluation/progression",
+      description: "Évolution détaillée par membre",
+      icon: "📈",
     },
   ];
 

@@ -578,7 +578,7 @@ export default function EvaluationDPage() {
       }
       
       // Sauvegarder les notes finales et statuts
-      if (Object.keys(editingFinalNotes).length > 0 || Object.keys(editingStatuses).length > 0 || Object.keys(editingRoles).length > 0 || Object.keys(editingVips).length > 0) {
+      {
         const updates = [];
         
         // Récupérer tous les logins uniques
@@ -594,19 +594,44 @@ export default function EvaluationDPage() {
           updates.push({
             twitchLogin: normalizedLogin,
             finalNote: editingFinalNotes[login] !== undefined ? editingFinalNotes[login] : undefined,
-            finalNoteReason: editingFinalNoteReasons[login] || editingFinalNoteReasons[normalizedLogin] || "Override manuel depuis /admin/evaluation/d",
+            finalNoteReason: editingFinalNoteReasons[login] || editingFinalNoteReasons[normalizedLogin] || "Override manuel depuis /admin/evaluation/synthese",
             isActive: editingStatuses[login] !== undefined ? editingStatuses[login] : undefined,
             role: editingRoles[login] !== undefined ? editingRoles[login] : undefined,
             isVip: editingVips[normalizedLogin] !== undefined ? editingVips[normalizedLogin] : undefined,
           });
         }
         
+        const snapshots = membersData.map((member) => {
+          const login = member.twitchLogin.toLowerCase();
+          const bonusInEdit = editingBonuses[member.twitchLogin];
+          const timezoneBonus = bonusInEdit?.timezone ?? member.timezoneBonusEnabled;
+          const moderationBonus = bonusInEdit?.moderation ?? member.moderationBonus;
+          const sectionDBonuses = (timezoneBonus ? TIMEZONE_BONUS_POINTS : 0) + moderationBonus;
+          const sectionAPoints = Math.round(member.spotlightPoints + member.raidsPoints);
+          const sectionBPoints = Math.round(member.discordPoints + member.eventsPoints);
+          const sectionCPoints = Math.round(member.followPoints);
+          const { total: totalPoints } = calculateTotalAvecBonus(
+            member.totalHorsBonus,
+            timezoneBonus ? TIMEZONE_BONUS_POINTS : 0,
+            moderationBonus
+          );
+          return {
+            twitchLogin: login,
+            sectionAPoints,
+            sectionBPoints,
+            sectionCPoints,
+            sectionDBonuses: Math.round(sectionDBonuses),
+            totalPoints: Math.round(totalPoints),
+          };
+        });
+
         const response = await fetch('/api/evaluations/synthesis/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             month: selectedMonth,
             updates,
+            snapshots,
           }),
         });
         
@@ -731,7 +756,7 @@ export default function EvaluationDPage() {
       const updates = Object.keys(editingFinalNotes).map(login => ({
         twitchLogin: login.toLowerCase(), // Normaliser en lowercase pour correspondre à l'API
         finalNote: editingFinalNotes[login],
-        finalNoteReason: editingFinalNoteReasons[login] || "Override manuel depuis /admin/evaluation/d",
+        finalNoteReason: editingFinalNoteReasons[login] || "Override manuel depuis /admin/evaluation/synthese",
       }));
       
       const response = await fetch('/api/evaluations/synthesis/save', {
@@ -864,7 +889,7 @@ export default function EvaluationDPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `evaluation-d-${selectedMonth}.csv`;
+    a.download = `evaluation-synthese-${selectedMonth}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -986,7 +1011,7 @@ export default function EvaluationDPage() {
             🔄 Migration des Évaluations
           </Link>
         </div>
-        <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>D. Synthèse & Bonus</h1>
+        <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Synthèse & Bonus</h1>
         <p style={{ color: 'var(--color-text-secondary)' }}>Synthèse globale et bonus</p>
       </div>
 

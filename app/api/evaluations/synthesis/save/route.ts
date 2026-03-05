@@ -18,6 +18,14 @@ interface SynthesisSaveRequest {
     role?: MemberRole; // Rôle forcé (optionnel, ex: 'Communauté')
     isVip?: boolean; // Statut VIP (optionnel)
   }>;
+  snapshots?: Array<{
+    twitchLogin: string;
+    sectionAPoints: number;
+    sectionBPoints: number;
+    sectionCPoints: number;
+    sectionDBonuses: number;
+    totalPoints: number;
+  }>;
 }
 
 // Plus besoin de getEvaluationStore, on utilise directement Supabase
@@ -35,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: SynthesisSaveRequest = await request.json();
-    const { month, updates } = body;
+    const { month, updates, snapshots } = body;
 
     if (!month || !Array.isArray(updates)) {
       return NextResponse.json(
@@ -56,6 +64,7 @@ export async function POST(request: NextRequest) {
     const results = {
       notesUpdated: 0,
       statusUpdated: 0,
+      snapshotsUpdated: 0,
       errors: [] as string[],
     };
 
@@ -162,8 +171,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Persister le snapshot complet du mois (source des pages Résultats/Progression)
+    if (Array.isArray(snapshots) && snapshots.length > 0) {
+      for (const snapshot of snapshots) {
+        try {
+          await evaluationRepository.upsert({
+            month: new Date(`${month}-01`),
+            twitchLogin: snapshot.twitchLogin,
+            sectionAPoints: snapshot.sectionAPoints,
+            sectionBPoints: snapshot.sectionBPoints,
+            sectionCPoints: snapshot.sectionCPoints,
+            sectionDBonuses: snapshot.sectionDBonuses,
+            totalPoints: snapshot.totalPoints,
+            calculatedAt: new Date(),
+            calculatedBy: admin.discordId,
+          });
+          results.snapshotsUpdated++;
+        } catch (error) {
+          console.error(`Erreur snapshot pour ${snapshot.twitchLogin}:`, error);
+          results.errors.push(`Erreur snapshot pour ${snapshot.twitchLogin}`);
+        }
+      }
+    }
+
     const duration = Date.now() - startTime;
-    logEvaluation.save(month, `${results.notesUpdated} notes, ${results.statusUpdated} statuts`, admin.id);
+    logEvaluation.save(
+      month,
+      `${results.notesUpdated} notes, ${results.statusUpdated} statuts, ${results.snapshotsUpdated} snapshots`,
+      admin.id
+    );
     logApi.route('POST', '/api/evaluations/synthesis/save', 200, duration, admin.id, { month, ...results });
     
     return NextResponse.json({
@@ -172,6 +208,7 @@ export async function POST(request: NextRequest) {
       results: {
         notesUpdated: results.notesUpdated,
         statusUpdated: results.statusUpdated,
+        snapshotsUpdated: results.snapshotsUpdated,
         errors: results.errors.length > 0 ? results.errors : undefined,
       },
     });
