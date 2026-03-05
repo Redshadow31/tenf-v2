@@ -8,19 +8,25 @@ const DISCORD_SHOP_URL = "https://discord.com/channels/535244857891880970/127883
 type TabId =
   | "vision"
   | "parcours"
+  | "entraide"
+  | "animation"
   | "reglement"
   | "points"
   | "boutique"
   | "spotlight"
+  | "glossaire"
   | "faq";
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: "vision", label: "Bienvenue & vision" },
   { id: "parcours", label: "Parcours membre" },
+  { id: "entraide", label: "Entraide concrète" },
+  { id: "animation", label: "Animation & événements" },
   { id: "reglement", label: "Règlement & sécurité" },
   { id: "points", label: "Système de points" },
   { id: "boutique", label: "Boutique des points" },
   { id: "spotlight", label: "Spotlight" },
+  { id: "glossaire", label: "Glossaire" },
   { id: "faq", label: "FAQ & contact" },
 ];
 
@@ -106,13 +112,28 @@ export default function FonctionnementTenfV2Page() {
         {activeTab === "vision" && (
           <SectionCard title="Bienvenue & vision">
             <p className="text-gray-200">
-              TENF est un serveur d'entraide Twitch: progression, visibilité, cadre bienveillant et engagement réciproque.
+              TENF est un serveur d'entraide Twitch orienté progression réelle: meilleure régularité, meilleure qualité de live,
+              et meilleure visibilité grâce à l'entraide du collectif.
             </p>
             <ul className="space-y-2 text-sm text-gray-300">
               <li>- Objectif: aider les créateurs à évoluer durablement.</li>
               <li>- Valeurs: respect, constance, entraide concrète, transparence.</li>
               <li>- Attendu: participer à la vie du serveur, pas seulement consommer des avantages.</li>
             </ul>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Pour qui ?</h3>
+                <p className="text-gray-300">Créateurs Twitch souhaitant progresser et collaborer.</p>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Ce que tu gagnes</h3>
+                <p className="text-gray-300">Feedback, visibilité, événements, accompagnement.</p>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Ce que tu apportes</h3>
+                <p className="text-gray-300">Présence, soutien aux autres, respect du cadre.</p>
+              </div>
+            </div>
           </SectionCard>
         )}
 
@@ -130,6 +151,57 @@ export default function FonctionnementTenfV2Page() {
             <p className="text-sm text-gray-300">
               <Pill kind="recommended" text="Conseillé" /> Participer régulièrement (chat/vocal/raids).
             </p>
+            <ul className="text-sm text-gray-400 space-y-1">
+              <li>- Semaine 1: onboarding + découverte des salons.</li>
+              <li>- Semaine 2-3: participation régulière (entraide concrète).</li>
+              <li>- Semaine 4+: accès progressif à plus d'opportunités selon implication.</li>
+            </ul>
+          </SectionCard>
+        )}
+
+        {activeTab === "entraide" && (
+          <SectionCard title="Entraide concrète">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-700 rounded-lg p-4 bg-[#111114]">
+                <h3 className="font-semibold mb-2">Exemples d'entraide attendus</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>- Passer sur les lives des membres et interagir utilement.</li>
+                  <li>- Donner un feedback constructif (fond + forme).</li>
+                  <li>- Relayer les événements et raids quand possible.</li>
+                  <li>- Aider sur les aspects techniques (OBS, overlays, etc.).</li>
+                </ul>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-4 bg-[#111114]">
+                <h3 className="font-semibold mb-2">Ce qui n'est pas de l'entraide</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>- Demander de l'aide sans jamais aider en retour.</li>
+                  <li>- Faire du "copier-coller" de conseils sans contexte.</li>
+                  <li>- Disparaître après une mise en avant.</li>
+                </ul>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
+        {activeTab === "animation" && (
+          <SectionCard title="Animation & événements">
+            <p className="text-sm text-gray-300">
+              TENF propose des formats réguliers pour dynamiser la communauté: événements serveur, sessions thématiques, spotlight, lives de soutien.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Comment participer</h3>
+                <p className="text-gray-300">Surveille les annonces, inscris-toi, sois présent et ponctuel.</p>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Comment proposer</h3>
+                <p className="text-gray-300">Propose une idée avec objectif, format, durée, et public visé.</p>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Bonnes pratiques</h3>
+                <p className="text-gray-300">Clarté, respect des horaires, communication propre avant/après.</p>
+              </div>
+            </div>
           </SectionCard>
         )}
 
@@ -165,6 +237,9 @@ export default function FonctionnementTenfV2Page() {
               <li>- Les points peuvent être utilisés dans la boutique dédiée.</li>
               <li>- Le staff peut ajuster en cas d'abus ou d'anomalie.</li>
             </ul>
+            <p className="text-sm text-gray-400">
+              Conseil: vise la régularité. Une activité stable vaut mieux qu'un pic ponctuel.
+            </p>
           </SectionCard>
         )}
 
@@ -203,6 +278,22 @@ export default function FonctionnementTenfV2Page() {
             <p className="text-sm text-gray-300">
               <Pill kind="forbidden" text="Interdit" /> Multistream pendant le spotlight si la règle locale l'interdit.
             </p>
+            <div className="border border-gray-700 rounded-lg p-3 bg-[#111114] text-sm text-gray-300">
+              Format conseillé d'une heure: présentation, échanges, univers, interaction, clôture + raid.
+            </div>
+          </SectionCard>
+        )}
+
+        {activeTab === "glossaire" && (
+          <SectionCard title="Glossaire">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-300">
+              <p><strong>Spotlight:</strong> mise en avant d'un créateur pendant un créneau dédié.</p>
+              <p><strong>Raid:</strong> redirection d'une audience Twitch vers une autre chaîne.</p>
+              <p><strong>Ticket:</strong> demande formelle sur Discord pour traiter un achat/sujet.</p>
+              <p><strong>Cooldown:</strong> délai minimal avant de reprendre la même récompense.</p>
+              <p><strong>Soutien TENF:</strong> membre staff dédié au soutien/coordination selon accès.</p>
+              <p><strong>Modération:</strong> application du cadre, prévention des conflits, sécurité.</p>
+            </div>
           </SectionCard>
         )}
 
