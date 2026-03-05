@@ -96,6 +96,10 @@ function monthKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function previousMonthKey(date = new Date()): string {
+  return monthKey(new Date(date.getFullYear(), date.getMonth() - 1, 1));
+}
+
 function completionPct(member: MemberLite): number {
   const checks = [
     !!member.discordId,
@@ -162,6 +166,7 @@ export default function Dashboard2Page() {
   });
 
   const currentMonth = monthKey();
+  const evaluationMonth = previousMonthKey();
 
   useEffect(() => {
     async function loadOpsData() {
@@ -169,7 +174,7 @@ export default function Dashboard2Page() {
         const [membersRes, eventsRes, notesRes, followSummaryRes, vipMonthRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
           fetch("/api/admin/members", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
-          fetch(`/api/evaluations/synthesis/save?month=${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/evaluations/synthesis/save?month=${evaluationMonth}`, { cache: "no-store" }),
           fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
           fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
           fetch("/api/staff-applications", { cache: "no-store" }),
@@ -233,7 +238,7 @@ export default function Dashboard2Page() {
     }
 
     loadOpsData();
-  }, [currentMonth]);
+  }, [currentMonth, evaluationMonth]);
 
   const communityMonthCount = useMemo(() => {
     return members.filter(

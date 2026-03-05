@@ -471,6 +471,10 @@ function monthKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function previousMonthKey(date = new Date()): string {
+  return monthKey(new Date(date.getFullYear(), date.getMonth() - 1, 1));
+}
+
 function completionPct(member: WorkflowMemberLite): number {
   const checks = [
     !!member.discordId,
@@ -492,6 +496,7 @@ function MonthlyWorkflowSection() {
       try {
         setLoading(true);
         const currentMonth = monthKey();
+        const evaluationMonth = previousMonthKey();
         const [
           membersRes,
           notesRes,
@@ -501,7 +506,7 @@ function MonthlyWorkflowSection() {
           profileValidationRes,
         ] = await Promise.all([
           fetch("/api/admin/members", { cache: "no-store" }),
-          fetch(`/api/evaluations/synthesis/save?month=${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/evaluations/synthesis/save?month=${evaluationMonth}`, { cache: "no-store" }),
           fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
           fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
           fetch("/api/staff-applications", { cache: "no-store" }),
