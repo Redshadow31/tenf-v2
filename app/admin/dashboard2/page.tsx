@@ -57,6 +57,30 @@ interface WorkflowStep {
   helper: string;
 }
 
+interface StaffApplicationLite {
+  id: string;
+  admin_status: "nouveau" | "a_contacter" | "entretien_prevu" | "accepte" | "refuse" | "archive";
+  has_red_flag?: boolean;
+}
+
+interface RankedCountItem {
+  rank: number;
+  displayName: string;
+  count: number;
+}
+
+interface DiscordRankedMessagesItem {
+  rank: number;
+  displayName: string;
+  messages: number;
+}
+
+interface DiscordRankedVocalsItem {
+  rank: number;
+  displayName: string;
+  display: string;
+}
+
 function monthKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -86,13 +110,29 @@ export default function Dashboard2Page() {
   const [events, setEvents] = useState<MemberEventLite[]>([]);
   const [finalNotesCount, setFinalNotesCount] = useState(0);
   const [activeFollowStaffCount, setActiveFollowStaffCount] = useState(0);
+  const [staffApplicationsPendingCount, setStaffApplicationsPendingCount] = useState(0);
+  const [staffApplicationsRedFlagCount, setStaffApplicationsRedFlagCount] = useState(0);
+  const [profileValidationPendingCount, setProfileValidationPendingCount] = useState(0);
   const [discordGrowthData, setDiscordGrowthData] = useState<Array<{ month: string; value: number }>>([]);
   const [monthlyActivityData, setMonthlyActivityData] = useState<Array<{ month: string; messages: number; vocals: number }>>([]);
   const [spotlightProgressionData, setSpotlightProgressionData] = useState<Array<{ month: string; value: number }>>([]);
   const [raidStats, setRaidStats] = useState<{
     totalRaidsReceived: number;
     totalRaidsSent: number;
+    topRaiders: RankedCountItem[];
+    topTargets: RankedCountItem[];
   }>({ totalRaidsReceived: 0, totalRaidsSent: 0 });
+  const [discordMonthStats, setDiscordMonthStats] = useState<{
+    totalMessages: number;
+    totalVoiceHours: number;
+    topMessages: DiscordRankedMessagesItem[];
+    topVocals: DiscordRankedVocalsItem[];
+  }>({
+    totalMessages: 0,
+    totalVoiceHours: 0,
+    topMessages: [],
+    topVocals: [],
+  });
   const [recapEvents, setRecapEvents] = useState<RecapEvent[]>([]);
   const [recapMonthFilter, setRecapMonthFilter] = useState<"all" | string>("all");
 
@@ -101,11 +141,13 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadOpsData() {
       try {
-        const [membersRes, eventsRes, notesRes, followStaffRes] = await Promise.all([
+        const [membersRes, eventsRes, notesRes, followStaffRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
           fetch("/api/admin/members", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
           fetch(`/api/evaluations/synthesis/save?month=${currentMonth}`, { cache: "no-store" }),
           fetch("/api/follow/staff", { cache: "no-store" }),
+          fetch("/api/staff-applications", { cache: "no-store" }),
+          fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
         ]);
 
         if (membersRes.ok) {
@@ -129,6 +171,25 @@ export default function Dashboard2Page() {
           const activeCount = (staffData.staff || []).filter((s: any) => s.isActive !== false).length;
           setActiveFollowStaffCount(activeCount);
         }
+
+        if (staffApplicationsRes.ok) {
+          const applicationsData = await staffApplicationsRes.json();
+          const applications = (applicationsData.applications || []) as StaffApplicationLite[];
+          const pendingStatuses = new Set<StaffApplicationLite["admin_status"]>([
+            "nouveau",
+            "a_contacter",
+            "entretien_prevu",
+          ]);
+          setStaffApplicationsPendingCount(
+            applications.filter((app) => pendingStatuses.has(app.admin_status)).length
+          );
+          setStaffApplicationsRedFlagCount(applications.filter((app) => app.has_red_flag).length);
+        }
+
+        if (profileValidationRes.ok) {
+          const profileValidationData = await profileValidationRes.json();
+          setProfileValidationPendingCount((profileValidationData.pending || []).length);
+        }
       } catch (error) {
         console.error("Erreur chargement dashboard2:", error);
       } finally {
@@ -142,10 +203,11 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadVisualData() {
       try {
-        const [dashboardRes, spotlightRes, raidsRes] = await Promise.all([
+        const [dashboardRes, spotlightRes, raidsRes, discordMonthRes] = await Promise.all([
           fetch("/api/dashboard/data", { cache: "no-store" }),
           fetch("/api/spotlight/progression", { cache: "no-store" }),
           fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/admin/discord-activity/data?month=${currentMonth}`, { cache: "no-store" }),
         ]);
 
         if (dashboardRes.ok) {
@@ -184,6 +246,18 @@ export default function Dashboard2Page() {
           setRaidStats({
             totalRaidsReceived: raidsData?.stats?.totalRaidsRecus || 0,
             totalRaidsSent: raidsData?.stats?.totalRaidsFaits || 0,
+            topRaiders: raidsData?.stats?.topRaiders || [],
+            topTargets: raidsData?.stats?.topTargets || [],
+          });
+        }
+
+        if (discordMonthRes.ok) {
+          const discordMonthData = await discordMonthRes.json();
+          setDiscordMonthStats({
+            totalMessages: discordMonthData?.data?.totalMessages || 0,
+            totalVoiceHours: discordMonthData?.data?.totalVoiceHours || 0,
+            topMessages: discordMonthData?.data?.topMessages || [],
+            topVocals: discordMonthData?.data?.topVocals || [],
           });
         }
       } catch (error) {
@@ -275,8 +349,11 @@ export default function Dashboard2Page() {
       reviewDue7d,
       avgCompletion,
       validatedProfiles,
+      staffApplicationsPendingCount,
+      staffApplicationsRedFlagCount,
+      profileValidationPendingCount,
     };
-  }, [members]);
+  }, [members, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount]);
 
   const filteredRecapEvents = useMemo(() => {
     if (recapMonthFilter === "all") return recapEvents;
@@ -350,8 +427,30 @@ export default function Dashboard2Page() {
         status: kpis.reviewOverdue === 0 ? "done" : "todo",
         helper: `${kpis.reviewOverdue} en retard`,
       },
+      {
+        id: "staff_applications",
+        label: "Postulations staff",
+        href: "/admin/membres/postulations",
+        status: kpis.staffApplicationsPendingCount === 0 ? "done" : "todo",
+        helper: `${kpis.staffApplicationsPendingCount} en attente${kpis.staffApplicationsRedFlagCount > 0 ? ` · ${kpis.staffApplicationsRedFlagCount} red flag` : ""}`,
+      },
+      {
+        id: "profile_validation",
+        label: "Validation profils",
+        href: "/admin/membres/validation-profil",
+        status: kpis.profileValidationPendingCount === 0 ? "done" : "todo",
+        helper: `${kpis.profileValidationPendingCount} demande(s)`,
+      },
     ];
-  }, [kpis.incomplete, kpis.reviewOverdue, finalNotesCount, activeFollowStaffCount]);
+  }, [
+    kpis.incomplete,
+    kpis.reviewOverdue,
+    kpis.staffApplicationsPendingCount,
+    kpis.staffApplicationsRedFlagCount,
+    kpis.profileValidationPendingCount,
+    finalNotesCount,
+    activeFollowStaffCount,
+  ]);
 
   const priorityCards = [
     {
@@ -387,6 +486,8 @@ export default function Dashboard2Page() {
   const quickActions = [
     { label: "Membres incomplets", href: "/admin/membres/incomplets" },
     { label: "Gestion membres", href: "/admin/membres/gestion" },
+    { label: "Postulations staff", href: "/admin/membres/postulations" },
+    { label: "Validation profils", href: "/admin/membres/validation-profil" },
     { label: "Évaluation D", href: "/admin/evaluation/d" },
     { label: "Suivi follow", href: "/admin/follow" },
     { label: "Audit", href: "/admin/founders/audit" },
@@ -431,13 +532,21 @@ export default function Dashboard2Page() {
         </div>
       </div>
 
-      {(kpis.reviewOverdue > 0 || kpis.missingDiscord > 0 || kpis.missingTwitchId > 0) && (
+      {(kpis.reviewOverdue > 0 ||
+        kpis.missingDiscord > 0 ||
+        kpis.missingTwitchId > 0 ||
+        kpis.staffApplicationsPendingCount > 0 ||
+        kpis.profileValidationPendingCount > 0 ||
+        kpis.staffApplicationsRedFlagCount > 0) && (
         <div className="mb-6 bg-[#1a1a1d] border border-red-500/40 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-red-300 mb-2">Alertes critiques</h2>
           <div className="flex flex-wrap gap-4 text-sm">
             {kpis.reviewOverdue > 0 && <span>{kpis.reviewOverdue} revue(s) en retard</span>}
             {kpis.missingDiscord > 0 && <span>{kpis.missingDiscord} membre(s) sans ID Discord</span>}
             {kpis.missingTwitchId > 0 && <span>{kpis.missingTwitchId} membre(s) sans ID Twitch</span>}
+            {kpis.staffApplicationsPendingCount > 0 && <span>{kpis.staffApplicationsPendingCount} postulation(s) staff en attente</span>}
+            {kpis.staffApplicationsRedFlagCount > 0 && <span>{kpis.staffApplicationsRedFlagCount} postulation(s) en red flag</span>}
+            {kpis.profileValidationPendingCount > 0 && <span>{kpis.profileValidationPendingCount} validation(s) profil en attente</span>}
           </div>
         </div>
       )}
@@ -461,20 +570,82 @@ export default function Dashboard2Page() {
           <h3 className="text-lg font-semibold mb-3 text-center">Raids envoyés</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsSent}</p>
           <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
+          <div className="mt-4 border-t border-gray-800 pt-3">
+            <p className="text-xs text-gray-400 mb-2">Top 5 streamers (envoyés)</p>
+            {raidStats.topRaiders.length === 0 ? (
+              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+            ) : (
+              <div className="space-y-1.5">
+                {raidStats.topRaiders.slice(0, 5).map((item) => (
+                  <div key={`sent-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                    <span className="text-gray-400">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-3 text-center">Raids reçus</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsReceived}</p>
           <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
+          <div className="mt-4 border-t border-gray-800 pt-3">
+            <p className="text-xs text-gray-400 mb-2">Top 5 streamers (reçus)</p>
+            {raidStats.topTargets.length === 0 ? (
+              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+            ) : (
+              <div className="space-y-1.5">
+                {raidStats.topTargets.slice(0, 5).map((item) => (
+                  <div key={`recv-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                    <span className="text-gray-400">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-3 text-center">Activité Discord</h3>
-          <p className="text-4xl font-bold text-center text-white">
-            {monthlyActivityData.length > 0
-              ? monthlyActivityData[monthlyActivityData.length - 1]?.messages?.toLocaleString()
-              : 0}
-          </p>
-          <p className="text-xs text-gray-500 text-center mt-2">Messages sur le dernier mois disponible</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#0e0e10] rounded p-2 text-center">
+              <p className="text-[11px] text-gray-400">Messages</p>
+              <p className="text-2xl font-bold text-white">{discordMonthStats.totalMessages.toLocaleString()}</p>
+            </div>
+            <div className="bg-[#0e0e10] rounded p-2 text-center">
+              <p className="text-[11px] text-gray-400">Heures vocales</p>
+              <p className="text-2xl font-bold text-white">{discordMonthStats.totalVoiceHours.toFixed(1)}</p>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-gray-800 pt-3">
+            <p className="text-xs text-gray-400 mb-2">Top 5 messages</p>
+            {discordMonthStats.topMessages.length === 0 ? (
+              <p className="text-xs text-gray-500 mb-3">Aucune donnée disponible</p>
+            ) : (
+              <div className="space-y-1.5 mb-3">
+                {discordMonthStats.topMessages.slice(0, 5).map((item) => (
+                  <div key={`msg-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                    <span className="text-gray-400">{item.messages.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mb-2">Top 5 vocaux</p>
+            {discordMonthStats.topVocals.length === 0 ? (
+              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+            ) : (
+              <div className="space-y-1.5">
+                {discordMonthStats.topVocals.slice(0, 5).map((item) => (
+                  <div key={`voc-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                    <span className="text-gray-400">{item.display}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
