@@ -31,6 +31,20 @@ const AVAILABLE_BADGES = [
   "Ambassadeur",
 ];
 
+const VIP_ELITE_BADGE = "VIP Élite";
+
+function getBadgeDisplayName(badge: string): string {
+  return badge === VIP_ELITE_BADGE ? "VIP" : badge;
+}
+
+function normalizeBadgeForStorage(badge: string): string {
+  const trimmed = badge.trim();
+  if (trimmed.toLowerCase() === "vip") {
+    return VIP_ELITE_BADGE;
+  }
+  return trimmed;
+}
+
 export default function GestionBadgesPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,9 +168,9 @@ export default function GestionBadgesPage() {
   }
 
   function addCustomBadge(badgeName: string) {
-    const trimmed = badgeName.trim();
-    if (trimmed && !editingBadges.includes(trimmed) && !AVAILABLE_BADGES.includes(trimmed)) {
-      setEditingBadges([...editingBadges, trimmed]);
+    const normalized = normalizeBadgeForStorage(badgeName);
+    if (normalized && !editingBadges.includes(normalized) && !AVAILABLE_BADGES.includes(normalized)) {
+      setEditingBadges([...editingBadges, normalized]);
     }
   }
 
@@ -549,7 +563,7 @@ export default function GestionBadgesPage() {
               <option value="none">Sans badges</option>
               {AVAILABLE_BADGES.map((badge) => (
                 <option key={badge} value={badge}>
-                  {badge} ({stats.badgeCounts[badge] || 0})
+                  {getBadgeDisplayName(badge)} ({stats.badgeCounts[badge] || 0})
                 </option>
               ))}
             </select>
@@ -609,7 +623,7 @@ export default function GestionBadgesPage() {
                               key={badge}
                               className="px-2 py-1 rounded text-xs font-semibold bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30"
                             >
-                              {badge}
+                              {getBadgeDisplayName(badge)}
                             </span>
                           ))
                         ) : (
@@ -674,7 +688,7 @@ export default function GestionBadgesPage() {
                           : "bg-[#0e0e10] border border-gray-700 text-gray-300 hover:border-[#9146ff]"
                       }`}
                     >
-                      {badge}
+                      {getBadgeDisplayName(badge)}
                     </button>
                   );
                 })}
@@ -693,7 +707,7 @@ export default function GestionBadgesPage() {
                       key={badge}
                       className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30 text-sm font-semibold"
                     >
-                      {badge}
+                      {getBadgeDisplayName(badge)}
                       <button
                         onClick={() => toggleBadge(badge)}
                         className="hover:text-red-400 transition-colors"
@@ -868,7 +882,7 @@ export default function GestionBadgesPage() {
                     <option value="">Sélectionner un badge</option>
                     {AVAILABLE_BADGES.map((badge) => (
                       <option key={badge} value={badge}>
-                        {badge}
+                        {getBadgeDisplayName(badge)}
                       </option>
                     ))}
                   </select>

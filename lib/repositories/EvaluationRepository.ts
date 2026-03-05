@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../db/supabase';
 
 export interface Evaluation {
   id: string;
-  month: Date; // Format: YYYY-MM-01
+  month: Date | string; // Format: YYYY-MM-01
   twitchLogin: string;
   sectionAPoints: number;
   sectionBPoints: number;
@@ -177,11 +177,20 @@ export class EvaluationRepository {
     const record: any = {};
 
     if (evaluation.month !== undefined) {
-      const monthDate = evaluation.month instanceof Date 
-        ? evaluation.month 
-        : new Date(evaluation.month);
-      // Format: YYYY-MM-01
-      record.month = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}-01`;
+      // Evite les décalages de fuseau sur les mois (ex: "2026-02-01" qui peut glisser en janvier).
+      if (typeof evaluation.month === 'string') {
+        const monthValue = evaluation.month.trim();
+        if (/^\d{4}-\d{2}$/.test(monthValue)) {
+          record.month = `${monthValue}-01`;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(monthValue)) {
+          record.month = `${monthValue.slice(0, 7)}-01`;
+        } else {
+          const parsed = new Date(monthValue);
+          record.month = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}-01`;
+        }
+      } else {
+        record.month = `${evaluation.month.getUTCFullYear()}-${String(evaluation.month.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      }
     }
     if (evaluation.twitchLogin !== undefined) record.twitch_login = evaluation.twitchLogin.toLowerCase();
     if (evaluation.sectionAPoints !== undefined) record.section_a_points = evaluation.sectionAPoints;

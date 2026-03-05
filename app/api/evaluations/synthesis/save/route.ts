@@ -81,9 +81,8 @@ export async function POST(request: NextRequest) {
           
           if (!evaluation) {
             // Créer une nouvelle évaluation si elle n'existe pas
-            const monthDate = new Date(`${month}-01`);
             evaluation = await evaluationRepository.upsert({
-              month: monthDate,
+              month: `${month}-01`,
               twitchLogin,
               finalNote: Number(finalNote),
               finalNoteSavedAt: new Date(),
