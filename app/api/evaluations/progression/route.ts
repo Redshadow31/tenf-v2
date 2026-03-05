@@ -5,8 +5,14 @@ import { isEligibleForProgression } from "@/lib/evaluationSynthesisHelpers";
 
 export const dynamic = "force-dynamic";
 
-function monthKeyFromDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+function monthKeyFromDate(date: Date | string): string {
+  if (typeof date === "string") {
+    if (/^\d{4}-\d{2}$/.test(date)) return date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date.slice(0, 7);
+    const parsed = new Date(date);
+    return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 export async function GET(request: NextRequest) {
