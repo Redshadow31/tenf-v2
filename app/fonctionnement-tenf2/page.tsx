@@ -10,6 +10,7 @@ type TabId =
   | "parcours"
   | "entraide"
   | "animation"
+  | "conseils"
   | "reglement"
   | "points"
   | "boutique"
@@ -22,6 +23,7 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "parcours", label: "Parcours membre" },
   { id: "entraide", label: "Entraide concrète" },
   { id: "animation", label: "Animation & événements" },
+  { id: "conseils", label: "Conseils streaming" },
   { id: "reglement", label: "Règlement & sécurité" },
   { id: "points", label: "Système de points" },
   { id: "boutique", label: "Boutique des points" },
@@ -156,6 +158,15 @@ export default function FonctionnementTenfV2Page() {
               <li>- Semaine 2-3: participation régulière (entraide concrète).</li>
               <li>- Semaine 4+: accès progressif à plus d'opportunités selon implication.</li>
             </ul>
+            <div className="border border-gray-700 rounded-lg p-4 bg-[#111114] text-sm text-gray-300">
+              <h3 className="font-semibold mb-2">Processus d'intégration (inspiré V1)</h3>
+              <ul className="space-y-1">
+                <li>- Présentation claire: qui tu es, ton univers, ton rythme.</li>
+                <li>- Validation du cadre: règles, posture, respect de la modération.</li>
+                <li>- Première phase d'observation: participation régulière et attitude collaborative.</li>
+                <li>- Montée progressive: plus d'opportunités selon engagement réel.</li>
+              </ul>
+            </div>
           </SectionCard>
         )}
 
@@ -205,6 +216,37 @@ export default function FonctionnementTenfV2Page() {
           </SectionCard>
         )}
 
+        {activeTab === "conseils" && (
+          <SectionCard title="Conseils streaming (inspiré V1)">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="border border-gray-700 rounded-lg p-4 bg-[#111114]">
+                <h3 className="font-semibold mb-2">Avant le live</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>- Prépare un mini plan (début, milieu, fin).</li>
+                  <li>- Vérifie audio/cam/scènes.</li>
+                  <li>- Annonce le live en amont sur Discord.</li>
+                </ul>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-4 bg-[#111114]">
+                <h3 className="font-semibold mb-2">Pendant le live</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>- Parle même quand le chat est calme.</li>
+                  <li>- Pose des questions simples au chat.</li>
+                  <li>- Rappelle ton objectif de session.</li>
+                </ul>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-4 bg-[#111114]">
+                <h3 className="font-semibold mb-2">Après le live</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>- Note ce qui a bien marché.</li>
+                  <li>- Coupe un clip clé.</li>
+                  <li>- Demande un feedback ciblé (1 point précis).</li>
+                </ul>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
         {activeTab === "reglement" && (
           <SectionCard title="Règlement & sécurité">
             <ul className="space-y-2 text-sm text-gray-300">
@@ -240,6 +282,24 @@ export default function FonctionnementTenfV2Page() {
             <p className="text-sm text-gray-400">
               Conseil: vise la régularité. Une activité stable vaut mieux qu'un pic ponctuel.
             </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Tu gagnes des points quand</h3>
+                <ul className="text-gray-300 space-y-1">
+                  <li>- tu soutiens les lives des membres,</li>
+                  <li>- tu participes aux events,</li>
+                  <li>- tu contribues positivement sur Discord.</li>
+                </ul>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Tu peux en perdre/être bloqué si</h3>
+                <ul className="text-gray-300 space-y-1">
+                  <li>- abus manifeste,</li>
+                  <li>- comportements contraires au cadre,</li>
+                  <li>- tentatives de contournement.</li>
+                </ul>
+              </div>
+            </div>
           </SectionCard>
         )}
 
@@ -264,6 +324,15 @@ export default function FonctionnementTenfV2Page() {
             >
               Ouvrir la boutique Discord
             </a>
+            <div className="border border-gray-700 rounded-lg p-4 bg-[#111114] text-sm text-gray-300">
+              <h3 className="font-semibold mb-2">Exemple ticket (inspiré V1)</h3>
+              <pre className="whitespace-pre-wrap text-xs text-gray-400">
+Récompense achetée: [Nom]
+Pseudo Twitch: [Ton pseudo]
+Disponibilités: [Créneau]
+Détails utiles: [Contexte / lien VOD]
+              </pre>
+            </div>
           </SectionCard>
         )}
 
@@ -280,6 +349,24 @@ export default function FonctionnementTenfV2Page() {
             </p>
             <div className="border border-gray-700 rounded-lg p-3 bg-[#111114] text-sm text-gray-300">
               Format conseillé d'une heure: présentation, échanges, univers, interaction, clôture + raid.
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Ce que le Spotlight n'est pas</h3>
+                <ul className="text-gray-300 space-y-1">
+                  <li>- Ce n'est pas un examen.</li>
+                  <li>- Ce n'est pas un concours de vues.</li>
+                  <li>- Ce n'est pas un jugement de valeur du créateur.</li>
+                </ul>
+              </div>
+              <div className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <h3 className="font-semibold mb-1">Ce qui aide vraiment</h3>
+                <ul className="text-gray-300 space-y-1">
+                  <li>- arrivée du chat dans les premières minutes,</li>
+                  <li>- interactions bienveillantes,</li>
+                  <li>- raid de continuité en fin de session.</li>
+                </ul>
+              </div>
             </div>
           </SectionCard>
         )}
@@ -316,6 +403,12 @@ export default function FonctionnementTenfV2Page() {
                 <summary className="cursor-pointer font-semibold">Je ne comprends pas une règle</summary>
                 <p className="mt-2 text-gray-300">
                   Demande une clarification en salon support, le staff te répond avec le cas d'usage.
+                </p>
+              </details>
+              <details className="border border-gray-700 rounded-lg p-3 bg-[#111114]">
+                <summary className="cursor-pointer font-semibold">Je veux proposer une amélioration du serveur</summary>
+                <p className="mt-2 text-gray-300">
+                  Propose-la avec un format court: problème observé, solution, bénéfice attendu, effort estimé.
                 </p>
               </details>
             </div>
