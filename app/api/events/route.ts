@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApi.error('/api/events', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

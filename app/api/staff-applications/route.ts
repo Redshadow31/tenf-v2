@@ -223,7 +223,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur serveur";
     if (message.includes("déjà")) {
-      return NextResponse.json({ error: message }, { status: 409 });
+      return NextResponse.json(
+        { error: "Une candidature existe déjà pour ce compte." },
+        { status: 409 }
+      );
     }
     console.error("[StaffApplications API] POST error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

@@ -137,18 +137,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Erreur lors de la validation manuelle du raid:", error);
-    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Détails de l'erreur:", {
       messageId: messageId || "non défini",
       raiderDiscordId: raiderDiscordId || "non défini",
       targetDiscordId: targetDiscordId || "non défini",
       month: month || "non défini",
       monthKey: monthKey || "non défini",
-      error: errorMessage,
+      error: error instanceof Error ? error.message : "Erreur inconnue",
       stack: error instanceof Error ? error.stack : undefined,
     });
     return NextResponse.json(
-      { error: `Erreur serveur: ${errorMessage}` },
+      { error: "Erreur interne du serveur" },
       { status: 500 }
     );
   }

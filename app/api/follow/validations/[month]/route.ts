@@ -44,7 +44,7 @@ export async function GET(
   } catch (error) {
     console.error('[Follow Validations API] Erreur GET:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

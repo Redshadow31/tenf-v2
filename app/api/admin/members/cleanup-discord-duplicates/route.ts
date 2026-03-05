@@ -90,7 +90,7 @@ export async function GET() {
   } catch (error) {
     console.error('[Cleanup] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -145,12 +145,12 @@ export async function POST(request: NextRequest) {
           .in('twitch_login', batch);
 
         if (error) {
-          errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
+          errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: Erreur de suppression`);
         } else {
           deleted += batch.length;
         }
       } catch (err) {
-        errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${err instanceof Error ? err.message : 'Erreur'}`);
+        errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: Erreur de suppression`);
       }
     }
 
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Cleanup] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

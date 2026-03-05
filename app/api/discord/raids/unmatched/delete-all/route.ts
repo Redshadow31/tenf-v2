@@ -57,7 +57,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Erreur lors de la suppression des raids non reconnus:", error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

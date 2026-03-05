@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
         results.push({
           twitchLogin: member.twitchLogin,
           success: false,
-          error: error instanceof Error ? error.message : 'Erreur inconnue',
+          error: 'Erreur interne',
         });
         console.error(`[Sync Twitch ID] ❌ Erreur pour ${member.twitchLogin}:`, error);
       }
@@ -180,7 +180,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Erreur lors de la synchronisation',
-        details: error instanceof Error ? error.message : 'Erreur inconnue',
       },
       { status: 500 }
     );

@@ -176,7 +176,7 @@ export async function PUT(
     }
     
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

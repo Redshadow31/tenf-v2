@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API VIP Month Save] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -156,14 +156,14 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error(`[VIP Month GET] Erreur récupération pour ${month}:`, error);
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : 'Erreur serveur' },
+        { error: 'Erreur interne du serveur' },
         { status: 500 }
       );
     }
   } catch (error) {
     console.error('[API VIP Month GET] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

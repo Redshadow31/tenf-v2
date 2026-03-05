@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
           results.events = { migrated: 0, skipped: 0, errors: 1 };
         }
       } catch (error) {
-        errors.push(`Events: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        errors.push('Events: Erreur interne');
         results.events = { migrated: 0, skipped: 0, errors: 1 };
       }
     }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
           results.evaluations = { migrated: 0, skipped: 0, errors: 1 };
         }
       } catch (error) {
-        errors.push(`Evaluations: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        errors.push('Evaluations: Erreur interne');
         results.evaluations = { migrated: 0, skipped: 0, errors: 1 };
       }
     }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           results.follows = { migrated: 0, skipped: 0, errors: 1 };
         }
       } catch (error) {
-        errors.push(`Follows: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        errors.push('Follows: Erreur interne');
         results.follows = { migrated: 0, skipped: 0, errors: 1 };
       }
     }
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
           results.members = { migrated: 0, skipped: 0, errors: 1 };
         }
       } catch (error) {
-        errors.push(`Members: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        errors.push('Members: Erreur interne');
         results.members = { migrated: 0, skipped: 0, errors: 1 };
       }
     }
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Migrate All] Erreur:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

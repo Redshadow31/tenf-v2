@@ -118,20 +118,14 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('[Twitch EventSub Setup] Erreur lors de la création de la souscription globale:', error);
       return NextResponse.json(
-        { 
-          error: `Erreur lors de la configuration: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-          details: error instanceof Error ? error.stack : undefined,
-        },
+        { error: 'Erreur lors de la configuration' },
         { status: 500 }
       );
     }
   } catch (error) {
     console.error('[Twitch EventSub Setup] Erreur:', error);
     return NextResponse.json(
-      { 
-        error: `Erreur lors de la configuration: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-        details: error instanceof Error ? error.stack : undefined,
-      },
+      { error: 'Erreur lors de la configuration' },
       { status: 500 }
     );
   }
@@ -189,9 +183,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[Twitch EventSub Setup] Erreur lors de la vérification:', error);
     return NextResponse.json(
-      { 
-        error: `Erreur lors de la vérification: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-      },
+      { error: 'Erreur lors de la vérification' },
       { status: 500 }
     );
   }

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Raids Ignored API] Erreur POST:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

@@ -177,7 +177,8 @@ async function migrateEvent(blobEvent: BlobEvent): Promise<{ success: boolean; m
     .insert(eventRecord);
 
   if (error) {
-    return { success: false, message: `Erreur: ${error.message}` };
+    console.error(`Erreur insertion événement ${blobEvent.id}:`, error);
+    return { success: false, message: 'Erreur lors de la migration de l\'événement' };
   }
 
   return { success: true, message: `Événement "${blobEvent.title}" migré` };
@@ -372,8 +373,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? error.stack : String(error),
+        error: 'Erreur serveur',
       },
       { status: 500 }
     );

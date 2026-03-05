@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Statbot API] Erreur:', error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

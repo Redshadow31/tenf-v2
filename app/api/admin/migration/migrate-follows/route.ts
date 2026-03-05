@@ -287,15 +287,15 @@ async function migrateMonth(
           validationsSkipped++;
         }
       } catch (memberError) {
-        const errorMsg = `Erreur migration ${blobValidation.staffSlug} pour ${monthKey}: ${memberError instanceof Error ? memberError.message : 'Erreur inconnue'}`;
+        const errorMsg = `Erreur migration ${blobValidation.staffSlug} pour ${monthKey}`;
         errors.push(errorMsg);
-        console.error(errorMsg);
+        console.error(errorMsg, memberError);
       }
     }
   } catch (error) {
-    const errorMsg = `Erreur migration mois ${monthKey}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+    const errorMsg = `Erreur migration mois ${monthKey}`;
     errors.push(errorMsg);
-    console.error(errorMsg);
+    console.error(errorMsg, error);
   }
 
   return {
@@ -389,7 +389,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        error: 'Erreur interne du serveur',
       },
       { status: 500 }
     );
@@ -444,7 +444,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        error: 'Erreur interne du serveur',
       },
       { status: 500 }
     );

@@ -37,7 +37,7 @@ export async function GET(
   } catch (error) {
     console.error('[Discord Engagement API] Erreur GET:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }
@@ -87,7 +87,7 @@ export async function POST(
   } catch (error) {
     console.error('[Discord Engagement API] Erreur POST:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[Audit API] Erreur:', error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Audit API] Erreur revert:', error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

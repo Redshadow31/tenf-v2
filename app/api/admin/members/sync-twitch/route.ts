@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error syncing Twitch status:", error);
     return NextResponse.json(
-      { error: "Erreur serveur", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -31,9 +31,7 @@ export async function GET() {
         { 
           members: [], 
           total: 0,
-          error: process.env.NODE_ENV === 'development' 
-            ? (dbError instanceof Error ? dbError.message : 'Database error')
-            : "Erreur temporaire de récupération des membres"
+          error: "Erreur temporaire de récupération des membres"
         },
         { status: 200 } // Retourner 200 pour permettre au client de continuer
       );
@@ -187,18 +185,13 @@ export async function GET() {
     
     // Retourner une réponse d'erreur mais avec status 200 pour permettre au client de continuer
     // Le client pourra afficher un message d'erreur mais la page ne plantera pas
-    const errorMessage = process.env.NODE_ENV === 'development' 
-      ? (error instanceof Error ? error.message : 'Unknown error')
-      : "Erreur temporaire de récupération des membres";
+    const errorMessage = "Erreur temporaire de récupération des membres";
     
     return NextResponse.json(
       { 
         error: errorMessage, 
         members: [], 
-        total: 0,
-        ...(process.env.NODE_ENV === 'development' && { 
-          details: error instanceof Error ? error.stack : String(error) 
-        })
+        total: 0
       },
       { status: 200 } // Retourner 200 pour permettre au client de continuer
     );

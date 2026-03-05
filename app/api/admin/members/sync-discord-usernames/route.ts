@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (!membersResponse.ok) {
-        const errorText = await membersResponse.text();
+        await membersResponse.text();
         return NextResponse.json(
-          { error: 'Failed to fetch Discord members', details: errorText },
+          { error: 'Failed to fetch Discord members' },
           { status: membersResponse.status }
         );
       }
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
           synced++;
           console.log(`[Sync Discord Usernames] ✅ ${member.twitchLogin}: ${member.discordUsername || 'N/A'} → ${discordUsername}`);
         } catch (error) {
-          errors.push(`${member.twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+          errors.push(`${member.twitchLogin}: Erreur de mise à jour`);
           console.error(`[Sync Discord Usernames] ❌ Erreur pour ${member.twitchLogin}:`, error);
         }
       }
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error syncing Discord usernames:", error);
     return NextResponse.json(
-      { error: "Erreur serveur", details: error instanceof Error ? error.message : String(error) },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

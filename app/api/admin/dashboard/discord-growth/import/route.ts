@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API Discord Growth Import] Erreur POST:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

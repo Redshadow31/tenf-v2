@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
         results.push({
           service: 'Supabase',
           status: 'error',
-          message: `Erreur: ${error.message}`,
-          details: error,
+          message: 'Connexion échouée',
         });
       } else {
         results.push({
@@ -55,8 +54,7 @@ export async function GET(request: NextRequest) {
       results.push({
         service: 'Supabase',
         status: 'error',
-        message: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? { stack: error.stack } : error,
+        message: 'Connexion échouée',
       });
     }
 
@@ -104,8 +102,7 @@ export async function GET(request: NextRequest) {
           results.push({
             service: 'Netlify Blobs',
             status: 'error',
-            message: blobError instanceof Error ? blobError.message : 'Erreur inconnue',
-            details: blobError instanceof Error ? { stack: blobError.stack } : blobError,
+            message: 'Connexion échouée',
           });
         }
       }
@@ -113,8 +110,7 @@ export async function GET(request: NextRequest) {
       results.push({
         service: 'Netlify Blobs',
         status: 'error',
-        message: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? { stack: error.stack } : error,
+        message: 'Connexion échouée',
       });
     }
 
@@ -155,8 +151,7 @@ export async function GET(request: NextRequest) {
       results.push({
         service: 'Upstash Redis',
         status: 'error',
-        message: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? { stack: error.stack } : error,
+        message: 'Connexion échouée',
       });
     }
 
@@ -173,8 +168,7 @@ export async function GET(request: NextRequest) {
       results.push({
         service: 'EventRepository',
         status: 'error',
-        message: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? { stack: error.stack } : error,
+        message: 'Connexion échouée',
       });
     }
 
@@ -192,8 +186,7 @@ export async function GET(request: NextRequest) {
       results.push({
         service: 'MemberRepository',
         status: 'error',
-        message: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: error instanceof Error ? { stack: error.stack } : error,
+        message: 'Connexion échouée',
       });
     }
 
@@ -223,11 +216,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[System Test Connections] Erreur:', error);
     return NextResponse.json(
-      {
-        error: 'Erreur lors du test des connexions',
-        details: error instanceof Error ? error.message : 'Erreur inconnue',
-        stack: error instanceof Error ? error.stack : undefined,
-      },
+      { error: 'Erreur lors du test des connexions' },
       { status: 500 }
     );
   }

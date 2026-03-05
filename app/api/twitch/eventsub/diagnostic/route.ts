@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getTwitchOAuthToken, getEventSubSubscriptions } from '@/lib/twitchEventSub';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 /**
  * GET - Diagnostic des subscriptions EventSub
@@ -7,6 +8,11 @@ import { getTwitchOAuthToken, getEventSubSubscriptions } from '@/lib/twitchEvent
  */
 export async function GET() {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
     const accessToken = await getTwitchOAuthToken();
     const subscriptions = await getEventSubSubscriptions(accessToken);
 
@@ -69,7 +75,7 @@ export async function GET() {
     return NextResponse.json(
       { 
         success: false,
-        error: `Erreur lors de la récupération: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        error: 'Erreur lors de la récupération',
       },
       { status: 500 }
     );

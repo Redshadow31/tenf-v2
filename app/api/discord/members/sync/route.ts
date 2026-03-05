@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (!membersResponse.ok) {
-        const errorText = await membersResponse.text();
+        await membersResponse.text();
         return NextResponse.json(
-          { error: 'Failed to fetch Discord members', details: errorText },
+          { error: 'Failed to fetch Discord members' },
           { status: membersResponse.status }
         );
       }
@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error syncing Discord members:", error);
     return NextResponse.json(
-      { error: "Erreur serveur", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

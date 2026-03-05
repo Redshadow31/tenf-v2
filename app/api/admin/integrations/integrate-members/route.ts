@@ -154,12 +154,12 @@ export async function POST(request: NextRequest) {
             integrated++;
           } catch (createError) {
             console.error(`[Integrate Members] Erreur création ${discordUsername}:`, createError);
-            errors.push(`${discordUsername}: ${createError instanceof Error ? createError.message : 'Erreur lors de la création'}`);
+            errors.push(`${discordUsername}: Erreur lors de la création`);
           }
         }
       } catch (error) {
         console.error(`[Integrate Members] Erreur pour ${member.discordUsername || 'membre inconnu'}:`, error);
-        errors.push(`${member.discordUsername || 'Membre inconnu'}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        errors.push(`${member.discordUsername || 'Membre inconnu'}: Erreur interne`);
       }
     }
     
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Integrate Members API] Erreur POST:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

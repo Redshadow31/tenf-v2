@@ -29,7 +29,7 @@ export async function GET() {
   } catch (error) {
     console.error('[API Dashboard Public Data] Erreur GET:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
           results.notesUpdated++;
         } catch (error) {
           console.error(`Erreur lors de la mise à jour de la note finale pour ${twitchLogin}:`, error);
-          results.errors.push(`Erreur note finale pour ${twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+          results.errors.push(`Erreur note finale pour ${twitchLogin}`);
         }
       }
 
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
           results.statusUpdated++;
         } catch (error) {
           console.error(`Erreur lors de la mise à jour du statut pour ${twitchLogin}:`, error);
-          results.errors.push(`Erreur pour ${twitchLogin}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+          results.errors.push(`Erreur pour ${twitchLogin}`);
         }
       }
     }
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApi.error('/api/evaluations/synthesis/save', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[API Evaluations Synthesis Save GET] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

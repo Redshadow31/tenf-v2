@@ -60,7 +60,7 @@ export async function DELETE(
   } catch (error) {
     console.error('[Event Unregistration API] Erreur DELETE:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

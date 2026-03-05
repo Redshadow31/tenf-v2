@@ -195,8 +195,8 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
     await loadSectionPermissionsCache();
   } catch (error) {
     console.warn("[requireAdmin] Cannot load section permissions cache:", error);
-    // En cas d'erreur, autoriser l'accès par défaut (sécurité permissive)
-    return true;
+    // Fail-closed: en cas d'erreur, refuser l'accès par défaut
+    return false;
   }
 
   // Vérifier si le rôle de l'admin a accès à cette section
@@ -220,8 +220,8 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
     await loadSectionPermissionsCache();
   } catch (error) {
     console.warn("[requireAdmin] Cannot load section permissions cache:", error);
-    // En cas d'erreur, autoriser l'accès par défaut (sécurité permissive)
-    return admin;
+    // Fail-closed: en cas d'erreur, refuser l'accès par défaut
+    return null;
   }
 
   // Vérifier si le rôle de l'admin a accès à cette section

@@ -220,10 +220,7 @@ export async function GET(request: NextRequest) {
       console.error('[API Event Presence] Stack:', error.stack);
     }
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
-      },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -360,7 +357,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API Event Presence] Erreur POST:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -409,7 +406,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('[API Event Presence] Erreur PUT:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -518,7 +515,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('[API Event Presence] Erreur DELETE:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }
@@ -591,7 +588,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error('[API Event Presence] Erreur PATCH:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

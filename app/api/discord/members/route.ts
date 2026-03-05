@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
 import type { MemberRole } from '@/lib/memberRoles';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 interface DiscordMember {
   user: {
@@ -43,6 +44,14 @@ interface MemberWithDiscordRoles {
  */
 export async function GET() {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Accès refusé' },
+        { status: 403 }
+      );
+    }
+
     const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
     
     if (!DISCORD_BOT_TOKEN) {
@@ -66,7 +75,7 @@ export async function GET() {
       const errorText = await membersResponse.text();
       console.error('Discord API error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch Discord members', details: errorText },
+        { error: 'Impossible de récupérer les membres Discord' },
         { status: membersResponse.status }
       );
     }
@@ -87,7 +96,7 @@ export async function GET() {
       const errorText = await rolesResponse.text();
       console.error('Discord Roles API error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch Discord roles', details: errorText },
+        { error: 'Impossible de récupérer les rôles Discord' },
         { status: rolesResponse.status }
       );
     }
@@ -143,7 +152,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching Discord members:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Erreur serveur interne' },
       { status: 500 }
     );
   }

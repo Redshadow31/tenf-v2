@@ -50,12 +50,12 @@ export async function GET(request: NextRequest) {
         registrationsForThisEvent: {
           count: registrationsByEventId?.length || 0,
           data: registrationsByEventId || [],
-          error: error1?.message,
+          hasError: !!error1,
         },
         allRegistrationsSample: {
           count: allRegistrations?.length || 0,
           data: allRegistrations || [],
-          error: error2?.message,
+          hasError: !!error2,
           uniqueEventIds: [...new Set(allRegistrations?.map(r => r.event_id) || [])],
         },
         allEvents: {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         eventsWithRegistrations,
         orphanEventIds: orphanRegistrations,
         sampleRegistrations: allRegistrations?.slice(0, 10) || [],
-        error: error?.message,
+        hasError: !!error,
       });
     }
   } catch (error) {
@@ -118,7 +118,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Erreur serveur',
-        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

@@ -70,7 +70,7 @@ export async function PUT(
   } catch (error) {
     console.error('[Integration API] Erreur PUT:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

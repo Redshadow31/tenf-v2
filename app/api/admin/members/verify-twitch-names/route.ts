@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
           oldLogin,
           newLogin,
           updated: false,
-          error: error instanceof Error ? error.message : 'Erreur inconnue',
+          error: 'Erreur de mise à jour',
         });
       }
     }
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error verifying Twitch names:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

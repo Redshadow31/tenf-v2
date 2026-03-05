@@ -183,7 +183,6 @@ export async function GET(request: NextRequest) {
       { 
         success: false, 
         error: 'Erreur lors de la vérification de synchronisation',
-        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

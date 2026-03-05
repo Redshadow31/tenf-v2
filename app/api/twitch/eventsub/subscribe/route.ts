@@ -3,6 +3,7 @@ import { ensureGlobalChannelRaidSubscription, getTwitchOAuthToken } from '@/lib/
 import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { getBaseUrl } from '@/lib/config';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 
@@ -12,6 +13,11 @@ const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
  */
 export async function POST(request: NextRequest) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
     const EVENTSUB_SECRET = process.env.TWITCH_EVENTSUB_SECRET;
     const CLIENT_ID = process.env.TWITCH_APP_CLIENT_ID || process.env.TWITCH_CLIENT_ID;
     
@@ -43,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Impossible d\'obtenir un token OAuth Twitch',
-          message: error instanceof Error ? error.message : 'Erreur inconnue',
+          message: 'Vérifiez la configuration Twitch côté serveur',
           details: 'Vérifiez que TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET sont correctement configurés',
         },
         { status: 500 }
@@ -148,7 +154,7 @@ export async function POST(request: NextRequest) {
       console.error('[EventSub Subscribe] Erreur lors de la création de la souscription globale:', error);
       return NextResponse.json(
         { 
-          error: `Erreur lors de la création: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+          error: 'Erreur lors de la création',
           message: 'Vérifiez les logs pour plus de détails',
         },
         { status: 500 }
@@ -158,7 +164,7 @@ export async function POST(request: NextRequest) {
     console.error('[EventSub Subscribe] Erreur:', error);
     return NextResponse.json(
       { 
-        error: `Erreur lors de la création des subscriptions: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        error: 'Erreur lors de la création des subscriptions',
         message: 'Vérifiez les logs pour plus de détails',
       },
       { status: 500 }
@@ -171,6 +177,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
     const { getTwitchOAuthToken, getEventSubSubscriptions } = await import('@/lib/twitchEventSub');
     const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
     const { getBaseUrl } = await import('@/lib/config');
@@ -262,7 +273,7 @@ export async function GET(request: NextRequest) {
     console.error('[EventSub Subscribe] Erreur lors de la vérification:', error);
     return NextResponse.json(
       { 
-        error: `Erreur lors de la vérification: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        error: 'Erreur lors de la vérification',
       },
       { status: 500 }
     );

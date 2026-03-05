@@ -242,22 +242,22 @@ async function migrateMonth(monthKey: string): Promise<{
             await evaluationRepository.upsert(evaluationData);
             evaluationsMigrated++;
           } catch (upsertError) {
-            const upsertErrorMsg = `Erreur upsert ${twitchLogin} pour ${monthKey}: ${upsertError instanceof Error ? upsertError.message : 'Erreur inconnue'}`;
+            const upsertErrorMsg = `Erreur upsert ${twitchLogin} pour ${monthKey}`;
             errors.push(upsertErrorMsg);
             console.error(upsertErrorMsg, upsertError);
             // Continuer avec le membre suivant même en cas d'erreur
           }
         }
       } catch (memberError) {
-        const errorMsg = `Erreur migration ${twitchLogin} pour ${monthKey}: ${memberError instanceof Error ? memberError.message : 'Erreur inconnue'}`;
+        const errorMsg = `Erreur migration ${twitchLogin} pour ${monthKey}`;
         errors.push(errorMsg);
-        console.error(errorMsg);
+        console.error(errorMsg, memberError);
       }
     }
   } catch (error) {
-    const errorMsg = `Erreur migration mois ${monthKey}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+    const errorMsg = `Erreur migration mois ${monthKey}`;
     errors.push(errorMsg);
-    console.error(errorMsg);
+    console.error(errorMsg, error);
   }
 
   return {
@@ -337,7 +337,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        error: 'Erreur interne du serveur',
       },
       { status: 500 }
     );

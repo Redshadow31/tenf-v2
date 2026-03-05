@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[Event Image Upload] Erreur Supabase:', error);
       return NextResponse.json(
-        { error: 'Erreur lors de l\'upload', details: error.message },
+        { error: 'Erreur lors de l\'upload' },
         { status: 500 }
       );
     }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Event Image Upload API] Erreur POST:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Erreur serveur' },
       { status: 500 }
     );
   }

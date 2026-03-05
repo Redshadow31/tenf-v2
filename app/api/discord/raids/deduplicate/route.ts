@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API Raids Deduplicate] Erreur:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur lors de la déduplication.' },
+      { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
   }

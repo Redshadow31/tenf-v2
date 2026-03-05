@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadAdminDataFromStorage, getBlobStore } from '@/lib/memberData';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 /**
  * GET - Endpoint de debug pour inspecter les données du Blob
@@ -7,6 +8,11 @@ import { loadAdminDataFromStorage, getBlobStore } from '@/lib/memberData';
  */
 export async function GET() {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
     // Tester directement le Blob avec la fonction helper
     let blobTest: any = {};
     try {
@@ -29,7 +35,6 @@ export async function GET() {
         storeExists: false,
         dataExists: false,
         error: blobError.message,
-        stack: blobError.stack,
       };
     }
 
@@ -71,8 +76,7 @@ export async function GET() {
     console.error('[Stats Debug] Error:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to load debug data', 
-        message: error instanceof Error ? error.message : String(error) 
+        error: 'Failed to load debug data',
       },
       { status: 500 }
     );

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[API Evaluations Synthesis Overrides] Erreur:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: "Erreur interne du serveur" },
       { status: 500 }
     );
   }

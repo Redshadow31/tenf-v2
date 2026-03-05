@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Erreur lors de la migration:", error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Erreur lors de la vérification:", error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

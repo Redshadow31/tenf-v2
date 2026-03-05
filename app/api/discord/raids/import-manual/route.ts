@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         results.failed++;
         results.errors.push(
-          `Raid #${i + 1} (${countFrom ? `fait: @${raider}` : ''}${countFrom && countTo ? ' / ' : ''}${countTo ? `reçu: @${target}` : ''}): ${error instanceof Error ? error.message : "Erreur inconnue"}`
+          `Raid #${i + 1} (${countFrom ? `fait: @${raider}` : ''}${countFrom && countTo ? ' / ' : ''}${countTo ? `reçu: @${target}` : ''}): échec d'import`
         );
       }
     }
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Import Manual] Erreur:", error);
     return NextResponse.json(
-      { error: `Erreur serveur: ${error instanceof Error ? error.message : 'Erreur inconnue'}` },
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         migrated++;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        const errorMsg = `Erreur migration ${member.twitchLogin}: ${err.message}`;
+        const errorMsg = `Erreur migration ${member.twitchLogin}: erreur interne`;
         errors.push(errorMsg);
         console.error(`[Migration Members] ${errorMsg}`, err);
       }
@@ -168,7 +168,6 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: 'Erreur lors de la migration',
-        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );
