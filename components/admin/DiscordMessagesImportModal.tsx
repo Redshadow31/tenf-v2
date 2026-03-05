@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 
 interface DiscordMessagesImportModalProps {
   isOpen: boolean;
@@ -31,6 +31,7 @@ export default function DiscordMessagesImportModal({
   const [text, setText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string; discordId?: string; discordUsername?: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
@@ -74,6 +75,39 @@ export default function DiscordMessagesImportModal({
     return username.trim().toLowerCase().replace(/^@/, '');
   }
 
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        // Double quote escaped inside quoted value.
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  function parseNumericValue(raw: string): number {
+    const cleaned = raw.replace(/\s+/g, "").replace(",", ".");
+    return Number.parseFloat(cleaned);
+  }
+
   function parseTSV(content: string): ParseResult {
     const lines = content
       .split("\n")
@@ -109,11 +143,21 @@ export default function DiscordMessagesImportModal({
 
     for (const line of lines) {
       const hasTab = line.includes("\t");
-      const columns = hasTab
-        ? line.split("\t").map((col) => col.trim())
-        : line.split(/\s+/).filter((col) => col.trim().length > 0);
+      const hasComma = line.includes(",") && !hasTab;
+      const columns = hasComma
+        ? parseCsvLine(line).map((col) => col.trim())
+        : hasTab
+          ? line.split("\t").map((col) => col.trim())
+          : line.split(/\s+/).filter((col) => col.trim().length > 0);
 
       if (columns.length < 2) continue;
+
+      // Ignorer l'en-tête CSV exporté (ex: rang,nom d'utilisateur,id,compter)
+      const col0 = normalizeUsername(columns[0] || "");
+      const col1 = normalizeUsername(columns[1] || "");
+      if (col0 === "rang" || col1 === "nom d'utilisateur" || col1 === "nom dutilisateur") {
+        continue;
+      }
 
       let username: string;
       let userId: string | undefined;
@@ -124,7 +168,7 @@ export default function DiscordMessagesImportModal({
         username = normalizeUsername(columns[1]);
         userId = columns[2]?.trim();
         const countStr = columns[3]?.trim();
-        messageCount = parseInt(countStr || '0', 10);
+        messageCount = Math.round(parseNumericValue(countStr || "0"));
       } else if (columns.length === 3) {
         // Détecter si col[0] est numérique (rank)
         const firstCol = columns[0]?.trim();
@@ -133,12 +177,12 @@ export default function DiscordMessagesImportModal({
         if (isRank) {
           // rank username messageCount
           username = normalizeUsername(columns[1]);
-          messageCount = parseInt(columns[2] || '0', 10);
+          messageCount = Math.round(parseNumericValue(columns[2] || "0"));
         } else {
           // username userId messageCount
           username = normalizeUsername(columns[0]);
           userId = columns[1]?.trim();
-          messageCount = parseInt(columns[2] || '0', 10);
+          messageCount = Math.round(parseNumericValue(columns[2] || "0"));
         }
       } else {
         // 2 colonnes : username messageCount (ou rank messageCount)
@@ -150,7 +194,7 @@ export default function DiscordMessagesImportModal({
           continue;
         } else {
           username = normalizeUsername(columns[0]);
-          messageCount = parseInt(columns[1] || '0', 10);
+          messageCount = Math.round(parseNumericValue(columns[1] || "0"));
         }
       }
 
@@ -226,6 +270,22 @@ export default function DiscordMessagesImportModal({
     setSelectedUnmatched(new Set());
   };
 
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      setText(content);
+      setUploadedFileName(file.name);
+      setParseResult(null);
+      setSelectedUnmatched(new Set());
+    } catch (error) {
+      console.error("Erreur lors de la lecture du fichier:", error);
+      alert("Impossible de lire le fichier.");
+    }
+  };
+
   const handleImport = async () => {
     if (!parseResult || !parseResult.success) {
       return;
@@ -281,6 +341,7 @@ export default function DiscordMessagesImportModal({
   const handleClose = () => {
     setText("");
     setParseResult(null);
+    setUploadedFileName(null);
     onClose();
   };
 
@@ -322,8 +383,22 @@ export default function DiscordMessagesImportModal({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Colle ici les données exportées (TSV)
+              Source des données (copier-coller OU fichier)
             </label>
+            <div className="mb-3">
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/plain"
+                onChange={handleFileUpload}
+                disabled={loadingMembers}
+                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-[#5865F2] file:text-white hover:file:bg-[#4752C4]"
+              />
+              {uploadedFileName && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Fichier chargé: {uploadedFileName}
+                </p>
+              )}
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -341,6 +416,7 @@ export default function DiscordMessagesImportModal({
               Format attendu
             </h3>
             <ul className="text-xs text-gray-400 space-y-1">
+              <li>• Compatible CSV (ex: rang, nom d'utilisateur, id, compter)</li>
               <li>• Colonnes : rank (optionnel), username, userId (optionnel), messageCount</li>
               <li>• Séparateur : tabulation ou espaces multiples</li>
               <li>• Seuls les membres actifs du site seront importés</li>
