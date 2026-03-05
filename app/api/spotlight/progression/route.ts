@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
-import { evaluationRepository } from '@/lib/repositories';
+import { eventRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function isSpotlightCategory(category: string | undefined): boolean {
+  return (category || "").toLowerCase() === "spotlight";
+}
+
 /**
  * GET - Récupère les données de progression Spotlight pour les 3 derniers mois
- * Pour chaque mois, calcule la moyenne du nombre de présents par spotlight + 1 (le streamer)
+ * Source: événements catégorie Spotlight + présences réelles (/admin/events/presence).
  */
 export async function GET() {
   try {
@@ -27,67 +31,52 @@ export async function GET() {
       months.push(`${year}-${month}`);
     }
 
-    const progressionData: Array<{ month: string; value: number }> = [];
+    // Charger les événements une seule fois, puis grouper par mois
+    const allEvents = await eventRepository.findAll(1000, 0);
+    const spotlightEvents = allEvents.filter((event) => {
+      const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+      if (Number.isNaN(eventDate.getTime())) return false;
+      const mk = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}`;
+      return months.includes(mk) && isSpotlightCategory(event.category);
+    });
 
-    // Pour chaque mois
-    for (const monthKey of months) {
-      try {
-        // Charger les données du mois depuis Supabase
-        const evaluations = await evaluationRepository.findByMonth(monthKey);
-        
-        // Agréger les spotlightEvaluations depuis toutes les évaluations
-        const spotlightsMap = new Map<string, any>();
-        evaluations.forEach(evaluation => {
-          if (evaluation.spotlightEvaluations && Array.isArray(evaluation.spotlightEvaluations)) {
-            evaluation.spotlightEvaluations.forEach((spotlight: any) => {
-              if (spotlight.validated && !spotlightsMap.has(spotlight.id)) {
-                spotlightsMap.set(spotlight.id, spotlight);
-              }
-            });
-          }
-        });
-
-        const spotlights = Array.from(spotlightsMap.values());
-        
-        if (spotlights.length === 0) {
-          progressionData.push({
-            month: monthKey,
-            value: 0,
-          });
-          continue;
+    const presenceEntries = await Promise.all(
+      spotlightEvents.map(async (event) => {
+        try {
+          const presences = await eventRepository.getPresences(event.id);
+          const presentCount = (presences || []).filter((p) => p.present === true).length;
+          const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+          const mk = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}`;
+          return { monthKey: mk, presentCount };
+        } catch (error) {
+          console.error(`[Spotlight Progression] Erreur présences événement ${event.id}:`, error);
+          const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+          const mk = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}`;
+          return { monthKey: mk, presentCount: 0 };
         }
+      })
+    );
 
-        // Pour chaque spotlight, calculer le nombre de présents + 1 (le streamer)
-        let totalParticipants = 0;
-        let spotlightCount = 0;
-
-        for (const spotlight of spotlights) {
-          // Récupérer les membres présents
-          const members = spotlight.members || [];
-          const presentCount = members.filter((m: any) => m.present === true).length;
-          
-          // Ajouter 1 pour le streamer
-          const participantsCount = presentCount + 1;
-          
-          totalParticipants += participantsCount;
-          spotlightCount++;
-        }
-
-        // Calculer la moyenne
-        const averageValue = spotlightCount > 0 ? Math.round((totalParticipants / spotlightCount) * 10) / 10 : 0;
-
-        progressionData.push({
-          month: monthKey,
-          value: averageValue,
-        });
-      } catch (error) {
-        console.error(`[Spotlight Progression] Erreur pour le mois ${monthKey}:`, error);
-        progressionData.push({
-          month: monthKey,
-          value: 0,
-        });
-      }
+    const byMonth = new Map<string, { presentTotal: number; spotlightCount: number }>();
+    for (const mk of months) {
+      byMonth.set(mk, { presentTotal: 0, spotlightCount: 0 });
     }
+    for (const entry of presenceEntries) {
+      const current = byMonth.get(entry.monthKey);
+      if (!current) continue;
+      current.presentTotal += entry.presentCount;
+      current.spotlightCount += 1;
+      byMonth.set(entry.monthKey, current);
+    }
+
+    const progressionData: Array<{ month: string; value: number }> = months.map((mk) => {
+      const data = byMonth.get(mk) || { presentTotal: 0, spotlightCount: 0 };
+      // Valeur = moyenne de présents par événement Spotlight du mois.
+      const value = data.spotlightCount > 0
+        ? Math.round((data.presentTotal / data.spotlightCount) * 10) / 10
+        : 0;
+      return { month: mk, value };
+    });
 
     // Inverser pour avoir les mois dans l'ordre chronologique (du plus ancien au plus récent)
     progressionData.reverse();

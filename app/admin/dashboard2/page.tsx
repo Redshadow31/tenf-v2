@@ -121,7 +121,7 @@ export default function Dashboard2Page() {
     totalRaidsSent: number;
     topRaiders: RankedCountItem[];
     topTargets: RankedCountItem[];
-  }>({ totalRaidsReceived: 0, totalRaidsSent: 0 });
+  }>({ totalRaidsReceived: 0, totalRaidsSent: 0, topRaiders: [], topTargets: [] });
   const [discordMonthStats, setDiscordMonthStats] = useState<{
     totalMessages: number;
     totalVoiceHours: number;
