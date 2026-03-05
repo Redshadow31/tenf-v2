@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
 import { evaluationRepository } from "@/lib/repositories";
-import { loadRaidsFaits, loadRaidsRecus } from "@/lib/raidStorage";
+import { loadRaidsFaits } from "@/lib/raidStorage";
 import { getDiscordActivityForMonth } from "@/lib/discordActivityStorage";
+import { eventRepository } from "@/lib/repositories";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,6 +13,10 @@ export const revalidate = 0;
 function getCurrentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function normalizeKey(value?: string | null): string {
+  return (value || "").toLowerCase().trim();
 }
 
 /**
@@ -64,23 +69,37 @@ export async function GET(request: NextRequest) {
     }
 
     const monthKey = getCurrentMonthKey();
-    const evaluation = await evaluationRepository.findByMemberAndMonth(
-      member.twitchLogin,
-      monthKey
-    );
+    const evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
+    const memberLogin = normalizeKey(member.twitchLogin);
+
+    // Préparer un index d'identité (discordId / usernames / displayName -> twitchLogin)
+    const allMembers = await memberRepository.findAll(2000, 0);
+    const identityToLogin = new Map<string, string>();
+    for (const m of allMembers) {
+      const login = normalizeKey(m.twitchLogin);
+      if (!login) continue;
+      identityToLogin.set(login, login);
+      if (m.discordId) identityToLogin.set(normalizeKey(m.discordId), login);
+      if (m.discordUsername) identityToLogin.set(normalizeKey(m.discordUsername), login);
+      if (m.displayName) identityToLogin.set(normalizeKey(m.displayName), login);
+      if (m.siteUsername) identityToLogin.set(normalizeKey(m.siteUsername), login);
+    }
 
     // 1. Raids TENF — depuis raidStorage (même source que /admin/raids)
     let raidsTENF = 0;
     try {
       const raidsFaits = await loadRaidsFaits(monthKey);
-      const raidsRecus = await loadRaidsRecus(monthKey);
-      const filteredFaits = raidsFaits.filter((r: any) => r.source !== "discord");
-      const filteredRecus = raidsRecus.filter((r: any) => r.source !== "discord");
+      const filteredFaits = raidsFaits.filter((raid: any) => {
+        const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+        if (source === "discord") return false;
+        return source === "manual" || source === "admin" || raid.manual;
+      });
 
       for (const raid of filteredFaits) {
-        const raiderMatch =
-          raid.raider === member.discordId ||
-          raid.raider?.toLowerCase?.() === member.twitchLogin?.toLowerCase();
+        const raidRaiderLogin =
+          identityToLogin.get(normalizeKey(raid.raider)) ||
+          normalizeKey(raid.raider);
+        const raiderMatch = raidRaiderLogin === memberLogin;
         if (raiderMatch) {
           raidsTENF += raid.count ?? 1;
         }
@@ -92,21 +111,61 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Spotlight — depuis evaluation
+    // 2. Spotlight — depuis event_presences (même logique que /admin/events/presence)
     let spotlightPresence = { present: 0, total: 0, rate: 0 };
-    if (evaluation?.spotlightEvaluations?.length) {
-      const spotlights = evaluation.spotlightEvaluations;
-      const presentCount = spotlights.filter((s: any) =>
-        s.members?.some(
-          (m: any) =>
-            m.twitchLogin?.toLowerCase() === member!.twitchLogin.toLowerCase() && m.present
-        )
-      ).length;
+    try {
+      const now = new Date();
+      const [year, month] = monthKey.split("-").map((v) => parseInt(v, 10));
+      const allEvents = await eventRepository.findAll(1000, 0);
+      const spotlightEvents = allEvents.filter((event) => {
+        const d = event.date instanceof Date ? event.date : new Date(event.date);
+        const eventMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const category = normalizeKey(event.category);
+        return (
+          eventMonth === monthKey &&
+          category.includes("spotlight") &&
+          d.getTime() <= now.getTime()
+        );
+      });
+
+      let totalValidatedSpotlights = 0;
+      let presentCount = 0;
+
+      for (const event of spotlightEvents) {
+        const presences = await eventRepository.getPresences(event.id);
+        // Compter uniquement les spotlights réellement validés (au moins une présence enregistrée)
+        if (!presences || presences.length === 0) continue;
+        totalValidatedSpotlights += 1;
+
+        const isPresent = presences.some(
+          (p: any) =>
+            normalizeKey(p.twitchLogin) === memberLogin &&
+            p.present === true
+        );
+        if (isPresent) presentCount += 1;
+      }
+
       spotlightPresence = {
         present: presentCount,
-        total: spotlights.length,
-        rate: spotlights.length ? Math.round((presentCount / spotlights.length) * 100) : 0,
+        total: totalValidatedSpotlights,
+        rate: totalValidatedSpotlights ? Math.round((presentCount / totalValidatedSpotlights) * 100) : 0,
       };
+    } catch {
+      // Fallback historique : evaluation.spotlightEvaluations si event_presences indisponible
+      if (evaluation?.spotlightEvaluations?.length) {
+        const spotlights = evaluation.spotlightEvaluations;
+        const presentCount = spotlights.filter((s: any) =>
+          s.members?.some(
+            (m: any) =>
+              normalizeKey(m.twitchLogin) === memberLogin && m.present
+          )
+        ).length;
+        spotlightPresence = {
+          present: presentCount,
+          total: spotlights.length,
+          rate: spotlights.length ? Math.round((presentCount / spotlights.length) * 100) : 0,
+        };
+      }
     }
 
     // 3. Discord messages / vocaux — depuis discordActivityStorage (même source que admin dashboard)
