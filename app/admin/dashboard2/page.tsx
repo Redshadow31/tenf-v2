@@ -81,6 +81,10 @@ interface DiscordRankedVocalsItem {
   display: string;
 }
 
+function normalizeCategoryLabel(value: string | undefined): string {
+  return (value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function monthKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -135,6 +139,19 @@ export default function Dashboard2Page() {
   });
   const [recapEvents, setRecapEvents] = useState<RecapEvent[]>([]);
   const [recapMonthFilter, setRecapMonthFilter] = useState<"all" | string>("all");
+  const [upcomingKpis, setUpcomingKpis] = useState<{
+    nextMeetingRegistrations: number;
+    nextFormationRegistrations: number;
+    nextFilmRegistrations: number;
+    nextJeuxRegistrations: number;
+    upcomingSpotlights: number;
+  }>({
+    nextMeetingRegistrations: 0,
+    nextFormationRegistrations: 0,
+    nextFilmRegistrations: 0,
+    nextJeuxRegistrations: 0,
+    upcomingSpotlights: 0,
+  });
 
   const currentMonth = monthKey();
 
@@ -323,6 +340,84 @@ export default function Dashboard2Page() {
     loadEventsRecapData();
   }, []);
 
+  useEffect(() => {
+    async function loadUpcomingKpis() {
+      try {
+        const now = new Date();
+
+        const [integrationsRes, eventsRegistrationsRes] = await Promise.all([
+          fetch("/api/integrations?admin=true", { cache: "no-store" }),
+          fetch("/api/admin/events/registrations", { cache: "no-store" }),
+        ]);
+
+        let nextMeetingRegistrations = 0;
+        let nextFormationRegistrations = 0;
+        let nextFilmRegistrations = 0;
+        let nextJeuxRegistrations = 0;
+        let upcomingSpotlights = 0;
+
+        if (integrationsRes.ok) {
+          const integrationsData = await integrationsRes.json();
+          const integrations = (integrationsData.integrations || []) as Array<{
+            id: string;
+            date: string;
+            isPublished?: boolean;
+          }>;
+          const nextMeeting = integrations
+            .filter((integration) => integration.isPublished !== false && new Date(integration.date) >= now)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
+          if (nextMeeting?.id) {
+            const regsRes = await fetch(`/api/admin/integrations/${nextMeeting.id}/registrations`, {
+              cache: "no-store",
+            });
+            if (regsRes.ok) {
+              const regsData = await regsRes.json();
+              nextMeetingRegistrations = (regsData.registrations || []).length;
+            }
+          }
+        }
+
+        if (eventsRegistrationsRes.ok) {
+          const eventsData = await eventsRegistrationsRes.json();
+          const items = (eventsData.eventsWithRegistrations || []) as Array<{
+            event: { date: string; category?: string };
+            registrationCount: number;
+          }>;
+          const futureEvents = items
+            .filter((item) => new Date(item.event.date) >= now)
+            .sort((a, b) => new Date(a.event.date).getTime() - new Date(b.event.date).getTime());
+
+          const findNextRegistrationCount = (matcher: (category: string) => boolean): number => {
+            const found = futureEvents.find((item) => matcher(normalizeCategoryLabel(item.event.category)));
+            return found?.registrationCount || 0;
+          };
+
+          nextFormationRegistrations = findNextRegistrationCount((category) => category.includes("formation"));
+          nextFilmRegistrations = findNextRegistrationCount((category) => category.includes("film"));
+          nextJeuxRegistrations = findNextRegistrationCount(
+            (category) => category.includes("jeux") || category.includes("jeu")
+          );
+          upcomingSpotlights = futureEvents.filter((item) =>
+            normalizeCategoryLabel(item.event.category).includes("spotlight")
+          ).length;
+        }
+
+        setUpcomingKpis({
+          nextMeetingRegistrations,
+          nextFormationRegistrations,
+          nextFilmRegistrations,
+          nextJeuxRegistrations,
+          upcomingSpotlights,
+        });
+      } catch (error) {
+        console.error("Erreur chargement prochains KPIs:", error);
+      }
+    }
+
+    loadUpcomingKpis();
+  }, []);
+
   const kpis = useMemo(() => {
     const activeMembers = members.filter((m) => m.isActive !== false);
     const missingDiscord = activeMembers.filter((m) => !m.discordId).length;
@@ -481,6 +576,58 @@ export default function Dashboard2Page() {
       href: "/admin/membres/incomplets",
       color: "text-orange-300",
     },
+    {
+      title: "Profils en attente de validation",
+      value: kpis.profileValidationPendingCount,
+      hint: "Demandes à traiter",
+      href: "/admin/membres/validation-profil",
+      color: "text-cyan-300",
+    },
+    {
+      title: "Postulations staff",
+      value: kpis.staffApplicationsPendingCount,
+      hint: "Candidatures en attente",
+      href: "/admin/membres/postulations",
+      color: "text-indigo-300",
+    },
+  ];
+
+  const upcomingCards = [
+    {
+      title: "Inscrits prochaine réunion",
+      value: upcomingKpis.nextMeetingRegistrations,
+      hint: "Depuis Évaluations > Inscriptions",
+      href: "/admin/evaluations/inscription",
+      color: "text-blue-300",
+    },
+    {
+      title: "Inscrits prochaine formation",
+      value: upcomingKpis.nextFormationRegistrations,
+      hint: "Depuis Événements > Présence",
+      href: "/admin/events/presence",
+      color: "text-emerald-300",
+    },
+    {
+      title: "Inscrits prochain film",
+      value: upcomingKpis.nextFilmRegistrations,
+      hint: "Depuis Événements > Présence",
+      href: "/admin/events/presence",
+      color: "text-pink-300",
+    },
+    {
+      title: "Inscrits prochain jeux",
+      value: upcomingKpis.nextJeuxRegistrations,
+      hint: "Depuis Événements > Présence",
+      href: "/admin/events/presence",
+      color: "text-amber-300",
+    },
+    {
+      title: "Futurs Spotlights à venir",
+      value: upcomingKpis.upcomingSpotlights,
+      hint: "Nombre d'événements Spotlight futurs",
+      href: "/admin/events/presence",
+      color: "text-purple-300",
+    },
   ];
 
   const quickActions = [
@@ -551,8 +698,22 @@ export default function Dashboard2Page() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
         {priorityCards.map((card) => (
+          <Link
+            key={card.title}
+            href={card.href}
+            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-5 hover:border-[#9146ff] transition-colors"
+          >
+            <p className="text-sm text-gray-400 mb-2">{card.title}</p>
+            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
+            <p className="text-xs text-gray-500 mt-2">{card.hint}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+        {upcomingCards.map((card) => (
           <Link
             key={card.title}
             href={card.href}
@@ -608,43 +769,45 @@ export default function Dashboard2Page() {
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-3 text-center">Activité Discord</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[#0e0e10] rounded p-2 text-center">
-              <p className="text-[11px] text-gray-400">Messages</p>
-              <p className="text-2xl font-bold text-white">{discordMonthStats.totalMessages.toLocaleString()}</p>
-            </div>
-            <div className="bg-[#0e0e10] rounded p-2 text-center">
-              <p className="text-[11px] text-gray-400">Heures vocales</p>
-              <p className="text-2xl font-bold text-white">{discordMonthStats.totalVoiceHours.toFixed(1)}</p>
-            </div>
-          </div>
-          <div className="mt-4 border-t border-gray-800 pt-3">
-            <p className="text-xs text-gray-400 mb-2">Top 5 messages</p>
-            {discordMonthStats.topMessages.length === 0 ? (
-              <p className="text-xs text-gray-500 mb-3">Aucune donnée disponible</p>
-            ) : (
-              <div className="space-y-1.5 mb-3">
-                {discordMonthStats.topMessages.slice(0, 5).map((item) => (
-                  <div key={`msg-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                    <span className="text-gray-400">{item.messages.toLocaleString()}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-[#0e0e10] rounded p-3">
+              <p className="text-[11px] text-gray-400 text-center">Messages</p>
+              <p className="text-2xl font-bold text-white text-center">{discordMonthStats.totalMessages.toLocaleString()}</p>
+              <div className="mt-3 border-t border-gray-800 pt-2">
+                <p className="text-xs text-gray-400 mb-2">Top 5 messages</p>
+                {discordMonthStats.topMessages.length === 0 ? (
+                  <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {discordMonthStats.topMessages.slice(0, 5).map((item) => (
+                      <div key={`msg-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                        <span className="text-gray-400">{item.messages.toLocaleString()}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-            <p className="text-xs text-gray-400 mb-2">Top 5 vocaux</p>
-            {discordMonthStats.topVocals.length === 0 ? (
-              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
-            ) : (
-              <div className="space-y-1.5">
-                {discordMonthStats.topVocals.slice(0, 5).map((item) => (
-                  <div key={`voc-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                    <span className="text-gray-400">{item.display}</span>
+            </div>
+            <div className="bg-[#0e0e10] rounded p-3">
+              <p className="text-[11px] text-gray-400 text-center">Heures vocales</p>
+              <p className="text-2xl font-bold text-white text-center">{discordMonthStats.totalVoiceHours.toFixed(1)}</p>
+              <div className="mt-3 border-t border-gray-800 pt-2">
+                <p className="text-xs text-gray-400 mb-2">Top 5 vocaux</p>
+                {discordMonthStats.topVocals.length === 0 ? (
+                  <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {discordMonthStats.topVocals.slice(0, 5).map((item) => (
+                      <div key={`voc-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
+                        <span className="text-gray-400">{item.display}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
