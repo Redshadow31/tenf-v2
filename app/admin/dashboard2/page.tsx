@@ -22,6 +22,7 @@ interface MemberLite {
   integrationDate?: string;
   isActive?: boolean;
   isVip?: boolean;
+  badges?: string[];
   onboardingStatus?: "a_faire" | "en_cours" | "termine";
   nextReviewAt?: string;
   profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
@@ -81,6 +82,12 @@ interface DiscordRankedVocalsItem {
   display: string;
 }
 
+interface FollowSummaryItem {
+  staffSlug: string;
+  staffName: string;
+  status: "up_to_date" | "obsolete" | "not_validated";
+}
+
 function normalizeCategoryLabel(value: string | undefined): string {
   return (value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -113,7 +120,8 @@ export default function Dashboard2Page() {
   const [members, setMembers] = useState<MemberLite[]>([]);
   const [events, setEvents] = useState<MemberEventLite[]>([]);
   const [finalNotesCount, setFinalNotesCount] = useState(0);
-  const [activeFollowStaffCount, setActiveFollowStaffCount] = useState(0);
+  const [followOverdueStaffNames, setFollowOverdueStaffNames] = useState<string[]>([]);
+  const [vipMonthCount, setVipMonthCount] = useState(0);
   const [staffApplicationsPendingCount, setStaffApplicationsPendingCount] = useState(0);
   const [staffApplicationsRedFlagCount, setStaffApplicationsRedFlagCount] = useState(0);
   const [profileValidationPendingCount, setProfileValidationPendingCount] = useState(0);
@@ -158,11 +166,12 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadOpsData() {
       try {
-        const [membersRes, eventsRes, notesRes, followStaffRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
+        const [membersRes, eventsRes, notesRes, followSummaryRes, vipMonthRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
           fetch("/api/admin/members", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
           fetch(`/api/evaluations/synthesis/save?month=${currentMonth}`, { cache: "no-store" }),
-          fetch("/api/follow/staff", { cache: "no-store" }),
+          fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
           fetch("/api/staff-applications", { cache: "no-store" }),
           fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
         ]);
@@ -183,10 +192,19 @@ export default function Dashboard2Page() {
           setFinalNotesCount(Object.keys(finalNotes).length);
         }
 
-        if (followStaffRes.ok) {
-          const staffData = await followStaffRes.json();
-          const activeCount = (staffData.staff || []).filter((s: any) => s.isActive !== false).length;
-          setActiveFollowStaffCount(activeCount);
+        if (followSummaryRes.ok) {
+          const followSummaryData = await followSummaryRes.json();
+          const summary = (followSummaryData.summary || []) as FollowSummaryItem[];
+          const overdueNames = summary
+            .filter((item) => item.status === "obsolete")
+            .map((item) => item.staffName);
+          setFollowOverdueStaffNames(overdueNames);
+        }
+
+        if (vipMonthRes.ok) {
+          const vipMonthData = await vipMonthRes.json();
+          const vipLogins = Array.isArray(vipMonthData?.vipLogins) ? vipMonthData.vipLogins : [];
+          setVipMonthCount(vipLogins.length);
         }
 
         if (staffApplicationsRes.ok) {
@@ -216,6 +234,15 @@ export default function Dashboard2Page() {
 
     loadOpsData();
   }, [currentMonth]);
+
+  const communityMonthCount = useMemo(() => {
+    return members.filter(
+      (m) =>
+        m.isActive !== false &&
+        Array.isArray(m.badges) &&
+        m.badges.includes("Contributeur TENF du Mois")
+    ).length;
+  }, [members]);
 
   useEffect(() => {
     async function loadVisualData() {
@@ -493,6 +520,11 @@ export default function Dashboard2Page() {
   }, [recapEvents]);
 
   const workflow: WorkflowStep[] = useMemo(() => {
+    const overduePreview =
+      followOverdueStaffNames.length > 3
+        ? `${followOverdueStaffNames.slice(0, 3).join(", ")} +${followOverdueStaffNames.length - 3}`
+        : followOverdueStaffNames.join(", ");
+
     return [
       {
         id: "members_quality",
@@ -502,32 +534,42 @@ export default function Dashboard2Page() {
         helper: `${kpis.incomplete} incomplets`,
       },
       {
-        id: "eval_d",
-        label: "Évaluation D (synthèse)",
+        id: "evaluation_monthly",
+        label: "Évaluation mensuelle",
         href: "/admin/evaluation/d",
-        status: finalNotesCount > 0 ? "in_progress" : "todo",
+        status: finalNotesCount > 0 ? "done" : "todo",
         helper: `${finalNotesCount} note(s) manuelle(s)`,
+      },
+      {
+        id: "vip_month",
+        label: "VIP du mois",
+        href: "/admin/membres/vip",
+        status: vipMonthCount > 0 ? "done" : "todo",
+        helper: `${vipMonthCount} VIP validé(s)`,
+      },
+      {
+        id: "community_month",
+        label: "Communauté du mois",
+        href: "/admin/membres/badges",
+        status: communityMonthCount > 0 ? "done" : "todo",
+        helper: `${communityMonthCount} contributeur(s) du mois`,
       },
       {
         id: "follow",
         label: "Suivi des follows",
         href: "/admin/follow",
-        status: activeFollowStaffCount > 0 ? "in_progress" : "todo",
-        helper: `${activeFollowStaffCount} staff actif(s)`,
-      },
-      {
-        id: "reviews",
-        label: "Revues staff",
-        href: "/admin/membres/gestion",
-        status: kpis.reviewOverdue === 0 ? "done" : "todo",
-        helper: `${kpis.reviewOverdue} en retard`,
+        status: followOverdueStaffNames.length === 0 ? "done" : "in_progress",
+        helper:
+          followOverdueStaffNames.length === 0
+            ? "Aucun retard > 30 jours"
+            : `${followOverdueStaffNames.length} en retard > 30 jours: ${overduePreview}`,
       },
       {
         id: "staff_applications",
         label: "Postulations staff",
         href: "/admin/membres/postulations",
         status: kpis.staffApplicationsPendingCount === 0 ? "done" : "todo",
-        helper: `${kpis.staffApplicationsPendingCount} en attente${kpis.staffApplicationsRedFlagCount > 0 ? ` · ${kpis.staffApplicationsRedFlagCount} red flag` : ""}`,
+        helper: `${kpis.staffApplicationsPendingCount} à traiter${kpis.staffApplicationsRedFlagCount > 0 ? ` · ${kpis.staffApplicationsRedFlagCount} red flag` : ""}`,
       },
       {
         id: "profile_validation",
@@ -539,12 +581,13 @@ export default function Dashboard2Page() {
     ];
   }, [
     kpis.incomplete,
-    kpis.reviewOverdue,
     kpis.staffApplicationsPendingCount,
     kpis.staffApplicationsRedFlagCount,
     kpis.profileValidationPendingCount,
     finalNotesCount,
-    activeFollowStaffCount,
+    followOverdueStaffNames,
+    vipMonthCount,
+    communityMonthCount,
   ]);
 
   const priorityCards = [

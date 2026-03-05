@@ -34,6 +34,30 @@ interface DashboardData {
   updatedBy?: string;
 }
 
+interface WorkflowMemberLite {
+  discordId?: string;
+  twitchId?: string;
+  integrationDate?: string;
+  isActive?: boolean;
+  badges?: string[];
+  onboardingStatus?: "a_faire" | "en_cours" | "termine";
+  profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
+}
+
+interface WorkflowFollowSummaryItem {
+  staffSlug: string;
+  staffName: string;
+  status: "up_to_date" | "obsolete" | "not_validated";
+}
+
+interface WorkflowStep {
+  id: string;
+  label: string;
+  href: string;
+  status: "todo" | "in_progress" | "done";
+  helper: string;
+}
+
 const MONTHS = ["Janv", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
 
 type TabId = 'twitch' | 'discordGrowth' | 'discordActivity' | 'spotlight' | 'raidsReceived' | 'raidsSent' | 'vocal' | 'text';
@@ -281,6 +305,8 @@ export default function DashboardManagementPage() {
           </button>
         </div>
 
+        <MonthlyWorkflowSection />
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
@@ -437,6 +463,225 @@ export default function DashboardManagementPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function monthKey(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function completionPct(member: WorkflowMemberLite): number {
+  const checks = [
+    !!member.discordId,
+    !!member.twitchId,
+    !!member.integrationDate,
+    member.onboardingStatus === "termine",
+    member.profileValidationStatus === "valide",
+  ];
+  const ok = checks.filter(Boolean).length;
+  return Math.round((ok / checks.length) * 100);
+}
+
+function MonthlyWorkflowSection() {
+  const [loading, setLoading] = useState(true);
+  const [steps, setSteps] = useState<WorkflowStep[]>([]);
+
+  useEffect(() => {
+    async function loadWorkflow() {
+      try {
+        setLoading(true);
+        const currentMonth = monthKey();
+        const [
+          membersRes,
+          notesRes,
+          followSummaryRes,
+          vipMonthRes,
+          staffApplicationsRes,
+          profileValidationRes,
+        ] = await Promise.all([
+          fetch("/api/admin/members", { cache: "no-store" }),
+          fetch(`/api/evaluations/synthesis/save?month=${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
+          fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
+          fetch("/api/staff-applications", { cache: "no-store" }),
+          fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
+        ]);
+
+        let incomplete = 0;
+        let communityMonthCount = 0;
+        let finalNotesCount = 0;
+        let followOverdueStaffNames: string[] = [];
+        let vipMonthCount = 0;
+        let staffApplicationsPendingCount = 0;
+        let staffApplicationsRedFlagCount = 0;
+        let profileValidationPendingCount = 0;
+
+        if (membersRes.ok) {
+          const membersData = await membersRes.json();
+          const members = (membersData.members || []) as WorkflowMemberLite[];
+          const activeMembers = members.filter((m) => m.isActive !== false);
+          incomplete = activeMembers.filter((m) => completionPct(m) < 80).length;
+          communityMonthCount = activeMembers.filter(
+            (m) => Array.isArray(m.badges) && m.badges.includes("Contributeur TENF du Mois")
+          ).length;
+        }
+
+        if (notesRes.ok) {
+          const notesData = await notesRes.json();
+          const finalNotes = notesData.finalNotes || {};
+          finalNotesCount = Object.keys(finalNotes).length;
+        }
+
+        if (followSummaryRes.ok) {
+          const followSummaryData = await followSummaryRes.json();
+          const summary = (followSummaryData.summary || []) as WorkflowFollowSummaryItem[];
+          followOverdueStaffNames = summary
+            .filter((item) => item.status === "obsolete")
+            .map((item) => item.staffName);
+        }
+
+        if (vipMonthRes.ok) {
+          const vipMonthData = await vipMonthRes.json();
+          const vipLogins = Array.isArray(vipMonthData?.vipLogins) ? vipMonthData.vipLogins : [];
+          vipMonthCount = vipLogins.length;
+        }
+
+        if (staffApplicationsRes.ok) {
+          const applicationsData = await staffApplicationsRes.json();
+          const applications = (applicationsData.applications || []) as Array<{
+            admin_status: "nouveau" | "a_contacter" | "entretien_prevu" | "accepte" | "refuse" | "archive";
+            has_red_flag?: boolean;
+          }>;
+          const pendingStatuses = new Set(["nouveau", "a_contacter", "entretien_prevu"]);
+          staffApplicationsPendingCount = applications.filter((app) => pendingStatuses.has(app.admin_status)).length;
+          staffApplicationsRedFlagCount = applications.filter((app) => app.has_red_flag).length;
+        }
+
+        if (profileValidationRes.ok) {
+          const profileValidationData = await profileValidationRes.json();
+          profileValidationPendingCount = (profileValidationData.pending || []).length;
+        }
+
+        const overduePreview =
+          followOverdueStaffNames.length > 3
+            ? `${followOverdueStaffNames.slice(0, 3).join(", ")} +${followOverdueStaffNames.length - 3}`
+            : followOverdueStaffNames.join(", ");
+
+        setSteps([
+          {
+            id: "members_quality",
+            label: "Qualité des fiches membres",
+            href: "/admin/membres/incomplets",
+            status: incomplete === 0 ? "done" : incomplete < 10 ? "in_progress" : "todo",
+            helper: `${incomplete} incomplets`,
+          },
+          {
+            id: "evaluation_monthly",
+            label: "Évaluation mensuelle",
+            href: "/admin/evaluation/d",
+            status: finalNotesCount > 0 ? "done" : "todo",
+            helper: `${finalNotesCount} note(s) manuelle(s)`,
+          },
+          {
+            id: "vip_month",
+            label: "VIP du mois",
+            href: "/admin/membres/vip",
+            status: vipMonthCount > 0 ? "done" : "todo",
+            helper: `${vipMonthCount} VIP validé(s)`,
+          },
+          {
+            id: "community_month",
+            label: "Communauté du mois",
+            href: "/admin/membres/badges",
+            status: communityMonthCount > 0 ? "done" : "todo",
+            helper: `${communityMonthCount} contributeur(s) du mois`,
+          },
+          {
+            id: "follow",
+            label: "Suivi des follows",
+            href: "/admin/follow",
+            status: followOverdueStaffNames.length === 0 ? "done" : "in_progress",
+            helper:
+              followOverdueStaffNames.length === 0
+                ? "Aucun retard > 30 jours"
+                : `${followOverdueStaffNames.length} en retard > 30 jours: ${overduePreview}`,
+          },
+          {
+            id: "staff_applications",
+            label: "Postulations staff",
+            href: "/admin/membres/postulations",
+            status: staffApplicationsPendingCount === 0 ? "done" : "todo",
+            helper: `${staffApplicationsPendingCount} à traiter${staffApplicationsRedFlagCount > 0 ? ` · ${staffApplicationsRedFlagCount} red flag` : ""}`,
+          },
+          {
+            id: "profile_validation",
+            label: "Validation profils",
+            href: "/admin/membres/validation-profil",
+            status: profileValidationPendingCount === 0 ? "done" : "todo",
+            helper: `${profileValidationPendingCount} demande(s)`,
+          },
+        ]);
+      } catch (error) {
+        console.error("Erreur chargement workflow mensuel (gestion):", error);
+        setSteps([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadWorkflow();
+  }, []);
+
+  const statusStyle = (status: WorkflowStep["status"]): { bg: string; color: string; border: string } => {
+    if (status === "done") return { bg: "#10b98120", color: "#10b981", border: "#10b98140" };
+    if (status === "in_progress") return { bg: "#3b82f620", color: "#60a5fa", border: "#3b82f640" };
+    return { bg: "#6b728020", color: "#9ca3af", border: "#6b728040" };
+  };
+
+  return (
+    <div className="mb-6 p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Workflow mensuel</h3>
+        <Link
+          href="/admin/dashboard2"
+          className="text-sm font-medium hover:underline"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          Ouvrir le dashboard v2
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Chargement du workflow...
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {steps.map((step) => {
+            const style = statusStyle(step.status);
+            return (
+              <Link
+                key={step.id}
+                href={step.href}
+                className="flex items-center justify-between p-3 rounded-lg border transition-colors"
+                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+              >
+                <div>
+                  <p className="font-medium" style={{ color: 'var(--color-text)' }}>{step.label}</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{step.helper}</p>
+                </div>
+                <span
+                  className="px-2 py-1 rounded-full text-xs border"
+                  style={{ backgroundColor: style.bg, color: style.color, borderColor: style.border }}
+                >
+                  {step.status === "done" ? "Terminé" : step.status === "in_progress" ? "En cours" : "À faire"}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
