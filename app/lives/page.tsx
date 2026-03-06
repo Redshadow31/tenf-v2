@@ -30,6 +30,10 @@ interface LiveMember {
   isVip: boolean;
 }
 
+const BIRTHDAY_HIGHLIGHT_LOGIN = "tabs_up";
+// Mise en avant ponctuelle (uniquement ce jour).
+const BIRTHDAY_HIGHLIGHT_DATE_PARIS = "2026-03-06";
+
 export default function LivesPage() {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
@@ -38,6 +42,15 @@ export default function LivesPage() {
   const [mutedStreams, setMutedStreams] = useState<Set<string>>(new Set());
   const [hoveredStream, setHoveredStream] = useState<string | null>(null);
   const [availableGames, setAvailableGames] = useState<string[]>([]);
+
+  const todayParis = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const isBirthdayHighlightEnabled = todayParis === BIRTHDAY_HIGHLIGHT_DATE_PARIS;
 
   useEffect(() => {
     async function fetchLiveStreams() {
@@ -260,11 +273,21 @@ export default function LivesPage() {
   }, []);
 
   const getFilteredLives = () => {
-    if (activeFilter === "Tous") {
-      return liveMembers;
-    }
-    return liveMembers.filter((live) => {
+    const filtered = activeFilter === "Tous"
+      ? liveMembers
+      : liveMembers.filter((live) => {
       return live.game === activeFilter;
+      });
+
+    if (!isBirthdayHighlightEnabled) {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      const aBirthday = a.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
+      const bBirthday = b.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
+      if (aBirthday === bBirthday) return 0;
+      return aBirthday ? -1 : 1;
     });
   };
 
@@ -388,19 +411,25 @@ export default function LivesPage() {
             const isHovered = hoveredStream === live.twitchLogin;
             const muted = isMuted(live.twitchLogin);
             const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+            const isBirthdayHighlight =
+              isBirthdayHighlightEnabled && live.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
             
             return (
               <div
                 key={live.twitchLogin}
                 className="card overflow-hidden transition-all duration-300 group"
-                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+                style={{
+                  backgroundColor: 'var(--color-card)',
+                  borderColor: isBirthdayHighlight ? '#f59e0b' : 'var(--color-border)',
+                  boxShadow: isBirthdayHighlight ? '0 0 0 1px rgba(245, 158, 11, 0.35), 0 0 20px rgba(245, 158, 11, 0.2)' : undefined,
+                }}
                 onMouseEnter={(e) => {
                   setHoveredStream(live.twitchLogin);
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = isBirthdayHighlight ? '#f59e0b' : 'var(--color-primary)';
                 }}
                 onMouseLeave={(e) => {
                   setHoveredStream(null);
-                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.borderColor = isBirthdayHighlight ? '#f59e0b' : 'var(--color-border)';
                 }}
               >
                 {/* Thumbnail avec vidéo dynamique et zoom */}
@@ -468,6 +497,13 @@ export default function LivesPage() {
 
                 {/* Infos du streamer */}
                 <div className="p-4">
+                  {isBirthdayHighlight && (
+                    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+                      style={{ borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24' }}>
+                      <span className="font-semibold">🎂 Anniversaire du jour</span>
+                      <span className="text-xs" style={{ color: '#fde68a' }}>Souhaitez-lui un bon anniversaire 💜</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <img

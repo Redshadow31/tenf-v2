@@ -52,6 +52,7 @@ export default function EvaluationProgressionPage() {
   const [selectedLogin, setSelectedLogin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ProgressionResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -90,11 +91,14 @@ export default function EvaluationProgressionPage() {
   async function loadProgression(login: string) {
     setLoading(true);
     setData(null);
+    setErrorMessage(null);
     try {
       const response = await fetch(`/api/evaluations/progression?twitchLogin=${encodeURIComponent(login)}`, {
         cache: "no-store",
       });
       if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        setErrorMessage(payload?.error || "Impossible de charger la progression pour ce membre.");
         setData(null);
         return;
       }
@@ -102,6 +106,7 @@ export default function EvaluationProgressionPage() {
       setData(payload);
     } catch (error) {
       console.error("Erreur chargement progression:", error);
+      setErrorMessage("Erreur réseau lors du chargement de la progression.");
       setData(null);
     } finally {
       setLoading(false);
@@ -187,7 +192,7 @@ export default function EvaluationProgressionPage() {
 
       {!loading && selectedLogin && !data && (
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 text-gray-400">
-          Aucune donnée de progression disponible pour ce membre.
+          {errorMessage || "Aucune donnée de progression disponible pour ce membre."}
         </div>
       )}
 
