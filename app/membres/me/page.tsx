@@ -43,6 +43,8 @@ interface MemberProfile {
     integration: { integrated: boolean; date: string | null };
     parrain: string | null;
   };
+  birthday?: string | null;
+  twitchAffiliateDate?: string | null;
 }
 
 interface PendingData {
@@ -50,6 +52,8 @@ interface PendingData {
   instagram: string;
   tiktok: string;
   twitter: string;
+  birthday: string;
+  twitchAffiliateDate: string;
 }
 
 interface MonthlyStats {
@@ -108,6 +112,8 @@ export default function MyProfilePage() {
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
   const [twitter, setTwitter] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [twitchAffiliateDate, setTwitchAffiliateDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -154,6 +160,11 @@ export default function MyProfilePage() {
       setInstagram(data.pending?.instagram ?? data.member?.socials?.instagram ?? "");
       setTiktok(data.pending?.tiktok ?? data.member?.socials?.tiktok ?? "");
       setTwitter(data.pending?.twitter ?? data.member?.socials?.twitter ?? "");
+      setBirthday(data.pending?.birthday ?? (data.member?.birthday ? data.member.birthday.slice(0, 10) : ""));
+      setTwitchAffiliateDate(
+        data.pending?.twitchAffiliateDate ??
+          (data.member?.twitchAffiliateDate ? data.member.twitchAffiliateDate.slice(0, 10) : "")
+      );
     } catch (e) {
       console.error(e);
       setMember(null);
@@ -190,6 +201,8 @@ export default function MyProfilePage() {
           instagram,
           tiktok,
           twitter,
+          birthday,
+          twitchAffiliateDate,
           twitchLogin: member?.twitchLogin || selectedTwitch,
         }),
       });
@@ -410,6 +423,33 @@ export default function MyProfilePage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                  Date d'anniversaire
+                </label>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                  Date d'affiliation Twitch
+                </label>
+                <input
+                  type="date"
+                  value={twitchAffiliateDate}
+                  onChange={(e) => setTwitchAffiliateDate(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
+            </div>
+
             {submitSuccess && (
               <p className="text-sm text-green-500">Modifications soumises pour validation par le staff.</p>
             )}
@@ -449,6 +489,20 @@ export default function MyProfilePage() {
             <div>
               <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Parrain</p>
               <p className="text-sm">{member.tenfSummary.parrain || "Non renseigné"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Anniversaire</p>
+              <p className="text-sm">
+                {member.birthday ? new Date(member.birthday).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" }) : "Non renseigné"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Affiliation Twitch</p>
+              <p className="text-sm">
+                {member.twitchAffiliateDate
+                  ? new Date(member.twitchAffiliateDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
+                  : "Non renseigné"}
+              </p>
             </div>
           </div>
         </div>

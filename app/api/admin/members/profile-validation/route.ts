@@ -6,6 +6,13 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function parseDateFromDb(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed;
+}
+
 /**
  * GET - Liste les demandes de modification de profil en attente
  */
@@ -66,6 +73,8 @@ export async function POST(request: NextRequest) {
         instagram: pending.instagram || undefined,
         tiktok: pending.tiktok || undefined,
         twitter: pending.twitter || undefined,
+        birthday: parseDateFromDb(pending.birthday),
+        twitchAffiliateDate: parseDateFromDb(pending.twitch_affiliate_date),
         profileValidationStatus: "valide",
         updatedBy: admin.discordId,
       });

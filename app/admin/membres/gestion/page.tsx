@@ -65,6 +65,8 @@ interface Member {
   raidsReceived?: number; // Nombre de raids reçus ce mois
   createdAt?: string; // Date ISO de création
   integrationDate?: string; // Date ISO d'intégration
+  birthday?: string; // Date ISO anniversaire
+  twitchAffiliateDate?: string; // Date ISO affiliation Twitch
   onboardingStatus?: "a_faire" | "en_cours" | "termine";
   mentorTwitchLogin?: string;
   primaryLanguage?: string;
@@ -385,6 +387,8 @@ export default function GestionMembresPage() {
               raidsReceived: raidStats.received,
               createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
               integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
+              birthday: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : new Date(member.birthday).toISOString()) : undefined,
+              twitchAffiliateDate: member.twitchAffiliateDate ? (typeof member.twitchAffiliateDate === 'string' ? member.twitchAffiliateDate : new Date(member.twitchAffiliateDate).toISOString()) : undefined,
               onboardingStatus: member.onboardingStatus,
               mentorTwitchLogin: member.mentorTwitchLogin,
               primaryLanguage: member.primaryLanguage,
@@ -535,6 +539,8 @@ export default function GestionMembresPage() {
           twitchStatus: centralMember?.twitchStatus,
           createdAt: centralMember?.createdAt ? (typeof centralMember.createdAt === 'string' ? centralMember.createdAt : new Date(centralMember.createdAt).toISOString()) : undefined,
           integrationDate: centralMember?.integrationDate ? (typeof centralMember.integrationDate === 'string' ? centralMember.integrationDate : new Date(centralMember.integrationDate).toISOString()) : undefined,
+          birthday: centralMember?.birthday ? (typeof centralMember.birthday === 'string' ? centralMember.birthday : new Date(centralMember.birthday).toISOString()) : undefined,
+          twitchAffiliateDate: centralMember?.twitchAffiliateDate ? (typeof centralMember.twitchAffiliateDate === 'string' ? centralMember.twitchAffiliateDate : new Date(centralMember.twitchAffiliateDate).toISOString()) : undefined,
           onboardingStatus: centralMember?.onboardingStatus,
           mentorTwitchLogin: centralMember?.mentorTwitchLogin,
           primaryLanguage: centralMember?.primaryLanguage,
@@ -945,6 +951,8 @@ export default function GestionMembresPage() {
     isVip?: boolean;
     createdAt?: string;
     integrationDate?: string;
+    birthday?: string;
+    twitchAffiliateDate?: string;
     onboardingStatus?: "a_faire" | "en_cours" | "termine";
     mentorTwitchLogin?: string;
     primaryLanguage?: string;
@@ -986,6 +994,8 @@ export default function GestionMembresPage() {
       isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
       createdAt: updatedMember.createdAt || oldMember.createdAt,
       integrationDate: updatedMember.integrationDate || oldMember.integrationDate,
+      birthday: updatedMember.birthday || oldMember.birthday,
+      twitchAffiliateDate: updatedMember.twitchAffiliateDate || oldMember.twitchAffiliateDate,
       onboardingStatus: updatedMember.onboardingStatus !== undefined ? updatedMember.onboardingStatus : oldMember.onboardingStatus,
       mentorTwitchLogin: updatedMember.mentorTwitchLogin !== undefined ? updatedMember.mentorTwitchLogin : oldMember.mentorTwitchLogin,
       primaryLanguage: updatedMember.primaryLanguage !== undefined ? updatedMember.primaryLanguage : oldMember.primaryLanguage,
@@ -1020,6 +1030,8 @@ export default function GestionMembresPage() {
             description: mergedMember.description,
             createdAt: mergedMember.createdAt,
             integrationDate: mergedMember.integrationDate,
+            birthday: mergedMember.birthday,
+            twitchAffiliateDate: mergedMember.twitchAffiliateDate,
             onboardingStatus: mergedMember.onboardingStatus,
             mentorTwitchLogin: mergedMember.mentorTwitchLogin,
             primaryLanguage: mergedMember.primaryLanguage,
@@ -2222,6 +2234,8 @@ export default function GestionMembresPage() {
               isVip: selectedMember.isVip,
               createdAt: selectedMember.createdAt,
               integrationDate: selectedMember.integrationDate,
+              birthday: selectedMember.birthday,
+              twitchAffiliateDate: selectedMember.twitchAffiliateDate,
               onboardingStatus: selectedMember.onboardingStatus,
               mentorTwitchLogin: selectedMember.mentorTwitchLogin,
               primaryLanguage: selectedMember.primaryLanguage,

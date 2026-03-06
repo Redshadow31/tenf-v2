@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Vérifier s'il y a des modifications en attente
     const { data: pending } = await supabaseAdmin
       .from("member_profile_pending")
-      .select("description, instagram, tiktok, twitter")
+      .select("description, instagram, tiktok, twitter, birthday, twitch_affiliate_date")
       .eq("twitch_login", member.twitchLogin.toLowerCase())
       .eq("status", "pending")
       .single();
@@ -77,6 +77,8 @@ export async function GET(request: NextRequest) {
           tiktok: member.tiktok || "",
           twitter: member.twitter || "",
         },
+        birthday: member.birthday ? new Date(member.birthday).toISOString() : null,
+        twitchAffiliateDate: member.twitchAffiliateDate ? new Date(member.twitchAffiliateDate).toISOString() : null,
         tenfSummary: {
           role: member.role,
           status: member.isActive ? "Actif" : "Inactif",
@@ -97,6 +99,8 @@ export async function GET(request: NextRequest) {
             instagram: pending.instagram || "",
             tiktok: pending.tiktok || "",
             twitter: pending.twitter || "",
+            birthday: pending.birthday || "",
+            twitchAffiliateDate: pending.twitch_affiliate_date || "",
           }
         : null,
     });

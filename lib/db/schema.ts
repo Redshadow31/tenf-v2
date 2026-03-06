@@ -89,6 +89,8 @@ export const members = pgTable('members', {
   instagram: text('instagram'),
   tiktok: text('tiktok'),
   twitter: text('twitter'),
+  birthday: date('birthday'),
+  twitchAffiliateDate: date('twitch_affiliate_date'),
   
   // Statut de validation du profil (pour affichage sur /membres)
   profileValidationStatus: text('profile_validation_status').default('non_soumis'), // 'non_soumis' | 'en_cours_examen' | 'valide'
@@ -356,6 +358,8 @@ export const memberProfilePending = pgTable('member_profile_pending', {
   instagram: text('instagram'),
   tiktok: text('tiktok'),
   twitter: text('twitter'),
+  birthday: date('birthday'),
+  twitchAffiliateDate: date('twitch_affiliate_date'),
   status: text('status').notNull().default('pending'), // 'pending' | 'approved' | 'rejected'
   submittedAt: timestamp('submitted_at').defaultNow(),
   reviewedAt: timestamp('reviewed_at'),

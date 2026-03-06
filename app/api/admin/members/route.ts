@@ -178,6 +178,8 @@ export async function POST(request: NextRequest) {
       badges,
       description,
       customBio,
+      birthday,
+      twitchAffiliateDate,
       onboardingStatus,
       mentorTwitchLogin,
       primaryLanguage,
@@ -235,6 +237,8 @@ export async function POST(request: NextRequest) {
       badges: normalizedBadges || [],
       description,
       customBio,
+      birthday: birthday ? new Date(birthday) : undefined,
+      twitchAffiliateDate: twitchAffiliateDate ? new Date(twitchAffiliateDate) : undefined,
       profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
       onboardingStatus: onboardingStatus || "a_faire",
       mentorTwitchLogin,
@@ -429,6 +433,20 @@ export async function PUT(request: NextRequest) {
         updates.nextReviewAt = new Date(updates.nextReviewAt);
       }
     }
+    if (updates.birthday !== undefined) {
+      if (updates.birthday === "" || updates.birthday === null) {
+        updates.birthday = undefined;
+      } else if (typeof updates.birthday === "string") {
+        updates.birthday = new Date(updates.birthday);
+      }
+    }
+    if (updates.twitchAffiliateDate !== undefined) {
+      if (updates.twitchAffiliateDate === "" || updates.twitchAffiliateDate === null) {
+        updates.twitchAffiliateDate = undefined;
+      } else if (typeof updates.twitchAffiliateDate === "string") {
+        updates.twitchAffiliateDate = new Date(updates.twitchAffiliateDate);
+      }
+    }
     
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     // La gestion de roleHistory est faite automatiquement dans updateMemberData
@@ -555,6 +573,8 @@ export async function PUT(request: NextRequest) {
     if (updates.countryCode !== undefined) fieldsChanged.push("countryCode");
     if (updates.lastReviewAt !== undefined) fieldsChanged.push("lastReviewAt");
     if (updates.nextReviewAt !== undefined) fieldsChanged.push("nextReviewAt");
+    if (updates.birthday !== undefined) fieldsChanged.push("birthday");
+    if (updates.twitchAffiliateDate !== undefined) fieldsChanged.push("twitchAffiliateDate");
 
     // Logger l'action avec before/after optimisés (état complet avant/après)
     const { previousValue, newValue } = prepareAuditValues(existingMember, updatedMember);

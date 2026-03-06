@@ -12,6 +12,8 @@ interface PendingItem {
   instagram: string | null;
   tiktok: string | null;
   twitter: string | null;
+  birthday: string | null;
+  twitch_affiliate_date: string | null;
   status: string;
   submitted_at: string;
 }
@@ -151,6 +153,20 @@ export default function ValidationProfilPage() {
                     <div>
                       <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Twitter:</span>
                       <span className="ml-2 text-sm">{item.twitter}</span>
+                    </div>
+                  )}
+                  {item.birthday && (
+                    <div>
+                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Anniversaire:</span>
+                      <span className="ml-2 text-sm">{new Date(item.birthday).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}</span>
+                    </div>
+                  )}
+                  {item.twitch_affiliate_date && (
+                    <div>
+                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Affiliation Twitch:</span>
+                      <span className="ml-2 text-sm">
+                        {new Date(item.twitch_affiliate_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                      </span>
                     </div>
                   )}
                 </div>

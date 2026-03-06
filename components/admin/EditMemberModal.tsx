@@ -36,6 +36,8 @@ interface Member {
   isVip?: boolean;
   createdAt?: string; // Date ISO de création (membre depuis)
   integrationDate?: string; // Date ISO d'intégration
+  birthday?: string; // Date ISO anniversaire
+  twitchAffiliateDate?: string; // Date ISO affiliation Twitch
   onboardingStatus?: "a_faire" | "en_cours" | "termine";
   mentorTwitchLogin?: string;
   primaryLanguage?: string;
@@ -617,6 +619,46 @@ export default function EditMemberModal({
                       )}
                       <p className="text-xs text-gray-500 mt-1">
                         Date de la réunion d'intégration validée
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Date d'anniversaire
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.birthday ? formData.birthday.split('T')[0] : ""}
+                        onChange={(e) => {
+                          const dateValue = e.target.value;
+                          setFormData({
+                            ...formData,
+                            birthday: dateValue ? new Date(dateValue).toISOString() : undefined,
+                          });
+                        }}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Utilisée pour les mises en avant anniversaire du jour
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Date d'affiliation Twitch
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.twitchAffiliateDate ? formData.twitchAffiliateDate.split('T')[0] : ""}
+                        onChange={(e) => {
+                          const dateValue = e.target.value;
+                          setFormData({
+                            ...formData,
+                            twitchAffiliateDate: dateValue ? new Date(dateValue).toISOString() : undefined,
+                          });
+                        }}
+                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Date d'obtention du statut affilié Twitch
                       </p>
                     </div>
                     <div className="relative">

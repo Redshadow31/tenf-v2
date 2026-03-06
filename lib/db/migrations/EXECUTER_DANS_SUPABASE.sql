@@ -34,6 +34,23 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'profile_validation_status') THEN
     ALTER TABLE "members" ADD COLUMN "profile_validation_status" text DEFAULT 'non_soumis';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'birthday') THEN
+    ALTER TABLE "members" ADD COLUMN "birthday" date;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'twitch_affiliate_date') THEN
+    ALTER TABLE "members" ADD COLUMN "twitch_affiliate_date" date;
+  END IF;
+END $$;
+
+-- 2b. Colonnes anniversaires sur les demandes en attente
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'member_profile_pending' AND column_name = 'birthday') THEN
+    ALTER TABLE "member_profile_pending" ADD COLUMN "birthday" date;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'member_profile_pending' AND column_name = 'twitch_affiliate_date') THEN
+    ALTER TABLE "member_profile_pending" ADD COLUMN "twitch_affiliate_date" date;
+  END IF;
 END $$;
 
 -- 3. Valider tous les membres actifs (visibles sur /membres)

@@ -94,6 +94,8 @@ export interface MemberData {
   instagram?: string;
   tiktok?: string;
   twitter?: string;
+  birthday?: Date;
+  twitchAffiliateDate?: Date;
   profileValidationStatus?: 'non_soumis' | 'en_cours_examen' | 'valide';
   
   // Métadonnées

@@ -9,6 +9,13 @@ export const revalidate = 0;
 
 const MAX_DESCRIPTION = 800;
 
+function normalizeDateInput(value?: string): string | null {
+  const raw = (value || "").trim();
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return raw;
+}
+
 /**
  * POST - Soumet les modifications de profil (description, réseaux) pour validation admin
  */
@@ -16,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const body = await request.json();
-    const { description, instagram, tiktok, twitter, twitchLogin } = body;
+    const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, twitchLogin } = body;
 
     let member = null;
     if (session?.user?.discordId) {
@@ -34,6 +41,15 @@ export async function POST(request: NextRequest) {
     }
 
     const desc = (description || "").trim();
+    const normalizedBirthday = normalizeDateInput(birthday);
+    const normalizedAffiliateDate = normalizeDateInput(twitchAffiliateDate);
+    if ((birthday || "").trim() && !normalizedBirthday) {
+      return NextResponse.json({ error: "Format date d'anniversaire invalide (YYYY-MM-DD)" }, { status: 400 });
+    }
+    if ((twitchAffiliateDate || "").trim() && !normalizedAffiliateDate) {
+      return NextResponse.json({ error: "Format date d'affiliation Twitch invalide (YYYY-MM-DD)" }, { status: 400 });
+    }
+
     if (desc.length > MAX_DESCRIPTION) {
       return NextResponse.json(
         { error: `La description ne doit pas dépasser ${MAX_DESCRIPTION} caractères` },
@@ -58,6 +74,8 @@ export async function POST(request: NextRequest) {
           instagram: (instagram || "").trim() || null,
           tiktok: (tiktok || "").trim() || null,
           twitter: (twitter || "").trim() || null,
+          birthday: normalizedBirthday,
+          twitch_affiliate_date: normalizedAffiliateDate,
           submitted_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
@@ -70,6 +88,8 @@ export async function POST(request: NextRequest) {
         instagram: (instagram || "").trim() || null,
         tiktok: (tiktok || "").trim() || null,
         twitter: (twitter || "").trim() || null,
+        birthday: normalizedBirthday,
+        twitch_affiliate_date: normalizedAffiliateDate,
         status: "pending",
       });
     }

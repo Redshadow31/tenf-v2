@@ -361,6 +361,8 @@ export class MemberRepository {
       instagram: row.instagram || undefined,
       tiktok: row.tiktok || undefined,
       twitter: row.twitter || undefined,
+      birthday: row.birthday ? new Date(row.birthday) : undefined,
+      twitchAffiliateDate: row.twitch_affiliate_date ? new Date(row.twitch_affiliate_date) : undefined,
       profileValidationStatus: row.profile_validation_status || 'non_soumis',
       createdAt: row.created_at ? new Date(row.created_at) : undefined,
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
@@ -403,6 +405,24 @@ export class MemberRepository {
     if (member.instagram !== undefined) record.instagram = member.instagram;
     if (member.tiktok !== undefined) record.tiktok = member.tiktok;
     if (member.twitter !== undefined) record.twitter = member.twitter;
+    if (member.birthday !== undefined) {
+      if (member.birthday === null) {
+        record.birthday = null;
+      } else if (member.birthday instanceof Date) {
+        record.birthday = member.birthday.toISOString().slice(0, 10);
+      } else {
+        record.birthday = String(member.birthday).slice(0, 10);
+      }
+    }
+    if (member.twitchAffiliateDate !== undefined) {
+      if (member.twitchAffiliateDate === null) {
+        record.twitch_affiliate_date = null;
+      } else if (member.twitchAffiliateDate instanceof Date) {
+        record.twitch_affiliate_date = member.twitchAffiliateDate.toISOString().slice(0, 10);
+      } else {
+        record.twitch_affiliate_date = String(member.twitchAffiliateDate).slice(0, 10);
+      }
+    }
     if (member.profileValidationStatus !== undefined) record.profile_validation_status = member.profileValidationStatus;
     if (member.updatedBy !== undefined) record.updated_by = member.updatedBy;
     if (member.integrationDate !== undefined) {
