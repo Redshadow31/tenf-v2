@@ -363,6 +363,7 @@ export class MemberRepository {
       twitter: row.twitter || undefined,
       birthday: row.birthday ? new Date(row.birthday) : undefined,
       twitchAffiliateDate: row.twitch_affiliate_date ? new Date(row.twitch_affiliate_date) : undefined,
+      shadowbanLives: row.shadowban_lives === true,
       profileValidationStatus: row.profile_validation_status || 'non_soumis',
       createdAt: row.created_at ? new Date(row.created_at) : undefined,
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
@@ -423,6 +424,7 @@ export class MemberRepository {
         record.twitch_affiliate_date = String(member.twitchAffiliateDate).slice(0, 10);
       }
     }
+    if (member.shadowbanLives !== undefined) record.shadowban_lives = member.shadowbanLives;
     if (member.profileValidationStatus !== undefined) record.profile_validation_status = member.profileValidationStatus;
     if (member.updatedBy !== undefined) record.updated_by = member.updatedBy;
     if (member.integrationDate !== undefined) {

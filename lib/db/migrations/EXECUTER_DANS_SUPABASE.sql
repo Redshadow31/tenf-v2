@@ -40,6 +40,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'twitch_affiliate_date') THEN
     ALTER TABLE "members" ADD COLUMN "twitch_affiliate_date" date;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'shadowban_lives') THEN
+    ALTER TABLE "members" ADD COLUMN "shadowban_lives" boolean DEFAULT false;
+  END IF;
 END $$;
 
 -- 2b. Colonnes anniversaires sur les demandes en attente

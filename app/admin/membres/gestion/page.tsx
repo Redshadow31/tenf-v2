@@ -67,6 +67,7 @@ interface Member {
   integrationDate?: string; // Date ISO d'intégration
   birthday?: string; // Date ISO anniversaire
   twitchAffiliateDate?: string; // Date ISO affiliation Twitch
+  shadowbanLives?: boolean;
   onboardingStatus?: "a_faire" | "en_cours" | "termine";
   mentorTwitchLogin?: string;
   primaryLanguage?: string;
@@ -381,6 +382,7 @@ export default function GestionMembresPage() {
               twitchStatus: member.twitchStatus,
               badges: member.badges || [],
               isVip: member.isVip || false,
+              shadowbanLives: member.shadowbanLives || false,
               isModeratorJunior: member.badges?.includes("Modérateur en formation") || member.badges?.includes("Modérateur Junior") || false,
               isModeratorMentor: member.badges?.includes("Modérateur") || member.badges?.includes("Modérateur Mentor") || false,
               raidsDone: raidStats.done,
@@ -532,6 +534,7 @@ export default function GestionMembresPage() {
           siteUsername: centralMember?.siteUsername,
           badges: centralMember?.badges || discordMember.badges || [],
           isVip: centralMember?.isVip || discordMember.isVip || false,
+          shadowbanLives: centralMember?.shadowbanLives || false,
           isModeratorJunior: discordMember.isModeratorJunior,
           isModeratorMentor: discordMember.isModeratorMentor,
           description: centralMember?.description,
@@ -949,6 +952,7 @@ export default function GestionMembresPage() {
     description?: string;
     badges?: string[];
     isVip?: boolean;
+    shadowbanLives?: boolean;
     createdAt?: string;
     integrationDate?: string;
     birthday?: string;
@@ -992,6 +996,7 @@ export default function GestionMembresPage() {
       notesInternes: updatedMember.notesInternes || oldMember.notesInternes,
       badges: updatedMember.badges || oldMember.badges,
       isVip: updatedMember.isVip !== undefined ? updatedMember.isVip : oldMember.isVip,
+      shadowbanLives: updatedMember.shadowbanLives !== undefined ? updatedMember.shadowbanLives : oldMember.shadowbanLives,
       createdAt: updatedMember.createdAt || oldMember.createdAt,
       integrationDate: updatedMember.integrationDate || oldMember.integrationDate,
       birthday: updatedMember.birthday || oldMember.birthday,
@@ -1026,6 +1031,7 @@ export default function GestionMembresPage() {
             role: toCanonicalMemberRole(mergedMember.role),
             isActive: mergedMember.statut === "Actif",
             isVip: mergedMember.isVip || false,
+            shadowbanLives: mergedMember.shadowbanLives || false,
             badges: mergedMember.badges || [],
             description: mergedMember.description,
             createdAt: mergedMember.createdAt,
@@ -2232,6 +2238,7 @@ export default function GestionMembresPage() {
               notesInternes: selectedMember.description,
               badges: selectedMember.badges,
               isVip: selectedMember.isVip,
+              shadowbanLives: selectedMember.shadowbanLives,
               createdAt: selectedMember.createdAt,
               integrationDate: selectedMember.integrationDate,
               birthday: selectedMember.birthday,

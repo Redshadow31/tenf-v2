@@ -34,6 +34,7 @@ interface Member {
   description?: string;
   badges?: string[];
   isVip?: boolean;
+  shadowbanLives?: boolean;
   createdAt?: string; // Date ISO de création (membre depuis)
   integrationDate?: string; // Date ISO d'intégration
   birthday?: string; // Date ISO anniversaire
@@ -503,6 +504,23 @@ export default function EditMemberModal({
                         />
                         <span className="text-sm text-gray-300">Membre VIP</span>
                       </label>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">
+                        Shadowban Lives
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.shadowbanLives || false}
+                          onChange={(e) => setFormData({ ...formData, shadowbanLives: e.target.checked })}
+                          className="w-4 h-4 text-purple-600 bg-[#0e0e10] border-gray-700 rounded focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-300">Masquer ce membre uniquement sur la page /lives</span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Le membre reste visible ailleurs sur le site.
+                      </p>
                     </div>
                   </div>
                 </div>

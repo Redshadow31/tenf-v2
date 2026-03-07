@@ -91,6 +91,7 @@ export const members = pgTable('members', {
   twitter: text('twitter'),
   birthday: date('birthday'),
   twitchAffiliateDate: date('twitch_affiliate_date'),
+  shadowbanLives: boolean('shadowban_lives').default(false),
   
   // Statut de validation du profil (pour affichage sur /membres)
   profileValidationStatus: text('profile_validation_status').default('non_soumis'), // 'non_soumis' | 'en_cours_examen' | 'valide'

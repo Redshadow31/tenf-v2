@@ -96,6 +96,7 @@ export interface MemberData {
   twitter?: string;
   birthday?: Date;
   twitchAffiliateDate?: Date;
+  shadowbanLives?: boolean;
   profileValidationStatus?: 'non_soumis' | 'en_cours_examen' | 'valide';
   
   // Métadonnées

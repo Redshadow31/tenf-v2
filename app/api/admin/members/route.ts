@@ -180,6 +180,7 @@ export async function POST(request: NextRequest) {
       customBio,
       birthday,
       twitchAffiliateDate,
+      shadowbanLives,
       onboardingStatus,
       mentorTwitchLogin,
       primaryLanguage,
@@ -239,6 +240,7 @@ export async function POST(request: NextRequest) {
       customBio,
       birthday: birthday ? new Date(birthday) : undefined,
       twitchAffiliateDate: twitchAffiliateDate ? new Date(twitchAffiliateDate) : undefined,
+      shadowbanLives: shadowbanLives === true,
       profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
       onboardingStatus: onboardingStatus || "a_faire",
       mentorTwitchLogin,
@@ -447,6 +449,9 @@ export async function PUT(request: NextRequest) {
         updates.twitchAffiliateDate = new Date(updates.twitchAffiliateDate);
       }
     }
+    if (updates.shadowbanLives !== undefined) {
+      updates.shadowbanLives = Boolean(updates.shadowbanLives);
+    }
     
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     // La gestion de roleHistory est faite automatiquement dans updateMemberData
@@ -575,6 +580,7 @@ export async function PUT(request: NextRequest) {
     if (updates.nextReviewAt !== undefined) fieldsChanged.push("nextReviewAt");
     if (updates.birthday !== undefined) fieldsChanged.push("birthday");
     if (updates.twitchAffiliateDate !== undefined) fieldsChanged.push("twitchAffiliateDate");
+    if (updates.shadowbanLives !== undefined) fieldsChanged.push("shadowbanLives");
 
     // Logger l'action avec before/after optimisés (état complet avant/après)
     const { previousValue, newValue } = prepareAuditValues(existingMember, updatedMember);

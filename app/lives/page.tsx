@@ -167,6 +167,9 @@ export default function LivesPage() {
           if (!member) {
             return null;
           }
+          if (member.shadowbanLives === true) {
+            return null;
+          }
 
           // Afficher le pseudo de la chaîne Twitch (userName depuis l'API streams, sinon login)
           const twitchDisplayName = stream.userName || member.twitchLogin;

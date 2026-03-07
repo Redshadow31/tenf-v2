@@ -124,6 +124,7 @@ export async function GET() {
           role: member.role,
           isVip: member.isVip,
           isActive: member.isActive, // Inclure isActive pour les filtres côté client
+          shadowbanLives: member.shadowbanLives === true,
           vipBadge: vipBadge,
           badges: member.badges || [],
           discordId: member.discordId,
@@ -147,6 +148,7 @@ export async function GET() {
           role: member.role || 'Affilié',
           isVip: member.isVip || false,
           isActive: member.isActive !== false,
+          shadowbanLives: member.shadowbanLives === true,
           vipBadge: undefined,
           badges: member.badges || [],
           discordId: member.discordId,
