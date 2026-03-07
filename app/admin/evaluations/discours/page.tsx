@@ -59,6 +59,14 @@ export default function DiscoursPage() {
             <strong className="text-[#9146ff]">💜 Durée totale :</strong> 45-60 minutes | <strong className="text-[#9146ff]">📊 12 sections</strong> | <strong className="text-[#9146ff]">🎯 Objectif :</strong> Accueillir et intégrer les nouveaux membres
           </p>
         </div>
+        <div className="mt-5">
+          <Link
+            href="/admin/evaluations/discours/changement"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-colors"
+          >
+            ✍️ Ouvrir le module de changement
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

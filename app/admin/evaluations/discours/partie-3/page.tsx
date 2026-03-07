@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  renderConseilsOverride,
+  renderDiscoursOverride,
+  renderPointsOverride,
+  useDiscoursCustomContent,
+} from "@/components/admin/discours/customText";
 
 export default function Partie3Page() {
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const custom = useDiscoursCustomContent("partie-3");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,6 +54,7 @@ export default function Partie3Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Le Spotlight : mise en avant structurée et guidée</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">La Communauté active : entraide au quotidien</li>
@@ -54,10 +62,12 @@ export default function Partie3Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">VIP Élite NON ACHETABLE - basé sur l&apos;entraide</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Indépendant des chiffres Twitch</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Faire partie de la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, ce n&apos;est pas simplement rejoindre un serveur Discord de plus. C&apos;est entrer dans un <span style={{color: '#7b4fd6'}}><strong>véritable système d&apos;entraide humaine</strong></span>, pensé pour accompagner les personnes avant les chiffres.</p>
                 <p>On vous a déjà parlé du <span style={{color: '#7b4fd6'}}><strong>Spotlight</strong></span> : une mise en avant guidée, structurée et accessible à tous, sans condition de taille de chaîne. Mais ce n&apos;est qu&apos;une partie de ce qui fait que la New Family est différente.</p>
@@ -68,10 +78,12 @@ export default function Partie3Page() {
                 <p>Et c&apos;est très important de le dire clairement : le <span style={{color: '#7b4fd6'}}><strong>VIP Élité ne s&apos;achète pas</strong></span>. Il ne dépend pas des chiffres Twitch, du nombre de followers ou des stats. Il se mérite par la régularité, la bienveillance et l&apos;esprit d&apos;entraide.</p>
                 <p>À la New Family, la reconnaissance ne se mesure pas en chiffres, mais en <span style={{color: '#7b4fd6'}}><strong>présence humaine</strong></span>. Et c&apos;est pour ça que ce n&apos;est pas juste un Discord de plus.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>⚠️ INSISTEZ LOURDEMENT</strong> : VIP Élite NON ACHETABLE</li>
                 <li><strong>💜 Valorisez</strong> l&apos;aspect humain vs les chiffres</li>
@@ -79,6 +91,7 @@ export default function Partie3Page() {
                 <li><strong>🤝 Expliquez</strong> que c&apos;est basé sur l&apos;entraide régulière</li>
                 <li><strong>✨ Mentionnez</strong> le badge exclusif comme reconnaissance</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/rTr0F4GN" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 7 HD</a>
@@ -99,16 +112,19 @@ export default function Partie3Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Comment gagner des points (actions quotidiennes)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">La boutique Spotlight (analyse, interview, posts, défis)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Démonstration du salon bonus-journalier et commande /journalier</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ce n&apos;est pas une compétition - c&apos;est une valorisation</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Dans la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, on part d&apos;un principe simple : l&apos;entraide mérite d&apos;être reconnue. Chaque action positive que vous faites pour la communauté vous rapporte des <strong>points</strong>, non pas pour créer une compétition, mais pour <span style={{color: '#7b4fd6'}}><strong>valoriser votre implication</strong></span>.</p>
                 <p>Ces points se gagnent naturellement, en faisant ce que la New Family encourage déjà : être présent, aider, participer, soutenir.</p>
@@ -119,10 +135,12 @@ export default function Partie3Page() {
                 <p>Et on insiste vraiment sur un point : ce système de points <span style={{color: '#7b4fd6'}}><strong>n&apos;est pas une compétition</strong></span>. Personne n&apos;est en retard, personne n&apos;est obligé de tout faire. C&apos;est un outil ludique, pensé pour récompenser l&apos;implication, encourager les bonnes habitudes et rendre l&apos;entraide encore plus vivante.</p>
                 <p>Ici, chaque point raconte une action positive. Et ça, c&apos;est très New Family.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎥 DÉMONSTRATION EN DIRECT</strong> de la commande /journalier</li>
                 <li><strong>📍 Montrez le salon</strong> ⁠🗓・bonus-journalier sur Discord</li>
@@ -130,6 +148,7 @@ export default function Partie3Page() {
                 <li><strong>🛒 Mentionnez</strong> où trouver la boutique Spotlight</li>
                 <li><strong>⚖️ Rassurez</strong> : ce n&apos;est pas une course aux points</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/g1SurR2C" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 8 HD</a>
@@ -150,6 +169,7 @@ export default function Partie3Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Intégration officielle après la réunion</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ajout à la liste des membres actifs (serveur + site)</li>
@@ -158,10 +178,12 @@ export default function Partie3Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Pas une course - avancer à son rythme</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Partage des liens Twitch en vocal</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-4">
                 <div>
                   <h4 className="text-lg font-bold text-amber-300 mb-2">🌍 <strong>Explorez les univers</strong></h4>
@@ -230,10 +252,12 @@ export default function Partie3Page() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎯 Insistez</strong> : c&apos;est un réseau humain, pas des chiffres</li>
                 <li><strong>⏰ Rassurez</strong> : pas besoin de tout faire aujourd&apos;hui</li>
@@ -242,6 +266,7 @@ export default function Partie3Page() {
                 <li><strong>💜 Valorisez</strong> les découvertes et amitiés créées par ce système</li>
                 <li><strong>✅ Proposez votre aide</strong> si quelqu&apos;un n&apos;est pas suivi en retour</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/66AmNT6N" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 9 HD</a>

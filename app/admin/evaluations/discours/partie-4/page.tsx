@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  renderConseilsOverride,
+  renderDiscoursOverride,
+  renderPointsOverride,
+  useDiscoursCustomContent,
+} from "@/components/admin/discours/customText";
 
 export default function Partie4Page() {
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const custom = useDiscoursCustomContent("partie-4");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,16 +54,19 @@ export default function Partie4Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ce qu&apos;on peut faire : participer, aider, raids, conseils, événements</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ce qui compte vraiment : authenticité, présence, écoute, aide</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Message central : on mesure l&apos;implication à l&apos;humanité</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Pas de course, pas de compétition</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Comment progresser naturellement dans la New Family ?</p>
                 <p><strong>Ce que tu peux faire :</strong></p>
@@ -77,16 +87,19 @@ export default function Partie4Page() {
                 <p><strong>ICI, ON NE MESURE PAS TON IMPLICATION AUX CHIFFRES, MAIS À TON HUMANITÉ.</strong></p>
                 <p>Pas de course, pas de compétition. Chacun avance à son rythme.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>💜 INSISTEZ LOURDEMENT</strong> sur le message central</li>
                 <li><strong>🎯 Valorisez</strong> les actions humaines vs les chiffres</li>
                 <li><strong>🤝 Donnez des exemples concrets</strong> d&apos;aide entre membres</li>
                 <li><strong>✨ Rassurez</strong> : chacun à son rythme</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/ZeamRQ5a" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 10 HD</a>
@@ -107,16 +120,19 @@ export default function Partie4Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Étape 1 : Dire de lire le règlement</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Étape 2 : Choisir son rôle (Communauté ou Streamer)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Étape 3 : Réunion d&apos;intégration obligatoire</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">On privilégie la qualité humaine</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Sur la New Family, on ne recrute pas au hasard. On cherche des gens qui partagent nos valeurs : <strong>l&apos;entraide, la bienveillance et l&apos;envie de s&apos;impliquer sincèrement</strong>.</p>
                 <p>Si tu veux inviter quelqu&apos;un, voici ce que tu peux lui dire :</p>
@@ -128,16 +144,19 @@ export default function Partie4Page() {
                 C&apos;est là qu&apos;ils rencontreront l&apos;équipe, découvriront tous nos outils et se sentiront vraiment accueillis !</p>
                 <p><strong>On privilégie la qualité humaine, les liens sincères et l&apos;envie de grandir ensemble.</strong>&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎯 Insistez</strong> : qualité &gt; quantité</li>
                 <li><strong>📖 Expliquez</strong> l&apos;importance du règlement</li>
                 <li><strong>🤝 Valorisez</strong> le rôle de parrain/marraine</li>
                 <li><strong>✅ Rassurez</strong> : la réunion d&apos;intégration est conviviale</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/lH052eMD" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 11 HD</a>
@@ -158,6 +177,7 @@ export default function Partie4Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ouvrir aux questions des participants (3-5 min)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Expliquer le processus d&apos;ajout (rôle actif, site web)</li>
@@ -166,10 +186,12 @@ export default function Partie4Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Sections du site : Documentation, Spotlight, Équipe, Créateurs, Lives</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Encourager à profiter de la communauté</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré (SLIDES 16+17 FUSIONNÉES)</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Et voilà, on arrive à la fin de cette réunion d&apos;intégration. Merci à vous d&apos;avoir été présents, d&apos;avoir écouté, posé des questions, et surtout d&apos;avoir choisi de rejoindre la New Family.</p>
                 
@@ -209,10 +231,12 @@ export default function Partie4Page() {
                 
                 <p><strong>Rejoins-nous et fais partie de l&apos;aventure New Family !</strong> 💜&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>⏰ Prenez le temps</strong> pour les questions - c&apos;est important</li>
                 <li><strong>📝 Notez</strong> les questions récurrentes pour améliorer le guide</li>
@@ -222,6 +246,7 @@ export default function Partie4Page() {
                 <li><strong>🎯 Montrez</strong> où trouver la liste des créateurs sur le site</li>
                 <li><strong>💜 Terminez sur une note chaleureuse</strong> et accueillante</li>
               </ul>
+              )}
             </div>
 
             <div className="flex gap-4 mt-4">

@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  renderConseilsOverride,
+  renderDiscoursOverride,
+  renderPointsOverride,
+  useDiscoursCustomContent,
+} from "@/components/admin/discours/customText";
 
 export default function Partie2Page() {
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const custom = useDiscoursCustomContent("partie-2");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,6 +54,7 @@ export default function Partie2Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">6 rôles communautaires : Créateurs Affiliés, En Développement, Jeunes Créateurs</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Créateurs en Pause, Communautés, Les P&apos;tits Jeunes</li>
@@ -54,10 +62,12 @@ export default function Partie2Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Pas de hiérarchie, pas de compétition</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Les rôles permettent de mieux accompagner chacun</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Dans la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, on a mis en place des <strong>rôles</strong>, mais il y a une chose très importante à comprendre dès le départ : ici, <span style={{color: '#7b4fd6'}}><strong>chacun a sa place</strong></span>.</p>
                 <p>Les rôles ne servent <strong>ni à classer</strong>, ni à comparer, ni à mettre la pression. Ils servent simplement à comprendre <strong>où chacun en est</strong>, pour pouvoir mieux accompagner chaque membre selon <strong>son rythme</strong>, <strong>sa situation</strong> et <strong>ses envies</strong>.</p>
@@ -71,10 +81,12 @@ export default function Partie2Page() {
                 <p>Pour résumer : les rôles évoluent, rien n&apos;est figé, et tout est pensé pour <span style={{color: '#7b4fd6'}}><strong>accompagner</strong></span>, jamais pour juger.</p>
                 <p>Ici, on avance <span style={{color: '#7b4fd6'}}><strong>ensemble</strong></span>, à son rythme — et c&apos;est ce qui fait la richesse de la New Family.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎨 Référez-vous aux couleurs</strong> des rôles sur la slide</li>
                 <li><strong>⚖️ Insistez sur l&apos;égalité</strong> - pas de hiérarchie</li>
@@ -82,6 +94,7 @@ export default function Partie2Page() {
                 <li><strong>🔄 Mentionnez</strong> que les rôles peuvent évoluer</li>
                 <li><strong>💜 Rassurer</strong> : c&apos;est pour mieux accompagner, pas pour juger</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/1aaW6czY" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 4 HD</a>
@@ -102,6 +115,7 @@ export default function Partie2Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Le Spotlight remplace l&apos;ancien &quot;Live Gagnant&quot;</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">C&apos;est une heure guidée et structurée</li>
@@ -109,10 +123,12 @@ export default function Partie2Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ce n&apos;est pas un examen - c&apos;est VOTRE moment</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Accessible à tous (plus de prérequis)</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Le <span style={{color: '#7b4fd6'}}><strong>Spotlight New Family</strong></span> est le système phare de la communauté. Il a remplacé l&apos;ancien concept du *Live Gagnant*, avec une idée très claire : <span style={{color: '#7b4fd6'}}><strong>vous mettre en lumière, mais de la bonne manière</strong></span>.</p>
                 <p>Le Spotlight n&apos;est pas une simple mise en avant. C&apos;est <span style={{color: '#7b4fd6'}}><strong>une heure guidée, structurée et bienveillante</strong></span>, pensée pour vous aider à :</p>
@@ -127,10 +143,12 @@ export default function Partie2Page() {
                 <p>Un guide complet existe pour vous accompagner pas à pas. Il n&apos;est pas là pour vous brider, mais pour vous rassurer et vous aider à faire de ce moment une expérience <span style={{color: '#7b4fd6'}}><strong>douce, humaine et positive</strong></span>.</p>
                 <p>Le Spotlight, c&apos;est un <span style={{color: '#7b4fd6'}}><strong>tremplin</strong></span>. Pas une pression. Pas une compétition. Juste une opportunité de briller, <span style={{color: '#7b4fd6'}}><strong>ensemble</strong></span>.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎯 Expliquez clairement</strong> la différence avec l&apos;ancien système</li>
                 <li><strong>✨ Insistez</strong> : &quot;Fait pour briller&quot; - pas de prérequis</li>
@@ -138,6 +156,7 @@ export default function Partie2Page() {
                 <li><strong>💡 Mentionnez</strong> que le Spotlight peut s&apos;acheter avec les points</li>
                 <li><strong>📅 Encouragez</strong> les nouveaux à s&apos;inscrire dès qu&apos;ils sont prêts</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/ZqveM0Ra" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 5 HD</a>
@@ -158,6 +177,7 @@ export default function Partie2Page() {
           <div className="mt-6">
             <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
+              {custom.points ? renderPointsOverride(custom.points) : (
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Événements réguliers : soirées film, gaming, défis créatifs</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Projets collaboratifs entre membres</li>
@@ -165,10 +185,12 @@ export default function Partie2Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Formations régulières sur le streaming</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Réseau de créateurs bienveillants</li>
               </ul>
+              )}
             </div>
 
             <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
+              {custom.discours ? renderDiscoursOverride(custom.discours) : (
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;La <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span> n&apos;est pas seulement le Spotlight ou un serveur Discord. C&apos;est un <span style={{color: '#7b4fd6'}}><strong>véritable écosystème d&apos;entraide</strong></span>, pensé pour créer du lien, faire grandir les projets et avancer ensemble.</p>
                 <p>Côté <span style={{color: '#7b4fd6'}}><strong>événements et projets</strong></span>, la communauté vit toute l&apos;année. On organise régulièrement des <strong>soirées film communautaires</strong>, des <strong>soirées gaming</strong>, des <strong>défis créatifs</strong> et des <strong>événements thématiques</strong>, toujours dans un esprit convivial et bienveillant.</p>
@@ -177,10 +199,12 @@ export default function Partie2Page() {
                 <p>Côté <span style={{color: '#7b4fd6'}}><strong>ressources et soutien</strong></span>, vous trouverez des <strong>guides</strong>, des <strong>tutoriels</strong>, des <strong>conseils d&apos;experts</strong> et des <strong>formations régulières</strong> autour du streaming : OBS, communication, montage, organisation et bien plus encore.</p>
                 <p>Tout cela s&apos;appuie sur un <span style={{color: '#7b4fd6'}}><strong>réseau de créateurs bienveillants</strong></span> qui s&apos;entraident au quotidien. Ici, on ne vous laisse pas seuls : il y a toujours quelqu&apos;un, quelque chose ou un projet pour vous aider à progresser, à votre rythme.&quot;</p>
               </div>
+              )}
             </div>
 
             <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
               <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
+              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>🎉 Donnez des exemples concrets</strong> d&apos;événements récents</li>
                 <li><strong>📚 Mentionnez</strong> les salons ressources sur le Discord</li>
@@ -188,6 +212,7 @@ export default function Partie2Page() {
                 <li><strong>✨ Valorisez</strong> les formations régulières</li>
                 <li><strong>💡 Encouragez</strong> à consulter les guides disponibles</li>
               </ul>
+              )}
             </div>
 
             <a href="https://www.genspark.ai/api/files/s/zPR35qRy" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 6 HD</a>
