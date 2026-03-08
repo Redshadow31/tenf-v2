@@ -92,9 +92,8 @@ export default function RaidImportModal({
           const contentType = publicResponse.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const publicData = await publicResponse.json();
-            // Filtrer uniquement les membres actifs
+            // Inclure tous les membres TENF (actifs et inactifs/communauté)
             const members = (publicData.members || [])
-              .filter((m: any) => m.isActive !== false) // Seulement membres actifs
               .map((m: any) => ({
                 discordId: m.discordId || '',
                 displayName: m.displayName || m.twitchLogin || '',
@@ -123,9 +122,8 @@ export default function RaidImportModal({
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
-            // Filtrer uniquement les membres actifs
+            // Inclure tous les membres TENF (actifs et inactifs/communauté)
             const members = (data.members || [])
-              .filter((m: any) => m.isActive !== false) // Seulement membres actifs
               .map((m: any) => ({
                 discordId: m.discordId || '',
                 displayName: m.displayName || m.twitchLogin || '',
@@ -209,13 +207,11 @@ export default function RaidImportModal({
   }
 
   /**
-   * Trouve un membre actif par handle normalisé
+   * Trouve un membre TENF par handle normalisé
    */
   function findMemberByNormalizedHandle(normalizedHandle: string): Member | undefined {
     // Chercher d'abord par twitchLogin normalisé
     return allMembers.find(m => {
-      if (!m.isActive) return false; // Seulement les membres actifs
-      
       const normalizedTwitch = normalizeHandle(m.twitchLogin || '');
       const normalizedDiscord = normalizeHandle(m.discordUsername || '');
       const normalizedDisplay = normalizeHandle(m.displayName || '');
@@ -303,7 +299,7 @@ export default function RaidImportModal({
           const ignoredKey = `${raiderNormalized}|${targetNormalized}`;
           const isIgnored = ignoredRaids.has(ignoredKey);
           
-          // Trouver les membres correspondants (seulement membres actifs)
+          // Trouver les membres correspondants (actifs et inactifs/communauté)
           const raiderMember = raiderNormalized ? findMemberByNormalizedHandle(raiderNormalized) : undefined;
           const targetMember = targetNormalized ? findMemberByNormalizedHandle(targetNormalized) : undefined;
 
@@ -825,16 +821,16 @@ export default function RaidImportModal({
       return;
     }
 
-    // Filtrer les raids avec statut 'ok' (raider ET cible sont membres actifs)
+    // Filtrer les raids avec statut 'ok' (raider ET cible sont membres TENF reconnus)
     // OU ceux qui ont été manuellement sélectionnés par l'utilisateur
     const raidsToSave = detectedRaids.filter(r => {
       if (r.status === 'ignored' || r.ignored) return false; // Ne pas sauvegarder les ignorés
-      // Uniquement les raids où raider ET cible sont membres actifs
+      // Uniquement les raids où raider ET cible sont membres TENF reconnus
       return r.status === 'ok' && r.raiderMember && r.targetMember;
     });
 
     if (raidsToSave.length === 0) {
-      setError("Aucun raid valide à enregistrer. Seuls les raids où le raider ET la cible sont membres actifs peuvent être enregistrés.");
+      setError("Aucun raid valide à enregistrer. Seuls les raids où le raider ET la cible sont membres TENF reconnus peuvent être enregistrés.");
       return;
     }
 
