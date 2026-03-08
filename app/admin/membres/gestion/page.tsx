@@ -136,6 +136,7 @@ export default function GestionMembresPage() {
   const [bulkOnboarding, setBulkOnboarding] = useState<"" | "a_faire" | "en_cours" | "termine">("");
   const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs">("actifs");
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
@@ -728,6 +729,18 @@ export default function GestionMembresPage() {
     });
   }
 
+  const activeMembers = filteredMembers.filter((member) => member.statut === "Actif");
+  const inactiveMembers = filteredMembers.filter((member) => member.statut === "Inactif");
+  const displayedMembers = statusTab === "actifs" ? activeMembers : inactiveMembers;
+  const tableColumnCount =
+    viewMode === "complet"
+      ? currentAdmin?.isFounder
+        ? 19
+        : 18
+      : currentAdmin?.isFounder
+      ? 12
+      : 11;
+
   const reviewAlerts = (() => {
     const now = new Date();
     const in7days = new Date(now);
@@ -770,7 +783,7 @@ export default function GestionMembresPage() {
       setSelectedMemberLogins([]);
       return;
     }
-    setSelectedMemberLogins(filteredMembers.map((m) => m.twitch).filter(Boolean));
+    setSelectedMemberLogins(displayedMembers.map((m) => m.twitch).filter(Boolean));
   }
 
   async function applyBulkChanges() {
@@ -1868,6 +1881,32 @@ export default function GestionMembresPage() {
           </div>
         )}
 
+        {/* Onglets Actifs/Inactifs */}
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setStatusTab("actifs")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              statusTab === "actifs"
+                ? "bg-green-600 text-white"
+                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+            }`}
+          >
+            Actifs ({activeMembers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusTab("inactifs")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              statusTab === "inactifs"
+                ? "bg-red-600 text-white"
+                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+            }`}
+          >
+            Inactifs ({inactiveMembers.length})
+          </button>
+        </div>
+
         {/* Tableau des membres */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -1878,7 +1917,7 @@ export default function GestionMembresPage() {
                     <th className="py-4 px-3 text-sm font-semibold text-gray-300">
                       <input
                         type="checkbox"
-                        checked={filteredMembers.length > 0 && filteredMembers.every((m) => selectedMemberLogins.includes(m.twitch))}
+                        checked={displayedMembers.length > 0 && displayedMembers.every((m) => selectedMemberLogins.includes(m.twitch))}
                         onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                       />
                     </th>
@@ -1912,7 +1951,7 @@ export default function GestionMembresPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredMembers.map((member) => (
+                {displayedMembers.map((member) => (
                   <tr
                     key={member.id}
                     className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
@@ -2195,6 +2234,16 @@ export default function GestionMembresPage() {
                     </td>
                   </tr>
                 ))}
+                {displayedMembers.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={tableColumnCount}
+                      className="py-8 px-6 text-center text-gray-400"
+                    >
+                      Aucun membre {statusTab === "actifs" ? "actif" : "inactif"} avec les filtres actuels.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

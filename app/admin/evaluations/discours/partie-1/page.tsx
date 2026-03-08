@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import {
   renderConseilsOverride,
@@ -9,9 +9,140 @@ import {
   useDiscoursCustomContent,
 } from "@/components/admin/discours/customText";
 
+type BlockKind = "points" | "discours" | "conseils";
+type BlockMap = Record<string, string>;
+
+interface EditableBlockProps {
+  title: string;
+  titleClassName: string;
+  containerClassName: string;
+  kind: BlockKind;
+  value?: string | null;
+  onSave: (text: string) => Promise<void>;
+  children: ReactNode;
+}
+
+function parseBlockMap(raw?: string | null): BlockMap {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.entries(parsed).reduce<BlockMap>((acc, [key, value]) => {
+      if (typeof value === "string") acc[key] = value;
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+function EditableBlock({
+  title,
+  titleClassName,
+  containerClassName,
+  kind,
+  value,
+  onSave,
+  children,
+}: EditableBlockProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(value || "");
+  }, [value]);
+
+  const renderOverride = () => {
+    if (!value?.trim()) return null;
+    if (kind === "points") return renderPointsOverride(value);
+    if (kind === "conseils") return renderConseilsOverride(value);
+    return renderDiscoursOverride(value);
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await onSave(draft);
+      setIsEditing(false);
+    } catch (e: any) {
+      setError(e?.message || "Erreur de sauvegarde.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={containerClassName}>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className={`text-xl font-bold ${titleClassName}`}>{title}</h3>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(value || "");
+            setError(null);
+            setIsEditing((prev) => !prev);
+          }}
+          className="text-xs px-3 py-1.5 rounded-md border border-gray-600 text-gray-200 hover:border-[#9146ff] hover:text-white transition-colors"
+        >
+          {isEditing ? "Fermer" : "Modifier"}
+        </button>
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={kind === "discours" ? 12 : 7}
+            placeholder={
+              kind === "discours"
+                ? "Écris le texte avec des paragraphes (ligne vide = nouveau paragraphe)"
+                : "Une ligne = un élément de liste"
+            }
+            className="w-full rounded-lg border border-gray-700 bg-[#0f0f11] p-3 text-gray-200 focus:outline-none focus:border-[#9146ff]"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(value || "");
+                setIsEditing(false);
+                setError(null);
+              }}
+              className="px-4 py-2 rounded-lg border border-gray-600 text-gray-200 hover:border-gray-400 transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            Astuce mise en page : une ligne = un point/conseil, ligne vide = nouveau paragraphe.
+          </p>
+          {error ? <p className="text-xs text-red-300">{error}</p> : null}
+        </div>
+      ) : (
+        renderOverride() || children
+      )}
+    </div>
+  );
+}
+
 export default function Partie1Page() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const custom = useDiscoursCustomContent("partie-1");
+  const [pointsBlocks, setPointsBlocks] = useState<BlockMap>({});
+  const [discoursBlocks, setDiscoursBlocks] = useState<BlockMap>({});
+  const [conseilsBlocks, setConseilsBlocks] = useState<BlockMap>({});
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +154,49 @@ export default function Partie1Page() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    setPointsBlocks(parseBlockMap(custom.points));
+  }, [custom.points]);
+
+  useEffect(() => {
+    setDiscoursBlocks(parseBlockMap(custom.discours));
+  }, [custom.discours]);
+
+  useEffect(() => {
+    setConseilsBlocks(parseBlockMap(custom.conseils));
+  }, [custom.conseils]);
+
+  const saveBlock = async (kind: BlockKind, section: string, text: string) => {
+    const nextPoints = { ...pointsBlocks };
+    const nextDiscours = { ...discoursBlocks };
+    const nextConseils = { ...conseilsBlocks };
+
+    const clean = text.trim();
+    const target = kind === "points" ? nextPoints : kind === "discours" ? nextDiscours : nextConseils;
+    if (clean) target[section] = text;
+    else delete target[section];
+
+    const response = await fetch("/api/admin/evaluations/discours-content", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        part: "partie-1",
+        points: JSON.stringify(nextPoints),
+        discours: JSON.stringify(nextDiscours),
+        conseils: JSON.stringify(nextConseils),
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || "Impossible de sauvegarder ce bloc.");
+    }
+
+    setPointsBlocks(nextPoints);
+    setDiscoursBlocks(nextDiscours);
+    setConseilsBlocks(nextConseils);
   };
 
   return (
@@ -52,9 +226,14 @@ export default function Partie1Page() {
           </div>
 
           <div className="mt-6">
-            <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
-              {custom.points ? renderPointsOverride(custom.points) : (
+            <EditableBlock
+              title="📌 Points Clés à Aborder"
+              titleClassName="text-cyan-400"
+              containerClassName="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg"
+              kind="points"
+              value={pointsBlocks.slide1}
+              onSave={(text) => saveBlock("points", "slide1", text)}
+            >
                 <ul className="list-none pl-0 space-y-2">
                   <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Accueillir chaleureusement tous les participants</li>
                   <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Présenter la New Family comme une communauté humaine et structurée</li>
@@ -63,12 +242,16 @@ export default function Partie1Page() {
                   <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Rassurer : chacun avance à son rythme</li>
                   <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Poser le ton : bienveillance + cadre cohérent</li>
                 </ul>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
-              {custom.discours ? renderDiscoursOverride(custom.discours) : (
+            <EditableBlock
+              title="🎤 Discours Suggéré"
+              titleClassName="text-amber-400"
+              containerClassName="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg"
+              kind="discours"
+              value={discoursBlocks.slide1}
+              onSave={(text) => saveBlock("discours", "slide1", text)}
+            >
                 <div className="text-gray-300 leading-relaxed space-y-3">
                   <p>&quot;Salut tout le monde, et <strong>bienvenue officiellement</strong> dans la <span style={{ color: '#7b4fd6' }}><strong>Twitch Entraide New Family</strong></span> !</p>
                   <p>Merci d&apos;avoir pris le temps d&apos;être ici aujourd&apos;hui. Le simple fait de rejoindre cette réunion montre déjà une chose essentielle : vous avez envie de <strong>comprendre</strong>, de <strong>vous intégrer</strong> et de faire partie d&apos;un <strong>collectif</strong>.</p>
@@ -81,12 +264,16 @@ export default function Partie1Page() {
                   <p>Encore <strong>bienvenue dans la New Family</strong> 💜<br />
                   On va maintenant voir ensemble comment tout cela fonctionne concrètement.&quot;</p>
                 </div>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
-              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
+            <EditableBlock
+              title="💡 Conseils pour les Modérateurs"
+              titleClassName="text-green-400"
+              containerClassName="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg"
+              kind="conseils"
+              value={conseilsBlocks.slide1}
+              onSave={(text) => saveBlock("conseils", "slide1", text)}
+            >
                 <ul className="list-disc pl-6 space-y-2 text-gray-300">
                   <li><strong>🎵 Ton chaleureux et posé</strong> - Le premier contact donne le cadre</li>
                   <li><strong>👋 Saluez nominativement</strong> les participants si possible</li>
@@ -95,11 +282,10 @@ export default function Partie1Page() {
                   <li><strong>🙂 Souriez en parlant</strong> - ça s&apos;entend</li>
                   <li><strong>📏 Soyez clairs et cohérents</strong> dans les explications du cadre</li>
                 </ul>
-              )}
               <p className="mt-5 text-gray-200 leading-relaxed">
                 <strong className="text-green-300">Cette dernière ligne est essentielle :</strong> vous ne faites plus seulement <em>accueillir</em>, vous <strong>transmettez une structure</strong>.
               </p>
-            </div>
+            </EditableBlock>
 
             <a href="https://www.genspark.ai/api/files/s/BJN4Yrwq" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 1 HD</a>
           </div>
@@ -117,9 +303,14 @@ export default function Partie1Page() {
           </div>
 
           <div className="mt-6">
-            <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
-              {custom.points ? renderPointsOverride(custom.points) : (
+            <EditableBlock
+              title="📌 Points Clés à Aborder"
+              titleClassName="text-cyan-400"
+              containerClassName="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg"
+              kind="points"
+              value={pointsBlocks.slide2}
+              onSave={(text) => saveBlock("points", "slide2", text)}
+            >
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">L&apos;histoire : de Twitch Entraide Family à la New Family</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Le point de rupture : refus de faire payer l&apos;entrée/visibilité</li>
@@ -128,12 +319,16 @@ export default function Partie1Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">La croissance : de 70 à 400+ membres (160 actifs)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">La philosophie : un échec = un tremplin</li>
               </ul>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
-              {custom.discours ? renderDiscoursOverride(custom.discours) : (
+            <EditableBlock
+              title="🎤 Discours Suggéré"
+              titleClassName="text-amber-400"
+              containerClassName="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg"
+              kind="discours"
+              value={discoursBlocks.slide2}
+              onSave={(text) => saveBlock("discours", "slide2", text)}
+            >
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Pour comprendre ce qu&apos;est aujourd&apos;hui la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, il faut revenir un peu en arrière.</p>
                 <p>Avant d&apos;être ce que vous découvrez aujourd&apos;hui, le serveur s&apos;appelait <span style={{color: '#7b4fd6'}}><strong>Twitch Entraide Family</strong></span>. À l&apos;origine, c&apos;était une <strong>idée simple</strong>, née entre passionnés : créer un espace où l&apos;on pouvait <strong>s&apos;entraider entre streamers</strong>, sans compétition ni pression.</p>
@@ -146,12 +341,16 @@ export default function Partie1Page() {
                 <p>Mais au-delà des chiffres, ce qui fait notre richesse, c&apos;est la diversité : des streamers débutants, des créateurs expérimentés, des viewers engagés.</p>
                 <p>La New Family, ce n&apos;est pas une course. Ce n&apos;est pas un classement. C&apos;est une communauté qui avance <strong>ensemble</strong>, qui apprend <strong>ensemble</strong>, et qui croit profondément en <span style={{color: '#7b4fd6'}}><strong>la force de l&apos;humain avant tout</strong></span>.&quot;</p>
               </div>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
-              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
+            <EditableBlock
+              title="💡 Conseils pour les Modérateurs"
+              titleClassName="text-green-400"
+              containerClassName="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg"
+              kind="conseils"
+              value={conseilsBlocks.slide2}
+              onSave={(text) => saveBlock("conseils", "slide2", text)}
+            >
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>📖 Racontez l&apos;histoire</strong> avec émotion - c&apos;est notre ADN</li>
                 <li><strong>💪 Insistez sur le refus de monétiser</strong> l&apos;entraide - c&apos;est fondamental</li>
@@ -159,8 +358,7 @@ export default function Partie1Page() {
                 <li><strong>🎯 Mettez en avant</strong> la philosophie : échec = tremplin</li>
                 <li><strong>⏰ Précisez la date</strong> du 2 septembre 2024 - c&apos;est notre anniversaire</li>
               </ul>
-              )}
-            </div>
+            </EditableBlock>
 
             <a href="https://www.genspark.ai/api/files/s/xjEY6Gh3" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 2 HD</a>
           </div>
@@ -178,9 +376,14 @@ export default function Partie1Page() {
           </div>
 
           <div className="mt-6">
-            <div className="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-cyan-400 mb-4">📌 Points Clés à Aborder</h3>
-              {custom.points ? renderPointsOverride(custom.points) : (
+            <EditableBlock
+              title="📌 Points Clés à Aborder"
+              titleClassName="text-cyan-400"
+              containerClassName="bg-cyan-900/20 border-l-4 border-cyan-500 p-5 my-5 rounded-lg"
+              kind="points"
+              value={pointsBlocks.slide3}
+              onSave={(text) => saveBlock("points", "slide3", text)}
+            >
               <ul className="list-none pl-0 space-y-2">
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Les 3 fondateurs : ClaraStoneWall, Red_Shadow_31, Nexou31</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Les 4 administrateurs adjoints : Selena_akemi, Nangel89, Jenny31200, Tab&apos;s_up</li>
@@ -188,12 +391,16 @@ export default function Partie1Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Le rôle de chacun dans la communauté</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">L&apos;accessibilité du staff (Discord, vocal, MP)</li>
               </ul>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-amber-400 mb-4">🎤 Discours Suggéré</h3>
-              {custom.discours ? renderDiscoursOverride(custom.discours) : (
+            <EditableBlock
+              title="🎤 Discours Suggéré"
+              titleClassName="text-amber-400"
+              containerClassName="bg-amber-900/20 border-l-4 border-amber-500 p-5 my-5 rounded-lg"
+              kind="discours"
+              value={discoursBlocks.slide3}
+              onSave={(text) => saveBlock("discours", "slide3", text)}
+            >
               <div className="text-gray-300 leading-relaxed space-y-3">
                 <p>&quot;Derrière la <span style={{color: '#7b4fd6'}}><strong>New Family</strong></span>, il y a avant tout des <strong>personnes</strong>. Pas des grades, pas des titres impressionnants, mais des <strong>humains</strong> qui donnent de leur temps et de leur énergie pour faire vivre la communauté.</p>
                 <p>La New Family repose d&apos;abord sur <span style={{color: '#7b4fd6'}}><strong>trois fondateurs</strong></span> : <strong>Clara</strong>, <strong>Nexou</strong> et <strong>Red</strong>. Ce sont eux qui portent le projet depuis le début, qui en définissent la vision et qui veillent à ce que l&apos;esprit New Family reste intact.</p>
@@ -203,12 +410,16 @@ export default function Partie1Page() {
                 <p>Ce qu&apos;il est important de retenir, c&apos;est que le <span style={{color: '#7b4fd6'}}><strong>staff est accessible</strong></span>. Vous pouvez nous parler sur Discord, en vocal, en message privé, dans les salons. Il n&apos;y a <strong>pas de barrière volontaire</strong>, pas de distance imposée.</p>
                 <p>Ensemble, fondateurs, adjoints et modérateurs forment une <span style={{color: '#7b4fd6'}}><strong>équipe soudée</strong></span>, à l&apos;écoute, disponible, et engagée pour faire avancer cette grande famille qu&apos;est la New Family.&quot;</p>
               </div>
-              )}
-            </div>
+            </EditableBlock>
 
-            <div className="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg">
-              <h3 className="text-xl font-bold text-green-400 mb-4">💡 Conseils pour les Modérateurs</h3>
-              {custom.conseils ? renderConseilsOverride(custom.conseils) : (
+            <EditableBlock
+              title="💡 Conseils pour les Modérateurs"
+              titleClassName="text-green-400"
+              containerClassName="bg-green-900/20 border-l-4 border-green-500 p-5 my-5 rounded-lg"
+              kind="conseils"
+              value={conseilsBlocks.slide3}
+              onSave={(text) => saveBlock("conseils", "slide3", text)}
+            >
               <ul className="list-disc pl-6 space-y-2 text-gray-300">
                 <li><strong>👥 Présentez brièvement</strong> chaque membre du staff présent dans le vocal</li>
                 <li><strong>💜 Insistez sur l&apos;accessibilité</strong> de l&apos;équipe (MP, salons, vocal)</li>
@@ -216,8 +427,7 @@ export default function Partie1Page() {
                 <li><strong>🤝 Mentionnez la soudure</strong> de l&apos;équipe - on avance ensemble</li>
                 <li><strong>📢 Encouragez</strong> les nouveaux à poser des questions au staff</li>
               </ul>
-              )}
-            </div>
+            </EditableBlock>
 
             <a href="https://www.genspark.ai/api/files/s/Y7i7dZS6" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 3 HD</a>
           </div>
