@@ -6,6 +6,8 @@ import { Save, Plus, Trash2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DiscordGrowthImportModal from "@/components/admin/DiscordGrowthImportModal";
 import DiscordDailyActivityImportModal from "@/components/admin/DiscordDailyActivityImportModal";
+import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
+import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
 
 interface MonthlyDataPoint {
   month: string;
@@ -60,7 +62,16 @@ interface WorkflowStep {
 
 const MONTHS = ["Janv", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"];
 
-type TabId = 'twitch' | 'discordGrowth' | 'discordActivity' | 'spotlight' | 'raidsReceived' | 'raidsSent' | 'vocal' | 'text';
+type TabId =
+  | 'twitch'
+  | 'discordMonth'
+  | 'discordGrowth'
+  | 'discordActivity'
+  | 'spotlight'
+  | 'raidsReceived'
+  | 'raidsSent'
+  | 'vocal'
+  | 'text';
 
 export default function DashboardManagementPage() {
   const [loading, setLoading] = useState(true);
@@ -318,6 +329,7 @@ export default function DashboardManagementPage() {
               <nav className="flex space-x-1 flex-wrap" style={{ backgroundColor: 'var(--color-bg)' }}>
                 {[
                   { id: 'twitch' as TabId, label: 'Activité Discord', icon: '💬' },
+                  { id: 'discordMonth' as TabId, label: 'Activité Discord du mois', icon: '📊' },
                   { id: 'discordGrowth' as TabId, label: 'Croissance Discord', icon: '📈' },
                   { id: 'discordActivity' as TabId, label: 'Activité Discord quotidienne', icon: '💬' },
                   { id: 'spotlight' as TabId, label: 'Progression Spotlight', icon: '⭐' },
@@ -379,6 +391,10 @@ export default function DashboardManagementPage() {
                   type="monthly"
                   onImportComplete={() => loadDashboardData()}
                 />
+              )}
+
+              {activeTab === 'discordMonth' && (
+                <DiscordMonthActivitySection onImportComplete={() => loadDashboardData()} />
               )}
 
               {activeTab === 'discordActivity' && (
@@ -688,6 +704,234 @@ function MonthlyWorkflowSection() {
         </div>
       )}
     </div>
+  );
+}
+
+function DiscordMonthActivitySection({
+  onImportComplete,
+}: {
+  onImportComplete: () => void;
+}) {
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showMessagesImport, setShowMessagesImport] = useState(false);
+  const [showVocalsImport, setShowVocalsImport] = useState(false);
+  const [stats, setStats] = useState<{
+    totalMessages: number;
+    totalVoiceHours: number;
+    topMessages: Array<{ rank: number; displayName: string; messages: number }>;
+    topVocals: Array<{ rank: number; displayName: string; display: string }>;
+  }>({
+    totalMessages: 0,
+    totalVoiceHours: 0,
+    topMessages: [],
+    topVocals: [],
+  });
+
+  async function loadMonthStats(targetMonth: string) {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/admin/discord-activity/data?month=${targetMonth}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Erreur chargement stats Discord du mois");
+      const payload = await response.json();
+      const data = payload?.data || {};
+      setStats({
+        totalMessages: data.totalMessages || 0,
+        totalVoiceHours: data.totalVoiceHours || 0,
+        topMessages: data.topMessages || [],
+        topVocals: data.topVocals || [],
+      });
+    } catch (error) {
+      console.error("Erreur chargement activité Discord mensuelle:", error);
+      setStats({
+        totalMessages: 0,
+        totalVoiceHours: 0,
+        topMessages: [],
+        topVocals: [],
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadMonthStats(month);
+  }, [month]);
+
+  async function handleImportMessages(data: Record<string, number>) {
+    setImporting(true);
+    try {
+      const response = await fetch("/api/admin/discord-activity/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month,
+          type: "messages",
+          data,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erreur lors de l'import des messages");
+      }
+      await loadMonthStats(month);
+      onImportComplete();
+      setShowMessagesImport(false);
+    } catch (error) {
+      console.error("Erreur import messages mensuels:", error);
+      alert(error instanceof Error ? error.message : "Erreur lors de l'import des messages");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleImportVocals(
+    data: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>
+  ) {
+    setImporting(true);
+    try {
+      const response = await fetch("/api/admin/discord-activity/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month,
+          type: "vocals",
+          data,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erreur lors de l'import des vocaux");
+      }
+      await loadMonthStats(month);
+      onImportComplete();
+      setShowVocalsImport(false);
+    } catch (error) {
+      console.error("Erreur import vocaux mensuels:", error);
+      alert(error instanceof Error ? error.message : "Erreur lors de l'import des vocaux");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="p-6 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+              Activité Discord du mois
+            </h3>
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Importez les classements mensuels Discord (messages et heures vocales)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="discord-month-picker" className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Mois :
+            </label>
+            <input
+              id="discord-month-picker"
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="px-3 py-2 rounded border text-sm"
+              style={{
+                backgroundColor: "var(--color-surface)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium" style={{ color: "var(--color-text)" }}>Messages</h4>
+              <button
+                onClick={() => setShowMessagesImport(true)}
+                disabled={importing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                📋 Importer Messages
+              </button>
+            </div>
+            <p className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>
+              {loading ? "..." : stats.totalMessages.toLocaleString("fr-FR")}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              Top 5 messages du mois sélectionné
+            </p>
+            <div className="mt-3 space-y-1.5">
+              {stats.topMessages.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Aucune donnée disponible</p>
+              ) : (
+                stats.topMessages.slice(0, 5).map((item) => (
+                  <div key={`month-msg-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span style={{ color: "var(--color-text)" }}>#{item.rank} {item.displayName}</span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>{item.messages.toLocaleString("fr-FR")}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium" style={{ color: "var(--color-text)" }}>Vocaux</h4>
+              <button
+                onClick={() => setShowVocalsImport(true)}
+                disabled={importing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                📋 Importer Vocaux
+              </button>
+            </div>
+            <p className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>
+              {loading ? "..." : stats.totalVoiceHours.toFixed(1)}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              Heures vocales totales du mois sélectionné
+            </p>
+            <div className="mt-3 space-y-1.5">
+              {stats.topVocals.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Aucune donnée disponible</p>
+              ) : (
+                stats.topVocals.slice(0, 5).map((item) => (
+                  <div key={`month-voc-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
+                    <span style={{ color: "var(--color-text)" }}>#{item.rank} {item.displayName}</span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>{item.display}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DiscordMessagesImportModal
+        isOpen={showMessagesImport}
+        onClose={() => setShowMessagesImport(false)}
+        onImport={handleImportMessages}
+        month={month}
+      />
+
+      <DiscordVocalsImportModal
+        isOpen={showVocalsImport}
+        onClose={() => setShowVocalsImport(false)}
+        onImport={handleImportVocals}
+        month={month}
+      />
+    </>
   );
 }
 
