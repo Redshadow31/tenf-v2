@@ -439,6 +439,73 @@ export default function PlanificationPage() {
               <p className="text-xs text-gray-500 mt-1">
                 💡 Formatage Markdown disponible : <strong>**gras**</strong>, <em>*italique*</em>, listes <code>- item</code>, retours à la ligne
               </p>
+              <details className="mt-3 rounded-lg border border-gray-700 bg-[#0e0e10] p-3">
+                <summary className="cursor-pointer text-xs text-gray-300 font-semibold">
+                  📝 Aide Markdown Discord complète
+                </summary>
+                <pre className="mt-3 whitespace-pre-wrap text-xs text-gray-400 leading-relaxed">
+{`📝 Mise en forme de texte Discord (Markdown)
+1️⃣ Gras, italique et souligné
+**texte en gras**
+*texte en italique*
+***gras + italique***
+__texte souligné__
+~~texte barré~~
+
+2️⃣ Citation
+> citation simple
+>> citation imbriquée
+
+3️⃣ Bloc de code
+\`code\`
+
+\`\`\`
+bloc de code
+\`\`\`
+
+4️⃣ Code avec couleur (langages)
+\`\`\`diff
++ texte vert
+- texte rouge
+\`\`\`
+
+Autres styles :
+\`\`\`yaml
+titre: texte stylé
+\`\`\`
+\`\`\`css
+texte coloré
+\`\`\`
+
+5️⃣ Titres (simulé)
+# Grand titre
+## Titre
+### Sous titre
+
+6️⃣ Listes
+- élément 1
+- élément 2
+- élément 3
+
+ou
+• élément 1
+• élément 2
+• élément 3
+
+7️⃣ Spoiler
+||texte caché||
+
+💡 Astuce TENF :
+# 📢 Annonce importante
+
+**Nouvelle réunion d'intégration**
+
+📅 Date : vendredi  
+🕘 Heure : 21h  
+
+> Merci de vous inscrire dans le salon #inscriptions`}
+                </pre>
+              </details>
             </div>
 
             <div>

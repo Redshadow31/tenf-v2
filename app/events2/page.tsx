@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import EventDateTime from "@/components/EventDateTime";
 import { formatEventDateTimeInTimezone, getBrowserTimezone } from "@/lib/timezone";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type EventItem = {
   id: string;
@@ -337,6 +339,20 @@ export default function Events2Page() {
     setMessage(null);
   }
 
+  function MarkdownDescription({ value, className }: { value: string; className?: string }) {
+    if (!value?.trim()) {
+      return <p className={className}>Aucune description.</p>;
+    }
+
+    return (
+      <div className={className}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {value}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
   const renderCard = (event: EventItem) => {
     const isRegistered = registeredEventIds.has(event.id);
     const isPast = new Date(event.date).getTime() < Date.now();
@@ -360,7 +376,7 @@ export default function Events2Page() {
 
           <h3 className="text-lg font-semibold text-white line-clamp-2">{event.title}</h3>
           <EventDateTime startUtc={event.date} className="text-sm text-gray-400" />
-          <p className="text-sm text-gray-300 line-clamp-3">{event.description || "Aucune description."}</p>
+          <p className="text-sm text-gray-300 line-clamp-3 whitespace-pre-wrap">{event.description || "Aucune description."}</p>
 
           <div className="flex gap-2 pt-1">
             <button
@@ -671,7 +687,10 @@ export default function Events2Page() {
                         Date suggérée: <EventDateTime startUtc={proposal.proposedDate} showTimezoneLabel={false} />
                       </div>
                     )}
-                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{proposal.description}</p>
+                    <MarkdownDescription
+                      value={proposal.description}
+                      className="prose prose-invert max-w-none prose-p:my-1 prose-li:my-1 prose-headings:text-white prose-p:text-gray-300 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff] prose-a:hover:text-[#7c3aed] prose-ul:text-gray-300 prose-ol:text-gray-300 prose-li:text-gray-300 text-sm"
+                    />
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-gray-400">{proposal.votesCount} membre(s) intéressé(s)</p>
                       <button
@@ -710,7 +729,10 @@ export default function Events2Page() {
                 {selectedEvent.category}
               </span>
               <EventDateTime startUtc={selectedEvent.date} className="text-sm text-gray-300" />
-              <p className="text-gray-200 whitespace-pre-wrap">{selectedEvent.description || "Aucune description."}</p>
+              <MarkdownDescription
+                value={selectedEvent.description || ""}
+                className="prose prose-invert max-w-none prose-p:my-2 prose-li:my-1 prose-headings:text-white prose-p:text-gray-200 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff] prose-a:hover:text-[#7c3aed] prose-ul:text-gray-200 prose-ol:text-gray-200 prose-li:text-gray-200"
+              />
               {selectedEvent.location && (
                 <p className="text-sm text-gray-300">
                   Lieu:{" "}
