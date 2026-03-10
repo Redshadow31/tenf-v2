@@ -1,9 +1,11 @@
-// Stockage des validations de follow dans Netlify Blobs
-// Architecture: tenf-follow-validations/{YYYY-MM}/{staffSlug}.json
+// Stockage des validations de follow dans Supabase
+// Table: follow_validations
+// Compat: fallback legacy Blobs/fichier local + migration lazy.
 
 import { getStore } from '@netlify/blobs';
 import fs from 'fs';
 import path from 'path';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 // ============================================
 // TYPES
@@ -47,6 +49,7 @@ export interface StaffFollowValidation {
 // ============================================
 
 const STORE_NAME = 'tenf-follow-validations';
+const FOLLOW_VALIDATIONS_TABLE = 'follow_validations';
 
 function isNetlify(): boolean {
   if (process.env.NETLIFY || process.env.NETLIFY_DEV) {
@@ -81,6 +84,144 @@ function isNetlify(): boolean {
   return false;
 }
 
+function monthToKey(month: string): string {
+  return /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : month;
+}
+
+function keyToMonth(key: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key.slice(0, 7);
+  return key;
+}
+
+function normalizeValidation(validation: StaffFollowValidation): StaffFollowValidation {
+  return {
+    ...validation,
+    staffSlug: (validation.staffSlug || '').trim().toLowerCase(),
+    month: keyToMonth(validation.month),
+    members: Array.isArray(validation.members) ? validation.members : [],
+    validatedAt: validation.validatedAt || new Date().toISOString(),
+    validatedBy: validation.validatedBy || 'system',
+  };
+}
+
+function rowToValidation(row: any): StaffFollowValidation {
+  return normalizeValidation({
+    staffSlug: row.staff_slug,
+    staffName: row.staff_name || row.staff_slug,
+    month: keyToMonth(row.month_key),
+    members: Array.isArray(row.members) ? row.members : [],
+    moderatorComments: row.moderator_comments || '',
+    validatedAt: row.validated_at || row.updated_at || row.created_at || new Date().toISOString(),
+    validatedBy: row.validated_by || 'system',
+    staffTwitchId: row.staff_twitch_id || undefined,
+    staffDiscordId: row.staff_discord_id || undefined,
+    stats: row.stats || undefined,
+  });
+}
+
+function validationToRow(validation: StaffFollowValidation): any {
+  const normalized = normalizeValidation(validation);
+  return {
+    month_key: monthToKey(normalized.month),
+    staff_slug: normalized.staffSlug,
+    staff_name: normalized.staffName || normalized.staffSlug,
+    members: normalized.members || [],
+    moderator_comments: normalized.moderatorComments || null,
+    validated_at: normalized.validatedAt,
+    validated_by: normalized.validatedBy || 'system',
+    staff_twitch_id: normalized.staffTwitchId || null,
+    staff_discord_id: normalized.staffDiscordId || null,
+    stats: normalized.stats || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function getLegacyValidation(staffSlug: string, month: string): Promise<StaffFollowValidation | null> {
+  try {
+    if (isNetlify()) {
+      const store = getStore(STORE_NAME);
+      const data = await store.get(`${month}/${staffSlug}.json`, { type: 'json' }).catch(() => null);
+      return data as StaffFollowValidation | null;
+    }
+
+    const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
+    const filePath = path.join(dataDir, `${staffSlug}.json`);
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(content) as StaffFollowValidation;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function listLegacyValidationsForMonth(month: string): Promise<StaffFollowValidation[]> {
+  try {
+    const validations: StaffFollowValidation[] = [];
+
+    if (isNetlify()) {
+      const store = getStore(STORE_NAME);
+      const list = await store.list({ prefix: `${month}/` });
+      for (const item of list.blobs || []) {
+        try {
+          const data = await store.get(item.key, { type: 'json' });
+          if (data) validations.push(normalizeValidation(data as StaffFollowValidation));
+        } catch {
+          // ignore
+        }
+      }
+      return validations;
+    }
+
+    const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
+    if (fs.existsSync(dataDir)) {
+      const files = fs.readdirSync(dataDir);
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+        try {
+          const filePath = path.join(dataDir, file);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          validations.push(normalizeValidation(JSON.parse(content) as StaffFollowValidation));
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return validations;
+  } catch {
+    return [];
+  }
+}
+
+async function saveManyToSupabase(validations: StaffFollowValidation[]): Promise<void> {
+  if (!validations.length) return;
+  const rows = validations.map(validationToRow);
+  const { error } = await supabaseAdmin
+    .from(FOLLOW_VALIDATIONS_TABLE)
+    .upsert(rows, { onConflict: 'month_key,staff_slug' });
+  if (error) throw error;
+}
+
+async function saveLegacyValidation(validation: StaffFollowValidation): Promise<void> {
+  const normalized = normalizeValidation(validation);
+  if (isNetlify()) {
+    const store = getStore(STORE_NAME);
+    await store.set(
+      `${normalized.month}/${normalized.staffSlug}.json`,
+      JSON.stringify(normalized, null, 2)
+    );
+    return;
+  }
+
+  const dataDir = path.join(process.cwd(), 'data', 'follow-validations', normalized.month);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const filePath = path.join(dataDir, `${normalized.staffSlug}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(normalized, null, 2), 'utf-8');
+}
+
 export function getCurrentMonthKey(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -100,19 +241,32 @@ export async function getStaffFollowValidation(
   month: string
 ): Promise<StaffFollowValidation | null> {
   try {
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      const data = await store.get(`${month}/${staffSlug}.json`, { type: 'json' }).catch(() => null);
-      return data as StaffFollowValidation | null;
-    } else {
-      const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
-      const filePath = path.join(dataDir, `${staffSlug}.json`);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        return JSON.parse(content);
-      }
-      return null;
+    const normalizedSlug = (staffSlug || '').toLowerCase().trim();
+    const monthKey = monthToKey(month);
+
+    const { data, error } = await supabaseAdmin
+      .from(FOLLOW_VALIDATIONS_TABLE)
+      .select('*')
+      .eq('month_key', monthKey)
+      .eq('staff_slug', normalizedSlug)
+      .maybeSingle();
+
+    if (!error && data) {
+      return rowToValidation(data);
     }
+
+    // Fallback legacy + migration lazy
+    const legacy = await getLegacyValidation(normalizedSlug, keyToMonth(monthKey));
+    if (legacy) {
+      try {
+        await saveStaffFollowValidation(legacy);
+      } catch {
+        // best effort: la table Supabase peut ne pas exister temporairement
+      }
+      return normalizeValidation(legacy);
+    }
+
+    return null;
   } catch (error) {
     console.error(`[FollowStorage] Erreur récupération validation ${staffSlug}/${month}:`, error);
     return null;
@@ -126,23 +280,17 @@ export async function saveStaffFollowValidation(
   validation: StaffFollowValidation
 ): Promise<void> {
   try {
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      await store.set(
-        `${validation.month}/${validation.staffSlug}.json`,
-        JSON.stringify(validation, null, 2)
-      );
-    } else {
-      const dataDir = path.join(process.cwd(), 'data', 'follow-validations', validation.month);
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      const filePath = path.join(dataDir, `${validation.staffSlug}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(validation, null, 2), 'utf-8');
+    const row = validationToRow(validation);
+    const { error } = await supabaseAdmin
+      .from(FOLLOW_VALIDATIONS_TABLE)
+      .upsert(row, { onConflict: 'month_key,staff_slug' });
+    if (error) {
+      throw error;
     }
   } catch (error) {
     console.error(`[FollowStorage] Erreur sauvegarde validation ${validation.staffSlug}/${validation.month}:`, error);
-    throw error;
+    // Compat transitoire: sauvegarde legacy si Supabase indisponible
+    await saveLegacyValidation(validation);
   }
 }
 
@@ -153,43 +301,29 @@ export async function getAllFollowValidationsForMonth(
   month: string
 ): Promise<StaffFollowValidation[]> {
   try {
-    const validations: StaffFollowValidation[] = [];
-    
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      const list = await store.list({ prefix: `${month}/` });
-      
-      // Lire tous les blobs en une seule fois
-      for (const item of list.blobs) {
-        try {
-          const data = await store.get(item.key, { type: 'json' });
-          if (data) {
-            validations.push(data as StaffFollowValidation);
-          }
-        } catch (error) {
-          console.error(`[FollowStorage] Erreur lecture ${item.key}:`, error);
-        }
-      }
-    } else {
-      const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
-      if (fs.existsSync(dataDir)) {
-        const files = fs.readdirSync(dataDir);
-        for (const file of files) {
-          if (file.endsWith('.json')) {
-            try {
-              const filePath = path.join(dataDir, file);
-              const content = fs.readFileSync(filePath, 'utf-8');
-              const data = JSON.parse(content);
-              validations.push(data as StaffFollowValidation);
-            } catch (error) {
-              console.error(`[FollowStorage] Erreur lecture ${file}:`, error);
-            }
-          }
-        }
-      }
+    const monthKey = monthToKey(month);
+    const { data, error } = await supabaseAdmin
+      .from(FOLLOW_VALIDATIONS_TABLE)
+      .select('*')
+      .eq('month_key', monthKey)
+      .order('staff_slug', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data.map(rowToValidation);
     }
-    
-    return validations;
+
+    // Fallback legacy + migration lazy
+    const legacy = await listLegacyValidationsForMonth(keyToMonth(monthKey));
+    if (legacy.length > 0) {
+      try {
+        await saveManyToSupabase(legacy);
+      } catch {
+        // best effort: la table Supabase peut ne pas exister temporairement
+      }
+      return legacy.map(normalizeValidation);
+    }
+
+    return [];
   } catch (error) {
     console.error(`[FollowStorage] Erreur récupération validations pour ${month}:`, error);
     return [];
@@ -201,20 +335,37 @@ export async function getAllFollowValidationsForMonth(
  * Utile pour qu'un mois sans données (ex. février) reprenne les dernières données enregistrées (ex. janvier).
  */
 export async function getLastMonthWithData(beforeOrEqualMonth: string): Promise<string | null> {
+  try {
+    const beforeKey = monthToKey(beforeOrEqualMonth);
+    const { data, error } = await supabaseAdmin
+      .from(FOLLOW_VALIDATIONS_TABLE)
+      .select('month_key')
+      .lt('month_key', beforeKey)
+      .order('month_key', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data?.month_key) {
+      return keyToMonth(String(data.month_key));
+    }
+  } catch {
+    // fallback legacy loop below
+  }
+
   const [yearStr, monthStr] = beforeOrEqualMonth.split('-');
   let year = parseInt(yearStr, 10);
   let month = parseInt(monthStr, 10);
-  const maxAttempts = 12;
-
-  for (let i = 0; i < maxAttempts; i++) {
+  for (let i = 0; i < 12; i++) {
     month -= 1;
     if (month < 1) {
       month = 12;
       year -= 1;
     }
-    const key = `${year}-${String(month).padStart(2, '0')}`;
-    const validations = await getAllFollowValidationsForMonth(key);
-    if (validations.length > 0) return key;
+    const candidate = `${year}-${String(month).padStart(2, '0')}`;
+    const validations = await getAllFollowValidationsForMonth(candidate);
+    if (validations.length > 0) {
+      return candidate;
+    }
   }
   return null;
 }
@@ -258,59 +409,14 @@ export type StaffFollowValidationAny = {
  */
 export async function listStaffFollowValidations(month: string): Promise<StaffFollowValidationAny[]> {
   try {
-    const validations: StaffFollowValidationAny[] = [];
-    
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      const prefix = `${month}/`;
-      const list = await store.list({ prefix });
-      
-      for (const item of list.blobs ?? []) {
-        try {
-          const data = await store.get(item.key, { type: 'json' });
-          if (data) {
-            // Convertir le format StaffFollowValidation en format souple
-            const flexible: StaffFollowValidationAny = {
-              ...data,
-              month: (data as any).month || month,
-              staffSlug: (data as any).staffSlug,
-              savedAt: (data as any).validatedAt,
-              // Si c'est le format actuel avec members array, on le garde
-              membersArray: (data as any).members,
-            };
-            validations.push(flexible);
-          }
-        } catch (error) {
-          console.error(`[FollowStorage] Erreur lecture ${item.key}:`, error);
-        }
-      }
-    } else {
-      const dataDir = path.join(process.cwd(), 'data', 'follow-validations', month);
-      if (fs.existsSync(dataDir)) {
-        const files = fs.readdirSync(dataDir);
-        for (const file of files) {
-          if (file.endsWith('.json')) {
-            try {
-              const filePath = path.join(dataDir, file);
-              const content = fs.readFileSync(filePath, 'utf-8');
-              const data = JSON.parse(content);
-              const flexible: StaffFollowValidationAny = {
-                ...data,
-                month: data.month || month,
-                staffSlug: data.staffSlug,
-                savedAt: data.validatedAt,
-                membersArray: data.members,
-              };
-              validations.push(flexible);
-            } catch (error) {
-              console.error(`[FollowStorage] Erreur lecture ${file}:`, error);
-            }
-          }
-        }
-      }
-    }
-    
-    return validations;
+    const validations = await getAllFollowValidationsForMonth(month);
+    return validations.map((v) => ({
+      ...v,
+      month: v.month || month,
+      staffSlug: v.staffSlug,
+      savedAt: v.validatedAt,
+      membersArray: v.members,
+    }));
   } catch (error) {
     console.error(`[FollowStorage] Erreur listing validations pour ${month}:`, error);
     return [];

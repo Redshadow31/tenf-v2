@@ -46,6 +46,68 @@ const SPOTLIGHT_EVAL_METRIC = 'evaluation_total_score';
 
 export class SpotlightRepository {
   /**
+   * Retourne les IDs potentiels d'un spotlight:
+   * - l'ID courant
+   * - un éventuel ID legacy si présent en colonne
+   * - fallback heuristique via spotlight_metrics (streamer + fenetre temporelle)
+   */
+  private async getSpotlightIdAliases(spotlightId: string): Promise<string[]> {
+    const aliases = new Set<string>([spotlightId]);
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('spotlights')
+        .select('*')
+        .eq('id', spotlightId)
+        .maybeSingle();
+
+      if (error || !data) {
+        return Array.from(aliases);
+      }
+
+      if (data.legacy_spotlight_id) {
+        aliases.add(String(data.legacy_spotlight_id));
+      }
+
+      const startsAtRaw = data.starts_at || data.started_at;
+      const streamerLogin = (data.streamer_twitch_login || '').toLowerCase();
+      if (!startsAtRaw || !streamerLogin) {
+        return Array.from(aliases);
+      }
+
+      const startsAt = new Date(startsAtRaw);
+      if (Number.isNaN(startsAt.getTime())) {
+        return Array.from(aliases);
+      }
+
+      const windowStart = new Date(startsAt.getTime() - 6 * 60 * 60 * 1000).toISOString();
+      const windowEnd = new Date(startsAt.getTime() + 6 * 60 * 60 * 1000).toISOString();
+
+      // Fallback legacy: certains metrics ont garde l'ancien spotlight_id.
+      const metrics = await supabaseAdmin
+        .from('spotlight_metrics')
+        .select('spotlight_id, metadata, measured_at')
+        .eq('metric_name', SPOTLIGHT_EVAL_METRIC)
+        .gte('measured_at', windowStart)
+        .lte('measured_at', windowEnd)
+        .limit(50);
+
+      if (!metrics.error && metrics.data?.length) {
+        for (const row of metrics.data) {
+          const rowStreamer = String(row.metadata?.streamer_twitch_login || '').toLowerCase();
+          if (rowStreamer === streamerLogin && row.spotlight_id) {
+            aliases.add(String(row.spotlight_id));
+          }
+        }
+      }
+    } catch {
+      // best effort
+    }
+
+    return Array.from(aliases);
+  }
+
+  /**
    * Récupère le spotlight actif
    */
   async findActive(): Promise<Spotlight | null> {
@@ -140,15 +202,25 @@ export class SpotlightRepository {
    * Récupère les présences d'un spotlight
    */
   async getPresences(spotlightId: string): Promise<SpotlightPresence[]> {
-    const { data, error } = await supabaseAdmin
-      .from('spotlight_attendance')
-      .select('*')
-      .eq('spotlight_id', spotlightId)
-      .order('added_at', { ascending: false });
+    const spotlightIds = await this.getSpotlightIdAliases(spotlightId);
+    const mergedRows: any[] = [];
 
-    if (error) throw error;
+    for (const id of spotlightIds) {
+      const { data, error } = await supabaseAdmin
+        .from('spotlight_attendance')
+        .select('*')
+        .eq('spotlight_id', id)
+        .order('added_at', { ascending: false });
+      if (error) throw error;
+      if (data?.length) mergedRows.push(...data);
+    }
 
-    return (data || []).map(this.mapToPresence);
+    const deduped = new Map<string, any>();
+    for (const row of mergedRows) {
+      if (!deduped.has(row.id)) deduped.set(row.id, row);
+    }
+
+    return Array.from(deduped.values()).map(this.mapToPresence);
   }
 
   /**
@@ -181,26 +253,30 @@ export class SpotlightRepository {
    * Supprime une présence d'un spotlight
    */
   async deletePresence(spotlightId: string, twitchLogin: string): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('spotlight_attendance')
-      .delete()
-      .eq('spotlight_id', spotlightId)
-      .eq('twitch_login', twitchLogin.toLowerCase());
-
-    if (error) throw error;
+    const spotlightIds = await this.getSpotlightIdAliases(spotlightId);
+    for (const id of spotlightIds) {
+      const { error } = await supabaseAdmin
+        .from('spotlight_attendance')
+        .delete()
+        .eq('spotlight_id', id)
+        .eq('twitch_login', twitchLogin.toLowerCase());
+      if (error) throw error;
+    }
   }
 
   /**
    * Remplace toutes les présences d'un spotlight
    */
   async replacePresences(spotlightId: string, presences: Partial<SpotlightPresence>[]): Promise<SpotlightPresence[]> {
-    // Supprimer toutes les présences existantes
-    const { error: deleteError } = await supabaseAdmin
-      .from('spotlight_attendance')
-      .delete()
-      .eq('spotlight_id', spotlightId);
-
-    if (deleteError) throw deleteError;
+    const spotlightIds = await this.getSpotlightIdAliases(spotlightId);
+    // Supprimer toutes les présences existantes (ID courant + alias)
+    for (const id of spotlightIds) {
+      const { error: deleteError } = await supabaseAdmin
+        .from('spotlight_attendance')
+        .delete()
+        .eq('spotlight_id', id);
+      if (deleteError) throw deleteError;
+    }
 
     // Insérer les nouvelles présences
     if (presences.length === 0) {
@@ -229,21 +305,31 @@ export class SpotlightRepository {
    * Récupère l'évaluation d'un spotlight
    */
   async getEvaluation(spotlightId: string): Promise<SpotlightEvaluation | null> {
-    const { data, error } = await supabaseAdmin
-      .from('spotlight_metrics')
-      .select('*')
-      .eq('spotlight_id', spotlightId)
-      .eq('metric_name', SPOTLIGHT_EVAL_METRIC)
-      .order('measured_at', { ascending: false })
-      .limit(1)
-      .single();
+    const spotlightIds = await this.getSpotlightIdAliases(spotlightId);
+    const mergedRows: any[] = [];
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
+    for (const id of spotlightIds) {
+      const { data, error } = await supabaseAdmin
+        .from('spotlight_metrics')
+        .select('*')
+        .eq('spotlight_id', id)
+        .eq('metric_name', SPOTLIGHT_EVAL_METRIC)
+        .order('measured_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      if (data?.length) mergedRows.push(...data);
     }
 
-    return data ? this.mapToEvaluation(data) : null;
+    if (!mergedRows.length) return null;
+
+    mergedRows.sort((a, b) => {
+      const aTime = new Date(a.measured_at || 0).getTime();
+      const bTime = new Date(b.measured_at || 0).getTime();
+      return bTime - aTime;
+    });
+
+    return this.mapToEvaluation(mergedRows[0]);
   }
 
   /**
@@ -272,12 +358,15 @@ export class SpotlightRepository {
       },
     };
 
-    const { error: cleanupError } = await supabaseAdmin
-      .from('spotlight_metrics')
-      .delete()
-      .eq('spotlight_id', evaluation.spotlightId)
-      .eq('metric_name', SPOTLIGHT_EVAL_METRIC);
-    if (cleanupError) throw cleanupError;
+    const spotlightIds = await this.getSpotlightIdAliases(evaluation.spotlightId);
+    for (const id of spotlightIds) {
+      const { error: cleanupError } = await supabaseAdmin
+        .from('spotlight_metrics')
+        .delete()
+        .eq('spotlight_id', id)
+        .eq('metric_name', SPOTLIGHT_EVAL_METRIC);
+      if (cleanupError) throw cleanupError;
+    }
 
     const { data, error } = await supabaseAdmin
       .from('spotlight_metrics')
