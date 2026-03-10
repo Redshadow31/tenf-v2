@@ -44,6 +44,14 @@ const eventSections = [
     href: "/admin/events/propositions",
     color: "from-violet-600 to-purple-800",
   },
+  {
+    id: "spotlight",
+    title: "Spotlight (sous-groupe)",
+    description: "Évaluation, consultation et analytics Spotlight intégrés à Vie communautaire",
+    icon: BarChart3,
+    href: "/admin/events/spotlight",
+    color: "from-fuchsia-600 to-indigo-800",
+  },
 ];
 
 export default function EventsHubPage() {

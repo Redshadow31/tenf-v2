@@ -112,19 +112,16 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/events/propositions", label: "Événements proposés" },
         ],
       },
-    ],
-  },
-  {
-    href: "/admin/spotlight",
-    label: "Spotlights & mise en avant",
-    icon: "⭐",
-    sectionLabel: "SPOTLIGHTS",
-    children: [
-      { href: "/admin/spotlight", label: "Hub Spotlight" },
-      { href: "/admin/spotlight/gestion", label: "Gestion des Spotlights" },
-      { href: "/admin/spotlight/membres", label: "Données par streamer" },
-      { href: "/admin/spotlight/presence", label: "Présence & participation" },
-      { href: "/admin/spotlight/evaluation", label: "Évaluation Spotlight" },
+      {
+        href: "/admin/events/spotlight",
+        label: "Spotlight",
+        children: [
+          { href: "/admin/spotlight/evaluation", label: "Évaluer le streamer" },
+          { href: "/admin/spotlight/membres", label: "Consulter les évaluations" },
+          { href: "/admin/events/spotlight/presences", label: "Présences validées (catégorie Spotlight)" },
+          { href: "/admin/events/spotlight/analytics", label: "Analyse Spotlight (mois / tout)" },
+        ],
+      },
     ],
   },
   {
@@ -221,15 +218,6 @@ export const adminNavigationSimple: NavItem[] = [
     ],
   },
   {
-    href: "/admin/spotlight",
-    label: "Spotlight",
-    icon: "🌟",
-    children: [
-      { href: "/admin/spotlight", label: "Hub Spotlight" },
-      { href: "/admin/spotlight/presence", label: "Présence & participation" },
-    ],
-  },
-  {
     href: "/admin/integration",
     label: "Intégration",
     icon: "🚪",
@@ -249,6 +237,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/events/liste", label: "Liste des événements" },
       { href: "/admin/events/presence", label: "Présences" },
       { href: "/admin/events/propositions", label: "Événements proposés" },
+      { href: "/admin/events/spotlight", label: "Groupe Spotlight" },
     ],
   },
   { href: "/admin/follow", label: "Suivi de l'engagement", icon: "👁️" },

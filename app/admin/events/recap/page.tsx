@@ -35,6 +35,8 @@ export default function RecapPage() {
   const [data, setData] = useState<RecapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [topMode, setTopMode] = useState<"all" | "noStaff">("all");
+  const [staffLogins, setStaffLogins] = useState<Set<string>>(new Set());
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -46,11 +48,16 @@ export default function RecapPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Charger les inscriptions
-      const registrationsResponse = await fetch("/api/admin/events/registrations", {
-        cache: 'no-store',
-      });
+
+      // Charger les inscriptions + membres (pour filtre staff) en parallèle
+      const [registrationsResponse, membersResponse] = await Promise.all([
+        fetch("/api/admin/events/registrations", {
+          cache: "no-store",
+        }),
+        fetch("/api/admin/members", {
+          cache: "no-store",
+        }),
+      ]);
       
       if (!registrationsResponse.ok) {
         throw new Error("Erreur lors du chargement des inscriptions");
@@ -108,6 +115,29 @@ export default function RecapPage() {
         (sum, item) => sum + item.registrationCount,
         0
       );
+
+      // Construire la liste staff via les rôles membres
+      if (membersResponse.ok) {
+        const membersPayload = await membersResponse.json();
+        const STAFF_ROLES = new Set([
+          "Admin",
+          "Admin Coordinateur",
+          "Modérateur",
+          "Modérateur en formation",
+          "Modérateur en activité réduite",
+          "Modérateur en pause",
+          "Soutien TENF",
+        ]);
+        const staffSet = new Set<string>(
+          (membersPayload.members || [])
+            .filter((m: any) => STAFF_ROLES.has(m.role))
+            .map((m: any) => (m.twitchLogin || "").toLowerCase())
+            .filter(Boolean)
+        );
+        setStaffLogins(staffSet);
+      } else {
+        setStaffLogins(new Set());
+      }
       
       setData({
         totalEvents: pastEvents.length, // Nombre d'événements passés uniquement
@@ -197,8 +227,40 @@ export default function RecapPage() {
     return uniqueLogins.size;
   };
 
+  const getTopParticipantsByCategory = (
+    source: RecapData | null = viewData,
+    excludeStaff: boolean = false
+  ) => {
+    if (!source) return {} as Record<string, Array<{ login: string; count: number }>>;
+
+    const counters: Record<string, Map<string, number>> = {};
+
+    source.eventsWithRegistrations.forEach((item) => {
+      const cat = item.event.category;
+      if (!counters[cat]) counters[cat] = new Map<string, number>();
+
+      (item.presences || [])
+        .filter((presence: EventPresence) => presence.present && !!presence.twitchLogin)
+        .forEach((presence: EventPresence) => {
+          const login = presence.twitchLogin.toLowerCase();
+          if (excludeStaff && staffLogins.has(login)) return;
+          counters[cat].set(login, (counters[cat].get(login) || 0) + 1);
+        });
+    });
+
+    const result: Record<string, Array<{ login: string; count: number }>> = {};
+    Object.entries(counters).forEach(([cat, map]) => {
+      result[cat] = Array.from(map.entries())
+        .map(([login, count]) => ({ login, count }))
+        .sort((a, b) => (b.count !== a.count ? b.count - a.count : a.login.localeCompare(b.login, "fr")))
+        .slice(0, 5);
+    });
+    return result;
+  };
+
   const totalPresences = getTotalPresences();
   const uniqueParticipants = getUniqueParticipants();
+  const topByCategory = getTopParticipantsByCategory(viewData, topMode === "noStaff");
 
   const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   const currentYear = now.getFullYear();
@@ -374,9 +436,33 @@ export default function RecapPage() {
 
           {/* Statistiques par catégorie */}
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold text-white mb-6">
-              Statistiques par catégorie
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <h2 className="text-xl font-semibold text-white">Statistiques par catégorie</h2>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTopMode("all")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    topMode === "all"
+                      ? "bg-[#9146ff] text-white"
+                      : "bg-[#0e0e10] text-gray-300 border border-gray-700 hover:text-white"
+                  }`}
+                >
+                  Top 5 - Tous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTopMode("noStaff")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    topMode === "noStaff"
+                      ? "bg-[#9146ff] text-white"
+                      : "bg-[#0e0e10] text-gray-300 border border-gray-700 hover:text-white"
+                  }`}
+                >
+                  Top 5 - Hors staff
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.entries(categoryStats).map(([category, stats]) => (
                 <div
@@ -419,6 +505,25 @@ export default function RecapPage() {
                         </span>
                       </div>
                     )}
+                    <div className="pt-2 mt-2 border-t border-gray-700">
+                      <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-2">
+                        Top 5 présences ({topMode === "all" ? "tous" : "hors staff"})
+                      </p>
+                      {topByCategory[category]?.length ? (
+                        <div className="space-y-1">
+                          {topByCategory[category].map((entry, idx) => (
+                            <div key={`${category}-${entry.login}`} className="flex justify-between text-xs">
+                              <span className="text-gray-300">
+                                {idx + 1}. {entry.login}
+                              </span>
+                              <span className="text-[#9146ff] font-semibold">{entry.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">Aucune donnée.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
