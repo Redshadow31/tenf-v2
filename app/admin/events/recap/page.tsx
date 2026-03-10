@@ -31,6 +31,66 @@ interface RecapData {
 
 type ViewMode = "all" | "month";
 
+function normalizeLogin(value?: string): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function safeTs(value?: string): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function dedupeRegistrations(registrations: Array<any>): Array<any> {
+  const byLogin = new Map<string, any>();
+  for (const reg of registrations || []) {
+    const key = normalizeLogin(reg?.twitchLogin);
+    if (!key) continue;
+    const existing = byLogin.get(key);
+    if (!existing || safeTs(reg?.registeredAt) >= safeTs(existing?.registeredAt)) {
+      byLogin.set(key, reg);
+    }
+  }
+  return Array.from(byLogin.values());
+}
+
+function dedupePresences(presences: EventPresence[]): EventPresence[] {
+  const byLogin = new Map<string, EventPresence>();
+  for (const presence of presences || []) {
+    const key = normalizeLogin(presence?.twitchLogin);
+    if (!key) continue;
+    const existing = byLogin.get(key);
+    if (!existing) {
+      byLogin.set(key, presence);
+      continue;
+    }
+    // Garder la plus récente et conserver "present: true" si l'une des deux lignes l'indique.
+    const existingTs = safeTs((existing as any).validatedAt) || safeTs((existing as any).createdAt);
+    const currentTs = safeTs((presence as any).validatedAt) || safeTs((presence as any).createdAt);
+    const newer = currentTs >= existingTs ? presence : existing;
+    const older = newer === presence ? existing : presence;
+    byLogin.set(key, {
+      ...newer,
+      present: newer.present || older.present,
+      displayName: newer.displayName || older.displayName,
+    });
+  }
+  return Array.from(byLogin.values());
+}
+
+function normalizeEventItem(item: any) {
+  const registrations = dedupeRegistrations(item.registrations || []);
+  const presences = dedupePresences(item.presences || []);
+  const presenceCount = presences.filter((p) => p.present).length;
+  return {
+    ...item,
+    registrations,
+    registrationCount: registrations.length,
+    presences,
+    presenceCount,
+  };
+}
+
 export default function RecapPage() {
   const [data, setData] = useState<RecapData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +143,7 @@ export default function RecapPage() {
       }
       
       // Charger les présences pour chaque événement passé uniquement
-      const eventsWithPresences = await Promise.all(
+      const eventsWithPresencesRaw = await Promise.all(
         eventsData.map(async (item: any) => {
           try {
             const presenceResponse = await fetch(
@@ -119,6 +179,7 @@ export default function RecapPage() {
           }
         })
       );
+      const eventsWithPresences = eventsWithPresencesRaw.map(normalizeEventItem);
       
       // Calculer le total des inscriptions de tous les événements affichés
       const totalRegistrationsPast = eventsWithPresences.reduce(
@@ -249,10 +310,14 @@ export default function RecapPage() {
       const cat = item.event.category;
       if (!counters[cat]) counters[cat] = new Map<string, number>();
 
+      // Dédupliquer par login dans un même événement pour éviter le double comptage legacy/v2.
+      const uniquePresentInEvent = new Set<string>();
       (item.presences || [])
         .filter((presence: EventPresence) => presence.present && !!presence.twitchLogin)
         .forEach((presence: EventPresence) => {
-          const login = presence.twitchLogin.toLowerCase();
+          const login = normalizeLogin(presence.twitchLogin);
+          if (!login || uniquePresentInEvent.has(login)) return;
+          uniquePresentInEvent.add(login);
           if (excludeStaff && staffLogins.has(login)) return;
           counters[cat].set(login, (counters[cat].get(login) || 0) + 1);
         });
