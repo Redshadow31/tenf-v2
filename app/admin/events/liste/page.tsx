@@ -107,7 +107,35 @@ export default function ListeEventsPage() {
       });
       if (response.ok) {
         const result = await response.json();
-        const eventsData = result.eventsWithRegistrations || [];
+        let eventsData = result.eventsWithRegistrations || [];
+
+        // Fallback de resilience migration: si l'API registrations renvoie vide,
+        // on recharge les événements bruts pour au moins afficher la liste.
+        if (eventsData.length === 0) {
+          try {
+            const fallbackResponse = await fetch("/api/events?admin=true", { cache: "no-store" });
+            if (fallbackResponse.ok) {
+              const fallbackPayload = await fallbackResponse.json();
+              const fallbackEvents = fallbackPayload.events || [];
+              eventsData = fallbackEvents.map((event: any) => ({
+                event: {
+                  id: event.id,
+                  title: event.title,
+                  date: event.startAtUtc || event.date,
+                  category: event.category,
+                  description: event.description,
+                  location: event.location,
+                  image: event.image,
+                  isPublished: event.isPublished ?? false,
+                },
+                registrations: [],
+                registrationCount: 0,
+              }));
+            }
+          } catch (fallbackError) {
+            console.error("[Liste Events Page] Fallback /api/events échoué:", fallbackError);
+          }
+        }
         
         console.log(`[Liste Events Page] Événements reçus: ${eventsData.length}`, {
           totalEvents: result.totalEvents,
@@ -160,6 +188,8 @@ export default function ListeEventsPage() {
         );
         
         setData(eventsWithPresences);
+      } else {
+        console.error("[Liste Events Page] API registrations non OK:", response.status);
       }
     } catch (error) {
       console.error("Erreur chargement données:", error);

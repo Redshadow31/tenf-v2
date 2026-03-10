@@ -152,9 +152,12 @@ export class EventRepository {
       if (!error) return data || [];
 
       const message = (error.message || '').toLowerCase();
-      // Compat: colonne absente selon l'état du schéma
-      if (orderColumn === 'starts_at' && message.includes('column') && message.includes('starts_at')) {
-        return null; // On retente avec "date"
+      // Compat: colonne absente selon l'état du schéma (schema cache / SQL error)
+      if (
+        (message.includes('column') || message.includes('could not find')) &&
+        message.includes(orderColumn)
+      ) {
+        return null; // On retente avec l'autre colonne, puis fallback legacy
       }
       // Compat: table/community_events absente sur un environnement partiellement migré
       if (message.includes('relation') && message.includes('community_events')) {

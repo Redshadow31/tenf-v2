@@ -151,6 +151,42 @@ async function loadRegistrationsFromLegacySupabase(eventId: string): Promise<Blo
   }
 }
 
+async function loadAllRegistrationsFromLegacySupabase(): Promise<Map<string, BlobRegistration[]>> {
+  const byEventId = new Map<string, BlobRegistration[]>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_registrations')
+      .select('*')
+      .limit(50000);
+
+    if (error) {
+      console.error('Erreur chargement global inscriptions legacy Supabase:', error);
+      return byEventId;
+    }
+
+    for (const row of (data || [])) {
+      const eventId = String((row as any).event_id ?? '');
+      if (!eventId) continue;
+      const reg: BlobRegistration = {
+        id: String((row as any).id),
+        eventId,
+        twitchLogin: (row as any).twitch_login || '',
+        displayName: (row as any).display_name || (row as any).twitch_login || '',
+        discordId: (row as any).discord_id || undefined,
+        discordUsername: (row as any).discord_username || undefined,
+        registeredAt: (row as any).registered_at ? String((row as any).registered_at) : new Date().toISOString(),
+        notes: (row as any).notes || undefined,
+      };
+      const arr = byEventId.get(eventId) || [];
+      arr.push(reg);
+      byEventId.set(eventId, arr);
+    }
+  } catch (error) {
+    console.error('Erreur chargement global inscriptions legacy Supabase:', error);
+  }
+  return byEventId;
+}
+
 async function findEventInSupabase(blobEvent: BlobEvent): Promise<SupabaseEventRow | null> {
   const { data, error } = await supabaseAdmin
     .from('community_events')
@@ -236,6 +272,46 @@ async function loadPresencesFromLegacySupabase(eventId: string): Promise<BlobPre
   } catch {
     return [];
   }
+}
+
+async function loadAllPresencesFromLegacySupabase(): Promise<Map<string, BlobPresence[]>> {
+  const byEventId = new Map<string, BlobPresence[]>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .limit(50000);
+
+    if (error) {
+      console.error('Erreur chargement global présences legacy Supabase:', error);
+      return byEventId;
+    }
+
+    for (const row of (data || [])) {
+      const eventId = String((row as any).event_id ?? '');
+      if (!eventId) continue;
+      const presence: BlobPresence = {
+        id: String((row as any).id),
+        twitchLogin: (row as any).twitch_login || '',
+        displayName: (row as any).display_name || (row as any).twitch_login || '',
+        discordId: (row as any).discord_id || undefined,
+        discordUsername: (row as any).discord_username || undefined,
+        isRegistered: (row as any).is_registered ?? true,
+        present: (row as any).present ?? false,
+        note: (row as any).note || undefined,
+        validatedAt: (row as any).validated_at ? String((row as any).validated_at) : undefined,
+        validatedBy: (row as any).validated_by || undefined,
+        addedManually: (row as any).added_manually ?? false,
+        createdAt: (row as any).created_at ? String((row as any).created_at) : new Date().toISOString(),
+      };
+      const arr = byEventId.get(eventId) || [];
+      arr.push(presence);
+      byEventId.set(eventId, arr);
+    }
+  } catch (error) {
+    console.error('Erreur chargement global présences legacy Supabase:', error);
+  }
+  return byEventId;
 }
 
 async function checkPresenceExistsInSupabase(eventId: string, twitchLogin: string): Promise<boolean> {
@@ -390,6 +466,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const legacyRegsByEvent = useLegacySupabase
+      ? await loadAllRegistrationsFromLegacySupabase()
+      : null;
+    const legacyPresencesByEvent = useLegacySupabase
+      ? await loadAllPresencesFromLegacySupabase()
+      : null;
+
     // 2. Migrer les événements
     let eventsMigrated = 0;
     let eventsSkipped = 0;
@@ -420,7 +503,7 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobRegistrations = useLegacySupabase
-        ? await loadRegistrationsFromLegacySupabase(blobEvent.id)
+        ? (legacyRegsByEvent?.get(blobEvent.id) || [])
         : await loadRegistrationsFromBlobs(blobEvent.id);
       const targetEventId = eventIdMap.get(blobEvent.id);
       if (!targetEventId) continue;
@@ -443,7 +526,7 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobPresences = useLegacySupabase
-        ? await loadPresencesFromLegacySupabase(blobEvent.id)
+        ? (legacyPresencesByEvent?.get(blobEvent.id) || [])
         : await loadPresencesFromBlobs(blobEvent.id);
       const targetEventId = eventIdMap.get(blobEvent.id);
       if (!targetEventId) continue;

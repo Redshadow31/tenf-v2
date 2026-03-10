@@ -126,6 +126,30 @@ async function loadRegistrationsFromLegacySupabase(eventId: string): Promise<any
   }
 }
 
+async function loadAllRegistrationsFromLegacySupabase(): Promise<Map<string, any[]>> {
+  const byEventId = new Map<string, any[]>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_registrations')
+      .select('*')
+      .limit(50000);
+    if (error) {
+      console.error('Erreur chargement global inscriptions legacy Supabase:', error);
+      return byEventId;
+    }
+    for (const row of (data || [])) {
+      const eventId = String((row as any).event_id ?? '');
+      if (!eventId) continue;
+      const arr = byEventId.get(eventId) || [];
+      arr.push(row);
+      byEventId.set(eventId, arr);
+    }
+  } catch (error) {
+    console.error('Erreur chargement global inscriptions legacy Supabase:', error);
+  }
+  return byEventId;
+}
+
 async function loadPresencesFromBlobs(eventId: string): Promise<any[]> {
   try {
     const store = getBlobStore(EVENT_PRESENCE_STORE_NAME);
@@ -154,6 +178,30 @@ async function loadPresencesFromLegacySupabase(eventId: string): Promise<any[]> 
   } catch {
     return [];
   }
+}
+
+async function loadAllPresencesFromLegacySupabase(): Promise<Map<string, any[]>> {
+  const byEventId = new Map<string, any[]>();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .limit(50000);
+    if (error) {
+      console.error('Erreur chargement global présences legacy Supabase:', error);
+      return byEventId;
+    }
+    for (const row of (data || [])) {
+      const eventId = String((row as any).event_id ?? '');
+      if (!eventId) continue;
+      const arr = byEventId.get(eventId) || [];
+      arr.push(row);
+      byEventId.set(eventId, arr);
+    }
+  } catch (error) {
+    console.error('Erreur chargement global présences legacy Supabase:', error);
+  }
+  return byEventId;
 }
 
 export async function GET(request: NextRequest) {
@@ -215,6 +263,13 @@ export async function GET(request: NextRequest) {
     });
     const extraInSupabase = Array.from(supabaseEventIds).filter(id => !blobMatchedSupabaseIds.has(id));
 
+    const legacyRegsByEvent = useLegacySupabase
+      ? await loadAllRegistrationsFromLegacySupabase()
+      : null;
+    const legacyPresencesByEvent = useLegacySupabase
+      ? await loadAllPresencesFromLegacySupabase()
+      : null;
+
     // 5. Vérifier les inscriptions pour chaque événement
     const registrationsByEvent: Array<{
       eventId: string;
@@ -226,7 +281,7 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobRegistrations = useLegacySupabase
-        ? await loadRegistrationsFromLegacySupabase(blobEvent.id)
+        ? (legacyRegsByEvent?.get(blobEvent.id) || [])
         : await loadRegistrationsFromBlobs(blobEvent.id);
       
       const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
@@ -284,7 +339,7 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobPresences = useLegacySupabase
-        ? await loadPresencesFromLegacySupabase(blobEvent.id)
+        ? (legacyPresencesByEvent?.get(blobEvent.id) || [])
         : await loadPresencesFromBlobs(blobEvent.id);
       
       const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
