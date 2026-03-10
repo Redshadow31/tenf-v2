@@ -105,92 +105,98 @@ export default function ListeEventsPage() {
       const response = await fetch("/api/admin/events/registrations", {
         cache: 'no-store',
       });
+      let eventsData: EventWithRegistrations[] = [];
+
       if (response.ok) {
         const result = await response.json();
-        let eventsData = result.eventsWithRegistrations || [];
-
-        // Fallback de resilience migration: si l'API registrations renvoie vide,
-        // on recharge les événements bruts pour au moins afficher la liste.
-        if (eventsData.length === 0) {
-          try {
-            const fallbackResponse = await fetch("/api/events?admin=true", { cache: "no-store" });
-            if (fallbackResponse.ok) {
-              const fallbackPayload = await fallbackResponse.json();
-              const fallbackEvents = fallbackPayload.events || [];
-              eventsData = fallbackEvents.map((event: any) => ({
-                event: {
-                  id: event.id,
-                  title: event.title,
-                  date: event.startAtUtc || event.date,
-                  category: event.category,
-                  description: event.description,
-                  location: event.location,
-                  image: event.image,
-                  isPublished: event.isPublished ?? false,
-                },
-                registrations: [],
-                registrationCount: 0,
-              }));
-            }
-          } catch (fallbackError) {
-            console.error("[Liste Events Page] Fallback /api/events échoué:", fallbackError);
-          }
-        }
+        eventsData = result.eventsWithRegistrations || [];
         
         console.log(`[Liste Events Page] Événements reçus: ${eventsData.length}`, {
-          totalEvents: result.totalEvents,
-          totalRegistrations: result.totalRegistrations,
+          totalEvents: result?.totalEvents,
+          totalRegistrations: result?.totalRegistrations,
         });
         
         if (eventsData.length === 0) {
           console.warn('[Liste Events Page] Aucun événement reçu de l\'API');
         }
-        
-        // Charger les présences pour chaque événement
-        const eventsWithPresences = await Promise.all(
-          eventsData.map(async (item: EventWithRegistrations) => {
-            try {
-              const presenceResponse = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, {
-                cache: 'no-store',
-              });
-              if (presenceResponse.ok) {
-                const presenceData = await presenceResponse.json();
-                const presences = presenceData.presences || [];
-                const presentCount = presences.filter((p: any) => p.present).length;
-                const absentCount = presences.filter((p: any) => !p.present).length;
-                const registeredWithoutPresence = item.registrations.filter(reg =>
-                  !presences.some((p: any) => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                ).length;
-                const totalAbsents = absentCount + registeredWithoutPresence;
-                const presenceRate = item.registrationCount > 0 
-                  ? Math.round((presentCount / item.registrationCount) * 100) 
-                  : 0;
-
-                return {
-                  ...item,
-                  presences,
-                  presenceCount: presentCount,
-                  absentCount: totalAbsents,
-                  presenceRate,
-                };
-              }
-            } catch (error) {
-              console.error(`Erreur chargement présences pour ${item.event.id}:`, error);
-            }
-            return {
-              ...item,
-              presences: [],
-              presenceCount: 0,
-              absentCount: item.registrationCount,
-              presenceRate: 0,
-            };
-          })
-        );
-        
-        setData(eventsWithPresences);
       } else {
         console.error("[Liste Events Page] API registrations non OK:", response.status);
       }
+
+      // Fallback de resilience migration: même en cas d'erreur API registrations,
+      // on recharge les événements bruts pour au moins afficher la liste.
+      if (eventsData.length === 0) {
+        try {
+          let fallbackResponse = await fetch("/api/events?admin=true", { cache: "no-store" });
+          if (!fallbackResponse.ok) {
+            fallbackResponse = await fetch("/api/events", { cache: "no-store" });
+          }
+
+          if (fallbackResponse.ok) {
+            const fallbackPayload = await fallbackResponse.json();
+            const fallbackEvents = fallbackPayload.events || [];
+            eventsData = fallbackEvents.map((event: any) => ({
+              event: {
+                id: event.id,
+                title: event.title,
+                date: event.startAtUtc || event.date,
+                category: event.category,
+                description: event.description,
+                location: event.location,
+                image: event.image,
+                isPublished: event.isPublished ?? false,
+              },
+              registrations: [],
+              registrationCount: 0,
+            }));
+          }
+        } catch (fallbackError) {
+          console.error("[Liste Events Page] Fallback /api/events échoué:", fallbackError);
+        }
+      }
+        
+      // Charger les présences pour chaque événement
+      const eventsWithPresences = await Promise.all(
+        eventsData.map(async (item: EventWithRegistrations) => {
+          try {
+            const presenceResponse = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, {
+              cache: 'no-store',
+            });
+            if (presenceResponse.ok) {
+              const presenceData = await presenceResponse.json();
+              const presences = presenceData.presences || [];
+              const presentCount = presences.filter((p: any) => p.present).length;
+              const absentCount = presences.filter((p: any) => !p.present).length;
+              const registeredWithoutPresence = item.registrations.filter(reg =>
+                !presences.some((p: any) => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+              ).length;
+              const totalAbsents = absentCount + registeredWithoutPresence;
+              const presenceRate = item.registrationCount > 0
+                ? Math.round((presentCount / item.registrationCount) * 100)
+                : 0;
+
+              return {
+                ...item,
+                presences,
+                presenceCount: presentCount,
+                absentCount: totalAbsents,
+                presenceRate,
+              };
+            }
+          } catch (error) {
+            console.error(`Erreur chargement présences pour ${item.event.id}:`, error);
+          }
+          return {
+            ...item,
+            presences: [],
+            presenceCount: 0,
+            absentCount: item.registrationCount,
+            presenceRate: 0,
+          };
+        })
+      );
+      
+      setData(eventsWithPresences);
     } catch (error) {
       console.error("Erreur chargement données:", error);
     } finally {

@@ -173,7 +173,10 @@ export class EventRepository {
     if (onDate !== null && onDate.length > 0) return onDate;
 
     // 2) Fallback ancien schéma
-    const tryLegacyEvents = async (publishedColumn: 'is_published' | 'isPublished'): Promise<any[] | null> => {
+    const tryLegacyEvents = async (
+      publishedColumn: 'is_published' | 'isPublished',
+      dateColumn: 'date' | 'starts_at'
+    ): Promise<any[] | null> => {
       let legacyQuery = supabaseAdmin
         .from('events')
         .select('*');
@@ -182,11 +185,11 @@ export class EventRepository {
         legacyQuery = legacyQuery.eq(publishedColumn, true);
       }
       if (upcomingOnly) {
-        legacyQuery = legacyQuery.gte('date', nowIso);
+        legacyQuery = legacyQuery.gte(dateColumn, nowIso);
       }
 
       const { data: legacyData, error: legacyError } = await legacyQuery
-        .order('date', { ascending })
+        .order(dateColumn, { ascending })
         .range(offset, offset + limit - 1);
 
       if (!legacyError) {
@@ -197,13 +200,26 @@ export class EventRepository {
       if (publishedColumn === 'is_published' && message.includes('column') && message.includes('is_published')) {
         return null; // retry on old camelCase name
       }
+      if (
+        (message.includes('column') || message.includes('could not find')) &&
+        message.includes(dateColumn)
+      ) {
+        return null; // retry with the other date column
+      }
+      if (message.includes('relation') && message.includes('events')) {
+        return [];
+      }
       throw legacyError;
     };
 
-    const legacySnake = await tryLegacyEvents('is_published');
-    if (legacySnake !== null) return legacySnake;
-    const legacyCamel = await tryLegacyEvents('isPublished');
-    if (legacyCamel !== null) return legacyCamel;
+    const legacySnakeDate = await tryLegacyEvents('is_published', 'date');
+    if (legacySnakeDate !== null) return legacySnakeDate;
+    const legacySnakeStartsAt = await tryLegacyEvents('is_published', 'starts_at');
+    if (legacySnakeStartsAt !== null) return legacySnakeStartsAt;
+    const legacyCamelDate = await tryLegacyEvents('isPublished', 'date');
+    if (legacyCamelDate !== null) return legacyCamelDate;
+    const legacyCamelStartsAt = await tryLegacyEvents('isPublished', 'starts_at');
+    if (legacyCamelStartsAt !== null) return legacyCamelStartsAt;
 
     return [];
   }
