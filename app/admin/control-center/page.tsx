@@ -115,10 +115,10 @@ const quickLinks: QuickLink[] = [
 // Pages utilitaires (migration, tests, etc.)
 const utilityPages: QuickLink[] = [
   {
-    href: "/admin/migration/all",
-    label: "Migration Globale",
+    href: "/admin/migration",
+    label: "Migration (pas à pas)",
     icon: <Database className="w-6 h-6" />,
-    description: "Migrer tous les blobs vers Supabase en une fois",
+    description: "Hub de migration guidée bloc par bloc",
   },
   {
     href: "/admin/migration/events",
