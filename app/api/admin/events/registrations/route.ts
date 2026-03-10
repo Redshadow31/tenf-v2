@@ -83,6 +83,28 @@ async function loadEventsWithoutCache(): Promise<any[]> {
   return [...community, ...legacyOnly];
 }
 
+function eventMergeKey(eventLike: {
+  id?: string;
+  legacyEventId?: string;
+  title?: string;
+  date?: Date | string;
+}): string {
+  const title = String(eventLike.title || '').trim().toLowerCase();
+  const dateRaw = eventLike.date;
+  const dateIso = dateRaw instanceof Date ? dateRaw.toISOString() : String(dateRaw || '');
+  return `${title}__${dateIso}`;
+}
+
+function normalizeLogin(value?: string): string {
+  return (value || '').trim().toLowerCase();
+}
+
+function toTs(value?: string): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
 /**
  * GET - Récupère toutes les inscriptions pour tous les événements (admin uniquement)
  */
@@ -98,24 +120,55 @@ export async function GET(request: NextRequest) {
     // Récupérer tous les événements (limite élevée pour l'admin)
     console.log('[Admin Events Registrations API] Récupération des événements...');
     let events = await eventRepository.findAll(1000, 0);
-    if (!events.length) {
-      // Résilience: si cache stale vide, bypass direct DB.
-      const directRows = await loadEventsWithoutCache();
-      events = directRows.map((row: any) => ({
-        id: String(row.id),
-        title: row.title || 'Sans titre',
-        description: row.description || '',
-        image: row.image || undefined,
-        date: new Date(row.starts_at || row.date || row.created_at || row.updated_at || new Date().toISOString()),
-        category: row.category || 'Non classé',
-        location: row.location || undefined,
-        invitedMembers: row.invited_members || [],
-        isPublished: row.is_published ?? row.isPublished ?? false,
-        createdAt: new Date(row.created_at || new Date().toISOString()),
-        createdBy: row.created_by || 'system',
-        updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
-      }));
+    const directRows = await loadEventsWithoutCache();
+    const directEvents = directRows.map((row: any) => ({
+      id: String(row.id),
+      title: row.title || 'Sans titre',
+      description: row.description || '',
+      image: row.image || undefined,
+      date: new Date(row.starts_at || row.date || row.created_at || row.updated_at || new Date().toISOString()),
+      category: row.category || 'Non classé',
+      location: row.location || undefined,
+      invitedMembers: row.invited_members || [],
+      isPublished: row.is_published ?? row.isPublished ?? false,
+      createdAt: new Date(row.created_at || new Date().toISOString()),
+      createdBy: row.created_by || 'system',
+      updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+      legacyEventId: row.legacy_event_id ? String(row.legacy_event_id) : undefined,
+    }));
+
+    // Fusionne toujours les sources v2 + legacy pour éviter de perdre des événements
+    // tant que la migration n'est pas totalement homogène.
+    const byId = new Map<string, any>();
+    const byLegacyId = new Map<string, string>();
+    const byTitleDate = new Map<string, string>();
+
+    for (const event of events) {
+      byId.set(String(event.id), event);
+      const legacy = (event as any).legacyEventId;
+      if (legacy) byLegacyId.set(String(legacy), String(event.id));
+      byTitleDate.set(eventMergeKey(event), String(event.id));
     }
+
+    for (const event of directEvents) {
+      const directId = String(event.id);
+      if (byId.has(directId)) continue;
+
+      if (event.legacyEventId && byLegacyId.has(event.legacyEventId)) {
+        continue;
+      }
+
+      const key = eventMergeKey(event);
+      if (byTitleDate.has(key)) {
+        continue;
+      }
+
+      byId.set(directId, event);
+      if (event.legacyEventId) byLegacyId.set(event.legacyEventId, directId);
+      byTitleDate.set(key, directId);
+    }
+
+    events = Array.from(byId.values());
     console.log(`[Admin Events Registrations API] ${events.length} événements trouvés`);
     
     // Récupérer toutes les inscriptions pour tous les événements en parallèle (évite N+1 queries)
@@ -159,8 +212,18 @@ export async function GET(request: NextRequest) {
     let totalRegistrations = 0;
     
     registrationResults.forEach(({ eventId, registrations }) => {
-      allRegistrationsMap[eventId] = registrations;
-      totalRegistrations += registrations.length;
+      const dedupByLogin = new Map<string, any>();
+      for (const reg of registrations) {
+        const key = normalizeLogin(reg?.twitchLogin);
+        if (!key) continue;
+        const existing = dedupByLogin.get(key);
+        if (!existing || toTs(reg?.registeredAt) >= toTs(existing?.registeredAt)) {
+          dedupByLogin.set(key, reg);
+        }
+      }
+      const deduped = Array.from(dedupByLogin.values());
+      allRegistrationsMap[eventId] = deduped;
+      totalRegistrations += deduped.length;
     });
     
     // Enrichir avec les informations des événements

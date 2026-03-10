@@ -90,6 +90,58 @@ const getCategoryConfig = (categoryValue: string): CategoryConfig => {
   return categories.find(cat => cat.value === categoryValue) || categories[0];
 };
 
+function normalizeLogin(value?: string): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function safeTs(value?: string): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function dedupeRegistrations(registrations: EventWithRegistrations["registrations"]) {
+  const byLogin = new Map<string, EventWithRegistrations["registrations"][number]>();
+  for (const reg of registrations || []) {
+    const key = normalizeLogin(reg.twitchLogin);
+    if (!key) continue;
+    const existing = byLogin.get(key);
+    if (!existing || safeTs(reg.registeredAt) >= safeTs(existing.registeredAt)) {
+      byLogin.set(key, reg);
+    }
+  }
+  return Array.from(byLogin.values());
+}
+
+function dedupePresences(presences: NonNullable<EventWithRegistrations["presences"]>) {
+  const byLogin = new Map<string, NonNullable<EventWithRegistrations["presences"]>[number]>();
+  for (const presence of presences || []) {
+    const key = normalizeLogin(presence.twitchLogin);
+    if (!key) continue;
+    const existing = byLogin.get(key);
+    if (!existing) {
+      byLogin.set(key, presence);
+      continue;
+    }
+    // Avec les données legacy/v2, garder une présence "présent" si au moins une source est à true.
+    byLogin.set(key, {
+      ...presence,
+      present: presence.present || existing.present,
+      displayName: presence.displayName || existing.displayName,
+    });
+  }
+  return Array.from(byLogin.values());
+}
+
+function normalizeEventItem(item: EventWithRegistrations): EventWithRegistrations {
+  const registrations = dedupeRegistrations(item.registrations || []);
+  return {
+    ...item,
+    registrations,
+    registrationCount: registrations.length,
+  };
+}
+
 export default function ListeEventsPage() {
   const [data, setData] = useState<EventWithRegistrations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +161,7 @@ export default function ListeEventsPage() {
 
       if (response.ok) {
         const result = await response.json();
-        eventsData = result.eventsWithRegistrations || [];
+        eventsData = (result.eventsWithRegistrations || []).map(normalizeEventItem);
         
         console.log(`[Liste Events Page] Événements reçus: ${eventsData.length}`, {
           totalEvents: result?.totalEvents,
@@ -164,11 +216,11 @@ export default function ListeEventsPage() {
             });
             if (presenceResponse.ok) {
               const presenceData = await presenceResponse.json();
-              const presences = presenceData.presences || [];
+              const presences = dedupePresences(presenceData.presences || []);
               const presentCount = presences.filter((p: any) => p.present).length;
               const absentCount = presences.filter((p: any) => !p.present).length;
               const registeredWithoutPresence = item.registrations.filter(reg =>
-                !presences.some((p: any) => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
+                !presences.some((p: any) => normalizeLogin(p.twitchLogin) === normalizeLogin(reg.twitchLogin))
               ).length;
               const totalAbsents = absentCount + registeredWithoutPresence;
               const presenceRate = item.registrationCount > 0

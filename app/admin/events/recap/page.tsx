@@ -64,14 +64,19 @@ function dedupePresences(presences: EventPresence[]): EventPresence[] {
       byLogin.set(key, presence);
       continue;
     }
-    // Garder la plus récente et conserver "present: true" si l'une des deux lignes l'indique.
+    // Garder la plus récente. En cas d'égalité stricte, privilégier absent
+    // pour éviter de compter un faux présent.
     const existingTs = safeTs((existing as any).validatedAt) || safeTs((existing as any).createdAt);
     const currentTs = safeTs((presence as any).validatedAt) || safeTs((presence as any).createdAt);
-    const newer = currentTs >= existingTs ? presence : existing;
+    const hasClearNewer = currentTs !== existingTs;
+    const newer = hasClearNewer ? (currentTs > existingTs ? presence : existing) : presence;
     const older = newer === presence ? existing : presence;
+    const resolvedPresent = hasClearNewer
+      ? newer.present
+      : (newer.present && older.present);
     byLogin.set(key, {
       ...newer,
-      present: newer.present || older.present,
+      present: resolvedPresent,
       displayName: newer.displayName || older.displayName,
     });
   }
