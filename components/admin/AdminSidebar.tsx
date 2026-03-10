@@ -145,7 +145,15 @@ export default function AdminSidebar() {
   }
 
   return (
-    <div className="w-72 max-w-[88vw] border-r h-screen overflow-y-auto p-4" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
+    <div
+      className="admin-sidebar-scroll w-72 max-w-[88vw] border-r h-screen overflow-y-auto p-4"
+      style={{
+        backgroundColor: "var(--color-sidebar-bg)",
+        borderColor: "var(--color-sidebar-border)",
+        scrollbarWidth: "thin",
+        scrollbarColor: "#353544 transparent",
+      }}
+    >
       <div className="mb-8">
         <Link href="/" className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}>
@@ -429,6 +437,24 @@ export default function AdminSidebar() {
           <span>Retour au site</span>
         </Link>
       </div>
+      <style jsx global>{`
+        .admin-sidebar-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .admin-sidebar-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .admin-sidebar-scroll::-webkit-scrollbar-thumb {
+          background: #353544;
+          border-radius: 999px;
+        }
+
+        .admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+          background: #4a4a60;
+        }
+      `}</style>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export interface NavItem {
 export const adminNavigation: NavItem[] = [
   {
     href: "/admin/dashboard",
-    label: "📊 Pilotage du serveur",
+    label: "Pilotage du serveur",
     icon: "📊",
     sectionLabel: "PILOTAGE",
     children: [
@@ -26,7 +26,7 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/membres",
-    label: "👥 Gestion des membres",
+    label: "Gestion des membres",
     icon: "👥",
     sectionLabel: "MEMBRES",
     children: [
@@ -67,7 +67,7 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/integration",
-    label: "🌱 Parcours des membres",
+    label: "Parcours des membres",
     icon: "🌱",
     sectionLabel: "PARCOURS MEMBRE",
     children: [
@@ -96,7 +96,7 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/events",
-    label: "🎉 Vie communautaire",
+    label: "Vie communautaire",
     icon: "🎉",
     sectionLabel: "COMMUNAUTÉ",
     children: [
@@ -116,7 +116,7 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/spotlight",
-    label: "⭐ Spotlights & mise en avant",
+    label: "Spotlights & mise en avant",
     icon: "⭐",
     sectionLabel: "SPOTLIGHTS",
     children: [
@@ -129,7 +129,7 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/evaluation",
-    label: "📊 Évaluation & progression",
+    label: "Évaluation & progression",
     icon: "📊",
     sectionLabel: "ÉVALUATION",
     children: [
@@ -150,14 +150,14 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/boutique",
-    label: "🎁 Récompenses & avantages",
+    label: "Récompenses & avantages",
     icon: "🎁",
     sectionLabel: "RÉCOMPENSES",
     children: [{ href: "/admin/boutique", label: "Boutique & récompenses" }],
   },
   {
     href: "/admin/academy",
-    label: "🎓 Formation & accompagnement",
+    label: "Formation & accompagnement",
     icon: "🎓",
     sectionLabel: "FORMATION",
     children: [
@@ -183,14 +183,14 @@ export const adminNavigation: NavItem[] = [
   },
   {
     href: "/admin/log-center",
-    label: "🧾 Logs & audit",
+    label: "Logs & audit",
     icon: "🧾",
     sectionLabel: "LOGS",
     children: [{ href: "/admin/log-center", label: "Logs & audit" }],
   },
   {
     href: "/admin/gestion-acces",
-    label: "⚙️ Administration du site",
+    label: "Administration du site",
     icon: "⚙️",
     sectionLabel: "ADMINISTRATION",
     children: [
