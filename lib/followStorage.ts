@@ -380,7 +380,8 @@ export type StaffFollowValidationAny = {
   // Format A (simple) : liste de logins qui "me suivent"
   follows?: string[];
   // Format B : map par membre avec booléens (Je suis / Me suit)
-  members?: Record<string, { iFollow?: boolean; followsMe?: boolean }>;
+  // + compat format actuel (tableau de MemberFollowValidation)
+  members?: Record<string, { iFollow?: boolean; followsMe?: boolean }> | MemberFollowValidation[];
   // Format C : rows/tableau
   rows?: Array<{
     login?: string;
