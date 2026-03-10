@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getIntegration, registerForIntegration } from '@/lib/integrationStorage';
-import { findMemberByIdentifier, loadMemberDataFromStorage } from '@/lib/memberData';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { memberRepository } from '@/lib/repositories';
 
 /**
  * POST - Inscription à une intégration
@@ -33,10 +35,11 @@ export async function POST(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté depuis les cookies (optionnel)
+    // Récupérer l'utilisateur Discord connecté (NextAuth en priorité)
+    const session = await getServerSession(authOptions);
     const cookieStore = cookies();
-    const discordUserId = cookieStore.get('discord_user_id')?.value;
-    const discordUsername = cookieStore.get('discord_username')?.value;
+    const discordUserId = session?.user?.discordId || cookieStore.get('discord_user_id')?.value;
+    const discordUsername = session?.user?.username || cookieStore.get('discord_username')?.value;
     
     // Fonction pour extraire le pseudo Twitch d'un lien de chaîne
     const extractTwitchLogin = (url: string): string | null => {
@@ -54,37 +57,60 @@ export async function POST(
       return null;
     };
 
-    // Validation des champs requis (même pour les utilisateurs connectés)
+    // Validation des champs requis
     const { 
       discordUsername: formDiscordUsername, 
       twitchChannelUrl,
       parrain,
       notes 
     } = body;
-    
-    // Validation des champs obligatoires
+
+    // Utilisateur connecté Discord: utiliser directement ses données membre
+    if (discordUserId) {
+      const member = await memberRepository.findByDiscordId(discordUserId);
+      if (!member) {
+        return NextResponse.json(
+          { error: "Profil introuvable. Créez d'abord votre profil sur /membres/me." },
+          { status: 400 }
+        );
+      }
+
+      const isPlaceholder = member.twitchLogin.startsWith("nouveau_") || member.twitchLogin.startsWith("nouveau-");
+      if (isPlaceholder || !member.parrain) {
+        return NextResponse.json(
+          { error: "Profil incomplet. Complétez d'abord votre profil sur /membres/me." },
+          { status: 400 }
+        );
+      }
+
+      const registration = await registerForIntegration(integrationId, {
+        twitchLogin: member.twitchLogin,
+        twitchChannelUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+        displayName: member.discordUsername || member.displayName || member.twitchLogin,
+        discordId: member.discordId || discordUserId,
+        discordUsername: member.discordUsername || discordUsername || undefined,
+        parrain: member.parrain,
+        notes: notes || undefined,
+      });
+
+      return NextResponse.json({
+        registration,
+        success: true,
+        message: 'Inscription réussie !'
+      });
+    }
+
+    // Utilisateur non connecté Discord: formulaire obligatoire
     if (!formDiscordUsername) {
-      return NextResponse.json(
-        { error: 'Le pseudo Discord est requis' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le pseudo Discord est requis' }, { status: 400 });
     }
-    
     if (!twitchChannelUrl) {
-      return NextResponse.json(
-        { error: 'Le lien de chaîne Twitch est requis' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le lien de chaîne Twitch est requis' }, { status: 400 });
     }
-    
     if (!parrain) {
-      return NextResponse.json(
-        { error: 'Le parrain TENF est requis' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le parrain TENF est requis' }, { status: 400 });
     }
-    
-    // Extraire le pseudo Twitch du lien
+
     const twitchLogin = extractTwitchLogin(twitchChannelUrl);
     if (!twitchLogin) {
       return NextResponse.json(
@@ -92,20 +118,18 @@ export async function POST(
         { status: 400 }
       );
     }
-    
-    // Normaliser le lien Twitch
-    const normalizedTwitchUrl = twitchChannelUrl.startsWith('http') 
-      ? twitchChannelUrl 
+
+    const normalizedTwitchUrl = twitchChannelUrl.startsWith('http')
+      ? twitchChannelUrl
       : `https://www.twitch.tv/${twitchLogin}`;
-    
-    // S'inscrire avec les données du formulaire (même si connecté Discord, on utilise les données du formulaire)
+
     const registration = await registerForIntegration(integrationId, {
-      twitchLogin: twitchLogin,
+      twitchLogin,
       twitchChannelUrl: normalizedTwitchUrl,
-      displayName: formDiscordUsername, // Pseudo Discord
-      discordId: discordUserId || undefined,
+      displayName: formDiscordUsername,
+      discordId: undefined,
       discordUsername: formDiscordUsername,
-      parrain: parrain,
+      parrain,
       notes: notes || undefined,
     });
     

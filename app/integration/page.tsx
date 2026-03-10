@@ -31,6 +31,8 @@ export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isRegistering, setIsRegistering] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isDiscordConnected, setIsDiscordConnected] = useState(false);
 
   // Charger les intégrations depuis l'API
   useEffect(() => {
@@ -52,6 +54,23 @@ export default function Page() {
       }
     }
     loadIntegrations();
+  }, []);
+
+  // Vérifier l'authentification Discord (NextAuth)
+  useEffect(() => {
+    async function checkDiscordAuth() {
+      try {
+        const response = await fetch('/api/auth/session', { cache: 'no-store' });
+        if (!response.ok) return;
+        const session = await response.json();
+        setIsDiscordConnected(!!session?.user?.discordId);
+      } catch (error) {
+        console.error('Erreur vérification session:', error);
+      } finally {
+        setAuthChecked(true);
+      }
+    }
+    checkDiscordAuth();
   }, []);
 
   const getFilteredIntegrations = () => {
@@ -269,6 +288,7 @@ export default function Page() {
             setSelectedIntegration(null);
           }}
           onRegister={handleRegister}
+          requiresProfileForm={authChecked ? !isDiscordConnected : true}
           isLoading={isRegistering}
         />
       )}

@@ -24,6 +24,7 @@ type IntegrationModalProps = {
     parrain: string;
     notes?: string;
   }) => Promise<void>;
+  requiresProfileForm: boolean;
   isLoading?: boolean;
 };
 
@@ -32,6 +33,7 @@ export default function IntegrationModal({
   isOpen,
   onClose,
   onRegister,
+  requiresProfileForm,
   isLoading = false,
 }: IntegrationModalProps) {
   const [formData, setFormData] = useState({
@@ -234,7 +236,8 @@ export default function IntegrationModal({
             </div>
           )}
 
-          {/* Formulaire d'inscription */}
+          {/* Formulaire d'inscription (uniquement pour non-connectés Discord) */}
+          {requiresProfileForm ? (
           <form onSubmit={handleSubmitForm} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
@@ -302,6 +305,21 @@ export default function IntegrationModal({
               {isLoading ? "Création..." : "Créer mon profil"}
             </button>
           </form>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-300">
+                Vous êtes connecté via Discord. Vos informations profil seront utilisées automatiquement.
+              </p>
+              <button
+                type="button"
+                onClick={() => onRegister()}
+                disabled={isLoading}
+                className="w-full rounded-lg bg-[#9146ff] px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#5a32b4] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Inscription..." : "S'inscrire à l'intégration"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
