@@ -232,33 +232,76 @@ export class EventRepository {
   private async getEventIdAliases(eventId: string): Promise<string[]> {
     const aliases = new Set<string>([eventId]);
     try {
-      const { data, error } = await supabaseAdmin
-        .from(EVENTS_TABLE)
-        .select('id, legacy_event_id, title, starts_at')
-        .eq('id', eventId)
-        .maybeSingle();
+      if (isUuid(eventId)) {
+        const { data, error } = await supabaseAdmin
+          .from(EVENTS_TABLE)
+          .select('id, legacy_event_id, title, starts_at')
+          .eq('id', eventId)
+          .maybeSingle();
 
-      if (!error && data?.legacy_event_id) {
-        aliases.add(String(data.legacy_event_id));
-      }
+        if (!error && data?.legacy_event_id) {
+          aliases.add(String(data.legacy_event_id));
+        }
 
-      // Fallback legacy: certains événements ont été backfill sans legacy_event_id.
-      // On reconstruit alors l'ancien id via la table legacy `events` (title + date).
-      if (!error && data?.title && data?.starts_at && !data?.legacy_event_id) {
+        // Fallback legacy: certains événements ont été backfill sans legacy_event_id.
+        // On reconstruit alors l'ancien id via la table legacy `events` (title + date).
+        if (!error && data?.title && data?.starts_at && !data?.legacy_event_id) {
+          try {
+            const legacy = await supabaseAdmin
+              .from('events')
+              .select('id')
+              .eq('title', data.title)
+              .eq('date', data.starts_at)
+              .limit(1)
+              .maybeSingle();
+
+            if (!legacy.error && legacy.data?.id) {
+              aliases.add(String(legacy.data.id));
+            }
+          } catch {
+            // no-op: la table legacy peut ne pas exister
+          }
+        }
+      } else {
+        // eventId legacy text -> retrouver l'UUID community_events via legacy_event_id
+        const byLegacy = await supabaseAdmin
+          .from(EVENTS_TABLE)
+          .select('id, legacy_event_id, title, starts_at')
+          .eq('legacy_event_id', eventId)
+          .limit(1)
+          .maybeSingle();
+
+        if (!byLegacy.error && byLegacy.data?.id) {
+          aliases.add(String(byLegacy.data.id));
+        }
+
+        // Fallback: retrouver via events(id) puis match title/date côté community_events
         try {
-          const legacy = await supabaseAdmin
+          const legacyEvent = await supabaseAdmin
             .from('events')
-            .select('id')
-            .eq('title', data.title)
-            .eq('date', data.starts_at)
+            .select('id, title, date')
+            .eq('id', eventId)
             .limit(1)
             .maybeSingle();
 
-          if (!legacy.error && legacy.data?.id) {
-            aliases.add(String(legacy.data.id));
+          if (!legacyEvent.error && legacyEvent.data?.title && legacyEvent.data?.date) {
+            const mapped = await supabaseAdmin
+              .from(EVENTS_TABLE)
+              .select('id, legacy_event_id')
+              .eq('title', legacyEvent.data.title)
+              .eq('starts_at', legacyEvent.data.date)
+              .limit(1)
+              .maybeSingle();
+
+            if (!mapped.error && mapped.data?.id) {
+              aliases.add(String(mapped.data.id));
+            }
+            if (!mapped.error && mapped.data?.legacy_event_id) {
+              aliases.add(String(mapped.data.legacy_event_id));
+            }
           }
         } catch {
-          // no-op: la table legacy peut ne pas exister
+          // no-op
         }
       }
     } catch {
@@ -567,19 +610,29 @@ export class EventRepository {
    * Récupère une inscription spécifique
    */
   async getRegistration(eventId: string, twitchLogin: string): Promise<EventRegistration | null> {
-    const { data, error } = await supabaseAdmin
-      .from('event_registrations')
-      .select('*')
-      .eq('event_id', eventId)
-      .eq('twitch_login', twitchLogin.toLowerCase())
-      .single();
+    const aliases = await this.getEventIdAliases(eventId);
+    for (const alias of aliases) {
+      const { data, error } = await supabaseAdmin
+        .from('event_registrations')
+        .select('*')
+        .eq('event_id', alias)
+        .eq('twitch_login', twitchLogin.toLowerCase())
+        .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
+      if (!error && data) {
+        return this.mapToRegistration(data);
+      }
+      if (error) {
+        const message = (error.message || '').toLowerCase();
+        if (message.includes('invalid input syntax for type uuid')) {
+          continue;
+        }
+        if (error.code !== 'PGRST116') {
+          throw error;
+        }
+      }
     }
-
-    return data ? this.mapToRegistration(data) : null;
+    return null;
   }
 
   /**
@@ -591,14 +644,17 @@ export class EventRepository {
       throw new Error('eventId et twitchLogin sont requis');
     }
 
+    const aliases = await this.getEventIdAliases(registration.eventId);
+    const canonicalEventId = aliases.find((id) => isUuid(id)) || registration.eventId;
+
     // Vérifier si l'inscription existe déjà
-    const existing = await this.getRegistration(registration.eventId, registration.twitchLogin);
+    const existing = await this.getRegistration(canonicalEventId, registration.twitchLogin);
     if (existing) {
       throw new Error('Vous êtes déjà inscrit à cet événement');
     }
 
     const regRecord: any = {
-      event_id: registration.eventId,
+      event_id: canonicalEventId,
       twitch_login: registration.twitchLogin.toLowerCase(),
       display_name: registration.displayName,
       discord_id: registration.discordId || null,
@@ -622,13 +678,22 @@ export class EventRepository {
    * Supprime une inscription
    */
   async removeRegistration(eventId: string, twitchLogin: string): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('event_registrations')
-      .delete()
-      .eq('event_id', eventId)
-      .eq('twitch_login', twitchLogin);
-
-    if (error) throw error;
+    const aliases = await this.getEventIdAliases(eventId);
+    let lastError: any = null;
+    for (const alias of aliases) {
+      const { error } = await supabaseAdmin
+        .from('event_registrations')
+        .delete()
+        .eq('event_id', alias)
+        .eq('twitch_login', twitchLogin);
+      if (!error) continue;
+      const message = (error.message || '').toLowerCase();
+      if (message.includes('invalid input syntax for type uuid')) {
+        continue;
+      }
+      lastError = error;
+    }
+    if (lastError) throw lastError;
   }
 
   private mapToEvent(row: any): Event {

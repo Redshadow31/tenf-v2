@@ -97,6 +97,12 @@ export default function EventPresencePage() {
     }
   }, [hasAccess, selectedMonth]);
 
+  function monthKeyFromDateLike(value: string | Date): string {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().slice(0, 7);
+  }
+
   // Charger les membres quand le modal s'ouvre (lazy loading)
   useEffect(() => {
     if (isEventModalOpen && allMembers.length === 0) {
@@ -138,9 +144,10 @@ export default function EventPresencePage() {
       // Le cache est géré côté serveur (revalidate: 30)
       const eventsResponse = await fetch(`/api/admin/events/presence?month=${selectedMonth}`);
 
+      let loadedEvents: Event[] = [];
       if (eventsResponse.ok) {
         const data = await eventsResponse.json();
-        const loadedEvents = data.events || [];
+        loadedEvents = data.events || [];
         
         console.log(`[Presence Page] Événements reçus pour ${selectedMonth}:`, loadedEvents.length);
         if (data.debug) {
@@ -179,6 +186,61 @@ export default function EventPresencePage() {
       } else {
         const errorData = await eventsResponse.json().catch(() => ({}));
         console.error("Erreur lors du chargement des événements:", eventsResponse.status, eventsResponse.statusText, errorData);
+      }
+
+      // Fallback de résilience: si la route mensuelle renvoie vide/erreur,
+      // on charge les événements via /api/events puis on filtre le mois côté client.
+      if (loadedEvents.length === 0) {
+        try {
+          let fallbackResponse = await fetch("/api/events?admin=true", { cache: "no-store" });
+          if (!fallbackResponse.ok) {
+            fallbackResponse = await fetch("/api/events", { cache: "no-store" });
+          }
+
+          if (fallbackResponse.ok) {
+            const fallbackPayload = await fallbackResponse.json();
+            const baseEvents: Event[] = (fallbackPayload.events || []).map((event: any) => ({
+              id: event.id,
+              title: event.title || "Sans titre",
+              description: event.description || "",
+              date: event.startAtUtc || event.date,
+              category: event.category || "Non classé",
+              location: event.location,
+              registrations: [],
+              presences: [],
+            }));
+
+            const filteredByMonth = baseEvents.filter((event) => monthKeyFromDateLike(event.date) === selectedMonth);
+
+            const hydrated = await Promise.all(
+              filteredByMonth.map(async (event) => {
+                try {
+                  const detailResponse = await fetch(`/api/admin/events/presence?eventId=${event.id}`, { cache: "no-store" });
+                  if (!detailResponse.ok) return event;
+                  const detail = await detailResponse.json();
+                  return {
+                    ...event,
+                    registrations: detail.registrations || [],
+                    presences: detail.presences || [],
+                  } as Event;
+                } catch {
+                  return event;
+                }
+              })
+            );
+
+            setEvents(hydrated);
+
+            if (selectedEvent) {
+              const updatedEvent = hydrated.find((e) => e.id === selectedEvent.id);
+              if (updatedEvent) {
+                setSelectedEvent(updatedEvent);
+              }
+            }
+          }
+        } catch (fallbackError) {
+          console.error("[Presence Page] Fallback /api/events échoué:", fallbackError);
+        }
       }
 
       // Charger les membres seulement si le modal n'est pas encore ouvert (lazy loading)
