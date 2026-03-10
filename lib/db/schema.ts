@@ -9,6 +9,7 @@ import { relations } from 'drizzle-orm';
 // ============================================
 
 export const memberRoleEnum = pgEnum('member_role', [
+  'Nouveau',
   'Affilié',
   'Développement',
   'Modérateur',

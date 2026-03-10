@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { getAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
+import { memberRepository } from "./repositories";
 
 export const authOptions: NextAuthOptions = {
   // Configuration de l'URL de base pour NextAuth
@@ -32,6 +33,47 @@ export const authOptions: NextAuthOptions = {
     maxAge: 60 * 60 * 24 * 7, // 7 jours
   },
   callbacks: {
+    async signIn({ profile }) {
+      const discordProfile = profile as any;
+      const discordId = discordProfile?.id as string | undefined;
+      const username = (discordProfile?.username || discordProfile?.global_name || "Unknown") as string;
+
+      if (!discordId) return true;
+
+      const existing = await memberRepository.findByDiscordId(discordId);
+      if (existing) return true;
+
+      const placeholderLogin = `nouveau_${discordId}`;
+      const displayName = username.trim() || `Discord ${discordId}`;
+
+      try {
+        await memberRepository.create({
+          twitchLogin: placeholderLogin,
+          twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
+          displayName,
+          discordId,
+          discordUsername: username,
+          role: "Nouveau",
+          isVip: false,
+          isActive: false,
+          badges: [],
+          profileValidationStatus: "non_soumis",
+          onboardingStatus: "a_faire",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          updatedBy: discordId,
+        });
+      } catch (error) {
+        // Tolérance aux courses: si la fiche a été créée en parallèle, on continue.
+        const lateExisting = await memberRepository.findByDiscordId(discordId);
+        if (!lateExisting) {
+          console.error("[NextAuth signIn] auto-create member failed:", error);
+          return false;
+        }
+      }
+
+      return "/membres/me?onboarding=1";
+    },
     async jwt({ token, account, profile, user }) {
       // Lors de la connexion initiale, account et profile sont disponibles
       if (account && profile) {

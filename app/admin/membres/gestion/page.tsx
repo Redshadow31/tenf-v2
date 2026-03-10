@@ -19,6 +19,7 @@ import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 type MemberRole =
+  | "Nouveau"
   | "Affilié"
   | "Développement"
   | "Admin"
@@ -136,7 +137,7 @@ export default function GestionMembresPage() {
   const [bulkOnboarding, setBulkOnboarding] = useState<"" | "a_faire" | "en_cours" | "termine">("");
   const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs">("actifs");
+  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs" | "nouveaux">("actifs");
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
@@ -729,9 +730,10 @@ export default function GestionMembresPage() {
     });
   }
 
-  const activeMembers = filteredMembers.filter((member) => member.statut === "Actif");
-  const inactiveMembers = filteredMembers.filter((member) => member.statut === "Inactif");
-  const displayedMembers = statusTab === "actifs" ? activeMembers : inactiveMembers;
+  const newMembers = filteredMembers.filter((member) => member.role === "Nouveau");
+  const activeMembers = filteredMembers.filter((member) => member.statut === "Actif" && member.role !== "Nouveau");
+  const inactiveMembers = filteredMembers.filter((member) => member.statut === "Inactif" && member.role !== "Nouveau");
+  const displayedMembers = statusTab === "actifs" ? activeMembers : statusTab === "inactifs" ? inactiveMembers : newMembers;
   const tableColumnCount =
     viewMode === "complet"
       ? currentAdmin?.isFounder
@@ -1779,13 +1781,18 @@ export default function GestionMembresPage() {
                   <>
                     <span>
                       <span className="text-green-400 font-semibold">
-                        {members.filter(m => m.statut === "Actif").length}
-                      </span> actif{members.filter(m => m.statut === "Actif").length > 1 ? 's' : ''}
+                        {members.filter(m => m.statut === "Actif" && m.role !== "Nouveau").length}
+                      </span> actif{members.filter(m => m.statut === "Actif" && m.role !== "Nouveau").length > 1 ? 's' : ''}
                     </span>
                     <span>
                       <span className="text-red-400 font-semibold">
-                        {members.filter(m => m.statut === "Inactif").length}
-                      </span> inactif{members.filter(m => m.statut === "Inactif").length > 1 ? 's' : ''}
+                        {members.filter(m => m.statut === "Inactif" && m.role !== "Nouveau").length}
+                      </span> inactif{members.filter(m => m.statut === "Inactif" && m.role !== "Nouveau").length > 1 ? 's' : ''}
+                    </span>
+                    <span>
+                      <span className="text-purple-400 font-semibold">
+                        {members.filter(m => m.role === "Nouveau").length}
+                      </span> nouveau{members.filter(m => m.role === "Nouveau").length > 1 ? "x" : ""}
                     </span>
                     <span>
                       <span className="text-yellow-400 font-semibold">
@@ -1881,7 +1888,7 @@ export default function GestionMembresPage() {
           </div>
         )}
 
-        {/* Onglets Actifs/Inactifs */}
+        {/* Onglets Actifs/Inactifs/Nouveaux */}
         <div className="mb-4 flex items-center gap-2">
           <button
             type="button"
@@ -1904,6 +1911,17 @@ export default function GestionMembresPage() {
             }`}
           >
             Inactifs ({inactiveMembers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusTab("nouveaux")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              statusTab === "nouveaux"
+                ? "bg-purple-600 text-white"
+                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+            }`}
+          >
+            Nouveaux ({newMembers.length})
           </button>
         </div>
 
@@ -2240,7 +2258,7 @@ export default function GestionMembresPage() {
                       colSpan={tableColumnCount}
                       className="py-8 px-6 text-center text-gray-400"
                     >
-                      Aucun membre {statusTab === "actifs" ? "actif" : "inactif"} avec les filtres actuels.
+                      Aucun membre {statusTab === "actifs" ? "actif" : statusTab === "inactifs" ? "inactif" : "nouveau"} avec les filtres actuels.
                     </td>
                   </tr>
                 )}

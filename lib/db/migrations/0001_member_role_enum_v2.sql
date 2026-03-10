@@ -9,6 +9,7 @@ ALTER TYPE "public"."member_role" ADD VALUE IF NOT EXISTS 'Modérateur en pause'
 ALTER TYPE "public"."member_role" ADD VALUE IF NOT EXISTS 'Admin Coordinateur';
 ALTER TYPE "public"."member_role" ADD VALUE IF NOT EXISTS 'Soutien TENF';
 ALTER TYPE "public"."member_role" ADD VALUE IF NOT EXISTS 'Contributeur TENF du Mois';
+ALTER TYPE "public"."member_role" ADD VALUE IF NOT EXISTS 'Nouveau';
 
 -- Migration des anciennes valeurs vers les noms canoniques
 UPDATE "members"

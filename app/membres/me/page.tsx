@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
+import { useSearchParams } from "next/navigation";
 
 const MAX_DESCRIPTION = 800;
 
@@ -45,6 +46,7 @@ interface MemberProfile {
   };
   birthday?: string | null;
   twitchAffiliateDate?: string | null;
+  timezone?: string | null;
 }
 
 interface PendingData {
@@ -54,6 +56,7 @@ interface PendingData {
   twitter: string;
   birthday: string;
   twitchAffiliateDate: string;
+  timezone?: string;
 }
 
 interface MonthlyStats {
@@ -99,6 +102,7 @@ function SocialLink({ icon: Icon, label, value, url }: { icon: any; label: strin
 }
 
 export default function MyProfilePage() {
+  const searchParams = useSearchParams();
   const [member, setMember] = useState<MemberProfile | null>(null);
   const [pending, setPending] = useState<PendingData | null>(null);
   const [monthly, setMonthly] = useState<MonthlyStats | null>(null);
@@ -114,8 +118,20 @@ export default function MyProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [birthday, setBirthday] = useState("");
   const [twitchAffiliateDate, setTwitchAffiliateDate] = useState("");
+  const [timezone, setTimezone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [bootstrapForm, setBootstrapForm] = useState({
+    discordUsername: "",
+    twitchChannelUrl: "",
+    parrain: "",
+    notes: "",
+    birthday: "",
+    twitchAffiliateDate: "",
+    timezone: "",
+  });
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [createProfileSuccess, setCreateProfileSuccess] = useState(false);
 
   useEffect(() => {
     loadMembersList();
@@ -165,6 +181,19 @@ export default function MyProfilePage() {
         data.pending?.twitchAffiliateDate ??
           (data.member?.twitchAffiliateDate ? data.member.twitchAffiliateDate.slice(0, 10) : "")
       );
+      setTimezone(data.pending?.timezone ?? data.member?.timezone ?? "");
+      setBootstrapForm((prev) => ({
+        ...prev,
+        discordUsername: data.member?.socials?.discord || prev.discordUsername,
+        twitchChannelUrl:
+          data.member?.twitchLogin?.startsWith("nouveau_") || data.member?.twitchLogin?.startsWith("nouveau-")
+            ? prev.twitchChannelUrl
+            : `https://www.twitch.tv/${data.member?.twitchLogin || ""}`,
+        parrain: data.member?.tenfSummary?.parrain || prev.parrain,
+        birthday: data.member?.birthday ? data.member.birthday.slice(0, 10) : prev.birthday,
+        twitchAffiliateDate: data.member?.twitchAffiliateDate ? data.member.twitchAffiliateDate.slice(0, 10) : prev.twitchAffiliateDate,
+        timezone: data.member?.timezone || prev.timezone,
+      }));
     } catch (e) {
       console.error(e);
       setMember(null);
@@ -203,6 +232,7 @@ export default function MyProfilePage() {
           twitter,
           birthday,
           twitchAffiliateDate,
+          timezone,
           twitchLogin: member?.twitchLogin || selectedTwitch,
         }),
       });
@@ -217,6 +247,30 @@ export default function MyProfilePage() {
       alert("Erreur de connexion");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleCreateProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setCreatingProfile(true);
+    setCreateProfileSuccess(false);
+    try {
+      const res = await fetch("/api/members/me/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bootstrapForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Erreur lors de la création du profil");
+        return;
+      }
+      setCreateProfileSuccess(true);
+      await loadProfile();
+    } catch (error) {
+      alert("Erreur de connexion");
+    } finally {
+      setCreatingProfile(false);
     }
   }
 
@@ -277,6 +331,11 @@ export default function MyProfilePage() {
 
   const roleStyles = getRoleBadgeStyles(member.role);
   const hasAnySocial = member.socials.instagram || member.socials.tiktok || member.socials.twitter || member.socials.discord;
+  const needsOnboarding =
+    member.role === "Nouveau" ||
+    member.twitchLogin.startsWith("nouveau_") ||
+    member.twitchLogin.startsWith("nouveau-") ||
+    searchParams.get("onboarding") === "1";
 
   return (
     <div className="min-h-screen px-8 py-8" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
@@ -285,6 +344,108 @@ export default function MyProfilePage() {
         <p className="text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
           Gère tes informations et consulte tes statistiques TENF
         </p>
+
+        {needsOnboarding && (
+          <div className="rounded-xl border p-6 mb-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <h2 className="text-2xl font-bold mb-2">Créer mon profil</h2>
+            <p className="text-sm mb-5" style={{ color: "var(--color-text-secondary)" }}>
+              Ton profil est en statut inactif tant qu&apos;il n&apos;est pas validé par le staff après la réunion d&apos;intégration.
+            </p>
+            <form onSubmit={handleCreateProfile} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Pseudo Discord *</label>
+                <input
+                  type="text"
+                  required
+                  value={bootstrapForm.discordUsername}
+                  onChange={(e) => setBootstrapForm({ ...bootstrapForm, discordUsername: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  placeholder="Votre pseudo Discord"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Lien de chaîne Twitch *</label>
+                <input
+                  type="text"
+                  required
+                  value={bootstrapForm.twitchChannelUrl}
+                  onChange={(e) => setBootstrapForm({ ...bootstrapForm, twitchChannelUrl: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  placeholder="https://www.twitch.tv/votrepseudo ou votrepseudo"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Parrain TENF *</label>
+                <input
+                  type="text"
+                  required
+                  value={bootstrapForm.parrain}
+                  onChange={(e) => setBootstrapForm({ ...bootstrapForm, parrain: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  placeholder="Pseudo Discord de votre parrain"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Date d&apos;anniversaire (optionnel)</label>
+                  <input
+                    type="date"
+                    value={bootstrapForm.birthday}
+                    onChange={(e) => setBootstrapForm({ ...bootstrapForm, birthday: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border"
+                    style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Anniversaire d&apos;affiliation (optionnel)</label>
+                  <input
+                    type="date"
+                    value={bootstrapForm.twitchAffiliateDate}
+                    onChange={(e) => setBootstrapForm({ ...bootstrapForm, twitchAffiliateDate: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border"
+                    style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fuseau horaire (optionnel)</label>
+                  <input
+                    type="text"
+                    value={bootstrapForm.timezone}
+                    onChange={(e) => setBootstrapForm({ ...bootstrapForm, timezone: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border"
+                    style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    placeholder="Europe/Paris"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Notes (optionnel)</label>
+                <textarea
+                  rows={3}
+                  value={bootstrapForm.notes}
+                  onChange={(e) => setBootstrapForm({ ...bootstrapForm, notes: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border resize-none"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  placeholder="Informations complémentaires..."
+                />
+              </div>
+              {createProfileSuccess && (
+                <p className="text-sm text-green-500">Profil mis à jour. Il reste inactif jusqu&apos;à validation par le staff.</p>
+              )}
+              <button
+                type="submit"
+                disabled={creatingProfile}
+                className="w-full px-6 py-3 rounded-lg font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                {creatingProfile ? "Création..." : "Créer mon profil"}
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Header profil + badge statut */}
         <div className="rounded-xl border p-6 mb-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
@@ -448,6 +609,19 @@ export default function MyProfilePage() {
                   style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                  Fuseau horaire
+                </label>
+                <input
+                  type="text"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  placeholder="Europe/Paris"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
             </div>
 
             {submitSuccess && (
@@ -503,6 +677,10 @@ export default function MyProfilePage() {
                   ? new Date(member.twitchAffiliateDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
                   : "Non renseigné"}
               </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Fuseau horaire</p>
+              <p className="text-sm">{member.timezone || "Non renseigné"}</p>
             </div>
           </div>
         </div>

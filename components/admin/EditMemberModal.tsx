@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 type MemberRole =
+  | "Nouveau"
   | "Affilié"
   | "Développement"
   | "Admin"
@@ -448,6 +449,7 @@ export default function EditMemberModal({
                           formData.role === "Communauté" ? 'border-orange-500/50' : 'border-gray-700'
                         }`}
                       >
+                        <option value="Nouveau">Nouveau</option>
                         <option value="Affilié">Affilié</option>
                         <option value="Développement">Développement</option>
                         <option value="Modérateur">Modérateur</option>

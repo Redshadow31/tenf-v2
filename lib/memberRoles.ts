@@ -4,6 +4,7 @@
 import { allMembers } from "./members";
 
 export type MemberRole =
+  | "Nouveau"
   | "Affilié"
   | "Développement"
   | "Admin"
@@ -41,6 +42,7 @@ export function isLegacyMemberRole(role: string): role is LegacyMemberRole {
 }
 
 const CANONICAL_MEMBER_ROLES: MemberRole[] = [
+  "Nouveau",
   "Affilié",
   "Développement",
   "Admin",

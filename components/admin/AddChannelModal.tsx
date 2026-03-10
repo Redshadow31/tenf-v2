@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type MemberRole = "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
+type MemberRole = "Nouveau" | "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
 
 interface AddChannelModalProps {
   isOpen: boolean;
@@ -170,6 +170,7 @@ export default function AddChannelModal({
               onChange={(e) => setFormData({ ...formData, role: e.target.value as MemberRole })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
             >
+              <option value="Nouveau">Nouveau</option>
               <option value="Affilié">Affilié</option>
               <option value="Développement">Développement</option>
               <option value="Modérateur Junior">Modérateur Junior</option>

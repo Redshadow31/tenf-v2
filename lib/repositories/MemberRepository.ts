@@ -6,7 +6,7 @@ import { logDatabase, logCache } from '../logging/logger';
 
 export class MemberRepository {
   /**
-   * Trouve un membre par login, ou le crée en Communauté + inactif si introuvable.
+   * Trouve un membre par login, ou le crée en Nouveau + inactif si introuvable.
    * Utile pour les flows admin où l'on veut pouvoir référencer un compte "placeholder".
    */
   async findOrCreateCommunityInactive(input: {
@@ -39,7 +39,7 @@ export class MemberRepository {
         twitchUrl,
         discordId: input.discordId,
         discordUsername: input.discordUsername,
-        role: "Communauté",
+        role: "Nouveau",
         isVip: false,
         isActive: false,
         badges: [],

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const body = await request.json();
-    const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, twitchLogin } = body;
+    const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, timezone, twitchLogin } = body;
 
     let member = null;
     if (session?.user?.discordId) {
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     if ((twitchAffiliateDate || "").trim() && !normalizedAffiliateDate) {
       return NextResponse.json({ error: "Format date d'affiliation Twitch invalide (YYYY-MM-DD)" }, { status: 400 });
     }
+    const normalizedTimezone = (timezone || "").trim();
 
     if (desc.length > MAX_DESCRIPTION) {
       return NextResponse.json(
@@ -94,9 +95,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Mettre à jour le statut du membre
+    // Mettre à jour le statut du membre + fuseau horaire si fourni
     await memberRepository.update(member.twitchLogin, {
       profileValidationStatus: "en_cours_examen",
+      timezone: normalizedTimezone || member.timezone,
     });
 
     return NextResponse.json({ success: true, message: "Modifications soumises pour validation" });

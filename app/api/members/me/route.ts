@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
         },
         birthday: member.birthday ? new Date(member.birthday).toISOString() : null,
         twitchAffiliateDate: member.twitchAffiliateDate ? new Date(member.twitchAffiliateDate).toISOString() : null,
+        timezone: member.timezone || null,
         tenfSummary: {
           role: member.role,
           status: member.isActive ? "Actif" : "Inactif",

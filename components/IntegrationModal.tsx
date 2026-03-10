@@ -299,7 +299,7 @@ export default function IntegrationModal({
               disabled={isLoading || !formData.discordUsername || !formData.twitchChannelUrl || !formData.parrain}
               className="w-full rounded-lg bg-[#9146ff] px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#5a32b4] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Inscription..." : "S'inscrire à l'intégration"}
+              {isLoading ? "Création..." : "Créer mon profil"}
             </button>
           </form>
         </div>

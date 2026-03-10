@@ -10,6 +10,9 @@ import { MemberRole } from "./memberRoles";
  */
 export function getRoleBadgeStyles(role: string): { bg: string; text: string; border?: string } {
   switch (role) {
+    case "Nouveau":
+      return { bg: '#581c87', text: 'white', border: '#a855f7' };
+
     case "Admin":
     case "Fondateur":
       // Rouge/violet pour Admin/Fondateur
@@ -75,6 +78,9 @@ export function getRoleBadgeStyles(role: string): { bg: string; text: string; bo
  */
 export function getRoleBadgeClasses(role: MemberRole | string): string {
   switch (role) {
+    case "Nouveau":
+      return "bg-purple-900 text-white border border-purple-500";
+
     case "Admin":
     case "Fondateur":
       // Rouge/violet pour Admin/Fondateur
