@@ -474,12 +474,29 @@ export class EventRepository {
 
     // On fait des requêtes séparées pour éviter les erreurs de cast (uuid/text)
     for (const id of eventIds) {
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('event_registrations')
         .select('*')
         .eq('event_id', id)
         .order('registered_at', { ascending: false })
         .limit(10000);
+
+      if (error) {
+        const message = (error.message || '').toLowerCase();
+        // Compat legacy: colonne absente -> retry sans tri
+        if (
+          (message.includes('column') || message.includes('could not find')) &&
+          message.includes('registered_at')
+        ) {
+          const retry = await supabaseAdmin
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', id)
+            .limit(10000);
+          data = retry.data;
+          error = retry.error;
+        }
+      }
 
       if (error) {
         const message = error.message || '';
@@ -664,12 +681,29 @@ export class EventRepository {
     let allRows: any[] = [];
 
     for (const id of eventIds) {
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('event_presences')
         .select('*')
         .eq('event_id', id)
         .order('validated_at', { ascending: false })
         .limit(10000);
+
+      if (error) {
+        const message = (error.message || '').toLowerCase();
+        // Compat legacy: colonne absente -> retry sans tri
+        if (
+          (message.includes('column') || message.includes('could not find')) &&
+          message.includes('validated_at')
+        ) {
+          const retry = await supabaseAdmin
+            .from('event_presences')
+            .select('*')
+            .eq('event_id', id)
+            .limit(10000);
+          data = retry.data;
+          error = retry.error;
+        }
+      }
 
       if (error) {
         const message = error.message || '';
