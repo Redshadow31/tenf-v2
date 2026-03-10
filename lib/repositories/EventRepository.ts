@@ -123,6 +123,88 @@ export class EventRepository {
     }
   }
 
+  private async fetchEventsRows(params: {
+    limit: number;
+    offset: number;
+    publishedOnly?: boolean;
+    upcomingOnly?: boolean;
+    ascending?: boolean;
+  }): Promise<any[]> {
+    const { limit, offset, publishedOnly, upcomingOnly, ascending = false } = params;
+    const nowIso = new Date().toISOString();
+
+    const tryCommunityEvents = async (orderColumn: 'starts_at' | 'date'): Promise<any[] | null> => {
+      let query = supabaseAdmin
+        .from(EVENTS_TABLE)
+        .select('*');
+
+      if (publishedOnly) {
+        query = query.eq('is_published', true);
+      }
+      if (upcomingOnly) {
+        query = query.gte(orderColumn, nowIso);
+      }
+
+      const { data, error } = await query
+        .order(orderColumn, { ascending })
+        .range(offset, offset + limit - 1);
+
+      if (!error) return data || [];
+
+      const message = (error.message || '').toLowerCase();
+      // Compat: colonne absente selon l'état du schéma
+      if (orderColumn === 'starts_at' && message.includes('column') && message.includes('starts_at')) {
+        return null; // On retente avec "date"
+      }
+      // Compat: table/community_events absente sur un environnement partiellement migré
+      if (message.includes('relation') && message.includes('community_events')) {
+        return null;
+      }
+      throw error;
+    };
+
+    // 1) Nouveau schéma prioritaire
+    const onStartsAt = await tryCommunityEvents('starts_at');
+    if (onStartsAt !== null && onStartsAt.length > 0) return onStartsAt;
+    const onDate = await tryCommunityEvents('date');
+    if (onDate !== null && onDate.length > 0) return onDate;
+
+    // 2) Fallback ancien schéma
+    const tryLegacyEvents = async (publishedColumn: 'is_published' | 'isPublished'): Promise<any[] | null> => {
+      let legacyQuery = supabaseAdmin
+        .from('events')
+        .select('*');
+
+      if (publishedOnly) {
+        legacyQuery = legacyQuery.eq(publishedColumn, true);
+      }
+      if (upcomingOnly) {
+        legacyQuery = legacyQuery.gte('date', nowIso);
+      }
+
+      const { data: legacyData, error: legacyError } = await legacyQuery
+        .order('date', { ascending })
+        .range(offset, offset + limit - 1);
+
+      if (!legacyError) {
+        return legacyData || [];
+      }
+
+      const message = (legacyError.message || '').toLowerCase();
+      if (publishedColumn === 'is_published' && message.includes('column') && message.includes('is_published')) {
+        return null; // retry on old camelCase name
+      }
+      throw legacyError;
+    };
+
+    const legacySnake = await tryLegacyEvents('is_published');
+    if (legacySnake !== null) return legacySnake;
+    const legacyCamel = await tryLegacyEvents('isPublished');
+    if (legacyCamel !== null) return legacyCamel;
+
+    return [];
+  }
+
   /**
    * Retourne les IDs potentiels d'un événement:
    * - l'UUID courant
@@ -184,16 +266,7 @@ export class EventRepository {
     }
     logCache.miss(cacheKeyStr);
 
-    const { data, error } = await supabaseAdmin
-      .from(EVENTS_TABLE)
-      .select('*')
-      .order('starts_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      logDatabase.error('SELECT', EVENTS_TABLE, error);
-      throw error;
-    }
+    const data = await this.fetchEventsRows({ limit, offset, ascending: false });
 
     const duration = Date.now() - startTime;
     logDatabase.query('SELECT', EVENTS_TABLE, duration, { limit, offset, count: data?.length || 0 });
@@ -255,14 +328,12 @@ export class EventRepository {
       return cached;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from(EVENTS_TABLE)
-      .select('*')
-      .eq('is_published', true)
-      .order('starts_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw error;
+    const data = await this.fetchEventsRows({
+      limit,
+      offset,
+      publishedOnly: true,
+      ascending: false,
+    });
 
     const hydratedRows = await this.hydrateMissingImages(data || []);
     const events = hydratedRows.map(this.mapToEvent);
@@ -279,16 +350,13 @@ export class EventRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findUpcoming(limit = 10, offset = 0): Promise<Event[]> {
-    const now = new Date().toISOString();
-    const { data, error } = await supabaseAdmin
-      .from(EVENTS_TABLE)
-      .select('*')
-      .eq('is_published', true)
-      .gte('starts_at', now)
-      .order('starts_at', { ascending: true })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw error;
+    const data = await this.fetchEventsRows({
+      limit,
+      offset,
+      publishedOnly: true,
+      upcomingOnly: true,
+      ascending: true,
+    });
 
     return (data || []).map(this.mapToEvent);
   }
@@ -535,10 +603,10 @@ export class EventRepository {
       description: row.description,
       image: this.normalizeImageUrl(row.image),
       date: this.toSafeDate(dateValue, row.created_at || row.updated_at),
-      category: row.category,
+      category: row.category || 'Non classé',
       location: row.location || undefined,
       invitedMembers: row.invited_members || undefined,
-      isPublished: row.is_published,
+      isPublished: row.is_published ?? row.isPublished ?? false,
       createdAt: this.toSafeDate(row.created_at, row.updated_at),
       createdBy: row.created_by,
       updatedAt: row.updated_at ? this.toSafeDate(row.updated_at, row.created_at) : undefined,

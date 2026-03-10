@@ -35,15 +35,29 @@ export async function GET(request: NextRequest) {
       : await eventRepository.findPublished();
     
     // Convertir les dates en ISO string pour compatibilité avec le frontend
-    const formattedEvents = events.map(event => ({
-      ...event,
-      date: event.date instanceof Date ? event.date.toISOString() : event.date,
-      startAtUtc: event.date instanceof Date ? event.date.toISOString() : event.date,
-      timezoneOrigin: PARIS_TIMEZONE,
-      startAtParisLocal: utcIsoToParisDateTimeLocalInput(event.date instanceof Date ? event.date.toISOString() : event.date),
-      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
-      updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
-    }));
+    // en évitant qu'une date legacy invalide fasse tomber toute la route.
+    const formattedEvents = events
+      .map((event) => {
+        try {
+          const eventIso = event.date instanceof Date ? event.date.toISOString() : String(event.date);
+          const createdIso = event.createdAt instanceof Date ? event.createdAt.toISOString() : String(event.createdAt);
+          const updatedIso = event.updatedAt
+            ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : String(event.updatedAt))
+            : undefined;
+          return {
+            ...event,
+            date: eventIso,
+            startAtUtc: eventIso,
+            timezoneOrigin: PARIS_TIMEZONE,
+            startAtParisLocal: utcIsoToParisDateTimeLocalInput(eventIso),
+            createdAt: createdIso,
+            updatedAt: updatedIso,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter((event): event is NonNullable<typeof event> => event !== null);
     
     // Trier par date (plus récent en premier)
     formattedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
