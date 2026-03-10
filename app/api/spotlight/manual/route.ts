@@ -63,14 +63,13 @@ export async function POST(request: NextRequest) {
     // Vérifier que le login Twitch correspond à un membre enregistré
     const member = await memberRepository.findByTwitchLogin(streamerTwitchLogin.trim().toLowerCase());
     
-    if (!member) {
-      return NextResponse.json(
-        { 
-          error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré.` 
-        },
-        { status: 400 }
-      );
-    }
+    const effectiveMember =
+      member ||
+      await memberRepository.findOrCreateCommunityInactive({
+        twitchLogin: streamerTwitchLogin.trim().toLowerCase(),
+        displayName: streamerDisplayName || streamerTwitchLogin,
+        createdBy: admin.discordId,
+      });
 
     // Validation des dates
     const startDate = new Date(startedAt);
@@ -95,11 +94,9 @@ export async function POST(request: NextRequest) {
     const username = cookieStore.get('discord_username')?.value || admin.username;
 
     // Créer le spotlight avec status = completed
-    const spotlightId = `spotlight-manual-${Date.now()}`;
     const createdSpotlight = await spotlightRepository.create({
-      id: spotlightId,
       streamerTwitchLogin: streamerTwitchLogin.trim().toLowerCase(),
-      streamerDisplayName: member.displayName || streamerDisplayName || streamerTwitchLogin,
+      streamerDisplayName: effectiveMember.displayName || streamerDisplayName || streamerTwitchLogin,
       startedAt: startDate,
       endsAt: endDate,
       status: 'completed',

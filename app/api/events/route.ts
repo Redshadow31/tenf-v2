@@ -98,9 +98,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Générer un ID unique pour l'événement
-    const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
     const resolvedStartAtUtc =
       typeof startAtParisLocal === "string" && startAtParisLocal
         ? parisLocalDateTimeToUtcIso(startAtParisLocal)
@@ -114,7 +111,6 @@ export async function POST(request: NextRequest) {
     }
 
     const newEvent = await eventRepository.create({
-      id: eventId,
       title,
       description: description || '',
       image,

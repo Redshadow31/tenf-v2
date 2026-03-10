@@ -91,25 +91,21 @@ export async function POST(request: NextRequest) {
     // Vérifier que le login Twitch correspond à un membre enregistré
     const member = await memberRepository.findByTwitchLogin(streamerTwitchLogin.trim().toLowerCase());
     
-    if (!member) {
-      return NextResponse.json(
-        { 
-          error: `Le login Twitch "${streamerTwitchLogin}" ne correspond à aucun membre enregistré. Veuillez vérifier le nom de la chaîne dans la page Gestion Membres.` 
-        },
-        { status: 400 }
-      );
-    }
+    const effectiveMember =
+      member ||
+      await memberRepository.findOrCreateCommunityInactive({
+        twitchLogin: streamerTwitchLogin.trim().toLowerCase(),
+        displayName: streamerDisplayName || streamerTwitchLogin,
+        createdBy: admin.id,
+      });
 
     // Utiliser le displayName du membre si disponible
-    const finalDisplayName = member.displayName || streamerDisplayName || streamerTwitchLogin;
+    const finalDisplayName = effectiveMember.displayName || streamerDisplayName || streamerTwitchLogin;
 
     // Créer le spotlight
     const now = new Date();
     const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 heures
-    const spotlightId = `spotlight-${Date.now()}`;
-
     const spotlight = await spotlightRepository.create({
-      id: spotlightId,
       streamerTwitchLogin: streamerTwitchLogin.trim().toLowerCase(),
       streamerDisplayName: finalDisplayName,
       startedAt: now,

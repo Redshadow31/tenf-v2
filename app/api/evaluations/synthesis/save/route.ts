@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < snapshots.length; i += BATCH_SIZE) {
         const batch = snapshots.slice(i, i + BATCH_SIZE);
         const rows = batch.map((snapshot) => ({
-          month: monthDate,
+          month_key: monthDate,
           twitch_login: snapshot.twitchLogin.toLowerCase(),
           section_a_points: snapshot.sectionAPoints,
           section_b_points: snapshot.sectionBPoints,
@@ -193,8 +193,8 @@ export async function POST(request: NextRequest) {
         }));
 
         const { error } = await supabaseAdmin
-          .from('evaluations')
-          .upsert(rows, { onConflict: 'twitch_login,month' });
+          .from('monthly_evaluations')
+          .upsert(rows, { onConflict: 'twitch_login,month_key' });
 
         if (error) {
           console.error('[API Evaluations Synthesis Save] Erreur batch snapshot:', error);

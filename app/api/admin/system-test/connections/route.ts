@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Test Supabase
     try {
       const supabase = getSupabaseAdmin();
-      const { data, error } = await supabase.from('events').select('id').limit(1);
+      const { data, error } = await supabase.from('community_events').select('id').limit(1);
       
       if (error) {
         results.push({
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         results.push({
           service: 'Supabase',
           status: 'success',
-          message: `Connexion OK - ${data?.length || 0} événement(s) trouvé(s)`,
+          message: `Connexion OK - ${data?.length || 0} événement(s) communautaire(s) trouvé(s)`,
           details: { count: data?.length || 0 },
         });
       }

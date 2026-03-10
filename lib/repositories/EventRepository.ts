@@ -29,6 +29,10 @@ export interface EventRegistration {
   registeredAt: Date;
 }
 
+const EVENTS_TABLE = 'community_events';
+const isUuid = (value?: string) =>
+  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 export class EventRepository {
   /**
    * Récupère tous les événements avec pagination
@@ -48,18 +52,18 @@ export class EventRepository {
     logCache.miss(cacheKeyStr);
 
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .select('*')
-      .order('date', { ascending: false })
+      .order('starts_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {
-      logDatabase.error('SELECT', 'events', error);
+      logDatabase.error('SELECT', EVENTS_TABLE, error);
       throw error;
     }
 
     const duration = Date.now() - startTime;
-    logDatabase.query('SELECT', 'events', duration, { limit, offset, count: data?.length || 0 });
+    logDatabase.query('SELECT', EVENTS_TABLE, duration, { limit, offset, count: data?.length || 0 });
 
     const events = (data || []).map(this.mapToEvent);
     
@@ -82,7 +86,7 @@ export class EventRepository {
     }
 
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .select('*')
       .eq('id', id)
       .single();
@@ -117,10 +121,10 @@ export class EventRepository {
     }
 
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .select('*')
       .eq('is_published', true)
-      .order('date', { ascending: false })
+      .order('starts_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
@@ -141,11 +145,11 @@ export class EventRepository {
   async findUpcoming(limit = 10, offset = 0): Promise<Event[]> {
     const now = new Date().toISOString();
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .select('*')
       .eq('is_published', true)
-      .gte('date', now)
-      .order('date', { ascending: true })
+      .gte('starts_at', now)
+      .order('starts_at', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
@@ -158,9 +162,13 @@ export class EventRepository {
    */
   async create(event: Partial<Event>): Promise<Event> {
     const eventRecord = this.mapToDbFormat(event);
+    if (eventRecord.id && !isUuid(eventRecord.id)) {
+      // Sur le schéma v2, l'id est UUID: on laisse Postgres le générer.
+      delete eventRecord.id;
+    }
 
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .insert(eventRecord)
       .select()
       .single();
@@ -183,7 +191,7 @@ export class EventRepository {
     updateRecord.updated_at = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .update(updateRecord)
       .eq('id', id)
       .select()
@@ -222,7 +230,7 @@ export class EventRepository {
     }
 
     const { error } = await supabaseAdmin
-      .from('events')
+      .from(EVENTS_TABLE)
       .delete()
       .eq('id', id);
 
@@ -362,12 +370,13 @@ export class EventRepository {
   }
 
   private mapToEvent(row: any): Event {
+    const dateValue = row.starts_at || row.date;
     return {
       id: row.id,
       title: row.title,
       description: row.description,
       image: row.image || undefined,
-      date: new Date(row.date),
+      date: new Date(dateValue),
       category: row.category,
       location: row.location || undefined,
       invitedMembers: row.invited_members || undefined,
@@ -412,7 +421,7 @@ export class EventRepository {
       .from('event_presences')
       .select('*')
       .eq('event_id', eventId)
-      .order('created_at', { ascending: false })
+      .order('validated_at', { ascending: false })
       .limit(10000); // Limite élevée pour récupérer toutes les présences
 
     if (error) {
@@ -445,8 +454,6 @@ export class EventRepository {
       event_id: presence.eventId,
       twitch_login: presence.twitchLogin.toLowerCase(),
       display_name: presence.displayName,
-      discord_id: presence.discordId || null,
-      discord_username: presence.discordUsername || null,
       is_registered: presence.isRegistered,
       present: presence.present,
       note: presence.note || null,
@@ -534,7 +541,7 @@ export class EventRepository {
     if (event.description !== undefined) record.description = event.description;
     if (event.image !== undefined) record.image = event.image;
     if (event.date !== undefined) {
-      record.date = event.date instanceof Date ? event.date.toISOString() : event.date;
+      record.starts_at = event.date instanceof Date ? event.date.toISOString() : event.date;
     }
     if (event.category !== undefined) record.category = event.category;
     if (event.location !== undefined) record.location = event.location;

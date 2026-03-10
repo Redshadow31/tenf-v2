@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
     const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const includeInactive = searchParams.get("includeInactive") !== "false";
+    const includeCommunity = searchParams.get("includeCommunity") !== "false";
 
     if (!query || query.trim().length < 2) {
       return NextResponse.json({
@@ -43,6 +45,11 @@ export async function GET(request: NextRequest) {
 
     // Filtrer les membres
     const filteredMembers = allMembers
+      .filter((member) => {
+        if (!includeInactive && member.isActive === false) return false;
+        if (!includeCommunity && member.role === "Communauté") return false;
+        return true;
+      })
       .filter((member) => {
         const searchableFields = [
           member.twitchLogin?.toLowerCase() || "",
@@ -76,6 +83,16 @@ export async function GET(request: NextRequest) {
       members: filteredMembers,
       total: filteredMembers.length,
       query: normalizedQuery,
+      filters: { includeInactive, includeCommunity },
+      createSuggestion:
+        filteredMembers.length === 0
+          ? {
+              twitchLogin: normalizedQuery,
+              role: "Communauté",
+              isActive: false,
+              message: "Aucun membre trouvé. Vous pouvez créer une fiche Communauté inactive.",
+            }
+          : undefined,
     });
   } catch (error) {
     console.error("Error searching members:", error);

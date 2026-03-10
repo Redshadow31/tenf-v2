@@ -6,7 +6,7 @@ export interface Spotlight {
   streamerTwitchLogin: string;
   streamerDisplayName?: string;
   startedAt: Date;
-  endsAt: Date;
+  endsAt?: Date;
   status: 'active' | 'completed' | 'cancelled';
   moderatorDiscordId: string;
   moderatorUsername: string;
@@ -42,6 +42,8 @@ export interface SpotlightEvaluation {
   validatedAt?: Date;
 }
 
+const SPOTLIGHT_EVAL_METRIC = 'evaluation_total_score';
+
 export class SpotlightRepository {
   /**
    * Récupère le spotlight actif
@@ -51,7 +53,7 @@ export class SpotlightRepository {
       .from('spotlights')
       .select('*')
       .eq('status', 'active')
-      .order('started_at', { ascending: false })
+      .order('starts_at', { ascending: false })
       .limit(1)
       .single();
 
@@ -90,7 +92,7 @@ export class SpotlightRepository {
     const { data, error } = await supabaseAdmin
       .from('spotlights')
       .select('*')
-      .order('started_at', { ascending: false })
+      .order('starts_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
@@ -139,7 +141,7 @@ export class SpotlightRepository {
    */
   async getPresences(spotlightId: string): Promise<SpotlightPresence[]> {
     const { data, error } = await supabaseAdmin
-      .from('spotlight_presences')
+      .from('spotlight_attendance')
       .select('*')
       .eq('spotlight_id', spotlightId)
       .order('added_at', { ascending: false });
@@ -156,14 +158,17 @@ export class SpotlightRepository {
     const presenceRecord: any = {
       spotlight_id: presence.spotlightId,
       twitch_login: presence.twitchLogin,
-      display_name: presence.displayName || null,
+      present: true,
       added_at: presence.addedAt?.toISOString() || new Date().toISOString(),
       added_by: presence.addedBy,
     };
 
     const { data, error } = await supabaseAdmin
-      .from('spotlight_presences')
-      .insert(presenceRecord)
+      .from('spotlight_attendance')
+      .upsert(presenceRecord, {
+        onConflict: 'spotlight_id,twitch_login',
+        ignoreDuplicates: false,
+      })
       .select()
       .single();
 
@@ -177,7 +182,7 @@ export class SpotlightRepository {
    */
   async deletePresence(spotlightId: string, twitchLogin: string): Promise<void> {
     const { error } = await supabaseAdmin
-      .from('spotlight_presences')
+      .from('spotlight_attendance')
       .delete()
       .eq('spotlight_id', spotlightId)
       .eq('twitch_login', twitchLogin.toLowerCase());
@@ -191,7 +196,7 @@ export class SpotlightRepository {
   async replacePresences(spotlightId: string, presences: Partial<SpotlightPresence>[]): Promise<SpotlightPresence[]> {
     // Supprimer toutes les présences existantes
     const { error: deleteError } = await supabaseAdmin
-      .from('spotlight_presences')
+      .from('spotlight_attendance')
       .delete()
       .eq('spotlight_id', spotlightId);
 
@@ -205,13 +210,13 @@ export class SpotlightRepository {
     const presenceRecords = presences.map(p => ({
       spotlight_id: spotlightId,
       twitch_login: p.twitchLogin,
-      display_name: p.displayName || null,
+      present: true,
       added_at: p.addedAt?.toISOString() || new Date().toISOString(),
       added_by: p.addedBy || '',
     }));
 
     const { data, error } = await supabaseAdmin
-      .from('spotlight_presences')
+      .from('spotlight_attendance')
       .insert(presenceRecords)
       .select();
 
@@ -225,9 +230,12 @@ export class SpotlightRepository {
    */
   async getEvaluation(spotlightId: string): Promise<SpotlightEvaluation | null> {
     const { data, error } = await supabaseAdmin
-      .from('spotlight_evaluations')
+      .from('spotlight_metrics')
       .select('*')
       .eq('spotlight_id', spotlightId)
+      .eq('metric_name', SPOTLIGHT_EVAL_METRIC)
+      .order('measured_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (error) {
@@ -242,22 +250,38 @@ export class SpotlightRepository {
    * Crée ou met à jour l'évaluation d'un spotlight
    */
   async saveEvaluation(evaluation: Partial<SpotlightEvaluation>): Promise<SpotlightEvaluation> {
+    if (!evaluation.spotlightId) {
+      throw new Error('spotlightId is required');
+    }
+
     const evalRecord: any = {
       spotlight_id: evaluation.spotlightId,
-      streamer_twitch_login: evaluation.streamerTwitchLogin,
-      criteria: evaluation.criteria,
-      total_score: evaluation.totalScore,
-      max_score: evaluation.maxScore,
-      moderator_comments: evaluation.moderatorComments || null,
-      evaluated_at: evaluation.evaluatedAt?.toISOString() || new Date().toISOString(),
-      evaluated_by: evaluation.evaluatedBy,
-      validated: evaluation.validated || false,
-      validated_at: evaluation.validatedAt?.toISOString() || null,
+      metric_name: SPOTLIGHT_EVAL_METRIC,
+      metric_value: evaluation.totalScore ?? 0,
+      metric_unit: 'points',
+      measured_at: evaluation.evaluatedAt?.toISOString() || new Date().toISOString(),
+      metadata: {
+        streamer_twitch_login: evaluation.streamerTwitchLogin,
+        criteria: evaluation.criteria || [],
+        total_score: evaluation.totalScore ?? 0,
+        max_score: evaluation.maxScore ?? 0,
+        moderator_comments: evaluation.moderatorComments || null,
+        evaluated_by: evaluation.evaluatedBy,
+        validated: evaluation.validated || false,
+        validated_at: evaluation.validatedAt?.toISOString() || null,
+      },
     };
 
+    const { error: cleanupError } = await supabaseAdmin
+      .from('spotlight_metrics')
+      .delete()
+      .eq('spotlight_id', evaluation.spotlightId)
+      .eq('metric_name', SPOTLIGHT_EVAL_METRIC);
+    if (cleanupError) throw cleanupError;
+
     const { data, error } = await supabaseAdmin
-      .from('spotlight_evaluations')
-      .upsert(evalRecord, { onConflict: 'spotlight_id' })
+      .from('spotlight_metrics')
+      .insert(evalRecord)
       .select()
       .single();
 
@@ -271,8 +295,8 @@ export class SpotlightRepository {
       id: row.id,
       streamerTwitchLogin: row.streamer_twitch_login,
       streamerDisplayName: row.streamer_display_name || undefined,
-      startedAt: new Date(row.started_at),
-      endsAt: new Date(row.ends_at),
+      startedAt: new Date(row.starts_at || row.started_at),
+      endsAt: row.ends_at ? new Date(row.ends_at) : undefined,
       status: row.status,
       moderatorDiscordId: row.moderator_discord_id,
       moderatorUsername: row.moderator_username,
@@ -293,18 +317,19 @@ export class SpotlightRepository {
   }
 
   private mapToEvaluation(row: any): SpotlightEvaluation {
+    const metadata = row.metadata || {};
     return {
       id: row.id,
       spotlightId: row.spotlight_id,
-      streamerTwitchLogin: row.streamer_twitch_login,
-      criteria: row.criteria,
-      totalScore: row.total_score,
-      maxScore: row.max_score,
-      moderatorComments: row.moderator_comments || undefined,
-      evaluatedAt: new Date(row.evaluated_at),
-      evaluatedBy: row.evaluated_by,
-      validated: row.validated,
-      validatedAt: row.validated_at ? new Date(row.validated_at) : undefined,
+      streamerTwitchLogin: metadata.streamer_twitch_login || '',
+      criteria: metadata.criteria || [],
+      totalScore: metadata.total_score ?? Number(row.metric_value || 0),
+      maxScore: metadata.max_score ?? 0,
+      moderatorComments: metadata.moderator_comments || undefined,
+      evaluatedAt: new Date(row.measured_at),
+      evaluatedBy: metadata.evaluated_by || 'system',
+      validated: metadata.validated === true,
+      validatedAt: metadata.validated_at ? new Date(metadata.validated_at) : undefined,
     };
   }
 
@@ -315,7 +340,7 @@ export class SpotlightRepository {
     if (spotlight.streamerTwitchLogin !== undefined) record.streamer_twitch_login = spotlight.streamerTwitchLogin;
     if (spotlight.streamerDisplayName !== undefined) record.streamer_display_name = spotlight.streamerDisplayName;
     if (spotlight.startedAt !== undefined) {
-      record.started_at = spotlight.startedAt instanceof Date 
+      record.starts_at = spotlight.startedAt instanceof Date 
         ? spotlight.startedAt.toISOString() 
         : spotlight.startedAt;
     }

@@ -33,6 +33,13 @@ interface BlobEvent {
   isPublished: boolean;
 }
 
+interface SupabaseEventRow {
+  id: string;
+  title: string;
+  starts_at: string;
+  legacy_event_id?: string | null;
+}
+
 interface BlobRegistration {
   id: string;
   eventId: string;
@@ -90,18 +97,32 @@ async function loadRegistrationsFromBlobs(eventId: string): Promise<BlobRegistra
   }
 }
 
-async function checkEventExistsInSupabase(eventId: string): Promise<boolean> {
+async function findEventInSupabase(blobEvent: BlobEvent): Promise<SupabaseEventRow | null> {
   const { data, error } = await supabaseAdmin
-    .from('events')
-    .select('id')
-    .eq('id', eventId)
+    .from('community_events')
+    .select('id, title, starts_at, legacy_event_id')
+    .eq('legacy_event_id', blobEvent.id)
     .single();
-  
+
   if (error && error.code !== 'PGRST116') {
     throw error;
   }
-  
-  return !!data;
+
+  if (data) return data as SupabaseEventRow;
+
+  const fallback = await supabaseAdmin
+    .from('community_events')
+    .select('id, title, starts_at, legacy_event_id')
+    .eq('title', blobEvent.title)
+    .eq('starts_at', blobEvent.date)
+    .limit(1)
+    .single();
+
+  if (fallback.error && fallback.error.code !== 'PGRST116') {
+    throw fallback.error;
+  }
+
+  return (fallback.data as SupabaseEventRow | null) || null;
 }
 
 async function checkRegistrationExistsInSupabase(eventId: string, twitchLogin: string): Promise<boolean> {
@@ -151,29 +172,29 @@ async function checkPresenceExistsInSupabase(eventId: string, twitchLogin: strin
   return !!data;
 }
 
-async function migrateEvent(blobEvent: BlobEvent): Promise<{ success: boolean; message: string }> {
-  const exists = await checkEventExistsInSupabase(blobEvent.id);
-  if (exists) {
-    return { success: false, message: `Événement ${blobEvent.id} existe déjà` };
+async function migrateEvent(blobEvent: BlobEvent): Promise<{ success: boolean; message: string; eventId?: string }> {
+  const existingEvent = await findEventInSupabase(blobEvent);
+  if (existingEvent) {
+    return { success: false, message: `Événement ${blobEvent.id} existe déjà`, eventId: existingEvent.id };
   }
 
   const eventRecord: any = {
-    id: blobEvent.id,
     title: blobEvent.title,
     description: blobEvent.description,
     image: blobEvent.image || null,
-    date: blobEvent.date,
+    starts_at: blobEvent.date,
     category: blobEvent.category,
     location: blobEvent.location || null,
-    invited_members: blobEvent.invitedMembers || null,
+    invited_members: blobEvent.invitedMembers || [],
+    legacy_event_id: blobEvent.id,
     is_published: blobEvent.isPublished ?? false,
     created_by: blobEvent.createdBy,
     created_at: blobEvent.createdAt,
     updated_at: blobEvent.updatedAt || null,
   };
 
-  const { error } = await supabaseAdmin
-    .from('events')
+  const { data, error } = await supabaseAdmin
+    .from('community_events')
     .insert(eventRecord);
 
   if (error) {
@@ -181,7 +202,8 @@ async function migrateEvent(blobEvent: BlobEvent): Promise<{ success: boolean; m
     return { success: false, message: 'Erreur lors de la migration de l\'événement' };
   }
 
-  return { success: true, message: `Événement "${blobEvent.title}" migré` };
+  const created = await findEventInSupabase(blobEvent);
+  return { success: true, message: `Événement "${blobEvent.title}" migré`, eventId: created?.id };
 }
 
 async function migrateRegistration(blobReg: BlobRegistration): Promise<boolean> {
@@ -286,6 +308,7 @@ export async function GET(request: NextRequest) {
     let eventsSkipped = 0;
     const eventResults: string[] = [];
     
+    const eventIdMap = new Map<string, string>();
     for (const blobEvent of blobEvents) {
       const result = await migrateEvent(blobEvent);
       if (result.success) {
@@ -294,6 +317,12 @@ export async function GET(request: NextRequest) {
       } else {
         eventsSkipped++;
         eventResults.push(`⏭️  ${result.message}`);
+      }
+      if (result.eventId) {
+        eventIdMap.set(blobEvent.id, result.eventId);
+      } else {
+        const existing = await findEventInSupabase(blobEvent);
+        if (existing?.id) eventIdMap.set(blobEvent.id, existing.id);
       }
     }
 
@@ -304,10 +333,12 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobRegistrations = await loadRegistrationsFromBlobs(blobEvent.id);
+      const targetEventId = eventIdMap.get(blobEvent.id);
+      if (!targetEventId) continue;
       totalRegistrations += blobRegistrations.length;
 
       for (const blobReg of blobRegistrations) {
-        const migrated = await migrateRegistration(blobReg);
+        const migrated = await migrateRegistration({ ...blobReg, eventId: targetEventId });
         if (migrated) {
           registrationsMigrated++;
         } else {
@@ -323,10 +354,12 @@ export async function GET(request: NextRequest) {
 
     for (const blobEvent of blobEvents) {
       const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
+      const targetEventId = eventIdMap.get(blobEvent.id);
+      if (!targetEventId) continue;
       totalPresences += blobPresences.length;
 
       for (const blobPresence of blobPresences) {
-        const migrated = await migratePresence(blobPresence, blobEvent.id);
+        const migrated = await migratePresence(blobPresence, targetEventId);
         if (migrated) {
           presencesMigrated++;
         } else {
@@ -337,7 +370,7 @@ export async function GET(request: NextRequest) {
 
     // 5. Vérification finale
     const { data: supabaseEvents } = await supabaseAdmin
-      .from('events')
+      .from('community_events')
       .select('id', { count: 'exact' });
 
     const { data: supabaseRegs } = await supabaseAdmin

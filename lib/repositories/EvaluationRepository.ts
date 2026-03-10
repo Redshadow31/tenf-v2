@@ -35,6 +35,7 @@ export interface Evaluation {
 }
 
 export class EvaluationRepository {
+  private readonly tableName = 'monthly_evaluations';
   /**
    * Récupère toutes les évaluations d'un mois avec pagination
    * @param month - Mois au format YYYY-MM
@@ -46,9 +47,9 @@ export class EvaluationRepository {
     const monthDate = `${month}-01`;
     
     const { data, error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .select('*')
-      .eq('month', monthDate)
+      .eq('month_key', monthDate)
       .order('total_points', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -64,10 +65,10 @@ export class EvaluationRepository {
     const monthDate = `${month}-01`;
     
     const { data, error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .select('*')
       .eq('twitch_login', twitchLogin.toLowerCase())
-      .eq('month', monthDate)
+      .eq('month_key', monthDate)
       .single();
 
     if (error) {
@@ -83,10 +84,10 @@ export class EvaluationRepository {
    */
   async findByMember(twitchLogin: string): Promise<Evaluation[]> {
     const { data, error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .select('*')
       .eq('twitch_login', twitchLogin.toLowerCase())
-      .order('month', { ascending: false });
+      .order('month_key', { ascending: false });
 
     if (error) throw error;
 
@@ -100,9 +101,9 @@ export class EvaluationRepository {
     const evalRecord = this.mapToDbFormat(evaluation);
 
     const { data, error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .upsert(evalRecord, {
-        onConflict: 'twitch_login,month',
+        onConflict: 'twitch_login,month_key',
       })
       .select()
       .single();
@@ -120,7 +121,7 @@ export class EvaluationRepository {
     updateRecord.updated_at = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .update(updateRecord)
       .eq('id', id)
       .select()
@@ -137,7 +138,7 @@ export class EvaluationRepository {
    */
   async delete(id: string): Promise<void> {
     const { error } = await supabaseAdmin
-      .from('evaluations')
+      .from(this.tableName)
       .delete()
       .eq('id', id);
 
@@ -147,7 +148,7 @@ export class EvaluationRepository {
   private mapToEvaluation(row: any): Evaluation {
     return {
       id: row.id,
-      month: new Date(row.month),
+      month: new Date(row.month_key || row.month),
       twitchLogin: row.twitch_login,
       sectionAPoints: row.section_a_points || 0,
       sectionBPoints: row.section_b_points || 0,
@@ -181,15 +182,15 @@ export class EvaluationRepository {
       if (typeof evaluation.month === 'string') {
         const monthValue = evaluation.month.trim();
         if (/^\d{4}-\d{2}$/.test(monthValue)) {
-          record.month = `${monthValue}-01`;
+          record.month_key = `${monthValue}-01`;
         } else if (/^\d{4}-\d{2}-\d{2}$/.test(monthValue)) {
-          record.month = `${monthValue.slice(0, 7)}-01`;
+          record.month_key = `${monthValue.slice(0, 7)}-01`;
         } else {
           const parsed = new Date(monthValue);
-          record.month = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}-01`;
+          record.month_key = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}-01`;
         }
       } else {
-        record.month = `${evaluation.month.getUTCFullYear()}-${String(evaluation.month.getUTCMonth() + 1).padStart(2, '0')}-01`;
+        record.month_key = `${evaluation.month.getUTCFullYear()}-${String(evaluation.month.getUTCMonth() + 1).padStart(2, '0')}-01`;
       }
     }
     if (evaluation.twitchLogin !== undefined) record.twitch_login = evaluation.twitchLogin.toLowerCase();

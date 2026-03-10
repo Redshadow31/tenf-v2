@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
-import { eventRepository, evaluationRepository, spotlightRepository } from '@/lib/repositories';
+import { eventRepository, evaluationRepository, spotlightRepository, memberRepository } from '@/lib/repositories';
 
 export const dynamic = 'force-dynamic';
 
@@ -251,6 +251,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Garantir qu'un membre existe en base même s'il était introuvable auparavant.
+    await memberRepository.findOrCreateCommunityInactive({
+      twitchLogin: member.twitchLogin,
+      displayName: member.displayName || member.twitchLogin,
+      discordId: member.discordId,
+      discordUsername: member.discordUsername,
+      createdBy: admin.discordId,
+    });
 
     // Vérifier que l'événement existe
     const event = await eventRepository.findById(eventId);

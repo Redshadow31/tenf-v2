@@ -73,12 +73,12 @@ export async function GET(request: NextRequest) {
     // 1. Lister les mois dans Blobs
     const monthsInBlobs = await listMonthsInBlobs();
     
-    // 2. Lister les mois dans Supabase (depuis la table evaluations)
+    // 2. Lister les mois dans Supabase (depuis la table monthly_evaluations)
     const { data: supabaseEvaluations, error: supabaseError } = await supabaseAdmin
-      .from('evaluations')
-      .select('month, follow_validations')
+      .from('monthly_evaluations')
+      .select('month_key, follow_validations')
       .not('follow_validations', 'is', null)
-      .order('month', { ascending: false });
+      .order('month_key', { ascending: false });
 
     if (supabaseError) {
       throw supabaseError;
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     const monthsInSupabase = Array.from(
       new Set(
         (supabaseEvaluations || []).map((e: any) => {
-          const date = new Date(e.month);
+          const date = new Date(e.month_key);
           return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         })
       )
@@ -119,9 +119,9 @@ export async function GET(request: NextRequest) {
       // Charger depuis Supabase
       const monthDate = `${month}-01`;
       const { data: supabaseEvals } = await supabaseAdmin
-        .from('evaluations')
+        .from('monthly_evaluations')
         .select('follow_validations')
-        .eq('month', monthDate)
+        .eq('month_key', monthDate)
         .not('follow_validations', 'is', null);
 
       // Extraire les staff slugs depuis Supabase

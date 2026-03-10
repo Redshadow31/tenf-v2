@@ -98,9 +98,9 @@ export async function GET(request: NextRequest) {
     
     // 2. Lister les mois dans Supabase
     const { data: supabaseEvaluations, error: supabaseError } = await supabaseAdmin
-      .from('evaluations')
-      .select('month')
-      .order('month', { ascending: false });
+      .from('monthly_evaluations')
+      .select('month_key')
+      .order('month_key', { ascending: false });
 
     if (supabaseError) {
       throw supabaseError;
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     const monthsInSupabase = Array.from(
       new Set(
         (supabaseEvaluations || []).map((e: any) => {
-          const date = new Date(e.month);
+          const date = new Date(e.month_key);
           return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         })
       )
@@ -170,9 +170,9 @@ export async function GET(request: NextRequest) {
       // Compter dans Supabase
       const monthDate = `${month}-01`;
       const { data: supabaseEvals, error: evalError } = await supabaseAdmin
-        .from('evaluations')
+        .from('monthly_evaluations')
         .select('twitch_login')
-        .eq('month', monthDate);
+        .eq('month_key', monthDate);
 
       const membersInSupabase = new Set(
         (supabaseEvals || []).map((e: any) => e.twitch_login.toLowerCase())
@@ -206,9 +206,9 @@ export async function GET(request: NextRequest) {
       // Section A
       const hasSectionAInBlobs = !!(sectionA && (sectionA.spotlights?.length > 0 || sectionA.events?.length > 0 || Object.keys(sectionA.raidPoints || {}).length > 0));
       const { data: sectionAInSupabase } = await supabaseAdmin
-        .from('evaluations')
+        .from('monthly_evaluations')
         .select('id')
-        .eq('month', monthDate)
+        .eq('month_key', monthDate)
         .not('section_a_points', 'is', null)
         .limit(1);
       
@@ -221,9 +221,9 @@ export async function GET(request: NextRequest) {
       // Section C
       const hasSectionCInBlobs = !!(sectionC && sectionC.validations?.length > 0);
       const { data: sectionCInSupabase } = await supabaseAdmin
-        .from('evaluations')
+        .from('monthly_evaluations')
         .select('id')
-        .eq('month', monthDate)
+        .eq('month_key', monthDate)
         .not('section_c_points', 'is', null)
         .limit(1);
       
@@ -236,9 +236,9 @@ export async function GET(request: NextRequest) {
       // Section D
       const hasSectionDInBlobs = !!(sectionD && sectionD.bonuses?.length > 0);
       const { data: sectionDInSupabase } = await supabaseAdmin
-        .from('evaluations')
+        .from('monthly_evaluations')
         .select('id')
-        .eq('month', monthDate)
+        .eq('month_key', monthDate)
         .not('section_d_bonuses', 'is', null)
         .limit(1);
       

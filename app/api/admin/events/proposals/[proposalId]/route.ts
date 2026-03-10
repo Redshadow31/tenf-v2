@@ -34,7 +34,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { propos
       .from("event_proposals")
       .update({
         status,
-        updated_at: new Date().toISOString(),
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: admin.discordId || admin.id,
       })
       .eq("id", proposalId);
 
@@ -42,21 +43,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { propos
 
     let createdEventId: string | null = null;
     if (createEvent && status === "approved") {
-      const eventId = `event-proposal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const eventDate = proposal.proposed_date ? new Date(proposal.proposed_date).toISOString() : new Date().toISOString();
+      const proposedDate = proposal.preferred_date || proposal.proposed_date;
+      const eventDate = proposedDate ? new Date(proposedDate).toISOString() : new Date().toISOString();
 
-      const { error: createError } = await supabaseAdmin.from("events").insert({
-        id: eventId,
+      const { data: createdEvent, error: createError } = await supabaseAdmin.from("community_events").insert({
         title: proposal.title,
         description: proposal.description,
-        date: eventDate,
+        starts_at: eventDate,
         category: proposal.category,
         is_published: false,
         created_by: admin.discordId || admin.id,
         created_at: new Date().toISOString(),
-      });
+      }).select("id").single();
       if (createError) throw createError;
-      createdEventId = eventId;
+      createdEventId = createdEvent?.id ?? null;
     }
 
     return NextResponse.json({

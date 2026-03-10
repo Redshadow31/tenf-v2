@@ -24,6 +24,13 @@ interface BlobEvent {
   isPublished: boolean;
 }
 
+interface SupabaseEvent {
+  id: string;
+  title: string;
+  starts_at?: string;
+  legacy_event_id?: string | null;
+}
+
 interface SyncCheckResult {
   events: {
     inBlobs: number;
@@ -110,21 +117,39 @@ export async function GET(request: NextRequest) {
 
     // 2. Charger les événements depuis Supabase
     const { data: supabaseEvents, error: eventsError } = await supabaseAdmin
-      .from('events')
-      .select('id, title');
+      .from('community_events')
+      .select('id, title, starts_at, legacy_event_id');
 
     if (eventsError) {
       throw eventsError;
     }
 
-    const supabaseEventIds = new Set((supabaseEvents || []).map((e: any) => e.id));
-    const supabaseEventMap = new Map((supabaseEvents || []).map((e: any) => [e.id, e.title]));
+    const supabaseEventRows = (supabaseEvents || []) as SupabaseEvent[];
+    const supabaseEventIds = new Set(supabaseEventRows.map((e) => e.id));
+    const supabaseEventMap = new Map(supabaseEventRows.map((e) => [e.id, e.title]));
+    const supabaseByLegacyId = new Map(
+      supabaseEventRows.filter((e) => e.legacy_event_id).map((e) => [e.legacy_event_id as string, e.id])
+    );
+    const supabaseByTitleDate = new Map(
+      supabaseEventRows
+        .filter((e) => e.starts_at)
+        .map((e) => [`${e.title}__${e.starts_at}`, e.id])
+    );
 
     // 3. Trouver les événements manquants dans Supabase
-    const missingInSupabase = blobEvents.filter(e => !supabaseEventIds.has(e.id));
+    const missingInSupabase = blobEvents.filter((e) => {
+      const byLegacy = supabaseByLegacyId.get(e.id);
+      const byTitleDate = supabaseByTitleDate.get(`${e.title}__${e.date}`);
+      return !byLegacy && !byTitleDate;
+    });
     
     // 4. Trouver les événements supplémentaires dans Supabase (pas dans Blobs)
-    const extraInSupabase = Array.from(supabaseEventIds).filter(id => !blobEventIds.has(id));
+    const blobMatchedSupabaseIds = new Set<string>();
+    blobEvents.forEach((e) => {
+      const matched = supabaseByLegacyId.get(e.id) || supabaseByTitleDate.get(`${e.title}__${e.date}`);
+      if (matched) blobMatchedSupabaseIds.add(matched);
+    });
+    const extraInSupabase = Array.from(supabaseEventIds).filter(id => !blobMatchedSupabaseIds.has(id));
 
     // 5. Vérifier les inscriptions pour chaque événement
     const registrationsByEvent: Array<{
@@ -138,10 +163,22 @@ export async function GET(request: NextRequest) {
     for (const blobEvent of blobEvents) {
       const blobRegistrations = await loadRegistrationsFromBlobs(blobEvent.id);
       
+      const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
+      if (!targetEventId) {
+        registrationsByEvent.push({
+          eventId: blobEvent.id,
+          eventTitle: blobEvent.title,
+          inBlobs: blobRegistrations.length,
+          inSupabase: 0,
+          missingInSupabase: blobRegistrations.length,
+        });
+        continue;
+      }
+
       const { data: supabaseRegs, error: regsError } = await supabaseAdmin
         .from('event_registrations')
         .select('id')
-        .eq('event_id', blobEvent.id);
+        .eq('event_id', targetEventId);
 
       if (regsError) {
         console.error(`Erreur récupération inscriptions pour ${blobEvent.id}:`, regsError);
@@ -182,10 +219,22 @@ export async function GET(request: NextRequest) {
     for (const blobEvent of blobEvents) {
       const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
       
+      const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
+      if (!targetEventId) {
+        presencesByEvent.push({
+          eventId: blobEvent.id,
+          eventTitle: blobEvent.title,
+          inBlobs: blobPresences.length,
+          inSupabase: 0,
+          missingInSupabase: blobPresences.length,
+        });
+        continue;
+      }
+
       const { data: supabasePresences, error: presencesError } = await supabaseAdmin
         .from('event_presences')
         .select('id')
-        .eq('event_id', blobEvent.id);
+        .eq('event_id', targetEventId);
 
       if (presencesError) {
         console.error(`Erreur récupération présences pour ${blobEvent.id}:`, presencesError);

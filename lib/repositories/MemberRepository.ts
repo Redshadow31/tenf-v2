@@ -6,6 +6,58 @@ import { logDatabase, logCache } from '../logging/logger';
 
 export class MemberRepository {
   /**
+   * Trouve un membre par login, ou le crée en Communauté + inactif si introuvable.
+   * Utile pour les flows admin où l'on veut pouvoir référencer un compte "placeholder".
+   */
+  async findOrCreateCommunityInactive(input: {
+    twitchLogin: string;
+    displayName?: string;
+    discordId?: string;
+    discordUsername?: string;
+    createdBy?: string;
+  }): Promise<MemberData> {
+    const normalizedLogin = input.twitchLogin.trim().toLowerCase();
+    if (!normalizedLogin) {
+      throw new Error('twitchLogin is required');
+    }
+
+    const existingByLogin = await this.findByTwitchLogin(normalizedLogin);
+    if (existingByLogin) return existingByLogin;
+
+    if (input.discordId) {
+      const existingByDiscord = await this.findByDiscordId(input.discordId);
+      if (existingByDiscord) return existingByDiscord;
+    }
+
+    const fallbackDisplayName = (input.displayName || normalizedLogin).trim() || normalizedLogin;
+    const twitchUrl = `https://www.twitch.tv/${normalizedLogin}`;
+
+    try {
+      return await this.create({
+        twitchLogin: normalizedLogin,
+        displayName: fallbackDisplayName,
+        twitchUrl,
+        discordId: input.discordId,
+        discordUsername: input.discordUsername,
+        role: "Communauté",
+        isVip: false,
+        isActive: false,
+        badges: [],
+        profileValidationStatus: "non_soumis",
+        onboardingStatus: "a_faire",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: input.createdBy || 'system',
+      });
+    } catch (error) {
+      // Gestion des courses d'écriture: si un autre process l'a créé entre-temps.
+      const lateExisting = await this.findByTwitchLogin(normalizedLogin);
+      if (lateExisting) return lateExisting;
+      throw error;
+    }
+  }
+
+  /**
    * Récupère tous les membres avec pagination
    * @param limit - Nombre maximum de résultats (défaut: 100)
    * @param offset - Nombre de résultats à ignorer (défaut: 0)

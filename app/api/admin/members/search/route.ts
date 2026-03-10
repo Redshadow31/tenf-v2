@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
+    const includeInactive = searchParams.get("includeInactive") !== "false";
+    const includeCommunity = searchParams.get("includeCommunity") !== "false";
 
     if (!query || query.trim().length === 0) {
       return NextResponse.json({ members: [] });
@@ -35,6 +37,9 @@ export async function GET(request: NextRequest) {
 
     // Rechercher dans displayName, twitchLogin, discordUsername
     const filteredMembers = allMembers.filter((member) => {
+      if (!includeInactive && member.isActive === false) return false;
+      if (!includeCommunity && member.role === "Communauté") return false;
+
       const displayName = (member.displayName || '').toLowerCase();
       const twitchLogin = (member.twitchLogin || '').toLowerCase();
       const discordUsername = (member.discordUsername || '').toLowerCase();
@@ -53,9 +58,22 @@ export async function GET(request: NextRequest) {
       discordId: member.discordId,
       discordUsername: member.discordUsername,
       role: member.role,
+      isActive: member.isActive !== false,
     }));
 
-    return NextResponse.json({ members: results });
+    return NextResponse.json({
+      members: results,
+      filters: { includeInactive, includeCommunity },
+      createSuggestion:
+        results.length === 0
+          ? {
+              twitchLogin: searchTerm,
+              role: "Communauté",
+              isActive: false,
+              message: "Aucun membre trouvé. Vous pouvez créer une fiche Communauté inactive.",
+            }
+          : undefined,
+    });
   } catch (error) {
     console.error('[Admin Members Search API] Erreur:', error);
     return NextResponse.json(
