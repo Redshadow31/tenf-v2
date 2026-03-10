@@ -108,7 +108,7 @@ export default function DiscoursChangementPage() {
   return (
     <div className="text-white">
       <div className="mb-8">
-        <Link href="/admin/evaluations/discours" className="text-gray-400 hover:text-white transition-colors mb-4 inline-block">
+        <Link href="/admin/integration/discours" className="text-gray-400 hover:text-white transition-colors mb-4 inline-block">
           ← Retour aux discours
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Module de changement - Discours</h1>

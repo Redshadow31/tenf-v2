@@ -3,6 +3,27 @@ const nextConfig = {
   images: {
     domains: ['placehold.co', 'static-cdn.jtvnw.net', 'cdn.discordapp.com', 'clips-media-assets2.twitch.tv'],
   },
+  async redirects() {
+    return [
+      {
+        source: '/admin/evaluations/:path*',
+        destination: '/admin/integration/:path*',
+        permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/admin/integration/:path*',
+        destination: '/admin/evaluations/:path*',
+      },
+      {
+        source: '/admin/integration',
+        destination: '/admin/evaluations',
+      },
+    ];
+  },
   async headers() {
     return [
       {

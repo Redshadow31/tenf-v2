@@ -70,7 +70,7 @@ export default function PresentationPage() {
             <h1 className="text-4xl font-bold text-white mb-2">Présentation</h1>
             <p className="text-gray-400">Visualisation de la présentation d'intégration</p>
             <Link
-              href="/admin/evaluations/presentation-anime"
+              href="/admin/integration/presentation-anime"
               className="mt-2 inline-flex items-center gap-2 text-sm text-[#9146ff] hover:text-[#7c3aed] transition-colors"
             >
               🎬 Découvrir la présentation animée

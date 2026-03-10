@@ -43,7 +43,7 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <Link
-            href="/admin/evaluations/discours2"
+            href="/admin/integration/discours2"
             className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
           >
             ← Retour à l'accueil Discours 2
@@ -93,14 +93,14 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
         <div className="flex flex-wrap gap-3">
           {previous ? (
             <Link
-              href={`/admin/evaluations/discours2/${previous.slug}`}
+              href={`/admin/integration/discours2/${previous.slug}`}
               className="px-5 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
             >
               ← Partie précédente
             </Link>
           ) : (
             <Link
-              href="/admin/evaluations/discours2"
+              href="/admin/integration/discours2"
               className="px-5 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
             >
               ← Retour accueil
@@ -109,14 +109,14 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
 
           {next ? (
             <Link
-              href={`/admin/evaluations/discours2/${next.slug}`}
+              href={`/admin/integration/discours2/${next.slug}`}
               className="px-5 py-3 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] transition-colors font-semibold"
             >
               Suivant →
             </Link>
           ) : (
             <Link
-              href="/admin/evaluations/discours2"
+              href="/admin/integration/discours2"
               className="px-5 py-3 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] transition-colors font-semibold"
             >
               Terminer et revenir à l'accueil

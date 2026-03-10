@@ -31,7 +31,7 @@ export default function Partie2Page() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/admin/evaluations/discours"
+            href="/admin/integration/discours"
             className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
           >
             ← Retour au guide

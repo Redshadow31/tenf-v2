@@ -8,7 +8,7 @@ const adminLinks = [
   { href: "/admin/membres", label: "Membres" },
   { href: "/admin/spotlight", label: "Spotlight" },
   { href: "/admin/follow", label: "Suivi Follow" },
-  { href: "/admin/evaluations", label: "Intégration" },
+  { href: "/admin/integration", label: "Intégration" },
   { href: "/admin/statistiques", label: "Statistiques" },
   { href: "/admin/boutique", label: "Boutique" },
   { href: "/admin/events", label: "Événements" },
@@ -29,13 +29,13 @@ export default function AdminSidebar() {
           // Pour les événements, évaluations et academy, considérer actif si on est sur la route ou une sous-page
           const isActive = link.href === "/admin/events"
             ? pathname?.startsWith("/admin/events")
-            : link.href === "/admin/evaluations"
-            ? pathname?.startsWith("/admin/evaluations")
+            : link.href === "/admin/integration"
+            ? pathname?.startsWith("/admin/integration")
             : link.href === "/admin/academy"
             ? pathname?.startsWith("/admin/academy")
             : pathname === link.href;
-          const isEvaluationsSection = link.href === "/admin/evaluations";
-          const isEvaluationsActive = pathname?.startsWith("/admin/evaluations");
+          const isEvaluationsSection = link.href === "/admin/integration";
+          const isEvaluationsActive = pathname?.startsWith("/admin/integration");
           const isEventsSection = link.href === "/admin/events";
           const isEventsActive = pathname?.startsWith("/admin/events");
           const isAcademySection = link.href === "/admin/academy";
@@ -48,7 +48,7 @@ export default function AdminSidebar() {
                 className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive && !isEvaluationsSection && !isEventsSection && !isAcademySection
                     ? "bg-[#9146ff] text-white"
-                    : isEvaluationsSection && pathname === "/admin/evaluations"
+                    : isEvaluationsSection && pathname === "/admin/integration"
                     ? "bg-[#9146ff] text-white"
                     : isEventsSection && pathname === "/admin/events"
                     ? "bg-[#9146ff] text-white"
@@ -65,9 +65,9 @@ export default function AdminSidebar() {
               {isEvaluationsSection && (
                 <div className="ml-4 mt-1 flex flex-col gap-1">
                   <Link
-                    href="/admin/evaluations/inscription-moderateur"
+                    href="/admin/integration/inscription-moderateur"
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      pathname === "/admin/evaluations/inscription-moderateur"
+                      pathname === "/admin/integration/inscription-moderateur"
                         ? "bg-[#9146ff]/80 text-white"
                         : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
                     }`}
@@ -75,9 +75,9 @@ export default function AdminSidebar() {
                     Inscription modérateur
                   </Link>
                   <Link
-                    href="/admin/evaluations/presentation"
+                    href="/admin/integration/presentation"
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      pathname === "/admin/evaluations/presentation"
+                      pathname === "/admin/integration/presentation"
                         ? "bg-[#9146ff]/80 text-white"
                         : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
                     }`}
@@ -85,9 +85,9 @@ export default function AdminSidebar() {
                     Présentation TENF
                   </Link>
                   <Link
-                    href="/admin/evaluations/presentation-anime"
+                    href="/admin/integration/presentation-anime"
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      pathname === "/admin/evaluations/presentation-anime"
+                      pathname === "/admin/integration/presentation-anime"
                         ? "bg-[#9146ff]/80 text-white"
                         : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
                     }`}

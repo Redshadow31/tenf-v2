@@ -645,7 +645,7 @@ export default function Dashboard2Page() {
       title: "Inscrits prochaine réunion",
       value: upcomingKpis.nextMeetingRegistrations,
       hint: "Depuis Évaluations > Inscriptions",
-      href: "/admin/evaluations/inscription",
+      href: "/admin/integration/inscription",
       color: "text-blue-300",
     },
     {

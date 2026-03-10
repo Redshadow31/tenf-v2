@@ -9,7 +9,7 @@ export default function Discours2HomePage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <Link
-            href="/admin/evaluations/discours"
+            href="/admin/integration/discours"
             className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
           >
             ← Retour au guide discours
@@ -68,7 +68,7 @@ export default function Discours2HomePage() {
             {discours2Parts.map((part, index) => (
               <Link
                 key={part.slug}
-                href={`/admin/evaluations/discours2/${part.slug}`}
+                href={`/admin/integration/discours2/${part.slug}`}
                 className="group rounded-lg border border-gray-700 bg-[#222228] p-4 hover:border-fuchsia-400 transition-colors"
               >
                 <p className="text-sm text-gray-400 mb-1">Partie {index + 1}</p>
@@ -81,7 +81,7 @@ export default function Discours2HomePage() {
         </section>
 
         <Link
-          href={`/admin/evaluations/discours2/${firstPart.slug}`}
+          href={`/admin/integration/discours2/${firstPart.slug}`}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold transition-all hover:-translate-y-0.5"
         >
           Suivant: démarrer la présentation →

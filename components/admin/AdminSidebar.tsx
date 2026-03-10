@@ -145,7 +145,7 @@ export default function AdminSidebar() {
   }
 
   return (
-    <div className="w-64 border-r min-h-screen p-4" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
+    <div className="w-72 max-w-[88vw] border-r h-screen overflow-y-auto p-4" style={{ backgroundColor: 'var(--color-sidebar-bg)', borderColor: 'var(--color-sidebar-border)' }}>
       <div className="mb-8">
         <Link href="/" className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}>
@@ -163,14 +163,26 @@ export default function AdminSidebar() {
           const isMenuOpen = openMenus.has(item.href);
 
           return (
-            <div key={item.href}>
+            <div key={item.href} className="mb-3">
+              {item.sectionLabel ? (
+                <div className="mt-2 mb-2">
+                  <div className="h-px w-full" style={{ backgroundColor: "var(--color-sidebar-border)" }} />
+                  <p
+                    className="mt-2 px-1 text-[10px] tracking-[0.18em] font-semibold uppercase"
+                    style={{ color: "var(--color-text-secondary)", opacity: "0.75" }}
+                  >
+                    {item.sectionLabel}
+                  </p>
+                </div>
+              ) : null}
               {hasChildren ? (
                 <button
                   onClick={() => toggleMenu(item.href)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
                   style={{
                     backgroundColor: active ? 'var(--color-primary)' : parentActive ? 'var(--color-card-hover)' : 'transparent',
-                    color: active ? 'white' : 'var(--color-text-secondary)'
+                    color: active ? 'white' : 'var(--color-text-secondary)',
+                    boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.12) inset" : "none"
                   }}
                   onMouseEnter={(e) => {
                     if (!active && !parentActive) {
@@ -207,7 +219,8 @@ export default function AdminSidebar() {
                   className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
                   style={{
                     backgroundColor: active ? 'var(--color-primary)' : 'transparent',
-                    color: active ? 'white' : 'var(--color-text-secondary)'
+                    color: active ? 'white' : 'var(--color-text-secondary)',
+                    boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.12) inset" : "none"
                   }}
                   onMouseEnter={(e) => {
                     if (!active) {

@@ -49,7 +49,7 @@ const alertsConfig: Omit<AlertCard, 'count'>[] = [
     id: "pending-integrations",
     title: "Intégrations en attente",
     description: "Nouveaux membres à intégrer",
-    href: "/admin/evaluations",
+    href: "/admin/integration",
     type: "info",
   },
   {
@@ -69,7 +69,7 @@ const quickLinks: QuickLink[] = [
     description: "Gestion des membres",
   },
   {
-    href: "/admin/evaluations",
+    href: "/admin/integration",
     label: "Intégration",
     icon: <ClipboardList className="w-6 h-6" />,
     description: "Intégration des nouveaux membres",

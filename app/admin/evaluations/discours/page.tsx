@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function DiscoursPage() {
   const parties = [
     {
-      href: "/admin/evaluations/discours/partie-1",
+      href: "/admin/integration/discours/partie-1",
       title: "Partie 1",
       description: "Bienvenue, Fondations, Staff",
       icon: "👋",
@@ -13,7 +13,7 @@ export default function DiscoursPage() {
       color: "from-blue-500 to-blue-600",
     },
     {
-      href: "/admin/evaluations/discours/partie-2",
+      href: "/admin/integration/discours/partie-2",
       title: "Partie 2",
       description: "Rôles Adaptés, Spotlight, C'est aussi...",
       icon: "📋",
@@ -21,7 +21,7 @@ export default function DiscoursPage() {
       color: "from-green-500 to-green-600",
     },
     {
-      href: "/admin/evaluations/discours/partie-3",
+      href: "/admin/integration/discours/partie-3",
       title: "Partie 3",
       description: "VIP Élite, Récompenses, Bien s'Intégrer",
       icon: "⭐",
@@ -29,7 +29,7 @@ export default function DiscoursPage() {
       color: "from-purple-500 to-purple-600",
     },
     {
-      href: "/admin/evaluations/discours/partie-4",
+      href: "/admin/integration/discours/partie-4",
       title: "Partie 4",
       description: "Progresser, Invitation, Prochaines Étapes",
       icon: "🎯",
@@ -42,7 +42,7 @@ export default function DiscoursPage() {
     <div className="text-white">
       <div className="mb-8">
         <Link
-          href="/admin/evaluations"
+          href="/admin/integration"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
           ← Retour à l'intégration
@@ -62,13 +62,13 @@ export default function DiscoursPage() {
         <div className="mt-5">
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/admin/evaluations/discours/changement"
+              href="/admin/integration/discours/changement"
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-colors"
             >
               ✍️ Ouvrir le module de changement
             </Link>
             <Link
-              href="/admin/evaluations/discours2"
+              href="/admin/integration/discours2"
               className="inline-flex items-center gap-2 px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg transition-colors"
             >
               🎨 Ouvrir Discours 2 (version ludique)
