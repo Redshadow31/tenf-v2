@@ -1,10 +1,10 @@
 /**
- * API Route pour migrer les événements depuis Netlify Blobs vers Supabase
+ * API Route pour migrer les événements depuis source legacy vers Supabase v2
  * 
  * Cette route permet d'exécuter la migration depuis le navigateur,
  * évitant les problèmes de permissions avec tsx sur Windows.
  * 
- * GET /api/admin/migration/migrate-events
+ * GET /api/admin/migration/migrate-events?source=supabase-legacy|blobs
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -83,6 +83,37 @@ async function loadEventsFromBlobs(): Promise<BlobEvent[]> {
   }
 }
 
+async function loadEventsFromLegacySupabase(): Promise<BlobEvent[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('events')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(10000);
+    if (error) {
+      console.error('Erreur chargement événements legacy Supabase:', error);
+      return [];
+    }
+    return (data || []).map((row: any) => ({
+      id: String(row.id),
+      title: row.title || 'Sans titre',
+      description: row.description || '',
+      image: row.image || undefined,
+      date: row.date ? String(row.date) : new Date().toISOString(),
+      category: row.category || 'Non classé',
+      location: row.location || undefined,
+      invitedMembers: row.invited_members || [],
+      createdAt: row.created_at ? String(row.created_at) : new Date().toISOString(),
+      createdBy: row.created_by || 'migration',
+      updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+      isPublished: row.is_published ?? row.isPublished ?? false,
+    }));
+  } catch (error) {
+    console.error('Erreur chargement événements legacy Supabase:', error);
+    return [];
+  }
+}
+
 async function loadRegistrationsFromBlobs(eventId: string): Promise<BlobRegistration[]> {
   try {
     const store = getBlobStore(EVENTS_STORE_NAME);
@@ -93,6 +124,29 @@ async function loadRegistrationsFromBlobs(eventId: string): Promise<BlobRegistra
     if (error instanceof Error && error.message.includes('not found')) {
       return [];
     }
+    return [];
+  }
+}
+
+async function loadRegistrationsFromLegacySupabase(eventId: string): Promise<BlobRegistration[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_registrations')
+      .select('*')
+      .eq('event_id', eventId)
+      .limit(10000);
+    if (error) return [];
+    return (data || []).map((row: any) => ({
+      id: String(row.id),
+      eventId: String(row.event_id),
+      twitchLogin: row.twitch_login || '',
+      displayName: row.display_name || row.twitch_login || '',
+      discordId: row.discord_id || undefined,
+      discordUsername: row.discord_username || undefined,
+      registeredAt: row.registered_at ? String(row.registered_at) : new Date().toISOString(),
+      notes: row.notes || undefined,
+    }));
+  } catch {
     return [];
   }
 }
@@ -153,6 +207,33 @@ async function loadPresencesFromBlobs(eventId: string): Promise<BlobPresence[]> 
     if (error instanceof Error && error.message.includes('not found')) {
       return [];
     }
+    return [];
+  }
+}
+
+async function loadPresencesFromLegacySupabase(eventId: string): Promise<BlobPresence[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .eq('event_id', eventId)
+      .limit(10000);
+    if (error) return [];
+    return (data || []).map((row: any) => ({
+      id: String(row.id),
+      twitchLogin: row.twitch_login || '',
+      displayName: row.display_name || row.twitch_login || '',
+      discordId: row.discord_id || undefined,
+      discordUsername: row.discord_username || undefined,
+      isRegistered: row.is_registered ?? true,
+      present: row.present ?? false,
+      note: row.note || undefined,
+      validatedAt: row.validated_at ? String(row.validated_at) : undefined,
+      validatedBy: row.validated_by || undefined,
+      addedManually: row.added_manually ?? false,
+      createdAt: row.created_at ? String(row.created_at) : new Date().toISOString(),
+    }));
+  } catch {
     return [];
   }
 }
@@ -277,15 +358,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🚀 Début migration des événements depuis Netlify Blobs vers Supabase');
+    const { searchParams } = new URL(request.url);
+    const source = searchParams.get('source') || 'supabase-legacy';
+    const useLegacySupabase = source === 'supabase-legacy';
 
-    // 1. Charger les événements depuis Blobs
-    const blobEvents = await loadEventsFromBlobs();
+    console.log(`🚀 Début migration des événements depuis ${useLegacySupabase ? 'Supabase legacy' : 'Blobs'} vers Supabase v2`);
+
+    // 1. Charger les événements depuis la source legacy choisie
+    const blobEvents = useLegacySupabase
+      ? await loadEventsFromLegacySupabase()
+      : await loadEventsFromBlobs();
     
     if (blobEvents.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'Aucun événement trouvé dans Blobs',
+        message: `Aucun événement trouvé dans la source (${source})`,
         summary: {
           eventsInBlobs: 0,
           eventsMigrated: 0,
@@ -332,7 +419,9 @@ export async function GET(request: NextRequest) {
     let registrationsSkipped = 0;
 
     for (const blobEvent of blobEvents) {
-      const blobRegistrations = await loadRegistrationsFromBlobs(blobEvent.id);
+      const blobRegistrations = useLegacySupabase
+        ? await loadRegistrationsFromLegacySupabase(blobEvent.id)
+        : await loadRegistrationsFromBlobs(blobEvent.id);
       const targetEventId = eventIdMap.get(blobEvent.id);
       if (!targetEventId) continue;
       totalRegistrations += blobRegistrations.length;
@@ -353,7 +442,9 @@ export async function GET(request: NextRequest) {
     let presencesSkipped = 0;
 
     for (const blobEvent of blobEvents) {
-      const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
+      const blobPresences = useLegacySupabase
+        ? await loadPresencesFromLegacySupabase(blobEvent.id)
+        : await loadPresencesFromBlobs(blobEvent.id);
       const targetEventId = eventIdMap.get(blobEvent.id);
       if (!targetEventId) continue;
       totalPresences += blobPresences.length;
@@ -383,6 +474,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      source,
       message: 'Migration terminée avec succès',
       summary: {
         eventsInBlobs: blobEvents.length,

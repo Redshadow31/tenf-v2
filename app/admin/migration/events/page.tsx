@@ -63,6 +63,7 @@ interface MigrationResult {
 }
 
 export default function EventsMigrationPage() {
+  const migrationSource = 'supabase-legacy';
   const [loading, setLoading] = useState(false);
   const [checkingSync, setCheckingSync] = useState(false);
   const [syncData, setSyncData] = useState<SyncCheckResult | null>(null);
@@ -77,7 +78,7 @@ export default function EventsMigrationPage() {
     setSelectedEvents(new Set());
 
     try {
-      const response = await fetch('/api/admin/migration/check-sync', {
+      const response = await fetch(`/api/admin/migration/check-sync?source=${migrationSource}`, {
         method: 'GET',
       });
 
@@ -143,7 +144,7 @@ export default function EventsMigrationPage() {
     setMigrationResult(null);
 
     try {
-      const response = await fetch('/api/admin/migration/migrate-events', {
+      const response = await fetch(`/api/admin/migration/migrate-events?source=${migrationSource}`, {
         method: 'GET',
       });
 
@@ -206,7 +207,7 @@ export default function EventsMigrationPage() {
           Migration des Événements
         </h1>
         <p className="text-gray-400">
-          Migrer les événements et inscriptions depuis Netlify Blobs vers Supabase
+          Migrer les événements et inscriptions depuis l&apos;ancien Supabase (`events`) vers le nouveau schéma Supabase (`community_events`)
         </p>
       </div>
 
@@ -218,7 +219,7 @@ export default function EventsMigrationPage() {
               Vérification de Synchronisation
             </h2>
             <p className="text-gray-400 text-sm">
-              Compare les données entre Netlify Blobs et Supabase
+              Compare les données entre ancien Supabase et nouveau Supabase
             </p>
           </div>
           <button
@@ -240,7 +241,7 @@ export default function EventsMigrationPage() {
               <h3 className="text-lg font-bold text-white mb-4">Événements</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Dans Blobs:</span>
+                  <span className="text-gray-400">Dans source legacy:</span>
                   <span className="text-white font-semibold">{syncData.events.inBlobs}</span>
                 </div>
                 <div className="flex justify-between">
@@ -268,7 +269,7 @@ export default function EventsMigrationPage() {
               <h3 className="text-lg font-bold text-white mb-4">Inscriptions</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total dans Blobs:</span>
+                  <span className="text-gray-400">Total source legacy:</span>
                   <span className="text-white font-semibold">{syncData.registrations.totalInBlobs}</span>
                 </div>
                 <div className="flex justify-between">
@@ -295,7 +296,7 @@ export default function EventsMigrationPage() {
               <h3 className="text-lg font-bold text-white mb-4">Présences</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total dans Blobs:</span>
+                  <span className="text-gray-400">Total source legacy:</span>
                   <span className="text-white font-semibold">{syncData.presences.totalInBlobs}</span>
                 </div>
                 <div className="flex justify-between">
@@ -385,7 +386,7 @@ export default function EventsMigrationPage() {
                                 </span>
                                 {' '}
                                 <span className="text-gray-500">
-                                  ({eventRegs.inBlobs} dans Blobs, {eventRegs.inSupabase} dans Supabase)
+                                  ({eventRegs.inBlobs} dans source legacy, {eventRegs.inSupabase} dans Supabase)
                                 </span>
                               </div>
                             )}
@@ -398,7 +399,7 @@ export default function EventsMigrationPage() {
                                   </span>
                                   {' '}
                                   <span className="text-gray-500">
-                                    ({eventPresences.inBlobs} dans Blobs, {eventPresences.inSupabase} dans Supabase)
+                                    ({eventPresences.inBlobs} dans source legacy, {eventPresences.inSupabase} dans Supabase)
                                   </span>
                                 </div>
                               );

@@ -1,8 +1,8 @@
 /**
- * API Route pour vérifier la synchronisation entre Netlify Blobs et Supabase
+ * API Route pour vérifier la synchronisation entre source legacy et Supabase v2
  * 
  * GET /api/admin/migration/check-sync
- * Retourne les événements et inscriptions dans Blobs vs Supabase
+ * Retourne les événements et inscriptions source legacy vs Supabase
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,6 +73,32 @@ async function loadEventsFromBlobs(): Promise<BlobEvent[]> {
   }
 }
 
+async function loadEventsFromLegacySupabase(): Promise<BlobEvent[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('events')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(10000);
+
+    if (error) {
+      console.error('Erreur chargement événements legacy Supabase:', error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => ({
+      id: String(row.id),
+      title: row.title || 'Sans titre',
+      date: row.date ? String(row.date) : new Date().toISOString(),
+      category: row.category || 'Non classé',
+      isPublished: row.is_published ?? row.isPublished ?? false,
+    }));
+  } catch (error) {
+    console.error('Erreur chargement événements legacy Supabase:', error);
+    return [];
+  }
+}
+
 async function loadRegistrationsFromBlobs(eventId: string): Promise<any[]> {
   try {
     const store = getBlobStore(EVENTS_STORE_NAME);
@@ -80,6 +106,22 @@ async function loadRegistrationsFromBlobs(eventId: string): Promise<any[]> {
     const data = await store.get(key, { type: 'json' });
     return (data as any[]) || [];
   } catch (error) {
+    return [];
+  }
+}
+
+async function loadRegistrationsFromLegacySupabase(eventId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_registrations')
+      .select('*')
+      .eq('event_id', eventId)
+      .limit(10000);
+    if (error) {
+      return [];
+    }
+    return data || [];
+  } catch {
     return [];
   }
 }
@@ -98,6 +140,22 @@ async function loadPresencesFromBlobs(eventId: string): Promise<any[]> {
   }
 }
 
+async function loadPresencesFromLegacySupabase(eventId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .eq('event_id', eventId)
+      .limit(10000);
+    if (error) {
+      return [];
+    }
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est admin
@@ -109,10 +167,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Vérification de synchronisation Blobs ↔ Supabase');
+    const { searchParams } = new URL(request.url);
+    const source = searchParams.get('source') || 'supabase-legacy';
+    const useLegacySupabase = source === 'supabase-legacy';
 
-    // 1. Charger les événements depuis Blobs
-    const blobEvents = await loadEventsFromBlobs();
+    console.log(`🔍 Vérification de synchronisation ${useLegacySupabase ? 'Supabase legacy' : 'Blobs'} ↔ Supabase v2`);
+
+    // 1. Charger les événements depuis la source legacy choisie
+    const blobEvents = useLegacySupabase
+      ? await loadEventsFromLegacySupabase()
+      : await loadEventsFromBlobs();
     const blobEventIds = new Set(blobEvents.map(e => e.id));
 
     // 2. Charger les événements depuis Supabase
@@ -161,7 +225,9 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     for (const blobEvent of blobEvents) {
-      const blobRegistrations = await loadRegistrationsFromBlobs(blobEvent.id);
+      const blobRegistrations = useLegacySupabase
+        ? await loadRegistrationsFromLegacySupabase(blobEvent.id)
+        : await loadRegistrationsFromBlobs(blobEvent.id);
       
       const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
       if (!targetEventId) {
@@ -217,7 +283,9 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     for (const blobEvent of blobEvents) {
-      const blobPresences = await loadPresencesFromBlobs(blobEvent.id);
+      const blobPresences = useLegacySupabase
+        ? await loadPresencesFromLegacySupabase(blobEvent.id)
+        : await loadPresencesFromBlobs(blobEvent.id);
       
       const targetEventId = supabaseByLegacyId.get(blobEvent.id) || supabaseByTitleDate.get(`${blobEvent.title}__${blobEvent.date}`);
       if (!targetEventId) {
@@ -290,6 +358,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      source,
       data: result,
       timestamp: new Date().toISOString(),
     });
