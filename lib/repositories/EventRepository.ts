@@ -34,6 +34,123 @@ const isUuid = (value?: string) =>
   !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export class EventRepository {
+  private normalizeImageUrl(image?: string | null): string | undefined {
+    if (!image || typeof image !== 'string') return undefined;
+    const trimmed = image.trim();
+    if (!trimmed) return undefined;
+
+    if (trimmed.startsWith('/api/admin/events/images/')) {
+      return trimmed;
+    }
+
+    // Compat: URL publique Supabase -> route interne proxy image
+    const marker = '/storage/v1/object/public/events-images/';
+    const markerIndex = trimmed.indexOf(marker);
+    if (markerIndex >= 0) {
+      const fileName = trimmed.slice(markerIndex + marker.length).split('?')[0];
+      if (fileName) {
+        return `/api/admin/events/images/${fileName}`;
+      }
+    }
+
+    return trimmed;
+  }
+
+  /**
+   * Backfill applicatif des images depuis la table legacy `events`
+   * quand `community_events.image` est vide.
+   */
+  private async hydrateMissingImages(rows: any[]): Promise<any[]> {
+    if (!rows.length) return rows;
+    const needsImage = rows.filter((row) => !row.image);
+    if (!needsImage.length) return rows;
+
+    try {
+      const { data: legacyRows, error } = await supabaseAdmin
+        .from('events')
+        .select('id, title, date, image')
+        .not('image', 'is', null)
+        .limit(5000);
+
+      if (error || !legacyRows?.length) {
+        return rows;
+      }
+
+      const byId = new Map<string, string>();
+      const byTitleDate = new Map<string, string>();
+
+      for (const legacy of legacyRows) {
+        if (!legacy?.image) continue;
+        byId.set(String(legacy.id), String(legacy.image));
+        if (legacy.title && legacy.date) {
+          byTitleDate.set(`${legacy.title}__${legacy.date}`, String(legacy.image));
+        }
+      }
+
+      return rows.map((row) => {
+        if (row.image) {
+          return row;
+        }
+        const fromLegacyId = row.legacy_event_id ? byId.get(String(row.legacy_event_id)) : undefined;
+        const fromTitleDate = byTitleDate.get(`${row.title}__${row.starts_at}`);
+        const recoveredImage = fromLegacyId || fromTitleDate;
+        if (!recoveredImage) return row;
+
+        return {
+          ...row,
+          image: recoveredImage,
+        };
+      });
+    } catch {
+      // La table legacy peut ne pas exister en prod finale.
+      return rows;
+    }
+  }
+
+  /**
+   * Retourne les IDs potentiels d'un événement:
+   * - l'UUID courant
+   * - l'ancien ID (legacy_event_id) si présent
+   */
+  private async getEventIdAliases(eventId: string): Promise<string[]> {
+    const aliases = new Set<string>([eventId]);
+    try {
+      const { data, error } = await supabaseAdmin
+        .from(EVENTS_TABLE)
+        .select('id, legacy_event_id, title, starts_at')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (!error && data?.legacy_event_id) {
+        aliases.add(String(data.legacy_event_id));
+      }
+
+      // Fallback legacy: certains événements ont été backfill sans legacy_event_id.
+      // On reconstruit alors l'ancien id via la table legacy `events` (title + date).
+      if (!error && data?.title && data?.starts_at && !data?.legacy_event_id) {
+        try {
+          const legacy = await supabaseAdmin
+            .from('events')
+            .select('id')
+            .eq('title', data.title)
+            .eq('date', data.starts_at)
+            .limit(1)
+            .maybeSingle();
+
+          if (!legacy.error && legacy.data?.id) {
+            aliases.add(String(legacy.data.id));
+          }
+        } catch {
+          // no-op: la table legacy peut ne pas exister
+        }
+      }
+    } catch {
+      // Best effort: on garde eventId seulement
+    }
+
+    return Array.from(aliases);
+  }
+
   /**
    * Récupère tous les événements avec pagination
    * @param limit - Nombre maximum de résultats (défaut: 50)
@@ -65,7 +182,8 @@ export class EventRepository {
     const duration = Date.now() - startTime;
     logDatabase.query('SELECT', EVENTS_TABLE, duration, { limit, offset, count: data?.length || 0 });
 
-    const events = (data || []).map(this.mapToEvent);
+    const hydratedRows = await this.hydrateMissingImages(data || []);
+    const events = hydratedRows.map(this.mapToEvent);
     
     // Mettre en cache avec namespace
     await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_ALL);
@@ -96,7 +214,8 @@ export class EventRepository {
       throw error;
     }
 
-    const event = data ? this.mapToEvent(data) : null;
+    const hydratedRows = data ? await this.hydrateMissingImages([data]) : [];
+    const event = hydratedRows.length ? this.mapToEvent(hydratedRows[0]) : null;
     
     // Mettre en cache si trouvé
     if (event) {
@@ -129,7 +248,8 @@ export class EventRepository {
 
     if (error) throw error;
 
-    const events = (data || []).map(this.mapToEvent);
+    const hydratedRows = await this.hydrateMissingImages(data || []);
+    const events = hydratedRows.map(this.mapToEvent);
     
     // Mettre en cache avec namespace
     await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_PUBLISHED);
@@ -244,21 +364,44 @@ export class EventRepository {
    * Récupère les inscriptions à un événement
    */
   async getRegistrations(eventId: string): Promise<EventRegistration[]> {
-    // Récupérer toutes les inscriptions sans limite (ou avec une limite très élevée)
-    // Supabase a une limite par défaut de 1000, donc on utilise une limite explicite élevée
     console.log(`[EventRepository] Récupération inscriptions pour événement ${eventId}...`);
-    
-    const { data, error } = await supabaseAdmin
-      .from('event_registrations')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('registered_at', { ascending: false })
-      .limit(10000); // Limite élevée pour récupérer toutes les inscriptions
 
-    if (error) {
-      console.error(`[EventRepository] Erreur récupération inscriptions pour événement ${eventId}:`, error);
-      throw error;
+    const eventIds = await this.getEventIdAliases(eventId);
+    let allRows: any[] = [];
+
+    // On fait des requêtes séparées pour éviter les erreurs de cast (uuid/text)
+    for (const id of eventIds) {
+      const { data, error } = await supabaseAdmin
+        .from('event_registrations')
+        .select('*')
+        .eq('event_id', id)
+        .order('registered_at', { ascending: false })
+        .limit(10000);
+
+      if (error) {
+        const message = error.message || '';
+        // Compat: si event_id est typé uuid, un id legacy text peut casser la requête.
+        // On ignore uniquement ces erreurs de cast pour poursuivre avec l'autre id.
+        if (!message.toLowerCase().includes('invalid input syntax for type uuid')) {
+          console.error(`[EventRepository] Erreur récupération inscriptions pour événement ${eventId} (id=${id}):`, error);
+          throw error;
+        }
+        continue;
+      }
+
+      if (data?.length) {
+        allRows.push(...data);
+      }
     }
+
+    // Déduplication défensive si une ligne remonte via plusieurs alias
+    const dedupedMap = new Map<string, any>();
+    for (const row of allRows) {
+      if (!dedupedMap.has(row.id)) {
+        dedupedMap.set(row.id, row);
+      }
+    }
+    const data = Array.from(dedupedMap.values());
 
     console.log(`[EventRepository] Données brutes Supabase pour événement ${eventId}:`, {
       count: data?.length || 0,
@@ -272,7 +415,6 @@ export class EventRepository {
       })) || [],
     });
 
-    // Vérifier s'il y a des inscriptions pour d'autres événements (pour debug)
     if ((data?.length || 0) === 0) {
       const { data: allRegistrations } = await supabaseAdmin
         .from('event_registrations')
@@ -375,7 +517,7 @@ export class EventRepository {
       id: row.id,
       title: row.title,
       description: row.description,
-      image: row.image || undefined,
+      image: this.normalizeImageUrl(row.image),
       date: new Date(dateValue),
       category: row.category,
       location: row.location || undefined,
@@ -415,19 +557,38 @@ export class EventRepository {
    * Récupère les présences pour un événement
    */
   async getPresences(eventId: string): Promise<any[]> {
-    // Récupérer toutes les présences sans limite (ou avec une limite très élevée)
-    // Supabase a une limite par défaut de 1000, donc on utilise une limite explicite élevée
-    const { data, error } = await supabaseAdmin
-      .from('event_presences')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('validated_at', { ascending: false })
-      .limit(10000); // Limite élevée pour récupérer toutes les présences
+    const eventIds = await this.getEventIdAliases(eventId);
+    let allRows: any[] = [];
 
-    if (error) {
-      console.error(`[EventRepository] Erreur récupération présences pour événement ${eventId}:`, error);
-      throw error;
+    for (const id of eventIds) {
+      const { data, error } = await supabaseAdmin
+        .from('event_presences')
+        .select('*')
+        .eq('event_id', id)
+        .order('validated_at', { ascending: false })
+        .limit(10000);
+
+      if (error) {
+        const message = error.message || '';
+        if (!message.toLowerCase().includes('invalid input syntax for type uuid')) {
+          console.error(`[EventRepository] Erreur récupération présences pour événement ${eventId} (id=${id}):`, error);
+          throw error;
+        }
+        continue;
+      }
+
+      if (data?.length) {
+        allRows.push(...data);
+      }
     }
+
+    const dedupedMap = new Map<string, any>();
+    for (const row of allRows) {
+      if (!dedupedMap.has(row.id)) {
+        dedupedMap.set(row.id, row);
+      }
+    }
+    const data = Array.from(dedupedMap.values());
 
     const presences = (data || []).map(this.mapToPresence);
     console.log(`[EventRepository] Récupéré ${presences.length} présences pour événement ${eventId}`);
