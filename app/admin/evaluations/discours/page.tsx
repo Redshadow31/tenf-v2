@@ -60,12 +60,20 @@ export default function DiscoursPage() {
           </p>
         </div>
         <div className="mt-5">
-          <Link
-            href="/admin/evaluations/discours/changement"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-colors"
-          >
-            ✍️ Ouvrir le module de changement
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/admin/evaluations/discours/changement"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-colors"
+            >
+              ✍️ Ouvrir le module de changement
+            </Link>
+            <Link
+              href="/admin/evaluations/discours2"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg transition-colors"
+            >
+              🎨 Ouvrir Discours 2 (version ludique)
+            </Link>
+          </div>
         </div>
       </div>
 
