@@ -93,13 +93,16 @@ function dedupePresences(presences: EventPresence[]): EventPresence[] {
 
     const existingTs = Math.max(safeTimestamp(existing.validatedAt), safeTimestamp(existing.createdAt));
     const currentTs = Math.max(safeTimestamp(presence.validatedAt), safeTimestamp(presence.createdAt));
-    const newer = currentTs >= existingTs ? presence : existing;
+    const hasClearNewer = currentTs !== existingTs;
+    const newer = hasClearNewer ? (currentTs > existingTs ? presence : existing) : presence;
     const older = newer === presence ? existing : presence;
+    const resolvedPresent = hasClearNewer
+      ? newer.present
+      : (newer.present && older.present); // En cas d'égalité, on privilégie l'absence pour éviter un faux présent.
 
     byLogin.set(key, {
       ...newer,
-      // Si une version indique "présent", on garde présent pour éviter faux absents sur doublons legacy/v2.
-      present: newer.present || older.present,
+      present: resolvedPresent,
       // Préserver une note si l'une des deux en a une.
       note: newer.note || older.note,
       // Préserver l'information "ajouté manuellement" si présente dans l'une des lignes.
@@ -120,6 +123,7 @@ function computeEventPresenceStats(event: Pick<Event, "registrations" | "presenc
   const { registrations, presences } = getNormalizedEventData(event);
 
   const registeredKeys = new Set(registrations.map((r) => normalizeLogin(r.twitchLogin)));
+  const presentTotal = presences.filter((p) => p.present).length;
 
   const presentRegistered = registrations.filter((reg) =>
     presences.some((p) => normalizeLogin(p.twitchLogin) === normalizeLogin(reg.twitchLogin) && p.present)
@@ -133,6 +137,7 @@ function computeEventPresenceStats(event: Pick<Event, "registrations" | "presenc
 
   return {
     totalRegistrations: registrations.length,
+    presentTotal,
     presentRegistered,
     absentRegistered,
     manualAddedTotal,
@@ -834,7 +839,7 @@ export default function EventPresencePage() {
                 <div>
                   <p className="text-gray-400 mb-1">Présents</p>
                   <p className="text-green-400 font-semibold">
-                    {stats.presentRegistered}
+                    {stats.presentTotal}
                   </p>
                 </div>
                 <div>
@@ -924,7 +929,7 @@ export default function EventPresencePage() {
                           <div>
                             <p className="text-gray-400 mb-1">Présents</p>
                             <p className="text-green-400 font-semibold">
-                              {stats.presentRegistered}
+                              {stats.presentTotal}
                             </p>
                           </div>
                           <div>
@@ -1323,7 +1328,7 @@ function EventPresenceModal({
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Présents</p>
             <p className="text-green-400 font-bold text-xl">
-              {stats.presentRegistered}
+              {stats.presentTotal}
             </p>
           </div>
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
