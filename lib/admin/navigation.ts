@@ -88,6 +88,7 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/raids",
         label: "Engagement",
         children: [
+          { href: "/admin/follow", label: "Feuilles de follow" },
           { href: "/admin/raids", label: "Suivi des raids" },
           { href: "/admin/raids", label: "Hub raids" },
         ],

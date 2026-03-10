@@ -157,12 +157,14 @@ export default function Dashboard2Page() {
     nextFilmRegistrations: number;
     nextJeuxRegistrations: number;
     upcomingSpotlights: number;
+    pendingEventValidations: number;
   }>({
     nextMeetingRegistrations: 0,
     nextFormationRegistrations: 0,
     nextFilmRegistrations: 0,
     nextJeuxRegistrations: 0,
     upcomingSpotlights: 0,
+    pendingEventValidations: 0,
   });
 
   const currentMonth = monthKey();
@@ -362,6 +364,15 @@ export default function Dashboard2Page() {
         );
 
         setRecapEvents(withPresences);
+
+        // Événements passés avec inscrits mais sans présence validée
+        const pendingValidations = withPresences.filter(
+          (item) => item.registrationCount > 0 && item.presenceCount === 0
+        ).length;
+        setUpcomingKpis((prev) => ({
+          ...prev,
+          pendingEventValidations: pendingValidations,
+        }));
       } catch (error) {
         console.error("Erreur chargement recap events:", error);
       } finally {
@@ -676,6 +687,13 @@ export default function Dashboard2Page() {
       href: "/admin/events/presence",
       color: "text-purple-300",
     },
+    {
+      title: "Événements en attente de validation",
+      value: upcomingKpis.pendingEventValidations,
+      hint: "Événements passés sans présence validée",
+      href: "/admin/events/presence",
+      color: "text-rose-300",
+    },
   ];
 
   const quickActions = [
@@ -760,7 +778,7 @@ export default function Dashboard2Page() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
         {upcomingCards.map((card) => (
           <Link
             key={card.title}

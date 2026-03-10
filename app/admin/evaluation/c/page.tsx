@@ -98,6 +98,75 @@ function countFollowsInSheet(sheet: any, members: string[]): number {
   return members.filter(login => memberFollowsStaffInSheet(sheet, login)).length;
 }
 
+/** Compte, pour une feuille donnée, combien de membres sont marqués "je suis" */
+function countJeSuisInSheet(sheet: any): number {
+  if (sheet?.stats && typeof sheet.stats.totalJeSuis === "number") {
+    return sheet.stats.totalJeSuis;
+  }
+
+  if (Array.isArray(sheet?.membersArray)) {
+    return sheet.membersArray.filter((m: any) => m?.jeSuis === true).length;
+  }
+
+  if (Array.isArray(sheet?.members)) {
+    return sheet.members.filter((m: any) => m?.jeSuis === true).length;
+  }
+
+  if (sheet?.members && typeof sheet.members === "object" && !Array.isArray(sheet.members)) {
+    return Object.values(sheet.members).filter((m: any) => m?.iFollow === true || m?.jeSuis === true).length;
+  }
+
+  if (Array.isArray(sheet?.rows)) {
+    return sheet.rows.filter((r: any) => r?.iFollow === true || r?.jeSuis === true).length;
+  }
+
+  return 0;
+}
+
+/** Extrait la dernière date de validation connue pour une feuille */
+function getLastValidationInSheet(sheet: any): string | null {
+  const candidates: string[] = [];
+
+  if (typeof sheet?.validatedAt === "string") candidates.push(sheet.validatedAt);
+  if (typeof sheet?.savedAt === "string") candidates.push(sheet.savedAt);
+
+  if (Array.isArray(sheet?.membersArray)) {
+    for (const m of sheet.membersArray) {
+      if (typeof m?.validatedAt === "string") candidates.push(m.validatedAt);
+    }
+  }
+  if (Array.isArray(sheet?.members)) {
+    for (const m of sheet.members) {
+      if (typeof m?.validatedAt === "string") candidates.push(m.validatedAt);
+    }
+  }
+  if (Array.isArray(sheet?.rows)) {
+    for (const r of sheet.rows) {
+      if (typeof r?.validatedAt === "string") candidates.push(r.validatedAt);
+    }
+  }
+
+  const validDates = candidates
+    .map((d) => new Date(d))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  return validDates.length > 0 ? validDates[0].toISOString() : null;
+}
+
+function formatDateTimeFr(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function EvaluationCPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -267,10 +336,12 @@ export default function EvaluationCPage() {
     return sheets.map((sheet) => {
       const slug = (sheet.staffSlug || "").toLowerCase();
       const label = getSheetLabel(sheet);
-      const count = countFollowsInSheet(sheet, members);
+      const meSuitCount = countFollowsInSheet(sheet, members);
+      const jeSuisCount = countJeSuisInSheet(sheet);
       const total = members.length;
       const isIgnored = ignoredSlugs.has(slug);
-      return { slug, label, count, total, isIgnored };
+      const lastValidationAt = getLastValidationInSheet(sheet);
+      return { slug, label, meSuitCount, jeSuisCount, total, isIgnored, lastValidationAt };
     });
   }, [sheets, members, ignoredSlugs]);
 
@@ -375,6 +446,8 @@ export default function EvaluationCPage() {
                 <tr className="text-left">
                   <th className="px-6 py-3 text-gray-300 font-semibold">Feuille (staff)</th>
                   <th className="px-6 py-3 text-gray-300 font-semibold">Membres qui me suivent</th>
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Membres que je suis / total</th>
+                  <th className="px-6 py-3 text-gray-300 font-semibold">Dernière validation</th>
                   <th className="px-6 py-3 text-gray-300 font-semibold">Statut</th>
                   <th className="px-6 py-3 text-gray-300 font-semibold">Action</th>
                 </tr>
@@ -387,8 +460,10 @@ export default function EvaluationCPage() {
                   >
                     <td className="px-6 py-3 text-white font-medium">{row.label}</td>
                     <td className="px-6 py-3 text-gray-300">
-                      {row.count} / {row.total}
+                      {row.meSuitCount} / {row.total}
                     </td>
+                    <td className="px-6 py-3 text-gray-300">{row.jeSuisCount} / {row.total}</td>
+                    <td className="px-6 py-3 text-gray-300">{formatDateTimeFr(row.lastValidationAt)}</td>
                     <td className="px-6 py-3">
                       {row.isIgnored ? (
                         <span className="text-amber-400">Ignorée</span>
