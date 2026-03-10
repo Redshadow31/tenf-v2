@@ -1,3 +1,4 @@
+
 -- Ajoute les nouveaux rôles staff/public à l'enum member_role
 -- puis normalise les anciennes valeurs legacy.
 
