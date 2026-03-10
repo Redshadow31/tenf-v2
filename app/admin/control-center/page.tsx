@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, Info, Users, ClipboardList, Star, Calendar, ShoppingCart, FileText, ArrowRight, Clock, Database, Settings, TestTube } from "lucide-react";
+import { AlertTriangle, Info, Users, ClipboardList, Star, Calendar, ShoppingCart, FileText, ArrowRight, Clock, Database, TestTube, ExternalLink } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AlertCard {
@@ -18,6 +18,12 @@ interface QuickLink {
   href: string;
   label: string;
   icon: React.ReactNode;
+  description: string;
+}
+
+interface SupabaseTableLink {
+  label: string;
+  table: string;
   description: string;
 }
 
@@ -158,6 +164,28 @@ const utilityPages: QuickLink[] = [
   },
 ];
 
+const SUPABASE_PROJECT_REF = "ggcpwaexhougomfnnsob";
+const supabaseTableLinks: SupabaseTableLink[] = [
+  { label: "Members", table: "members", description: "Table principale des membres" },
+  { label: "Member Roles", table: "member_roles", description: "Rôles et historique des rôles" },
+  { label: "Integration Sessions", table: "integration_sessions", description: "Sessions d'intégration" },
+  { label: "Integration Attendance", table: "integration_attendance", description: "Présences intégration" },
+  { label: "Community Events", table: "community_events", description: "Événements communautaires v2" },
+  { label: "Event Registrations", table: "event_registrations", description: "Inscriptions aux événements" },
+  { label: "Event Presences", table: "event_presences", description: "Présences événements" },
+  { label: "Spotlights", table: "spotlights", description: "Sessions spotlight" },
+  { label: "Spotlight Attendance", table: "spotlight_attendance", description: "Présences spotlight" },
+  { label: "Monthly Evaluations", table: "monthly_evaluations", description: "Évaluations mensuelles v2" },
+  { label: "Points Transactions", table: "points_transactions", description: "Historique des points" },
+  { label: "Staff Applications", table: "staff_applications", description: "Candidatures staff" },
+  { label: "Audit Logs", table: "audit_logs", description: "Journal d'audit" },
+  { label: "Structured Logs", table: "structured_logs", description: "Logs techniques structurés" },
+];
+
+function getSupabaseTableUrl(table: string): string {
+  return `https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/editor/${table}`;
+}
+
 
 function AlertCard({ alert }: { alert: AlertCard }) {
   const isWarning = alert.type === "warning";
@@ -266,6 +294,50 @@ function QuickLinkCard({ link }: { link: QuickLink }) {
           />
       </div>
     </Link>
+  );
+}
+
+function SupabaseTableCard({ link }: { link: SupabaseTableLink }) {
+  return (
+    <a
+      href={getSupabaseTableUrl(link.table)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="control-center-quick-link rounded-lg border p-6 transition-all duration-200 group block"
+      style={{
+        backgroundColor: "var(--color-card)",
+        borderColor: "var(--color-border)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "var(--color-primary)";
+        e.currentTarget.style.boxShadow = "0 10px 25px rgba(145, 70, 255, 0.2)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "var(--color-border)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="p-3 rounded-lg transition-colors"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            color: "var(--color-primary)",
+          }}
+        >
+          <Database className="w-6 h-6" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold mb-1 transition-colors" style={{ color: "var(--color-text)" }}>
+            {link.label}
+          </h3>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            {link.description}
+          </p>
+        </div>
+        <ExternalLink className="w-5 h-5" style={{ color: "var(--color-text-secondary)" }} />
+      </div>
+    </a>
   );
 }
 
@@ -517,6 +589,21 @@ export default function ControlCenterPage() {
                 <p className="text-sm">Aucune activité récente</p>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Section Supabase */}
+        <section className="mt-12">
+          <h2 className="text-2xl font-bold mb-6" style={{ color: "var(--color-text)" }}>
+            Supabase (nouvel onglet)
+          </h2>
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
+            Accès rapide aux tables clés du nouveau schéma directement dans l’éditeur Supabase.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {supabaseTableLinks.map((link) => (
+              <SupabaseTableCard key={link.table} link={link} />
+            ))}
           </div>
         </section>
       </div>
