@@ -1,8 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
 import { eventRepository, evaluationRepository, spotlightRepository, memberRepository } from '@/lib/repositories';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 export const dynamic = 'force-dynamic';
+
+function toIsoSafeDate(input: any): string {
+  const d = input instanceof Date ? input : new Date(input);
+  if (!Number.isNaN(d.getTime())) return d.toISOString();
+  return new Date().toISOString();
+}
+
+async function loadEventsWithoutCache(): Promise<any[]> {
+  const tryQuery = async (
+    table: 'community_events' | 'events',
+    orderColumn: 'starts_at' | 'date'
+  ) => {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select('*')
+      .order(orderColumn, { ascending: false })
+      .limit(1000);
+    if (error) return null;
+    return data || [];
+  };
+
+  return (
+    (await tryQuery('community_events', 'starts_at')) ??
+    (await tryQuery('community_events', 'date')) ??
+    (await tryQuery('events', 'date')) ??
+    (await tryQuery('events', 'starts_at')) ??
+    []
+  );
+}
 
 // Helper pour obtenir le monthKey au format YYYY-MM
 function getMonthKey(year: number, month: number): string {
@@ -60,7 +90,24 @@ export async function GET(request: NextRequest) {
 
       // Récupérer tous les événements du mois (limite élevée)
       console.log(`[API Event Presence] Récupération des événements pour le mois ${monthParam}...`);
-      const allEvents = await eventRepository.findAll(1000, 0);
+      let allEvents = await eventRepository.findAll(1000, 0);
+      if (!allEvents.length) {
+        const directRows = await loadEventsWithoutCache();
+        allEvents = (directRows || []).map((row: any) => ({
+          id: String(row.id),
+          title: row.title || 'Sans titre',
+          description: row.description || '',
+          image: row.image || undefined,
+          date: new Date(row.starts_at || row.date || row.created_at || new Date().toISOString()),
+          category: row.category || 'Non classé',
+          location: row.location || undefined,
+          invitedMembers: row.invited_members || [],
+          isPublished: row.is_published ?? row.isPublished ?? false,
+          createdAt: new Date(row.created_at || new Date().toISOString()),
+          createdBy: row.created_by || 'system',
+          updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+        }));
+      }
       console.log(`[API Event Presence] Total événements récupérés: ${allEvents.length}`);
       
       // Log des dates des événements pour debug
@@ -79,15 +126,12 @@ export async function GET(request: NextRequest) {
       }
       
       const monthEvents = allEvents.filter(event => {
-        // Gérer le cas où event.date peut être une string (depuis le cache Redis)
         const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
-        if (isNaN(eventDate.getTime())) {
+        if (Number.isNaN(eventDate.getTime())) {
           console.error(`[API Event Presence] Date invalide pour événement ${event.id}:`, event.date);
           return false;
         }
-        const eventYear = eventDate.getFullYear();
-        const eventMonth = String(eventDate.getMonth() + 1).padStart(2, '0');
-        const eventMonthKey = `${eventYear}-${eventMonth}`;
+        const eventMonthKey = toIsoSafeDate(eventDate).slice(0, 7);
         return eventMonthKey === monthParam;
       });
       
@@ -128,14 +172,14 @@ export async function GET(request: NextRequest) {
               title: event.title,
               description: event.description,
               image: event.image,
-              date: eventDate.toISOString(),
+              date: toIsoSafeDate(eventDate),
               category: event.category,
               location: event.location,
               invitedMembers: event.invitedMembers,
               isPublished: event.isPublished,
-              createdAt: createdAt.toISOString(),
+              createdAt: toIsoSafeDate(createdAt),
               createdBy: event.createdBy,
-              updatedAt: updatedAt?.toISOString(),
+              updatedAt: updatedAt ? toIsoSafeDate(updatedAt) : undefined,
               presences: presences || [],
               registrations: (registrations || []).map(reg => {
                 try {
@@ -172,14 +216,14 @@ export async function GET(request: NextRequest) {
               title: event.title,
               description: event.description,
               image: event.image,
-              date: eventDate.toISOString(),
+              date: toIsoSafeDate(eventDate),
               category: event.category,
               location: event.location,
               invitedMembers: event.invitedMembers,
               isPublished: event.isPublished,
-              createdAt: createdAt.toISOString(),
+              createdAt: toIsoSafeDate(createdAt),
               createdBy: event.createdBy,
-              updatedAt: updatedAt?.toISOString(),
+              updatedAt: updatedAt ? toIsoSafeDate(updatedAt) : undefined,
               presences: [],
               registrations: [],
             };

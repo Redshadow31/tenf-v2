@@ -59,22 +59,32 @@ export default function RecapPage() {
         }),
       ]);
       
-      if (!registrationsResponse.ok) {
-        throw new Error("Erreur lors du chargement des inscriptions");
+      let eventsData: any[] = [];
+      if (registrationsResponse.ok) {
+        const registrationsResult = await registrationsResponse.json();
+        eventsData = registrationsResult.eventsWithRegistrations || [];
+      } else {
+        // Fallback: afficher au moins les événements même si les inscriptions admin ne remontent pas.
+        const fallbackEventsResponse = await fetch("/api/events?admin=true", { cache: "no-store" });
+        if (fallbackEventsResponse.ok) {
+          const fallbackPayload = await fallbackEventsResponse.json();
+          eventsData = (fallbackPayload.events || []).map((event: any) => ({
+            event: {
+              id: event.id,
+              title: event.title,
+              date: event.startAtUtc || event.date,
+              category: event.category,
+              isPublished: event.isPublished ?? false,
+            },
+            registrations: [],
+            registrationCount: 0,
+          }));
+        }
       }
-      
-      const registrationsResult = await registrationsResponse.json();
-      
-      // Filtrer les événements passés uniquement pour les statistiques de présences
-      const now = new Date();
-      const pastEvents = (registrationsResult.eventsWithRegistrations || []).filter((item: any) => {
-        const eventDate = new Date(item.event.date);
-        return eventDate < now;
-      });
       
       // Charger les présences pour chaque événement passé uniquement
       const eventsWithPresences = await Promise.all(
-        pastEvents.map(async (item: any) => {
+        eventsData.map(async (item: any) => {
           try {
             const presenceResponse = await fetch(
               `/api/admin/events/presence?eventId=${item.event.id}`,
@@ -110,7 +120,7 @@ export default function RecapPage() {
         })
       );
       
-      // Calculer le total des inscriptions pour les événements passés uniquement
+      // Calculer le total des inscriptions de tous les événements affichés
       const totalRegistrationsPast = eventsWithPresences.reduce(
         (sum, item) => sum + item.registrationCount,
         0
@@ -140,8 +150,8 @@ export default function RecapPage() {
       }
       
       setData({
-        totalEvents: pastEvents.length, // Nombre d'événements passés uniquement
-        totalRegistrations: totalRegistrationsPast, // Total inscriptions événements passés
+        totalEvents: eventsWithPresences.length,
+        totalRegistrations: totalRegistrationsPast,
         eventsWithRegistrations: eventsWithPresences,
       });
     } catch (error) {
