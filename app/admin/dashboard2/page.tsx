@@ -446,13 +446,14 @@ export default function Dashboard2Page() {
           ).length;
         }
 
-        setUpcomingKpis({
+        setUpcomingKpis((prev) => ({
           nextMeetingRegistrations,
           nextFormationRegistrations,
           nextFilmRegistrations,
           nextJeuxRegistrations,
           upcomingSpotlights,
-        });
+          pendingEventValidations: prev.pendingEventValidations,
+        }));
       } catch (error) {
         console.error("Erreur chargement prochains KPIs:", error);
       }

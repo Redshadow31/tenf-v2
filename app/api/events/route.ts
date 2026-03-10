@@ -138,8 +138,8 @@ export async function POST(request: NextRequest) {
     const { previousValue, newValue } = prepareAuditValues(undefined, formattedEvent);
     
     const duration = Date.now() - startTime;
-    logEvent.create(eventId, admin.id);
-    logApi.route('POST', '/api/events', 200, duration, admin.id, { eventId, title });
+    logEvent.create(newEvent.id, admin.id);
+    logApi.route('POST', '/api/events', 200, duration, admin.id, { eventId: newEvent.id, title });
     
     await logAction({
       action: "event.create",

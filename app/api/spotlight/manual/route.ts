@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
         streamerTwitchLogin: createdSpotlight.streamerTwitchLogin,
         streamerDisplayName: createdSpotlight.streamerDisplayName,
         startedAt: createdSpotlight.startedAt.toISOString(),
-        endsAt: createdSpotlight.endsAt.toISOString(),
+        endsAt: createdSpotlight.endsAt ? createdSpotlight.endsAt.toISOString() : undefined,
         status: createdSpotlight.status,
         moderatorDiscordId: createdSpotlight.moderatorDiscordId,
         moderatorUsername: createdSpotlight.moderatorUsername,
