@@ -47,7 +47,7 @@ export default function EvaluationsHubPage() {
       color: "from-teal-500 to-teal-600",
     },
     {
-      href: "/admin/integration/discours",
+      href: "/admin/integration/discours2",
       title: "Discours",
       description: "Gérer les discours des intégrations",
       icon: "🎤",

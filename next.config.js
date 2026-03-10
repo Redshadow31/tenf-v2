@@ -6,6 +6,16 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/admin/integration/discours',
+        destination: '/admin/integration/discours2',
+        permanent: true,
+      },
+      {
+        source: '/admin/evaluations/discours',
+        destination: '/admin/integration/discours2',
+        permanent: true,
+      },
+      {
         source: '/admin/evaluations/:path*',
         destination: '/admin/integration/:path*',
         permanent: true,
