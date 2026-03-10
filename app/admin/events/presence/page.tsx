@@ -48,6 +48,98 @@ interface Member {
   discordUsername?: string;
 }
 
+function normalizeLogin(value?: string): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function safeTimestamp(value?: string): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function dedupeRegistrations(registrations: EventRegistration[]): EventRegistration[] {
+  const byLogin = new Map<string, EventRegistration>();
+  for (const reg of registrations) {
+    const key = normalizeLogin(reg.twitchLogin);
+    if (!key) continue;
+
+    const existing = byLogin.get(key);
+    if (!existing) {
+      byLogin.set(key, reg);
+      continue;
+    }
+
+    const currentTs = safeTimestamp(reg.registeredAt);
+    const existingTs = safeTimestamp(existing.registeredAt);
+    if (currentTs >= existingTs) {
+      byLogin.set(key, reg);
+    }
+  }
+  return Array.from(byLogin.values());
+}
+
+function dedupePresences(presences: EventPresence[]): EventPresence[] {
+  const byLogin = new Map<string, EventPresence>();
+  for (const presence of presences) {
+    const key = normalizeLogin(presence.twitchLogin);
+    if (!key) continue;
+
+    const existing = byLogin.get(key);
+    if (!existing) {
+      byLogin.set(key, presence);
+      continue;
+    }
+
+    const existingTs = Math.max(safeTimestamp(existing.validatedAt), safeTimestamp(existing.createdAt));
+    const currentTs = Math.max(safeTimestamp(presence.validatedAt), safeTimestamp(presence.createdAt));
+    const newer = currentTs >= existingTs ? presence : existing;
+    const older = newer === presence ? existing : presence;
+
+    byLogin.set(key, {
+      ...newer,
+      // Si une version indique "présent", on garde présent pour éviter faux absents sur doublons legacy/v2.
+      present: newer.present || older.present,
+      // Préserver une note si l'une des deux en a une.
+      note: newer.note || older.note,
+      // Préserver l'information "ajouté manuellement" si présente dans l'une des lignes.
+      addedManually: newer.addedManually || older.addedManually,
+      isRegistered: newer.isRegistered || older.isRegistered,
+    });
+  }
+  return Array.from(byLogin.values());
+}
+
+function getNormalizedEventData(event: Pick<Event, "registrations" | "presences">) {
+  const registrations = dedupeRegistrations(event.registrations || []);
+  const presences = dedupePresences(event.presences || []);
+  return { registrations, presences };
+}
+
+function computeEventPresenceStats(event: Pick<Event, "registrations" | "presences">) {
+  const { registrations, presences } = getNormalizedEventData(event);
+
+  const registeredKeys = new Set(registrations.map((r) => normalizeLogin(r.twitchLogin)));
+
+  const presentRegistered = registrations.filter((reg) =>
+    presences.some((p) => normalizeLogin(p.twitchLogin) === normalizeLogin(reg.twitchLogin) && p.present)
+  ).length;
+
+  const absentRegistered = registrations.length - presentRegistered;
+
+  const manualRows = presences.filter((p) => !registeredKeys.has(p.twitchLogin.toLowerCase()));
+  const manualAddedTotal = manualRows.length;
+  const manualPresent = manualRows.filter((p) => p.present).length;
+
+  return {
+    totalRegistrations: registrations.length,
+    presentRegistered,
+    absentRegistered,
+    manualAddedTotal,
+    manualPresent,
+  };
+}
+
 export default function EventPresencePage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -639,8 +731,8 @@ export default function EventPresencePage() {
                   comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
                   break;
                 case "presences":
-                  const aPresences = a.presences?.filter(p => p.present).length || 0;
-                  const bPresences = b.presences?.filter(p => p.present).length || 0;
+                  const aPresences = computeEventPresenceStats(a).presentRegistered;
+                  const bPresences = computeEventPresenceStats(b).presentRegistered;
                   comparison = aPresences - bPresences;
                   break;
                 case "inscriptions":
@@ -649,19 +741,8 @@ export default function EventPresencePage() {
                   comparison = aRegistrations - bRegistrations;
                   break;
                 case "absents":
-                  const aPresencesList = a.presences || [];
-                  const aRegistrationsList = a.registrations || [];
-                  const aAbsents = aPresencesList.filter(p => !p.present).length + 
-                    aRegistrationsList.filter(reg => 
-                      !aPresencesList.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                    ).length;
-                  
-                  const bPresencesList = b.presences || [];
-                  const bRegistrationsList = b.registrations || [];
-                  const bAbsents = bPresencesList.filter(p => !p.present).length + 
-                    bRegistrationsList.filter(reg => 
-                      !bPresencesList.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                    ).length;
+                  const aAbsents = computeEventPresenceStats(a).absentRegistered;
+                  const bAbsents = computeEventPresenceStats(b).absentRegistered;
                   comparison = aAbsents - bAbsents;
                   break;
                 case "category":
@@ -694,6 +775,9 @@ export default function EventPresencePage() {
                   </h2>
                   <div className="space-y-4">
                     {upcomingEvents.map((event) => (
+            (() => {
+              const stats = computeEventPresenceStats(event);
+              return (
             <div
               key={event.id}
               className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
@@ -745,37 +829,28 @@ export default function EventPresencePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-gray-400 mb-1">Inscrits</p>
-                  <p className="text-white font-semibold">{event.registrations?.length || 0}</p>
+                  <p className="text-white font-semibold">{stats.totalRegistrations}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Présents</p>
                   <p className="text-green-400 font-semibold">
-                    {event.presences?.filter(p => p.present).length || 0}
+                    {stats.presentRegistered}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Absents</p>
-                  <p className="text-red-400 font-semibold">
-                    {(() => {
-                      const presences = event.presences || [];
-                      const registrations = event.registrations || [];
-                      // Absents = présences avec present: false + inscrits sans présence enregistrée
-                      const absentPresences = presences.filter(p => !p.present).length;
-                      const registeredWithoutPresence = registrations.filter(reg => 
-                        !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                      ).length;
-                      return absentPresences + registeredWithoutPresence;
-                    })()}
-                  </p>
+                  <p className="text-red-400 font-semibold">{stats.absentRegistered}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Ajoutés manuellement</p>
                   <p className="text-yellow-400 font-semibold">
-                    {event.presences?.filter(p => p.addedManually).length || 0}
+                    {stats.manualPresent}
                   </p>
                 </div>
               </div>
             </div>
+              );
+            })()
                     ))}
                   </div>
                 </div>
@@ -790,6 +865,9 @@ export default function EventPresencePage() {
                   </h2>
                   <div className="space-y-4">
                     {pastEvents.map((event) => (
+                      (() => {
+                        const stats = computeEventPresenceStats(event);
+                        return (
                       <div
                         key={event.id}
                         className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
@@ -841,37 +919,28 @@ export default function EventPresencePage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="text-gray-400 mb-1">Inscrits</p>
-                            <p className="text-white font-semibold">{event.registrations?.length || 0}</p>
+                            <p className="text-white font-semibold">{stats.totalRegistrations}</p>
                           </div>
                           <div>
                             <p className="text-gray-400 mb-1">Présents</p>
                             <p className="text-green-400 font-semibold">
-                              {event.presences?.filter(p => p.present).length || 0}
+                              {stats.presentRegistered}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-400 mb-1">Absents</p>
-                            <p className="text-red-400 font-semibold">
-                              {(() => {
-                                const presences = event.presences || [];
-                                const registrations = event.registrations || [];
-                                // Absents = présences avec present: false + inscrits sans présence enregistrée
-                                const absentPresences = presences.filter(p => !p.present).length;
-                                const registeredWithoutPresence = registrations.filter(reg => 
-                                  !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                                ).length;
-                                return absentPresences + registeredWithoutPresence;
-                              })()}
-                            </p>
+                            <p className="text-red-400 font-semibold">{stats.absentRegistered}</p>
                           </div>
                           <div>
                             <p className="text-gray-400 mb-1">Ajoutés manuellement</p>
                             <p className="text-yellow-400 font-semibold">
-                              {event.presences?.filter(p => p.addedManually).length || 0}
+                              {stats.manualPresent}
                             </p>
                           </div>
                         </div>
                       </div>
+                        );
+                      })()
                     ))}
                   </div>
                 </div>
@@ -1016,8 +1085,8 @@ function EventPresenceModal({
     () => filterMembers(debouncedSearchQuery),
     [debouncedSearchQuery, filterMembers]
   );
-  const registrations = localEvent.registrations || [];
-  const presences = localEvent.presences || [];
+  const { registrations, presences } = getNormalizedEventData(localEvent);
+  const stats = computeEventPresenceStats(localEvent);
 
   // Créer une liste combinée : présences + inscrits non présents
   const allParticipants = new Map<string, {
@@ -1028,7 +1097,7 @@ function EventPresenceModal({
 
   // Ajouter les inscrits
   registrations.forEach(reg => {
-    allParticipants.set(reg.twitchLogin.toLowerCase(), {
+    allParticipants.set(normalizeLogin(reg.twitchLogin), {
       member: {
         twitchLogin: reg.twitchLogin,
         displayName: reg.displayName,
@@ -1036,14 +1105,14 @@ function EventPresenceModal({
         discordUsername: reg.discordUsername,
       },
       isRegistered: true,
-      presence: presences.find(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase()),
+      presence: presences.find(p => normalizeLogin(p.twitchLogin) === normalizeLogin(reg.twitchLogin)),
     });
   });
 
   // Ajouter les présences ajoutées manuellement (non inscrits)
   presences.forEach(presence => {
-    if (!allParticipants.has(presence.twitchLogin.toLowerCase())) {
-      allParticipants.set(presence.twitchLogin.toLowerCase(), {
+    if (!allParticipants.has(normalizeLogin(presence.twitchLogin))) {
+      allParticipants.set(normalizeLogin(presence.twitchLogin), {
         member: {
           twitchLogin: presence.twitchLogin,
           displayName: presence.displayName,
@@ -1249,31 +1318,22 @@ function EventPresenceModal({
         <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Total Inscrits</p>
-            <p className="text-white font-bold text-xl">{registrations.length}</p>
+            <p className="text-white font-bold text-xl">{stats.totalRegistrations}</p>
           </div>
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Présents</p>
             <p className="text-green-400 font-bold text-xl">
-              {presences.filter(p => p.present).length}
+              {stats.presentRegistered}
             </p>
           </div>
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Absents</p>
-            <p className="text-red-400 font-bold text-xl">
-              {(() => {
-                // Absents = présences avec present: false + inscrits sans présence enregistrée
-                const absentPresences = presences.filter(p => !p.present).length;
-                const registeredWithoutPresence = registrations.filter(reg => 
-                  !presences.some(p => p.twitchLogin.toLowerCase() === reg.twitchLogin.toLowerCase())
-                ).length;
-                return absentPresences + registeredWithoutPresence;
-              })()}
-            </p>
+            <p className="text-red-400 font-bold text-xl">{stats.absentRegistered}</p>
           </div>
           <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-1">Ajoutés manuellement</p>
             <p className="text-yellow-400 font-bold text-xl">
-              {presences.filter(p => p.addedManually).length}
+              {stats.manualPresent}
             </p>
           </div>
         </div>

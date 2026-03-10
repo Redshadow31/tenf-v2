@@ -12,47 +12,75 @@ function toIsoSafeDate(input: any): string {
 }
 
 async function loadEventsWithoutCache(): Promise<any[]> {
-  // 1) v2 prioritaire: community_events.starts_at
+  // Charge v2 + legacy puis fusionne (au lieu de fallback exclusif),
+  // pour éviter de perdre des événements/statistiques pendant migration.
   const tryCommunityStartsAt = await supabaseAdmin
     .from('community_events')
     .select('*')
     .order('starts_at', { ascending: false })
     .limit(1000);
-  if (!tryCommunityStartsAt.error && tryCommunityStartsAt.data?.length) {
-    return tryCommunityStartsAt.data;
-  }
 
-  // 2) compat: community_events.date
+  // compat: community_events.date
   const tryCommunityDate = await supabaseAdmin
     .from('community_events')
     .select('*')
     .order('date', { ascending: false })
     .limit(1000);
-  if (!tryCommunityDate.error && tryCommunityDate.data?.length) {
-    return tryCommunityDate.data;
-  }
 
-  // 3) fallback legacy: events.date
+  // legacy: events.date
   const tryLegacyDate = await supabaseAdmin
     .from('events')
     .select('*')
     .order('date', { ascending: false })
     .limit(1000);
-  if (!tryLegacyDate.error && tryLegacyDate.data?.length) {
-    return tryLegacyDate.data;
-  }
 
-  // 4) fallback legacy: events.starts_at
+  // legacy: events.starts_at
   const tryLegacyStartsAt = await supabaseAdmin
     .from('events')
     .select('*')
     .order('starts_at', { ascending: false })
     .limit(1000);
-  if (!tryLegacyStartsAt.error && tryLegacyStartsAt.data?.length) {
-    return tryLegacyStartsAt.data;
+  const communityRows = [
+    ...(tryCommunityStartsAt.error ? [] : (tryCommunityStartsAt.data || [])),
+    ...(tryCommunityDate.error ? [] : (tryCommunityDate.data || [])),
+  ];
+  const legacyRows = [
+    ...(tryLegacyDate.error ? [] : (tryLegacyDate.data || [])),
+    ...(tryLegacyStartsAt.error ? [] : (tryLegacyStartsAt.data || [])),
+  ];
+
+  const dedupCommunity = new Map<string, any>();
+  for (const row of communityRows) {
+    if (!row?.id) continue;
+    dedupCommunity.set(String(row.id), row);
+  }
+  const community = Array.from(dedupCommunity.values());
+
+  const representedLegacy = new Set<string>();
+  const representedTitleDate = new Set<string>();
+  for (const row of community) {
+    if (row?.legacy_event_id) {
+      representedLegacy.add(String(row.legacy_event_id));
+    }
+    const key = `${String(row?.title || '').trim().toLowerCase()}__${String(row?.starts_at || row?.date || '')}`;
+    representedTitleDate.add(key);
   }
 
-  return [];
+  const legacyOnly: any[] = [];
+  const seenLegacyId = new Set<string>();
+  for (const row of legacyRows) {
+    const legacyId = String(row?.id || '');
+    if (!legacyId || seenLegacyId.has(legacyId)) continue;
+    seenLegacyId.add(legacyId);
+
+    const key = `${String(row?.title || '').trim().toLowerCase()}__${String(row?.date || row?.starts_at || '')}`;
+    if (representedLegacy.has(legacyId) || representedTitleDate.has(key)) {
+      continue;
+    }
+    legacyOnly.push(row);
+  }
+
+  return [...community, ...legacyOnly];
 }
 
 /**
