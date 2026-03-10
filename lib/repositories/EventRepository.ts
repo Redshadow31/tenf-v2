@@ -34,6 +34,22 @@ const isUuid = (value?: string) =>
   !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export class EventRepository {
+  private toSafeDate(value: any, fallbackValue?: any): Date {
+    const primary = new Date(value);
+    if (!Number.isNaN(primary.getTime())) {
+      return primary;
+    }
+
+    if (fallbackValue !== undefined) {
+      const fallback = new Date(fallbackValue);
+      if (!Number.isNaN(fallback.getTime())) {
+        return fallback;
+      }
+    }
+
+    return new Date();
+  }
+
   private normalizeImageUrl(image?: string | null): string | undefined {
     if (!image || typeof image !== 'string') return undefined;
     const trimmed = image.trim();
@@ -518,14 +534,14 @@ export class EventRepository {
       title: row.title,
       description: row.description,
       image: this.normalizeImageUrl(row.image),
-      date: new Date(dateValue),
+      date: this.toSafeDate(dateValue, row.created_at || row.updated_at),
       category: row.category,
       location: row.location || undefined,
       invitedMembers: row.invited_members || undefined,
       isPublished: row.is_published,
-      createdAt: new Date(row.created_at),
+      createdAt: this.toSafeDate(row.created_at, row.updated_at),
       createdBy: row.created_by,
-      updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+      updatedAt: row.updated_at ? this.toSafeDate(row.updated_at, row.created_at) : undefined,
     };
   }
 
