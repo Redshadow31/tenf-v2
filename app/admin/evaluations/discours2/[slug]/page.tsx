@@ -122,6 +122,17 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
               Terminer et revenir à l'accueil
             </Link>
           )}
+
+          {part.slug === "final" ? (
+            <a
+              href="https://teamnewfamily.netlify.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold"
+            >
+              🌐 Ouvrir le site New Family
+            </a>
+          ) : null}
         </div>
       </div>
     </div>

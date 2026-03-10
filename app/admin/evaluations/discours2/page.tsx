@@ -56,6 +56,12 @@ export default function Discours2HomePage() {
           </section>
         </div>
 
+        <section className="bg-amber-950/30 border border-amber-500/40 rounded-xl p-6 mb-8">
+          <h3 className="text-xl font-bold text-amber-300 mb-3">⭐ Si je devais résumer la réunion</h3>
+          <p className="text-lg text-amber-100 font-medium mb-3">👉 {discours2General.phraseCentrale}</p>
+          <p className="text-gray-200">{discours2General.note}</p>
+        </section>
+
         <section className="bg-[#17171b] border border-gray-700 rounded-xl p-6 mb-8">
           <h3 className="text-xl font-bold mb-4">🧭 Aperçu des parties</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
