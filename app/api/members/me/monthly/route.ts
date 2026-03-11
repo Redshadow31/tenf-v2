@@ -16,7 +16,85 @@ function getCurrentMonthKey(): string {
 }
 
 function normalizeKey(value?: string | null): string {
-  return (value || "").toLowerCase().trim();
+  return (value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/^@+/, "");
+}
+
+function addIdentityAliases(index: Map<string, string>, rawValue: string | null | undefined, login: string) {
+  const normalized = normalizeKey(rawValue);
+  if (!normalized) return;
+
+  index.set(normalized, login);
+
+  // Alias Discord legacy: username#1234 -> username
+  const hashIdx = normalized.indexOf("#");
+  if (hashIdx > 0) {
+    index.set(normalized.slice(0, hashIdx), login);
+  }
+
+  // Alias mention Discord: <@123> or <@!123>
+  if (normalized.startsWith("<@") && normalized.endsWith(">")) {
+    const mentionId = normalized.replace(/[<@!>]/g, "");
+    if (mentionId) {
+      index.set(mentionId, login);
+    }
+  }
+}
+
+function remapAndAggregateEntries(
+  entries: Array<{ key: string; value: number }>,
+  identityToLogin: Map<string, string>
+): Array<{ key: string; value: number }> {
+  const aggregated = new Map<string, number>();
+  for (const entry of entries) {
+    const rawKey = normalizeKey(entry.key);
+    if (!rawKey) continue;
+    const canonicalKey = identityToLogin.get(rawKey) || rawKey;
+    const current = aggregated.get(canonicalKey) || 0;
+    aggregated.set(canonicalKey, current + (Number.isFinite(entry.value) ? entry.value : 0));
+  }
+
+  return Array.from(aggregated.entries())
+    .map(([key, value]) => ({ key, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function safeTimestamp(value?: string): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function dedupeEventPresences(presences: any[]): any[] {
+  const byLogin = new Map<string, any>();
+  for (const presence of presences || []) {
+    const key = normalizeKey(presence?.twitchLogin);
+    if (!key) continue;
+
+    const existing = byLogin.get(key);
+    if (!existing) {
+      byLogin.set(key, presence);
+      continue;
+    }
+
+    const existingTs = Math.max(safeTimestamp(existing?.validatedAt), safeTimestamp(existing?.createdAt));
+    const currentTs = Math.max(safeTimestamp(presence?.validatedAt), safeTimestamp(presence?.createdAt));
+    const hasClearNewer = currentTs !== existingTs;
+    const newer = hasClearNewer ? (currentTs > existingTs ? presence : existing) : presence;
+    const older = newer === presence ? existing : presence;
+    const resolvedPresent = hasClearNewer ? newer.present : (newer.present && older.present);
+
+    byLogin.set(key, {
+      ...newer,
+      present: resolvedPresent,
+      note: newer.note || older.note,
+      addedManually: newer.addedManually || older.addedManually,
+      isRegistered: newer.isRegistered || older.isRegistered,
+    });
+  }
+  return Array.from(byLogin.values());
 }
 
 /**
@@ -89,11 +167,11 @@ export async function GET(request: NextRequest) {
     for (const m of allMembers) {
       const login = normalizeKey(m.twitchLogin);
       if (!login) continue;
-      identityToLogin.set(login, login);
-      if (m.discordId) identityToLogin.set(normalizeKey(m.discordId), login);
-      if (m.discordUsername) identityToLogin.set(normalizeKey(m.discordUsername), login);
-      if (m.displayName) identityToLogin.set(normalizeKey(m.displayName), login);
-      if (m.siteUsername) identityToLogin.set(normalizeKey(m.siteUsername), login);
+      addIdentityAliases(identityToLogin, login, login);
+      addIdentityAliases(identityToLogin, m.discordId, login);
+      addIdentityAliases(identityToLogin, m.discordUsername, login);
+      addIdentityAliases(identityToLogin, m.displayName, login);
+      addIdentityAliases(identityToLogin, m.siteUsername, login);
     }
 
     // 1. Raids TENF — depuis raidStorage (même source que /admin/raids)
@@ -131,7 +209,6 @@ export async function GET(request: NextRequest) {
     let spotlightPresence = { present: 0, total: 0, rate: 0 };
     try {
       const now = new Date();
-      const [year, month] = monthKey.split("-").map((v) => parseInt(v, 10));
       const allEvents = await eventRepository.findAll(1000, 0);
       const spotlightEvents = allEvents.filter((event) => {
         const d = event.date instanceof Date ? event.date : new Date(event.date);
@@ -148,15 +225,23 @@ export async function GET(request: NextRequest) {
       let presentCount = 0;
 
       for (const event of spotlightEvents) {
-        const presences = await eventRepository.getPresences(event.id);
+        const rawPresences = await eventRepository.getPresences(event.id);
+        const presences = dedupeEventPresences(rawPresences || []);
         // Compter uniquement les spotlights réellement validés (au moins une présence enregistrée)
         if (!presences || presences.length === 0) continue;
         totalValidatedSpotlights += 1;
 
         const isPresent = presences.some(
-          (p: any) =>
-            normalizeKey(p.twitchLogin) === memberLogin &&
-            p.present === true
+          (p: any) => {
+            if (p.present !== true) return false;
+            const rawPresenceIdentity = normalizeKey(p?.twitchLogin);
+            const mappedPresenceLogin = identityToLogin.get(rawPresenceIdentity) || rawPresenceIdentity;
+            return (
+              mappedPresenceLogin === memberLogin ||
+              memberIdentityCandidates.has(rawPresenceIdentity) ||
+              memberIdentityCandidates.has(mappedPresenceLogin)
+            );
+          }
         );
         if (isPresent) presentCount += 1;
       }
@@ -193,10 +278,10 @@ export async function GET(request: NextRequest) {
         const messagesByUser = activityData.messagesByUser || {};
         const vocalsByUser = activityData.vocalsByUser || {};
 
-        const messagesEntries = Object.entries(messagesByUser)
+        const rawMessagesEntries = Object.entries(messagesByUser)
           .map(([k, v]) => ({ key: k, value: typeof v === "number" ? v : 0 }))
-          .sort((a, b) => b.value - a.value);
-        const vocalsEntries = Object.entries(vocalsByUser)
+          .filter((entry) => entry.key && Number.isFinite(entry.value));
+        const rawVocalsEntries = Object.entries(vocalsByUser)
           .map(([k, v]) => ({
             key: k,
             value:
@@ -204,7 +289,10 @@ export async function GET(request: NextRequest) {
                 ? (v as any).totalMinutes ?? 0
                 : 0,
           }))
-          .sort((a, b) => b.value - a.value);
+          .filter((entry) => entry.key && Number.isFinite(entry.value));
+
+        const messagesEntries = remapAndAggregateEntries(rawMessagesEntries, identityToLogin);
+        const vocalsEntries = remapAndAggregateEntries(rawVocalsEntries, identityToLogin);
 
         messagesRanking = {
           rank: getRank(messagesEntries, member),
