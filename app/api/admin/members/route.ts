@@ -11,13 +11,19 @@ import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 const LEGACY_FETCH_TIMEOUT_MS = 1500;
-const TWITCH_AVATARS_TIMEOUT_MS = 7000;
+const TWITCH_AVATARS_TIMEOUT_MS = 15000;
 
 function getDiscordDefaultAvatar(discordId?: string): string | undefined {
   if (!discordId) return undefined;
   const numericId = Number.parseInt(discordId, 10);
   if (Number.isNaN(numericId)) return undefined;
   return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
+}
+
+function isUsableTwitchAvatar(url?: string): boolean {
+  if (!url) return false;
+  const normalized = url.toLowerCase();
+  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T, label: string): Promise<T> {
@@ -224,7 +230,9 @@ export async function GET(request: NextRequest) {
         "récupération avatars Twitch"
       );
       twitchUsers.forEach((u: TwitchUser) => {
-        if (u.profile_image_url) avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
+        if (isUsableTwitchAvatar(u.profile_image_url)) {
+          avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
+        }
       });
     }
 

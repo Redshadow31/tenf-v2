@@ -144,7 +144,7 @@ export default function GestionMembresPage() {
   async function fetchWithTimeout(
     input: RequestInfo | URL,
     init: RequestInit = {},
-    timeoutMs = 10000
+    timeoutMs = 20000
   ): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
