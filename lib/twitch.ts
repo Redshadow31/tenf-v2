@@ -1,4 +1,6 @@
 // Twitch API integration
+import { cacheGet, cacheSet, cacheKey } from './cache';
+
 export interface TwitchUser {
   id: string;
   login: string;
@@ -27,7 +29,12 @@ interface CachedTwitchUser {
 }
 
 const AVATAR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
+const AVATAR_CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 heures en secondes (Redis)
 const avatarCache = new Map<string, CachedTwitchUser>();
+
+function twitchAvatarCacheKey(login: string): string {
+  return cacheKey('twitch', 'user', login.toLowerCase());
+}
 
 /**
  * Nettoie le cache des avatars expirés
@@ -69,6 +76,18 @@ function setCachedUser(login: string, user: TwitchUser): void {
   // Nettoyer le cache périodiquement (tous les 100 insertions environ)
   if (avatarCache.size % 100 === 0) {
     cleanExpiredAvatars();
+  }
+}
+
+/**
+ * Persiste un utilisateur Twitch dans le cache Redis.
+ * Non bloquant pour ne pas impacter les performances en cas d'erreur cache.
+ */
+async function setPersistentCachedUser(login: string, user: TwitchUser): Promise<void> {
+  try {
+    await cacheSet(twitchAvatarCacheKey(login), user, AVATAR_CACHE_TTL_SECONDS);
+  } catch {
+    // Erreurs cache ignorées (fallback mémoire + API Twitch)
   }
 }
 
@@ -141,10 +160,19 @@ async function getTwitchAccessToken(): Promise<string | null> {
  * @returns Les informations de l'utilisateur Twitch
  */
 export async function getTwitchUser(login: string): Promise<TwitchUser> {
+  const normalizedLogin = login.toLowerCase();
+
   // Vérifier le cache d'abord
-  const cached = getCachedUser(login);
+  const cached = getCachedUser(normalizedLogin);
   if (cached) {
     return cached;
+  }
+
+  // Vérifier le cache persistant (Redis) ensuite
+  const redisCached = await cacheGet<TwitchUser>(twitchAvatarCacheKey(normalizedLogin));
+  if (redisCached && redisCached.login) {
+    setCachedUser(normalizedLogin, redisCached);
+    return redisCached;
   }
 
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -208,6 +236,9 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
       };
       // Mettre en cache l'utilisateur récupéré avec succès
       setCachedUser(user.login, twitchUser);
+      setPersistentCachedUser(user.login, twitchUser).catch(() => {
+        // Erreurs cache ignorées
+      });
       return twitchUser;
     }
 
@@ -242,8 +273,42 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
   // Nettoyer le cache des entrées expirées
   cleanExpiredAvatars();
 
-  // Récupérer les utilisateurs depuis le cache
-  const { cached, toFetch } = getCachedUsers(logins);
+  // Récupérer les utilisateurs depuis le cache mémoire
+  const { cached, toFetch: memoryMisses } = getCachedUsers(logins);
+  const toFetch = [...memoryMisses];
+
+  // Récupérer les misses mémoire depuis le cache persistant Redis
+  if (toFetch.length > 0) {
+    const redisEntries = await Promise.all(
+      toFetch.map(async (login) => {
+        const user = await cacheGet<TwitchUser>(twitchAvatarCacheKey(login));
+        return user && user.login ? { login, user } : null;
+      })
+    );
+
+    const stillMissing: string[] = [];
+    for (const entry of redisEntries) {
+      if (!entry) continue;
+      const key = entry.login.toLowerCase();
+      cached.set(key, entry.user);
+      setCachedUser(key, entry.user);
+    }
+
+    const redisHitSet = new Set(
+      redisEntries
+        .filter((entry): entry is { login: string; user: TwitchUser } => entry !== null)
+        .map((entry) => entry.login.toLowerCase())
+    );
+
+    for (const login of toFetch) {
+      if (!redisHitSet.has(login.toLowerCase())) {
+        stillMissing.push(login);
+      }
+    }
+
+    toFetch.length = 0;
+    toFetch.push(...stillMissing);
+  }
   
   // Si tous les utilisateurs sont en cache, les retourner directement
   if (toFetch.length === 0) {
@@ -352,6 +417,9 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
           allUsers.push(twitchUser);
           // Mettre en cache les utilisateurs récupérés avec succès
           setCachedUser(user.login, twitchUser);
+          setPersistentCachedUser(user.login, twitchUser).catch(() => {
+            // Erreurs cache ignorées
+          });
         });
       }
       
