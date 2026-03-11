@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDiscordActivityForMonth, loadDiscordActivity } from '@/lib/discordActivityStorage';
-import { getAllMemberData, loadMemberDataFromStorage, initializeMemberData } from '@/lib/memberData';
+import { getDiscordActivityForMonth } from '@/lib/discordActivityStorage';
+import { memberRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,10 +40,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Charger les données des membres pour enrichir les résultats
-    initializeMemberData();
-    await loadMemberDataFromStorage();
-    const allMembers = getAllMemberData();
+    // Charger les membres depuis Supabase (source de vérité V2)
+    const allMembers = await memberRepository.findAll(1000, 0);
     const membersMap = new Map(
       allMembers
         .filter(m => m.isActive !== false)

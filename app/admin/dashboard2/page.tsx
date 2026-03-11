@@ -388,38 +388,13 @@ export default function Dashboard2Page() {
       try {
         const now = new Date();
 
-        const [integrationsRes, eventsRegistrationsRes] = await Promise.all([
-          fetch("/api/integrations?admin=true", { cache: "no-store" }),
-          fetch("/api/admin/events/registrations", { cache: "no-store" }),
-        ]);
+        const eventsRegistrationsRes = await fetch("/api/admin/events/registrations", { cache: "no-store" });
 
         let nextMeetingRegistrations = 0;
         let nextFormationRegistrations = 0;
         let nextFilmRegistrations = 0;
         let nextJeuxRegistrations = 0;
         let upcomingSpotlights = 0;
-
-        if (integrationsRes.ok) {
-          const integrationsData = await integrationsRes.json();
-          const integrations = (integrationsData.integrations || []) as Array<{
-            id: string;
-            date: string;
-            isPublished?: boolean;
-          }>;
-          const nextMeeting = integrations
-            .filter((integration) => integration.isPublished !== false && new Date(integration.date) >= now)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
-
-          if (nextMeeting?.id) {
-            const regsRes = await fetch(`/api/admin/integrations/${nextMeeting.id}/registrations`, {
-              cache: "no-store",
-            });
-            if (regsRes.ok) {
-              const regsData = await regsRes.json();
-              nextMeetingRegistrations = (regsData.registrations || []).length;
-            }
-          }
-        }
 
         if (eventsRegistrationsRes.ok) {
           const eventsData = await eventsRegistrationsRes.json();
@@ -436,6 +411,9 @@ export default function Dashboard2Page() {
             return found?.registrationCount || 0;
           };
 
+          nextMeetingRegistrations = findNextRegistrationCount(
+            (category) => category.includes("integration") || category.includes("reunion")
+          );
           nextFormationRegistrations = findNextRegistrationCount((category) => category.includes("formation"));
           nextFilmRegistrations = findNextRegistrationCount((category) => category.includes("film"));
           nextJeuxRegistrations = findNextRegistrationCount(
