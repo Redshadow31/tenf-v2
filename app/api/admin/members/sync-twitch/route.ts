@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Récupérer les streams en cours depuis l'API Twitch
     const userLoginsParam = twitchLogins.join(',');
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
     const streamsResponse = await fetch(
       `${baseUrl}/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`
     );

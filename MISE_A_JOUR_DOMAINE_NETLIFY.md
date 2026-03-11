@@ -1,8 +1,8 @@
-# 🔄 Mise à jour du domaine Netlify - teamnewfamily.netlify.app
+# 🔄 Mise à jour du domaine Netlify - tenf-community.com
 
 ## ✅ Modifications effectuées dans le code
 
-Toutes les références à l'ancien domaine `papaya-lebkuchen-9e7d00.netlify.app` ont été remplacées par `teamnewfamily.netlify.app` dans :
+Toutes les références à l'ancien domaine `papaya-lebkuchen-9e7d00.netlify.app` ont été remplacées par `tenf-community.com` dans :
 - ✅ `app/auth/login/page.tsx`
 - ✅ `MISE_A_JOUR_NETLIFY.md`
 - ✅ `VARIABLES_ENV_NETLIFY.md`
@@ -16,9 +16,9 @@ Toutes les références à l'ancien domaine `papaya-lebkuchen-9e7d00.netlify.app
 Allez dans **Netlify Dashboard** → **Votre site** → **Site settings** → **Environment variables** et mettez à jour :
 
 ```
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
+NEXTAUTH_URL=https://tenf-community.com
 ```
 
 **⚠️ IMPORTANT** : 
@@ -43,14 +43,14 @@ Après avoir mis à jour les variables :
 3. Allez dans **OAuth2** → **General**
 4. Dans la section **Redirects** :
    - **Supprimez** l'ancien redirect : `https://papaya-lebkuchen-9e7d00.netlify.app/api/auth/discord/callback`
-   - **Ajoutez** le nouveau redirect : `https://teamnewfamily.netlify.app/api/auth/discord/callback`
+   - **Ajoutez** le nouveau redirect : `https://tenf-community.com/api/auth/discord/callback`
    - Cliquez sur **Save Changes**
 
 **⚠️ Points critiques** :
 - ✅ Commence par `https://` (pas `http://`)
 - ✅ Pas de slash `/` à la fin
 - ✅ Chemin exact : `/api/auth/discord/callback`
-- ✅ Domaine exact : `teamnewfamily.netlify.app`
+- ✅ Domaine exact : `tenf-community.com`
 
 ### 2. Vérifier le Client ID et Secret
 
@@ -69,7 +69,7 @@ Avant de tester, vérifiez que :
 
 ## 🧪 Test après mise à jour
 
-1. Allez sur https://teamnewfamily.netlify.app
+1. Allez sur https://tenf-community.com
 2. Essayez de vous connecter avec Discord
 3. Si ça ne fonctionne pas, vérifiez les logs Netlify dans **Functions** → **Logs**
 

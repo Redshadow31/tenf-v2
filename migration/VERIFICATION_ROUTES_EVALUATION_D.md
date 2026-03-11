@@ -98,7 +98,7 @@ Ces routes utilisent encore Netlify Blobs (à migrer si nécessaire) :
 
 ### 1. Test de la Page `/admin/evaluation/d`
 
-1. Ouvrir la page : `https://teamnewfamily.netlify.app/admin/evaluation/d`
+1. Ouvrir la page : `https://tenf-community.com/admin/evaluation/d`
 2. Vérifier que les données se chargent correctement
 3. Vérifier que les bonus s'affichent correctement
 4. Tester la modification d'un bonus (timezoneBonusEnabled, moderationBonus)
@@ -108,11 +108,11 @@ Ces routes utilisent encore Netlify Blobs (à migrer si nécessaire) :
 
 ```bash
 # Test GET /api/evaluations/bonus
-curl "https://teamnewfamily.netlify.app/api/evaluations/bonus?month=2026-01" \
+curl "https://tenf-community.com/api/evaluations/bonus?month=2026-01" \
   -H "Cookie: discord_user_id=..."
 
 # Test PUT /api/evaluations/bonus
-curl -X PUT "https://teamnewfamily.netlify.app/api/evaluations/bonus" \
+curl -X PUT "https://tenf-community.com/api/evaluations/bonus" \
   -H "Content-Type: application/json" \
   -H "Cookie: discord_user_id=..." \
   -d '{"month":"2026-01","twitchLogin":"test","timezoneBonusEnabled":true,"moderationBonus":2}'

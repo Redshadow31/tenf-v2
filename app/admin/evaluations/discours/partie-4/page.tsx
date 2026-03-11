@@ -182,7 +182,7 @@ export default function Partie4Page() {
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Ouvrir aux questions des participants (3-5 min)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Expliquer le processus d&apos;ajout (rôle actif, site web)</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Timing : rôle dans les heures qui suivent, site en fin de semaine</li>
-                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Présenter le site web : teamnewfamily.netlify.app</li>
+                <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Présenter le site web : tenf-community.com</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Sections du site : Documentation, Spotlight, Équipe, Créateurs, Lives</li>
                 <li className="pl-6 relative before:content-['✓'] before:absolute before:left-0 before:text-cyan-400 before:font-bold">Encourager à profiter de la communauté</li>
               </ul>
@@ -209,7 +209,7 @@ export default function Partie4Page() {
                 <p><strong>À propos du site web de la New Family</strong></p>
                 <p>On va vous montrer rapidement notre <strong>site web officiel</strong> :</p>
                 <p className="text-2xl font-bold text-[#9146ff] text-center my-6">
-                  <strong>teamnewfamily.netlify.app</strong>
+                  <strong>tenf-community.com</strong>
                 </p>
                 
                 <p>Sur le site, vous trouverez :</p>

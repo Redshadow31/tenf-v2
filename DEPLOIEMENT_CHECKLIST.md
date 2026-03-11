@@ -7,7 +7,7 @@
 - [ ] Aller dans **OAuth2** → **General**
 - [ ] Dans **Redirects**, ajouter :
   ```
-  https://teamnewfamily.netlify.app/api/auth/callback/discord
+  https://tenf-community.com/api/auth/callback/discord
   ```
 - [ ] Vérifier les scopes : `identify`, `guilds`, `guilds.members.read`
 - [ ] Copier le **Client ID** → Pour `DISCORD_CLIENT_ID`
@@ -29,11 +29,11 @@ Netlify Dashboard → **Site settings** → **Environment variables** :
 
 | Variable | Valeur |
 |----------|--------|
-| `NEXTAUTH_URL` | `https://teamnewfamily.netlify.app` |
+| `NEXTAUTH_URL` | `https://tenf-community.com` |
 | `NEXTAUTH_SECRET` | `<secret généré ci-dessus>` |
 | `DISCORD_CLIENT_ID` | `<votre_client_id_discord>` |
 | `DISCORD_CLIENT_SECRET` | `<votre_client_secret_discord>` |
-| `DISCORD_REDIRECT_URI` | `https://teamnewfamily.netlify.app/api/auth/callback/discord` |
+| `DISCORD_REDIRECT_URI` | `https://tenf-community.com/api/auth/callback/discord` |
 
 ---
 
@@ -60,33 +60,33 @@ git push origin main
 ## ✅ Tests post-déploiement
 
 ### Test 1 : Connexion Discord
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/auth/login`
+- [ ] Aller sur : `https://tenf-community.com/auth/login`
 - [ ] Cliquer sur **"Se connecter avec Discord"**
 - [ ] Autoriser l'application
 - [ ] **Résultat attendu** : Redirection vers la page d'accueil ou `/admin`
 
 ### Test 2 : Accès admin (non authentifié)
 - [ ] Se déconnecter (ou navigation privée)
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/admin`
+- [ ] Aller sur : `https://tenf-community.com/admin`
 - [ ] **Résultat attendu** : Redirection vers `/api/auth/signin?callbackUrl=/admin`
 
 ### Test 3 : Accès admin (avec rôle admin)
 - [ ] Se connecter avec un compte admin
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/admin`
+- [ ] Aller sur : `https://tenf-community.com/admin`
 - [ ] **Résultat attendu** : Accès autorisé à la page admin
 
 ### Test 4 : API admin (avec rôle admin)
 - [ ] Se connecter avec un compte admin
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/api/admin/members`
+- [ ] Aller sur : `https://tenf-community.com/api/admin/members`
 - [ ] **Résultat attendu** : JSON avec la liste des membres (status 200)
 
 ### Test 5 : Route réservée aux founders
 - [ ] Se connecter avec un compte FOUNDER
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/admin/gestion-acces`
+- [ ] Aller sur : `https://tenf-community.com/admin/gestion-acces`
 - [ ] **Résultat attendu** : Accès autorisé
 
 - [ ] Se connecter avec un compte ADMIN_ADJOINT (non-founder)
-- [ ] Aller sur : `https://teamnewfamily.netlify.app/admin/gestion-acces`
+- [ ] Aller sur : `https://tenf-community.com/admin/gestion-acces`
 - [ ] **Résultat attendu** : Redirection vers `/unauthorized`
 
 ---
@@ -100,7 +100,7 @@ git push origin main
 → Vérifier que `NEXTAUTH_SECRET` est configuré dans Netlify (32+ caractères)
 
 ### Erreur : Session non persistante
-→ Vérifier que `NEXTAUTH_URL` = `https://teamnewfamily.netlify.app` (sans trailing slash)
+→ Vérifier que `NEXTAUTH_URL` = `https://tenf-community.com` (sans trailing slash)
 
 ---
 

@@ -82,7 +82,7 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
 
 /**
  * GET - Récupère les points Follow pour le mois demandé depuis /admin/follow
- * (validations followStorage = même source que https://teamnewfamily.netlify.app/admin/follow)
+ * (validations followStorage = même source que https://tenf-community.com/admin/follow)
  */
 export async function GET(request: NextRequest) {
   try {

@@ -17,9 +17,9 @@ L'erreur "État invalide - veuillez réessayer" apparaît lors de la connexion D
 Allez dans **Netlify Dashboard** → **Votre site** → **Site settings** → **Environment variables** et vérifiez que ces 3 variables sont **EXACTEMENT** :
 
 ```
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
+NEXTAUTH_URL=https://tenf-community.com
 ```
 
 **⚠️ IMPORTANT** :
@@ -35,7 +35,7 @@ NEXTAUTH_URL=https://teamnewfamily.netlify.app
 3. Allez dans **OAuth2** → **General**
 4. Dans **Redirects**, vous devez avoir **EXACTEMENT** :
    ```
-   https://teamnewfamily.netlify.app/api/auth/discord/callback
+   https://tenf-community.com/api/auth/discord/callback
    ```
 5. Si l'ancien redirect est encore là, **supprimez-le**
 6. Cliquez sur **Save Changes**
@@ -47,7 +47,7 @@ L'erreur peut venir de cookies de l'ancien domaine :
 1. Ouvrez les outils de développement (F12)
 2. Allez dans **Application** (Chrome) ou **Stockage** (Firefox)
 3. Dans **Cookies**, supprimez tous les cookies pour :
-   - `teamnewfamily.netlify.app`
+   - `tenf-community.com`
    - `papaya-lebkuchen-9e7d00.netlify.app` (ancien domaine)
 4. Fermez et rouvrez le navigateur
 5. Réessayez la connexion

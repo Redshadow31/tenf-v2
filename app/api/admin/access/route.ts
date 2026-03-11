@@ -118,7 +118,7 @@ export async function GET() {
       
       // Récupérer tous les membres Discord en une fois via l'API interne
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
         const membersResponse = await fetch(`${baseUrl}/api/discord/members`, {
           cache: 'no-store',
           headers: {

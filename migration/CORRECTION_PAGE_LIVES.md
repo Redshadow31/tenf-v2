@@ -99,7 +99,7 @@ Sur Netlify, vérifier que les variables suivantes sont configurées :
 ### 3. Tester la Route Directement
 
 ```bash
-curl https://teamnewfamily.netlify.app/api/members/public
+curl https://tenf-community.com/api/members/public
 ```
 
 Vérifier que la réponse contient :

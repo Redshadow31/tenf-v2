@@ -6,7 +6,7 @@ D'après votre configuration actuelle, vous avez :
 
 1. ✅ **DISCORD_CLIENT_ID** - ID de l'application Discord OAuth2
 2. ✅ **DISCORD_CLIENT_SECRET** - Secret de l'application Discord OAuth2
-3. ✅ **DISCORD_REDIRECT_URI** - `https://teamnewfamily.netlify.app/api/auth/discord/callback`
+3. ✅ **DISCORD_REDIRECT_URI** - `https://tenf-community.com/api/auth/discord/callback`
 4. ✅ **NEXT_PUBLIC_BASE_URL** - URL de base de votre site Netlify
 5. ✅ **TWITCH_CLIENT_ID** - ID de l'application Twitch
 6. ✅ **TWITCH_CLIENT_SECRET** - Secret de l'application Twitch
@@ -27,7 +27,7 @@ Toutes les variables d'environnement nécessaires sont maintenant configurées s
 
 ### 2. **NEXTAUTH_URL** (OBLIGATOIRE) ✅ Configuré
 - **Description** : URL de base de votre application pour NextAuth
-- **Valeur** : `https://teamnewfamily.netlify.app`
+- **Valeur** : `https://tenf-community.com`
 - **Où l'utiliser** : Configuration NextAuth
 
 ### 3. **DISCORD_BOT_TOKEN** (Optionnel mais recommandé) ✅ Configuré
@@ -55,10 +55,10 @@ Ajoutez ces variables dans Netlify → Site settings → Environment variables :
 ```
 DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
 DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
 NEXTAUTH_SECRET=VOTRE_NEXTAUTH_SECRET_ICI
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
 TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
 DISCORD_BOT_TOKEN=VOTRE_DISCORD_BOT_TOKEN_ICI
@@ -71,7 +71,7 @@ STATBOT_SERVER_ID=VOTRE_STATBOT_SERVER_ID_ICI
 Assurez-vous que dans Discord Developer Portal → OAuth2 → Redirects, vous avez ajouté :
 
 ```
-https://teamnewfamily.netlify.app/api/auth/discord/callback
+https://tenf-community.com/api/auth/discord/callback
 ```
 
 **Important** : L'URL doit être exactement identique (même protocole https, même domaine, même chemin).

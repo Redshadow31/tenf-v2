@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     // Cette API utilise la même logique mais peut avoir des données plus récentes
     if (allSpotlights.length === 0) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
         const presenceResponse = await fetch(`${baseUrl}/api/spotlight/presence/monthly?month=${monthKey}`, {
           cache: 'no-store',
           headers: {

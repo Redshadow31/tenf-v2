@@ -31,7 +31,7 @@ DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/callback/discord
 1. Aller dans **OAuth2** → **General**
 2. Dans **Redirects**, ajouter :
    ```
-   https://teamnewfamily.netlify.app/api/auth/callback/discord
+   https://tenf-community.com/api/auth/callback/discord
    ```
 3. Si vous avez un environnement de test :
    ```
@@ -67,11 +67,11 @@ openssl rand -base64 32
 
 | Variable | Valeur | Exemple |
 |----------|--------|---------|
-| `NEXTAUTH_URL` | URL de production | `https://teamnewfamily.netlify.app` |
+| `NEXTAUTH_URL` | URL de production | `https://tenf-community.com` |
 | `NEXTAUTH_SECRET` | Secret généré (32+ caractères) | `votre_secret_généré_ici` |
 | `DISCORD_CLIENT_ID` | Client ID Discord | `123456789012345678` |
 | `DISCORD_CLIENT_SECRET` | Client Secret Discord | `votre_client_secret_discord` |
-| `DISCORD_REDIRECT_URI` | URL callback NextAuth | `https://teamnewfamily.netlify.app/api/auth/callback/discord` |
+| `DISCORD_REDIRECT_URI` | URL callback NextAuth | `https://tenf-community.com/api/auth/callback/discord` |
 
 **Note** : `DISCORD_REDIRECT_URI` doit correspondre **exactement** à l'URL dans Discord Developer Portal.
 
@@ -124,7 +124,7 @@ git push origin <votre-branche>
 ### 4.2 Tests de connexion
 
 #### Test 1 : Connexion Discord
-1. Aller sur : `https://teamnewfamily.netlify.app/auth/login`
+1. Aller sur : `https://tenf-community.com/auth/login`
 2. Cliquer sur **"Se connecter avec Discord"**
 3. **Attendu** : Redirection vers Discord OAuth
 4. Autoriser l'application
@@ -132,36 +132,36 @@ git push origin <votre-branche>
 
 #### Test 2 : Accès admin (non authentifié)
 1. Se déconnecter (ou ouvrir en navigation privée)
-2. Aller sur : `https://teamnewfamily.netlify.app/admin`
+2. Aller sur : `https://tenf-community.com/admin`
 3. **Attendu** : Redirection vers `/api/auth/signin?callbackUrl=/admin`
 
 #### Test 3 : Accès admin (authentifié sans rôle)
 1. Se connecter avec un compte Discord qui n'a pas de rôle admin
-2. Aller sur : `https://teamnewfamily.netlify.app/admin`
+2. Aller sur : `https://tenf-community.com/admin`
 3. **Attendu** : Redirection vers `/api/auth/signin` ou page d'erreur (403)
 
 #### Test 4 : Accès admin (avec rôle admin)
 1. Se connecter avec un compte Discord ayant un rôle admin (FOUNDER, ADMIN_ADJOINT, etc.)
-2. Aller sur : `https://teamnewfamily.netlify.app/admin`
+2. Aller sur : `https://tenf-community.com/admin`
 3. **Attendu** : Accès autorisé à la page admin
 
 #### Test 5 : API admin (avec rôle admin)
 1. Se connecter avec un compte admin
-2. Aller sur : `https://teamnewfamily.netlify.app/api/admin/members`
+2. Aller sur : `https://tenf-community.com/api/admin/members`
 3. **Attendu** : JSON avec la liste des membres (status 200)
 
 #### Test 6 : API admin (sans rôle admin)
 1. Se connecter avec un compte non-admin
-2. Aller sur : `https://teamnewfamily.netlify.app/api/admin/members`
+2. Aller sur : `https://tenf-community.com/api/admin/members`
 3. **Attendu** : `{ error: "Non authentifié ou permissions insuffisantes" }` (status 401)
 
 #### Test 7 : Route réservée aux founders
 1. Se connecter avec un compte FOUNDER
-2. Aller sur : `https://teamnewfamily.netlify.app/admin/gestion-acces`
+2. Aller sur : `https://tenf-community.com/admin/gestion-acces`
 3. **Attendu** : Accès autorisé
 
 4. Se connecter avec un compte ADMIN_ADJOINT (non-founder)
-5. Aller sur : `https://teamnewfamily.netlify.app/admin/gestion-acces`
+5. Aller sur : `https://tenf-community.com/admin/gestion-acces`
 6. **Attendu** : Redirection vers `/unauthorized`
 
 ---
@@ -172,7 +172,7 @@ git push origin <votre-branche>
 **Symptômes** : Erreur lors de la connexion Discord, message "Invalid redirect_uri"
 
 **Solutions** :
-1. Vérifier que `DISCORD_REDIRECT_URI` dans Netlify = `https://teamnewfamily.netlify.app/api/auth/callback/discord`
+1. Vérifier que `DISCORD_REDIRECT_URI` dans Netlify = `https://tenf-community.com/api/auth/callback/discord`
 2. Vérifier que l'URL dans Discord Developer Portal est identique (même protocole, même domaine, même chemin)
 3. Vérifier qu'il n'y a pas d'espace ou de caractère invisible
 4. Vérifier que l'URL ne se termine pas par un slash `/`
@@ -224,11 +224,11 @@ git push origin <votre-branche>
 - [ ] Variables d'environnement préparées
 
 ### Configuration Netlify
-- [ ] `NEXTAUTH_URL` configuré = `https://teamnewfamily.netlify.app`
+- [ ] `NEXTAUTH_URL` configuré = `https://tenf-community.com`
 - [ ] `NEXTAUTH_SECRET` généré et configuré (32+ caractères)
 - [ ] `DISCORD_CLIENT_ID` configuré
 - [ ] `DISCORD_CLIENT_SECRET` configuré
-- [ ] `DISCORD_REDIRECT_URI` configuré = `https://teamnewfamily.netlify.app/api/auth/callback/discord`
+- [ ] `DISCORD_REDIRECT_URI` configuré = `https://tenf-community.com/api/auth/callback/discord`
 
 ### Configuration Discord
 - [ ] URL callback ajoutée dans Discord Developer Portal
@@ -290,7 +290,7 @@ Si des problèmes persistent après le déploiement :
    - Vérifier la présence des cookies NextAuth (`next-auth.session-token`)
 
 3. **Vérifier la session NextAuth** :
-   - Aller sur : `https://teamnewfamily.netlify.app/api/auth/session`
+   - Aller sur : `https://tenf-community.com/api/auth/session`
    - Devrait retourner la session actuelle si connecté
 
 ---

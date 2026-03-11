@@ -5,13 +5,13 @@
  * Priorité :
  * 1. NEXT_PUBLIC_BASE_URL (variable d'environnement)
  * 2. NEXTAUTH_URL (variable d'environnement)
- * 3. teamnewfamily.netlify.app (fallback par défaut)
+ * 3. tenf-community.com (fallback par défaut)
  */
 export function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_BASE_URL ||
     process.env.NEXTAUTH_URL ||
-    'https://teamnewfamily.netlify.app'
+    'https://tenf-community.com'
   );
 }
 

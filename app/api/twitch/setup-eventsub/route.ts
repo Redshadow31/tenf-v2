@@ -10,7 +10,7 @@ import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 export async function POST(request: NextRequest) {
   try {
     const EVENTSUB_SECRET = process.env.TWITCH_EVENTSUB_SECRET;
-    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
 
     if (!EVENTSUB_SECRET) {
       return NextResponse.json(
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
   try {
     const { getTwitchOAuthToken, getEventSubSubscriptions } = await import('@/lib/twitchEventSub');
     const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
-    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
     const webhookUrl = `${BASE_URL}/api/twitch/eventsub`;
 
     await loadMemberDataFromStorage();

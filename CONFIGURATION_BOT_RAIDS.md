@@ -36,7 +36,7 @@ const client = new Client({
 });
 
 const COORDINATION_RAID_CHANNEL_ID = "1278840270753894535";
-const API_BASE_URL = process.env.API_BASE_URL || "https://teamnewfamily.netlify.app";
+const API_BASE_URL = process.env.API_BASE_URL || "https://tenf-community.com";
 
 client.once('ready', () => {
   console.log(`Bot connecté en tant que ${client.user.tag}!`);
@@ -173,7 +173,7 @@ Créez un fichier `.env` :
 
 ```
 DISCORD_BOT_TOKEN=votre_token_bot_discord
-API_BASE_URL=https://teamnewfamily.netlify.app
+API_BASE_URL=https://tenf-community.com
 ```
 
 ### Étape 5 : Lancer le bot
@@ -192,7 +192,7 @@ Créez un fichier `netlify/functions/scan-raids.js` :
 
 ```javascript
 exports.handler = async (event, context) => {
-  const response = await fetch('https://teamnewfamily.netlify.app/api/discord/raids/scan', {
+  const response = await fetch('https://tenf-community.com/api/discord/raids/scan', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

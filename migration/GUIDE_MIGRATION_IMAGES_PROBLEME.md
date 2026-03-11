@@ -64,7 +64,7 @@ La route `/api/admin/events/images/[fileName]` doit :
 **Test** :
 ```bash
 # Tester avec un fileName existant
-curl https://teamnewfamily.netlify.app/api/admin/events/images/event-1234567890-abc123.jpg
+curl https://tenf-community.com/api/admin/events/images/event-1234567890-abc123.jpg
 ```
 
 **Si erreur 404** :
@@ -170,7 +170,7 @@ LIMIT 10;
 
 ```bash
 # Remplacer [fileName] par un nom de fichier réel
-curl -I https://teamnewfamily.netlify.app/api/admin/events/images/[fileName]
+curl -I https://tenf-community.com/api/admin/events/images/[fileName]
 ```
 
 **Résultat attendu** : `200 OK` avec `Content-Type: image/jpeg` (ou autre)
@@ -246,7 +246,7 @@ LIMIT 5;
 
 3. **Tester une image** :
    - Prendre un `fileName` d'un événement
-   - Tester : `https://teamnewfamily.netlify.app/api/admin/events/images/[fileName]`
+   - Tester : `https://tenf-community.com/api/admin/events/images/[fileName]`
 
 4. **Si les images n'existent pas** :
    - Créer le script de migration

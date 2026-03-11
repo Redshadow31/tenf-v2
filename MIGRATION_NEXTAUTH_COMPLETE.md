@@ -148,11 +148,11 @@ Ces routes ne sont plus utilisées mais peuvent rester pour compatibilité :
 Assurez-vous que ces variables sont configurées sur Netlify :
 
 ```env
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 NEXTAUTH_SECRET=<secret sécurisé généré - 32+ caractères>
 DISCORD_CLIENT_ID=<votre_client_id>
 DISCORD_CLIENT_SECRET=<votre_client_secret>
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/callback/discord
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/callback/discord
 ```
 
 ### Générer NEXTAUTH_SECRET
@@ -164,12 +164,12 @@ openssl rand -base64 32
 
 ## ✅ Checklist post-déploiement Netlify
 
-- [ ] Vérifier que `NEXTAUTH_URL` = `https://teamnewfamily.netlify.app`
+- [ ] Vérifier que `NEXTAUTH_URL` = `https://tenf-community.com`
 - [ ] Vérifier que `NEXTAUTH_SECRET` est configuré (secret fort, 32+ caractères)
 - [ ] Vérifier que `DISCORD_CLIENT_ID` et `DISCORD_CLIENT_SECRET` sont corrects
-- [ ] Vérifier que `DISCORD_REDIRECT_URI` = `https://teamnewfamily.netlify.app/api/auth/callback/discord`
+- [ ] Vérifier que `DISCORD_REDIRECT_URI` = `https://tenf-community.com/api/auth/callback/discord`
 - [ ] Dans Discord Developer Portal :
-  - [ ] Ajouter l'URL callback : `https://teamnewfamily.netlify.app/api/auth/callback/discord`
+  - [ ] Ajouter l'URL callback : `https://tenf-community.com/api/auth/callback/discord`
   - [ ] Vérifier les scopes : `identify`, `guilds`, `guilds.members.read`
 - [ ] Tester la connexion Discord depuis `/auth/login`
 - [ ] Vérifier qu'un utilisateur non authentifié est redirigé vers `/api/auth/signin` quand il accède à `/admin`

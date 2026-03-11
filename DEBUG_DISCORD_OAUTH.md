@@ -13,8 +13,8 @@ Assurez-vous que ces variables sont bien configurées :
 ```
 DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
 DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
 ```
 
 **⚠️ IMPORTANT** : 
@@ -30,14 +30,14 @@ NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
 4. Dans la section **Redirects**, vérifiez que vous avez EXACTEMENT :
 
 ```
-https://teamnewfamily.netlify.app/api/auth/discord/callback
+https://tenf-community.com/api/auth/discord/callback
 ```
 
 **⚠️ Points critiques** :
 - ✅ Commence par `https://` (pas `http://`)
 - ✅ Pas de slash `/` à la fin
 - ✅ Chemin exact : `/api/auth/discord/callback`
-- ✅ Domaine exact : `teamnewfamily.netlify.app`
+- ✅ Domaine exact : `tenf-community.com`
 
 ### 3. Vérifier les logs Netlify
 
@@ -72,11 +72,11 @@ Ces logs vous diront exactement quel `redirect_uri` est utilisé.
 
 1. **Dans Discord Developer Portal** :
    - Supprimez tous les redirects existants
-   - Ajoutez uniquement : `https://teamnewfamily.netlify.app/api/auth/discord/callback`
+   - Ajoutez uniquement : `https://tenf-community.com/api/auth/discord/callback`
    - Cliquez sur **Save Changes**
 
 2. **Dans Netlify** :
-   - Vérifiez que `DISCORD_REDIRECT_URI` = `https://teamnewfamily.netlify.app/api/auth/discord/callback`
+   - Vérifiez que `DISCORD_REDIRECT_URI` = `https://tenf-community.com/api/auth/discord/callback`
    - Redéployez le site
 
 3. **Testez à nouveau** :

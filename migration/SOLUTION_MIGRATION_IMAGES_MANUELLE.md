@@ -94,7 +94,7 @@ WHERE image IS NOT NULL
 - [ ] Uploader les 15 images manuellement dans Supabase Storage
 - [ ] Vérifier que les noms de fichiers correspondent exactement
 - [ ] Relancer `npm run migration:verify-images` pour vérifier
-- [ ] Tester une image sur le site : `https://teamnewfamily.netlify.app/api/admin/events/images/[fileName]`
+- [ ] Tester une image sur le site : `https://tenf-community.com/api/admin/events/images/[fileName]`
 
 ---
 
@@ -107,7 +107,7 @@ Après avoir uploadé les images, tester :
 npm run migration:verify-images
 
 # Tester une image spécifique (remplacer [fileName])
-curl -I https://teamnewfamily.netlify.app/api/admin/events/images/event-1768509046408-xarcxfb.png
+curl -I https://tenf-community.com/api/admin/events/images/event-1768509046408-xarcxfb.png
 ```
 
 **Résultat attendu** : `200 OK` avec `Content-Type: image/png`

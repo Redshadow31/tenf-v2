@@ -143,13 +143,13 @@ Pour vérifier que l'ISR fonctionne :
 
 ```bash
 # Première requête (exécute la route)
-curl -I https://teamnewfamily.netlify.app/api/events
+curl -I https://tenf-community.com/api/events
 
 # Vérifier le header Cache-Control
 # Doit retourner : public, s-maxage=60, stale-while-revalidate=300
 
 # Requêtes suivantes (servies depuis le cache)
-curl -I https://teamnewfamily.netlify.app/api/events
+curl -I https://tenf-community.com/api/events
 # Ne doit pas exécuter la route pendant 60s
 ```
 

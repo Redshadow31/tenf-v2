@@ -9,6 +9,22 @@ const ClientLayout = dynamic(() => import("./layout.client"), { ssr: false });
 export const metadata: Metadata = {
   title: "TENF New Family",
   description: "Plateforme TENF New Family - sombre, moderne, professionnelle",
+  metadataBase: new URL("https://tenf-community.com"),
+  alternates: {
+    canonical: "https://tenf-community.com",
+  },
+  openGraph: {
+    title: "TENF New Family",
+    description: "Plateforme TENF New Family - sombre, moderne, professionnelle",
+    url: "https://tenf-community.com",
+    siteName: "TENF New Family",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/Tenf.png",
     shortcut: "/Tenf.png",

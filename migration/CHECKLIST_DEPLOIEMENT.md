@@ -9,7 +9,7 @@
 - [ ] `DATABASE_URL` = `postgresql://postgres.ggcpwaexhougomfnnsob:DpDAkhQCrsJrsWXl@aws-0-eu-central-1.pooler.supabase.com:6543/postgres` (SECRET)
 
 ### Variables Existantes (Vérifier qu'elles sont toujours là)
-- [ ] `NEXTAUTH_URL` = `https://teamnewfamily.netlify.app`
+- [ ] `NEXTAUTH_URL` = `https://tenf-community.com`
 - [ ] `NEXTAUTH_SECRET` = (votre secret)
 - [ ] `DISCORD_CLIENT_ID` = (votre client ID)
 - [ ] `DISCORD_CLIENT_SECRET` = (votre client secret)
@@ -56,7 +56,7 @@ git push origin main
 
 #### Route Publique des Membres
 ```bash
-curl https://teamnewfamily.netlify.app/api/members/public
+curl https://tenf-community.com/api/members/public
 ```
 - [ ] Retourne une liste de membres
 - [ ] Les données sont correctes
@@ -64,7 +64,7 @@ curl https://teamnewfamily.netlify.app/api/members/public
 
 #### Route VIP
 ```bash
-curl https://teamnewfamily.netlify.app/api/vip-members
+curl https://tenf-community.com/api/vip-members
 ```
 - [ ] Retourne une liste de VIPs
 - [ ] Les données sont correctes
@@ -72,7 +72,7 @@ curl https://teamnewfamily.netlify.app/api/vip-members
 
 #### Route Événements
 ```bash
-curl https://teamnewfamily.netlify.app/api/events
+curl https://tenf-community.com/api/events
 ```
 - [ ] Retourne une liste d'événements
 - [ ] Les données sont correctes

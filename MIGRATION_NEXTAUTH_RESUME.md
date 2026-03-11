@@ -68,15 +68,15 @@ Toutes les **32 routes API admin** ont été migrées avec succès vers NextAuth
 
 ### Variables d'environnement requises
 ```env
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 NEXTAUTH_SECRET=<générer avec: openssl rand -base64 32>
 DISCORD_CLIENT_ID=<votre_client_id>
 DISCORD_CLIENT_SECRET=<votre_client_secret>
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/callback/discord
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/callback/discord
 ```
 
 ### Discord Developer Portal
-- [ ] URL callback ajoutée : `https://teamnewfamily.netlify.app/api/auth/callback/discord`
+- [ ] URL callback ajoutée : `https://tenf-community.com/api/auth/callback/discord`
 - [ ] Scopes configurés : `identify`, `guilds`, `guilds.members.read`
 
 ### Tests à effectuer

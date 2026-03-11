@@ -513,7 +513,7 @@ export const discours2Parts: Discours2Part[] = [
     points: [
       "Prendre un temps final de questions/reponses.",
       "Annoncer les prochaines etapes d'integration.",
-      "Presenter le site officiel teamnewfamily.netlify.app.",
+      "Presenter le site officiel tenf-community.com.",
       "Conclure sur l'implication humaine et l'accueil officiel.",
     ],
     conseils: [
@@ -538,7 +538,7 @@ export const discours2Parts: Discours2Part[] = [
       "Si vous ne vous voyez pas immediatement, c'est normal.",
       "Le site web de la New Family",
       "Avant de terminer, on vous montre rapidement notre site officiel :",
-      "teamnewfamily.netlify.app",
+      "tenf-community.com",
       "Ce site centralise :",
       "📚 La documentation et les ressources",
       "🎯 Les prochains Spotlights",

@@ -41,7 +41,7 @@ Après avoir ajouté les variables :
 
 ### Étape 4 : Vérifier
 
-1. Allez sur `https://teamnewfamily.netlify.app/admin/dashboard`
+1. Allez sur `https://tenf-community.com/admin/dashboard`
 2. Cliquez sur le bouton **"Récupérer les données Statbot"**
 3. L'erreur devrait disparaître et les données devraient être récupérées
 
@@ -52,10 +52,10 @@ Pour référence, voici toutes les variables d'environnement nécessaires :
 ```
 DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
 DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
 NEXTAUTH_SECRET=VOTRE_NEXTAUTH_SECRET_ICI
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
 TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
 STATBOT_API_KEY=VOTRE_STATBOT_API_KEY_ICI

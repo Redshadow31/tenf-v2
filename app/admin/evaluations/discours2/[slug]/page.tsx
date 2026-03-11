@@ -125,7 +125,7 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
 
           {part.slug === "final" ? (
             <a
-              href="https://teamnewfamily.netlify.app"
+              href="/"
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold"

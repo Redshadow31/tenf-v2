@@ -80,7 +80,7 @@ Prendre un `fileName` d'un événement et tester :
 
 ```bash
 # Remplacer [fileName] par un nom réel
-curl -I https://teamnewfamily.netlify.app/api/admin/events/images/[fileName]
+curl -I https://tenf-community.com/api/admin/events/images/[fileName]
 ```
 
 **Résultat attendu** : `200 OK` avec `Content-Type: image/jpeg`
@@ -153,7 +153,7 @@ WHERE image LIKE '%blobs%' OR image LIKE '%netlify%';
 
 4. **Tester une image** :
    - Prendre un fileName d'un événement
-   - Tester l'URL : `https://teamnewfamily.netlify.app/api/admin/events/images/[fileName]`
+   - Tester l'URL : `https://tenf-community.com/api/admin/events/images/[fileName]`
 
 ---
 

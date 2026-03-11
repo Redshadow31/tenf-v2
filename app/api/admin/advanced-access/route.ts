@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     const createResolver = async () => {
       const cache = new Map<string, { username: string; avatar: string | null }>();
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://teamnewfamily.netlify.app';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://tenf-community.com';
         const res = await fetch(`${baseUrl}/api/discord/members`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();

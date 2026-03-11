@@ -150,11 +150,11 @@ app/api/auth/discord/user/route.ts     → Déprécié (utiliser useSession())
 Assurez-vous que ces variables sont configurées sur Netlify :
 
 ```
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 NEXTAUTH_SECRET=<secret sécurisé généré>
 DISCORD_CLIENT_ID=<votre_client_id>
 DISCORD_CLIENT_SECRET=<votre_client_secret>
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
 ```
 
 ---
@@ -169,7 +169,7 @@ Après le déploiement sur Netlify :
 - [ ] Vérifier que `DISCORD_REDIRECT_URI` correspond exactement à l'URL du callback NextAuth
 - [ ] Dans Discord Developer Portal, vérifier que l'URL de callback est bien configurée :
   ```
-  https://teamnewfamily.netlify.app/api/auth/callback/discord
+  https://tenf-community.com/api/auth/callback/discord
   ```
 - [ ] Tester la connexion Discord depuis `/auth/login`
 - [ ] Vérifier qu'un utilisateur non authentifié est redirigé vers `/api/auth/signin` quand il accède à `/admin`

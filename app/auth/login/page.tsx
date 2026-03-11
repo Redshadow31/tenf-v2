@@ -60,7 +60,7 @@ export default function LoginPage() {
                 <ul className="list-disc list-inside ml-2 space-y-1">
                   <li>Le redirect_uri dans Discord Developer Portal correspond exactement à l'URL Netlify</li>
                   <li>Les variables DISCORD_CLIENT_ID et DISCORD_CLIENT_SECRET sont correctes</li>
-                  <li>Le redirect_uri utilisé est : https://teamnewfamily.netlify.app/api/auth/callback/discord</li>
+                  <li>Le redirect_uri utilisé est : https://tenf-community.com/api/auth/callback/discord</li>
                 </ul>
               </div>
             )}
@@ -70,7 +70,7 @@ export default function LoginPage() {
                 <ol className="list-decimal list-inside ml-2 space-y-1">
                   <li>Allez sur Discord Developer Portal → OAuth2 → General</li>
                   <li>Dans la section <strong>Redirects</strong>, ajoutez EXACTEMENT :</li>
-                  <li className="ml-4 font-mono bg-gray-800 p-1 rounded">https://teamnewfamily.netlify.app/api/auth/callback/discord</li>
+                  <li className="ml-4 font-mono bg-gray-800 p-1 rounded">https://tenf-community.com/api/auth/callback/discord</li>
                   <li>Supprimez l'ancien redirect si présent</li>
                   <li>Cliquez sur <strong>Save Changes</strong></li>
                   <li>Nettoyez les cookies du navigateur et réessayez</li>

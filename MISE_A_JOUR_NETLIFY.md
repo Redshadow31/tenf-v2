@@ -24,10 +24,10 @@ Assurez-vous que toutes ces variables sont configurées :
 ```
 DISCORD_CLIENT_ID=VOTRE_DISCORD_CLIENT_ID_ICI
 DISCORD_CLIENT_SECRET=VOTRE_DISCORD_CLIENT_SECRET_ICI
-DISCORD_REDIRECT_URI=https://teamnewfamily.netlify.app/api/auth/discord/callback
-NEXT_PUBLIC_BASE_URL=https://teamnewfamily.netlify.app
+DISCORD_REDIRECT_URI=https://tenf-community.com/api/auth/discord/callback
+NEXT_PUBLIC_BASE_URL=https://tenf-community.com
 NEXTAUTH_SECRET=VOTRE_NEXTAUTH_SECRET_ICI
-NEXTAUTH_URL=https://teamnewfamily.netlify.app
+NEXTAUTH_URL=https://tenf-community.com
 TWITCH_CLIENT_ID=VOTRE_TWITCH_CLIENT_ID_ICI
 TWITCH_CLIENT_SECRET=VOTRE_TWITCH_CLIENT_SECRET_ICI
 ```
@@ -40,7 +40,7 @@ Dans Discord Developer Portal → TENFSITE → OAuth2 → General :
 2. **Client Secret** : Vient d'être réinitialisé ✅
 3. **Redirects** : Doit contenir exactement :
    ```
-   https://teamnewfamily.netlify.app/api/auth/discord/callback
+   https://tenf-community.com/api/auth/discord/callback
    ```
 
 ## 🚀 Après la mise à jour
