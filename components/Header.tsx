@@ -10,7 +10,7 @@ const publicLinks = [
   { href: "/upa-event", label: "UPA Events" },
   { href: "/membres", label: "Membres" },
   { href: "/lives", label: "Lives" },
-  { href: "/events", label: "Événements" },
+  { href: "/events2", label: "Événements" },
   { href: "/integration", label: "Intégration" },
   { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
