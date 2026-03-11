@@ -129,6 +129,16 @@ export default function AdminSidebar() {
                   >
                     Liste des événements
                   </Link>
+                  <Link
+                    href="/admin/events/liens-vocaux"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/events/liens-vocaux"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Liens vocaux
+                  </Link>
                 </div>
               )}
               {/* Sous-menu pour TENF Academy */}

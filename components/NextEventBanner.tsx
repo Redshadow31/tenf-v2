@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { PARIS_TIMEZONE, formatEventDateTimeInTimezone, formatParisHour, getBrowserTimezone } from "@/lib/timezone";
+import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
 
 interface Event {
   id: string;
@@ -18,6 +19,7 @@ export default function NextEventBanner() {
   const [error, setError] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [timezone, setTimezone] = useState(PARIS_TIMEZONE);
+  const [locationLinks, setLocationLinks] = useState<EventLocationLink[]>([]);
 
   // Vérifier prefers-reduced-motion
   useEffect(() => {
@@ -79,6 +81,20 @@ export default function NextEventBanner() {
     }
 
     loadNextEvent();
+  }, []);
+
+  useEffect(() => {
+    async function loadLocationLinks() {
+      try {
+        const response = await fetch("/api/events/location-links", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setLocationLinks((data.links || []) as EventLocationLink[]);
+      } catch (error) {
+        console.error("[NextEventBanner] Erreur chargement liens:", error);
+      }
+    }
+    loadLocationLinks();
   }, []);
 
   // Ne pas afficher pendant le chargement ou en cas d'erreur discrète
@@ -161,9 +177,10 @@ export default function NextEventBanner() {
   const isParisViewer = timezone === PARIS_TIMEZONE;
   const soon = isSoon(nextEvent.date);
   const ongoing = isOngoing(nextEvent.date);
+  const locationDisplay = buildEventLocationDisplay(nextEvent.location, locationLinks);
 
   // Texte du bandeau (pour le marquee)
-  const bannerText = `Prochain event : ${nextEvent.title} — ${formattedDate} à ${time}${nextEvent.location ? ` — ${nextEvent.location}` : ""}`;
+  const bannerText = `Prochain event : ${nextEvent.title} — ${formattedDate} à ${time}${locationDisplay ? ` — ${locationDisplay.label}` : ""}`;
 
   return (
     <div className="w-full bg-gradient-to-r from-[#9146ff]/10 via-[#9146ff]/5 to-[#1a1a1d] border-b border-[#9146ff]/30 py-3 px-4 overflow-hidden">
@@ -223,10 +240,10 @@ export default function NextEventBanner() {
               <span>{formattedDate}</span>
               {" à "}
               <span>{time}</span>
-              {nextEvent.location && (
+              {locationDisplay && (
                 <>
                   {" — "}
-                  <span className="text-gray-400">{nextEvent.location}</span>
+                  <span className="text-gray-400">{locationDisplay.label}</span>
                 </>
               )}
             </div>

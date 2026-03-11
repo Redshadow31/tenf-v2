@@ -9,6 +9,12 @@ import {
   parisLocalDateTimeToUtcIso,
   utcIsoToParisDateTimeLocalInput,
 } from "@/lib/timezone";
+import {
+  buildEventLocationDisplay,
+  isValidHttpUrl,
+  normalizeLocationUrl,
+  type EventLocationLink,
+} from "@/lib/eventLocation";
 
 interface CategoryConfig {
   value: string;
@@ -86,9 +92,14 @@ export default function PlanificationPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [locationMode, setLocationMode] = useState<"none" | "external" | "discord">("none");
+  const [externalLocationUrl, setExternalLocationUrl] = useState("");
+  const [discordLocationId, setDiscordLocationId] = useState("");
+  const [managedLocationLinks, setManagedLocationLinks] = useState<EventLocationLink[]>([]);
 
   useEffect(() => {
     loadEvents();
+    loadManagedLocationLinks();
   }, []);
 
   const loadEvents = async () => {
@@ -111,6 +122,20 @@ export default function PlanificationPage() {
       console.error("Erreur chargement événements:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadManagedLocationLinks = async () => {
+    try {
+      const response = await fetch("/api/admin/events/location-links", {
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setManagedLocationLinks((data.links || []) as EventLocationLink[]);
+      }
+    } catch (error) {
+      console.error("Erreur chargement liens de lieux:", error);
     }
   };
 
@@ -178,6 +203,12 @@ export default function PlanificationPage() {
     // Le formulaire admin reste en heure de Paris.
     const dateTimeLocal = utcIsoToParisDateTimeLocalInput(event.startAtUtc || event.date);
 
+    const currentLocation = typeof event.location === "string" ? event.location : "";
+    const normalizedEventLocation = normalizeLocationUrl(currentLocation);
+    const matchedManagedLink =
+      normalizedEventLocation &&
+      managedLocationLinks.find((item) => normalizeLocationUrl(item.url) === normalizedEventLocation);
+
     setEditingEvent(event);
     setFormData({
       title: event.title || "",
@@ -190,6 +221,19 @@ export default function PlanificationPage() {
       imageUrl: event.image || null,
     });
     setImagePreview(event.image || null);
+    if (matchedManagedLink) {
+      setLocationMode("discord");
+      setDiscordLocationId(matchedManagedLink.id);
+      setExternalLocationUrl("");
+    } else if (currentLocation && isValidHttpUrl(currentLocation)) {
+      setLocationMode("external");
+      setExternalLocationUrl(currentLocation);
+      setDiscordLocationId("");
+    } else {
+      setLocationMode("none");
+      setExternalLocationUrl("");
+      setDiscordLocationId("");
+    }
     setIsEditMode(true);
   };
 
@@ -207,6 +251,9 @@ export default function PlanificationPage() {
       imageUrl: null,
     });
     setImagePreview(null);
+    setLocationMode("none");
+    setExternalLocationUrl("");
+    setDiscordLocationId("");
   };
 
   const handleDelete = async (eventId: string) => {
@@ -237,6 +284,29 @@ export default function PlanificationPage() {
     if (!formData.title || !formData.date) {
       alert("Veuillez remplir le titre et la date");
       return;
+    }
+
+    let resolvedLocation = "";
+    if (locationMode === "external") {
+      const value = externalLocationUrl.trim();
+      if (!value) {
+        alert("Veuillez renseigner un lien externe.");
+        return;
+      }
+      if (!isValidHttpUrl(value)) {
+        alert("Lien externe invalide (http/https uniquement).");
+        return;
+      }
+      resolvedLocation = value;
+    }
+
+    if (locationMode === "discord") {
+      const selected = managedLocationLinks.find((item) => item.id === discordLocationId);
+      if (!selected) {
+        alert("Veuillez choisir un salon vocal configure.");
+        return;
+      }
+      resolvedLocation = selected.url;
     }
 
     // Si une image est sélectionnée mais pas encore uploadée, uploader d'abord
@@ -284,7 +354,7 @@ export default function PlanificationPage() {
         startAtUtc,
         // Compatibilité avec les routes existantes qui lisent encore "date"
         date: startAtUtc,
-        location: formData.location,
+        location: resolvedLocation,
         isPublished: formData.isPublished,
         image: finalImageUrl || undefined,
       };
@@ -559,17 +629,91 @@ ou
 
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Localisation
+                Lieu
               </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) =>
-                  setFormData({ ...formData, location: e.target.value })
-                }
-                placeholder="Ex: Discord TENF"
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-              />
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLocationMode("none")}
+                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                      locationMode === "none"
+                        ? "bg-[#9146ff] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                    }`}
+                  >
+                    Aucun
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationMode("external")}
+                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                      locationMode === "external"
+                        ? "bg-[#9146ff] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                    }`}
+                  >
+                    Lien externe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationMode("discord")}
+                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                      locationMode === "discord"
+                        ? "bg-[#9146ff] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                    }`}
+                  >
+                    Salon vocal Discord
+                  </button>
+                </div>
+
+                {locationMode === "external" && (
+                  <div>
+                    <input
+                      type="url"
+                      value={externalLocationUrl}
+                      onChange={(e) => setExternalLocationUrl(e.target.value)}
+                      placeholder="https://www.twitch.tv/antho62221"
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    />
+                    {(() => {
+                      const preview = buildEventLocationDisplay(externalLocationUrl, managedLocationLinks);
+                      if (!preview) return null;
+                      return (
+                        <p className="text-xs text-gray-400 mt-2">
+                          Apercu public: <span className="text-white">{preview.label}</span>
+                        </p>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {locationMode === "discord" && (
+                  <div className="space-y-2">
+                    <select
+                      value={discordLocationId}
+                      onChange={(e) => setDiscordLocationId(e.target.value)}
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    >
+                      <option value="">Choisir un vocal</option>
+                      {managedLocationLinks
+                        .filter((item) => item.isActive !== false)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                    </select>
+                    <Link
+                      href="/admin/events/liens-vocaux"
+                      className="inline-block text-xs text-[#9146ff] hover:text-[#7c3aed]"
+                    >
+                      Gerer les salons vocaux
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -632,7 +776,7 @@ ou
                       </p>
                       {event.location && (
                         <p className="text-sm text-gray-400 mb-2">
-                          📍 {event.location}
+                          📍 {buildEventLocationDisplay(event.location, managedLocationLinks)?.label || event.location}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mb-2">

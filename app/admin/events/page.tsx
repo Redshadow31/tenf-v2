@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, List, BarChart3, Archive, Lightbulb } from "lucide-react";
+import { Calendar, List, BarChart3, Archive, Lightbulb, Link2 } from "lucide-react";
 
 const eventSections = [
   {
@@ -51,6 +51,14 @@ const eventSections = [
     icon: BarChart3,
     href: "/admin/events/spotlight",
     color: "from-fuchsia-600 to-indigo-800",
+  },
+  {
+    id: "liens-vocaux",
+    title: "Liens vocaux",
+    description: "Gerer les salons vocaux (nom + lien) reutilisables",
+    icon: Link2,
+    href: "/admin/events/liens-vocaux",
+    color: "from-cyan-600 to-blue-800",
   },
 ];
 

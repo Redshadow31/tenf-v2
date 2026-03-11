@@ -5,6 +5,7 @@ import EventDateTime from "@/components/EventDateTime";
 import { formatEventDateTimeInTimezone, getBrowserTimezone } from "@/lib/timezone";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
 
 type EventItem = {
   id: string;
@@ -74,6 +75,7 @@ export default function Events2Page() {
   const [proposalDescription, setProposalDescription] = useState("");
   const [proposalCategory, setProposalCategory] = useState("");
   const [proposalDate, setProposalDate] = useState("");
+  const [locationLinks, setLocationLinks] = useState<EventLocationLink[]>([]);
   const browserTimezone = useMemo(() => getBrowserTimezone(), []);
 
   useEffect(() => {
@@ -114,6 +116,20 @@ export default function Events2Page() {
 
   useEffect(() => {
     loadProposals();
+  }, []);
+
+  useEffect(() => {
+    async function loadLocationLinks() {
+      try {
+        const response = await fetch("/api/events/location-links", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setLocationLinks((data.links || []) as EventLocationLink[]);
+      } catch (error) {
+        console.error("[events2] Erreur chargement liens de lieux:", error);
+      }
+    }
+    loadLocationLinks();
   }, []);
 
   const categories = useMemo(() => {
@@ -735,10 +751,18 @@ export default function Events2Page() {
               />
               {selectedEvent.location && (
                 <p className="text-sm text-gray-300">
-                  Lieu:{" "}
-                  <a className="text-[#9146ff] hover:text-[#7c3aed] break-all" href={selectedEvent.location} target="_blank" rel="noreferrer">
-                    {selectedEvent.location}
-                  </a>
+                  {(() => {
+                    const display = buildEventLocationDisplay(selectedEvent.location, locationLinks);
+                    if (!display) return null;
+                    return (
+                      <>
+                        Lieu:{" "}
+                        <a className="text-[#9146ff] hover:text-[#7c3aed] break-all" href={display.url} target="_blank" rel="noreferrer">
+                          {display.label}
+                        </a>
+                      </>
+                    );
+                  })()}
                 </p>
               )}
 
