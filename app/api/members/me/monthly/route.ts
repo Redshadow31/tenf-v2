@@ -22,11 +22,17 @@ function normalizeKey(value?: string | null): string {
     .replace(/^@+/, "");
 }
 
+function compactKey(value?: string | null): string {
+  return normalizeKey(value).replace(/[^a-z0-9]/g, "");
+}
+
 function addIdentityAliases(index: Map<string, string>, rawValue: string | null | undefined, login: string) {
   const normalized = normalizeKey(rawValue);
   if (!normalized) return;
 
   index.set(normalized, login);
+  const compact = compactKey(normalized);
+  if (compact) index.set(compact, login);
 
   // Alias Discord legacy: username#1234 -> username
   const hashIdx = normalized.indexOf("#");
@@ -39,6 +45,8 @@ function addIdentityAliases(index: Map<string, string>, rawValue: string | null 
     const mentionId = normalized.replace(/[<@!>]/g, "");
     if (mentionId) {
       index.set(mentionId, login);
+      const mentionCompact = compactKey(mentionId);
+      if (mentionCompact) index.set(mentionCompact, login);
     }
   }
 }
@@ -51,7 +59,7 @@ function remapAndAggregateEntries(
   for (const entry of entries) {
     const rawKey = normalizeKey(entry.key);
     if (!rawKey) continue;
-    const canonicalKey = identityToLogin.get(rawKey) || rawKey;
+    const canonicalKey = identityToLogin.get(rawKey) || identityToLogin.get(compactKey(rawKey)) || rawKey;
     const current = aggregated.get(canonicalKey) || 0;
     aggregated.set(canonicalKey, current + (Number.isFinite(entry.value) ? entry.value : 0));
   }
@@ -105,19 +113,33 @@ function getRank(
   allEntries: Array<{ key: string; value: number }>,
   member: { twitchLogin: string; displayName?: string; siteUsername?: string; discordUsername?: string }
 ): number {
-  const candidates = [
+  const rawCandidates = [
     member.twitchLogin,
     member.displayName,
     member.siteUsername,
     member.discordUsername,
-  ]
-    .filter(Boolean)
-    .map((s) => (s || "").toLowerCase().trim());
+  ].filter(Boolean);
+  const normalizedCandidates = rawCandidates.map((s) => normalizeKey(s || ""));
+  const compactCandidates = normalizedCandidates.map((s) => compactKey(s));
+
   const idx = allEntries.findIndex((e) => {
-    const k = e.key.toLowerCase().trim();
-    return candidates.some((c) => c && k === c);
+    const k = normalizeKey(e.key);
+    const kc = compactKey(k);
+    return (
+      normalizedCandidates.some((c) => c && k === c) ||
+      compactCandidates.some((c) => c && kc === c)
+    );
   });
   return idx >= 0 ? idx + 1 : 0;
+}
+
+function formatMinutesToHHMM(totalMinutes: number): string {
+  const safeMinutes = Number.isFinite(totalMinutes) ? Math.max(0, Math.round(totalMinutes)) : 0;
+  const hh = Math.floor(safeMinutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const mm = (safeMinutes % 60).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
 /**
@@ -221,15 +243,13 @@ export async function GET(request: NextRequest) {
         );
       });
 
-      let totalValidatedSpotlights = 0;
+      let totalSpotlights = spotlightEvents.length;
       let presentCount = 0;
 
       for (const event of spotlightEvents) {
         const rawPresences = await eventRepository.getPresences(event.id);
         const presences = dedupeEventPresences(rawPresences || []);
-        // Compter uniquement les spotlights réellement validés (au moins une présence enregistrée)
         if (!presences || presences.length === 0) continue;
-        totalValidatedSpotlights += 1;
 
         const isPresent = presences.some(
           (p: any) => {
@@ -248,30 +268,42 @@ export async function GET(request: NextRequest) {
 
       spotlightPresence = {
         present: presentCount,
-        total: totalValidatedSpotlights,
-        rate: totalValidatedSpotlights ? Math.round((presentCount / totalValidatedSpotlights) * 100) : 0,
+        total: totalSpotlights,
+        rate: totalSpotlights ? Math.round((presentCount / totalSpotlights) * 100) : 0,
       };
     } catch {
-      // Fallback historique : evaluation.spotlightEvaluations si event_presences indisponible
-      if (evaluation?.spotlightEvaluations?.length) {
-        const spotlights = evaluation.spotlightEvaluations;
-        const presentCount = spotlights.filter((s: any) =>
-          s.members?.some(
-            (m: any) =>
-              normalizeKey(m.twitchLogin) === memberLogin && m.present
-          )
-        ).length;
-        spotlightPresence = {
-          present: presentCount,
-          total: spotlights.length,
-          rate: spotlights.length ? Math.round((presentCount / spotlights.length) * 100) : 0,
-        };
-      }
+      // Ignore: fallback ci-dessous
+    }
+
+    // Fallback / consolidation via évaluations Spotlight si disponible
+    if (evaluation?.spotlightEvaluations?.length) {
+      const spotlights = evaluation.spotlightEvaluations;
+      const fallbackPresent = spotlights.filter((s: any) =>
+        s.members?.some((m: any) => {
+          const mKey = normalizeKey(m.twitchLogin);
+          const mCompact = compactKey(mKey);
+          return (
+            m.present &&
+            (mKey === memberLogin ||
+              memberIdentityCandidates.has(mKey) ||
+              memberIdentityCandidates.has(mCompact))
+          );
+        })
+      ).length;
+      const fallbackTotal = spotlights.length;
+
+      const mergedTotal = spotlightPresence.total > 0 ? spotlightPresence.total : fallbackTotal;
+      const mergedPresent = Math.max(spotlightPresence.present, fallbackPresent);
+      spotlightPresence = {
+        present: mergedPresent,
+        total: mergedTotal,
+        rate: mergedTotal ? Math.round((mergedPresent / mergedTotal) * 100) : 0,
+      };
     }
 
     // 3. Discord messages / vocaux — depuis discordActivityStorage (même source que admin dashboard)
-    let messagesRanking = { rank: 0, lastUpdate: "" };
-    let vocalRanking = { rank: 0, lastUpdate: "" };
+    let messagesRanking = { rank: 0, messages: 0, lastUpdate: "" };
+    let vocalRanking = { rank: 0, totalMinutes: 0, display: "00:00", lastUpdate: "" };
     try {
       const activityData = await getDiscordActivityForMonth(monthKey);
       if (activityData) {
@@ -293,13 +325,20 @@ export async function GET(request: NextRequest) {
 
         const messagesEntries = remapAndAggregateEntries(rawMessagesEntries, identityToLogin);
         const vocalsEntries = remapAndAggregateEntries(rawVocalsEntries, identityToLogin);
+        const messagesRank = getRank(messagesEntries, member);
+        const vocalsRank = getRank(vocalsEntries, member);
+        const messagesValue = messagesRank > 0 ? messagesEntries[messagesRank - 1]?.value || 0 : 0;
+        const vocalsMinutes = vocalsRank > 0 ? vocalsEntries[vocalsRank - 1]?.value || 0 : 0;
 
         messagesRanking = {
-          rank: getRank(messagesEntries, member),
+          rank: messagesRank,
+          messages: messagesValue,
           lastUpdate: new Date().toLocaleDateString("fr-FR"),
         };
         vocalRanking = {
-          rank: getRank(vocalsEntries, member),
+          rank: vocalsRank,
+          totalMinutes: vocalsMinutes,
+          display: formatMinutesToHHMM(vocalsMinutes),
           lastUpdate: new Date().toLocaleDateString("fr-FR"),
         };
       }

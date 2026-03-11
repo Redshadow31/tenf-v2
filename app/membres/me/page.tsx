@@ -63,8 +63,8 @@ interface MonthlyStats {
   monthKey: string;
   raidsTENF: number;
   spotlightPresence: { present: number; total: number; rate: number };
-  messagesRanking: { rank: number; lastUpdate: string };
-  vocalRanking: { rank: number; lastUpdate: string };
+  messagesRanking: { rank: number; messages: number; lastUpdate: string };
+  vocalRanking: { rank: number; totalMinutes: number; display: string; lastUpdate: string };
 }
 
 function StatusBadge({ status }: { status: ProfileStatus }) {
@@ -517,14 +517,28 @@ export default function MyProfilePage() {
               <MessageSquare className="w-5 h-5" style={{ color: "#5865F2" }} />
               <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Classement Messages</span>
             </div>
-            <p className="text-2xl font-bold">#{monthly?.messagesRanking?.rank || "-"}</p>
+            <p className="text-2xl font-bold">
+              {monthly?.messagesRanking?.rank && monthly.messagesRanking.rank > 0
+                ? `#${monthly.messagesRanking.rank}`
+                : "-"}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              {(monthly?.messagesRanking?.messages ?? 0).toLocaleString("fr-FR")} message(s)
+            </p>
           </div>
           <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
             <div className="flex items-center gap-2 mb-2">
               <Mic className="w-5 h-5" style={{ color: "#f59e0b" }} />
               <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>Classement Vocaux</span>
             </div>
-            <p className="text-2xl font-bold">#{monthly?.vocalRanking?.rank || "-"}</p>
+            <p className="text-2xl font-bold">
+              {monthly?.vocalRanking?.rank && monthly.vocalRanking.rank > 0
+                ? `#${monthly.vocalRanking.rank}`
+                : "-"}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              {monthly?.vocalRanking?.display || "00:00"}
+            </p>
           </div>
         </div>
 
