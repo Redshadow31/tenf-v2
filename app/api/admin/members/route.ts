@@ -10,6 +10,57 @@ import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+function normalizeId(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const v = String(value).trim();
+  return v.length > 0 ? v : undefined;
+}
+
+function normalizeLogin(value?: string | null): string | undefined {
+  const v = normalizeId(value);
+  return v ? v.toLowerCase() : undefined;
+}
+
+function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: any[]): any[] {
+  const mergedByKey = new Map<string, any>();
+  const keyByDiscordId = new Map<string, string>();
+  const keyByTwitchId = new Map<string, string>();
+  const keyByLogin = new Map<string, string>();
+
+  const upsert = (member: any) => {
+    const discordId = normalizeId(member?.discordId);
+    const twitchId = normalizeId(member?.twitchId);
+    const twitchLogin = normalizeLogin(member?.twitchLogin);
+
+    let key =
+      (discordId && keyByDiscordId.get(discordId)) ||
+      (twitchId && keyByTwitchId.get(twitchId)) ||
+      (twitchLogin && keyByLogin.get(twitchLogin));
+
+    if (!key) {
+      key =
+        (discordId && `discord:${discordId}`) ||
+        (twitchId && `twitchId:${twitchId}`) ||
+        (twitchLogin && `login:${twitchLogin}`) ||
+        `fallback:${mergedByKey.size + 1}`;
+    }
+
+    const current = mergedByKey.get(key) || {};
+    const merged = { ...current, ...member };
+    mergedByKey.set(key, merged);
+
+    if (discordId) keyByDiscordId.set(discordId, key);
+    if (twitchId) keyByTwitchId.set(twitchId, key);
+    if (twitchLogin) keyByLogin.set(twitchLogin, key);
+  };
+
+  // Important: legacy d'abord, Supabase ensuite (Supabase prioritaire en cas de conflit)
+  legacyMembers.forEach(upsert);
+  supabaseMembers.forEach(upsert);
+
+  return Array.from(mergedByKey.values());
+}
+
 /**
  * GET - Récupère tous les membres ou un membre spécifique
  */
@@ -33,7 +84,16 @@ export async function GET(request: NextRequest) {
 
     if (twitchLogin) {
       // Récupérer un membre spécifique par login Twitch
-      const member = await memberRepository.findByTwitchLogin(twitchLogin);
+      let member = await memberRepository.findByTwitchLogin(twitchLogin);
+      if (!member) {
+        try {
+          const { loadMemberDataFromStorage, getMemberData } = await import('@/lib/memberData');
+          await loadMemberDataFromStorage();
+          member = getMemberData(twitchLogin) as any;
+        } catch (error) {
+          console.warn(`[Admin Members] Fallback legacy échoué (twitchLogin=${twitchLogin}):`, error);
+        }
+      }
       if (!member) {
         const duration = Date.now() - startTime;
         logApi.route('GET', '/api/admin/members', 404, duration);
@@ -63,7 +123,17 @@ export async function GET(request: NextRequest) {
 
     if (discordId) {
       // Récupérer un membre spécifique par ID Discord
-      const member = await memberRepository.findByDiscordId(discordId);
+      let member = await memberRepository.findByDiscordId(discordId);
+      if (!member) {
+        try {
+          const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
+          await loadMemberDataFromStorage();
+          member =
+            (getAllMemberData() as any[]).find((m) => normalizeId(m.discordId) === normalizeId(discordId)) || null;
+        } catch (error) {
+          console.warn(`[Admin Members] Fallback legacy échoué (discordId=${discordId}):`, error);
+        }
+      }
       if (!member) {
         const duration = Date.now() - startTime;
         logApi.route('GET', '/api/admin/members', 404, duration);
@@ -91,8 +161,17 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Récupérer tous les membres depuis Supabase
-    const members = await memberRepository.findAll(1000, 0);
+    // Récupérer tous les membres depuis Supabase + fallback legacy (transition migration)
+    const supabaseMembers = await memberRepository.findAll(1000, 0);
+    let legacyMembers: any[] = [];
+    try {
+      const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
+      await loadMemberDataFromStorage();
+      legacyMembers = (getAllMemberData() as any[]) || [];
+    } catch (error) {
+      console.warn("[Admin Members] Fallback legacy indisponible:", error);
+    }
+    const members = mergeMembersWithoutDuplicates(legacyMembers, supabaseMembers);
 
     // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
     // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants

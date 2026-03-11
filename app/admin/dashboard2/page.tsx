@@ -388,7 +388,10 @@ export default function Dashboard2Page() {
       try {
         const now = new Date();
 
-        const eventsRegistrationsRes = await fetch("/api/admin/events/registrations", { cache: "no-store" });
+        const [eventsRegistrationsRes, integrationsRes] = await Promise.all([
+          fetch("/api/admin/events/registrations", { cache: "no-store" }),
+          fetch("/api/integrations?admin=true", { cache: "no-store" }),
+        ]);
 
         let nextMeetingRegistrations = 0;
         let nextFormationRegistrations = 0;
@@ -411,9 +414,10 @@ export default function Dashboard2Page() {
             return found?.registrationCount || 0;
           };
 
-          nextMeetingRegistrations = findNextRegistrationCount(
+          const nextMeetingFromEvents = findNextRegistrationCount(
             (category) => category.includes("integration") || category.includes("reunion")
           );
+          nextMeetingRegistrations = nextMeetingFromEvents;
           nextFormationRegistrations = findNextRegistrationCount((category) => category.includes("formation"));
           nextFilmRegistrations = findNextRegistrationCount((category) => category.includes("film"));
           nextJeuxRegistrations = findNextRegistrationCount(
@@ -422,6 +426,29 @@ export default function Dashboard2Page() {
           upcomingSpotlights = futureEvents.filter((item) =>
             normalizeCategoryLabel(item.event.category).includes("spotlight")
           ).length;
+        }
+
+        // Fallback legacy pour la réunion d'intégration (sans doublonner avec la source events)
+        if (nextMeetingRegistrations === 0 && integrationsRes.ok) {
+          const integrationsData = await integrationsRes.json();
+          const integrations = (integrationsData.integrations || []) as Array<{
+            id: string;
+            date: string;
+            isPublished?: boolean;
+          }>;
+          const nextMeeting = integrations
+            .filter((integration) => integration.isPublished !== false && new Date(integration.date) >= now)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
+          if (nextMeeting?.id) {
+            const regsRes = await fetch(`/api/admin/integrations/${nextMeeting.id}/registrations`, {
+              cache: "no-store",
+            });
+            if (regsRes.ok) {
+              const regsData = await regsRes.json();
+              nextMeetingRegistrations = (regsData.registrations || []).length;
+            }
+          }
         }
 
         setUpcomingKpis((prev) => ({
