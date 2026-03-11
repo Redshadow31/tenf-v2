@@ -123,6 +123,14 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/events/spotlight/analytics", label: "Analyse Spotlight (mois / tout)" },
         ],
       },
+      {
+        href: "/admin/events/anniversaires",
+        label: "Anniversaires",
+        children: [
+          { href: "/admin/events/anniversaires/mois", label: "Anniversaires du mois" },
+          { href: "/admin/events/anniversaires/tous", label: "Tous les anniversaires" },
+        ],
+      },
     ],
   },
   {
@@ -240,6 +248,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/events/presence", label: "Présences" },
       { href: "/admin/events/propositions", label: "Événements proposés" },
       { href: "/admin/events/spotlight", label: "Groupe Spotlight" },
+      { href: "/admin/events/anniversaires", label: "Groupe Anniversaires" },
     ],
   },
   { href: "/admin/follow", label: "Suivi de l'engagement", icon: "👁️" },

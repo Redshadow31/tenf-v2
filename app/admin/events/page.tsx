@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, List, BarChart3, Archive, Lightbulb, Link2 } from "lucide-react";
+import { Calendar, List, BarChart3, Archive, Lightbulb, Link2, CalendarHeart } from "lucide-react";
 
 const eventSections = [
   {
@@ -51,6 +51,14 @@ const eventSections = [
     icon: BarChart3,
     href: "/admin/events/spotlight",
     color: "from-fuchsia-600 to-indigo-800",
+  },
+  {
+    id: "anniversaires",
+    title: "Anniversaires (sous-groupe)",
+    description: "Anniversaires du mois et vue globale avec onglets anniversaire et affiliation",
+    icon: CalendarHeart,
+    href: "/admin/events/anniversaires",
+    color: "from-pink-600 to-purple-800",
   },
   {
     id: "liens-vocaux",
