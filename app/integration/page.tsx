@@ -60,12 +60,28 @@ export default function Page() {
   useEffect(() => {
     async function checkDiscordAuth() {
       try {
+        // 1) Vérification NextAuth
         const response = await fetch('/api/auth/session', { cache: 'no-store' });
-        if (!response.ok) return;
-        const session = await response.json();
-        setIsDiscordConnected(!!session?.user?.discordId);
+        if (response.ok) {
+          const session = await response.json();
+          if (session?.user?.discordId) {
+            setIsDiscordConnected(true);
+            return;
+          }
+        }
+
+        // 2) Fallback legacy (cookies discord_user_id / discord_username)
+        const legacyResponse = await fetch('/api/auth/discord/user', { cache: 'no-store' });
+        if (legacyResponse.ok) {
+          const legacy = await legacyResponse.json();
+          setIsDiscordConnected(legacy?.authenticated === true);
+          return;
+        }
+
+        setIsDiscordConnected(false);
       } catch (error) {
         console.error('Erreur vérification session:', error);
+        setIsDiscordConnected(false);
       } finally {
         setAuthChecked(true);
       }
