@@ -821,16 +821,38 @@ export default function RaidImportModal({
       return;
     }
 
-    // Filtrer les raids avec statut 'ok' (raider ET cible sont membres TENF reconnus)
-    // OU ceux qui ont été manuellement sélectionnés par l'utilisateur
-    const raidsToSave = detectedRaids.filter(r => {
-      if (r.status === 'ignored' || r.ignored) return false; // Ne pas sauvegarder les ignorés
-      // Uniquement les raids où raider ET cible sont membres TENF reconnus
-      return r.status === 'ok' && r.raiderMember && r.targetMember;
-    });
+    // Préparer les raids à enregistrer, avec support partiel:
+    // - Ignorer Raider => countFrom=false, countTo=true
+    // - Ignorer Cible  => countFrom=true, countTo=false
+    const raidsToSave = detectedRaids
+      .map((r) => {
+        if (r.status === 'ignored' || r.ignored) return null; // Ignorés complets
+
+        const hasRaider = !!r.raiderMember;
+        const hasTarget = !!r.targetMember;
+        const countFrom = hasRaider && !r.ignoredRaider;
+        const countTo = hasTarget && !r.ignoredTarget;
+
+        if (!countFrom && !countTo) return null; // Rien à compter
+
+        return {
+          raider: countFrom ? (r.raiderMember!.discordId || r.raiderMember!.twitchLogin) : (r.raiderMember?.discordId || r.raiderMember?.twitchLogin),
+          target: countTo ? (r.targetMember!.discordId || r.targetMember!.twitchLogin) : (r.targetMember?.discordId || r.targetMember?.twitchLogin),
+          date: r.date,
+          countFrom,
+          countTo,
+        };
+      })
+      .filter((r): r is {
+        raider?: string;
+        target?: string;
+        date: string;
+        countFrom: boolean;
+        countTo: boolean;
+      } => r !== null);
 
     if (raidsToSave.length === 0) {
-      setError("Aucun raid valide à enregistrer. Seuls les raids où le raider ET la cible sont membres TENF reconnus peuvent être enregistrés.");
+      setError("Aucun raid valide à enregistrer. Vérifiez les correspondances membres ou les ignorances appliquées.");
       return;
     }
 
@@ -846,13 +868,7 @@ export default function RaidImportModal({
         },
         body: JSON.stringify({
           month,
-          raids: raidsToSave.map(r => ({
-            raider: r.raiderMember!.discordId || r.raiderMember!.twitchLogin,
-            target: r.targetMember!.discordId || r.targetMember!.twitchLogin,
-            date: r.date,
-            countFrom: true,
-            countTo: true,
-          })),
+          raids: raidsToSave,
         }),
       });
 

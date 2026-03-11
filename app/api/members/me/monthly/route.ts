@@ -71,6 +71,17 @@ export async function GET(request: NextRequest) {
     const monthKey = getCurrentMonthKey();
     const evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, monthKey);
     const memberLogin = normalizeKey(member.twitchLogin);
+    const memberIdentityCandidates = new Set<string>(
+      [
+        member.twitchLogin,
+        member.discordId,
+        member.discordUsername,
+        member.displayName,
+        member.siteUsername,
+      ]
+        .filter(Boolean)
+        .map((v) => normalizeKey(v))
+    );
 
     // Préparer un index d'identité (discordId / usernames / displayName -> twitchLogin)
     const allMembers = await memberRepository.findAll(2000, 0);
@@ -96,10 +107,15 @@ export async function GET(request: NextRequest) {
       });
 
       for (const raid of filteredFaits) {
-        const raidRaiderLogin =
-          identityToLogin.get(normalizeKey(raid.raider)) ||
-          normalizeKey(raid.raider);
-        const raiderMatch = raidRaiderLogin === memberLogin;
+        const rawRaider = normalizeKey(raid.raider);
+        const mappedRaiderLogin = identityToLogin.get(rawRaider) || rawRaider;
+
+        // Matching robuste: accepte login, discordId, username et displayName.
+        const raiderMatch =
+          mappedRaiderLogin === memberLogin ||
+          memberIdentityCandidates.has(rawRaider) ||
+          memberIdentityCandidates.has(mappedRaiderLogin);
+
         if (raiderMatch) {
           raidsTENF += raid.count ?? 1;
         }
