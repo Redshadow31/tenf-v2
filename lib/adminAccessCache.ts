@@ -5,7 +5,7 @@
  */
 
 import type { AdminRole } from './adminRoles';
-import { FOUNDERS } from './adminRoles';
+import { FOUNDERS, normalizeAdminRole } from './adminRoles';
 
 // Ré-export pour compatibilité
 export type { AdminRole };
@@ -26,13 +26,15 @@ export async function loadAdminAccessCache(): Promise<void> {
     const stored = await store.get('admin-access-list');
     
     if (stored) {
-      const accessList: Array<{ discordId: string; role: AdminRole }> = JSON.parse(stored);
+      const accessList: Array<{ discordId: string; role: string }> = JSON.parse(stored);
       // Reconstruire le cache (exclure les fondateurs car ils sont hardcodés)
       adminAccessCache = {};
       accessList.forEach(access => {
+        const normalizedRole = normalizeAdminRole(access.role);
+        if (!normalizedRole) return;
         // Ne pas mettre en cache les fondateurs, ils sont toujours hardcodés
-        if (access.role !== 'FOUNDER' || !FOUNDERS.includes(access.discordId)) {
-          adminAccessCache[access.discordId] = access.role;
+        if (normalizedRole !== 'FONDATEUR' || !FOUNDERS.includes(access.discordId)) {
+          adminAccessCache[access.discordId] = normalizedRole;
         }
       });
     }

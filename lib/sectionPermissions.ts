@@ -3,7 +3,7 @@
  * Permet de contrôler quels rôles ont accès à quelles sections
  */
 
-import type { AdminRole } from "./adminRoles";
+import { normalizeAdminRole, type AdminRole } from "./adminRoles";
 
 export interface SectionPermission {
   href: string;
@@ -39,7 +39,13 @@ export async function loadSectionPermissionsCache(): Promise<void> {
     
     if (stored) {
       const permissionsData: PermissionsData = JSON.parse(stored);
-      sectionPermissionsCache = permissionsData.sections || {};
+      const sections = permissionsData.sections || {};
+      Object.values(sections).forEach((section) => {
+        section.roles = (section.roles || [])
+          .map((role) => normalizeAdminRole(role as unknown as string))
+          .filter((role): role is AdminRole => role !== null);
+      });
+      sectionPermissionsCache = sections;
     } else {
       sectionPermissionsCache = {};
     }

@@ -34,17 +34,18 @@ export async function GET(request: NextRequest) {
           discordUsername: member.discordUsername || '',
           displayName: member.displayName || member.twitchLogin,
           twitchLogin: member.twitchLogin,
-          role: role || 'MODO_JUNIOR',
+          role: role || 'MODERATEUR_EN_FORMATION',
         };
       })
       .sort((a, b) => {
-        // Trier par rôle (FOUNDER > ADMIN_ADJOINT > MODO_MENTOR > MODO_JUNIOR)
+        // Trier par rôle (FONDATEUR > ADMIN_COORDINATEUR > MODERATEUR > MODERATEUR_EN_FORMATION > MODERATEUR_EN_PAUSE > SOUTIEN_TENF)
         const roleOrder: Record<string, number> = {
-          'FOUNDER': 0,
-          'ADMIN_ADJOINT': 1,
-          'MODO_MENTOR': 2,
-          'MODO_JUNIOR': 3,
-          'SOUTIEN_TENF': 4,
+          'FONDATEUR': 0,
+          'ADMIN_COORDINATEUR': 1,
+          'MODERATEUR': 2,
+          'MODERATEUR_EN_FORMATION': 3,
+          'MODERATEUR_EN_PAUSE': 4,
+          'SOUTIEN_TENF': 5,
         };
         return (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
       });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/requireAdmin";
-import type { AdminRole } from "@/lib/adminRoles";
+import { normalizeAdminRole, type AdminRole } from "@/lib/adminRoles";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,7 @@ interface PermissionsData {
 export async function GET(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est fondateur
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent accéder à cette ressource." },
@@ -40,6 +40,11 @@ export async function GET(request: NextRequest) {
 
       if (stored) {
         const permissionsData: PermissionsData = JSON.parse(stored);
+        Object.values(permissionsData.sections || {}).forEach((section) => {
+          section.roles = (section.roles || [])
+            .map((role) => normalizeAdminRole(role as unknown as string))
+            .filter((role): role is AdminRole => role !== null);
+        });
         return NextResponse.json({
           success: true,
           permissions: permissionsData,
@@ -73,7 +78,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est fondateur
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent modifier les permissions." },
@@ -112,8 +117,13 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      // Normaliser et valider les rôles (compatibilité anciens codes)
+      sectionPerm.roles = sectionPerm.roles
+        .map((role) => normalizeAdminRole(role as unknown as string))
+        .filter((role): role is AdminRole => role !== null);
+
       // Valider que tous les rôles sont valides
-      const validRoles: AdminRole[] = ["FOUNDER", "ADMIN_ADJOINT", "MODO_MENTOR", "MODO_JUNIOR", "SOUTIEN_TENF"];
+      const validRoles: AdminRole[] = ["FONDATEUR", "ADMIN_COORDINATEUR", "MODERATEUR", "MODERATEUR_EN_FORMATION", "MODERATEUR_EN_PAUSE", "SOUTIEN_TENF"];
       for (const role of sectionPerm.roles) {
         if (!validRoles.includes(role)) {
           return NextResponse.json(

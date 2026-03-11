@@ -22,7 +22,7 @@ export {
 export { canPerformAction as canPerformAdminAction } from "./adminRoles";
 
 // Re-export pour compatibilité avec l'ancien code
-export type { AdminRole as LegacyAdminRole } from "./adminRoles";
+export type { LegacyAdminRole } from "./adminRoles";
 
 // Fonctions de compatibilité (dépréciées, utiliser adminRoles.ts)
 import { 
@@ -36,7 +36,7 @@ import {
  */
 export function isAdmin(discordId: string): boolean {
   const role = getNewAdminRole(discordId);
-  return role === "FOUNDER" || role === "ADMIN_ADJOINT";
+  return role === "FONDATEUR" || role === "ADMIN_COORDINATEUR";
 }
 
 /**
@@ -51,7 +51,7 @@ export function isModerator(discordId: string): boolean {
  */
 export function isAdminAdjoint(discordId: string, memberRole?: string): boolean {
   const role = getNewAdminRole(discordId);
-  return role === "ADMIN_ADJOINT";
+  return role === "ADMIN_COORDINATEUR";
 }
 
 /**
@@ -59,7 +59,7 @@ export function isAdminAdjoint(discordId: string, memberRole?: string): boolean 
  */
 export function isAdminRole(discordId: string, memberRole?: string): boolean {
   const role = getNewAdminRole(discordId);
-  return role === "ADMIN_ADJOINT";
+  return role === "ADMIN_COORDINATEUR";
 }
 
 /**

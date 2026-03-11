@@ -7,10 +7,11 @@ import { adminNavigation } from "@/lib/admin/navigation";
 import type { AdminRole } from "@/lib/adminRoles";
 
 const ROLE_LABELS: Record<AdminRole, string> = {
-  FOUNDER: "Fondateur",
-  ADMIN_ADJOINT: "Admin Adjoint",
-  MODO_MENTOR: "Modo Mentor",
-  MODO_JUNIOR: "Modo Junior",
+  FONDATEUR: "Fondateur",
+  ADMIN_COORDINATEUR: "Admin Coordinateur",
+  MODERATEUR: "Modérateur",
+  MODERATEUR_EN_FORMATION: "Modérateur en formation",
+  MODERATEUR_EN_PAUSE: "Modérateur en pause",
   SOUTIEN_TENF: "Soutien TENF",
 };
 
@@ -240,7 +241,7 @@ export default function PermissionsPage() {
           ...prev.sections,
           [sectionHref]: {
             ...section,
-            roles: enabled ? [] : ["FOUNDER"], // Liste vide = tous autorisés, sinon seulement FOUNDER
+            roles: enabled ? [] : ["FONDATEUR"], // Liste vide = tous autorisés, sinon seulement FONDATEUR
           },
         },
       };
@@ -449,11 +450,11 @@ export default function PermissionsPage() {
                       </button>
                       <button
                         onClick={() => setAllRolesForSection(section.href, false)}
-                        disabled={restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FOUNDER')}
+                        disabled={restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FONDATEUR')}
                         className="px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
-                          backgroundColor: (restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FOUNDER')) ? 'var(--color-surface)' : '#dc2626',
-                          color: (restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FOUNDER')) ? 'var(--color-text-secondary)' : 'white',
+                          backgroundColor: (restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FONDATEUR')) ? 'var(--color-surface)' : '#dc2626',
+                          color: (restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes('FONDATEUR')) ? 'var(--color-text-secondary)' : 'white',
                         }}
                         title="Restreindre aux fondateurs uniquement"
                       >
@@ -476,12 +477,14 @@ export default function PermissionsPage() {
                           }`}
                           style={{
                             backgroundColor: allowed
-                              ? role === 'FOUNDER'
+                              ? role === 'FONDATEUR'
                                 ? '#dc2626'
-                                : role === 'ADMIN_ADJOINT'
+                                : role === 'ADMIN_COORDINATEUR'
                                 ? '#d97706'
-                                : role === 'MODO_MENTOR'
+                                : role === 'MODERATEUR'
                                 ? '#ea580c'
+                                : role === 'MODERATEUR_EN_PAUSE'
+                                ? '#64748b'
                                 : role === 'SOUTIEN_TENF'
                                 ? '#0f766e'
                                 : '#1e40af'

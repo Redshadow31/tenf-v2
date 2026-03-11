@@ -33,10 +33,11 @@ export function filterNavLinks(
     // Si requiredRole, vérifier le rôle
     if (link.requiredRole) {
       const roleHierarchy: Record<AdminRole, number> = {
-        FOUNDER: 4,
-        ADMIN_ADJOINT: 3,
-        MODO_MENTOR: 2,
-        MODO_JUNIOR: 1,
+        FONDATEUR: 4,
+        ADMIN_COORDINATEUR: 3,
+        MODERATEUR: 2,
+        MODERATEUR_EN_FORMATION: 1,
+        MODERATEUR_EN_PAUSE: 0,
         SOUTIEN_TENF: 0,
       };
       

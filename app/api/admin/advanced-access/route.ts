@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
       return NextResponse.json(
         { error: "Réservé aux fondateurs" },
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
       return NextResponse.json(
         { error: "Réservé aux fondateurs" },

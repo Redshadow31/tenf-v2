@@ -8,7 +8,7 @@ import { authOptions } from "./auth";
 import { 
   getAdminRole, 
   hasAdminDashboardAccess, 
-  hasPermission, 
+  normalizeAdminRole,
   ROLE_PERMISSIONS,
   type AdminRole, 
   type Permission 
@@ -41,7 +41,7 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     const avatar = session.user.avatar || null;
 
     // Si le rôle est déjà dans la session (depuis le JWT), l'utiliser
-    let role: AdminRole | null = session.user.role || null;
+    let role: AdminRole | null = normalizeAdminRole((session.user.role as string | null | undefined) || null);
 
     // Sinon, vérifier les rôles hardcodés
     if (!role) {
@@ -175,7 +175,7 @@ export async function checkIsFounder(): Promise<boolean> {
     return false;
   }
 
-  return admin.role === "FOUNDER";
+  return admin.role === "FONDATEUR";
 }
 
 /**

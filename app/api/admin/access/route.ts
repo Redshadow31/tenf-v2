@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/requireAdmin';
-import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, type AdminRole } from '@/lib/adminRoles';
-import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from '@/lib/adminAccessCache';
+import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, normalizeAdminRole, type AdminRole } from '@/lib/adminRoles';
+import { loadAdminAccessCache } from '@/lib/adminAccessCache';
 import { getBlobStore } from '@/lib/memberData';
-import { GUILD_ID } from '@/lib/discordRoles';
 
 const ACCESS_STORE = 'tenf-admin-access';
 const ACCESS_KEY = 'admin-access-list';
@@ -22,7 +21,7 @@ interface AdminAccess {
 export async function GET() {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
@@ -37,7 +36,14 @@ export async function GET() {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        storedAccessList = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
+        storedAccessList = parsed
+          .map((entry) => {
+            const normalizedRole = normalizeAdminRole(entry.role);
+            if (!normalizedRole) return null;
+            return { ...entry, role: normalizedRole };
+          })
+          .filter((entry): entry is AdminAccess => entry !== null);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
@@ -54,7 +60,7 @@ export async function GET() {
     FOUNDERS.forEach(id => {
       accessList.push({
         discordId: id,
-        role: 'FOUNDER' as AdminRole,
+        role: 'FONDATEUR' as AdminRole,
         addedAt: new Date(0).toISOString(), // Date ancienne pour indiquer qu'ils sont là depuis le début
         addedBy: 'system',
       });
@@ -127,65 +133,9 @@ export async function GET() {
         if (userInfoCache.has(discordId)) {
           return userInfoCache.get(discordId)!;
         }
-
-        // Si pas dans le cache, essayer de récupérer via l'API Discord directement
-        const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-        if (DISCORD_BOT_TOKEN) {
-          try {
-            // Essayer d'abord de récupérer depuis le serveur (guild member)
-            const memberResponse = await fetch(
-              `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discordId}`,
-              {
-                headers: {
-                  Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-                },
-              }
-            );
-
-            if (memberResponse.ok) {
-              const member = await memberResponse.json();
-              const user = member.user || member;
-              const username = member.nick || user.global_name || user.username || 'Inconnu';
-              const avatarHash = user.avatar;
-              const avatar = avatarHash
-                ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`
-                : null;
-              
-              const info = { username, avatar };
-              userInfoCache.set(discordId, info); // Mettre en cache
-              return info;
-            }
-
-            // Si le membre n'est pas dans le serveur, essayer l'API Users
-            if (memberResponse.status === 404) {
-              const userResponse = await fetch(
-                `https://discord.com/api/v10/users/${discordId}`,
-                {
-                  headers: {
-                    Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-                  },
-                }
-              );
-
-              if (userResponse.ok) {
-                const user = await userResponse.json();
-                const username = user.global_name || user.username || 'Inconnu';
-                const avatarHash = user.avatar;
-                const avatar = avatarHash
-                  ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`
-                  : null;
-                
-                const info = { username, avatar };
-                userInfoCache.set(discordId, info); // Mettre en cache
-                return info;
-              }
-            }
-          } catch (error) {
-            console.error(`[Admin Access] Error fetching Discord info for ${discordId}:`, error);
-          }
-        }
         
-        // Par défaut, retourner "Inconnu"
+        // Eviter des dizaines d'appels Discord externes (lents) pour les IDs inconnus :
+        // on garde un fallback local pour maintenir une page réactive.
         const defaultInfo = { username: 'Inconnu', avatar: null };
         userInfoCache.set(discordId, defaultInfo); // Mettre en cache pour éviter les appels répétés
         return defaultInfo;
@@ -243,7 +193,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
@@ -254,8 +204,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { discordId, role } = body;
+    const normalizedRole = normalizeAdminRole(role);
 
-    if (!discordId || !role) {
+    if (!discordId || !normalizedRole) {
       return NextResponse.json(
         { error: "discordId et role sont requis" },
         { status: 400 }
@@ -263,8 +214,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le rôle est valide
-    const validRoles: AdminRole[] = ['FOUNDER', 'ADMIN_ADJOINT', 'MODO_MENTOR', 'MODO_JUNIOR', 'SOUTIEN_TENF'];
-    if (!validRoles.includes(role)) {
+    const validRoles: AdminRole[] = ['FONDATEUR', 'ADMIN_COORDINATEUR', 'MODERATEUR', 'MODERATEUR_EN_FORMATION', 'MODERATEUR_EN_PAUSE', 'SOUTIEN_TENF'];
+    if (!validRoles.includes(normalizedRole)) {
       return NextResponse.json(
         { error: "Rôle invalide" },
         { status: 400 }
@@ -286,7 +237,14 @@ export async function POST(request: NextRequest) {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        storedAccessList = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
+        storedAccessList = parsed
+          .map((entry) => {
+            const roleValue = normalizeAdminRole(entry.role);
+            if (!roleValue) return null;
+            return { ...entry, role: roleValue };
+          })
+          .filter((entry): entry is AdminAccess => entry !== null);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
@@ -306,7 +264,7 @@ export async function POST(request: NextRequest) {
       // Mettre à jour le rôle existant
       storedAccessList[existingIndex] = {
         ...storedAccessList[existingIndex],
-        role: role as AdminRole,
+        role: normalizedRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
       };
@@ -314,7 +272,7 @@ export async function POST(request: NextRequest) {
       // Ajouter un nouvel accès
       storedAccessList.push({
         discordId,
-        role: role as AdminRole,
+        role: normalizedRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
       });
@@ -332,7 +290,7 @@ export async function POST(request: NextRequest) {
       action: existingIndex >= 0 ? "admin.access.update" : "admin.access.create",
       resourceType: "admin_access",
       resourceId: discordId,
-      newValue: { role },
+      newValue: { role: normalizedRole },
       metadata: { sourcePage: "/admin/gestion-acces" },
     });
 
@@ -355,7 +313,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
@@ -398,7 +356,14 @@ export async function DELETE(request: NextRequest) {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        storedAccessList = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
+        storedAccessList = parsed
+          .map((entry) => {
+            const roleValue = normalizeAdminRole(entry.role);
+            if (!roleValue) return null;
+            return { ...entry, role: roleValue };
+          })
+          .filter((entry): entry is AdminAccess => entry !== null);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);

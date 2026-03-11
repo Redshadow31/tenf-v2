@@ -20,10 +20,11 @@ export async function GET() {
 
     // Mapper le rôle AdminRole vers le format attendu par le frontend
     const roleMap: Record<string, string> = {
-      'FOUNDER': 'Admin',
-      'ADMIN_ADJOINT': 'Admin Adjoint',
-      'MODO_MENTOR': 'Modérateur',
-      'MODO_JUNIOR': 'Modérateur en formation',
+      'FONDATEUR': 'Admin',
+      'ADMIN_COORDINATEUR': 'Admin Coordinateur',
+      'MODERATEUR': 'Modérateur',
+      'MODERATEUR_EN_FORMATION': 'Modérateur en formation',
+      'MODERATEUR_EN_PAUSE': 'Modérateur en pause',
       'SOUTIEN_TENF': 'Soutien TENF',
     };
 

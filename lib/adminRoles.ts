@@ -1,11 +1,20 @@
 // Système de rôles admin basé sur Discord IDs
 // Tous les accès sont basés STRICTEMENT sur Discord user ID (pas username)
 
-export type AdminRole = 
-  | "FOUNDER" 
-  | "ADMIN_ADJOINT" 
-  | "MODO_MENTOR" 
+export type AdminRole =
+  | "FONDATEUR"
+  | "ADMIN_COORDINATEUR"
+  | "MODERATEUR"
+  | "MODERATEUR_EN_FORMATION"
+  | "MODERATEUR_EN_PAUSE"
+  | "SOUTIEN_TENF";
+
+export type LegacyAdminRole =
+  | "FOUNDER"
+  | "ADMIN_ADJOINT"
+  | "MODO_MENTOR"
   | "MODO_JUNIOR"
+  | "MODO_PAUSE"
   | "SOUTIEN_TENF";
 
 export type Permission = 
@@ -45,12 +54,31 @@ const MODOS_JUNIORS: string[] = [
 // ============================================
 
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  FOUNDER: ["read", "write", "validate", "revert", "global_revert"],
-  ADMIN_ADJOINT: ["read", "write", "validate", "revert"],
-  MODO_MENTOR: ["read", "write", "validate"],
-  MODO_JUNIOR: ["read", "write"],
+  FONDATEUR: ["read", "write", "validate", "revert", "global_revert"],
+  ADMIN_COORDINATEUR: ["read", "write", "validate", "revert"],
+  MODERATEUR: ["read", "write", "validate"],
+  MODERATEUR_EN_FORMATION: ["read", "write"],
+  MODERATEUR_EN_PAUSE: ["read"],
   SOUTIEN_TENF: ["read"],
 };
+
+export function normalizeAdminRole(role: string | null | undefined): AdminRole | null {
+  if (!role) return null;
+  const map: Record<string, AdminRole> = {
+    FONDATEUR: "FONDATEUR",
+    FOUNDER: "FONDATEUR",
+    ADMIN_COORDINATEUR: "ADMIN_COORDINATEUR",
+    ADMIN_ADJOINT: "ADMIN_COORDINATEUR",
+    MODERATEUR: "MODERATEUR",
+    MODO_MENTOR: "MODERATEUR",
+    MODERATEUR_EN_FORMATION: "MODERATEUR_EN_FORMATION",
+    MODO_JUNIOR: "MODERATEUR_EN_FORMATION",
+    MODERATEUR_EN_PAUSE: "MODERATEUR_EN_PAUSE",
+    MODO_PAUSE: "MODERATEUR_EN_PAUSE",
+    SOUTIEN_TENF: "SOUTIEN_TENF",
+  };
+  return map[role] || null;
+}
 
 // ============================================
 // CACHE DES ACCÈS ADMIN
@@ -65,13 +93,13 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
  */
 export function getAdminRole(discordId: string): AdminRole | null {
   // Les fondateurs sont toujours hardcodés et prioritaires
-  if (FOUNDERS.includes(discordId)) return "FOUNDER";
+  if (FOUNDERS.includes(discordId)) return "FONDATEUR";
   
   // Fallback sur les données hardcodées (pour compatibilité)
   // Le cache Blobs est vérifié séparément dans les routes API via getAdminRoleFromCache
-  if (ADMINS_ADJOINTS.includes(discordId)) return "ADMIN_ADJOINT";
-  if (MODOS_MENTORS.includes(discordId)) return "MODO_MENTOR";
-  if (MODOS_JUNIORS.includes(discordId)) return "MODO_JUNIOR";
+  if (ADMINS_ADJOINTS.includes(discordId)) return "ADMIN_COORDINATEUR";
+  if (MODOS_MENTORS.includes(discordId)) return "MODERATEUR";
+  if (MODOS_JUNIORS.includes(discordId)) return "MODERATEUR_EN_FORMATION";
   
   return null;
 }
@@ -138,10 +166,11 @@ export function getUserPermissions(discordId: string): Permission[] {
  */
 export function getRoleDisplayName(role: AdminRole): string {
   const names: Record<AdminRole, string> = {
-    FOUNDER: "Fondateur",
-    ADMIN_ADJOINT: "Admin Adjoint",
-    MODO_MENTOR: "Modo Mentor",
-    MODO_JUNIOR: "Modo Junior",
+    FONDATEUR: "Fondateur",
+    ADMIN_COORDINATEUR: "Admin Coordinateur",
+    MODERATEUR: "Modérateur",
+    MODERATEUR_EN_FORMATION: "Modérateur en formation",
+    MODERATEUR_EN_PAUSE: "Modérateur en pause",
     SOUTIEN_TENF: "Soutien TENF",
   };
   return names[role];

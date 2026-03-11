@@ -11,7 +11,7 @@ import {
  */
 export async function GET() {
   try {
-    const admin = await requireRole('FOUNDER');
+    const admin = await requireRole('FONDATEUR');
     if (!admin) {
       return NextResponse.json({ error: 'Réservé aux fondateurs' }, { status: 403 });
     }
@@ -29,7 +29,7 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const admin = await requireRole('FOUNDER');
+    const admin = await requireRole('FONDATEUR');
     if (!admin) {
       return NextResponse.json({ error: 'Réservé aux fondateurs' }, { status: 403 });
     }

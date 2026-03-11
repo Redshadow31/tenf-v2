@@ -8,7 +8,7 @@ import { getAllActiveMemberData, getMemberData, updateMemberData, loadMemberData
 export async function GET() {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
@@ -62,7 +62,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(

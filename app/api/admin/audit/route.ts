@@ -8,7 +8,7 @@ import { getAllAuditLogs, revertAction, type AuditLog } from '@/lib/adminAudit';
 export async function GET(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(

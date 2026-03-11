@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { normalizeAdminRole } from "@/lib/adminRoles";
 
 /**
  * Middleware Next.js pour protéger les routes admin
@@ -28,7 +29,8 @@ export async function middleware(request: NextRequest) {
     // Vérification spécifique pour la page de gestion des accès (réservée aux fondateurs uniquement)
     if (pathname.startsWith("/admin/gestion-acces")) {
       // Vérifier que l'utilisateur est fondateur (depuis le token JWT)
-      if (token.role !== "FOUNDER") {
+      const normalizedRole = normalizeAdminRole((token.role as string | null | undefined) || null);
+      if (normalizedRole !== "FONDATEUR") {
         // Rediriger vers la page d'accès refusé
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }

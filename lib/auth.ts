@@ -1,6 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
-import { getAdminRole, AdminRole } from "./adminRoles";
+import { getAdminRole, normalizeAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 import { memberRepository } from "./repositories";
 
@@ -102,7 +102,7 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        token.role = role || null;
+        token.role = normalizeAdminRole(role) || null;
       }
 
       // À chaque requête, on peut mettre à jour le rôle depuis le cache si nécessaire
@@ -117,7 +117,7 @@ export const authOptions: NextAuthOptions = {
         session.user.discordId = token.discordId as string;
         session.user.username = (token.username || "Unknown") as string;
         session.user.avatar = (token.avatar || null) as string | null;
-        session.user.role = (token.role || null) as AdminRole | null;
+        session.user.role = normalizeAdminRole((token.role as string | null | undefined) || null);
       }
 
       return session;

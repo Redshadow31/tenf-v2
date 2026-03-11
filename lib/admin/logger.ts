@@ -53,7 +53,7 @@ export async function logAction(params: LogActionParams): Promise<any | null> {
     const actorUsername = admin?.username || undefined;
 
     // Récupérer le rôle admin (avec fallback)
-    let role: AdminRole = "MODO_JUNIOR"; // Rôle par défaut (le moins privilégié)
+    let role: AdminRole = "MODERATEUR_EN_FORMATION"; // Rôle par défaut (le moins privilégié)
     try {
       if (admin?.id) {
         const adminRole = getAdminRole(admin.id);

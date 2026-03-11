@@ -13,7 +13,7 @@ export const revalidate = 0;
 export async function GET(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FOUNDER");
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
