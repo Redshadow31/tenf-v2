@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/requireAdmin';
 import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, normalizeAdminRole, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache } from '@/lib/adminAccessCache';
-import { getBlobStore } from '@/lib/memberData';
+import { getBlobStore, getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
 const ACCESS_STORE = 'tenf-admin-access';
 const ACCESS_KEY = 'admin-access-list';
@@ -95,6 +95,26 @@ export async function GET() {
     // Fonction helper pour récupérer les infos Discord d'un utilisateur depuis un cache
     const createDiscordUserInfoResolver = async () => {
       const userInfoCache = new Map<string, { username: string; avatar: string | null }>();
+
+      // Fallback local: utiliser les données membres fusionnées (rapide, pas d'appel Discord)
+      try {
+        await loadMemberDataFromStorage();
+        const members = getAllMemberData();
+        members.forEach((member) => {
+          if (!member.discordId) return;
+          const username =
+            member.discordUsername ||
+            member.siteUsername ||
+            member.displayName ||
+            "Inconnu";
+          userInfoCache.set(member.discordId, {
+            username,
+            avatar: null,
+          });
+        });
+      } catch (error) {
+        console.warn("[Admin Access] Impossible de charger le fallback local membres:", error);
+      }
       
       // Récupérer tous les membres Discord en une fois via l'API interne
       try {
@@ -110,7 +130,7 @@ export async function GET() {
           const data = await membersResponse.json();
           const members = data.members || [];
           
-          // Construire le cache avec tous les membres
+          // Construire/écraser le cache avec les données Discord (plus fraîches, avec avatar)
           members.forEach((member: any) => {
             if (member.discordId) {
               const username = member.discordNickname || member.discordUsername || 'Inconnu';
