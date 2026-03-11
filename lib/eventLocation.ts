@@ -32,6 +32,34 @@ export function normalizeLocationUrl(value: string): string | null {
   }
 }
 
+function getDiscordChannelKey(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host !== "discord.com" &&
+      host !== "www.discord.com" &&
+      host !== "discordapp.com" &&
+      host !== "www.discordapp.com"
+    ) {
+      return null;
+    }
+
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    // Format standard: /channels/{guildId}/{channelId}[/messageId]
+    if (parts.length < 3 || parts[0] !== "channels") {
+      return null;
+    }
+
+    const guildId = parts[1];
+    const channelId = parts[2];
+    if (!guildId || !channelId) return null;
+    return `${guildId}:${channelId}`;
+  } catch {
+    return null;
+  }
+}
+
 export function getTwitchChannelFromUrl(value: string): string | null {
   try {
     const parsed = new URL(value);
@@ -74,6 +102,22 @@ export function buildEventLocationDisplay(
       return {
         url: trimmed,
         label: matched.name,
+        source: "discord_link",
+      };
+    }
+  }
+
+  // Fallback Discord: meme salon meme si URL differente (ex: avec messageId)
+  const discordKey = getDiscordChannelKey(trimmed);
+  if (discordKey) {
+    const matchedDiscord = knownLinks.find((item) => {
+      const itemDiscordKey = getDiscordChannelKey(item.url);
+      return itemDiscordKey && itemDiscordKey === discordKey;
+    });
+    if (matchedDiscord) {
+      return {
+        url: trimmed,
+        label: matchedDiscord.name,
         source: "discord_link",
       };
     }

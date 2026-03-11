@@ -9,7 +9,6 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("event_location_links")
       .select("id,name,url,is_active")
-      .eq("is_active", true)
       .order("name", { ascending: true });
 
     if (error) {
