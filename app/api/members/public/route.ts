@@ -19,6 +19,13 @@ function getDiscordDefaultAvatar(discordId?: string): string | undefined {
   return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
 }
 
+function isUsableTwitchAvatar(url?: string): boolean {
+  if (!url) return false;
+  const normalized = url.toLowerCase();
+  // Les placeholders techniques ne doivent pas bloquer les fallbacks Discord/UI.
+  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
+}
+
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
  */
@@ -76,7 +83,9 @@ export async function GET() {
     
     // Créer un map pour un accès rapide par login
     const avatarMap = new Map(
-      twitchUsers.map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url])
+      twitchUsers
+        .filter((user: TwitchUser) => isUsableTwitchAvatar(user.profile_image_url))
+        .map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url])
     );
     
     // Mapper vers un format simplifié pour la page publique avec avatars Twitch
