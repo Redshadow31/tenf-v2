@@ -843,13 +843,7 @@ export default function RaidImportModal({
           countTo,
         };
       })
-      .filter((r): r is {
-        raider?: string;
-        target?: string;
-        date: string;
-        countFrom: boolean;
-        countTo: boolean;
-      } => r !== null);
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
     if (raidsToSave.length === 0) {
       setError("Aucun raid valide à enregistrer. Vérifiez les correspondances membres ou les ignorances appliquées.");
