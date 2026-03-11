@@ -203,7 +203,9 @@ export default function MyProfilePage() {
   }
 
   async function loadMonthly() {
-    if (!member && !selectedTwitch) return;
+    // Toujours tenter le chargement mensuel:
+    // - sans sélection, la route utilise la session Discord
+    // - avec sélection, on force le membre via twitchLogin
     try {
       const params = new URLSearchParams();
       if (selectedTwitch) params.set("twitchLogin", selectedTwitch);
