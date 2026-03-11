@@ -141,6 +141,23 @@ export default function GestionMembresPage() {
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
+  async function fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit = {},
+    timeoutMs = 10000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   // Lire le paramètre search de l'URL au chargement
   useEffect(() => {
     const searchParam = searchParams.get("search");
@@ -287,67 +304,88 @@ export default function GestionMembresPage() {
     }
   }
 
+  async function fetchRaidsStats(): Promise<Record<string, { done: number; received: number }>> {
+    const stats: Record<string, { done: number; received: number }> = {};
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const raidsResponse = await fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+        signal: controller.signal,
+      });
+      if (!raidsResponse.ok) return stats;
+
+      const raidsData = await raidsResponse.json();
+      const filteredRaidsFaits = (raidsData.raidsFaits || []).filter((raid: any) => {
+        const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+        if (source === "discord") return false;
+        return source === "manual" || source === "admin" || raid.manual;
+      });
+
+      const filteredRaidsRecus = (raidsData.raidsRecus || []).filter((raid: any) => {
+        const source = raid.source || (raid.manual ? "admin" : "twitch-live");
+        if (source === "discord") return false;
+        return source === "manual" || source === "admin" || raid.manual;
+      });
+
+      for (const raid of filteredRaidsFaits) {
+        const raiderLogin = (raid.raiderTwitchLogin || raid.raider || "").toLowerCase();
+        if (!raiderLogin) continue;
+        if (!stats[raiderLogin]) stats[raiderLogin] = { done: 0, received: 0 };
+        stats[raiderLogin].done += raid.count || 1;
+      }
+
+      for (const raid of filteredRaidsRecus) {
+        const targetLogin = (raid.targetTwitchLogin || raid.target || "").toLowerCase();
+        if (!targetLogin) continue;
+        if (!stats[targetLogin]) stats[targetLogin] = { done: 0, received: 0 };
+        stats[targetLogin].received += 1;
+      }
+    } catch (err) {
+      console.warn("Impossible de charger les stats de raids:", err);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    return stats;
+  }
+
+  function applyRaidsStatsToMembers(
+    membersToUpdate: Member[],
+    raidsStats: Record<string, { done: number; received: number }>
+  ): Member[] {
+    return membersToUpdate.map((member) => {
+      const login = (member.twitch || "").toLowerCase();
+      const raidStats = raidsStats[login] || { done: 0, received: 0 };
+      if (member.raidsDone === raidStats.done && member.raidsReceived === raidStats.received) {
+        return member;
+      }
+      return {
+        ...member,
+        raidsDone: raidStats.done,
+        raidsReceived: raidStats.received,
+      };
+    });
+  }
+
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
     try {
       setLoading(true);
       setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
-      
-      // Charger les stats de raids depuis la même source que /admin/raids (data-v2)
-      let raidsStats: Record<string, { done: number; received: number }> = {};
-      try {
-        const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const raidsResponse = await fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        if (raidsResponse.ok) {
-          const raidsData = await raidsResponse.json();
-          // Même logique de filtrage que la page /admin/raids
-          const filteredRaidsFaits = (raidsData.raidsFaits || []).filter((raid: any) => {
-            const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-            if (source === "discord") return false;
-            return source === "manual" || source === "admin" || raid.manual;
-          });
+      const raidsStatsPromise = fetchRaidsStats().catch(() => ({}));
 
-          const filteredRaidsRecus = (raidsData.raidsRecus || []).filter((raid: any) => {
-            const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-            if (source === "discord") return false;
-            return source === "manual" || source === "admin" || raid.manual;
-          });
-
-          // Agréger les raids faits (done) par login Twitch
-          for (const raid of filteredRaidsFaits) {
-            const raiderLogin = (raid.raiderTwitchLogin || raid.raider || "").toLowerCase();
-            if (!raiderLogin) continue;
-            if (!raidsStats[raiderLogin]) {
-              raidsStats[raiderLogin] = { done: 0, received: 0 };
-            }
-            raidsStats[raiderLogin].done += raid.count || 1;
-          }
-
-          // Agréger les raids reçus (received) par login Twitch
-          for (const raid of filteredRaidsRecus) {
-            const targetLogin = (raid.targetTwitchLogin || raid.target || "").toLowerCase();
-            if (!targetLogin) continue;
-            if (!raidsStats[targetLogin]) {
-              raidsStats[targetLogin] = { done: 0, received: 0 };
-            }
-            raidsStats[targetLogin].received += 1;
-          }
-        }
-      } catch (err) {
-        console.warn("Impossible de charger les stats de raids:", err);
-      }
-      
       // Toujours essayer de charger depuis l'API centralisée (l'API vérifie les permissions)
       // L'API centralisée contient les modifications manuelles et est prioritaire
       // Tous les admins (Fondateur, Admin, Admin Adjoint, Mentor, Modérateur Junior) ont accès
       try {
-        const centralResponse = await fetch("/api/admin/members", {
+        const centralResponse = await fetchWithTimeout("/api/admin/members", {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -364,9 +402,6 @@ export default function GestionMembresPage() {
           const mappedMembers: Member[] = allMembers.map((member: any, index: number) => {
             const avatar = member.avatar || `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
             
-            // Récupérer les stats de raids
-            const raidStats = raidsStats[member.twitchLogin.toLowerCase()] || { done: 0, received: 0 };
-          
             return {
               id: index + 1,
               avatar,
@@ -387,8 +422,8 @@ export default function GestionMembresPage() {
               shadowbanLives: member.shadowbanLives || false,
               isModeratorJunior: member.badges?.includes("Modérateur en formation") || member.badges?.includes("Modérateur Junior") || false,
               isModeratorMentor: member.badges?.includes("Modérateur") || member.badges?.includes("Modérateur Mentor") || false,
-              raidsDone: raidStats.done,
-              raidsReceived: raidStats.received,
+              raidsDone: 0,
+              raidsReceived: 0,
               createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
               integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
               birthday: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : new Date(member.birthday).toISOString()) : undefined,
@@ -408,6 +443,10 @@ export default function GestionMembresPage() {
           
           setMembers(mappedMembers);
           setLoading(false);
+          raidsStatsPromise.then((raidsStats) => {
+            if (!raidsStats || Object.keys(raidsStats).length === 0) return;
+            setMembers((prev) => applyRaidsStatsToMembers(prev, raidsStats));
+          });
           return;
         } else if (centralResponse.status === 403) {
           // Accès refusé : rediriger vers unauthorized
@@ -476,7 +515,7 @@ export default function GestionMembresPage() {
       // Récupérer aussi les données centralisées pour enrichir (tous les admins ont accès)
       let centralMembers: any[] = [];
       try {
-        const centralResponse = await fetch("/api/admin/members", {
+        const centralResponse = await fetchWithTimeout("/api/admin/members", {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -1390,7 +1429,7 @@ export default function GestionMembresPage() {
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des membres depuis le canal #vos-chaînes-twitch...</p>
+          <p className="text-gray-400">Chargement des membres depuis la base centralisée...</p>
         </div>
       </div>
     );

@@ -36,13 +36,12 @@ export default function Page() {
   // Charger les membres depuis l'API publique
   useEffect(() => {
     async function loadMembers() {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       try {
-        // Désactiver le cache pour toujours récupérer les données les plus récentes
+        // Laisser le cache HTTP de la route API agir (max-age/stale-while-revalidate)
         const response = await fetch("/api/members/public", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
+          signal: controller.signal,
         });
         if (response.ok) {
           const data = await response.json();
@@ -51,6 +50,7 @@ export default function Page() {
       } catch (error) {
         console.error("Erreur lors du chargement des membres:", error);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     }

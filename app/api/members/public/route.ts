@@ -9,6 +9,14 @@ import { logApi, LogCategory } from '@/lib/logging/logger';
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Pas de cache ISR pour garantir la disponibilité
+const TWITCH_AVATARS_TIMEOUT_MS = 7000;
+
+function getDiscordDefaultAvatar(discordId?: string): string | undefined {
+  if (!discordId) return undefined;
+  const numericId = Number.parseInt(discordId, 10);
+  if (Number.isNaN(numericId)) return undefined;
+  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
+}
 
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
@@ -38,21 +46,32 @@ export async function GET() {
     }
     
     // Récupérer tous les logins Twitch uniques
-    const twitchLogins = activeMembers
-      .map(member => member.twitchLogin)
-      .filter(Boolean) as string[];
+    const twitchLogins = Array.from(
+      new Set(
+        activeMembers
+          .map((member) => member.twitchLogin)
+          .filter(Boolean) as string[]
+      )
+    );
     
     console.log(`[Members Public API] Logins Twitch: ${twitchLogins.length}`);
     
     // Récupérer tous les avatars Twitch en batch (beaucoup plus rapide)
-    let twitchUsers: any[] = [];
-    try {
-      twitchUsers = await getTwitchUsers(twitchLogins);
-      console.log(`[Members Public API] Avatars Twitch récupérés: ${twitchUsers.length}`);
-    } catch (twitchError) {
+    const twitchUsers = await Promise.race<any[]>([
+      getTwitchUsers(twitchLogins),
+      new Promise<any[]>((resolve) => {
+        setTimeout(() => {
+          console.warn(
+            `[Members Public API] Timeout (${TWITCH_AVATARS_TIMEOUT_MS}ms) récupération avatars Twitch, fallback appliqué.`
+          );
+          resolve([]);
+        }, TWITCH_AVATARS_TIMEOUT_MS);
+      }),
+    ]).catch((twitchError) => {
       console.error('[Members Public API] Erreur récupération avatars Twitch:', twitchError);
-      // Continuer sans avatars Twitch (on utilisera les fallbacks)
-    }
+      return [];
+    });
+    console.log(`[Members Public API] Avatars Twitch récupérés: ${twitchUsers.length}`);
     
     // Créer un map pour un accès rapide par login
     const avatarMap = new Map(
@@ -63,16 +82,16 @@ export async function GET() {
     const publicMembers = activeMembers.map((member) => {
       try {
         // Récupérer l'avatar depuis le map (déjà récupéré en batch)
-        let avatar: string | undefined = avatarMap.get(member.twitchLogin.toLowerCase());
+        const normalizedLogin = typeof member.twitchLogin === 'string'
+          ? member.twitchLogin.toLowerCase()
+          : '';
+        let avatar: string | undefined = normalizedLogin
+          ? avatarMap.get(normalizedLogin)
+          : undefined;
         
         // Si pas d'avatar Twitch, utiliser Discord en fallback
         if (!avatar && member.discordId) {
-          try {
-            // Utiliser l'avatar Discord par défaut (sans hash, Discord générera un avatar par défaut)
-            avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-          } catch (e) {
-            // Ignorer les erreurs de parsing Discord ID
-          }
+          avatar = getDiscordDefaultAvatar(member.discordId);
         }
 
         // Calculer le badge VIP+N si le membre est VIP

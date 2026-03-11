@@ -9,6 +9,35 @@ import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+const LEGACY_FETCH_TIMEOUT_MS = 1500;
+const TWITCH_AVATARS_TIMEOUT_MS = 7000;
+
+function getDiscordDefaultAvatar(discordId?: string): string | undefined {
+  if (!discordId) return undefined;
+  const numericId = Number.parseInt(discordId, 10);
+  if (Number.isNaN(numericId)) return undefined;
+  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T, label: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutHandle = setTimeout(() => {
+      console.warn(`[Admin Members] Timeout (${timeoutMs}ms) sur ${label}, fallback appliqué.`);
+      resolve(fallback);
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    return result;
+  } catch (error) {
+    console.warn(`[Admin Members] Erreur sur ${label}, fallback appliqué:`, error);
+    return fallback;
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
 
 function normalizeId(value?: string | null): string | undefined {
   if (!value) return undefined;
@@ -161,39 +190,48 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Récupérer tous les membres depuis Supabase + fallback legacy (transition migration)
-    const supabaseMembers = await memberRepository.findAll(1000, 0);
-    let legacyMembers: any[] = [];
-    try {
-      const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
-      await loadMemberDataFromStorage();
-      legacyMembers = (getAllMemberData() as any[]) || [];
-    } catch (error) {
-      console.warn("[Admin Members] Fallback legacy indisponible:", error);
-    }
+    // Récupérer les membres Supabase + fallback legacy (limité dans le temps pour éviter les blocages UI)
+    const supabaseMembersPromise = memberRepository.findAll(1000, 0);
+    const legacyMembersPromise = withTimeout(
+      (async () => {
+        const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');
+        await loadMemberDataFromStorage();
+        return (getAllMemberData() as any[]) || [];
+      })(),
+      LEGACY_FETCH_TIMEOUT_MS,
+      [],
+      "fallback legacy"
+    );
+
+    const [supabaseMembers, legacyMembers] = await Promise.all([
+      supabaseMembersPromise,
+      legacyMembersPromise,
+    ]);
     const members = mergeMembersWithoutDuplicates(legacyMembers, supabaseMembers);
 
     // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
     // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
-    const twitchLogins = members.map((m) => m.twitchLogin).filter(Boolean) as string[];
+    const twitchLogins = Array.from(
+      new Set(members.map((m) => m.twitchLogin).filter(Boolean) as string[])
+    );
     let avatarMap = new Map<string, string>();
     if (twitchLogins.length > 0) {
-      try {
-        const twitchUsers = await getTwitchUsers(twitchLogins);
-        twitchUsers.forEach((u) => {
-          if (u.profile_image_url) avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
-        });
-      } catch (e) {
-        console.warn("[Admin Members] Erreur récupération avatars Twitch:", e);
-      }
+      const twitchUsers = await withTimeout(
+        getTwitchUsers(twitchLogins),
+        TWITCH_AVATARS_TIMEOUT_MS,
+        [],
+        "récupération avatars Twitch"
+      );
+      twitchUsers.forEach((u) => {
+        if (u.profile_image_url) avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
+      });
     }
 
     // Enrichir chaque membre avec son avatar
     const membersWithAvatars = members.map((m) => {
-      let avatar = avatarMap.get((m.twitchLogin || "").toLowerCase());
-      if (!avatar && m.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(m.discordId) % 5}.png`;
-      }
+      const normalizedLogin = typeof m.twitchLogin === 'string' ? m.twitchLogin.toLowerCase() : '';
+      let avatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      if (!avatar && m.discordId) avatar = getDiscordDefaultAvatar(m.discordId);
       if (!avatar) {
         avatar = `https://placehold.co/64x64?text=${(m.displayName || m.twitchLogin || "?").charAt(0).toUpperCase()}`;
       }
