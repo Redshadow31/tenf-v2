@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { memberRepository } from "@/lib/repositories";
 import { getTwitchUsers } from "@/lib/twitch";
+import type { TwitchUser } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
@@ -222,7 +223,7 @@ export async function GET(request: NextRequest) {
         [],
         "récupération avatars Twitch"
       );
-      twitchUsers.forEach((u) => {
+      twitchUsers.forEach((u: TwitchUser) => {
         if (u.profile_image_url) avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
       });
     }

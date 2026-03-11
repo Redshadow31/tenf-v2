@@ -52,6 +52,23 @@ export default function LivesPage() {
 
   const isBirthdayHighlightEnabled = todayParis === BIRTHDAY_HIGHLIGHT_DATE_PARIS;
 
+  const fetchWithTimeout = async (
+    input: RequestInfo | URL,
+    init: RequestInit = {},
+    timeoutMs = 12000
+  ): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   useEffect(() => {
     async function fetchLiveStreams() {
       try {
@@ -63,10 +80,10 @@ export default function LivesPage() {
         
         let currentMonthVipLogins: string[] = [];
         try {
-          const vipMonthResponse = await fetch(`/api/vip-month/save?month=${currentMonthKey}`, {
+          const vipMonthResponse = await fetchWithTimeout(`/api/vip-month/save?month=${currentMonthKey}`, {
             cache: 'no-store',
             headers: { 'Cache-Control': 'no-cache' },
-          });
+          }, 8000);
           if (vipMonthResponse.ok) {
             const vipMonthData = await vipMonthResponse.json();
             currentMonthVipLogins = (vipMonthData.vipLogins || []).map((login: string) => login.toLowerCase());
@@ -76,12 +93,7 @@ export default function LivesPage() {
         }
         
         // Récupérer tous les membres actifs depuis l'API publique (même source que la page /membres)
-        const membersResponse = await fetch("/api/members/public", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
+        const membersResponse = await fetchWithTimeout("/api/members/public", {}, 12000);
         
         // L'API retourne toujours 200 maintenant, même en cas d'erreur
         const membersData = await membersResponse.json();
@@ -128,16 +140,19 @@ export default function LivesPage() {
           return;
         }
 
-        // Récupérer les streams en cours depuis l'API Twitch
-        const userLoginsParam = twitchLogins.join(',');
-        const response = await fetch(
-          `/api/twitch/streams?user_logins=${encodeURIComponent(userLoginsParam)}`,
+        // Récupérer les streams via POST pour éviter les URL trop longues
+        const response = await fetchWithTimeout(
+          "/api/twitch/streams",
           {
-            cache: 'no-store',
+            method: "POST",
             headers: {
-              'Cache-Control': 'no-cache',
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
             },
-          }
+            body: JSON.stringify({ logins: twitchLogins }),
+            cache: "no-store",
+          },
+          15000
         );
 
         if (!response.ok) {

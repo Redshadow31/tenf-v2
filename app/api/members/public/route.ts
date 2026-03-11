@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { memberRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
+import type { TwitchUser } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
 import { logApi, LogCategory } from '@/lib/logging/logger';
@@ -57,9 +58,9 @@ export async function GET() {
     console.log(`[Members Public API] Logins Twitch: ${twitchLogins.length}`);
     
     // Récupérer tous les avatars Twitch en batch (beaucoup plus rapide)
-    const twitchUsers = await Promise.race<any[]>([
+    const twitchUsers = await Promise.race<TwitchUser[]>([
       getTwitchUsers(twitchLogins),
-      new Promise<any[]>((resolve) => {
+      new Promise<TwitchUser[]>((resolve) => {
         setTimeout(() => {
           console.warn(
             `[Members Public API] Timeout (${TWITCH_AVATARS_TIMEOUT_MS}ms) récupération avatars Twitch, fallback appliqué.`
@@ -75,7 +76,7 @@ export async function GET() {
     
     // Créer un map pour un accès rapide par login
     const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
+      twitchUsers.map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url])
     );
     
     // Mapper vers un format simplifié pour la page publique avec avatars Twitch

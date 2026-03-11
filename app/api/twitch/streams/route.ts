@@ -27,6 +27,19 @@ interface TwitchStreamsResponse {
   };
 }
 
+interface FormattedTwitchStream {
+  id: string;
+  userId: string;
+  userLogin: string;
+  userName: string;
+  gameName: string;
+  title: string;
+  viewerCount: number;
+  startedAt: string;
+  thumbnailUrl: string;
+  type: string;
+}
+
 /**
  * Récupère les streams Twitch en cours pour une liste d'utilisateurs
  */
@@ -66,18 +79,17 @@ async function getTwitchAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * Récupère les streams Twitch en cours pour une liste de logins
- */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const logins = searchParams.get('user_logins')?.split(',') ?? [];
+async function fetchStreamsForLogins(logins: string[]): Promise<NextResponse> {
+  const normalizedLogins = Array.from(
+    new Set(
+      logins
+        .map((login) => String(login || '').trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
 
-  if (logins.length === 0) {
-    return NextResponse.json(
-      { error: 'No user logins provided' },
-      { status: 400 }
-    );
+  if (normalizedLogins.length === 0) {
+    return NextResponse.json({ streams: [] });
   }
 
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -101,11 +113,11 @@ export async function GET(request: Request) {
   try {
     // L'API Twitch permet jusqu'à 100 utilisateurs par requête, mais on utilise 99 pour être sûr
     const BATCH_SIZE = 99;
-    const allStreams: any[] = [];
+    const allStreams: FormattedTwitchStream[] = [];
     
     // Diviser les logins en batches de 99
-    for (let i = 0; i < logins.length; i += BATCH_SIZE) {
-      const batch = logins.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < normalizedLogins.length; i += BATCH_SIZE) {
+      const batch = normalizedLogins.slice(i, i + BATCH_SIZE);
       
       const params = batch
         .map((login) => `user_login=${encodeURIComponent(login.trim().toLowerCase())}`)
@@ -132,7 +144,7 @@ export async function GET(request: Request) {
 
       // Ajouter les streams trouvés
       if (data.data && data.data.length > 0) {
-        const formattedStreams = data.data.map((stream) => ({
+        const formattedStreams: FormattedTwitchStream[] = data.data.map((stream) => ({
           id: stream.id,
           userId: stream.user_id,
           userLogin: stream.user_login,
@@ -164,6 +176,36 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET - Compatibilité historique via query param user_logins
+ */
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const logins = searchParams
+    .get('user_logins')
+    ?.split(',')
+    .map((login) => login.trim())
+    .filter(Boolean) ?? [];
+
+  return fetchStreamsForLogins(logins);
+}
+
+/**
+ * POST - Recommandé pour les grandes listes (évite les URL trop longues)
+ */
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const logins = Array.isArray(body?.logins) ? body.logins : [];
+    return fetchStreamsForLogins(logins);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Invalid request body, expected { logins: string[] }' },
+      { status: 400 }
     );
   }
 }
