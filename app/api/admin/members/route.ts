@@ -447,6 +447,39 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     const message = extractErrorMessage(error);
+    const isDuplicateTwitchIdError =
+      message.toLowerCase().includes("twitch_id") &&
+      (message.toLowerCase().includes("duplicate key") ||
+        message.toLowerCase().includes("unique"));
+
+    if (isDuplicateTwitchIdError) {
+      const idFromErrorMatch = message.match(/\d{5,}/);
+      const incomingTwitchId = normalizeId(idFromErrorMatch?.[0]);
+      try {
+        const allMembers = await memberRepository.findAll(5000, 0);
+        const resolvedExisting = allMembers.find((m) => {
+          const existingId = normalizeId(m.twitchId);
+          return !!incomingTwitchId && !!existingId && incomingTwitchId === existingId;
+        });
+
+        if (resolvedExisting) {
+          return NextResponse.json(
+            {
+              error: `Cet ID Twitch est déjà lié à ${resolvedExisting.twitchLogin}${resolvedExisting.displayName ? ` (${resolvedExisting.displayName})` : ""}.`,
+            },
+            { status: 400 }
+          );
+        }
+      } catch {
+        // Fallback silencieux: on renvoie le message générique ci-dessous
+      }
+
+      return NextResponse.json(
+        { error: "Cet ID Twitch est déjà utilisé par un autre membre." },
+        { status: 400 }
+      );
+    }
+
     if (message.includes('member_role')) {
       return NextResponse.json(
         {

@@ -771,8 +771,33 @@ export default function GestionMembresPage() {
   }
 
   const newMembers = filteredMembers.filter((member) => member.role === "Nouveau");
-  const activeMembers = filteredMembers.filter((member) => member.statut === "Actif" && member.role !== "Nouveau");
-  const inactiveMembers = filteredMembers.filter((member) => member.statut === "Inactif" && member.role !== "Nouveau");
+  const isStaffRole = (role?: string): boolean => {
+    const staffRoles = new Set([
+      "Admin",
+      "Admin Coordinateur",
+      "Modérateur",
+      "Modérateur en formation",
+      "Modérateur en activité réduite",
+      "Modérateur en pause",
+      "Soutien TENF",
+      // Compat legacy
+      "Admin Adjoint",
+      "Mentor",
+      "Modérateur Junior",
+    ]);
+    return !!role && staffRoles.has(role);
+  };
+  const activeMembers = filteredMembers.filter(
+    (member) =>
+      (member.statut === "Actif" || isStaffRole(member.role)) &&
+      member.role !== "Nouveau"
+  );
+  const inactiveMembers = filteredMembers.filter(
+    (member) =>
+      member.statut === "Inactif" &&
+      !isStaffRole(member.role) &&
+      member.role !== "Nouveau"
+  );
   const displayedMembers = statusTab === "actifs" ? activeMembers : statusTab === "inactifs" ? inactiveMembers : newMembers;
   const tableColumnCount =
     viewMode === "complet"
