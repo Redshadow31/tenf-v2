@@ -56,6 +56,7 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/membres/badges", label: "Badges & rôles" },
           { href: "/admin/membres/vip", label: "VIP & reconnaissances" },
+          { href: "/admin/membres/spotlight", label: "Spotlight (mise en avant lives)" },
         ],
       },
       {
@@ -224,6 +225,7 @@ export const adminNavigationSimple: NavItem[] = [
     children: [
       { href: "/admin/membres", label: "Hub membres" },
       { href: "/admin/membres/gestion", label: "Liste & gestion" },
+      { href: "/admin/membres/spotlight", label: "Spotlight lives" },
       { href: "/admin/membres/postulations", label: "Postulations staff" },
     ],
   },

@@ -39,6 +39,13 @@ export default function MembresHubPage() {
       icon: "✅",
       color: "from-green-500 to-green-600",
     },
+    {
+      href: "/admin/membres/spotlight",
+      title: "Spotlight",
+      description: "Programmer la mise en avant d'un streamer sur la page Lives",
+      icon: "🌟",
+      color: "from-pink-500 to-purple-600",
+    },
   ];
 
   return (

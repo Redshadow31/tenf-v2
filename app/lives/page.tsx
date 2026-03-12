@@ -30,6 +30,15 @@ interface LiveMember {
   isVip: boolean;
 }
 
+interface SpotlightHighlight {
+  id: string;
+  streamerTwitchLogin: string;
+  streamerDisplayName: string;
+  startedAt: string;
+  endsAt?: string;
+  text: string;
+}
+
 const BIRTHDAY_HIGHLIGHT_LOGIN = "tabs_up";
 // Mise en avant ponctuelle (uniquement ce jour).
 const BIRTHDAY_HIGHLIGHT_DATE_PARIS = "2026-03-06";
@@ -42,6 +51,7 @@ export default function LivesPage() {
   const [mutedStreams, setMutedStreams] = useState<Set<string>>(new Set());
   const [hoveredStream, setHoveredStream] = useState<string | null>(null);
   const [availableGames, setAvailableGames] = useState<string[]>([]);
+  const [spotlightHighlight, setSpotlightHighlight] = useState<SpotlightHighlight | null>(null);
 
   const todayParis = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Paris",
@@ -68,6 +78,31 @@ export default function LivesPage() {
       clearTimeout(timeoutId);
     }
   };
+
+  useEffect(() => {
+    async function fetchSpotlightHighlight() {
+      try {
+        const response = await fetchWithTimeout(
+          "/api/spotlight/live",
+          { cache: "no-store", headers: { "Cache-Control": "no-cache" } },
+          8000
+        );
+        if (!response.ok) {
+          setSpotlightHighlight(null);
+          return;
+        }
+        const data = await response.json();
+        setSpotlightHighlight(data.spotlight || null);
+      } catch (error) {
+        console.warn("[Lives Page] Erreur récupération spotlight live:", error);
+        setSpotlightHighlight(null);
+      }
+    }
+
+    fetchSpotlightHighlight();
+    const interval = setInterval(fetchSpotlightHighlight, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     async function fetchLiveStreams() {
@@ -297,11 +332,17 @@ export default function LivesPage() {
       return live.game === activeFilter;
       });
 
-    if (!isBirthdayHighlightEnabled) {
+    if (!isBirthdayHighlightEnabled && !spotlightHighlight) {
       return filtered;
     }
 
+    const spotlightLogin = spotlightHighlight?.streamerTwitchLogin.toLowerCase();
+
     return [...filtered].sort((a, b) => {
+      const aSpotlight = !!spotlightLogin && a.twitchLogin.toLowerCase() === spotlightLogin;
+      const bSpotlight = !!spotlightLogin && b.twitchLogin.toLowerCase() === spotlightLogin;
+      if (aSpotlight !== bSpotlight) return aSpotlight ? -1 : 1;
+
       const aBirthday = a.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
       const bBirthday = b.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
       if (aBirthday === bBirthday) return 0;
@@ -369,6 +410,14 @@ export default function LivesPage() {
     );
   }
 
+  const spotlightIsLive = spotlightHighlight
+    ? liveMembers.some(
+        (live) =>
+          live.twitchLogin.toLowerCase() ===
+          spotlightHighlight.streamerTwitchLogin.toLowerCase()
+      )
+    : false;
+
   return (
     <div className="space-y-8">
       {/* Bandeau prochain événement */}
@@ -376,6 +425,30 @@ export default function LivesPage() {
       
       {/* Encart rappel ADN TENF */}
       <LivesFamilyNote />
+
+      {spotlightHighlight && (
+        <div
+          className="rounded-lg border p-4 space-y-2"
+          style={{
+            borderColor: "rgba(168, 85, 247, 0.6)",
+            background:
+              "linear-gradient(135deg, rgba(168, 85, 247, 0.20) 0%, rgba(88, 28, 135, 0.25) 100%)",
+          }}
+        >
+          <h2 className="text-sm font-semibold flex items-center gap-2 text-purple-100">
+            <span className="text-base">🌟</span>
+            Spotlight TENF: {spotlightHighlight.streamerDisplayName}
+          </h2>
+          <p className="text-xs leading-relaxed text-purple-100/90">
+            {spotlightHighlight.text}
+          </p>
+          <p className="text-xs text-purple-200/90">
+            {spotlightIsLive
+              ? "Le streamer est actuellement en live: profitez-en pour passer, discuter et soutenir."
+              : "Le créneau de mise en avant est actif. Dès que le live démarre, allez l'encourager."}
+          </p>
+        </div>
+      )}
       
       {/* Titre et bouton filtre jeu */}
       <div className="flex items-center justify-between">
@@ -431,6 +504,10 @@ export default function LivesPage() {
             const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
             const isBirthdayHighlight =
               isBirthdayHighlightEnabled && live.twitchLogin.toLowerCase() === BIRTHDAY_HIGHLIGHT_LOGIN;
+            const isSpotlightHighlight =
+              !!spotlightHighlight &&
+              live.twitchLogin.toLowerCase() ===
+                spotlightHighlight.streamerTwitchLogin.toLowerCase();
             
             return (
               <div
@@ -438,16 +515,32 @@ export default function LivesPage() {
                 className="card overflow-hidden transition-all duration-300 group"
                 style={{
                   backgroundColor: 'var(--color-card)',
-                  borderColor: isBirthdayHighlight ? '#f59e0b' : 'var(--color-border)',
-                  boxShadow: isBirthdayHighlight ? '0 0 0 1px rgba(245, 158, 11, 0.35), 0 0 20px rgba(245, 158, 11, 0.2)' : undefined,
+                  borderColor: isSpotlightHighlight
+                    ? '#a855f7'
+                    : isBirthdayHighlight
+                      ? '#f59e0b'
+                      : 'var(--color-border)',
+                  boxShadow: isSpotlightHighlight
+                    ? '0 0 0 1px rgba(168, 85, 247, 0.35), 0 0 24px rgba(168, 85, 247, 0.22)'
+                    : isBirthdayHighlight
+                      ? '0 0 0 1px rgba(245, 158, 11, 0.35), 0 0 20px rgba(245, 158, 11, 0.2)'
+                      : undefined,
                 }}
                 onMouseEnter={(e) => {
                   setHoveredStream(live.twitchLogin);
-                  e.currentTarget.style.borderColor = isBirthdayHighlight ? '#f59e0b' : 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = isSpotlightHighlight
+                    ? '#a855f7'
+                    : isBirthdayHighlight
+                      ? '#f59e0b'
+                      : 'var(--color-primary)';
                 }}
                 onMouseLeave={(e) => {
                   setHoveredStream(null);
-                  e.currentTarget.style.borderColor = isBirthdayHighlight ? '#f59e0b' : 'var(--color-border)';
+                  e.currentTarget.style.borderColor = isSpotlightHighlight
+                    ? '#a855f7'
+                    : isBirthdayHighlight
+                      ? '#f59e0b'
+                      : 'var(--color-border)';
                 }}
               >
                 {/* Thumbnail avec vidéo dynamique et zoom */}
@@ -515,6 +608,20 @@ export default function LivesPage() {
 
                 {/* Infos du streamer */}
                 <div className="p-4">
+                  {isSpotlightHighlight && (
+                    <div
+                      className="mb-3 rounded-lg border px-3 py-2"
+                      style={{
+                        borderColor: "rgba(168, 85, 247, 0.55)",
+                        backgroundColor: "rgba(168, 85, 247, 0.14)",
+                      }}
+                    >
+                      <p className="text-sm font-semibold text-purple-200">🌟 Mise en avant TENF</p>
+                      <p className="text-xs text-purple-100/90">
+                        Cette chaîne est mise en lumière par TENF: passe la soutenir avec ta présence.
+                      </p>
+                    </div>
+                  )}
                   {isBirthdayHighlight && (
                     <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
                       style={{ borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24' }}>
