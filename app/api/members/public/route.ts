@@ -26,6 +26,13 @@ function isUsableTwitchAvatar(url?: string): boolean {
   return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
 }
 
+function getSavedAvatarUrl(member: any): string | undefined {
+  const candidate = member?.twitchStatus?.profileImageUrl;
+  if (typeof candidate !== "string") return undefined;
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
  */
@@ -95,9 +102,12 @@ export async function GET() {
         const normalizedLogin = typeof member.twitchLogin === 'string'
           ? member.twitchLogin.toLowerCase()
           : '';
-        let avatar: string | undefined = normalizedLogin
-          ? avatarMap.get(normalizedLogin)
-          : undefined;
+        let avatar: string | undefined = getSavedAvatarUrl(member);
+        if (!avatar) {
+          avatar = normalizedLogin
+            ? avatarMap.get(normalizedLogin)
+            : undefined;
+        }
         
         // Si pas d'avatar Twitch, utiliser Discord en fallback
         if (!avatar && member.discordId) {

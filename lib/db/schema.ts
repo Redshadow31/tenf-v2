@@ -80,6 +80,10 @@ export const members = pgTable('members', {
     viewerCount?: number;
     title?: string;
     thumbnailUrl?: string;
+    profileImageUrl?: string;
+    profileImageSource?: 'twitch_api' | 'manual';
+    profileImageUpdatedAt?: string;
+    profileImageError?: string;
   }>(),
   
   // Informations personnalisées

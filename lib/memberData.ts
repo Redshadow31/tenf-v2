@@ -84,6 +84,11 @@ export interface MemberData {
     viewerCount?: number;
     title?: string;
     thumbnailUrl?: string;
+    // Avatar Twitch validé manuellement depuis l'admin (persisté en base)
+    profileImageUrl?: string;
+    profileImageSource?: "twitch_api" | "manual";
+    profileImageUpdatedAt?: string;
+    profileImageError?: string;
   };
   
   // Informations personnalisées (modifiables par les fondateurs)

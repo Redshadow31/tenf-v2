@@ -28,6 +28,13 @@ function isUsableTwitchAvatar(url?: string): boolean {
   return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
 }
 
+function getSavedAvatarUrl(member: any): string | undefined {
+  const candidate = member?.twitchStatus?.profileImageUrl;
+  if (typeof candidate !== "string") return undefined;
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T, label: string): Promise<T> {
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<T>((resolve) => {
@@ -291,7 +298,10 @@ export async function GET(request: NextRequest) {
     // Enrichir chaque membre avec son avatar
     const membersWithAvatars = members.map((m) => {
       const normalizedLogin = typeof m.twitchLogin === 'string' ? m.twitchLogin.toLowerCase() : '';
-      let avatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      let avatar = getSavedAvatarUrl(m);
+      if (!avatar) {
+        avatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      }
       if (!avatar && m.discordId) avatar = getDiscordDefaultAvatar(m.discordId);
       if (!avatar) {
         avatar = `https://placehold.co/64x64?text=${(m.displayName || m.twitchLogin || "?").charAt(0).toUpperCase()}`;

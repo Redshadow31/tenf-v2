@@ -205,6 +205,7 @@ export const adminNavigation: NavItem[] = [
       { href: "/admin/gestion-acces", label: "Accès administrateur" },
       { href: "/admin/gestion-acces/dashboard", label: "Paramètres / configuration" },
       { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
+      { href: "/admin/gestion-acces/images", label: "Gestion des images profils Twitch" },
       { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
       { href: "/admin/migration", label: "Migration des données" },
       { href: "/admin/follow/config", label: "Configuration staff follow" },
