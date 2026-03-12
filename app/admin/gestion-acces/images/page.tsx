@@ -125,7 +125,16 @@ export default function AdminImagesManagementPage() {
 
   return (
     <div className="min-h-screen bg-[#0f1116] text-white">
-      <AdminHeader />
+      <AdminHeader
+        title="Gestion des images profils Twitch"
+        navLinks={[
+          { href: "/admin/gestion-acces", label: "Accès Dashboard" },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres / configuration" },
+          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
+          { href: "/admin/gestion-acces/images", label: "Gestion des images", active: true },
+          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+        ]}
+      />
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
         <div className="rounded-xl border border-gray-700 bg-[#151924] p-4">
