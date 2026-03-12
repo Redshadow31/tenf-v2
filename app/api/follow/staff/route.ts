@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requirePermission } from '@/lib/adminAuth';
+import { requirePermission } from '@/lib/requireAdmin';
 import { loadFollowStaffList } from '@/lib/followStaffStorage';
 
 /**

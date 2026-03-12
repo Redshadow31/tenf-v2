@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePermission, requireAuth } from '@/lib/adminAuth';
+import { requirePermission, requireAuth } from '@/lib/requireAdmin';
 import { 
   getStaffFollowValidation, 
   getLastMonthWithData,
