@@ -202,23 +202,12 @@ export default function CalendrierLivesPage() {
                   <div className="text-xs font-semibold mb-1" style={{ color: "var(--color-text)" }}>
                     {cell.date.getDate()}
                   </div>
-                  <div className="space-y-1">
-                    {dayItems.slice(0, 3).map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded px-1.5 py-1 text-[10px] leading-tight"
-                        style={{ backgroundColor: "rgba(145,70,255,0.16)", color: "var(--color-text)" }}
-                        title={`${item.time} - ${item.displayName} - ${item.liveType}`}
-                      >
-                        <div className="font-semibold">{item.time}</div>
-                        <div className="truncate">{item.displayName}</div>
-                      </div>
-                    ))}
-                    {dayItems.length > 3 ? (
-                      <div className="text-[10px] px-1" style={{ color: "var(--color-text-secondary)" }}>
-                        +{dayItems.length - 3} autre(s)
-                      </div>
-                    ) : null}
+                  <div className="text-[11px] leading-snug px-1" style={{ color: "var(--color-text-secondary)" }}>
+                    {dayItems.length > 0
+                      ? `${dayItems.length} live${dayItems.length > 1 ? "s" : ""} prévu${
+                          dayItems.length > 1 ? "s" : ""
+                        } ce jour`
+                      : "Aucun live prévu"}
                   </div>
                 </button>
               );
