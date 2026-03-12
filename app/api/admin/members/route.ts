@@ -92,6 +92,22 @@ async function fetchAllSupabaseMembers(): Promise<any[]> {
   return allMembers;
 }
 
+function isMeaningfulMergeValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  return true;
+}
+
+function mergeMemberRecord(current: any, incoming: any): any {
+  const merged: any = { ...current };
+  for (const [key, value] of Object.entries(incoming || {})) {
+    if (isMeaningfulMergeValue(value) || !(key in merged)) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
 function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: any[]): any[] {
   const mergedByKey = new Map<string, any>();
   const keyByDiscordId = new Map<string, string>();
@@ -117,7 +133,8 @@ function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: an
     }
 
     const current = mergedByKey.get(key) || {};
-    const merged = { ...current, ...member };
+    // Évite d'écraser des identifiants valides (ex: discordId) par des valeurs vides.
+    const merged = mergeMemberRecord(current, member);
     mergedByKey.set(key, merged);
 
     if (discordId) keyByDiscordId.set(discordId, key);
