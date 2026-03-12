@@ -32,12 +32,53 @@ const AVATAR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
 const AVATAR_CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 heures en secondes (Redis)
 const avatarCache = new Map<string, CachedTwitchUser>();
 
+interface TwitchClientCredentials {
+  clientId: string;
+  clientSecret: string;
+  source: "legacy" | "app" | "mixed";
+}
+
 function fallbackAvatarUrl(login: string): string {
   return `https://unavatar.io/twitch/${encodeURIComponent(login.toLowerCase())}`;
 }
 
 function twitchAvatarCacheKey(login: string): string {
   return cacheKey('twitch', 'user', login.toLowerCase());
+}
+
+function resolveTwitchClientCredentials(): TwitchClientCredentials | null {
+  const legacyClientId = process.env.TWITCH_CLIENT_ID?.trim();
+  const legacyClientSecret = process.env.TWITCH_CLIENT_SECRET?.trim();
+  const appClientId = process.env.TWITCH_APP_CLIENT_ID?.trim();
+  const appClientSecret = process.env.TWITCH_APP_CLIENT_SECRET?.trim();
+
+  if (legacyClientId && legacyClientSecret) {
+    return {
+      clientId: legacyClientId,
+      clientSecret: legacyClientSecret,
+      source: "legacy",
+    };
+  }
+
+  if (appClientId && appClientSecret) {
+    return {
+      clientId: appClientId,
+      clientSecret: appClientSecret,
+      source: "app",
+    };
+  }
+
+  const mixedClientId = legacyClientId || appClientId;
+  const mixedClientSecret = legacyClientSecret || appClientSecret;
+  if (mixedClientId && mixedClientSecret) {
+    return {
+      clientId: mixedClientId,
+      clientSecret: mixedClientSecret,
+      source: "mixed",
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -121,12 +162,13 @@ function getCachedUsers(logins: string[]): {
 /**
  * Récupère un token d'accès Twitch via Client Credentials Flow
  */
-async function getTwitchAccessToken(): Promise<string | null> {
-  const clientId = process.env.TWITCH_CLIENT_ID;
-  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+async function getTwitchAccessToken(credentials?: TwitchClientCredentials): Promise<string | null> {
+  const resolvedCredentials = credentials || resolveTwitchClientCredentials();
 
-  if (!clientId || !clientSecret) {
-    console.error("Twitch API credentials not configured");
+  if (!resolvedCredentials) {
+    console.error(
+      "Twitch API credentials not configured (expected TWITCH_CLIENT_* or TWITCH_APP_*)"
+    );
     return null;
   }
 
@@ -137,8 +179,8 @@ async function getTwitchAccessToken(): Promise<string | null> {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: resolvedCredentials.clientId,
+        client_secret: resolvedCredentials.clientSecret,
         grant_type: "client_credentials",
       }),
     });
@@ -179,10 +221,9 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
     return redisCached;
   }
 
-  const clientId = process.env.TWITCH_CLIENT_ID;
-
-  if (!clientId) {
-    console.warn("TWITCH_CLIENT_ID not configured, returning mock data");
+  const credentials = resolveTwitchClientCredentials();
+  if (!credentials) {
+    console.warn("Twitch credentials not configured, returning mock data");
     return {
       id: `mock_${login}_${Date.now()}`,
       login: login.toLowerCase(),
@@ -190,9 +231,10 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
       profile_image_url: fallbackAvatarUrl(login),
     };
   }
+  const { clientId } = credentials;
 
   // Obtenir un token d'accès
-  const accessToken = await getTwitchAccessToken();
+  const accessToken = await getTwitchAccessToken(credentials);
 
   if (!accessToken) {
     console.warn("Could not get Twitch access token, returning mock data");
@@ -329,10 +371,9 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
     });
   }
 
-  const clientId = process.env.TWITCH_CLIENT_ID;
-
-  if (!clientId) {
-    console.warn("TWITCH_CLIENT_ID not configured, returning mock data");
+  const credentials = resolveTwitchClientCredentials();
+  if (!credentials) {
+    console.warn("Twitch credentials not configured, returning mock data");
     return logins.map((login) => {
       const cachedUser = cached.get(login.toLowerCase());
       if (cachedUser) return cachedUser;
@@ -344,8 +385,9 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
       };
     });
   }
+  const { clientId } = credentials;
 
-  const accessToken = await getTwitchAccessToken();
+  const accessToken = await getTwitchAccessToken(credentials);
 
   if (!accessToken) {
     console.warn("Could not get Twitch access token, returning mock data");
