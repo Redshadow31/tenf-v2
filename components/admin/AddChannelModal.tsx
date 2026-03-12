@@ -2,7 +2,20 @@
 
 import { useState } from "react";
 
-type MemberRole = "Nouveau" | "Affilié" | "Développement" | "Modérateur Junior" | "Mentor" | "Admin" | "Admin Adjoint" | "Créateur Junior" | "Communauté";
+type MemberRole =
+  | "Nouveau"
+  | "Affilié"
+  | "Développement"
+  | "Créateur Junior"
+  | "Communauté"
+  | "Modérateur en formation"
+  | "Modérateur"
+  | "Modérateur en activité réduite"
+  | "Modérateur en pause"
+  | "Soutien TENF"
+  | "Admin"
+  | "Admin Coordinateur"
+  | "Contributeur TENF du Mois";
 
 interface AddChannelModalProps {
   isOpen: boolean;
@@ -36,8 +49,8 @@ export default function AddChannelModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nom || !formData.twitch || !formData.discord) {
-      alert("Veuillez remplir tous les champs obligatoires (Nom, Twitch, Discord)");
+    if (!formData.nom || !formData.twitch) {
+      alert("Veuillez remplir les champs obligatoires (Nom, Twitch)");
       return;
     }
 
@@ -135,7 +148,7 @@ export default function AddChannelModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Pseudo Discord *
+              Pseudo Discord
             </label>
             <input
               type="text"
@@ -143,7 +156,6 @@ export default function AddChannelModal({
               onChange={(e) => setFormData({ ...formData, discord: e.target.value })}
               className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
               placeholder="Ex: ClaraStonewall ou @ClaraStonewall"
-              required
             />
           </div>
 
@@ -173,11 +185,15 @@ export default function AddChannelModal({
               <option value="Nouveau">Nouveau</option>
               <option value="Affilié">Affilié</option>
               <option value="Développement">Développement</option>
-              <option value="Modérateur Junior">Modérateur Junior</option>
-              <option value="Mentor">Mentor</option>
-              <option value="Admin">Admin</option>
-              <option value="Admin Adjoint">Admin Adjoint</option>
               <option value="Créateur Junior">Créateur Junior</option>
+              <option value="Communauté">Communauté</option>
+              <option value="Modérateur en formation">Modérateur en formation</option>
+              <option value="Modérateur">Modérateur</option>
+              <option value="Modérateur en activité réduite">Modérateur en activité réduite</option>
+              <option value="Modérateur en pause">Modérateur en pause</option>
+              <option value="Soutien TENF">Soutien TENF</option>
+              <option value="Admin">Admin</option>
+              <option value="Admin Coordinateur">Admin Coordinateur</option>
             </select>
           </div>
 

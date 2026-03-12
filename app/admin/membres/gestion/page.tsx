@@ -1309,8 +1309,8 @@ export default function GestionMembresPage() {
     twitch: string;
     avatar: string;
   }) => {
-    if (!currentAdmin?.isFounder) {
-      alert("Seuls les fondateurs peuvent ajouter des membres");
+    if (!currentAdmin?.isFounder && !hasAdvancedAccess) {
+      alert("Accès refusé : droits insuffisants pour ajouter un membre");
       return;
     }
 

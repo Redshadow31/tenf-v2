@@ -37,9 +37,26 @@ export async function GET() {
     const all = await spotlightRepository.findAll(200, 0);
     const now = new Date();
 
+    // Auto-clôturer les spotlights actifs dont la date de fin est dépassée.
+    const expiredActive = all.filter(
+      (spotlight) =>
+        spotlight.status === "active" &&
+        !!spotlight.endsAt &&
+        spotlight.endsAt.getTime() < now.getTime()
+    );
+    if (expiredActive.length > 0) {
+      await Promise.allSettled(
+        expiredActive.map((spotlight) =>
+          spotlightRepository.update(spotlight.id, { status: "completed" })
+        )
+      );
+    }
+
     const formatted = all.map((spotlight) => {
       const started = spotlight.startedAt <= now;
       const ended = spotlight.endsAt ? spotlight.endsAt < now : false;
+      const effectiveStatus =
+        spotlight.status === "active" && ended ? "completed" : spotlight.status;
 
       return {
         id: spotlight.id,
@@ -47,7 +64,7 @@ export async function GET() {
         streamerDisplayName: spotlight.streamerDisplayName,
         startedAt: spotlight.startedAt.toISOString(),
         endsAt: spotlight.endsAt?.toISOString(),
-        status: spotlight.status,
+        status: effectiveStatus,
         moderatorUsername: spotlight.moderatorUsername,
         createdAt: spotlight.createdAt.toISOString(),
         hasStarted: started,
