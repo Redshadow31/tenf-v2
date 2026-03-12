@@ -139,6 +139,52 @@ export default function ReconciliationMembresPage() {
 
     try {
       setSubmittingLogin(login);
+
+      const verifyAndOpenGestion = async (successPrefix: string) => {
+        let foundMember: any = null;
+
+        if (member.discordId) {
+          const byDiscord = await fetch(
+            `/api/admin/members?discordId=${encodeURIComponent(member.discordId)}`,
+            { cache: "no-store" }
+          );
+          if (byDiscord.ok) {
+            const payload = await byDiscord.json().catch(() => ({}));
+            foundMember = payload.member || null;
+          }
+        }
+
+        if (!foundMember) {
+          const byLogin = await fetch(
+            `/api/admin/members?twitchLogin=${encodeURIComponent(login)}`,
+            { cache: "no-store" }
+          );
+          if (byLogin.ok) {
+            const payload = await byLogin.json().catch(() => ({}));
+            foundMember = payload.member || null;
+          }
+        }
+
+        await loadData();
+
+        if (!foundMember) {
+          alert(
+            `${successPrefix}\n\n⚠️ La vérification automatique n'a pas retrouvé la fiche dans /api/admin/members.\nUtilise "Ouvrir gestion" puis recherche l'ID Discord.`
+          );
+          return;
+        }
+
+        const gestionSearch = String(
+          foundMember.discordId || member.discordId || foundMember.twitchLogin || login
+        );
+        alert(
+          `${successPrefix}\n\nFiche gestion détectée: ${foundMember.twitchLogin || login}${
+            foundMember.discordId ? ` (Discord ID: ${foundMember.discordId})` : ""
+          }`
+        );
+        window.location.href = `/admin/membres/gestion?search=${encodeURIComponent(gestionSearch)}`;
+      };
+
       const response = await fetch("/api/admin/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,18 +234,18 @@ export default function ReconciliationMembresPage() {
             );
           }
 
-          alert(
+          await verifyAndOpenGestion(
             `✅ ${member.displayName || login} existait déjà : la fiche a été fusionnée/synchronisée dans la gestion.`
           );
-          await loadData();
           return;
         }
 
         throw new Error(errorMessage);
       }
 
-      alert(`✅ ${member.displayName || login} a été ajouté à la gestion.`);
-      await loadData();
+      await verifyAndOpenGestion(
+        `✅ ${member.displayName || login} a été ajouté à la gestion.`
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Erreur inconnue lors de l'ajout";
