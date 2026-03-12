@@ -661,6 +661,8 @@ export default function GestionMembresPage() {
   
   if (searchQuery.trim().length > 0) {
     const normalizedQuery = normalize(searchQuery);
+    const rawQuery = searchQuery.trim();
+    const queryDigits = rawQuery.replace(/\D/g, "");
     
     filteredMembers = members.filter((member) => {
       // Recherche dans tous les champs avec normalisation
@@ -668,7 +670,15 @@ export default function GestionMembresPage() {
       const normalizedTwitch = normalize(member.twitch);
       const normalizedDiscord = normalize(member.discord);
       const normalizedSiteUsername = normalize(member.siteUsername);
-      const normalizedDiscordId = member.discordId || "";
+      const normalizedDiscordId = String(member.discordId || "").trim();
+      const discordIdDigits = normalizedDiscordId.replace(/\D/g, "");
+      const discordIdMatchesRaw =
+        normalizedDiscordId.length > 0 &&
+        normalizedDiscordId.toLowerCase().includes(rawQuery.toLowerCase());
+      const discordIdMatchesDigits =
+        queryDigits.length > 0 &&
+        discordIdDigits.length > 0 &&
+        discordIdDigits.includes(queryDigits);
       
       // Correspondance partielle insensible à la casse et aux accents
       return (
@@ -676,8 +686,9 @@ export default function GestionMembresPage() {
         normalizedTwitch.includes(normalizedQuery) ||
         normalizedDiscord.includes(normalizedQuery) ||
         normalizedSiteUsername.includes(normalizedQuery) ||
-        // Recherche exacte sur l'ID Discord (sans normalisation pour garder la précision)
-        (normalizedDiscordId && normalizedDiscordId.toLowerCase().includes(searchQuery.toLowerCase()))
+        // Recherche sur l'ID Discord: accepte aussi <@id>, espaces, etc.
+        discordIdMatchesRaw ||
+        discordIdMatchesDigits
       );
     });
   }
