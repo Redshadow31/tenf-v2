@@ -198,6 +198,10 @@ export class SpotlightRepository {
    */
   async create(spotlight: Partial<Spotlight>): Promise<Spotlight> {
     const spotlightRecord = this.mapToDbFormat(spotlight);
+    // Compatibilité legacy: certaines tables spotlights n'ont pas de DEFAULT sur id.
+    if (spotlightRecord.id === undefined || spotlightRecord.id === null) {
+      spotlightRecord.id = crypto.randomUUID();
+    }
 
     let response = await supabaseAdmin
       .from('spotlights')
