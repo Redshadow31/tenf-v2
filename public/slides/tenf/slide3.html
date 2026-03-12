@@ -1,582 +1,703 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
-<title>Twitch Entraide New Family - Le Staff</title>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
-<style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Poppins', sans-serif;
-            background-color: #0F0F1A;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        body {
-            transform-origin: center center;
-            width: 1280px;
-            height: 720px;
-            transform: scale(min(calc(100vw / 1280), calc(100vh / 720)) * 1.1);
-            flex-direction: column;
-            perspective: 1000px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le staff TENF</title>
 
-        /* Background Effects */
-        .bg-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-        .bg-glow-purple {
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #9146FF;
-            opacity: 0.1;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 8s ease-in-out infinite alternate;
-        }
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --panel: rgba(20, 20, 28, 0.82);
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --text-soft: rgba(255,255,255,0.76);
+      --text-muted: rgba(255,255,255,0.45);
 
-        .bg-glow-red {
-            position: absolute;
-            bottom: -100px;
-            left: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #CE1946;
-            opacity: 0.1;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 8s ease-in-out infinite alternate-reverse;
-        }
+      --violet: #9146ff;
+      --red: #ce1946;
+      --gold: #ffd166;
 
-        @keyframes breathe {
-            0% { opacity: 0.1; transform: scale(1); }
-            100% { opacity: 0.2; transform: scale(1.1); }
-        }
+      --shadow-lg: 0 16px 42px rgba(0,0,0,0.36);
+      --shadow-violet: 0 0 30px rgba(145,70,255,0.14);
+      --shadow-red: 0 0 26px rgba(206,25,70,0.08);
+    }
 
-        /* Rayons Lumineux */
-        .light-ray {
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.05);
-            width: 200px;
-            height: 1200px;
-            top: 50%;
-            left: 50%;
-            transform-origin: center;
-            filter: blur(60px);
-            z-index: 1;
-            pointer-events: none;
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        .ray-1 {
-            animation: ray-move 10s linear infinite;
-        }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Poppins", sans-serif;
+      background: #19191d;
+    }
 
-        .ray-2 {
-            animation: ray-move 12s linear infinite reverse;
-        }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        @keyframes ray-move {
-            0% { transform: translate(-50%, -50%) rotate(45deg) translate(-200px, -200px); opacity: 0; }
-            50% { opacity: 0.05; }
-            100% { transform: translate(-50%, -50%) rotate(45deg) translate(200px, 200px); opacity: 0; }
-        }
+    .viewport {
+      width: 1280px;
+      height: 720px;
+      position: relative;
+      overflow: hidden;
+      transform-origin: center center;
+      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      background:
+        radial-gradient(circle at 14% 20%, rgba(206,25,70,0.13), transparent 28%),
+        radial-gradient(circle at 82% 82%, rgba(145,70,255,0.15), transparent 26%),
+        linear-gradient(135deg, #0a0a0d 0%, #121320 44%, #0d0e12 100%);
+      color: var(--text);
+    }
 
-        /* Particles */
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.6;
-            z-index: 2;
-            animation: particle-float linear infinite;
-        }
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(255,255,255,0.20), transparent 88%);
+      z-index: 0;
+    }
 
-        @keyframes particle-float {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(10px, -15px); }
-            50% { transform: translate(-5px, -25px); }
-            75% { transform: translate(-15px, -10px); }
-            100% { transform: translate(0, 0); }
-        }
+    .glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+      animation: breathe 8s ease-in-out infinite alternate;
+    }
 
-        /* Stars */
-        .star {
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-            z-index: 1;
-            animation: twinkle 4s ease-in-out infinite;
-        }
+    .glow.red {
+      width: 400px;
+      height: 400px;
+      top: -120px;
+      left: -120px;
+      background: rgba(206,25,70,0.15);
+    }
 
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 5px white; }
-        }
+    .glow.violet {
+      width: 420px;
+      height: 420px;
+      right: -90px;
+      bottom: -120px;
+      background: rgba(145,70,255,0.16);
+      animation-delay: 1.2s;
+    }
 
-        /* Logo Styling */
-        .logo-container {
-            position: absolute;
-            top: 40px;
-            left: 60px;
-            width: 120px;
-            height: auto;
-            z-index: 20;
-            perspective: 1000px;
-            transform-style: preserve-3d;
-        }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.7;
+      z-index: 0;
+      animation: drift 9s ease-in-out infinite;
+    }
 
-        .logo-tenf {
-            width: 100%;
-            height: auto;
-            animation: 
-                spin3D 20s linear infinite,
-                float-logo 4s ease-in-out infinite alternate,
-                shadow-pulse-multi 4s ease-in-out infinite;
-        }
+    .p1 { top: 90px; left: 180px; width: 5px; height: 5px; background: var(--gold); }
+    .p2 { top: 150px; right: 210px; width: 4px; height: 4px; background: var(--violet); animation-delay: 1s; }
+    .p3 { top: 290px; left: 70px; width: 3px; height: 3px; background: #fff; animation-delay: 2s; }
+    .p4 { bottom: 150px; right: 180px; width: 6px; height: 6px; background: var(--red); animation-delay: .8s; }
+    .p5 { bottom: 120px; left: 240px; width: 4px; height: 4px; background: var(--gold); animation-delay: 1.5s; }
 
-        .logo-tenf:hover {
-            animation: shake 0.5s ease-in-out infinite;
-            cursor: pointer;
-        }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      z-index: 0;
+      opacity: 0.3;
+      animation: twinkle 3.4s ease-in-out infinite;
+    }
 
-        @keyframes spin3D {
-            from { transform: rotateY(0deg); }
-            to { transform: rotateY(360deg); }
-        }
+    .s1 { top: 72px; left: 360px; width: 2px; height: 2px; animation-delay: 0s; }
+    .s2 { top: 106px; right: 190px; width: 3px; height: 3px; animation-delay: 1s; }
+    .s3 { bottom: 94px; left: 240px; width: 2px; height: 2px; animation-delay: 1.7s; }
+    .s4 { bottom: 150px; right: 300px; width: 2px; height: 2px; animation-delay: 2.3s; }
 
-        @keyframes float-logo {
-            from { transform: translateY(0); }
-            to { transform: translateY(-10px); }
-        }
+    .topbar {
+      position: absolute;
+      top: 22px;
+      left: 28px;
+      right: 28px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-        @keyframes shadow-pulse-multi {
-            0% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }      /* Rouge */
-            33% { filter: drop-shadow(0 0 30px rgba(145, 70, 255, 0.6)); }    /* Violet */
-            66% { filter: drop-shadow(0 0 30px rgba(255, 107, 53, 0.6)); }    /* Orange */
-            100% { filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6)); }    /* Rouge */
-        }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px 10px 10px;
+      border-radius: 18px;
+      background: rgba(16,16,24,0.55);
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-lg);
+    }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
+    .brand img {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(206,25,70,0.24);
+      animation: logoPulse 4s ease-in-out infinite;
+    }
 
-        /* Content Container */
-        .content-wrapper {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 40px 60px;
-            box-sizing: border-box;
-        }
+    .brand-kicker {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
 
-        /* Typography */
-        h1 {
-            font-size: 72px;
-            font-weight: 900;
-            line-height: 1.1;
-            margin-bottom: 50px;
-            margin-left: 140px; /* Space for logo */
-            text-transform: uppercase;
-            position: relative;
-            display: inline-block;
-            animation: color-cycle 8s ease-in-out infinite;
-        }
+    .brand-name {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
 
-        h1:hover {
-            animation: glitch-text 0.4s cubic-bezier(.25, .46, .45, .94) both infinite;
-        }
+    .tag-pill {
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(145,70,255,0.12);
+      border: 1px solid rgba(145,70,255,0.28);
+      color: rgba(255,255,255,0.92);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: var(--shadow-violet);
+      animation: badgePulse 2.5s ease-in-out infinite;
+    }
 
-        @keyframes color-cycle {
-            0% { color: white; text-shadow: 0 0 20px rgba(145, 70, 255, 0.5); }
-            50% { color: #FFE5E5; text-shadow: 0 0 30px rgba(206, 25, 70, 0.7); }
-            100% { color: white; text-shadow: 0 0 20px rgba(145, 70, 255, 0.5); }
-        }
+    .content {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      padding: 90px 34px 44px;
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 18px;
+    }
 
-        @keyframes glitch-text {
-            0% { transform: translate(0); text-shadow: none; }
-            20% { transform: translate(-2px, 2px); text-shadow: 2px 0 #9146FF; }
-            40% { transform: translate(-2px, -2px); text-shadow: -2px 0 #FFD700; }
-            60% { transform: translate(2px, 2px); text-shadow: 2px 0 #CE1946; }
-            80% { transform: translate(2px, -2px); text-shadow: -2px 0 #4DEEEA; }
-            100% { transform: translate(0); text-shadow: none; }
-        }
+    .left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      padding-left: 4px;
+    }
 
-        /* Decorative Line Under Title */
-        .title-line {
-            width: 150px;
-            height: 4px;
-            background-color: #FFD700;
-            margin-left: 145px;
-            margin-top: -30px;
-            margin-bottom: 40px;
-            box-shadow: 0 0 15px #FFD700;
-            animation: breathe 3s ease-in-out infinite;
-        }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      animation: fadeUp .8s ease-out both;
+    }
 
-        /* Staff Cards Container */
-        .cards-container {
-            display: flex;
-            justify-content: center;
-            align-items: stretch;
-            gap: 40px;
-            flex: 1;
-            margin-bottom: 40px;
-            perspective: 1000px;
-        }
+    .eyebrow::before {
+      content: "";
+      width: 38px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--red), var(--violet));
+      box-shadow: 0 0 18px rgba(206,25,70,0.45);
+    }
 
-        /* Staff Card Styling */
-        .staff-card {
-            flex: 1;
-            background-color: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            border-radius: 16px;
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            animation: border-glow-cycle 6s ease-in-out infinite alternate;
-        }
+    .title {
+      margin: 0;
+      font-size: 52px;
+      line-height: 0.93;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      animation: fadeUp 1s ease-out both;
+    }
 
-        .card-1 { animation: slide-in-left 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both, border-glow-cycle 6s ease-in-out infinite alternate; }
-        .card-2 { animation: slide-in-up 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s both, border-glow-cycle 6s ease-in-out infinite alternate; }
-        .card-3 { animation: slide-in-right 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both, border-glow-cycle 6s ease-in-out infinite alternate; }
+    .title span {
+      display: block;
+    }
 
-        @keyframes slide-in-left {
-            0% { opacity: 0; transform: translateX(-100px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
+    .title .white {
+      color: #fff;
+      text-shadow: 0 0 22px rgba(255,255,255,0.08);
+    }
 
-        @keyframes slide-in-up {
-            0% { opacity: 0; transform: translateY(100px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
+    .title .gold {
+      color: var(--gold);
+      text-shadow: 0 0 20px rgba(255,209,102,0.20);
+    }
 
-        @keyframes slide-in-right {
-            0% { opacity: 0; transform: translateX(100px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
+    .title .violet {
+      color: var(--violet);
+      text-shadow: 0 0 24px rgba(145,70,255,0.24);
+    }
 
-        @keyframes border-glow-cycle {
-            0% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-            50% { border-color: rgba(145, 70, 255, 0.5); box-shadow: 0 10px 40px rgba(145, 70, 255, 0.3); }
-            100% { border-color: rgba(255, 215, 0, 0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        }
+    .intro {
+      margin-top: 16px;
+      max-width: 300px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-soft);
+      animation: fadeUp 1.15s ease-out both;
+    }
 
-        .staff-card:hover {
-            transform: scale(1.05) translateY(-10px);
-            background-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 50px rgba(145, 70, 255, 0.4);
-            border-color: #FFD700;
-            z-index: 10;
-        }
+    .intro strong {
+      color: #fff;
+    }
 
-        .staff-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background-color: #FFD700;
-            box-shadow: 0 0 15px #FFD700;
-            animation: width-pulse 3s ease-in-out infinite;
-        }
+    .mini-card {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+      animation: fadeUp 1.25s ease-out both;
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
 
-        @keyframes width-pulse {
-            0%, 100% { opacity: 0.7; }
-            50% { opacity: 1; box-shadow: 0 0 25px #FFD700; }
-        }
+    .mini-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(145,70,255,0.28);
+      box-shadow: 0 14px 28px rgba(145,70,255,0.16);
+    }
 
-        .card-icon-container {
-            width: 80px;
-            height: 80px;
-            background-color: rgba(255, 215, 0, 0.1);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 215, 0, 0.5);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-            transition: all 0.3s ease;
-        }
+    .mini-card-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+    }
 
-        .staff-card:hover .card-icon-container {
-            background-color: rgba(255, 215, 0, 0.2);
-            transform: scale(1.1) rotate(10deg);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
-        }
+    .mini-card-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-soft);
+    }
 
-        .card-icon {
-            font-size: 36px;
-            color: #FFD700;
-            animation: icon-bounce 3s ease-in-out infinite;
-        }
+    .mini-card-text strong {
+      color: #fff;
+    }
 
-        .icon-delay-1 { animation-delay: 0s; }
-        .icon-delay-2 { animation-delay: 1s; }
-        .icon-delay-3 { animation-delay: 2s; }
+    .right {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 14px;
+      min-width: 0;
+    }
 
-        @keyframes icon-bounce {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-10px) scale(1.1); }
-        }
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      animation: fadeScale 1s ease-out both;
+    }
 
-        .card-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #FFD700;
-            margin-bottom: 25px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-            text-align: center;
-            transition: all 0.3s ease;
-        }
+    .role-card {
+      position: relative;
+      min-height: 152px;
+      border-radius: 20px;
+      padding: 14px 16px 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg), var(--shadow-violet), var(--shadow-red);
+      overflow: hidden;
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
 
-        .staff-card:hover .card-title {
-            color: white;
-            text-shadow: 0 0 15px #FFD700;
-            transform: scale(1.05);
-        }
+    .role-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(145,70,255,0.30);
+      box-shadow: 0 20px 34px rgba(145,70,255,0.16), var(--shadow-lg);
+    }
 
-        .staff-list {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            align-items: center;
-        }
+    .role-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--gold), rgba(255,209,102,0.18));
+      box-shadow: 0 0 14px rgba(255,209,102,0.28);
+    }
 
-        .staff-member {
-            background-color: rgba(255, 255, 255, 0.05);
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 500;
-            font-size: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
+    .role-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      font-size: 18px;
+      font-weight: 900;
+      color: #fff;
+      background: linear-gradient(135deg, rgba(145,70,255,0.24), rgba(206,25,70,0.18));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 0 18px rgba(145,70,255,0.14);
+      animation: pulseIcon 3.2s ease-in-out infinite;
+    }
 
-        .staff-member::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            transition: 0.5s;
-        }
+    .role-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #fff;
+      letter-spacing: -0.01em;
+      word-break: break-word;
+    }
 
-        .staff-member:hover {
-            background-color: rgba(145, 70, 255, 0.2);
-            border-color: #9146FF;
-            transform: translateX(5px);
-            box-shadow: 0 0 15px rgba(145, 70, 255, 0.3);
-        }
+    .role-card p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text-soft);
+    }
 
-        .staff-member:hover::after {
-            left: 100%;
-        }
-        
-        .staff-role-badge {
-            font-size: 12px;
-            color: rgba(255,255,255,0.6);
-            display: block;
-            margin-top: 4px;
-            font-weight: 300;
-            transition: all 0.3s ease;
-        }
+    .story-card {
+      position: relative;
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg), var(--shadow-violet), var(--shadow-red);
+      padding: 16px 18px;
+      overflow: hidden;
+      animation: fadeScale 1.15s ease-out both;
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
 
-        .staff-member:hover .staff-role-badge {
-            color: #FFD700;
-        }
+    .story-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(145,70,255,0.28);
+      box-shadow: 0 18px 30px rgba(145,70,255,0.14), var(--shadow-lg);
+    }
 
-        /* Twitch Icon */
-        .twitch-icon-corner {
-            position: absolute;
-            bottom: 30px;
-            right: 40px;
-            font-size: 40px;
-            color: #9146FF;
-            text-shadow: 0 0 15px rgba(145, 70, 255, 0.8);
-            z-index: 20;
-            animation: bounce-subtle 3s ease-in-out infinite;
-        }
+    .story-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(145,70,255,0.08), transparent 38%),
+        linear-gradient(315deg, rgba(206,25,70,0.06), transparent 35%);
+      pointer-events: none;
+    }
 
-        @keyframes bounce-subtle {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
+    .story-card > * {
+      position: relative;
+      z-index: 1;
+    }
 
-        /* Footer Decorative Line */
-        .decorative-line {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: #333;
-            z-index: 5;
-        }
-        
-        .decorative-accent {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 4px;
-            background-color: #CE1946;
-            box-shadow: 0 0 15px #CE1946;
-            animation: width-pulse 3s ease-in-out infinite;
-        }
+    .story-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
 
-    </style>
+    .story-top h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #fff;
+    }
+
+    .story-pill {
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(206,25,70,0.12);
+      border: 1px solid rgba(206,25,70,0.24);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fff;
+      white-space: nowrap;
+      animation: badgePulse 2.6s ease-in-out infinite;
+    }
+
+    .story-text {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-soft);
+    }
+
+    .story-text strong {
+      color: #fff;
+    }
+
+    .story-text .accent {
+      color: #d9bcff;
+      font-weight: 700;
+    }
+
+    .footer {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      bottom: 10px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .footer-left,
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .footer-left span,
+    .footer-right span:last-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .line {
+      width: 34px;
+      height: 1px;
+      background: rgba(255,255,255,0.16);
+      flex-shrink: 0;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--violet);
+      box-shadow: 0 0 12px rgba(145,70,255,0.75);
+      flex-shrink: 0;
+      animation: twinkle 2.5s ease-in-out infinite;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeScale {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes drift {
+      0%, 100% {
+        transform: translate(0,0);
+        opacity: .55;
+      }
+      50% {
+        transform: translate(8px,-12px);
+        opacity: 1;
+      }
+    }
+
+    @keyframes breathe {
+      from { transform: scale(1); opacity: .85; }
+      to { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: .2; transform: scale(.85); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 18px rgba(206,25,70,0.18); }
+      50% { box-shadow: 0 0 28px rgba(206,25,70,0.35); }
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes pulseIcon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
-<!-- Background Elements -->
-<div class="bg-glow-purple"></div>
-<div class="bg-glow-red"></div>
-<div class="light-ray ray-1"></div>
-<div class="light-ray ray-2"></div>
-<!-- Particles (12+) -->
-<div class="particle" style="top: 15%; left: 10%; width: 3px; height: 3px; background-color: #FFD700; animation-duration: 8s;"></div>
-<div class="particle" style="top: 35%; left: 85%; width: 5px; height: 5px; background-color: #9146FF; animation-duration: 10s;"></div>
-<div class="particle" style="top: 75%; left: 20%; width: 4px; height: 4px; background-color: #CE1946; animation-duration: 7s;"></div>
-<div class="particle" style="top: 60%; left: 90%; width: 3px; height: 3px; background-color: #FFD700; animation-duration: 9s;"></div>
-<div class="particle" style="top: 25%; left: 60%; width: 2px; height: 2px; background-color: white; animation-duration: 6s;"></div>
-<div class="particle" style="top: 85%; left: 50%; width: 4px; height: 4px; background-color: #9146FF; animation-duration: 11s;"></div>
-<div class="particle" style="top: 10%; left: 40%; width: 3px; height: 3px; background-color: #CE1946; animation-duration: 8.5s;"></div>
-<div class="particle" style="top: 50%; left: 5%; width: 5px; height: 5px; background-color: #FFD700; animation-duration: 9.5s;"></div>
-<div class="particle" style="top: 90%; left: 95%; width: 3px; height: 3px; background-color: white; animation-duration: 7.5s;"></div>
-<div class="particle" style="top: 40%; left: 30%; width: 2px; height: 2px; background-color: #9146FF; animation-duration: 6.5s;"></div>
-<div class="particle" style="top: 5%; left: 70%; width: 4px; height: 4px; background-color: #CE1946; animation-duration: 8s;"></div>
-<div class="particle" style="top: 65%; left: 40%; width: 3px; height: 3px; background-color: #FFD700; animation-duration: 10.5s;"></div>
-<!-- Stars (6) -->
-<div class="star" style="top: 10%; left: 20%; width: 2px; height: 2px; animation-delay: 0s;"></div>
-<div class="star" style="top: 30%; left: 80%; width: 3px; height: 3px; animation-delay: 0.5s;"></div>
-<div class="star" style="top: 80%; left: 10%; width: 2px; height: 2px; animation-delay: 1s;"></div>
-<div class="star" style="top: 60%; left: 70%; width: 1px; height: 1px; animation-delay: 1.5s;"></div>
-<div class="star" style="top: 15%; left: 60%; width: 2px; height: 2px; animation-delay: 2s;"></div>
-<div class="star" style="top: 90%; left: 30%; width: 3px; height: 3px; animation-delay: 2.5s;"></div>
-<!-- Logo -->
-<div class="logo-container">
-<img alt="TENF Logo" class="logo-tenf" src="/Tenf.png"/>
-</div>
-<!-- Main Content -->
-<div class="content-wrapper">
-<!-- Title Section -->
-<div>
-<h1 class="title-gradient">LE STAFF</h1>
-<div class="title-line"></div>
-</div>
-<!-- Cards Section -->
-<div class="cards-container">
-<!-- Founders Card -->
-<div class="staff-card card-1">
-<div class="card-icon-container">
-<i class="fas fa-crown card-icon icon-delay-1"></i>
-</div>
-<div class="card-title">NOS FONDATEURS</div>
-<div class="staff-list">
-<div class="staff-member">
-<p>ClaraStoneWall</p>
-</div>
-<div class="staff-member">
-<p>Red_Shadow_31</p>
-</div>
-<div class="staff-member">
-<p>Nexou31</p>
-</div>
-</div>
-</div>
-<!-- Adjoints Card -->
-<div class="staff-card card-2">
-<div class="card-icon-container">
-<i class="fas fa-star card-icon icon-delay-2"></i>
-</div>
-<div class="card-title">NOS ADJOINTS</div>
-<div class="staff-list">
-<div class="staff-member">
-<p>Selena_akemi</p>
-</div>
-<div class="staff-member">
-<p>Nangel89</p>
-</div>
-<div class="staff-member">
-<p>Jenny31200</p>
-</div>
-<div class="staff-member">
-<p>Tab's_up</p>
-</div>
-</div>
-</div>
-<!-- Moderators Card -->
-<div class="staff-card card-3">
-<div class="card-icon-container">
-<i class="fas fa-shield-alt card-icon icon-delay-3"></i>
-</div>
-<div class="card-title">NOS MODÉRATEURS</div>
-<div class="staff-list">
-<div class="staff-member">
-<p>Modérateurs</p>
-<!-- "Expérimentés" text removed as requested -->
-</div>
-<div class="staff-member">
-<p>Mentors</p>
-<span class="staff-role-badge">Guides</span>
-</div>
-<div class="staff-member">
-<p>Modérateurs Junior</p>
-<span class="staff-role-badge">En formation</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Twitch Icon -->
-<div class="twitch-icon-corner">
-<i class="fab fa-twitch"></i>
-</div>
-<!-- Footer Decorative Line -->
-<div class="decorative-line"></div>
-<div class="decorative-accent"></div>
+  <div class="viewport">
+    <div class="grid-bg"></div>
+    <div class="glow red"></div>
+    <div class="glow violet"></div>
+
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <img src="/Tenf.png" alt="Logo TENF">
+        <div>
+          <span class="brand-kicker">Équipe & organisation</span>
+          <div class="brand-name">Twitch Entraide New Family</div>
+        </div>
+      </div>
+
+      <div class="tag-pill">Un staff accessible et structuré</div>
+    </header>
+
+    <main class="content">
+      <section class="left">
+        <div class="eyebrow">Le staff de la communauté</div>
+
+        <h1 class="title">
+          <span class="white">UNE ÉQUIPE</span>
+          <span class="gold">AU SERVICE</span>
+          <span class="violet">DE LA COMMUNAUTÉ</span>
+        </h1>
+
+        <p class="intro">
+          Derrière la New Family, il y a d’abord des <strong>personnes</strong> :
+          des humains qui donnent de leur temps, accompagnent les membres
+          et veillent à garder un cadre juste, cohérent et respectueux.
+        </p>
+
+        <div class="mini-card">
+          <div class="mini-card-title">Principe essentiel</div>
+          <div class="mini-card-text">
+            Le staff applique les règles à tous, <strong>y compris à lui-même</strong>.
+            La cohérence, l’équité et l’accessibilité font partie de l’esprit TENF.
+          </div>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="roles-grid">
+          <div class="role-card">
+            <div class="role-icon">01</div>
+            <h3>Admin fondateur</h3>
+            <p>Porte la vision du projet et veille à l’esprit New Family sur le long terme.</p>
+          </div>
+
+          <div class="role-card">
+            <div class="role-icon">02</div>
+            <h3>Admin coordinateur</h3>
+            <p>Assure la continuité du fonctionnement et la circulation fluide des informations.</p>
+          </div>
+
+          <div class="role-card">
+            <div class="role-icon">03</div>
+            <h3>Modérateur</h3>
+            <p>Accompagne les membres, fait respecter le cadre et intervient si nécessaire.</p>
+          </div>
+
+          <div class="role-card">
+            <div class="role-icon">04</div>
+            <h3>Modérateur en activité réduite</h3>
+            <p>Reste dans le staff avec une implication plus légère selon sa disponibilité.</p>
+          </div>
+
+          <div class="role-card">
+            <div class="role-icon">05</div>
+            <h3>Modérateur en formation</h3>
+            <p>Découvre progressivement les outils et les réflexes liés à la modération.</p>
+          </div>
+
+          <div class="role-card">
+            <div class="role-icon">06</div>
+            <h3>Modérateur en pause</h3>
+            <p>Prend du recul temporairement tout en gardant un lien avec l’équipe.</p>
+          </div>
+        </div>
+
+        <div class="story-card">
+          <div class="story-top">
+            <h2>Une organisation humaine, claire et évolutive</h2>
+            <div class="story-pill">Accessibilité & équité</div>
+          </div>
+
+          <div class="story-text">
+            La New Family repose sur <strong>trois Admin Fondateurs</strong> : Clara, Nexou et Red.
+            À leurs côtés, les <strong>Admin Coordinateurs</strong> soutiennent l’organisation quotidienne,
+            pendant que les <strong>modérateurs</strong> assurent l’accompagnement des membres et le respect du cadre.
+            Certains rôles évoluent selon les périodes de vie :
+            <span class="accent">activité réduite, formation ou pause</span>.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="line"></div>
+        <span>Fondateurs, coordinateurs et modérateurs avancent ensemble</span>
+      </div>
+
+      <div class="footer-right">
+        <span class="dot"></span>
+        <span>Une équipe engagée au service de la communauté</span>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>
