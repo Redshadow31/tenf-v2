@@ -42,19 +42,15 @@
     }
 
     body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
     }
 
-    /* wrapper de preview */
+    /* conteneur principal full viewport */
     .viewport {
-      width: 1280px;
-      height: 720px;
+      width: 100vw;
+      height: 100vh;
       position: relative;
       overflow: hidden;
-      transform-origin: center center;
-      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
       background:
         radial-gradient(circle at 18% 18%, rgba(145, 70, 255, 0.18), transparent 30%),
         radial-gradient(circle at 84% 78%, rgba(206, 25, 70, 0.16), transparent 28%),
