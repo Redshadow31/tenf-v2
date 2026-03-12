@@ -31,7 +31,14 @@ export const authOptions: NextAuthOptions = {
 
       if (!discordId) return true;
 
-      const existing = await memberRepository.findByDiscordId(discordId);
+      let existing = null;
+      try {
+        existing = await memberRepository.findByDiscordId(discordId);
+      } catch (error) {
+        // Ne pas bloquer l'auth Discord si la DB est temporairement indisponible.
+        console.warn("[NextAuth signIn] findByDiscordId failed, allow sign-in:", error);
+        return true;
+      }
       if (existing) return true;
 
       const placeholderLogin = `nouveau_${discordId}`;
@@ -58,8 +65,10 @@ export const authOptions: NextAuthOptions = {
         // Tolérance aux courses: si la fiche a été créée en parallèle, on continue.
         const lateExisting = await memberRepository.findByDiscordId(discordId);
         if (!lateExisting) {
-          console.error("[NextAuth signIn] auto-create member failed:", error);
-          return false;
+          // Fail-open: la connexion Discord ne doit pas échouer à cause de la création auto.
+          // La fiche membre pourra être créée/synchronisée plus tard par les flux admin.
+          console.warn("[NextAuth signIn] auto-create member failed, allow sign-in:", error);
+          return true;
         }
       }
 
