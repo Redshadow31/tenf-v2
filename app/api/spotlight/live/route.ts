@@ -9,11 +9,33 @@ export async function GET() {
   try {
     const all = await spotlightRepository.findAll(100, 0);
     const now = new Date();
+    const nowTs = now.getTime();
+    const timezoneToleranceMs = 2 * 60 * 60 * 1000; // Tolérance legacy (timestamp avec/sans timezone).
 
-    const current = all.find((spotlight) => {
+    const activeSpotlights = all
+      .filter((spotlight) => spotlight.status === "active" && !!spotlight.endsAt)
+      .sort(
+        (a, b) => b.startedAt.getTime() - a.startedAt.getTime()
+      );
+
+    const exactCurrent = activeSpotlights.find((spotlight) => {
       if (spotlight.status !== "active" || !spotlight.endsAt) return false;
       return spotlight.startedAt <= now && spotlight.endsAt >= now;
     });
+
+    const tolerantCurrent =
+      exactCurrent ||
+      activeSpotlights.find((spotlight) => {
+        if (!spotlight.endsAt) return false;
+        const startTs = spotlight.startedAt.getTime();
+        const endTs = spotlight.endsAt.getTime();
+        return (
+          nowTs >= startTs - timezoneToleranceMs &&
+          nowTs <= endTs + timezoneToleranceMs
+        );
+      });
+
+    const current = tolerantCurrent;
 
     if (!current) {
       return NextResponse.json({ spotlight: null });
