@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin, hasAdminDashboardAccess } from "@/lib/admin";
+import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { memberRepository, spotlightRepository } from "@/lib/repositories";
 
 function overlaps(
@@ -16,9 +16,9 @@ function overlaps(
  */
 export async function GET() {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
     const all = await spotlightRepository.findAll(200, 0);
@@ -61,9 +61,12 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    const admin = await requirePermission("write");
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Non authentifié ou permissions insuffisantes" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -146,9 +149,12 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    const admin = await requirePermission("write");
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Non authentifié ou permissions insuffisantes" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
