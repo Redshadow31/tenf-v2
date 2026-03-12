@@ -46,6 +46,13 @@ export default function MembresHubPage() {
       icon: "🌟",
       color: "from-pink-500 to-purple-600",
     },
+    {
+      href: "/admin/membres/reconciliation",
+      title: "Détection public → gestion",
+      description: "Trouver les membres visibles en public mais absents de la gestion",
+      icon: "🧭",
+      color: "from-cyan-500 to-blue-600",
+    },
   ];
 
   return (

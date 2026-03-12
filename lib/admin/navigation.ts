@@ -46,6 +46,7 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
           { href: "/admin/membres/validation-profil", label: "Validation des profils" },
           { href: "/admin/membres/synchronisation", label: "Synchronisation des données" },
+          { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
           { href: "/admin/membres/erreurs", label: "Incohérences & erreurs" },
           { href: "/admin/membres/historique", label: "Historique des modifications" },
         ],
@@ -225,6 +226,7 @@ export const adminNavigationSimple: NavItem[] = [
     children: [
       { href: "/admin/membres", label: "Hub membres" },
       { href: "/admin/membres/gestion", label: "Liste & gestion" },
+      { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
       { href: "/admin/membres/spotlight", label: "Spotlight lives" },
       { href: "/admin/membres/postulations", label: "Postulations staff" },
     ],
