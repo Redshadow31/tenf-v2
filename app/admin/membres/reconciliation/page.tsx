@@ -34,6 +34,18 @@ function normalizeId(value?: string | null): string {
   return String(value || "").trim();
 }
 
+function normalizeDiscordIdDigits(value?: string | null): string {
+  return normalizeId(value).replace(/\D/g, "");
+}
+
+function normalizeTwitchLogin(value?: string | null): string {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
 export default function ReconciliationMembresPage() {
   const [loading, setLoading] = useState(true);
   const [submittingLogin, setSubmittingLogin] = useState<string | null>(null);
@@ -89,19 +101,19 @@ export default function ReconciliationMembresPage() {
   const missingInAdmin = useMemo(() => {
     const adminLogins = new Set(
       adminMembers
-        .map((m) => normalizeText(m.twitchLogin))
+        .map((m) => normalizeTwitchLogin(m.twitchLogin))
         .filter((v) => v.length > 0)
     );
 
     const adminDiscordIds = new Set(
       adminMembers
-        .map((m) => normalizeId(m.discordId))
+        .map((m) => normalizeDiscordIdDigits(m.discordId))
         .filter((v) => v.length > 0)
     );
 
     return publicMembers.filter((member) => {
-      const login = normalizeText(member.twitchLogin);
-      const discordId = normalizeId(member.discordId);
+      const login = normalizeTwitchLogin(member.twitchLogin);
+      const discordId = normalizeDiscordIdDigits(member.discordId);
 
       if (login && adminLogins.has(login)) return false;
       if (discordId && adminDiscordIds.has(discordId)) return false;
@@ -131,7 +143,7 @@ export default function ReconciliationMembresPage() {
   }, [missingInAdmin, searchQuery]);
 
   async function handleAddToGestion(member: PublicMember) {
-    const login = normalizeText(member.twitchLogin);
+    const login = normalizeTwitchLogin(member.twitchLogin);
     if (!login) {
       alert("Impossible d'ajouter ce membre : login Twitch manquant.");
       return;
@@ -175,7 +187,10 @@ export default function ReconciliationMembresPage() {
         }
 
         const gestionSearch = String(
-          foundMember.discordId || member.discordId || foundMember.twitchLogin || login
+          normalizeId(foundMember.discordId) ||
+            normalizeId(member.discordId) ||
+            foundMember.twitchLogin ||
+            login
         );
         alert(
           `${successPrefix}\n\nFiche gestion détectée: ${foundMember.twitchLogin || login}${

@@ -374,6 +374,80 @@ export default function GestionMembresPage() {
     });
   }
 
+  function mapAdminMemberToUi(member: any, index: number): Member {
+    const avatar =
+      member.avatar ||
+      `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
+
+    return {
+      id: index + 1,
+      avatar,
+      nom: member.displayName || member.twitchLogin,
+      role: member.role || "Affilié",
+      statut: (member.isActive ? "Actif" : "Inactif") as MemberStatus,
+      discord: member.discordUsername || "",
+      discordId: member.discordId,
+      twitch: member.twitchLogin || "",
+      twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+      twitchId: member.twitchId,
+      siteUsername: member.siteUsername,
+      description: member.description,
+      customBio: member.customBio,
+      twitchStatus: member.twitchStatus,
+      badges: member.badges || [],
+      isVip: member.isVip || false,
+      shadowbanLives: member.shadowbanLives || false,
+      isModeratorJunior:
+        member.badges?.includes("Modérateur en formation") ||
+        member.badges?.includes("Modérateur Junior") ||
+        false,
+      isModeratorMentor:
+        member.badges?.includes("Modérateur") ||
+        member.badges?.includes("Modérateur Mentor") ||
+        false,
+      raidsDone: 0,
+      raidsReceived: 0,
+      createdAt: member.createdAt
+        ? typeof member.createdAt === "string"
+          ? member.createdAt
+          : new Date(member.createdAt).toISOString()
+        : undefined,
+      integrationDate: member.integrationDate
+        ? typeof member.integrationDate === "string"
+          ? member.integrationDate
+          : new Date(member.integrationDate).toISOString()
+        : undefined,
+      birthday: member.birthday
+        ? typeof member.birthday === "string"
+          ? member.birthday
+          : new Date(member.birthday).toISOString()
+        : undefined,
+      twitchAffiliateDate: member.twitchAffiliateDate
+        ? typeof member.twitchAffiliateDate === "string"
+          ? member.twitchAffiliateDate
+          : new Date(member.twitchAffiliateDate).toISOString()
+        : undefined,
+      onboardingStatus: member.onboardingStatus,
+      mentorTwitchLogin: member.mentorTwitchLogin,
+      primaryLanguage: member.primaryLanguage,
+      timezone: member.timezone,
+      countryCode: member.countryCode,
+      lastReviewAt: member.lastReviewAt
+        ? typeof member.lastReviewAt === "string"
+          ? member.lastReviewAt
+          : new Date(member.lastReviewAt).toISOString()
+        : undefined,
+      nextReviewAt: member.nextReviewAt
+        ? typeof member.nextReviewAt === "string"
+          ? member.nextReviewAt
+          : new Date(member.nextReviewAt).toISOString()
+        : undefined,
+      roleHistory: member.roleHistory || [],
+      parrain: member.parrain,
+      profileValidationStatus: member.profileValidationStatus,
+    };
+  }
+
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
     try {
@@ -399,47 +473,9 @@ export default function GestionMembresPage() {
           // L'API admin renvoie déjà les avatars Twitch pour tous les membres (y compris non validés)
           const allMembers = centralMembers;
           
-          const mappedMembers: Member[] = allMembers.map((member: any, index: number) => {
-            const avatar = member.avatar || `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin).charAt(0).toUpperCase()}`;
-            
-            return {
-              id: index + 1,
-              avatar,
-              nom: member.displayName || member.twitchLogin,
-              role: member.role || "Affilié",
-              statut: member.isActive ? "Actif" : "Inactif" as MemberStatus,
-              discord: member.discordUsername || "",
-              discordId: member.discordId,
-              twitch: member.twitchLogin || "",
-              twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
-              twitchId: member.twitchId, // Ajouter l'ID Twitch
-              siteUsername: member.siteUsername,
-              description: member.description,
-              customBio: member.customBio,
-              twitchStatus: member.twitchStatus,
-              badges: member.badges || [],
-              isVip: member.isVip || false,
-              shadowbanLives: member.shadowbanLives || false,
-              isModeratorJunior: member.badges?.includes("Modérateur en formation") || member.badges?.includes("Modérateur Junior") || false,
-              isModeratorMentor: member.badges?.includes("Modérateur") || member.badges?.includes("Modérateur Mentor") || false,
-              raidsDone: 0,
-              raidsReceived: 0,
-              createdAt: member.createdAt ? (typeof member.createdAt === 'string' ? member.createdAt : new Date(member.createdAt).toISOString()) : undefined,
-              integrationDate: member.integrationDate ? (typeof member.integrationDate === 'string' ? member.integrationDate : new Date(member.integrationDate).toISOString()) : undefined,
-              birthday: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : new Date(member.birthday).toISOString()) : undefined,
-              twitchAffiliateDate: member.twitchAffiliateDate ? (typeof member.twitchAffiliateDate === 'string' ? member.twitchAffiliateDate : new Date(member.twitchAffiliateDate).toISOString()) : undefined,
-              onboardingStatus: member.onboardingStatus,
-              mentorTwitchLogin: member.mentorTwitchLogin,
-              primaryLanguage: member.primaryLanguage,
-              timezone: member.timezone,
-              countryCode: member.countryCode,
-              lastReviewAt: member.lastReviewAt ? (typeof member.lastReviewAt === 'string' ? member.lastReviewAt : new Date(member.lastReviewAt).toISOString()) : undefined,
-              nextReviewAt: member.nextReviewAt ? (typeof member.nextReviewAt === 'string' ? member.nextReviewAt : new Date(member.nextReviewAt).toISOString()) : undefined,
-              roleHistory: member.roleHistory || [],
-              parrain: member.parrain,
-              profileValidationStatus: member.profileValidationStatus,
-            };
-          });
+          const mappedMembers: Member[] = allMembers.map((member: any, index: number) =>
+            mapAdminMemberToUi(member, index)
+          );
           
           setMembers(mappedMembers);
           setLoading(false);
@@ -466,6 +502,55 @@ export default function GestionMembresPage() {
       setLoading(false);
     }
   }
+
+  // Garde-fou: si recherche par ID Discord et membre absent du lot initial,
+  // on récupère explicitement la fiche via l'API détail puis on l'injecte.
+  useEffect(() => {
+    if (loading) return;
+    const raw = searchQuery.trim();
+    if (!raw) return;
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length < 10) return;
+
+    const alreadyInList = members.some(
+      (m) => String(m.discordId || "").replace(/\D/g, "") === digits
+    );
+    if (alreadyInList) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/members?discordId=${encodeURIComponent(digits)}`,
+          {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache" },
+          }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const fetchedMember = data?.member;
+        if (!fetchedMember || cancelled) return;
+
+        setMembers((prev) => {
+          const exists = prev.some(
+            (m) =>
+              String(m.discordId || "").replace(/\D/g, "") === digits ||
+              (m.twitch || "").toLowerCase() ===
+                String(fetchedMember.twitchLogin || "").toLowerCase()
+          );
+          if (exists) return prev;
+          return [...prev, mapAdminMemberToUi(fetchedMember, prev.length)];
+        });
+      } catch (err) {
+        console.warn("Recherche ciblée discordId échouée:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchQuery, loading, members]);
 
   // Charger les membres depuis le canal Discord #vos-chaînes-twitch (fallback)
   async function loadDiscordMembers() {
