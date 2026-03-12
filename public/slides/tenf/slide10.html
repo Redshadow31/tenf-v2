@@ -1,753 +1,1043 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
-<style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Poppins', sans-serif;
-            background-color: #0F0F1A;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        body {
-            transform-origin: center center;
-            width: 1280px;
-            height: 720px;
-            transform: scale(min(calc(100vw / 1280), calc(100vh / 720)) * 1.1);
-            flex-direction: column;
-            perspective: 1000px;
-        }
-
-        /* --- Background & Atmosphere --- */
-        .bg-layer-1 {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0F0F1A;
-            z-index: 0;
-        }
-
-        .bg-glow-purple {
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #9146FF;
-            opacity: 0.15;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 8s infinite alternate ease-in-out;
-        }
-
-        .bg-glow-orange {
-            position: absolute;
-            bottom: -100px;
-            left: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #FF6B35;
-            opacity: 0.1;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 10s infinite alternate-reverse ease-in-out;
-        }
-
-        @keyframes breathe {
-            0% { opacity: 0.1; transform: scale(1); }
-            100% { opacity: 0.2; transform: scale(1.1); }
-        }
-
-        /* Rayons Lumineux */
-        .light-ray {
-            position: absolute;
-            width: 200px;
-            height: 150%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-            transform: rotate(45deg);
-            z-index: 1;
-            pointer-events: none;
-        }
-        .ray-1 { top: -20%; left: -20%; animation: ray-move 12s infinite linear; }
-        .ray-2 { top: -20%; left: 30%; animation: ray-move 15s infinite linear reverse; }
-
-        @keyframes ray-move {
-            0% { transform: rotate(45deg) translateX(-200px); }
-            100% { transform: rotate(45deg) translateX(1280px); }
-        }
-
-        /* --- Logo Ultra-Vivant --- */
-        .logo-container {
-            position: absolute;
-            top: 30px;
-            left: 40px;
-            z-index: 50;
-            width: 120px;
-            height: 120px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            animation: logo-float 4s ease-in-out infinite;
-        }
-
-        .logo-tenf {
-            width: 100%;
-            height: auto;
-            filter: drop-shadow(0 0 20px rgba(206, 25, 70, 0.6));
-            animation: logo-spin-3d 20s linear infinite;
-            transform-style: preserve-3d;
-            transition: transform 0.3s;
-        }
-
-        .logo-container::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            z-index: -1;
-            animation: shadow-pulse-multi 4s infinite;
-        }
-
-        .logo-container:hover .logo-tenf {
-            animation: logo-shake 0.5s ease-in-out;
-        }
-
-        @keyframes logo-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        @keyframes logo-spin-3d {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(360deg); }
-        }
-
-        @keyframes shadow-pulse-multi {
-            0% { box-shadow: 0 0 30px rgba(206, 25, 70, 0.4); } /* Rouge */
-            33% { box-shadow: 0 0 40px rgba(145, 70, 255, 0.5); } /* Violet */
-            66% { box-shadow: 0 0 30px rgba(255, 107, 53, 0.4); } /* Orange */
-            100% { box-shadow: 0 0 30px rgba(206, 25, 70, 0.4); }
-        }
-
-        @keyframes logo-shake {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(-5deg); }
-            50% { transform: rotate(5deg); }
-            75% { transform: rotate(-5deg); }
-            100% { transform: rotate(0deg); }
-        }
-
-        /* --- Header & Typography --- */
-        .main-container {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 40px 60px;
-            box-sizing: border-box;
-        }
-
-        .header-section {
-            padding-left: 120px; /* Espace pour le logo */
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .header-title {
-            font-size: 64px;
-            font-weight: 900;
-            line-height: 1.1;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            color: white;
-            text-shadow: 0 0 25px rgba(145, 70, 255, 0.4);
-            animation: title-fade-in 1s ease-out;
-        }
-
-        .header-title:hover {
-            animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
-            color: #CE1946;
-        }
-
-        .title-highlight-purple {
-            color: #9146FF;
-            animation: color-cycle 8s infinite alternate;
-        }
-        
-        .title-highlight-orange {
-            color: #FF6B35;
-            animation: color-cycle 8s infinite alternate-reverse;
-        }
-
-        @keyframes color-cycle {
-            0% { filter: hue-rotate(0deg) brightness(1); }
-            50% { filter: hue-rotate(30deg) brightness(1.2); }
-            100% { filter: hue-rotate(0deg) brightness(1); }
-        }
-
-        @keyframes glitch-anim {
-            0% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-            100% { transform: translate(0); }
-        }
-
-        .header-subtitle {
-            font-size: 24px;
-            color: #E2E8F0;
-            font-weight: 300;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            opacity: 0;
-            animation: fade-in-up 0.8s ease-out 0.3s forwards;
-        }
-
-        .gold-line {
-            width: 150px;
-            height: 4px;
-            background-color: #FFD700;
-            margin-top: 15px;
-            border-radius: 2px;
-            box-shadow: 0 0 15px #FFD700;
-            animation: line-expand 1.5s ease-out forwards, breathe 3s infinite alternate;
-        }
-
-        @keyframes line-expand {
-            0% { width: 0; opacity: 0; }
-            100% { width: 150px; opacity: 1; }
-        }
-
-        /* --- Discord Interface Simulation --- */
-        .discord-container {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            margin-top: 10px;
-        }
-
-        .discord-interface {
-            width: 950px;
-            background-color: #36393f;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            transform: translateY(30px);
-            opacity: 0;
-            animation: slide-up-fade 1s ease-out 0.5s forwards;
-        }
-
-        @keyframes slide-up-fade {
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .discord-header {
-            background-color: #2f3136;
-            padding: 15px 25px;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid #202225;
-            animation: header-pulse 4s infinite alternate;
-        }
-
-        @keyframes header-pulse {
-            0% { box-shadow: inset 0 0 10px rgba(145, 70, 255, 0.1); }
-            100% { box-shadow: inset 0 0 20px rgba(255, 107, 53, 0.15); }
-        }
-
-        .channel-hash {
-            font-size: 28px;
-            color: #8e9297;
-            margin-right: 12px;
-            font-weight: 300;
-        }
-
-        .channel-name {
-            font-size: 20px;
-            color: white;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .discord-body {
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        .message-row {
-            display: flex;
-            gap: 20px;
-            opacity: 0;
-            transform: translateX(-20px);
-        }
-
-        .message-row:nth-child(1) {
-            animation: slide-in-left 0.6s ease-out 1s forwards;
-        }
-        .message-row:nth-child(2) {
-            animation: slide-in-left 0.6s ease-out 1.5s forwards;
-        }
-
-        @keyframes slide-in-left {
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            color: white;
-            flex-shrink: 0;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            transition: transform 0.3s;
-        }
-        .avatar:hover { transform: scale(1.1) rotate(5deg); }
-
-        .username {
-            font-weight: 600;
-            color: white;
-            font-size: 17px;
-        }
-        .username:hover { text-decoration: underline; cursor: pointer; }
-
-        .timestamp {
-            font-size: 13px;
-            color: #72767d;
-            margin-left: 8px;
-        }
-
-        .message-text {
-            color: #dcddde;
-            font-size: 17px;
-            line-height: 1.5;
-            margin-top: 4px;
-        }
-
-        .mention {
-            background-color: rgba(88, 101, 242, 0.3);
-            color: #dee0fc;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .mention:hover { background-color: rgba(88, 101, 242, 0.6); }
-
-        /* Embed Card Raid */
-        .embed-card {
-            background-color: #2f3136;
-            border-left: 5px solid #CE1946;
-            border-radius: 6px;
-            padding: 20px;
-            margin-top: 12px;
-            max-width: 600px;
-            position: relative;
-            background-color: rgba(47, 49, 54, 0.95);
-            animation: border-pulse-red 2s infinite alternate;
-        }
-
-        @keyframes border-pulse-red {
-            0% { box-shadow: -5px 0 10px rgba(206, 25, 70, 0.2); }
-            100% { box-shadow: -5px 0 20px rgba(206, 25, 70, 0.6); }
-        }
-
-        .embed-title {
-            color: white;
-            font-weight: 700;
-            font-size: 18px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .raid-status-badge {
-            background-color: rgba(46, 204, 113, 0.2);
-            color: #2ecc71;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            box-shadow: 0 0 10px rgba(46, 204, 113, 0.2);
-            animation: glow-pulse-green 2s infinite;
-        }
-
-        @keyframes glow-pulse-green {
-            0%, 100% { box-shadow: 0 0 5px rgba(46, 204, 113, 0.2); }
-            50% { box-shadow: 0 0 15px rgba(46, 204, 113, 0.6); }
-        }
-
-        .raid-flow {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin-bottom: 15px;
-        }
-
-        .user-pill {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 15px;
-            transition: transform 0.3s;
-        }
-        .user-pill:hover { transform: translateY(-3px); }
-
-        .user-pill.raider { color: #9146FF; border: 1px solid rgba(145, 70, 255, 0.3); box-shadow: 0 0 10px rgba(145, 70, 255, 0.1); }
-        .user-pill.target { color: #FF6B35; border: 1px solid rgba(255, 107, 53, 0.3); box-shadow: 0 0 10px rgba(255, 107, 53, 0.1); }
-
-        .flow-arrow {
-            color: #FFD700;
-            font-size: 24px;
-            animation: arrow-slide 1.5s infinite;
-        }
-
-        @keyframes arrow-slide {
-            0% { transform: translateX(-5px); opacity: 0.5; }
-            50% { transform: translateX(5px); opacity: 1; }
-            100% { transform: translateX(-5px); opacity: 0.5; }
-        }
-
-        .points-reward {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent);
-            padding: 12px 20px;
-            border-radius: 8px;
-            border-left: 3px solid #FFD700;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .points-reward::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            animation: shine-sweep 3s infinite;
-        }
-
-        @keyframes shine-sweep {
-            0% { left: -100%; }
-            20% { left: 200%; }
-            100% { left: 200%; }
-        }
-
-        .points-value {
-            color: #FFD700;
-            font-weight: 800;
-            font-size: 22px;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            animation: scale-pulse 2s infinite ease-in-out;
-        }
-
-        @keyframes scale-pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        /* Annotations & Badges */
-        .annotation {
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 12px 24px;
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            font-weight: 600;
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            z-index: 30;
-            opacity: 0;
-            transition: transform 0.3s, border-color 0.3s;
-        }
-
-        .annotation:hover {
-            transform: translateY(-5px);
-            border-color: #FFD700;
-        }
-
-        .annotation-1 { top: 20px; left: -40px; animation: fade-in-bounce 0.8s ease-out 2s forwards; }
-        .annotation-2 { bottom: 80px; right: -40px; animation: fade-in-bounce 0.8s ease-out 2.3s forwards; }
-
-        @keyframes fade-in-bounce {
-            0% { opacity: 0; transform: translateY(20px); }
-            60% { transform: translateY(-5px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .annotation-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: #FFD700;
-            box-shadow: 0 0 10px #FFD700;
-            animation: blink 2s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .badge-entraide {
-            position: absolute;
-            bottom: 40px;
-            right: 60px;
-            background: linear-gradient(135deg, #9146FF, #CE1946);
-            padding: 15px 35px;
-            border-radius: 50px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 10px 30px rgba(206, 25, 70, 0.5);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 40;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            animation: badge-pulse 3s infinite ease-in-out;
-            cursor: default;
-        }
-
-        @keyframes badge-pulse {
-            0% { transform: scale(1); box-shadow: 0 0 20px rgba(206, 25, 70, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(145, 70, 255, 0.6); }
-            100% { transform: scale(1); box-shadow: 0 0 20px rgba(206, 25, 70, 0.4); }
-        }
-
-        /* Floating Emojis */
-        .floating-emoji {
-            position: absolute;
-            font-size: 40px;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));
-            z-index: 25;
-            animation: float-emoji 6s ease-in-out infinite;
-        }
-
-        .emoji-1 { top: 30%; right: 15%; animation-delay: 0s; font-size: 50px; } /* Target */
-        .emoji-2 { bottom: 25%; left: 15%; animation-delay: 2s; font-size: 45px; } /* Fire */
-        .emoji-3 { top: 20%; left: 40%; animation-delay: 4s; font-size: 40px; } /* Lightning */
-
-        @keyframes float-emoji {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(10deg); }
-        }
-
-        /* Particles */
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            z-index: 2;
-            opacity: 0.7;
-            animation: particle-float linear infinite;
-        }
-
-        .p-gold { background-color: #FFD700; box-shadow: 0 0 8px #FFD700; }
-        .p-purple { background-color: #9146FF; box-shadow: 0 0 8px #9146FF; }
-        .p-orange { background-color: #FF6B35; box-shadow: 0 0 8px #FF6B35; }
-
-        @keyframes particle-float {
-            0% { transform: translateY(0) translateX(0); opacity: 0; }
-            10% { opacity: 0.8; }
-            90% { opacity: 0.8; }
-            100% { transform: translateY(-100px) translateX(30px); opacity: 0; }
-        }
-
-        /* Twinkle Stars */
-        .star {
-            position: absolute;
-            background-color: white;
-            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-            animation: twinkle 4s infinite ease-in-out;
-            z-index: 1;
-        }
-
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, height=720" />
+  <title>Slide 10 - Coordination raid</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#0f0f1a;
+      --panel:#1e1f22;
+      --panel-2:#2b2d31;
+      --panel-3:#313338;
+      --text:#f2f3f5;
+      --muted:#b5bac1;
+      --soft:#949ba4;
+
+      --discord:#5865f2;
+      --violet:#9146ff;
+      --red:#ce1946;
+      --gold:#ffd166;
+      --orange:#ff7a3d;
+      --green:#57f287;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:#111;
+      font-family:"Poppins",sans-serif;
+    }
+
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .viewport{
+      width:1280px;
+      height:720px;
+      position:relative;
+      overflow:hidden;
+      transform-origin:center center;
+      transform:scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      background:
+        radial-gradient(circle at 15% 15%, rgba(145,70,255,.16), transparent 28%),
+        radial-gradient(circle at 85% 85%, rgba(255,107,61,.14), transparent 26%),
+        linear-gradient(135deg, #09090c 0%, #11131f 44%, #0d0e12 100%);
+      color:white;
+    }
+
+    .grid-bg{
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+      background-size:44px 44px;
+      mask-image:linear-gradient(to bottom, rgba(255,255,255,.2), transparent 88%);
+      z-index:0;
+    }
+
+    .glow{
+      position:absolute;
+      border-radius:50%;
+      filter:blur(110px);
+      pointer-events:none;
+      z-index:0;
+      animation:breathe 8s ease-in-out infinite alternate;
+    }
+
+    .glow.violet{
+      width:420px;
+      height:420px;
+      top:-120px;
+      right:-80px;
+      background:rgba(145,70,255,.15);
+    }
+
+    .glow.orange{
+      width:400px;
+      height:400px;
+      left:-100px;
+      bottom:-100px;
+      background:rgba(255,107,61,.12);
+      animation-direction:alternate-reverse;
+    }
+
+    .light-ray{
+      position:absolute;
+      width:170px;
+      height:1200px;
+      background:rgba(255,255,255,.04);
+      filter:blur(60px);
+      transform:rotate(45deg);
+      z-index:0;
+      animation:rayMove 13s linear infinite;
+    }
+
+    .ray-1{ top:-260px; left:140px; }
+    .ray-2{ top:-330px; right:180px; animation-duration:15s; animation-direction:reverse; }
+
+    .particle{
+      position:absolute;
+      border-radius:50%;
+      opacity:.72;
+      z-index:0;
+      animation:drift 9s ease-in-out infinite;
+      box-shadow:0 0 8px currentColor;
+    }
+
+    .p1{top:90px;left:180px;width:5px;height:5px;color:var(--gold);background:currentColor}
+    .p2{top:150px;right:210px;width:4px;height:4px;color:var(--violet);background:currentColor;animation-delay:1s}
+    .p3{top:290px;left:70px;width:3px;height:3px;color:#fff;background:currentColor;animation-delay:2s}
+    .p4{bottom:150px;right:180px;width:6px;height:6px;color:var(--orange);background:currentColor;animation-delay:.8s}
+    .p5{bottom:120px;left:240px;width:4px;height:4px;color:var(--discord);background:currentColor;animation-delay:1.5s}
+
+    .star{
+      position:absolute;
+      background:#fff;
+      border-radius:50%;
+      z-index:0;
+      animation:twinkle 4s infinite ease-in-out;
+    }
+
+    .s1 { top: 14%; left: 12%; width: 2px; height: 2px; }
+    .s2 { top: 24%; right: 16%; width: 3px; height: 3px; animation-delay: .8s; }
+    .s3 { top: 72%; left: 8%; width: 2px; height: 2px; animation-delay: 1.5s; }
+    .s4 { top: 80%; right: 25%; width: 2px; height: 2px; animation-delay: 2.1s; }
+
+    .topbar{
+      position:absolute;
+      top:20px;
+      left:28px;
+      right:28px;
+      z-index:5;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 16px 10px 10px;
+      border-radius:18px;
+      background:rgba(16,16,24,.55);
+      border:1px solid rgba(255,255,255,.07);
+      backdrop-filter:blur(14px);
+      box-shadow:0 16px 36px rgba(0,0,0,.34);
+    }
+
+    .brand img{
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      object-fit:cover;
+      flex-shrink:0;
+      box-shadow:0 0 24px rgba(145,70,255,.24);
+      animation:floatLogo 4s ease-in-out infinite;
+    }
+
+    .brand-kicker{
+      display:block;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.45);
+      margin-bottom:2px;
+    }
+
+    .brand-name{
+      font-size:16px;
+      font-weight:700;
+      line-height:1.2;
+      color:#fff;
+    }
+
+    .tag-pill{
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(255,107,61,.12);
+      border:1px solid rgba(255,107,61,.25);
+      color:rgba(255,255,255,.92);
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+      box-shadow:0 0 24px rgba(255,107,61,.12);
+    }
+
+    .content{
+      position:relative;
+      z-index:3;
+      width:100%;
+      height:100%;
+      padding:84px 28px 34px;
+      display:grid;
+      grid-template-columns:300px 1fr;
+      gap:18px;
+    }
+
+    .left{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:0;
+      padding-left:2px;
+    }
+
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+      color:rgba(255,255,255,.78);
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
+
+    .eyebrow::before{
+      content:"";
+      width:36px;
+      height:2px;
+      border-radius:999px;
+      background:linear-gradient(90deg, var(--violet), var(--orange));
+      box-shadow:0 0 18px rgba(145,70,255,.45);
+    }
+
+    .title{
+      margin:0;
+      font-size:44px;
+      line-height:.93;
+      font-weight:900;
+      letter-spacing:-.04em;
+      text-transform:uppercase;
+      text-shadow:0 0 18px rgba(145,70,255,.18);
+    }
+
+    .title span{display:block}
+    .title .white{color:#fff}
+    .title .violet{color:var(--violet); text-shadow:0 0 22px rgba(145,70,255,.28)}
+    .title .orange{color:var(--orange); text-shadow:0 0 22px rgba(255,107,61,.24)}
+
+    .intro{
+      margin-top:14px;
+      max-width:284px;
+      font-size:13px;
+      line-height:1.58;
+      color:rgba(255,255,255,.78);
+    }
+
+    .intro strong{color:#fff}
+
+    .mini-card{
+      margin-top:16px;
+      padding:12px 14px;
+      border-radius:15px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 18px rgba(0,0,0,.16);
+    }
+
+    .mini-card-title{
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.45);
+      margin-bottom:6px;
+    }
+
+    .mini-card-text{
+      font-size:12px;
+      line-height:1.48;
+      color:rgba(255,255,255,.78);
+    }
+
+    .mini-card-text strong{color:#fff}
+
+    .right{
+      position:relative;
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .discord-demo-wrap{
+      position:relative;
+      width:930px;
+      height:530px;
+      animation:fadeUp .8s ease-out both;
+    }
+
+    .discord-frame{
+      position:absolute;
+      inset:0;
+      background:var(--panel);
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow:
+        0 20px 50px rgba(0,0,0,.55),
+        0 0 0 1px rgba(255,107,61,.20),
+        0 0 24px rgba(145,70,255,.10);
+      display:grid;
+      grid-template-columns:255px 1fr;
+    }
+
+    .sidebar{
+      background:#1b1d21;
+      border-right:1px solid #25272c;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    .server-head{
+      height:52px;
+      display:flex;
+      align-items:center;
+      padding:0 14px;
+      border-bottom:1px solid #25272c;
+      font-weight:700;
+      color:#fff;
+      gap:8px;
+      font-size:14px;
+      box-shadow:0 1px 0 rgba(0,0,0,.2);
+    }
+
+    .server-head .caret{
+      color:#b5bac1;
+      font-size:12px;
+    }
+
+    .channels{
+      padding:10px 10px 10px 8px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      color:#b5bac1;
+      font-size:13px;
+    }
+
+    .category-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:4px 6px;
+      color:#8e9297;
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+    }
+
+    .category-title .left-cat{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-width:0;
+    }
+
+    .category-title .plus{
+      opacity:.75;
+      font-size:12px;
+    }
+
+    .channel{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      border-radius:8px;
+      color:#b5bac1;
+      transition:.2s ease;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .channel .hash{
+      color:#8e9297;
+      font-size:18px;
+      line-height:1;
+      flex-shrink:0;
+    }
+
+    .channel:hover{
+      background:#2b2d31;
+      color:#f2f3f5;
+    }
+
+    .channel.selected{
+      background:#3a3d44;
+      color:#fff;
+      font-weight:700;
+    }
+
+    .channel.selected .hash{
+      color:#fff;
+    }
+
+    .main-chat{
+      display:grid;
+      grid-template-rows:52px 1fr;
+      min-width:0;
+    }
+
+    .discord-header{
+      background:var(--panel-2);
+      border-bottom:1px solid #222327;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:0 16px;
+      min-width:0;
+    }
+
+    .channel-hash{
+      color:#8e9297;
+      font-size:24px;
+      font-weight:300;
+      flex-shrink:0;
+    }
+
+    .channel-name{
+      color:#fff;
+      font-weight:700;
+      font-size:15px;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .channel-desc{
+      color:#b5bac1;
+      font-size:13px;
+      margin-left:8px;
+      border-left:1px solid #4f545c;
+      padding-left:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .discord-chat{
+      position:relative;
+      padding:18px 18px 16px;
+      background:var(--panel);
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      overflow:hidden;
+    }
+
+    .message-row{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      animation:slideLeft .6s ease-out both;
+    }
+
+    .message-row:nth-child(2){animation-delay:.12s}
+    .message-row:nth-child(3){animation-delay:.24s}
+    .message-row:nth-child(4){animation-delay:.36s}
+    .message-row:nth-child(5){animation-delay:.48s}
+    .message-row:nth-child(6){animation-delay:.60s}
+
+    .avatar-img{
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      flex-shrink:0;
+      object-fit:cover;
+      box-shadow:0 4px 10px rgba(0,0,0,.25);
+      background:#444;
+    }
+
+    .message-content{
+      flex:1;
+      min-width:0;
+    }
+
+    .username-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:4px;
+      flex-wrap:wrap;
+    }
+
+    .username{
+      font-weight:700;
+      color:#fff;
+      font-size:14px;
+    }
+
+    .tiny-badge{
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      font-size:10px;
+      padding:2px 5px;
+      border-radius:999px;
+      font-weight:700;
+      line-height:1;
+    }
+
+    .timestamp{
+      font-size:12px;
+      color:#949ba4;
+      font-weight:500;
+    }
+
+    .message-text{
+      color:#dcddde;
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .mention{
+      background-color:rgba(88, 101, 242, 0.3);
+      color:#dee0fc;
+      padding:2px 6px;
+      border-radius:4px;
+      font-weight:500;
+    }
+
+    .reactions{
+      margin-top:8px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .reaction{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-height:30px;
+      padding:4px 10px;
+      border-radius:8px;
+      background:#2b2d31;
+      border:1px solid rgba(255,255,255,.06);
+      color:#fff;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .reaction.valid{
+      background:rgba(87,242,135,.12);
+      border-color:rgba(87,242,135,.22);
+      color:#dfffea;
+      box-shadow:0 0 16px rgba(87,242,135,.08);
+      animation:validPulse 2s infinite ease-in-out;
+    }
+
+    .reaction .count{
+      color:#fff;
+      font-weight:700;
+    }
+
+    .daily-note{
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:10px;
+      background:rgba(255,107,61,.08);
+      border:1px solid rgba(255,107,61,.18);
+      font-size:13px;
+      line-height:1.45;
+      color:#f3f4f6;
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+    }
+
+    .daily-note i{
+      color:var(--gold);
+      margin-top:2px;
+      flex-shrink:0;
+    }
+
+    .annotation{
+      position:absolute;
+      background:rgba(0,0,0,.84);
+      border:1px solid rgba(145,70,255,.35);
+      padding:8px 14px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:600;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      box-shadow:0 8px 18px rgba(0,0,0,.35);
+      z-index:10;
+      backdrop-filter:blur(8px);
+      animation:fadeUp .6s ease-out forwards;
+      max-width:270px;
+    }
+
+    .annotation:hover{
+      transform:translateY(-4px);
+      border-color:var(--gold);
+      box-shadow:0 8px 22px rgba(255,209,102,.18);
+      transition:.25s ease;
+    }
+
+    .annotation-dot{
+      width:8px;
+      height:8px;
+      background:var(--gold);
+      border-radius:50%;
+      box-shadow:0 0 10px var(--gold);
+      flex-shrink:0;
+      animation:dotBounce 2s infinite ease-in-out;
+    }
+
+    .connector{
+      position:absolute;
+      background:rgba(255,255,255,.38);
+      z-index:9;
+      animation:fadeUp .6s ease-out forwards;
+    }
+
+    .big-badge{
+      position:absolute;
+      bottom:30px;
+      right:34px;
+      background:linear-gradient(135deg, #9146ff, #ff7a3d);
+      padding:14px 26px;
+      border-radius:999px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      box-shadow:0 12px 26px rgba(0,0,0,.32);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      z-index:10;
+      border:2px solid rgba(255,255,255,.24);
+      animation:badgePulse 3s infinite ease-in-out;
+      font-size:14px;
+    }
+
+    .big-badge i{
+      color:#fff;
+      font-size:18px;
+    }
+
+    .floating-emoji{
+      position:absolute;
+      font-size:30px;
+      z-index:9;
+      filter:drop-shadow(0 5px 10px rgba(0,0,0,.3));
+      animation:floatBounce 6s infinite ease-in-out;
+      pointer-events:none;
+    }
+
+    .e1{top:112px;right:30px}
+    .e2{bottom:108px;left:34px;animation-delay:1.4s}
+    .e3{top:70px;left:390px;animation-delay:2.3s}
+
+    .footer{
+      position:absolute;
+      left:30px;
+      right:30px;
+      bottom:8px;
+      z-index:4;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      font-size:10px;
+      color:rgba(255,255,255,.45);
+      font-weight:500;
+    }
+
+    .footer-left,.footer-right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+
+    .footer-left span,.footer-right span:last-child{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .line{
+      width:30px;
+      height:1px;
+      background:rgba(255,255,255,.16);
+      flex-shrink:0;
+    }
+
+    .dot{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 12px rgba(87,242,135,.75);
+      flex-shrink:0;
+    }
+
+    @keyframes breathe{
+      0%{opacity:.10;transform:scale(1)}
+      100%{opacity:.20;transform:scale(1.08)}
+    }
+
+    @keyframes rayMove{
+      0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0}
+      50%{opacity:.06}
+      100%{transform:rotate(45deg) translate(200px,200px);opacity:0}
+    }
+
+    @keyframes drift{
+      0%,100%{transform:translate(0,0);opacity:.55}
+      50%{transform:translate(8px,-12px);opacity:1}
+    }
+
+    @keyframes twinkle{
+      0%,100%{opacity:.2;transform:scale(.8)}
+      50%{opacity:1;transform:scale(1.2);box-shadow:0 0 5px white}
+    }
+
+    @keyframes floatLogo{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-8px)}
+    }
+
+    @keyframes slideLeft{
+      0%{opacity:0;transform:translateX(-18px)}
+      100%{opacity:1;transform:translateX(0)}
+    }
+
+    @keyframes fadeUp{
+      0%{opacity:0;transform:translateY(18px)}
+      100%{opacity:1;transform:translateY(0)}
+    }
+
+    @keyframes dotBounce{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-4px)}
+    }
+
+    @keyframes floatBounce{
+      0%,100%{transform:translateY(0) rotate(4deg)}
+      50%{transform:translateY(-10px) rotate(-4deg)}
+    }
+
+    @keyframes badgePulse{
+      0%{transform:scale(1)}
+      50%{transform:scale(1.05)}
+      100%{transform:scale(1)}
+    }
+
+    @keyframes validPulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(87,242,135,.18)}
+      50%{box-shadow:0 0 0 7px rgba(87,242,135,0)}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{
+        animation:none !important;
+        transition:none !important;
+      }
+    }
+  </style>
 </head>
 <body>
-<!-- Background Atmosphere -->
-<div class="bg-layer-1"></div>
-<div class="bg-glow-purple"></div>
-<div class="bg-glow-orange"></div>
-<!-- Rays -->
-<div class="light-ray ray-1"></div>
-<div class="light-ray ray-2"></div>
-<!-- Particles -->
-<div class="particle p-gold" style="top: 80%; left: 10%; width: 6px; height: 6px; animation-duration: 7s; animation-delay: 0s;"></div>
-<div class="particle p-purple" style="top: 60%; left: 85%; width: 8px; height: 8px; animation-duration: 9s; animation-delay: 1s;"></div>
-<div class="particle p-orange" style="top: 30%; right: 20%; width: 5px; height: 5px; animation-duration: 6s; animation-delay: 2s;"></div>
-<div class="particle p-gold" style="top: 40%; left: 20%; width: 4px; height: 4px; animation-duration: 8s; animation-delay: 3s;"></div>
-<div class="particle p-purple" style="top: 90%; right: 30%; width: 7px; height: 7px; animation-duration: 10s; animation-delay: 0.5s;"></div>
-<div class="particle p-orange" style="top: 20%; left: 50%; width: 5px; height: 5px; animation-duration: 7.5s; animation-delay: 1.5s;"></div>
-<!-- Stars -->
-<div class="star" style="top: 15%; left: 10%; width: 15px; height: 15px; animation-delay: 0s;"></div>
-<div class="star" style="bottom: 20%; right: 10%; width: 12px; height: 12px; animation-delay: 1s;"></div>
-<div class="star" style="top: 50%; left: 5%; width: 10px; height: 10px; animation-delay: 2s;"></div>
-<div class="star" style="top: 10%; right: 30%; width: 14px; height: 14px; animation-delay: 3s;"></div>
-<!-- Floating Emojis -->
-<div class="floating-emoji emoji-1">🎯</div>
-<div class="floating-emoji emoji-2">🔥</div>
-<div class="floating-emoji emoji-3">⚡</div>
-<!-- Logo -->
-<div class="logo-container">
-<img alt="TENF Logo" class="logo-tenf" src="/Tenf.png"/>
-</div>
-<!-- Main Container -->
-<div class="main-container">
-<!-- Header -->
-<div class="header-section">
-<h1 class="header-title">
-<i class="fas fa-bolt title-icon" style="color:#FFD700;"></i>
-<span class="title-highlight-purple">COORDINATION</span>
-<span class="title-highlight-orange">RAID</span>
-</h1>
-<div class="gold-line"></div>
-<div class="header-subtitle">
-<i class="fab fa-discord"></i> Salon Discord exclusif pour l'entraide
+  <div class="viewport">
+    <div class="grid-bg"></div>
+    <div class="glow violet"></div>
+    <div class="glow orange"></div>
+
+    <div class="light-ray ray-1"></div>
+    <div class="light-ray ray-2"></div>
+
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <img src="/Tenf.png" alt="Logo TENF">
+        <div>
+          <span class="brand-kicker">Déclaration & validation</span>
+          <div class="brand-name">Twitch Entraide New Family</div>
+        </div>
+      </div>
+
+      <div class="tag-pill">Raid validé = traité par le staff</div>
+    </header>
+
+    <main class="content">
+      <section class="left">
+        <div class="eyebrow">Coordination raid</div>
+
+        <h1 class="title">
+          <span class="white">DÉCLARER</span>
+          <span class="violet">UN RAID</span>
+          <span class="orange">ET LE FAIRE VALIDER</span>
+        </h1>
+
+        <p class="intro">
+          Dans le salon <strong>⚡・coordination-raid</strong>, les membres déclarent les raids réalisés
+          entre créateurs du serveur. Une fois le message vu et traité,
+          le staff ajoute une <strong>réaction ✅</strong> pour signaler que le raid a bien été validé.
+        </p>
+
+        <div class="mini-card">
+          <div class="mini-card-title">À expliquer à l’oral</div>
+          <div class="mini-card-text">
+            Ici, la coche verte <strong>n’est pas un bot</strong>.
+            Elle signifie simplement que le raid a été <strong>pris en compte par l’équipe</strong>
+            et qu’il peut être valorisé dans le système d’entraide.
+          </div>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="discord-demo-wrap">
+          <div class="floating-emoji e1">⚡</div>
+          <div class="floating-emoji e2">✅</div>
+          <div class="floating-emoji e3">🔥</div>
+
+          <div class="discord-frame">
+            <aside class="sidebar">
+              <div class="server-head">
+                <span>Twitch Entraide New Family</span>
+                <i class="fas fa-chevron-down caret"></i>
+              </div>
+
+              <div class="channels">
+                <div class="category-title">
+                  <div class="left-cat">
+                    <span>▾</span>
+                    <span>Gestion des raids</span>
+                  </div>
+                  <span class="plus">＋</span>
+                </div>
+
+                <div class="channel">
+                  <span class="hash">#</span>
+                  <span>🔐・raid-points-staff</span>
+                </div>
+
+                <div class="channel selected">
+                  <span class="hash">#</span>
+                  <span>⚡・coordination-raid</span>
+                </div>
+
+                <div class="channel">
+                  <span class="hash">#</span>
+                  <span>💭・zone-merci-raid</span>
+                </div>
+
+                <div class="category-title" style="margin-top:10px;">
+                  <div class="left-cat">
+                    <span>▾</span>
+                    <span>Espace discussion</span>
+                  </div>
+                  <span class="plus">＋</span>
+                </div>
+
+                <div class="channel">
+                  <span class="hash">#</span>
+                  <span>🗣️・discussion-générale</span>
+                </div>
+
+                <div class="channel">
+                  <span class="hash">#</span>
+                  <span>📸・vos-médias</span>
+                </div>
+              </div>
+            </aside>
+
+            <div class="main-chat">
+              <div class="discord-header">
+                <span class="channel-hash">#</span>
+                <span class="channel-name">⚡・coordination-raid</span>
+                <span class="channel-desc">Déclare ici les raids réalisés entre membres du serveur</span>
+              </div>
+
+              <div class="discord-chat">
+                <div class="message-row">
+                  <img class="avatar-img" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Crucifery7417" alt="Avatar Crucifery 7417">
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username">Crucifery 7417</span>
+                      <span class="timestamp">13:13</span>
+                    </div>
+                    <div class="message-text">
+                      <span class="mention">@Crucifery 7417</span> à raid <span class="mention">@Thony1384</span>
+                    </div>
+                    <div class="reactions">
+                      <div class="reaction valid">✅ <span class="count">1</span></div>
+                      <div class="reaction">☺️</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="message-row">
+                  <img class="avatar-img" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Thony1384" alt="Avatar Thony1384">
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username" style="color:#f1c232;">Thony1384</span>
+                      <span class="tiny-badge">💜 TENF</span>
+                      <span class="timestamp">13:14</span>
+                    </div>
+                    <div class="message-text">
+                      <span class="mention">@Thony1384</span> a raid <span class="mention">@Undiaa</span>
+                    </div>
+                    <div class="reactions">
+                      <div class="reaction valid">✅ <span class="count">1</span></div>
+                      <div class="reaction">☺️</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="message-row">
+                  <img class="avatar-img" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Wolfgaming" alt="Avatar Wolfgaming">
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username" style="color:#a8c1ff;">Wolfgaming</span>
+                      <span class="tiny-badge">💜 TENF</span>
+                      <span class="timestamp">13:14</span>
+                    </div>
+                    <div class="message-text">
+                      <span class="mention">@Wolfgaming</span> a raid <span class="mention">@Undiaa</span>
+                    </div>
+                    <div class="reactions">
+                      <div class="reaction valid">✅ <span class="count">1</span></div>
+                      <div class="reaction">☺️</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="message-row">
+                  <img class="avatar-img" src="https://api.dicebear.com/9.x/avataaars/svg?seed=tekila" alt="Avatar tekila">
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username">tekila</span>
+                      <span class="timestamp">13:59</span>
+                    </div>
+                    <div class="message-text">
+                      <span class="mention">@tekila</span> a raid <span class="mention">@Antho62221</span>
+                    </div>
+                    <div class="reactions">
+                      <div class="reaction valid">✅ <span class="count">1</span></div>
+                      <div class="reaction">☺️</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="message-row">
+                  <img class="avatar-img" src="https://api.dicebear.com/9.x/avataaars/svg?seed=zx_ced" alt="Avatar zx_ced">
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username">zx_ced</span>
+                      <span class="tiny-badge">💜 TENF</span>
+                      <span class="timestamp">14:24</span>
+                    </div>
+                    <div class="message-text">
+                      <span class="mention">@zx_ced</span> a raid <span class="mention">@Undiaa</span>
+                    </div>
+                    <div class="reactions">
+                      <div class="reaction valid">✅ <span class="count">1</span></div>
+                      <div class="reaction">☺️</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="daily-note">
+                  <i class="fas fa-circle-check"></i>
+                  <div>
+                    La réaction <strong>✅</strong> indique que le message a bien été traité et validé.
+                    C’est ce repère visuel qui permet de savoir qu’un raid a été pris en compte par l’équipe.
+                  </div>
+                </div>
+              </div>
             </div>
-</div>
-<!-- Discord Interface -->
-<div class="discord-container">
-<!-- Annotation 1 -->
-<div class="annotation annotation-1">
-<div class="annotation-dot"></div>
-<p>Raids entre membres</p>
-</div>
-<!-- Annotation 2 -->
-<div class="annotation annotation-2">
-<div class="annotation-dot"></div>
-<p>+500 points par raid validé</p>
-</div>
-<div class="discord-interface">
-<!-- Discord Header -->
-<div class="discord-header">
-<span class="channel-hash">#</span>
-<span class="channel-name">⚡・coordination-raid</span>
-</div>
-<!-- Discord Body -->
-<div class="discord-body">
-<!-- User Message -->
-<div class="message-row">
-<div class="avatar" style="background-color: #FAA61A;">
-<i class="fas fa-user"></i>
-</div>
-<div class="message-content">
-<div class="username-row">
-<span class="username">StreamerPro</span>
-<span class="timestamp">Aujourd'hui à 21:30</span>
-</div>
-<p class="message-text">
-<span class="mention">@NoviceGamer</span> a raid <span class="mention">@ArtStream</span>
-</p>
-</div>
-</div>
-<!-- Bot Response (DraftBot) -->
-<div class="message-row">
-<div class="avatar" style="background-color: #5865F2;">
-<i class="fas fa-robot"></i>
-</div>
-<div class="message-content">
-<div class="username-row">
-<span class="username">DraftBot</span>
-<span class="bot-tag">BOT</span>
-<span class="timestamp">Aujourd'hui à 21:30</span>
-</div>
-<!-- Embed Card -->
-<div class="embed-card">
-<div class="embed-title">
-<i class="fas fa-check-circle" style="color: #2ecc71;"></i>
-                                    RAID VALIDÉ
-                                    <span class="raid-status-badge">SUCCÈS</span>
-</div>
-<div class="raid-flow">
-<div class="user-pill raider">
-<i class="fas fa-gamepad"></i> NoviceGamer
-                                    </div>
-<i class="fas fa-arrow-right flow-arrow"></i>
-<div class="user-pill target">
-<i class="fas fa-video"></i> ArtStream
-                                    </div>
-</div>
-<div class="points-reward">
-<i class="fas fa-fire" style="color: #FFD700; font-size: 24px; animation: bounce 1s infinite;"></i>
-<p style="color: #dcddde; font-size: 15px; margin: 0;">Récompense attribuée :</p>
-<span class="points-value">+500 Points</span>
-</div>
-<p style="color: #b9bbbe; font-size: 13px; margin-top: 15px; font-style: italic;">
-                                    Merci de faire vivre l'entraide au sein de la New Family ! 💜
-                                </p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Badge -->
-<div class="badge-entraide">
-<i class="fas fa-hands-helping" style="font-size: 28px; color: white;"></i>
-<span style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Entraide Active</span>
-</div>
-</div>
+          </div>
+
+          <div class="annotation" style="top:122px; left:-16px; animation-delay:1s;">
+            <div class="annotation-dot"></div>
+            <span>Déclarer son raid dans <strong>⚡ coordination-raid</strong></span>
+          </div>
+          <div class="connector" style="top:146px; left:176px; width:86px; height:1px; animation-delay:1s;"></div>
+
+          <div class="annotation" style="right:-12px; top:248px; animation-delay:1.2s;">
+            <div class="annotation-dot"></div>
+            <span>La réaction <strong>✅</strong> signifie que le raid a été validé</span>
+          </div>
+          <div class="connector" style="top:274px; right:210px; width:96px; height:1px; animation-delay:1.2s;"></div>
+
+          <div class="big-badge">
+            <i class="fas fa-hands-helping"></i>
+            <span>Entraide active</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="line"></div>
+        <span>Un raid déclaré puis validé devient visible dans la coordination</span>
+      </div>
+
+      <div class="footer-right">
+        <span class="dot"></span>
+        <span>✅ = message traité et pris en compte par le staff</span>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>
