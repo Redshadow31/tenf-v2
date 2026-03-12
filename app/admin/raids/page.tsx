@@ -170,7 +170,7 @@ export default function RaidsPage() {
       }
       
       // Charger les membres pour avoir les noms d'affichage
-      const membersResponse = await fetch("/api/members/public", {
+      const membersResponse = await fetch("/api/admin/members", {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',

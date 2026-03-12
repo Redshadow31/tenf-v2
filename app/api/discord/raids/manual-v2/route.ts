@@ -9,6 +9,21 @@ import {
 } from '@/lib/raidStorage';
 import { memberRepository } from '@/lib/repositories';
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForManualRaidsV2() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * POST - Ajoute un raid manuellement
  * Body: { month: string, raider: string, target: string, date: string }
@@ -44,7 +59,7 @@ export async function POST(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForManualRaidsV2();
     let raiderId = raider;
     let targetId = target;
     const raiderMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === raider.toLowerCase() || m.discordId === raider);
@@ -103,7 +118,7 @@ export async function PUT(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForManualRaidsV2();
     let oldRaiderId = oldRaider;
     let oldTargetId = oldTarget;
     let newRaiderId = newRaider;
@@ -200,7 +215,7 @@ export async function DELETE(request: NextRequest) {
       monthKey = getCurrentMonthKey();
     }
 
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForManualRaidsV2();
     let raiderId = raider;
     let targetId = target;
     const raiderMember = allMembers.find(m => m.twitchLogin?.toLowerCase() === raider.toLowerCase() || m.discordId === raider);

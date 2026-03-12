@@ -1,594 +1,737 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
-<style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Poppins', sans-serif;
-            background-color: #0F0F1A;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        body {
-            transform-origin: center center;
-            width: 1280px;
-            height: 720px;
-            transform: scale(min(calc(100vw / 1280), calc(100vh / 720)) * 1.1);
-            flex-direction: column;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, height=720" />
+  <title>Slide 12 - Comment progresser naturellement</title>
 
-        /* Animations */
-        @keyframes spin3D {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(360deg); }
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
+  <style>
+    :root{
+      --bg:#0f0f1a;
+      --panel:rgba(20,20,28,.82);
+      --border:rgba(255,255,255,.08);
+      --text:#ffffff;
+      --text-soft:rgba(255,255,255,.76);
+      --text-muted:rgba(255,255,255,.45);
 
-        @keyframes float-large {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-        }
+      --green:#10b981;
+      --blue:#3b82f6;
+      --gold:#ffd166;
+      --violet:#9146ff;
 
-        @keyframes float-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
+      --shadow-lg:0 16px 40px rgba(0,0,0,.34);
+      --shadow-green:0 0 28px rgba(16,185,129,.14);
+      --shadow-blue:0 0 28px rgba(59,130,246,.14);
+      --shadow-gold:0 0 22px rgba(255,209,102,.12);
+    }
 
-        @keyframes shadow-pulse-multi {
-            0% { filter: drop-shadow(0 0 15px rgba(206, 25, 70, 0.6)); }
-            33% { filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.6)); }
-            66% { filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.6)); }
-            100% { filter: drop-shadow(0 0 15px rgba(206, 25, 70, 0.6)); }
-        }
+    *{box-sizing:border-box}
 
-        @keyframes color-cycle-title {
-            0% { color: #FFFFFF; text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-            33% { color: #34D399; text-shadow: 0 0 30px rgba(16, 185, 129, 0.6); }
-            66% { color: #60A5FA; text-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
-            100% { color: #FFFFFF; text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-        }
+    html,body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:#111;
+      font-family:"Poppins",sans-serif;
+    }
 
-        @keyframes border-glow-green {
-            0% { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 10px rgba(16, 185, 129, 0.1); }
-            50% { border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 0 30px rgba(16, 185, 129, 0.3); }
-            100% { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 10px rgba(16, 185, 129, 0.1); }
-        }
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
 
-        @keyframes border-glow-blue {
-            0% { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); }
-            50% { border-color: rgba(59, 130, 246, 0.8); box-shadow: 0 0 30px rgba(59, 130, 246, 0.3); }
-            100% { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); }
-        }
+    .viewport{
+      width:1280px;
+      height:720px;
+      position:relative;
+      overflow:hidden;
+      transform-origin:center center;
+      transform:scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      background:
+        radial-gradient(circle at 14% 18%, rgba(16,185,129,.15), transparent 28%),
+        radial-gradient(circle at 84% 82%, rgba(59,130,246,.15), transparent 28%),
+        linear-gradient(135deg, #09090c 0%, #11131f 44%, #0d0e12 100%);
+      color:white;
+    }
 
-        @keyframes badge-pulse-gradient {
-            0% { transform: scale(1); box-shadow: 0 0 10px rgba(145, 70, 255, 0.3); border-color: rgba(145, 70, 255, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(206, 25, 70, 0.5); border-color: rgba(206, 25, 70, 0.8); }
-            100% { transform: scale(1); box-shadow: 0 0 10px rgba(145, 70, 255, 0.3); border-color: rgba(145, 70, 255, 0.4); }
-        }
+    .grid-bg{
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+      background-size:44px 44px;
+      mask-image:linear-gradient(to bottom, rgba(255,255,255,.18), transparent 88%);
+      z-index:0;
+    }
 
-        @keyframes breathe-bg {
-            0% { opacity: 0.1; transform: scale(1); }
-            50% { opacity: 0.2; transform: scale(1.1); }
-            100% { opacity: 0.1; transform: scale(1); }
-        }
+    .glow{
+      position:absolute;
+      border-radius:50%;
+      filter:blur(105px);
+      pointer-events:none;
+      z-index:0;
+      animation:breathe 8s ease-in-out infinite alternate;
+    }
 
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.5); }
-        }
+    .glow.green{
+      width:420px;
+      height:420px;
+      top:-120px;
+      left:-100px;
+      background:rgba(16,185,129,.14);
+    }
 
-        @keyframes ray-move {
-            0% { transform: translateX(-100%) rotate(45deg); opacity: 0; }
-            20% { opacity: 0.3; }
-            80% { opacity: 0.3; }
-            100% { transform: translateX(200%) rotate(45deg); opacity: 0; }
-        }
+    .glow.blue{
+      width:430px;
+      height:430px;
+      right:-100px;
+      bottom:-110px;
+      background:rgba(59,130,246,.14);
+      animation-direction:alternate-reverse;
+    }
 
-        @keyframes slide-in-left {
-            from { transform: translateX(-50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+    .light-ray{
+      position:absolute;
+      width:170px;
+      height:1200px;
+      background:rgba(255,255,255,.04);
+      filter:blur(60px);
+      transform:rotate(45deg);
+      z-index:0;
+      animation:rayMove 13s linear infinite;
+    }
 
-        @keyframes slide-in-right {
-            from { transform: translateX(50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+    .ray-1{ top:-260px; left:130px; }
+    .ray-2{ top:-330px; right:180px; animation-duration:15s; animation-direction:reverse; }
 
-        @keyframes fade-in-up {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
+    .particle{
+      position:absolute;
+      border-radius:50%;
+      opacity:.72;
+      z-index:0;
+      animation:drift 9s ease-in-out infinite;
+      box-shadow:0 0 8px currentColor;
+    }
 
-        @keyframes width-pulse {
-            0% { width: 100px; opacity: 0.7; }
-            50% { width: 250px; opacity: 1; }
-            100% { width: 100px; opacity: 0.7; }
-        }
+    .p1{top:90px;left:180px;width:5px;height:5px;color:var(--gold);background:currentColor}
+    .p2{top:150px;right:210px;width:4px;height:4px;color:var(--green);background:currentColor;animation-delay:1s}
+    .p3{top:290px;left:70px;width:3px;height:3px;color:#fff;background:currentColor;animation-delay:2s}
+    .p4{bottom:150px;right:180px;width:6px;height:6px;color:var(--blue);background:currentColor;animation-delay:.8s}
+    .p5{bottom:120px;left:240px;width:4px;height:4px;color:var(--violet);background:currentColor;animation-delay:1.5s}
 
-        @keyframes glitch-skew {
-            0% { transform: skew(0deg); }
-            20% { transform: skew(-2deg); }
-            40% { transform: skew(2deg); }
-            60% { transform: skew(-1deg); }
-            80% { transform: skew(1deg); }
-            100% { transform: skew(0deg); }
-        }
+    .star{
+      position:absolute;
+      background:#fff;
+      border-radius:50%;
+      z-index:0;
+      animation:twinkle 4s infinite ease-in-out;
+    }
 
-        @keyframes icon-bounce-custom {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-        }
+    .s1 { top: 14%; left: 12%; width: 2px; height: 2px; }
+    .s2 { top: 24%; right: 16%; width: 3px; height: 3px; animation-delay: .8s; }
+    .s3 { top: 72%; left: 8%; width: 2px; height: 2px; animation-delay: 1.5s; }
+    .s4 { top: 80%; right: 25%; width: 2px; height: 2px; animation-delay: 2.1s; }
 
-        /* Background Effects */
-        .bg-layer-1 {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0F0F1A;
-            z-index: 0;
-        }
+    .topbar{
+      position:absolute;
+      top:20px;
+      left:28px;
+      right:28px;
+      z-index:5;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
 
-        .bg-glow-green {
-            position: absolute;
-            top: -100px;
-            left: -100px;
-            width: 800px;
-            height: 800px;
-            background-color: #10B981;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe-bg 8s infinite ease-in-out;
-        }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 16px 10px 10px;
+      border-radius:18px;
+      background:rgba(16,16,24,.55);
+      border:1px solid rgba(255,255,255,.07);
+      backdrop-filter:blur(14px);
+      box-shadow:var(--shadow-lg);
+    }
 
-        .bg-glow-blue {
-            position: absolute;
-            bottom: -100px;
-            right: -100px;
-            width: 800px;
-            height: 800px;
-            background-color: #3B82F6;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe-bg 10s infinite ease-in-out reverse;
-        }
+    .brand img{
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      object-fit:cover;
+      flex-shrink:0;
+      box-shadow:0 0 24px rgba(16,185,129,.20);
+      animation:floatLogo 4s ease-in-out infinite;
+    }
 
-        /* Light Rays */
-        .light-ray {
-            position: absolute;
-            width: 100px;
-            height: 200%;
-            background-color: rgba(255, 255, 255, 0.03);
-            z-index: 1;
-            filter: blur(20px);
-        }
+    .brand-kicker{
+      display:block;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.45);
+      margin-bottom:2px;
+    }
 
-        /* Logo Styling */
-        .logo-container {
-            position: absolute;
-            top: 30px;
-            left: 50px;
-            width: 100px;
-            height: 100px;
-            perspective: 1000px;
-            z-index: 50;
-            animation: float 4s ease-in-out infinite;
-        }
+    .brand-name{
+      font-size:16px;
+      font-weight:700;
+      line-height:1.2;
+      color:#fff;
+    }
 
-        .logo-tenf {
-            width: 100%;
-            height: 100%;
-            animation: spin3D 20s linear infinite, shadow-pulse-multi 4s infinite;
-            transition: transform 0.3s;
-        }
+    .tag-pill{
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(16,185,129,.12);
+      border:1px solid rgba(16,185,129,.28);
+      color:rgba(255,255,255,.92);
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+      box-shadow:0 0 24px rgba(16,185,129,.12);
+    }
 
-        .logo-container:hover .logo-tenf {
-            animation: none;
-            transform: scale(1.1) rotate(5deg);
-            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8));
-        }
+    .content{
+      position:relative;
+      z-index:3;
+      width:100%;
+      height:100%;
+      padding:84px 28px 34px;
+      display:grid;
+      grid-template-columns:310px 1fr;
+      gap:18px;
+    }
 
-        /* Content Container */
-        .main-container {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 30px 60px; /* Reduced padding-top from 40px to 30px */
-            box-sizing: border-box;
-        }
+    .left{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:0;
+      padding-left:2px;
+    }
 
-        /* Header Area */
-        .header-area {
-            margin-left: 100px;
-            margin-bottom: 20px; /* Reduced margin-bottom from 30px to 20px */
-            position: relative;
-        }
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+      color:rgba(255,255,255,.78);
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
 
-        .page-title {
-            font-size: 52px; /* Reduced font-size from 58px to 52px */
-            font-weight: 900;
-            line-height: 1.1;
-            text-transform: uppercase;
-            letter-spacing: -1px;
-            color: white;
-            position: relative;
-            display: inline-block;
-        }
+    .eyebrow::before{
+      content:"";
+      width:36px;
+      height:2px;
+      border-radius:999px;
+      background:linear-gradient(90deg, var(--gold), var(--green));
+      box-shadow:0 0 18px rgba(255,209,102,.35);
+    }
 
-        .page-title:hover {
-            animation: glitch-skew 0.5s infinite;
-            text-shadow: 2px 0 #FF0080, -2px 0 #00FFEA;
-        }
+    .title{
+      margin:0;
+      font-size:44px;
+      line-height:.93;
+      font-weight:900;
+      letter-spacing:-.04em;
+      text-transform:uppercase;
+      text-shadow:0 0 18px rgba(16,185,129,.16);
+    }
 
-        .title-accent {
-            animation: color-cycle-title 8s infinite;
-        }
+    .title span{display:block}
+    .title .white{color:#fff}
+    .title .green{color:var(--green); text-shadow:0 0 22px rgba(16,185,129,.28)}
+    .title .blue{color:var(--blue); text-shadow:0 0 22px rgba(59,130,246,.24)}
 
-        .gold-line-anim {
-            height: 4px;
-            background-color: #FFD700;
-            margin-top: 10px;
-            border-radius: 2px;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-            animation: width-pulse 4s infinite ease-in-out;
-        }
+    .intro{
+      margin-top:14px;
+      max-width:286px;
+      font-size:13px;
+      line-height:1.58;
+      color:var(--text-soft);
+    }
 
-        /* Two Columns Layout */
-        .content-columns {
-            display: flex;
-            gap: 30px; /* Reduced gap from 40px to 30px */
-            flex: 1;
-            align-items: stretch;
-            margin-bottom: 10px; /* Reduced margin-bottom from 20px to 10px */
-            min-height: 0; /* Important for flex child scroll/overflow handling */
-        }
+    .intro strong{color:#fff}
 
-        /* Card Styling */
-        .glass-card {
-            flex: 1;
-            background-color: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 20px; /* Reduced padding from 25px to 20px */
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
+    .mini-card{
+      margin-top:16px;
+      padding:12px 14px;
+      border-radius:15px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 18px rgba(0,0,0,.16);
+    }
 
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-            background-color: rgba(255, 255, 255, 0.05);
-        }
+    .mini-card-title{
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      color:var(--text-muted);
+      margin-bottom:6px;
+    }
 
-        /* Left Card Specifics */
-        .card-left {
-            border-top: 4px solid #10B981;
-            animation: slide-in-left 0.8s ease-out 0.8s both, border-glow-green 6s infinite;
-        }
+    .mini-card-text{
+      font-size:12px;
+      line-height:1.48;
+      color:var(--text-soft);
+    }
 
-        /* Right Card Specifics */
-        .card-right {
-            border-top: 4px solid #3B82F6;
-            animation: slide-in-right 0.8s ease-out 1.2s both, border-glow-blue 6s infinite;
-        }
+    .mini-card-text strong{color:#fff}
 
-        /* Card Header */
-        .card-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px; /* Reduced margin-bottom */
-            padding-bottom: 10px; /* Reduced padding-bottom */
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
+    .right{
+      display:grid;
+      grid-template-rows:1fr auto;
+      gap:14px;
+      min-width:0;
+      padding-right:6px;
+    }
 
-        .card-icon-wrapper {
-            width: 70px; /* Reduced width */
-            height: 70px; /* Reduced height */
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px; /* Reduced margin */
-        }
+    .cards-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+      min-height:0;
+    }
 
-        .header-icon-massive {
-            font-size: 50px; /* Reduced font-size */
-            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
-            color: #FFD700;
-        }
+    .glass-card{
+      position:relative;
+      border-radius:20px;
+      padding:18px 18px 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),
+        var(--panel);
+      border:1px solid var(--border);
+      box-shadow:var(--shadow-lg);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      animation:cardIn .8s cubic-bezier(.34,1.56,.64,1) backwards;
+      transition:transform .25s ease, box-shadow .25s ease, background-color .25s ease;
+    }
 
-        .card-left .header-icon-massive {
-            animation: icon-bounce-custom 3s infinite ease-in-out;
-        }
+    .glass-card:nth-child(1){animation-delay:0s}
+    .glass-card:nth-child(2){animation-delay:.16s}
 
-        .card-right .header-icon-massive {
-            animation: icon-bounce-custom 3s infinite ease-in-out 1.5s; /* Staggered */
-        }
+    .glass-card::before{
+      content:"";
+      position:absolute;
+      inset:0 0 auto 0;
+      height:4px;
+      background:var(--accent);
+      box-shadow:0 0 12px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
 
-        .card-title {
-            font-size: 24px; /* Slightly reduced font size */
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
+    .glass-card:hover{
+      transform:translateY(-4px) scale(1.01);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03)),
+        var(--panel);
+    }
 
-        /* List Items */
-        .items-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px; /* Reduced gap from 12px to 10px */
-            flex: 1;
-            justify-content: space-evenly; /* Distribute items evenly */
-        }
+    .card-left{
+      --accent:#10b981;
+      box-shadow:var(--shadow-lg), var(--shadow-green);
+    }
 
-        .list-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px; /* Reduced padding from 10px 15px to 8px 12px */
-            background-color: rgba(255, 255, 255, 0.02);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-            opacity: 0; /* Initial state for animation */
-        }
+    .card-right{
+      --accent:#3b82f6;
+      box-shadow:var(--shadow-lg), var(--shadow-blue);
+    }
 
-        .list-item:hover {
-            transform: translateX(10px) scale(1.02);
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
+    .card-header{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      margin-bottom:14px;
+      padding-bottom:12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
 
-        .item-emoji {
-            font-size: 20px; /* Slightly reduced size */
-            width: 35px; /* Reduced width */
-            display: flex;
-            justify-content: center;
-            margin-right: 10px; /* Reduced margin */
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
+    .card-icon{
+      width:56px;
+      height:56px;
+      border-radius:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:inset 0 0 18px rgba(0,0,0,.18);
+      color:var(--accent);
+      font-size:24px;
+      animation:iconBounce 4s infinite ease-in-out;
+    }
 
-        .item-text {
-            font-size: 16px; /* Slightly reduced size */
-            font-weight: 500;
-            color: #E2E8F0;
-            line-height: 1.2;
-        }
+    .card-right .card-icon{animation-delay:1s}
 
-        /* Staggered Fade In for List Items */
-        .card-left .list-item:nth-child(1) { animation: fade-in-up 0.5s ease-out 1.4s forwards; }
-        .card-left .list-item:nth-child(2) { animation: fade-in-up 0.5s ease-out 1.5s forwards; }
-        .card-left .list-item:nth-child(3) { animation: fade-in-up 0.5s ease-out 1.6s forwards; }
-        .card-left .list-item:nth-child(4) { animation: fade-in-up 0.5s ease-out 1.7s forwards; }
-        .card-left .list-item:nth-child(5) { animation: fade-in-up 0.5s ease-out 1.8s forwards; }
-        .card-left .list-item:nth-child(6) { animation: fade-in-up 0.5s ease-out 1.9s forwards; }
+    .card-title{
+      font-size:18px;
+      font-weight:800;
+      text-transform:uppercase;
+      color:#fff;
+      line-height:1.2;
+    }
 
-        .card-right .list-item:nth-child(1) { animation: fade-in-up 0.5s ease-out 1.8s forwards; }
-        .card-right .list-item:nth-child(2) { animation: fade-in-up 0.5s ease-out 1.9s forwards; }
-        .card-right .list-item:nth-child(3) { animation: fade-in-up 0.5s ease-out 2.0s forwards; }
-        .card-right .list-item:nth-child(4) { animation: fade-in-up 0.5s ease-out 2.1s forwards; }
-        .card-right .list-item:nth-child(5) { animation: fade-in-up 0.5s ease-out 2.2s forwards; }
-        .card-right .list-item:nth-child(6) { animation: fade-in-up 0.5s ease-out 2.3s forwards; }
+    .items-list{
+      display:grid;
+      gap:10px;
+      align-content:start;
+    }
 
-        /* Badge Footer */
-        .footer-badge-container {
-            display: flex;
-            justify-content: center;
-            margin-top: auto;
-            padding-top: 10px; /* Ensure visibility */
-            padding-bottom: 5px;
-        }
+    .list-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.04);
+      transition:transform .22s ease, background-color .22s ease;
+      animation:fadeIn .45s ease backwards;
+    }
 
-        .twitch-france-badge {
-            display: flex;
-            align-items: center;
-            background: linear-gradient(90deg, rgba(145, 70, 255, 0.2), rgba(206, 25, 70, 0.2));
-            padding: 8px 25px; /* Slightly reduced padding */
-            border-radius: 50px;
-            border: 1px solid rgba(145, 70, 255, 0.4);
-            animation: badge-pulse-gradient 3s infinite;
-        }
+    .list-item:nth-child(1){animation-delay:.55s}
+    .list-item:nth-child(2){animation-delay:.65s}
+    .list-item:nth-child(3){animation-delay:.75s}
+    .list-item:nth-child(4){animation-delay:.85s}
+    .list-item:nth-child(5){animation-delay:.95s}
+    .list-item:nth-child(6){animation-delay:1.05s}
 
-        .badge-icon {
-            font-size: 20px; /* Reduced size */
-            color: #FFFFFF;
-            margin-right: 10px;
-            text-shadow: 0 0 10px #9146FF;
-        }
+    .card-right .list-item:nth-child(1){animation-delay:.75s}
+    .card-right .list-item:nth-child(2){animation-delay:.85s}
+    .card-right .list-item:nth-child(3){animation-delay:.95s}
+    .card-right .list-item:nth-child(4){animation-delay:1.05s}
+    .card-right .list-item:nth-child(5){animation-delay:1.15s}
+    .card-right .list-item:nth-child(6){animation-delay:1.25s}
 
-        .badge-text {
-            font-size: 14px; /* Reduced size */
-            font-weight: 800;
-            color: #FFFFFF;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-        }
+    .list-item:hover{
+      transform:translateX(6px);
+      background:rgba(255,255,255,.06);
+    }
 
-        /* Particles */
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            z-index: 2;
-            pointer-events: none;
-        }
+    .item-emoji{
+      width:26px;
+      text-align:center;
+      font-size:18px;
+      flex-shrink:0;
+      filter:drop-shadow(0 2px 4px rgba(0,0,0,.28));
+    }
 
-        /* Floating Icons */
-        .floating-icon {
-            position: absolute;
-            font-size: 40px;
-            color: rgba(255, 255, 255, 0.1);
-            z-index: 1;
-            filter: blur(1px);
-        }
+    .item-text{
+      font-size:13px;
+      line-height:1.4;
+      color:var(--text-soft);
+    }
 
-        /* Decorative Stars */
-        .deco-star {
-            position: absolute;
-            font-size: 20px;
-            color: white;
-            z-index: 1;
-            animation: twinkle 4s infinite ease-in-out;
-        }
+    .item-text strong{
+      color:#fff;
+    }
 
-    </style>
+    .message-band{
+      position:relative;
+      border-radius:18px;
+      padding:16px 18px;
+      background:
+        linear-gradient(90deg, rgba(16,185,129,.10), rgba(59,130,246,.10)),
+        rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:var(--shadow-lg), 0 0 26px rgba(16,185,129,.08);
+      overflow:hidden;
+      animation:cardIn .8s cubic-bezier(.34,1.56,.64,1) .28s backwards;
+    }
+
+    .message-band::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:6px;
+      background:linear-gradient(180deg, var(--green), var(--blue));
+      box-shadow:0 0 16px rgba(16,185,129,.28);
+    }
+
+    .message-title{
+      font-size:15px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      color:#fff;
+      margin-bottom:6px;
+    }
+
+    .message-text{
+      font-size:14px;
+      line-height:1.55;
+      color:var(--text-soft);
+      max-width:100%;
+    }
+
+    .message-text strong{
+      color:#fff;
+    }
+
+    .footer{
+      position:absolute;
+      left:30px;
+      right:30px;
+      bottom:8px;
+      z-index:4;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      font-size:10px;
+      color:rgba(255,255,255,.45);
+      font-weight:500;
+    }
+
+    .footer-left,.footer-right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+
+    .footer-left span,.footer-right span:last-child{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .line{
+      width:30px;
+      height:1px;
+      background:rgba(255,255,255,.16);
+      flex-shrink:0;
+    }
+
+    .dot{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 12px rgba(16,185,129,.75);
+      flex-shrink:0;
+    }
+
+    @keyframes breathe{
+      0%,100%{opacity:.12;transform:scale(1)}
+      50%{opacity:.20;transform:scale(1.08)}
+    }
+
+    @keyframes rayMove{
+      0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0}
+      50%{opacity:.06}
+      100%{transform:rotate(45deg) translate(200px,200px);opacity:0}
+    }
+
+    @keyframes drift{
+      0%,100%{transform:translate(0,0);opacity:.55}
+      50%{transform:translate(8px,-12px);opacity:1}
+    }
+
+    @keyframes twinkle{
+      0%,100%{opacity:.2;transform:scale(.8)}
+      50%{opacity:1;transform:scale(1.2);box-shadow:0 0 5px white}
+    }
+
+    @keyframes floatLogo{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-8px)}
+    }
+
+    @keyframes cardIn{
+      0%{opacity:0;transform:translateY(28px)}
+      100%{opacity:1;transform:translateY(0)}
+    }
+
+    @keyframes iconBounce{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.08)}
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0;transform:translateY(10px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{
+        animation:none !important;
+        transition:none !important;
+      }
+    }
+  </style>
 </head>
 <body>
-<!-- Background Layers -->
-<div class="bg-layer-1"></div>
-<div class="bg-glow-green"></div>
-<div class="bg-glow-blue"></div>
-<!-- Rays -->
-<div class="light-ray" style="top: -50%; left: 20%; animation: ray-move 10s infinite linear;"></div>
-<div class="light-ray" style="top: -50%; left: 60%; animation: ray-move 12s infinite linear 2s;"></div>
-<!-- Particles (12 items: Gold/Green/Blue) -->
-<div class="particle" style="top: 15%; left: 85%; width: 4px; height: 4px; background-color: #10B981; opacity: 0.8; animation: float 6s infinite;"></div>
-<div class="particle" style="top: 75%; left: 10%; width: 5px; height: 5px; background-color: #FFD700; opacity: 0.7; animation: float 8s infinite 1s;"></div>
-<div class="particle" style="top: 35%; left: 50%; width: 3px; height: 3px; background-color: #3B82F6; opacity: 0.6; animation: float 7s infinite 2s;"></div>
-<div class="particle" style="top: 85%; left: 90%; width: 6px; height: 6px; background-color: #10B981; opacity: 0.5; animation: float 9s infinite 3s;"></div>
-<div class="particle" style="top: 25%; left: 20%; width: 3px; height: 3px; background-color: #FFD700; opacity: 0.8; animation: float 5s infinite 4s;"></div>
-<div class="particle" style="top: 55%; left: 70%; width: 4px; height: 4px; background-color: #3B82F6; opacity: 0.7; animation: float 10s infinite 5s;"></div>
-<div class="particle" style="top: 10%; left: 40%; width: 5px; height: 5px; background-color: #FFFFFF; opacity: 0.4; animation: float 6s infinite 0.5s;"></div>
-<div class="particle" style="top: 90%; left: 30%; width: 3px; height: 3px; background-color: #10B981; opacity: 0.6; animation: float 8s infinite 1.5s;"></div>
-<div class="particle" style="top: 45%; left: 10%; width: 6px; height: 6px; background-color: #FFD700; opacity: 0.5; animation: float 7s infinite 2.5s;"></div>
-<div class="particle" style="top: 65%; left: 80%; width: 2px; height: 2px; background-color: #3B82F6; opacity: 0.8; animation: float 9s infinite 3.5s;"></div>
-<div class="particle" style="top: 05%; left: 60%; width: 4px; height: 4px; background-color: #FFFFFF; opacity: 0.5; animation: float 5s infinite 4.5s;"></div>
-<div class="particle" style="top: 95%; left: 50%; width: 5px; height: 5px; background-color: #10B981; opacity: 0.6; animation: float 10s infinite 5.5s;"></div>
-<!-- Floating Gaming Icons -->
-<div class="floating-icon" style="top: 20%; right: 10%; animation: float-bounce 6s infinite;"><i class="fas fa-gamepad"></i></div>
-<div class="floating-icon" style="bottom: 25%; left: 5%; animation: float-bounce 7s infinite 1s;"><i class="fas fa-trophy"></i></div>
-<div class="floating-icon" style="top: 40%; left: 45%; opacity: 0.05; animation: float-bounce 8s infinite 2s;"><i class="fas fa-star"></i></div>
-<!-- Decorative Stars -->
-<div class="deco-star" style="top: 20%; right: 15%; animation-delay: 0s;"><i class="fas fa-star"></i></div>
-<div class="deco-star" style="bottom: 15%; left: 15%; font-size: 15px; animation-delay: 1s;"><i class="fas fa-star"></i></div>
-<div class="deco-star" style="top: 10%; left: 30%; font-size: 12px; animation-delay: 2s;"><i class="fas fa-star"></i></div>
-<div class="deco-star" style="bottom: 30%; right: 5%; font-size: 18px; animation-delay: 1.5s;"><i class="fas fa-star"></i></div>
-<div class="deco-star" style="top: 50%; left: 5%; font-size: 14px; animation-delay: 0.5s;"><i class="fas fa-star"></i></div>
-<div class="deco-star" style="bottom: 5%; right: 30%; font-size: 16px; animation-delay: 2.5s;"><i class="fas fa-star"></i></div>
-<!-- Logo -->
-<div class="logo-container">
-<img alt="TENF Logo" class="logo-tenf" src="/Tenf.png"/>
-</div>
-<!-- Main Container -->
-<div class="main-container">
-<!-- Header -->
-<div class="header-area">
-<h1 class="page-title">
-                COMMENT PROGRESSER <br/>
-<span class="title-accent">NATURELLEMENT</span>
-</h1>
-<div class="gold-line-anim"></div>
-</div>
-<!-- Content Columns -->
-<div class="content-columns">
-<!-- Left Card: Actions -->
-<div class="glass-card card-left">
-<div class="card-header">
-<div class="card-icon-wrapper">
-<i class="fas fa-star header-icon-massive"></i>
-</div>
-<p class="card-title">CE QUE TU PEUX FAIRE</p>
-</div>
-<div class="items-list">
-<div class="list-item">
-<div class="item-emoji"><span>💬</span></div>
-<p class="item-text">Participe activement aux discussions</p>
-</div>
-<div class="list-item">
-<div class="item-emoji"><span>🤝</span></div>
-<p class="item-text">Aide les nouveaux membres</p>
-</div>
-<div class="list-item">
-<div class="item-emoji"><span>🎮</span></div>
-<p class="item-text">Fais des raids et du lurk</p>
-</div>
-<div class="list-item">
-<div class="item-emoji"><span>💫</span></div>
-<p class="item-text">Partage tes conseils et ton expérience</p>
-</div>
-<div class="list-item">
-<div class="item-emoji"><span>🎉</span></div>
-<p class="item-text">Participe aux événements</p>
-</div>
-<div class="list-item">
-<div class="item-emoji"><span>❤️</span></div>
-<p class="item-text">Montre ta bienveillance au quotidien</p>
-</div>
-</div>
-</div>
-<!-- Right Card: Values -->
-<div class="glass-card card-right">
-<div class="card-header">
-<div class="card-icon-wrapper">
-<i class="fas fa-heart header-icon-massive"></i>
-</div>
-<p class="card-title">CE QUI COMPTE VRAIMENT</p>
-</div>
-<div class="items-list">
-<div class="list-item">
-<div class="item-emoji">✨</div>
-<p class="item-text">Ton authenticité et ta sincérité</p>
-</div>
-<div class="list-item">
-<div class="item-emoji">🌟</div>
-<p class="item-text">Ta présence et ton écoute</p>
-</div>
-<div class="list-item">
-<div class="item-emoji">💪</div>
-<p class="item-text">Ta volonté d'aider sans attendre</p>
-</div>
-<div class="list-item">
-<div class="item-emoji">📈</div>
-<p class="item-text">Ton évolution personnelle</p>
-</div>
-<div class="list-item">
-<div class="item-emoji">🤗</div>
-<p class="item-text">Les liens que tu crées</p>
-</div>
-<div class="list-item">
-<div class="item-emoji">🎯</div>
-<p class="item-text">L'impact positif que tu as</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Footer Badge -->
-<div class="footer-badge-container">
-<div class="twitch-france-badge">
-<i class="fab fa-twitch badge-icon"></i>
-<span class="badge-text">COMMUNAUTÉ TENF</span>
-</div>
-</div>
-</div>
+  <div class="viewport">
+    <div class="grid-bg"></div>
+    <div class="glow green"></div>
+    <div class="glow blue"></div>
+    <div class="light-ray ray-1"></div>
+    <div class="light-ray ray-2"></div>
+
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <img src="/Tenf.png" alt="Logo TENF">
+        <div>
+          <span class="brand-kicker">Progression naturelle</span>
+          <div class="brand-name">Twitch Entraide New Family</div>
+        </div>
+      </div>
+
+      <div class="tag-pill">La constance fait la différence</div>
+    </header>
+
+    <main class="content">
+      <section class="left">
+        <div class="eyebrow">S’intégrer et évoluer</div>
+
+        <h1 class="title">
+          <span class="white">PROGRESSER</span>
+          <span class="green">NATURELLEMENT</span>
+          <span class="blue">ENSEMBLE</span>
+        </h1>
+
+        <p class="intro">
+          Dans la New Family, évoluer repose sur des actions simples, cohérentes
+          et régulières. Rien d’extraordinaire : <strong>une présence sincère</strong>,
+          une participation réelle et une manière d’être qui soutient naturellement
+          la dynamique du groupe.
+        </p>
+
+        <div class="mini-card">
+          <div class="mini-card-title">Idée clé</div>
+          <div class="mini-card-text">
+            L’implication ne se mesure pas seulement à des statistiques.
+            Elle se voit surtout dans <strong>la constance</strong>, la qualité des échanges
+            et la capacité à soutenir sans attendre immédiatement un retour.
+          </div>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="cards-grid">
+          <div class="glass-card card-left">
+            <div class="card-header">
+              <div class="card-icon">⭐</div>
+              <div class="card-title">Des actions simples</div>
+            </div>
+
+            <div class="items-list">
+              <div class="list-item">
+                <div class="item-emoji">💬</div>
+                <div class="item-text">Participer aux discussions écrites ou vocales</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">🌟</div>
+                <div class="item-text">Être présent aux Spotlights quand tu es disponible</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">⚡</div>
+                <div class="item-text">Faire des raids internes</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">🤝</div>
+                <div class="item-text">Accueillir et aider les nouveaux membres</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">💡</div>
+                <div class="item-text">Partager ton expérience si elle peut être utile</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">🎉</div>
+                <div class="item-text">Participer aux événements communautaires</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card card-right">
+            <div class="card-header">
+              <div class="card-icon">💚</div>
+              <div class="card-title">Ce qui fait la différence</div>
+            </div>
+
+            <div class="items-list">
+              <div class="list-item">
+                <div class="item-emoji">📅</div>
+                <div class="item-text">Ta régularité</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">🛡️</div>
+                <div class="item-text">Ta fiabilité</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">⚖️</div>
+                <div class="item-text">Ton respect du cadre</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">💬</div>
+                <div class="item-text">Ton attitude dans les échanges</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">💜</div>
+                <div class="item-text">Soutenir sans attendre un retour immédiat</div>
+              </div>
+              <div class="list-item">
+                <div class="item-emoji">🌱</div>
+                <div class="item-text">La constance dans le temps</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-band">
+          <div class="message-title">Message essentiel</div>
+          <div class="message-text">
+            Ici, <strong>il n’y a pas de course</strong>. Mais il y a une dynamique collective.
+            Chacun avance à son rythme, et chacun contribue à l’équilibre du groupe.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="line"></div>
+        <span>Une présence cohérente vaut plus qu’une performance ponctuelle</span>
+      </div>
+
+      <div class="footer-right">
+        <span class="dot"></span>
+        <span>La qualité des interactions fait grandir la communauté</span>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>

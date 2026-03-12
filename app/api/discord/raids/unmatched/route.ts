@@ -3,6 +3,21 @@ import { loadUnmatchedRaids, removeUnmatchedRaid, recordRaidByDiscordId } from '
 import { memberRepository } from '@/lib/repositories';
 import { getMonthKey } from '@/lib/raids';
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForUnmatchedRaids() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * GET - Récupère les messages non reconnus pour un mois donné
  * Query params: ?month=YYYY-MM
@@ -64,7 +79,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForUnmatchedRaids();
     const raider = allMembers.find(m => m.discordId === raiderDiscordId);
     const target = allMembers.find(m => m.discordId === targetDiscordId);
     

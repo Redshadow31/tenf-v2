@@ -37,6 +37,8 @@ interface Member {
   isActive?: boolean;
 }
 
+type RaidField = "raider" | "target";
+
 interface RaidImportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -67,6 +69,7 @@ export default function RaidImportModal({
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false); // Modal pour gérer les doublons
   const [duplicates, setDuplicates] = useState<Record<number, number[]>>({}); // Groupe de doublons : { groupId: [raidIndex1, raidIndex2, ...] }
   const [selectedDuplicates, setSelectedDuplicates] = useState<number[]>([]); // Indices des doublons sélectionnés pour suppression
+  const [creatingMembers, setCreatingMembers] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -79,37 +82,7 @@ export default function RaidImportModal({
     try {
       setMembersLoading(true);
       
-      // Essayer d'abord l'API publique (plus fiable, pas d'authentification requise)
-      try {
-        const publicResponse = await fetch("/api/members/public", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        
-        if (publicResponse.ok) {
-          const contentType = publicResponse.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const publicData = await publicResponse.json();
-            // Inclure tous les membres TENF (actifs et inactifs/communauté)
-            const members = (publicData.members || [])
-              .map((m: any) => ({
-                discordId: m.discordId || '',
-                displayName: m.displayName || m.twitchLogin || '',
-                twitchLogin: m.twitchLogin || '',
-                discordUsername: m.discordUsername || '',
-                isActive: m.isActive !== false,
-              }));
-            setAllMembers(members);
-            return; // Succès, on sort
-          }
-        }
-      } catch (publicErr) {
-        console.error("[Raid Import] Erreur API publique membres:", publicErr);
-      }
-      
-      // Fallback: essayer l'API admin si l'API publique échoue
+      // Priorité API admin: contient toute la base membres (actifs/inactifs/nouveaux)
       try {
         const response = await fetch("/api/admin/members", {
           cache: 'no-store',
@@ -122,7 +95,6 @@ export default function RaidImportModal({
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
-            // Inclure tous les membres TENF (actifs et inactifs/communauté)
             const members = (data.members || [])
               .map((m: any) => ({
                 discordId: m.discordId || '',
@@ -133,17 +105,44 @@ export default function RaidImportModal({
               }));
             setAllMembers(members);
             return; // Succès, on sort
-          } else {
-            console.error("[Raid Import] API admin a retourné du HTML au lieu de JSON");
-            // Ne pas afficher d'erreur, l'API publique a peut-être fonctionné
           }
-        } else {
-          // Erreur HTTP, mais on ne log que si l'API publique a aussi échoué
-          const errorText = await response.text().catch(() => '');
-          console.error(`[Raid Import] Erreur API admin (${response.status}):`, errorText.substring(0, 100));
         }
       } catch (adminErr) {
         console.error("[Raid Import] Erreur API admin membres:", adminErr);
+      }
+      
+      // Fallback: API publique si API admin indisponible
+      try {
+        const publicResponse = await fetch("/api/members/public", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        if (publicResponse.ok) {
+          const contentType = publicResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const publicData = await publicResponse.json();
+            const members = (publicData.members || [])
+              .map((m: any) => ({
+                discordId: m.discordId || '',
+                displayName: m.displayName || m.twitchLogin || '',
+                twitchLogin: m.twitchLogin || '',
+                discordUsername: m.discordUsername || '',
+                isActive: m.isActive !== false,
+              }));
+            setAllMembers(members);
+            return; // Succès, on sort
+          } else {
+            console.error("[Raid Import] API publique a retourné du HTML au lieu de JSON");
+          }
+        } else {
+          const errorText = await publicResponse.text().catch(() => '');
+          console.error(`[Raid Import] Erreur API publique (${publicResponse.status}):`, errorText.substring(0, 100));
+        }
+      } catch (publicErr) {
+        console.error("[Raid Import] Erreur API publique membres:", publicErr);
       }
     } catch (error) {
       console.error("[Raid Import] Erreur lors du chargement des membres:", error);
@@ -691,6 +690,81 @@ export default function RaidImportModal({
     }));
   }
 
+  async function createMemberInline(field: RaidField, raidIndex: number) {
+    const raid = detectedRaids[raidIndex];
+    if (!raid) return;
+
+    const rawHandle = field === "raider" ? raid.raider : raid.target;
+    const normalizedHandle = normalizeHandle(rawHandle || "");
+    if (!normalizedHandle) {
+      setError(`Impossible de créer ce membre: pseudo ${field} invalide`);
+      return;
+    }
+
+    const creatingKey = `${raidIndex}:${field}`;
+    setCreatingMembers((prev) => ({ ...prev, [creatingKey]: true }));
+    setError(null);
+
+    try {
+      const payload = {
+        twitchLogin: normalizedHandle,
+        displayName: rawHandle || normalizedHandle,
+        twitchUrl: `https://www.twitch.tv/${normalizedHandle}`,
+        role: "Affilié",
+        isActive: true,
+      };
+
+      const response = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const message = data?.error || `Erreur HTTP ${response.status}`;
+
+        // Si déjà existant, on recharge quand même et on tente de matcher automatiquement.
+        if (!String(message).toLowerCase().includes("existe déjà")) {
+          throw new Error(message);
+        }
+      }
+
+      await loadMembers();
+      const memberResponse = await fetch(
+        `/api/admin/members?twitchLogin=${encodeURIComponent(normalizedHandle)}`,
+        { cache: "no-store" }
+      );
+      const memberPayload = memberResponse.ok ? await memberResponse.json() : null;
+      const createdOrExisting = memberPayload?.member
+        ? {
+            discordId: memberPayload.member.discordId || "",
+            displayName: memberPayload.member.displayName || memberPayload.member.twitchLogin || normalizedHandle,
+            twitchLogin: memberPayload.member.twitchLogin || normalizedHandle,
+            discordUsername: memberPayload.member.discordUsername || memberPayload.member.discordName || "",
+            isActive: memberPayload.member.isActive !== false,
+          }
+        : findMemberByNormalizedHandle(normalizedHandle);
+
+      if (!createdOrExisting) {
+        throw new Error(`Membre ${normalizedHandle} introuvable après création`);
+      }
+
+      selectMember(createdOrExisting, field, raidIndex);
+      setSuccess(`Membre @${normalizedHandle} prêt pour l'import`);
+      setTimeout(() => setSuccess(null), 2500);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      setError(`Création membre impossible: ${msg}`);
+    } finally {
+      setCreatingMembers((prev) => {
+        const next = { ...prev };
+        delete next[creatingKey];
+        return next;
+      });
+    }
+  }
+
   function renderMemberSelector(field: 'raider' | 'target', raidIndex: number, raid: DetectedRaid) {
     const searchQuery = searchQueries[`${raidIndex}`]?.[field] || '';
     const showResult = showResults[`${raidIndex}`]?.[field] || false;
@@ -1141,6 +1215,30 @@ export default function RaidImportModal({
                                   <div className="text-xs text-gray-500 mt-1">
                                     {!raid.raiderMember && <div>Raider non trouvé</div>}
                                     {!raid.targetMember && <div>Cible non trouvée</div>}
+                                  </div>
+                                )}
+                                {raid.status === 'unknown' && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {!raid.raiderMember && (
+                                      <button
+                                        onClick={() => createMemberInline("raider", originalIdx)}
+                                        disabled={saving || analyzing || membersLoading || creatingMembers[`${originalIdx}:raider`]}
+                                        className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                        title={`Créer @${raid.raider} dans la base membres`}
+                                      >
+                                        {creatingMembers[`${originalIdx}:raider`] ? "Création..." : `Créer Raider @${raid.raider}`}
+                                      </button>
+                                    )}
+                                    {!raid.targetMember && (
+                                      <button
+                                        onClick={() => createMemberInline("target", originalIdx)}
+                                        disabled={saving || analyzing || membersLoading || creatingMembers[`${originalIdx}:target`]}
+                                        className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                        title={`Créer @${raid.target} dans la base membres`}
+                                      >
+                                        {creatingMembers[`${originalIdx}:target`] ? "Création..." : `Créer Cible @${raid.target}`}
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </td>

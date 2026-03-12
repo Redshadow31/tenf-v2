@@ -9,6 +9,21 @@ import { memberRepository } from '@/lib/repositories';
 
 export const dynamic = 'force-dynamic';
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForRaidDetails() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * GET - Récupère les détails des raids d'un membre (avec dates)
  * Query params: ?member=twitchLogin&month=YYYY-MM
@@ -84,7 +99,7 @@ export async function GET(request: NextRequest) {
     console.log(`[Raid Details] Raids trouvés pour ${member.twitchLogin}: ${memberRaidsFaits.length} faits, ${memberRaidsRecus.length} reçus`);
     
     // Créer les maps pour la conversion (depuis Supabase)
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForRaidDetails();
     const discordIdToMember = new Map<string, { twitchLogin: string; displayName: string; discordId: string }>();
     const twitchLoginToMember = new Map<string, { twitchLogin: string; displayName: string; discordId?: string }>();
     const discordIdToTwitchLogin = new Map<string, string>();

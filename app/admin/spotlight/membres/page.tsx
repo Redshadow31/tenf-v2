@@ -60,14 +60,13 @@ export default function MembresSpotlightPage() {
   async function loadMembers() {
     try {
       setLoadingMembers(true);
-      const response = await fetch('/api/members/public', {
+      const response = await fetch('/api/admin/members', {
         cache: 'no-store',
       });
 
       if (response.ok) {
         const data = await response.json();
         const members = (data.members || [])
-          .filter((m: any) => m.isActive !== false)
           .map((m: any) => ({
             twitchLogin: m.twitchLogin || '',
             displayName: m.displayName || m.twitchLogin || '',

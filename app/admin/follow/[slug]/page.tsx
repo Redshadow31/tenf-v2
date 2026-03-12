@@ -125,14 +125,13 @@ export default function FollowMemberPage() {
     try {
       setLoading(true);
       
-      let activeMembers: Member[] = [];
+      let allMembers: Member[] = [];
       
       // Charger les membres TENF
-      const membersResponse = await fetch('/api/members/public', { cache: 'no-store' });
+      const membersResponse = await fetch('/api/admin/members', { cache: 'no-store' });
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        activeMembers = (membersData.members || [])
-          .filter((m: any) => m.isActive !== false)
+        allMembers = (membersData.members || [])
           .map((m: any) => ({
             twitchLogin: m.twitchLogin || '',
             displayName: m.displayName || m.twitchLogin || '',
@@ -140,11 +139,11 @@ export default function FollowMemberPage() {
             isActive: m.isActive,
           }))
           .filter((m: Member) => m.twitchLogin);
-        setMembers(activeMembers);
+        setMembers(allMembers);
         
         // Initialiser les statuts follow avec normalisation
         const initialFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
-        activeMembers.forEach((m: Member) => {
+        allMembers.forEach((m: Member) => {
           const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
           if (normalizedLogin) {
             initialFollows[normalizedLogin] = { jeSuis: false, meSuit: null };
@@ -182,10 +181,10 @@ export default function FollowMemberPage() {
           });
           
           // Fusionner avec les membres chargés pour s'assurer que tous les membres ont une entrée
-          // Utiliser activeMembers qui vient d'être chargé dans cette fonction
+          // Utiliser allMembers qui vient d'être chargé dans cette fonction
           const mergedFollows: Record<string, { jeSuis: boolean; meSuit: boolean | null }> = {};
-          // Utiliser activeMembers si disponible, sinon fallback sur members du state
-          const membersToProcess = activeMembers.length > 0 ? activeMembers : members;
+          // Utiliser allMembers si disponible, sinon fallback sur members du state
+          const membersToProcess = allMembers.length > 0 ? allMembers : members;
           membersToProcess.forEach((m: Member) => {
             const normalizedLogin = (m.twitchLogin || '').toLowerCase().trim();
             if (normalizedLogin) {

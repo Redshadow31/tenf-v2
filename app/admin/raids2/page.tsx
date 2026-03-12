@@ -99,7 +99,7 @@ export default function Raids2Page() {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
         }),
-        fetch("/api/members/public", {
+        fetch("/api/admin/members", {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
         }),

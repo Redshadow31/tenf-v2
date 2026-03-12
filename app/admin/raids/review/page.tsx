@@ -76,24 +76,7 @@ export default function RaidsReviewPage() {
           }));
           setAllMembers(members);
         } else {
-          // Fallback: essayer l'API publique
-          try {
-            const publicResponse = await fetch("/api/members/public", {
-              cache: 'no-store',
-            });
-            if (publicResponse.ok) {
-              const publicData = await publicResponse.json();
-              const members = (publicData.members || []).map((m: any) => ({
-                discordId: m.discordId || '',
-                displayName: m.displayName || m.twitchLogin || '',
-                twitchLogin: m.twitchLogin || '',
-                discordUsername: m.discordUsername || '',
-              }));
-              setAllMembers(members);
-            }
-          } catch (err) {
-            console.error("[Raids Review] Erreur fallback membres:", err);
-          }
+          console.error("[Raids Review] Impossible de charger les membres via /api/admin/members");
         }
       } catch (error) {
         console.error("[Raids Review] Erreur lors du chargement des membres:", error);

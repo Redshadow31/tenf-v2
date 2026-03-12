@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllRaidStats, loadPendingRaids } from '@/lib/raids';
 import { memberRepository } from '@/lib/repositories';
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForRaids() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * GET - Récupère les stats de raids pour le mois en cours avec conversion Discord ID -> Twitch Login
  * Query params: ?month=YYYY-MM (optionnel, par défaut mois en cours)
@@ -26,7 +41,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForRaids();
     // Créer un map Discord ID -> Twitch Login
     const discordIdToTwitchLogin = new Map<string, string>();
     const discordIdToDisplayName = new Map<string, string>();

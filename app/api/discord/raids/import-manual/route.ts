@@ -21,6 +21,21 @@ export const dynamic = 'force-dynamic';
 // Augmenter le timeout pour les imports de nombreux raids (éviter 504)
 export const maxDuration = 60;
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForRaidImport() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * POST - Importe plusieurs raids manuellement en une seule fois
  * Body: { month: string, raids: Array<{ raider: string, target: string, date?: string, countFrom?: boolean, countTo?: boolean }> }
@@ -78,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Charger les membres depuis Supabase pour la conversion
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForRaidImport();
     const memberMap = new Map<string, { discordId?: string; twitchLogin?: string }>();
     allMembers.forEach(m => {
       if (m.twitchLogin) memberMap.set(m.twitchLogin.toLowerCase(), m);

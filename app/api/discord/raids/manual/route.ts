@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadMonthlyRaids, saveMonthlyRaids, getMonthKey, getCurrentMonthKey } from '@/lib/raids';
 import { memberRepository } from '@/lib/repositories';
 
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForManualRaids() {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * POST - Ajoute un raid manuellement
  * Body: { raiderTwitchLogin: string, targetTwitchLogin: string, month?: string }
@@ -18,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForManualRaids();
     // Trouver les membres
     const raider = allMembers.find(m => m.twitchLogin.toLowerCase() === raiderTwitchLogin.toLowerCase());
     const target = allMembers.find(m => m.twitchLogin.toLowerCase() === targetTwitchLogin.toLowerCase());
@@ -146,7 +161,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const allMembers = await memberRepository.findAll(1000, 0);
+    const allMembers = await fetchAllMembersForManualRaids();
     const member = allMembers.find(m => m.twitchLogin.toLowerCase() === raiderTwitchLogin.toLowerCase());
     
     if (!member || !member.discordId) {
