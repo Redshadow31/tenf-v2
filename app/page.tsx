@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import { getRandomItems } from "@/lib/utils";
 import HomeClient from "@/components/HomeClient";
 
@@ -42,6 +43,14 @@ interface Review {
   hearts: number | null;
   created_at: string;
 }
+
+export const metadata: Metadata = {
+  title: "Accueil",
+  description: "Communaute d'entraide pour streamers, lives, evenements et accompagnement des createurs.",
+  alternates: {
+    canonical: "https://tenf-community.com",
+  },
+};
 
 /**
  * Page d'accueil - Server Component

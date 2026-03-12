@@ -102,7 +102,7 @@ export default function Partie4Page() {
               )}
             </div>
 
-            <a href="https://www.genspark.ai/api/files/s/ZeamRQ5a" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 10 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 10 HD</a>
           </div>
         </section>
 
@@ -159,7 +159,7 @@ export default function Partie4Page() {
               )}
             </div>
 
-            <a href="https://www.genspark.ai/api/files/s/lH052eMD" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 11 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 11 HD</a>
           </div>
         </section>
 
@@ -250,8 +250,8 @@ export default function Partie4Page() {
             </div>
 
             <div className="flex gap-4 mt-4">
-              <a href="https://www.genspark.ai/api/files/s/AeTiU4ZE" className="inline-block px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 16 HD</a>
-              <a href="https://www.genspark.ai/api/files/s/sa5HmN2b" className="inline-block px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 17 HD</a>
+              <a href="/admin/integration/discours" className="inline-block px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 16 HD</a>
+              <a href="/admin/integration/discours" className="inline-block px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 17 HD</a>
             </div>
           </div>
         </section>

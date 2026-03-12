@@ -97,7 +97,7 @@ export default function Partie2Page() {
               )}
             </div>
 
-            <a href="https://www.genspark.ai/api/files/s/1aaW6czY" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 4 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 4 HD</a>
           </div>
         </section>
 
@@ -159,7 +159,7 @@ export default function Partie2Page() {
               )}
             </div>
 
-            <a href="https://www.genspark.ai/api/files/s/ZqveM0Ra" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 5 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 5 HD</a>
           </div>
         </section>
 
@@ -215,7 +215,7 @@ export default function Partie2Page() {
               )}
             </div>
 
-            <a href="https://www.genspark.ai/api/files/s/zPR35qRy" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 6 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 6 HD</a>
           </div>
         </section>
 

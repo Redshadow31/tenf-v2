@@ -287,7 +287,7 @@ export default function Partie1Page() {
               </p>
             </EditableBlock>
 
-            <a href="https://www.genspark.ai/api/files/s/BJN4Yrwq" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 1 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 1 HD</a>
           </div>
         </section>
 
@@ -360,7 +360,7 @@ export default function Partie1Page() {
               </ul>
             </EditableBlock>
 
-            <a href="https://www.genspark.ai/api/files/s/xjEY6Gh3" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 2 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 2 HD</a>
           </div>
         </section>
 
@@ -429,7 +429,7 @@ export default function Partie1Page() {
               </ul>
             </EditableBlock>
 
-            <a href="https://www.genspark.ai/api/files/s/Y7i7dZS6" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium" target="_blank" rel="noopener noreferrer">📥 Télécharger Slide 3 HD</a>
+            <a href="/admin/integration/discours" className="inline-block mt-4 px-6 py-3 bg-[#9146ff] hover:bg-[#7c3aed] text-white rounded-lg transition-all hover:-translate-y-0.5 font-medium">📥 Télécharger Slide 3 HD</a>
           </div>
         </section>
 
