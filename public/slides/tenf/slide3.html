@@ -42,23 +42,25 @@
     }
 
     body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
+      display: block;
     }
 
     .viewport {
-      width: 1280px;
-      height: 720px;
-      position: relative;
+      width: 1600px;
+      height: 900px;
+      position: absolute;
+      left: 50%;
+      top: 50%;
       overflow: hidden;
       transform-origin: center center;
-      transform: scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      transform: translate(-50%, -50%) scale(1);
       background:
         radial-gradient(circle at 14% 20%, rgba(206,25,70,0.13), transparent 28%),
         radial-gradient(circle at 82% 82%, rgba(145,70,255,0.15), transparent 26%),
         linear-gradient(135deg, #0a0a0d 0%, #121320 44%, #0d0e12 100%);
       color: var(--text);
+      will-change: transform;
     }
 
     .grid-bg {
@@ -579,7 +581,7 @@
   </style>
 </head>
 <body>
-  <div class="viewport">
+  <div class="viewport" id="slideRoot">
     <div class="grid-bg"></div>
     <div class="glow red"></div>
     <div class="glow violet"></div>
@@ -699,5 +701,26 @@
       </div>
     </footer>
   </div>
+  <script>
+    // Scale global 16:9 (1600x900) pour conserver les proportions de presentation.
+    (function () {
+      const BASE_WIDTH = 1600;
+      const BASE_HEIGHT = 900;
+      const slide = document.getElementById("slideRoot");
+      if (!slide) return;
+
+      function applyScale() {
+        const scale = Math.min(
+          window.innerWidth / BASE_WIDTH,
+          window.innerHeight / BASE_HEIGHT
+        );
+        slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      }
+
+      applyScale();
+      window.addEventListener("resize", applyScale);
+      window.addEventListener("orientationchange", applyScale);
+    })();
+  </script>
 </body>
 </html>

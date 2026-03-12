@@ -19,18 +19,24 @@ height:100%;
 overflow:hidden;
 background:#0F0F1A;
 font-family:'Poppins',sans-serif;
-display:flex;
-align-items:center;
-justify-content:center;
 }
 
 body{
-width:1280px;
-height:720px;
-transform-origin:center;
-transform:scale(min(calc(100vw / 1280), calc(100vh / 720)));
 position:relative;
+display:block;
 color:white;
+}
+
+.slide{
+position:absolute;
+left:50%;
+top:50%;
+width:1600px;
+height:900px;
+transform-origin:center center;
+transform:translate(-50%, -50%) scale(1);
+overflow:hidden;
+will-change:transform;
 }
 
 .bg{
@@ -215,6 +221,7 @@ color:#aaa;
 </head>
 
 <body>
+<div class="slide" id="slideRoot">
 
 <div class="bg"></div>
 <div class="glow glow1"></div>
@@ -313,5 +320,24 @@ Attribué pour un mois, il permet de partager des idées et contribuer aux réfl
 La dynamique collective repose aussi sur les membres
 </div>
 
+</div>
+<script>
+// Scale global 16:9 (1600x900) pour conserver les proportions de presentation.
+(function(){
+  const BASE_WIDTH=1600;
+  const BASE_HEIGHT=900;
+  const slide=document.getElementById('slideRoot');
+  if(!slide) return;
+
+  function applyScale(){
+    const scale=Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
+    slide.style.transform=`translate(-50%, -50%) scale(${scale})`;
+  }
+
+  applyScale();
+  window.addEventListener('resize', applyScale);
+  window.addEventListener('orientationchange', applyScale);
+})();
+</script>
 </body>
 </html>
