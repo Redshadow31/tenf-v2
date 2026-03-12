@@ -86,15 +86,6 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/integration/discours2", label: "Discours & trame" },
         ],
       },
-      {
-        href: "/admin/raids",
-        label: "Engagement",
-        children: [
-          { href: "/admin/follow", label: "Feuilles de follow" },
-          { href: "/admin/raids", label: "Suivi des raids" },
-          { href: "/admin/raids", label: "Hub raids" },
-        ],
-      },
     ],
   },
   {
@@ -131,6 +122,14 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/events/anniversaires/mois", label: "Anniversaires du mois" },
           { href: "/admin/events/anniversaires/tous", label: "Tous les anniversaires" },
+        ],
+      },
+      {
+        href: "/admin/raids",
+        label: "Engagement",
+        children: [
+          { href: "/admin/follow", label: "Feuilles de follow" },
+          { href: "/admin/raids", label: "Suivi des raids" },
         ],
       },
     ],

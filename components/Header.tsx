@@ -39,6 +39,7 @@ const dropdownGroups: DropdownGroup[] = [
     items: [
       { href: "/membres", label: "Membres" },
       { href: "/lives", label: "Lives" },
+      { href: "/lives/calendrier", label: "Calendrier des lives" },
     ],
   },
   {
