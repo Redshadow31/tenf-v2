@@ -20,6 +20,7 @@ const memberSections: SidebarSection[] = [
     title: "Espace membre",
     items: [
       { href: "/membres/dashboard", label: "Dashboard" },
+      { href: "/membres/planning", label: "Planning" },
       { href: "/membres/me", label: "Mon profil" },
       { href: "/evaluation", label: "Mon évaluation" },
     ],

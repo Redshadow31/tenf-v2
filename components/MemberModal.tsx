@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
+import StreamPlanningCalendar, { type StreamPlanningCalendarItem } from "@/components/member/StreamPlanningCalendar";
 
 type MemberModalProps = {
   member: {
@@ -42,6 +43,8 @@ export default function MemberModal({
     rank: number;
   } | null>(null);
   const [loadingDiscordStats, setLoadingDiscordStats] = useState(false);
+  const [streamPlannings, setStreamPlannings] = useState<StreamPlanningCalendarItem[]>([]);
+  const [loadingStreamPlannings, setLoadingStreamPlannings] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +93,36 @@ export default function MemberModal({
       setDiscordStats(null);
     }
   }, [isOpen, member.discordId]);
+
+  useEffect(() => {
+    if (!isOpen || !member.twitchLogin) {
+      setStreamPlannings([]);
+      return;
+    }
+
+    async function loadMemberPlanning() {
+      setLoadingStreamPlannings(true);
+      try {
+        const response = await fetch(
+          `/api/members/public/${encodeURIComponent(member.twitchLogin)}/stream-plannings`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          setStreamPlannings([]);
+          return;
+        }
+        const data = await response.json();
+        setStreamPlannings(data.plannings || []);
+      } catch (error) {
+        console.error("Erreur chargement planning membre:", error);
+        setStreamPlannings([]);
+      } finally {
+        setLoadingStreamPlannings(false);
+      }
+    }
+
+    loadMemberPlanning();
+  }, [isOpen, member.twitchLogin]);
 
   if (!isOpen) return null;
 
@@ -262,6 +295,23 @@ export default function MemberModal({
               )}
             </div>
           )}
+
+          {/* Planning streams du membre */}
+          <div className="w-full space-y-3 text-left">
+            <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+              Planning des streams
+            </h3>
+            {loadingStreamPlannings ? (
+              <div className="py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                Chargement du planning...
+              </div>
+            ) : (
+              <StreamPlanningCalendar
+                plannings={streamPlannings}
+                emptyMessage="Aucun planning stream public pour le moment."
+              />
+            )}
+          </div>
 
           {/* Autres réseaux sociaux */}
           <div className="w-full space-y-3">
