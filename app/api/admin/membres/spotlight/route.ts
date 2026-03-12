@@ -11,6 +11,19 @@ function overlaps(
   return startA < endB && startB < endA;
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const asRecord = error as Record<string, unknown>;
+    const pieces = [asRecord.code, asRecord.message, asRecord.details, asRecord.hint]
+      .filter((v) => typeof v === "string" && v.length > 0)
+      .map((v) => String(v));
+    if (pieces.length > 0) return pieces.join(" | ");
+  }
+  return String(error);
+}
+
 /**
  * GET - Liste les spotlights programmés pour l'admin membres.
  */
@@ -94,9 +107,16 @@ export async function POST(request: NextRequest) {
     }
 
     const login = String(streamerTwitchLogin).trim().toLowerCase();
-    const member = await memberRepository.findByTwitchLogin(login);
-    const displayName =
-      member?.displayName || streamerDisplayName || streamerTwitchLogin;
+    let displayName = streamerDisplayName || streamerTwitchLogin;
+    try {
+      const member = await memberRepository.findByTwitchLogin(login);
+      if (member?.displayName) {
+        displayName = member.displayName;
+      }
+    } catch (memberError) {
+      // Ne pas bloquer la programmation si la lookup membre échoue ponctuellement.
+      console.warn("[Admin Membres Spotlight API] Lookup membre ignorée:", memberError);
+    }
 
     // Empêcher les chevauchements avec d'autres spotlights actifs.
     const all = await spotlightRepository.findAll(200, 0);
@@ -139,7 +159,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Admin Membres Spotlight API] Erreur POST:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Erreur serveur: ${extractErrorMessage(error)}` },
+      { status: 500 }
+    );
   }
 }
 
@@ -179,6 +202,9 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Admin Membres Spotlight API] Erreur PATCH:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Erreur serveur: ${extractErrorMessage(error)}` },
+      { status: 500 }
+    );
   }
 }
