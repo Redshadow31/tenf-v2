@@ -79,6 +79,7 @@
       filter: blur(90px);
       z-index: 0;
       pointer-events: none;
+      animation: glowDrift 8s ease-in-out infinite alternate;
     }
 
     .glow-violet {
@@ -95,6 +96,7 @@
       right: -80px;
       bottom: -100px;
       background: rgba(206, 25, 70, 0.16);
+      animation-delay: 1.5s;
     }
 
     .particle {
@@ -102,14 +104,29 @@
       border-radius: 50%;
       z-index: 0;
       opacity: 0.75;
+      animation: floatParticle 7s ease-in-out infinite;
     }
 
-    .particle.p1 { top: 90px; left: 190px; width: 6px; height: 6px; background: var(--twitch); }
-    .particle.p2 { top: 140px; right: 240px; width: 4px; height: 4px; background: var(--gold); }
-    .particle.p3 { bottom: 130px; left: 120px; width: 5px; height: 5px; background: var(--red); }
-    .particle.p4 { bottom: 180px; right: 180px; width: 7px; height: 7px; background: rgba(145, 70, 255, 0.9); }
-    .particle.p5 { top: 300px; right: 90px; width: 3px; height: 3px; background: #fff; }
-    .particle.p6 { top: 220px; left: 70px; width: 3px; height: 3px; background: #fff; }
+    .particle.p1 { top: 90px; left: 190px; width: 6px; height: 6px; background: var(--twitch); animation-delay: 0s; }
+    .particle.p2 { top: 140px; right: 240px; width: 4px; height: 4px; background: var(--gold); animation-delay: 1.2s; }
+    .particle.p3 { bottom: 130px; left: 120px; width: 5px; height: 5px; background: var(--red); animation-delay: 2s; }
+    .particle.p4 { bottom: 180px; right: 180px; width: 7px; height: 7px; background: rgba(145, 70, 255, 0.9); animation-delay: 3s; }
+    .particle.p5 { top: 300px; right: 90px; width: 3px; height: 3px; background: #fff; animation-delay: 0.7s; }
+    .particle.p6 { top: 220px; left: 70px; width: 3px; height: 3px; background: #fff; animation-delay: 2.6s; }
+
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      z-index: 0;
+      opacity: 0.3;
+      animation: twinkle 3.8s ease-in-out infinite;
+    }
+
+    .star.s1 { top: 78px; left: 420px; width: 2px; height: 2px; animation-delay: 0s; }
+    .star.s2 { top: 160px; right: 120px; width: 3px; height: 3px; animation-delay: 1s; }
+    .star.s3 { bottom: 88px; left: 300px; width: 2px; height: 2px; animation-delay: 1.8s; }
+    .star.s4 { bottom: 160px; right: 360px; width: 2px; height: 2px; animation-delay: 2.4s; }
 
     .topbar {
       position: absolute;
@@ -142,6 +159,7 @@
       border-radius: 50%;
       box-shadow: 0 0 24px rgba(145, 70, 255, 0.35);
       flex-shrink: 0;
+      animation: logoPulse 4s ease-in-out infinite;
     }
 
     .brand-kicker {
@@ -240,6 +258,15 @@
       color: var(--twitch);
       text-shadow: 0 0 32px rgba(145, 70, 255, 0.45);
     }
+
+    .title .white,
+    .title .red,
+    .title .violet {
+      animation: titleFlicker 5s ease-in-out infinite;
+    }
+
+    .title .red { animation-delay: 0.4s; }
+    .title .violet { animation-delay: 0.8s; }
 
     .subtitle {
       margin-top: 22px;
@@ -354,6 +381,7 @@
       font-weight: 700;
       text-transform: uppercase;
       white-space: nowrap;
+      animation: badgePulse 2.2s ease-in-out infinite;
     }
 
     .live-dot {
@@ -378,6 +406,7 @@
       height: 210px;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(145,70,255,0.22), rgba(145,70,255,0.02) 62%, transparent 72%);
+      animation: ringPulse 3.5s ease-in-out infinite;
     }
 
     .icon-core {
@@ -414,11 +443,12 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.24);
       max-width: 140px;
       text-align: center;
+      animation: floatTag 4.5s ease-in-out infinite;
     }
 
-    .tag-1 { top: 18px; left: 4px; color: #d9c2ff; }
-    .tag-2 { top: 64px; right: 0; color: #ffd7e1; }
-    .tag-3 { bottom: 26px; left: 0; color: #ffe6a7; }
+    .tag-1 { top: 18px; left: 4px; color: #d9c2ff; animation-delay: 0.2s; }
+    .tag-2 { top: 64px; right: 0; color: #ffd7e1; animation-delay: 1.1s; }
+    .tag-3 { bottom: 26px; left: 0; color: #ffe6a7; animation-delay: 2s; }
 
     .hero-message {
       margin-top: 8px;
@@ -478,6 +508,49 @@
       border-radius: 50%;
       background: var(--twitch);
       box-shadow: 0 0 12px rgba(145,70,255,0.8);
+      animation: twinkle 2.2s ease-in-out infinite;
+    }
+
+    @keyframes glowDrift {
+      from { transform: translate(0, 0) scale(1); opacity: 0.9; }
+      to { transform: translate(16px, -18px) scale(1.06); opacity: 1; }
+    }
+
+    @keyframes floatParticle {
+      0%, 100% { transform: translate(0, 0); opacity: 0.45; }
+      50% { transform: translate(0, -18px); opacity: 1; }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(145, 70, 255, 0.25); }
+      50% { box-shadow: 0 0 32px rgba(145, 70, 255, 0.5); }
+    }
+
+    @keyframes titleFlicker {
+      0%, 100% { opacity: 1; transform: translateX(0); }
+      97% { opacity: 0.96; transform: translateX(1px); }
+      98% { opacity: 0.88; transform: translateX(-1px); }
+      99% { opacity: 0.96; transform: translateX(1px); }
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes floatTag {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -500,6 +573,10 @@
     <div class="particle p4"></div>
     <div class="particle p5"></div>
     <div class="particle p6"></div>
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
 
     <header class="topbar">
       <div class="brand">
@@ -510,7 +587,7 @@
         </div>
       </div>
 
-      <div class="site-pill">teamnewfamily.netlify.app</div>
+      <div class="site-pill">tenf-community.com</div>
     </header>
 
     <main class="slide">
