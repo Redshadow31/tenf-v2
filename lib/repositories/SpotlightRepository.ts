@@ -199,15 +199,29 @@ export class SpotlightRepository {
   async create(spotlight: Partial<Spotlight>): Promise<Spotlight> {
     const spotlightRecord = this.mapToDbFormat(spotlight);
 
-    const { data, error } = await supabaseAdmin
+    let response = await supabaseAdmin
       .from('spotlights')
       .insert(spotlightRecord)
       .select()
       .single();
 
-    if (error) throw error;
+    if (response.error && this.isMissingColumnError(response.error)) {
+      const legacyRecord = { ...spotlightRecord };
+      if ('starts_at' in legacyRecord) {
+        legacyRecord.started_at = legacyRecord.starts_at;
+        delete legacyRecord.starts_at;
+      }
 
-    return this.mapToSpotlight(data);
+      response = await supabaseAdmin
+        .from('spotlights')
+        .insert(legacyRecord)
+        .select()
+        .single();
+    }
+
+    if (response.error) throw response.error;
+
+    return this.mapToSpotlight(response.data);
   }
 
   /**
@@ -216,17 +230,32 @@ export class SpotlightRepository {
   async update(id: string, updates: Partial<Spotlight>): Promise<Spotlight> {
     const updateRecord = this.mapToDbFormat(updates);
 
-    const { data, error } = await supabaseAdmin
+    let response = await supabaseAdmin
       .from('spotlights')
       .update(updateRecord)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
-    if (!data) throw new Error(`Spotlight not found: ${id}`);
+    if (response.error && this.isMissingColumnError(response.error)) {
+      const legacyUpdateRecord = { ...updateRecord };
+      if ('starts_at' in legacyUpdateRecord) {
+        legacyUpdateRecord.started_at = legacyUpdateRecord.starts_at;
+        delete legacyUpdateRecord.starts_at;
+      }
 
-    return this.mapToSpotlight(data);
+      response = await supabaseAdmin
+        .from('spotlights')
+        .update(legacyUpdateRecord)
+        .eq('id', id)
+        .select()
+        .single();
+    }
+
+    if (response.error) throw response.error;
+    if (!response.data) throw new Error(`Spotlight not found: ${id}`);
+
+    return this.mapToSpotlight(response.data);
   }
 
   /**
