@@ -649,8 +649,9 @@ export default function GestionMembresPage() {
     if (!text) return "";
     return text
       .toLowerCase()
-      .normalize("NFD") // Décompose les caractères accentués
+      .normalize("NFKD") // Décompose aussi les variantes Unicode fancy (ex: 𝖓𝖆𝖓𝖌𝖊𝖑)
       .replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+      .replace(/[^a-z0-9\s]/g, " ") // Uniformise ponctuation/symboles en espaces
       .replace(/\s+/g, " ") // Remplace les espaces multiples par un seul
       .trim(); // Supprime les espaces en début/fin
   }
