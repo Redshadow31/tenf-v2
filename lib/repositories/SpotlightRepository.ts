@@ -45,6 +45,11 @@ export interface SpotlightEvaluation {
 const SPOTLIGHT_EVAL_METRIC = 'evaluation_total_score';
 
 export class SpotlightRepository {
+  private isMissingColumnError(error: any): boolean {
+    const text = String(error?.message || error?.details || "").toLowerCase();
+    return error?.code === "42703" || text.includes("column") || text.includes("does not exist");
+  }
+
   /**
    * Retourne les IDs potentiels d'un spotlight:
    * - l'ID courant
@@ -111,7 +116,7 @@ export class SpotlightRepository {
    * Récupère le spotlight actif
    */
   async findActive(): Promise<Spotlight | null> {
-    const { data, error } = await supabaseAdmin
+    let response = await supabaseAdmin
       .from('spotlights')
       .select('*')
       .eq('status', 'active')
@@ -119,12 +124,22 @@ export class SpotlightRepository {
       .limit(1)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
+    if (response.error && this.isMissingColumnError(response.error)) {
+      response = await supabaseAdmin
+        .from('spotlights')
+        .select('*')
+        .eq('status', 'active')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .single();
     }
 
-    return data ? this.mapToSpotlight(data) : null;
+    if (response.error) {
+      if (response.error.code === 'PGRST116') return null;
+      throw response.error;
+    }
+
+    return response.data ? this.mapToSpotlight(response.data) : null;
   }
 
   /**
@@ -151,15 +166,31 @@ export class SpotlightRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findAll(limit = 50, offset = 0): Promise<Spotlight[]> {
-    const { data, error } = await supabaseAdmin
+    let response = await supabaseAdmin
       .from('spotlights')
       .select('*')
       .order('starts_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (response.error && this.isMissingColumnError(response.error)) {
+      response = await supabaseAdmin
+        .from('spotlights')
+        .select('*')
+        .order('started_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+    }
 
-    return (data || []).map(this.mapToSpotlight);
+    if (response.error && this.isMissingColumnError(response.error)) {
+      response = await supabaseAdmin
+        .from('spotlights')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+    }
+
+    if (response.error) throw response.error;
+
+    return (response.data || []).map(this.mapToSpotlight);
   }
 
   /**

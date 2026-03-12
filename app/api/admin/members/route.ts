@@ -57,6 +57,18 @@ function normalizeLogin(value?: string | null): string | undefined {
   return v ? v.toLowerCase() : undefined;
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const asRecord = error as Record<string, unknown>;
+    const parts = [asRecord.message, asRecord.details, asRecord.hint]
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
+    if (parts.length > 0) return parts.join(" | ");
+  }
+  return String(error);
+}
+
 function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: any[]): any[] {
   const mergedByKey = new Map<string, any>();
   const keyByDiscordId = new Map<string, string>();
@@ -351,14 +363,14 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const newMember = await memberRepository.create({
+    const targetRole = normalizedRole || "Affilié";
+    const basePayload = {
       twitchLogin,
       twitchId,
       displayName,
       twitchUrl,
       discordId,
       discordUsername,
-      role: normalizedRole || "Affilié",
       isVip: isVip || false,
       isActive: isActive !== undefined ? isActive : true,
       badges: normalizedBadges || [],
@@ -367,7 +379,7 @@ export async function POST(request: NextRequest) {
       birthday: birthday ? new Date(birthday) : undefined,
       twitchAffiliateDate: twitchAffiliateDate ? new Date(twitchAffiliateDate) : undefined,
       shadowbanLives: shadowbanLives === true,
-      profileValidationStatus: "valide", // Membres créés par admin = visibles sur /membres
+      profileValidationStatus: "valide" as const, // Membres créés par admin = visibles sur /membres
       onboardingStatus: onboardingStatus || "a_faire",
       mentorTwitchLogin,
       primaryLanguage,
@@ -378,7 +390,34 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       updatedAt: new Date(),
       updatedBy: admin.discordId,
-    });
+    };
+
+    let roleFallbackApplied = false;
+    let newMember;
+    try {
+      newMember = await memberRepository.create({
+        ...basePayload,
+        role: targetRole,
+      });
+    } catch (createError) {
+      const createMessage = extractErrorMessage(createError);
+      const isMemberRoleEnumError =
+        createMessage.includes("member_role") &&
+        (createMessage.includes("invalid input value") ||
+          createMessage.includes("enum") ||
+          createMessage.includes("violates check"));
+
+      // Compatibilité: certaines bases n'ont pas encore l'enum "Nouveau".
+      if (targetRole === "Nouveau" && isMemberRoleEnumError) {
+        roleFallbackApplied = true;
+        newMember = await memberRepository.create({
+          ...basePayload,
+          role: "Affilié",
+        });
+      } else {
+        throw createError;
+      }
+    }
 
     // Logger l'action avec before/after optimisés
     const { previousValue, newValue } = prepareAuditValues(undefined, newMember);
@@ -396,14 +435,24 @@ export async function POST(request: NextRequest) {
       metadata: { sourcePage: "/admin/membres/gestion" },
     });
 
-    return NextResponse.json({ member: newMember, success: true });
+    return NextResponse.json({
+      member: newMember,
+      success: true,
+      roleFallbackApplied,
+      warning: roleFallbackApplied
+        ? "Le rôle 'Nouveau' n'est pas disponible sur cette base. Le membre a été créé en 'Affilié'."
+        : undefined,
+    });
   } catch (error) {
     const duration = Date.now() - startTime;
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('invalid input value for enum') && message.includes('member_role')) {
+    const message = extractErrorMessage(error);
+    if (message.includes('member_role')) {
       return NextResponse.json(
-        { error: "La base n'est pas encore migrée pour les nouveaux rôles (member_role)." },
+        {
+          error:
+            "Le rôle sélectionné n'est pas encore disponible dans la base (member_role). Applique la migration SQL des rôles, ou utilise temporairement le rôle 'Affilié'.",
+        },
         { status: 400 }
       );
     }
