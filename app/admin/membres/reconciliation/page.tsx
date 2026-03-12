@@ -157,7 +157,45 @@ export default function ReconciliationMembresPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de l'ajout dans la gestion");
+        const errorMessage = String(data.error || "Erreur lors de l'ajout dans la gestion");
+        const isExistingLoginError = errorMessage
+          .toLowerCase()
+          .includes("login twitch existe déjà");
+
+        // Cas fréquent: le membre existe déjà mais est mal rattaché/peu visible dans la gestion.
+        // On tente alors une mise à jour/fusion douce au lieu d'échouer.
+        if (isExistingLoginError) {
+          const mergeResponse = await fetch("/api/admin/members", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              twitchLogin: login,
+              originalTwitchLogin: login,
+              displayName: member.displayName || member.twitchLogin,
+              discordId: member.discordId,
+              discordUsername: member.discordUsername,
+              role: member.role || "Affilié",
+              isVip: member.isVip === true,
+              isActive: member.isActive !== false,
+            }),
+          });
+
+          const mergeData = await mergeResponse.json().catch(() => ({}));
+          if (!mergeResponse.ok) {
+            throw new Error(
+              mergeData.error ||
+                "Le membre existe déjà, mais la fusion automatique a échoué."
+            );
+          }
+
+          alert(
+            `✅ ${member.displayName || login} existait déjà : la fiche a été fusionnée/synchronisée dans la gestion.`
+          );
+          await loadData();
+          return;
+        }
+
+        throw new Error(errorMessage);
       }
 
       alert(`✅ ${member.displayName || login} a été ajouté à la gestion.`);
