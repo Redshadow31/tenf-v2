@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['placehold.co', 'static-cdn.jtvnw.net', 'cdn.discordapp.com', 'clips-media-assets2.twitch.tv'],
+    domains: ['placehold.co', 'static-cdn.jtvnw.net', 'cdn.discordapp.com', 'clips-media-assets2.twitch.tv', 'unavatar.io'],
   },
   async redirects() {
     return [

@@ -32,6 +32,10 @@ const AVATAR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
 const AVATAR_CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 heures en secondes (Redis)
 const avatarCache = new Map<string, CachedTwitchUser>();
 
+function fallbackAvatarUrl(login: string): string {
+  return `https://unavatar.io/twitch/${encodeURIComponent(login.toLowerCase())}`;
+}
+
 function twitchAvatarCacheKey(login: string): string {
   return cacheKey('twitch', 'user', login.toLowerCase());
 }
@@ -183,7 +187,7 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
       id: `mock_${login}_${Date.now()}`,
       login: login.toLowerCase(),
       display_name: login,
-      profile_image_url: "https://placehold.co/128x128?text=Twitch",
+      profile_image_url: fallbackAvatarUrl(login),
     };
   }
 
@@ -196,7 +200,7 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
       id: `mock_${login}_${Date.now()}`,
       login: login.toLowerCase(),
       display_name: login,
-      profile_image_url: "https://placehold.co/128x128?text=Twitch",
+      profile_image_url: fallbackAvatarUrl(login),
     };
   }
 
@@ -219,7 +223,7 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     }
 
@@ -247,7 +251,7 @@ export async function getTwitchUser(login: string): Promise<TwitchUser> {
       id: `mock_${login}_${Date.now()}`,
       login: login.toLowerCase(),
       display_name: login,
-      profile_image_url: "https://placehold.co/128x128?text=Twitch",
+      profile_image_url: fallbackAvatarUrl(login),
     };
   } catch (error) {
     console.error(`Error fetching Twitch user ${login}:`, error);
@@ -320,7 +324,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     });
   }
@@ -336,7 +340,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     });
   }
@@ -352,7 +356,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     });
   }
@@ -394,7 +398,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
             id: `mock_${login}_${Date.now()}`,
             login: login.toLowerCase(),
             display_name: login,
-            profile_image_url: "https://placehold.co/128x128?text=Twitch",
+            profile_image_url: fallbackAvatarUrl(login),
           };
           allUsers.push(mockUser);
           // Ne pas mettre en cache les mocks
@@ -431,7 +435,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
             id: `mock_${login}_${Date.now()}`,
             login: login.toLowerCase(),
             display_name: login,
-            profile_image_url: "https://placehold.co/128x128?text=Twitch",
+            profile_image_url: fallbackAvatarUrl(login),
           };
           allUsers.push(mockUser);
           // Ne pas mettre en cache les mocks
@@ -455,7 +459,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     });
   } catch (error) {
@@ -467,7 +471,7 @@ export async function getTwitchUsers(logins: string[]): Promise<TwitchUser[]> {
         id: `mock_${login}_${Date.now()}`,
         login: login.toLowerCase(),
         display_name: login,
-        profile_image_url: "https://placehold.co/128x128?text=Twitch",
+        profile_image_url: fallbackAvatarUrl(login),
       };
     });
   }

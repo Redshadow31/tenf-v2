@@ -851,12 +851,23 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ member: updatedMember, success: true });
   } catch (error) {
-    const duration = Date.now() - startTime;
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('invalid input value for enum') && message.includes('member_role')) {
+    const message = extractErrorMessage(error);
+    const normalizedMessage = message.toLowerCase();
+    const isMemberRoleSchemaError =
+      normalizedMessage.includes("member_role") &&
+      (
+        normalizedMessage.includes("invalid input value") ||
+        normalizedMessage.includes("enum") ||
+        normalizedMessage.includes("violates check")
+      );
+
+    if (isMemberRoleSchemaError) {
       return NextResponse.json(
-        { error: "La base n'est pas encore migrée pour les nouveaux rôles (member_role)." },
+        {
+          error:
+            "Le rôle sélectionné n'est pas encore disponible dans la base (member_role). Applique la migration SQL des rôles, ou utilise temporairement le rôle 'Affilié'.",
+        },
         { status: 400 }
       );
     }
