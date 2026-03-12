@@ -1,21 +1,62 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import TENFLogo from "./TENFLogo";
 import { socialLinks } from "@/lib/socialLinks";
 import ThemeToggle from "./ThemeToggle";
 
-const publicLinks = [
+type NavLeaf = {
+  href: string;
+  label: string;
+};
+
+type DropdownGroup = {
+  label: string;
+  items: NavLeaf[];
+};
+
+const directLinks: NavLeaf[] = [
   { href: "/upa-event", label: "UPA Events" },
-  { href: "/membres", label: "Membres" },
-  { href: "/lives", label: "Lives" },
-  { href: "/events2", label: "Événements" },
-  { href: "/integration", label: "Intégration" },
-  { href: "/vip", label: "VIP" },
   { href: "/boutique", label: "Boutique" },
-  { href: "/avis-tenf", label: "Témoignages" },
-  { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
+];
+
+const dropdownGroups: DropdownGroup[] = [
+  {
+    label: "La communauté",
+    items: [
+      { href: "/a-propos", label: "À propos de TENF" },
+      { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
+      { href: "/avis-tenf", label: "Témoignages" },
+      { href: "/communaute/partenaires", label: "Partenaires" },
+      { href: "/organisation-staff", label: "Organisation du staff" },
+      { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
+    ],
+  },
+  {
+    label: "Découvrir les créateurs",
+    items: [
+      { href: "/membres", label: "Membres" },
+      { href: "/lives", label: "Lives" },
+    ],
+  },
+  {
+    label: "Événements",
+    items: [
+      { href: "/events2", label: "Calendrier / événements" },
+      { href: "/events", label: "Événements communautaires" },
+      { href: "/upa-event", label: "New Family Aventura" },
+    ],
+  },
+  {
+    label: "Rejoindre TENF",
+    items: [
+      { href: "/integration", label: "Intégration" },
+      { href: "/rejoindre/reunion-integration", label: "Réunion d'intégration" },
+      { href: "/rejoindre/faq", label: "FAQ / comment rejoindre" },
+    ],
+  },
 ];
 
 // Composant pour afficher les icônes de réseaux sociaux
@@ -53,99 +94,198 @@ function SocialIcon({ icon }: { icon: string }) {
 }
 
 export default function Header() {
+  const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpenGroups, setMobileOpenGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setOpenDropdown(null);
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!headerRef.current) return;
+      if (!headerRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenDropdown(null);
+        setMobileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  function toggleMobileGroup(label: string) {
+    setMobileOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  }
 
   return (
-    <header className="sticky top-0 z-50 border-b backdrop-blur" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 border-b backdrop-blur"
+      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 gap-4">
-        {/* Logo TENF et icônes réseaux sociaux */}
+        {/* Logo TENF cliquable */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <TENFLogo showTagline={true} size="xl" />
-          
-          {/* Icônes réseaux sociaux */}
-          <div className="hidden sm:flex items-center gap-1.5 ml-1">
+        </div>
+
+        {/* Navigation desktop */}
+        <nav className="hidden xl:flex items-center gap-5 text-sm font-medium flex-1 justify-center min-w-0">
+          {directLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="transition-colors whitespace-nowrap"
+              style={{ color: "var(--color-text-secondary)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--color-text-secondary)";
+              }}
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          {dropdownGroups.map((group) => {
+            const isOpen = openDropdown === group.label;
+            return (
+              <div key={group.label} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(isOpen ? null : group.label)}
+                  className="inline-flex items-center gap-1 transition-colors whitespace-nowrap"
+                  style={{ color: isOpen ? "var(--color-primary)" : "var(--color-text-secondary)" }}
+                  aria-expanded={isOpen}
+                >
+                  <span>{group.label}</span>
+                  <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
+                </button>
+
+                {isOpen && (
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 rounded-xl border shadow-xl p-2"
+                    style={{
+                      backgroundColor: "var(--color-card)",
+                      borderColor: "var(--color-border)",
+                    }}
+                  >
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpenDropdown(null)}
+                        className="block rounded-lg px-3 py-2 text-sm transition-colors"
+                        style={{ color: "var(--color-text-secondary)" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
+                          e.currentTarget.style.color = "var(--color-text)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.color = "var(--color-text-secondary)";
+                        }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Zone droite : sociaux + thème + menu mobile */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="hidden xl:flex items-center gap-1.5">
             {socialLinks.map((social) => (
-              <div key={social.icon} className="relative group">
+              <div key={social.icon} className="relative">
                 <a
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
-                  style={{ color: 'var(--color-text-secondary)' }}
+                  style={{ color: "var(--color-text-secondary)" }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = 'var(--color-primary)';
-                    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-                    e.currentTarget.style.opacity = '0.1';
+                    e.currentTarget.style.color = "var(--color-primary)";
+                    e.currentTarget.style.backgroundColor = "var(--color-primary)";
+                    e.currentTarget.style.opacity = "0.1";
                     setHoveredIcon(social.icon);
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.color = "var(--color-text-secondary)";
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.opacity = "1";
                     setHoveredIcon(null);
                   }}
                   aria-label={social.name}
                 >
                   <SocialIcon icon={social.icon} />
                 </a>
-                
-                {/* Tooltip */}
+
                 {hoveredIcon === social.icon && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium rounded-md shadow-lg whitespace-nowrap pointer-events-none z-50" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
+                  <div
+                    className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium rounded-md shadow-lg whitespace-nowrap pointer-events-none z-50"
+                    style={{
+                      backgroundColor: "var(--color-card)",
+                      color: "var(--color-text)",
+                      border: "1px solid var(--color-border)",
+                    }}
+                  >
                     {social.name}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 w-2 h-2 rotate-45" style={{ backgroundColor: 'var(--color-card)', borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}></div>
+                    <div
+                      className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 w-2 h-2 rotate-45"
+                      style={{
+                        backgroundColor: "var(--color-card)",
+                        borderRight: "1px solid var(--color-border)",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    />
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Navigation - Desktop */}
-        <nav className="hidden xl:flex items-center gap-4 text-sm font-medium flex-nowrap flex-1 justify-center min-w-0">
-          {publicLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="relative transition-colors whitespace-nowrap flex-shrink-0"
-              style={{ color: 'var(--color-text-secondary)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-primary)';
-                const underline = e.currentTarget.querySelector('.nav-underline') as HTMLElement;
-                if (underline) underline.style.width = '100%';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
-                const underline = e.currentTarget.querySelector('.nav-underline') as HTMLElement;
-                if (underline) underline.style.width = '0%';
-              }}
-            >
-              {link.label}
-              <span 
-                className="nav-underline absolute bottom-0 left-0 h-0.5 transition-all duration-300"
-                style={{ 
-                  width: '0%',
-                  backgroundColor: 'var(--color-primary)'
-                }}
-              ></span>
-            </Link>
-          ))}
-        </nav>
+          <ThemeToggle />
 
-        {/* Navigation - Mobile/Tablet (menu hamburger) */}
-        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
-            style={{ color: 'var(--color-text-secondary)' }}
+            className="xl:hidden flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
+            style={{ color: "var(--color-text-secondary)" }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--color-primary)';
-              e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+              e.currentTarget.style.color = "var(--color-primary)";
+              e.currentTarget.style.backgroundColor = "var(--color-surface)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = "var(--color-text-secondary)";
+              e.currentTarget.style.backgroundColor = "transparent";
             }}
             aria-label="Menu"
           >
@@ -157,35 +297,75 @@ export default function Header() {
               )}
             </svg>
           </button>
-
-          {/* Bouton de changement de thème */}
-          <ThemeToggle />
         </div>
       </div>
 
-      {/* Menu mobile déroulant */}
+      {/* Menu mobile en overlay */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
-          <nav className="px-4 py-3 flex flex-col gap-2">
-            {publicLinks.map((link) => (
+        <div
+          className="xl:hidden absolute top-full left-0 right-0 border-t shadow-xl"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
+        >
+          <nav className="px-4 py-3 flex flex-col gap-2 max-h-[75vh] overflow-y-auto">
+            {directLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-                style={{ color: 'var(--color-text-secondary)' }}
+                style={{ color: "var(--color-text-secondary)" }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                  e.currentTarget.style.color = "var(--color-primary)";
+                  e.currentTarget.style.backgroundColor = "var(--color-surface)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = 'var(--color-text-secondary)';
-                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = "var(--color-text-secondary)";
+                  e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
                 {link.label}
               </Link>
             ))}
+
+            {dropdownGroups.map((group) => {
+              const groupOpen = mobileOpenGroups.has(group.label);
+              return (
+                <div key={group.label} className="rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileGroup(group.label)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    style={{ color: "var(--color-text)" }}
+                  >
+                    <span>{group.label}</span>
+                    <span className={`transition-transform ${groupOpen ? "rotate-180" : ""}`}>▼</span>
+                  </button>
+                  {groupOpen && (
+                    <div className="px-2 pb-2">
+                      {group.items.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-sm transition-colors"
+                          style={{ color: "var(--color-text-secondary)" }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
+                            e.currentTarget.style.color = "var(--color-text)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "transparent";
+                            e.currentTarget.style.color = "var(--color-text-secondary)";
+                          }}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
         </div>
       )}
