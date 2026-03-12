@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 const LEGACY_FETCH_TIMEOUT_MS = 1500;
 const TWITCH_AVATARS_TIMEOUT_MS = 15000;
+const SUPABASE_PAGE_SIZE = 1000;
+const SUPABASE_MAX_PAGES = 20;
 
 function getDiscordDefaultAvatar(discordId?: string): string | undefined {
   if (!discordId) return undefined;
@@ -67,6 +69,27 @@ function extractErrorMessage(error: unknown): string {
     if (parts.length > 0) return parts.join(" | ");
   }
   return String(error);
+}
+
+async function fetchAllSupabaseMembers(): Promise<any[]> {
+  const allMembers: any[] = [];
+
+  for (let page = 0; page < SUPABASE_MAX_PAGES; page++) {
+    const offset = page * SUPABASE_PAGE_SIZE;
+    const chunk = await memberRepository.findAll(SUPABASE_PAGE_SIZE, offset);
+
+    if (!Array.isArray(chunk) || chunk.length === 0) {
+      break;
+    }
+
+    allMembers.push(...chunk);
+
+    if (chunk.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return allMembers;
 }
 
 function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: any[]): any[] {
@@ -209,8 +232,8 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Récupérer les membres Supabase + fallback legacy (limité dans le temps pour éviter les blocages UI)
-    const supabaseMembersPromise = memberRepository.findAll(1000, 0);
+    // Récupérer TOUS les membres Supabase + fallback legacy (limité dans le temps pour éviter les blocages UI)
+    const supabaseMembersPromise = fetchAllSupabaseMembers();
     const legacyMembersPromise = withTimeout(
       (async () => {
         const { loadMemberDataFromStorage, getAllMemberData } = await import('@/lib/memberData');

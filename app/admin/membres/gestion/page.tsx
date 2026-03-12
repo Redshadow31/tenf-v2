@@ -668,6 +668,11 @@ export default function GestionMembresPage() {
       // Recherche dans tous les champs avec normalisation
       const normalizedNom = normalize(member.nom);
       const normalizedTwitch = normalize(member.twitch);
+      const normalizedTwitchUrl = normalize(member.twitchUrl);
+      const twitchChannelFromUrl = member.twitchUrl
+        ? member.twitchUrl.split("/").filter(Boolean).pop()
+        : "";
+      const normalizedTwitchChannelFromUrl = normalize(twitchChannelFromUrl);
       const normalizedDiscord = normalize(member.discord);
       const normalizedSiteUsername = normalize(member.siteUsername);
       const normalizedDiscordId = String(member.discordId || "").trim();
@@ -684,6 +689,8 @@ export default function GestionMembresPage() {
       return (
         normalizedNom.includes(normalizedQuery) ||
         normalizedTwitch.includes(normalizedQuery) ||
+        normalizedTwitchChannelFromUrl.includes(normalizedQuery) ||
+        normalizedTwitchUrl.includes(normalizedQuery) ||
         normalizedDiscord.includes(normalizedQuery) ||
         normalizedSiteUsername.includes(normalizedQuery) ||
         // Recherche sur l'ID Discord: accepte aussi <@id>, espaces, etc.
