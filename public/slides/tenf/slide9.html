@@ -1,723 +1,1073 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=1280, height=720, initial-scale=1.0" name="viewport"/>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Parisienne&amp;display=swap" rel="stylesheet"/>
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
-<style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Poppins', sans-serif;
-            background-color: #0F0F1A;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        body {
-            transform-origin: center center;
-            width: 1280px;
-            height: 720px;
-            transform: scale(min(calc(100vw / 1280), calc(100vh / 720)) * 1.1);
-            flex-direction: column;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, height=720" />
+  <title>Slide 9 - Bonus journalier</title>
 
-        /* --- ANIMATIONS DEFINITIONS --- */
-        @keyframes spin3D {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(360deg); }
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 
-        @keyframes float-vertical {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
+  <style>
+    :root{
+      --bg:#0f0f1a;
+      --panel:#1e1f22;
+      --panel-2:#2b2d31;
+      --panel-3:#313338;
+      --panel-4:#232428;
+      --line:#3f4147;
+      --text:#f2f3f5;
+      --muted:#b5bac1;
+      --soft:#949ba4;
 
-        @keyframes shadow-pulse-multi {
-            0% { filter: drop-shadow(0 0 15px rgba(206, 25, 70, 0.6)); } /* Red */
-            33% { filter: drop-shadow(0 0 15px rgba(145, 70, 255, 0.6)); } /* Purple */
-            66% { filter: drop-shadow(0 0 15px rgba(255, 107, 53, 0.6)); } /* Orange */
-            100% { filter: drop-shadow(0 0 15px rgba(206, 25, 70, 0.6)); }
-        }
+      --discord:#5865f2;
+      --violet:#9146ff;
+      --red:#ce1946;
+      --gold:#ffd166;
+      --green:#57f287;
+    }
 
-        @keyframes shake-hover {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(5deg); }
-            50% { transform: rotate(0deg); }
-            75% { transform: rotate(-5deg); }
-            100% { transform: rotate(0deg); }
-        }
+    *{box-sizing:border-box}
 
-        @keyframes color-cycle {
-            0% { color: #9146FF; }
-            50% { color: #CE1946; }
-            100% { color: #9146FF; }
-        }
-        
-        @keyframes text-color-cycle {
-            0% { color: white; }
-            33% { color: #FFD700; }
-            66% { color: #CE1946; }
-            100% { color: white; }
-        }
+    html,body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:#111;
+      font-family:"Poppins",sans-serif;
+    }
 
-        @keyframes glitch-skew {
-            0% { transform: skew(0deg); }
-            20% { transform: skew(-2deg); }
-            40% { transform: skew(2deg); }
-            60% { transform: skew(-1deg); }
-            80% { transform: skew(1deg); }
-            100% { transform: skew(0deg); }
-        }
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
 
-        @keyframes breathe {
-            0%, 100% { opacity: 0.1; transform: scale(1); }
-            50% { opacity: 0.2; transform: scale(1.1); }
-        }
-        
-        @keyframes breathe-line {
-            0%, 100% { opacity: 0.7; transform: scaleX(1); }
-            50% { opacity: 1; transform: scaleX(1.1); }
-        }
+    .viewport{
+      width:1280px;
+      height:720px;
+      position:relative;
+      overflow:hidden;
+      transform-origin:center center;
+      transform:scale(min(calc(100vw / 1280), calc(100vh / 720)));
+      background:
+        radial-gradient(circle at 15% 15%, rgba(145,70,255,.16), transparent 28%),
+        radial-gradient(circle at 85% 85%, rgba(206,25,70,.14), transparent 26%),
+        linear-gradient(135deg, #09090c 0%, #11131f 44%, #0d0e12 100%);
+      color:white;
+    }
 
-        @keyframes slide-in-left {
-            0% { opacity: 0; transform: translateX(-50px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
+    .grid-bg{
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+      background-size:44px 44px;
+      mask-image:linear-gradient(to bottom, rgba(255,255,255,.2), transparent 88%);
+      z-index:0;
+    }
 
-        @keyframes slide-in-right {
-            0% { opacity: 0; transform: translateX(50px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
+    .glow{
+      position:absolute;
+      border-radius:50%;
+      filter:blur(110px);
+      pointer-events:none;
+      z-index:0;
+      animation:breathe 8s ease-in-out infinite alternate;
+    }
 
-        @keyframes fade-in-up {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
+    .glow.violet{
+      width:420px;
+      height:420px;
+      top:-120px;
+      left:-100px;
+      background:rgba(145,70,255,.14);
+    }
 
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(206, 25, 70, 0.7); border-color: #CE1946; }
-            70% { box-shadow: 0 0 0 10px rgba(206, 25, 70, 0); border-color: #FF838A; }
-            100% { box-shadow: 0 0 0 0 rgba(206, 25, 70, 0); border-color: #CE1946; }
-        }
-        
-        @keyframes scale-pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        @keyframes glow-rotate {
-            0% { box-shadow: 0 0 10px #FFD700; }
-            50% { box-shadow: 0 0 20px #FFD700, 0 0 30px #FF838A; }
-            100% { box-shadow: 0 0 10px #FFD700; }
-        }
+    .glow.red{
+      width:400px;
+      height:400px;
+      right:-80px;
+      bottom:-100px;
+      background:rgba(206,25,70,.12);
+      animation-direction:alternate-reverse;
+    }
 
-        @keyframes float-particle {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(10px, -15px); }
-            50% { transform: translate(-5px, -25px); }
-            75% { transform: translate(-15px, -10px); }
-            100% { transform: translate(0, 0); }
-        }
+    .light-ray{
+      position:absolute;
+      width:170px;
+      height:1200px;
+      background:rgba(255,255,255,.04);
+      filter:blur(60px);
+      transform:rotate(45deg);
+      z-index:0;
+      animation:rayMove 13s linear infinite;
+    }
 
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-        
-        @keyframes ray-move {
-            0% { transform: rotate(45deg) translateY(-100%); opacity: 0; }
-            20% { opacity: 0.3; }
-            80% { opacity: 0.3; }
-            100% { transform: rotate(45deg) translateY(200%); opacity: 0; }
-        }
+    .ray-1{ top:-260px; left:140px; }
+    .ray-2{ top:-330px; right:200px; animation-duration:15s; animation-direction:reverse; }
 
-        @keyframes arrow-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        
-        @keyframes float-bounce {
-            0%, 100% { transform: translateY(0) rotate(5deg); }
-            50% { transform: translateY(-15px) rotate(-5deg); }
-        }
-        
-        @keyframes badge-pulse {
-            0% { transform: rotate(10deg) scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-            70% { transform: rotate(10deg) scale(1.1); box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
-            100% { transform: rotate(10deg) scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
-        }
+    .particle{
+      position:absolute;
+      border-radius:50%;
+      opacity:.72;
+      z-index:0;
+      animation:drift 9s ease-in-out infinite;
+      box-shadow:0 0 8px currentColor;
+    }
 
-        @keyframes header-glow-pulse {
-            0% { box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-            50% { box-shadow: 0 0 15px rgba(145, 70, 255, 0.4); }
-            100% { box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        }
+    .p1{top:90px;left:180px;width:5px;height:5px;color:var(--gold);background:currentColor}
+    .p2{top:150px;right:210px;width:4px;height:4px;color:var(--violet);background:currentColor;animation-delay:1s}
+    .p3{top:290px;left:70px;width:3px;height:3px;color:#fff;background:currentColor;animation-delay:2s}
+    .p4{bottom:150px;right:180px;width:6px;height:6px;color:var(--red);background:currentColor;animation-delay:.8s}
+    .p5{bottom:120px;left:240px;width:4px;height:4px;color:var(--discord);background:currentColor;animation-delay:1.5s}
 
-        /* --- BACKGROUND & LAYOUT --- */
-        .bg-layer-1 {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0F0F1A;
-            z-index: 0;
-        }
+    .star{
+      position:absolute;
+      background:#fff;
+      border-radius:50%;
+      z-index:0;
+      animation:twinkle 4s infinite ease-in-out;
+    }
 
-        .bg-glow-purple {
-            position: absolute;
-            top: -100px;
-            left: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #9146FF;
-            opacity: 0.15;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 6s infinite ease-in-out;
-        }
+    .s1 { top: 14%; left: 12%; width: 2px; height: 2px; }
+    .s2 { top: 24%; right: 16%; width: 3px; height: 3px; animation-delay: .8s; }
+    .s3 { top: 72%; left: 8%; width: 2px; height: 2px; animation-delay: 1.5s; }
+    .s4 { top: 80%; right: 25%; width: 2px; height: 2px; animation-delay: 2.1s; }
 
-        .bg-glow-red {
-            position: absolute;
-            bottom: -100px;
-            right: -100px;
-            width: 900px;
-            height: 900px;
-            background-color: #CE1946;
-            opacity: 0.15;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 1;
-            animation: breathe 8s infinite ease-in-out reverse;
-        }
-        
-        /* Rayons lumineux */
-        .light-ray {
-            position: absolute;
-            width: 50px;
-            height: 200%;
-            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.05), transparent);
-            z-index: 2;
-            pointer-events: none;
-        }
+    .topbar{
+      position:absolute;
+      top:20px;
+      left:28px;
+      right:28px;
+      z-index:5;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
 
-        /* --- LOGO --- */
-        .logo-container {
-            position: absolute;
-            top: 40px;
-            left: 60px;
-            width: 90px;
-            height: 90px;
-            z-index: 50;
-            perspective: 1000px;
-        }
-        
-        .logo-wrapper {
-            width: 100%;
-            height: 100%;
-            animation: float-vertical 4s ease-in-out infinite;
-        }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 16px 10px 10px;
+      border-radius:18px;
+      background:rgba(16,16,24,.55);
+      border:1px solid rgba(255,255,255,.07);
+      backdrop-filter:blur(14px);
+      box-shadow:0 16px 36px rgba(0,0,0,.34);
+    }
 
-        .logo-tenf {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            animation: 
-                spin3D 20s linear infinite,
-                shadow-pulse-multi 4s infinite;
-            transition: transform 0.3s ease;
-        }
-        
-        .logo-container:hover .logo-tenf {
-            animation: shake-hover 0.5s ease-in-out;
-        }
+    .brand img{
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      object-fit:cover;
+      flex-shrink:0;
+      box-shadow:0 0 24px rgba(145,70,255,.24);
+      animation:floatLogo 4s ease-in-out infinite;
+    }
 
-        /* --- MAIN CONTENT --- */
-        .main-container {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 40px 60px;
-            box-sizing: border-box;
-        }
+    .brand-kicker{
+      display:block;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.45);
+      margin-bottom:2px;
+    }
 
-        /* Header */
-        .header-area {
-            margin-left: 120px;
-            margin-bottom: 10px;
-        }
+    .brand-name{
+      font-size:16px;
+      font-weight:700;
+      line-height:1.2;
+      color:#fff;
+    }
 
-        .page-title {
-            font-size: 56px;
-            font-weight: 900;
-            text-transform: uppercase;
-            line-height: 1.1;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .page-title:hover {
-            animation: glitch-skew 0.5s;
-        }
+    .tag-pill{
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(88,101,242,.12);
+      border:1px solid rgba(88,101,242,.28);
+      color:rgba(255,255,255,.92);
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+      box-shadow:0 0 24px rgba(88,101,242,.14);
+    }
 
-        .discord-icon-title {
-            color: #5865F2; /* Discord Blurple */
-            font-size: 50px;
-            filter: drop-shadow(0 0 10px rgba(88, 101, 242, 0.5));
-            animation: color-cycle 8s infinite;
-        }
+    .content{
+      position:relative;
+      z-index:3;
+      width:100%;
+      height:100%;
+      padding:84px 28px 34px;
+      display:grid;
+      grid-template-columns:300px 1fr;
+      gap:18px;
+    }
 
-        .title-text {
-            background-color: #9146FF; /* Fallback */
-            background-image: linear-gradient(135deg, #9146FF 0%, #5865F2 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            color: #9146FF;
-            text-shadow: 0 0 20px rgba(145, 70, 255, 0.4);
-        }
-        
-        .title-line {
-            width: 150px; 
-            height: 4px; 
-            background-color: #FFD700; /* Gold */
-            margin-top: 10px; 
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
-            border-radius: 2px;
-            animation: breathe-line 3s infinite ease-in-out;
-        }
+    .left{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:0;
+      padding-left:2px;
+    }
 
-        /* Simulation Container */
-        .simulation-wrapper {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            padding-top: 10px;
-        }
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+      color:rgba(255,255,255,.78);
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
 
-        /* Discord Frame */
-        .discord-frame {
-            width: 900px;
-            background-color: #36393F; /* Discord Dark */
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 2px rgba(206, 25, 70, 0.5); /* TENF Red Border */
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            transform: scale(0.95);
-            animation: fade-in-up 0.8s ease-out;
-        }
+    .eyebrow::before{
+      content:"";
+      width:36px;
+      height:2px;
+      border-radius:999px;
+      background:linear-gradient(90deg, var(--discord), var(--violet));
+      box-shadow:0 0 18px rgba(88,101,242,.45);
+    }
 
-        /* Discord Header */
-        .discord-header {
-            background-color: #2F3136; /* Discord Header Dark */
-            padding: 12px 16px;
-            border-bottom: 1px solid #202225;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: header-glow-pulse 4s infinite;
-        }
+    .title{
+      margin:0;
+      font-size:44px;
+      line-height:.93;
+      font-weight:900;
+      letter-spacing:-.04em;
+      text-transform:uppercase;
+      text-shadow:0 0 18px rgba(88,101,242,.18);
+    }
 
-        .channel-hash {
-            color: #8E9297;
-            font-size: 24px;
-            font-weight: 300;
-        }
+    .title span{display:block}
+    .title .white{color:#fff}
+    .title .discord{color:var(--discord); text-shadow:0 0 24px rgba(88,101,242,.28)}
+    .title .gold{color:var(--gold); text-shadow:0 0 20px rgba(255,209,102,.22)}
 
-        .channel-name {
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-        }
+    .intro{
+      margin-top:14px;
+      max-width:282px;
+      font-size:13px;
+      line-height:1.58;
+      color:rgba(255,255,255,.78);
+    }
 
-        .channel-desc {
-            color: #B9BBBE;
-            font-size: 14px;
-            margin-left: 10px;
-            border-left: 1px solid #4F545C;
-            padding-left: 10px;
-        }
+    .intro strong{color:#fff}
 
-        /* Discord Chat Area */
-        .discord-chat {
-            padding: 20px;
-            background-color: #36393F;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+    .mini-card{
+      margin-top:16px;
+      padding:12px 14px;
+      border-radius:15px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 18px rgba(0,0,0,.16);
+    }
 
-        /* Message */
-        .message-group {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 10px;
-        }
-        
-        .msg-user {
-            animation: slide-in-left 0.8s ease-out 0.2s backwards;
-        }
-        
-        .msg-bot {
-            animation: slide-in-right 0.8s ease-out 0.6s backwards;
-        }
+    .mini-card-title{
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.45);
+      margin-bottom:6px;
+    }
 
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #CE1946;
-            flex-shrink: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: 700;
-            font-size: 18px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-        }
-        
-        .avatar-bot {
-            background-color: #5865F2;
-        }
+    .mini-card-text{
+      font-size:12px;
+      line-height:1.48;
+      color:rgba(255,255,255,.78);
+    }
 
-        .message-content {
-            flex: 1;
-        }
+    .mini-card-text strong{color:#fff}
 
-        .username-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
+    .right{
+      position:relative;
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
 
-        .username {
-            font-weight: 600;
-            color: white;
-            font-size: 16px;
-        }
+    .discord-demo-wrap{
+      position:relative;
+      width:920px;
+      height:530px;
+      animation:fadeUp .8s ease-out both;
+    }
 
-        .bot-badge {
-            background-color: #5865F2;
-            color: white;
-            font-size: 10px;
-            padding: 1px 4px;
-            border-radius: 3px;
-            text-transform: uppercase;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            height: 15px;
-        }
+    .discord-frame{
+      position:absolute;
+      inset:0;
+      background:var(--panel);
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow:
+        0 20px 50px rgba(0,0,0,.55),
+        0 0 0 1px rgba(88,101,242,.28),
+        0 0 24px rgba(145,70,255,.10);
+      display:grid;
+      grid-template-columns:235px 1fr;
+    }
 
-        .timestamp {
-            font-size: 12px;
-            color: #72767D;
-            font-weight: 400;
-        }
+    .sidebar{
+      background:#1b1d21;
+      border-right:1px solid #25272c;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
 
-        .command-text {
-            color: #DCDDDE;
-            background-color: #2F3136;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: monospace;
-            display: inline-block;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+    .server-head{
+      height:52px;
+      display:flex;
+      align-items:center;
+      padding:0 14px;
+      border-bottom:1px solid #25272c;
+      font-weight:700;
+      color:#fff;
+      gap:8px;
+      font-size:14px;
+      box-shadow:0 1px 0 rgba(0,0,0,.2);
+    }
 
-        /* Embed Card */
-        .embed-card {
-            background-color: #2F3136;
-            border-left: 4px solid #CE1946; /* TENF Red */
-            border-radius: 4px;
-            padding: 12px 16px;
-            max-width: 500px;
-            margin-top: 5px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            animation: pulse-border 2s infinite ease-in-out 1s; /* Border pulse intense */
-        }
-        
-        .embed-author {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            color: white;
-        }
+    .server-head .caret{
+      color:#b5bac1;
+      font-size:12px;
+    }
 
-        .embed-title {
-            color: #CE1946;
-            font-weight: 700;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .channels{
+      padding:10px 10px 10px 8px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      color:#b5bac1;
+      font-size:13px;
+    }
 
-        .embed-desc {
-            color: #DCDDDE;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        
-        .points-badge {
-            display: inline-block;
-            background-color: rgba(255, 215, 0, 0.1);
-            color: #FFD700;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 16px;
-            margin-top: 5px;
-            animation: 
-                scale-pulse 2s infinite ease-in-out,
-                glow-rotate 3s infinite alternate;
-        }
-        
-        .countdown-text strong {
-            animation: text-color-cycle 4s infinite;
-        }
+    .category{
+      margin-top:4px;
+    }
 
-        /* Annotations */
-        .annotation {
-            position: absolute;
-            background-color: rgba(0, 0, 0, 0.85);
-            border: 1px solid rgba(145, 70, 255, 0.4);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            z-index: 20;
-            backdrop-filter: blur(8px);
-            opacity: 0; /* Initial state */
-            animation: fade-in-up 0.6s ease-out forwards;
-        }
-        
-        .annotation:hover {
-            transform: translateY(-5px);
-            border-color: #FFD700;
-            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
-            transition: all 0.3s ease;
-        }
+    .category-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:4px 6px;
+      color:#8e9297;
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+    }
 
-        .annotation-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #FFD700;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #FFD700;
-        }
-        
-        .line-connector {
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.4);
-            z-index: 10;
-            opacity: 0;
-            animation: fade-in-up 0.6s ease-out forwards;
-        }
+    .category-title .left-cat{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-width:0;
+    }
 
-        /* Badge Overlay */
-        .daily-badge {
-            position: absolute;
-            top: -25px;
-            right: -25px;
-            background-color: #FFD700;
-            color: #000;
-            padding: 10px 25px;
-            border-radius: 30px;
-            font-weight: 800;
-            font-size: 20px;
-            transform: rotate(10deg);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-            border: 3px solid white;
-            z-index: 30;
-            text-transform: uppercase;
-            animation: badge-pulse 3s infinite ease-in-out;
-        }
+    .category-title .plus{
+      opacity:.75;
+      font-size:12px;
+    }
 
-        /* Particles & Stars */
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.6;
-            z-index: 5;
-            animation: float-particle 8s infinite linear;
-        }
-        
-        .star {
-            position: absolute;
-            background-color: white;
-            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-            animation: twinkle 4s infinite ease-in-out;
-            z-index: 4;
-        }
-        
-        /* Floating Emojis */
-        .floating-emoji {
-            position: absolute;
-            font-size: 40px;
-            z-index: 25;
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));
-            animation: float-bounce 6s infinite ease-in-out;
-        }
+    .channel{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      border-radius:8px;
+      color:#b5bac1;
+      transition:.2s ease;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
 
-    </style>
+    .channel .hash{
+      color:#8e9297;
+      font-size:18px;
+      line-height:1;
+      flex-shrink:0;
+    }
+
+    .channel:hover{
+      background:#2b2d31;
+      color:#f2f3f5;
+    }
+
+    .channel.selected{
+      background:#3a3d44;
+      color:#fff;
+      font-weight:700;
+    }
+
+    .channel.selected .hash{
+      color:#fff;
+    }
+
+    .main-chat{
+      display:grid;
+      grid-template-rows:52px 1fr;
+      min-width:0;
+    }
+
+    .discord-header{
+      background:var(--panel-2);
+      border-bottom:1px solid #222327;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:0 16px;
+      min-width:0;
+    }
+
+    .channel-hash{
+      color:#8e9297;
+      font-size:24px;
+      font-weight:300;
+      flex-shrink:0;
+    }
+
+    .channel-name{
+      color:#fff;
+      font-weight:700;
+      font-size:15px;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .channel-desc{
+      color:#b5bac1;
+      font-size:13px;
+      margin-left:8px;
+      border-left:1px solid #4f545c;
+      padding-left:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .discord-chat{
+      position:relative;
+      padding:20px 20px 18px;
+      background:var(--panel);
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+
+    .message-group{
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+    }
+
+    .msg-user{animation:slideLeft .8s ease-out .2s backwards}
+    .msg-bot{animation:slideRight .8s ease-out .5s backwards}
+
+    .avatar{
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      font-weight:800;
+      font-size:16px;
+      color:#fff;
+      box-shadow:0 4px 10px rgba(0,0,0,.25);
+    }
+
+    .avatar.user{
+      background:linear-gradient(135deg, #ce1946, #9146ff);
+    }
+
+    .avatar.bot{
+      background:linear-gradient(135deg, #5865f2, #7c8cff);
+      font-size:13px;
+    }
+
+    .message-content{
+      flex:1;
+      min-width:0;
+    }
+
+    .username-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:6px;
+      flex-wrap:wrap;
+    }
+
+    .username{
+      font-weight:700;
+      color:#fff;
+      font-size:15px;
+    }
+
+    .timestamp{
+      font-size:12px;
+      color:#949ba4;
+      font-weight:500;
+    }
+
+    .bot-badge{
+      background:#5865f2;
+      color:#fff;
+      font-size:10px;
+      padding:2px 5px;
+      border-radius:4px;
+      text-transform:uppercase;
+      font-weight:700;
+      line-height:1;
+    }
+
+    .command-box{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      background:#2b2d31;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:8px;
+      color:#dcddde;
+      font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:14px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+
+    .command-box .slash{
+      color:#57f287;
+      font-weight:800;
+    }
+
+    .embed-card{
+      margin-top:6px;
+      width:460px;
+      background:#2b2d31;
+      border-left:4px solid var(--violet);
+      border-radius:8px;
+      padding:12px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      box-shadow:0 8px 20px rgba(0,0,0,.22);
+      animation:pulseBorder 2.2s ease-in-out infinite 1s;
+    }
+
+    .embed-author{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      font-weight:700;
+      color:#fff;
+    }
+
+    .embed-author .mini-bot{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:linear-gradient(135deg, #5865f2, #7c8cff);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-size:10px;
+      font-weight:800;
+      flex-shrink:0;
+    }
+
+    .embed-title{
+      color:#fff;
+      font-weight:800;
+      font-size:16px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .embed-title .gift{
+      color:var(--gold);
+      filter:drop-shadow(0 0 8px rgba(255,209,102,.4));
+    }
+
+    .embed-desc{
+      color:#dcddde;
+      font-size:14px;
+      line-height:1.45;
+    }
+
+    .embed-desc strong{
+      color:#fff;
+    }
+
+    .points-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      width:max-content;
+      background:rgba(255,209,102,.10);
+      color:var(--gold);
+      border:1px solid rgba(255,209,102,.28);
+      padding:6px 12px;
+      border-radius:999px;
+      font-weight:800;
+      font-size:15px;
+      margin-top:4px;
+      box-shadow:0 0 18px rgba(255,209,102,.12);
+      animation:scalePulse 2.2s infinite ease-in-out;
+    }
+
+    .countdown{
+      margin-top:2px;
+      font-size:13px;
+      color:#b5bac1;
+      line-height:1.45;
+    }
+
+    .countdown strong{
+      color:#fff;
+    }
+
+    .daily-badge{
+      position:absolute;
+      top:-18px;
+      right:-16px;
+      background:var(--gold);
+      color:#000;
+      padding:10px 18px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:16px;
+      transform:rotate(8deg);
+      box-shadow:0 10px 20px rgba(0,0,0,.35);
+      border:3px solid #fff;
+      z-index:8;
+      text-transform:uppercase;
+      animation:badgePulse 3s infinite ease-in-out;
+    }
+
+    .annotation{
+      position:absolute;
+      background:rgba(0,0,0,.84);
+      border:1px solid rgba(145,70,255,.35);
+      padding:8px 14px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:600;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      box-shadow:0 8px 18px rgba(0,0,0,.35);
+      z-index:10;
+      backdrop-filter:blur(8px);
+      animation:fadeUp .6s ease-out forwards;
+      max-width:260px;
+    }
+
+    .annotation:hover{
+      transform:translateY(-4px);
+      border-color:var(--gold);
+      box-shadow:0 8px 22px rgba(255,209,102,.18);
+      transition:.25s ease;
+    }
+
+    .annotation-dot{
+      width:8px;
+      height:8px;
+      background:var(--gold);
+      border-radius:50%;
+      box-shadow:0 0 10px var(--gold);
+      flex-shrink:0;
+      animation:dotBounce 2s infinite ease-in-out;
+    }
+
+    .connector{
+      position:absolute;
+      background:rgba(255,255,255,.38);
+      z-index:9;
+      animation:fadeUp .6s ease-out forwards;
+    }
+
+    .floating-emoji{
+      position:absolute;
+      font-size:30px;
+      z-index:9;
+      filter:drop-shadow(0 5px 10px rgba(0,0,0,.3));
+      animation:floatBounce 6s infinite ease-in-out;
+      pointer-events:none;
+    }
+
+    .e1{top:108px;right:42px}
+    .e2{bottom:54px;right:22px;animation-delay:1.4s}
+    .e3{bottom:30px;left:40px;animation-delay:2.3s}
+
+    .footer{
+      position:absolute;
+      left:30px;
+      right:30px;
+      bottom:8px;
+      z-index:4;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      font-size:10px;
+      color:rgba(255,255,255,.45);
+      font-weight:500;
+    }
+
+    .footer-left,.footer-right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+
+    .footer-left span,.footer-right span:last-child{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .line{
+      width:30px;
+      height:1px;
+      background:rgba(255,255,255,.16);
+      flex-shrink:0;
+    }
+
+    .dot{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:var(--discord);
+      box-shadow:0 0 12px rgba(88,101,242,.75);
+      flex-shrink:0;
+    }
+
+    @keyframes breathe{
+      0%{opacity:.10;transform:scale(1)}
+      100%{opacity:.20;transform:scale(1.08)}
+    }
+
+    @keyframes rayMove{
+      0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0}
+      50%{opacity:.06}
+      100%{transform:rotate(45deg) translate(200px,200px);opacity:0}
+    }
+
+    @keyframes drift{
+      0%,100%{transform:translate(0,0);opacity:.55}
+      50%{transform:translate(8px,-12px);opacity:1}
+    }
+
+    @keyframes twinkle{
+      0%,100%{opacity:.2;transform:scale(.8)}
+      50%{opacity:1;transform:scale(1.2);box-shadow:0 0 5px white}
+    }
+
+    @keyframes floatLogo{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-8px)}
+    }
+
+    @keyframes slideLeft{
+      0%{opacity:0;transform:translateX(-28px)}
+      100%{opacity:1;transform:translateX(0)}
+    }
+
+    @keyframes slideRight{
+      0%{opacity:0;transform:translateX(28px)}
+      100%{opacity:1;transform:translateX(0)}
+    }
+
+    @keyframes fadeUp{
+      0%{opacity:0;transform:translateY(18px)}
+      100%{opacity:1;transform:translateY(0)}
+    }
+
+    @keyframes pulseBorder{
+      0%{box-shadow:0 0 0 0 rgba(145,70,255,.28)}
+      70%{box-shadow:0 0 0 10px rgba(145,70,255,0)}
+      100%{box-shadow:0 0 0 0 rgba(145,70,255,0)}
+    }
+
+    @keyframes scalePulse{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.05)}
+    }
+
+    @keyframes dotBounce{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-4px)}
+    }
+
+    @keyframes floatBounce{
+      0%,100%{transform:translateY(0) rotate(4deg)}
+      50%{transform:translateY(-10px) rotate(-4deg)}
+    }
+
+    @keyframes badgePulse{
+      0%{transform:rotate(8deg) scale(1)}
+      50%{transform:rotate(8deg) scale(1.06)}
+      100%{transform:rotate(8deg) scale(1)}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{
+        animation:none !important;
+        transition:none !important;
+      }
+    }
+  </style>
 </head>
 <body>
-<!-- Background Layers -->
-<div class="bg-layer-1"></div>
-<div class="bg-glow-purple"></div>
-<div class="bg-glow-red"></div>
-<div class="light-ray" style="left: 20%; animation: ray-move 12s infinite linear;"></div>
-<div class="light-ray" style="left: 70%; animation: ray-move 10s infinite linear 5s;"></div>
-<!-- Particles (12) -->
-<div class="particle" style="top: 15%; left: 10%; width: 4px; height: 4px; background-color: #FFD700; animation-duration: 7s;"></div>
-<div class="particle" style="top: 25%; left: 85%; width: 6px; height: 6px; background-color: #9146FF; animation-duration: 9s;"></div>
-<div class="particle" style="top: 60%; left: 5%; width: 3px; height: 3px; background-color: #CE1946; animation-duration: 6s;"></div>
-<div class="particle" style="top: 80%; left: 90%; width: 5px; height: 5px; background-color: #FFD700; animation-duration: 10s;"></div>
-<div class="particle" style="top: 40%; left: 50%; width: 4px; height: 4px; background-color: #FFFFFF; animation-duration: 8s;"></div>
-<div class="particle" style="top: 10%; left: 60%; width: 3px; height: 3px; background-color: #9146FF; animation-duration: 11s;"></div>
-<div class="particle" style="top: 70%; left: 20%; width: 5px; height: 5px; background-color: #CE1946; animation-duration: 7s;"></div>
-<div class="particle" style="top: 30%; left: 30%; width: 4px; height: 4px; background-color: #FFD700; animation-duration: 9s;"></div>
-<div class="particle" style="top: 90%; left: 40%; width: 3px; height: 3px; background-color: #FFFFFF; animation-duration: 6s;"></div>
-<div class="particle" style="top: 50%; left: 80%; width: 6px; height: 6px; background-color: #9146FF; animation-duration: 8s;"></div>
-<div class="particle" style="top: 5%; left: 95%; width: 4px; height: 4px; background-color: #CE1946; animation-duration: 12s;"></div>
-<div class="particle" style="top: 85%; left: 15%; width: 5px; height: 5px; background-color: #FFD700; animation-duration: 7s;"></div>
-<!-- Stars (6) -->
-<div class="star" style="top: 20%; left: 15%; width: 10px; height: 10px; animation-delay: 0s;"></div>
-<div class="star" style="top: 75%; left: 80%; width: 8px; height: 8px; animation-delay: 1s;"></div>
-<div class="star" style="top: 30%; left: 90%; width: 12px; height: 12px; animation-delay: 2s;"></div>
-<div class="star" style="top: 60%; left: 10%; width: 9px; height: 9px; animation-delay: 0.5s;"></div>
-<div class="star" style="top: 10%; left: 50%; width: 7px; height: 7px; animation-delay: 1.5s;"></div>
-<div class="star" style="top: 90%; left: 40%; width: 11px; height: 11px; animation-delay: 2.5s;"></div>
-<!-- Floating Emojis -->
-<div class="floating-emoji" style="top: 180px; left: 80px; animation-delay: 0s;">🎮</div>
-<div class="floating-emoji" style="top: 400px; right: 80px; animation-delay: 1s;">💰</div>
-<div class="floating-emoji" style="top: 600px; left: 150px; animation-delay: 2s;">🔥</div>
-<!-- Logo -->
-<div class="logo-container">
-<div class="logo-wrapper">
-<img alt="TENF Logo" class="logo-tenf" src="/Tenf.png"/>
-</div>
-</div>
-<!-- Main Container -->
-<div class="main-container">
-<!-- Header -->
-<div class="header-area">
-<h1 class="page-title">
-<i class="fab fa-discord discord-icon-title"></i>
-<span class="title-text">BONUS JOURNALIER</span>
-</h1>
-<div class="title-line"></div>
-</div>
-<!-- Simulation -->
-<div class="simulation-wrapper">
-<!-- Discord Frame -->
-<div class="discord-frame">
-<!-- Daily Badge -->
-<div class="daily-badge">Gain Quotidien!</div>
-<!-- Header -->
-<div class="discord-header">
-<span class="channel-hash">#</span>
-<span class="channel-name">🗓️・bonus-journalier</span>
-<span class="channel-desc">Récupère tes points quotidiens !</span>
-</div>
-<!-- Chat Area -->
-<div class="discord-chat">
-<!-- User Message -->
-<div class="message-group msg-user">
-<div class="avatar">J</div>
-<div class="message-content">
-<div class="username-row">
-<span class="username">JeromeStream</span>
-<span class="timestamp">Aujourd'hui à 14:30</span>
-</div>
-<div class="command-text">/journalier</div>
-</div>
-</div>
-<!-- Bot Response -->
-<div class="message-group msg-bot">
-<div class="avatar avatar-bot">DB</div>
-<div class="message-content">
-<div class="username-row">
-<span class="username">DraftBot</span>
-<span class="bot-badge">APP</span>
-<span class="timestamp">Aujourd'hui à 14:30</span>
-</div>
-<!-- Embed -->
-<div class="embed-card">
-<div class="embed-author">
-<img alt="Bot Icon" src="https://www.genspark.ai/image_placeholder.png" style="width: 20px; height: 20px; border-radius: 50%;"/>
-                            Récompense Quotidienne
-                        </div>
-<div class="embed-title">
-<i class="fas fa-gift"></i> Bonus récupéré !
-                        </div>
-<div class="embed-desc">
-<p>Bravo <strong>JeromeStream</strong> ! Tu as récupéré ton bonus journalier.</p>
-<div class="points-badge">+500 🔥 Points</div>
-<p class="countdown-text" style="margin-top: 8px; font-size: 13px; color: #B9BBBE;">
-                                Total actuel : <strong>41 250 🔥</strong><br/>
-                                Reviens dans : <strong>23h 59m</strong>
-</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Annotation 1 -->
-<div class="annotation" style="top: 130px; left: -20px; animation-delay: 1.2s;">
-<div class="annotation-dot" style="animation: arrow-bounce 2s infinite;"></div>
-<span>Commande simple /journalier</span>
-</div>
-<div class="line-connector" style="top: 150px; left: 120px; width: 100px; height: 1px; animation-delay: 1.2s;"></div>
-<!-- Annotation 2 -->
-<div class="annotation" style="bottom: 150px; right: -20px; animation-delay: 1.5s;">
-<div class="annotation-dot" style="animation: arrow-bounce 2s infinite 0.5s;"></div>
-<span>500 points automatiques</span>
-</div>
-<div class="line-connector" style="bottom: 170px; right: 150px; width: 80px; height: 1px; animation-delay: 1.5s;"></div>
-<!-- Annotation 3 -->
-<div class="annotation" style="bottom: 50px; left: 100px; animation-delay: 1.8s;">
-<div class="annotation-dot" style="animation: arrow-bounce 2s infinite 1s;"></div>
-<span>Encourage la participation</span>
-</div>
-</div>
-</div>
+  <div class="viewport">
+    <div class="grid-bg"></div>
+    <div class="glow violet"></div>
+    <div class="glow red"></div>
 
+    <div class="light-ray ray-1"></div>
+    <div class="light-ray ray-2"></div>
+
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <img src="/Tenf.png" alt="Logo TENF">
+        <div>
+          <span class="brand-kicker">Commande & démonstration</span>
+          <div class="brand-name">Twitch Entraide New Family</div>
+        </div>
+      </div>
+
+      <div class="tag-pill">/journalier en 1 commande</div>
+    </header>
+
+    <main class="content">
+      <section class="left">
+        <div class="eyebrow">Bonus journalier</div>
+
+        <h1 class="title">
+          <span class="white">UNE ACTION</span>
+          <span class="discord">SIMPLE ET</span>
+          <span class="gold">QUOTIDIENNE</span>
+        </h1>
+
+        <p class="intro">
+          Dans le salon <strong>#bonus-journalier</strong>, il suffit d’utiliser la commande
+          <strong>/journalier</strong> pour marquer sa présence quotidienne et récupérer automatiquement
+          ses points du jour.
+        </p>
+
+        <div class="mini-card">
+          <div class="mini-card-title">À montrer à l’oral</div>
+          <div class="mini-card-text">
+            Ici, tu peux expliquer concrètement :
+            <strong>où trouver le salon</strong>, où taper la commande,
+            et que DraftBot crédite immédiatement <strong>500 points quotidiens</strong>.
+          </div>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="discord-demo-wrap">
+          <div class="daily-badge">Bonus quotidien</div>
+
+          <div class="floating-emoji e1">💜</div>
+          <div class="floating-emoji e2">🔥</div>
+          <div class="floating-emoji e3">✨</div>
+
+          <div class="discord-frame">
+            <aside class="sidebar">
+              <div class="server-head">
+                <span>Twitch Entraide New Family</span>
+                <i class="fas fa-chevron-down caret"></i>
+              </div>
+
+              <div class="channels">
+                <div class="category">
+                  <div class="category-title">
+                    <div class="left-cat">
+                      <span>▾</span>
+                      <span>Entrée & Intégration</span>
+                    </div>
+                    <span class="plus">＋</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>👋・bienvenue</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>📜・règlement</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>📜・choix-du-rôle</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>📜・choisis-ta-réunion</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>☀️・qui-sommes-nous</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>🏆・récompenses-discord</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>🔗・vos-chaînes-twitch</span>
+                  </div>
+
+                  <div class="channel selected">
+                    <span class="hash">#</span>
+                    <span>🗓️・bonus-journalier</span>
+                  </div>
+
+                  <div class="channel">
+                    <span class="hash">#</span>
+                    <span>🎂・vos-anniversaires</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <div class="main-chat">
+              <div class="discord-header">
+                <span class="channel-hash">#</span>
+                <span class="channel-name">🗓️・bonus-journalier</span>
+                <span class="channel-desc">Salon dédié à la commande du bonus journalier et à la présence quotidienne</span>
+              </div>
+
+              <div class="discord-chat">
+                <div class="message-group msg-user">
+                  <div class="avatar user">R</div>
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username">Red_Shadow_31</span>
+                      <span class="timestamp">Aujourd’hui à 14:30</span>
+                    </div>
+                    <div class="command-box">
+                      <span class="slash">/</span>
+                      <span>journalier</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="message-group msg-bot">
+                  <div class="avatar bot">DB</div>
+                  <div class="message-content">
+                    <div class="username-row">
+                      <span class="username">DraftBot</span>
+                      <span class="bot-badge">APP</span>
+                      <span class="timestamp">Aujourd’hui à 14:30</span>
+                    </div>
+
+                    <div class="embed-card">
+                      <div class="embed-author">
+                        <span class="mini-bot">DB</span>
+                        <span>Récompense quotidienne</span>
+                      </div>
+
+                      <div class="embed-title">
+                        <i class="fas fa-gift gift"></i>
+                        <span>Bonus récupéré !</span>
+                      </div>
+
+                      <div class="embed-desc">
+                        Bravo <strong>Red_Shadow_31</strong> ! Tu as récupéré ton bonus journalier.
+                      </div>
+
+                      <div class="points-badge">
+                        <span>+500</span>
+                        <span>🔥 Points</span>
+                      </div>
+
+                      <div class="countdown">
+                        Total actuel : <strong>41 250 🔥</strong><br>
+                        Reviens dans : <strong>23h 59m</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="annotation" style="top:132px; left:-18px; animation-delay:1s;">
+            <div class="annotation-dot"></div>
+            <span>Repérer le salon <strong># bonus-journalier</strong> dans la catégorie</span>
+          </div>
+          <div class="connector" style="top:156px; left:170px; width:78px; height:1px; animation-delay:1s;"></div>
+
+          <div class="annotation" style="top:214px; left:260px; animation-delay:1.2s;">
+            <div class="annotation-dot"></div>
+            <span>Taper ensuite simplement <strong>/journalier</strong></span>
+          </div>
+          <div class="connector" style="top:240px; left:470px; width:60px; height:1px; animation-delay:1.2s;"></div>
+
+          <div class="annotation" style="right:-10px; top:286px; animation-delay:1.45s;">
+            <div class="annotation-dot"></div>
+            <span>Le bot crédite automatiquement <strong>500 points</strong></span>
+          </div>
+          <div class="connector" style="top:312px; right:190px; width:92px; height:1px; animation-delay:1.45s;"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="line"></div>
+        <span>Le bonus journalier valorise la présence régulière</span>
+      </div>
+
+      <div class="footer-right">
+        <span class="dot"></span>
+        <span>Commande rapide, gain immédiat, routine communautaire</span>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>
