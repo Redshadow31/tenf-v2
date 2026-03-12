@@ -31,48 +31,60 @@ export const authOptions: NextAuthOptions = {
 
       if (!discordId) return true;
 
-      let existing = null;
       try {
-        existing = await memberRepository.findByDiscordId(discordId);
-      } catch (error) {
-        // Ne pas bloquer l'auth Discord si la DB est temporairement indisponible.
-        console.warn("[NextAuth signIn] findByDiscordId failed, allow sign-in:", error);
-        return true;
-      }
-      if (existing) return true;
-
-      const placeholderLogin = `nouveau_${discordId}`;
-      const displayName = username.trim() || `Discord ${discordId}`;
-
-      try {
-        await memberRepository.create({
-          twitchLogin: placeholderLogin,
-          twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
-          displayName,
-          discordId,
-          discordUsername: username,
-          role: "Nouveau",
-          isVip: false,
-          isActive: false,
-          badges: [],
-          profileValidationStatus: "non_soumis",
-          onboardingStatus: "a_faire",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          updatedBy: discordId,
-        });
-      } catch (error) {
-        // Tolérance aux courses: si la fiche a été créée en parallèle, on continue.
-        const lateExisting = await memberRepository.findByDiscordId(discordId);
-        if (!lateExisting) {
-          // Fail-open: la connexion Discord ne doit pas échouer à cause de la création auto.
-          // La fiche membre pourra être créée/synchronisée plus tard par les flux admin.
-          console.warn("[NextAuth signIn] auto-create member failed, allow sign-in:", error);
+        let existing = null;
+        try {
+          existing = await memberRepository.findByDiscordId(discordId);
+        } catch (error) {
+          // Ne pas bloquer l'auth Discord si la DB est temporairement indisponible.
+          console.warn("[NextAuth signIn] findByDiscordId failed, allow sign-in:", error);
           return true;
         }
-      }
+        if (existing) return true;
 
-      return "/membres/me?onboarding=1";
+        const placeholderLogin = `nouveau_${discordId}`;
+        const displayName = username.trim() || `Discord ${discordId}`;
+
+        try {
+          await memberRepository.create({
+            twitchLogin: placeholderLogin,
+            twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
+            displayName,
+            discordId,
+            discordUsername: username,
+            role: "Nouveau",
+            isVip: false,
+            isActive: false,
+            badges: [],
+            profileValidationStatus: "non_soumis",
+            onboardingStatus: "a_faire",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            updatedBy: discordId,
+          });
+        } catch (error) {
+          // Tolérance aux courses: si la fiche a été créée en parallèle, on continue.
+          try {
+            const lateExisting = await memberRepository.findByDiscordId(discordId);
+            if (!lateExisting) {
+              // Fail-open: la connexion Discord ne doit pas échouer à cause de la création auto.
+              // La fiche membre pourra être créée/synchronisée plus tard par les flux admin.
+              console.warn("[NextAuth signIn] auto-create member failed, allow sign-in:", error);
+              return true;
+            }
+          } catch (lookupError) {
+            // Si la vérification échoue aussi, on autorise quand même la connexion.
+            console.warn("[NextAuth signIn] late lookup failed, allow sign-in:", lookupError);
+            return true;
+          }
+        }
+
+        return "/membres/me?onboarding=1";
+      } catch (unexpectedError) {
+        // Filet de sécurité global: aucune erreur de ce callback ne doit bloquer OAuth.
+        console.warn("[NextAuth signIn] unexpected error, allow sign-in:", unexpectedError);
+        return true;
+      }
     },
     async jwt({ token, account, profile, user }) {
       // Lors de la connexion initiale, account et profile sont disponibles

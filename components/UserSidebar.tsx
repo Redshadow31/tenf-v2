@@ -89,7 +89,11 @@ export default function UserSidebar() {
         <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
           {discordUser.avatar && (
             <img
-              src={`https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`}
+              src={
+                discordUser.avatar.startsWith("http")
+                  ? discordUser.avatar
+                  : `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+              }
               alt={discordUser.username}
               className="w-12 h-12 rounded-full"
             />
