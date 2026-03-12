@@ -809,7 +809,15 @@ export default function GestionMembresPage() {
       !isStaffRole(member.role) &&
       member.role !== "Nouveau"
   );
-  const displayedMembers = statusTab === "actifs" ? activeMembers : statusTab === "inactifs" ? inactiveMembers : newMembers;
+  const isSearching = searchQuery.trim().length > 0;
+  // En mode recherche, afficher tous les statuts pour éviter de "perdre" un membre selon l'onglet actif.
+  const displayedMembers = isSearching
+    ? filteredMembers
+    : statusTab === "actifs"
+    ? activeMembers
+    : statusTab === "inactifs"
+    ? inactiveMembers
+    : newMembers;
   const tableColumnCount =
     viewMode === "complet"
       ? currentAdmin?.isFounder
@@ -2334,7 +2342,9 @@ export default function GestionMembresPage() {
                       colSpan={tableColumnCount}
                       className="py-8 px-6 text-center text-gray-400"
                     >
-                      Aucun membre {statusTab === "actifs" ? "actif" : statusTab === "inactifs" ? "inactif" : "nouveau"} avec les filtres actuels.
+                      {isSearching
+                        ? "Aucun membre ne correspond à cette recherche."
+                        : `Aucun membre ${statusTab === "actifs" ? "actif" : statusTab === "inactifs" ? "inactif" : "nouveau"} avec les filtres actuels.`}
                     </td>
                   </tr>
                 )}
