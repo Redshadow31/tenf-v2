@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { evaluationRepository, memberRepository } from '@/lib/repositories';
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForSpotlightMove() {
+  const rows: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
 
 /**
  * PUT - Met à jour les données d'un spotlight (date et durée)
@@ -106,9 +120,9 @@ export async function PUT(
 
     // Mettre à jour le spotlight dans toutes les évaluations concernées
     // Si le mois a changé, déplacer le spotlight de l'ancien mois vers le nouveau
-    // Récupérer tous les membres (limite élevée pour traitement complet)
-    const allMembers = await memberRepository.findAll(1000, 0);
-    const activeMembers = allMembers.filter(m => m.isActive !== false);
+    // Récupérer tous les profils (actifs/inactifs/nouveaux)
+    const allMembers = await fetchAllMembersForSpotlightMove();
+    const eligibleMembers = allMembers.filter((m) => m?.twitchLogin);
 
     if (newMonthKey && newMonthKey !== oldMonthKey) {
       // Déplacer le spotlight : supprimer de l'ancien mois, ajouter au nouveau mois
@@ -135,7 +149,7 @@ export async function PUT(
 
       // 2. Ajouter au nouveau mois en parallèle (évite N+1 queries)
       const newMonthDate = `${newMonthKey}-01`;
-      const updatePromises = activeMembers.map(async (member) => {
+      const updatePromises = eligibleMembers.map(async (member) => {
         let evaluation = await evaluationRepository.findByMemberAndMonth(member.twitchLogin, newMonthKey);
         
         let spotlightEvaluations = evaluation?.spotlightEvaluations || [];

@@ -206,7 +206,7 @@ export default function EvaluationCPage() {
   useEffect(() => {
     async function loadMembers() {
       try {
-        const response = await fetch("/api/members/public", {
+        const response = await fetch("/api/admin/members", {
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' },
         });
@@ -214,7 +214,7 @@ export default function EvaluationCPage() {
           const data = await response.json();
           const memberLogins = (data.members || [])
             .map((m: any) => m.twitchLogin)
-            .filter(Boolean) as string[];
+            .filter((login: any) => typeof login === "string" && login.trim().length > 0) as string[];
           setMembers(memberLogins);
         }
       } catch (error) {

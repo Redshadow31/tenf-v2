@@ -105,7 +105,7 @@ export default function EvaluationASpotlightsPage() {
         console.error("Erreur lors du chargement des données de présence:", presenceResponse.status, presenceResponse.statusText);
       }
 
-      // Charger tous les membres actifs depuis la base de données centralisée (comme /admin/membres/gestion)
+      // Charger tous les profils (actifs/inactifs/nouveaux) depuis la base centralisée
       const membersResponse = await fetch("/api/admin/members", {
         cache: 'no-store',
         headers: {
@@ -116,11 +116,8 @@ export default function EvaluationASpotlightsPage() {
       let allMembers: any[] = [];
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        // Filtrer uniquement les membres actifs (isActive === true, ou undefined/null = actif par défaut)
-        allMembers = (membersData.members || []).filter((m: any) => {
-          return m.isActive !== false;
-        });
-        console.log(`[Evaluation Spotlights] Total membres de l'API: ${(membersData.members || []).length}, membres actifs: ${allMembers.length}`);
+        allMembers = (membersData.members || []).filter((m: any) => m?.twitchLogin);
+        console.log(`[Evaluation Spotlights] Total membres de l'API: ${(membersData.members || []).length}, profils éligibles: ${allMembers.length}`);
       } else {
         const errorText = await membersResponse.text().catch(() => 'Erreur inconnue');
         console.error("Erreur lors du chargement des membres:", membersResponse.status, membersResponse.statusText, errorText);
@@ -164,8 +161,8 @@ export default function EvaluationASpotlightsPage() {
 
       const totalSpotlights = presenceData.totalSpotlights || 0;
 
-      // Créer la liste des membres avec leurs stats (tous les membres actifs, même sans présences)
-      console.log(`[Evaluation Spotlights] Membres actifs chargés: ${allMembers.length}`);
+      // Créer la liste des membres avec leurs stats (tous profils, même sans présences)
+      console.log(`[Evaluation Spotlights] Profils chargés: ${allMembers.length}`);
       console.log(`[Evaluation Spotlights] Stats de présence:`, presenceStatsMap.size, 'membres avec présences');
       console.log(`[Evaluation Spotlights] Total spotlights du mois: ${totalSpotlights}`);
       
@@ -402,7 +399,7 @@ export default function EvaluationASpotlightsPage() {
             <p className="text-3xl font-bold text-green-400">{spotlightStats.totalPresences}</p>
           </div>
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-            <p className="text-sm text-gray-400 mb-2">Membres Actifs</p>
+            <p className="text-sm text-gray-400 mb-2">Profils évalues</p>
             <p className="text-3xl font-bold text-white">{spotlightStats.activeMembers}</p>
           </div>
           <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
@@ -507,7 +504,7 @@ export default function EvaluationASpotlightsPage() {
               {sortedMembers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-400">
-                    Aucun membre actif trouvé
+                    Aucun profil trouvé
                   </td>
                 </tr>
               ) : (

@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { evaluationRepository, memberRepository, spotlightRepository } from '@/lib/repositories';
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForMonthlySpotlight() {
+  const rows: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
 
 /**
  * GET - Récupère les données mensuelles de présence aux spotlights
@@ -35,9 +49,8 @@ export async function GET(request: NextRequest) {
 
     // Charger les données du mois depuis Supabase
     const evaluations = await evaluationRepository.findByMonth(monthKey);
-    // Récupérer tous les membres (limite élevée pour traitement complet)
-    const allMembers = await memberRepository.findAll(1000, 0);
-    const activeMembers = allMembers.filter(m => m.isActive !== false);
+    // Récupérer tous les profils (actifs/inactifs/nouveaux)
+    const allMembers = await fetchAllMembersForMonthlySpotlight();
 
     // Agréger les spotlightEvaluations depuis toutes les évaluations
     const spotlightsMap = new Map<string, any>();
@@ -114,8 +127,9 @@ export async function GET(request: NextRequest) {
       }>;
     }>();
 
-    // Initialiser tous les membres actifs
-    activeMembers.forEach(member => {
+    // Initialiser tous les profils
+    allMembers.forEach(member => {
+      if (!member?.twitchLogin) return;
       memberStatsMap.set(member.twitchLogin.toLowerCase(), {
         twitchLogin: member.twitchLogin,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,

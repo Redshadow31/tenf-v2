@@ -141,7 +141,7 @@ export default function EvaluationDPage() {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<"all" | "surveiller" | "vip" | "manual" | "bonus">("all");
   const [activeTab, setActiveTab] = useState<"pilotage" | "tableau" | "historique">("pilotage");
   const [compactMode, setCompactMode] = useState(false);
@@ -919,9 +919,9 @@ export default function EvaluationDPage() {
   const filteredMembers = useMemo(() => {
     let filtered = membersData;
     
-    // Filtre actifs seulement (exclut les Communauté inactifs si coché)
+    // Optionnel: filtrer uniquement les profils actifs
     if (showActiveOnly) {
-      filtered = filtered.filter(m => m.isActive || m.role === 'Communauté');
+      filtered = filtered.filter(m => m.isActive);
     }
     
     // Recherche
@@ -1038,7 +1038,7 @@ export default function EvaluationDPage() {
             onChange={(e) => setShowActiveOnly(e.target.checked)}
             className="mr-2"
           />
-          Membres actifs (inclut Communaute)
+          Limiter aux profils actifs
         </label>
 
         <select

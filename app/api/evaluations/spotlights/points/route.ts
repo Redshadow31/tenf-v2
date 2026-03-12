@@ -6,6 +6,20 @@ import { memberRepository, evaluationRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+async function fetchAllMembersForSpotlightPoints() {
+  const rows: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
 
 /**
  * Calcule les points Spotlight selon la logique de la page A :
@@ -26,10 +40,8 @@ export async function GET(request: NextRequest) {
     // Charger les évaluations du mois depuis Supabase
     const evaluations = await evaluationRepository.findByMonth(monthKey);
     
-    // Charger tous les membres actifs depuis Supabase
-    // Récupérer tous les membres actifs (limite élevée)
-    const allMembers = await memberRepository.findAll(1000, 0);
-    const activeMembers = allMembers.filter(m => m.isActive !== false);
+    // Charger tous les profils depuis Supabase (actifs/inactifs/nouveaux)
+    const allMembers = await fetchAllMembersForSpotlightPoints();
 
     // Extraire les spotlights validés depuis les évaluations
     const allSpotlights: any[] = [];
@@ -76,8 +88,9 @@ export async function GET(request: NextRequest) {
             spotlightsFromPresence.forEach((spotlight: any) => {
               const spotlightMembers: any[] = [];
               
-              // Pour chaque membre actif, vérifier s'il était présent à ce spotlight
-              activeMembers.forEach(member => {
+              // Pour chaque profil, vérifier s'il était présent à ce spotlight
+              allMembers.forEach(member => {
+                if (!member?.twitchLogin) return;
                 const memberPresence = memberPresenceMap.get(member.twitchLogin.toLowerCase());
                 const isPresent = memberPresence?.spotlightDetails?.some((detail: any) => 
                   detail.date === spotlight.date && 
@@ -120,8 +133,8 @@ export async function GET(request: NextRequest) {
     // Calculer les statistiques par membre
     const memberStatsMap = new Map<string, { presences: number; totalSpotlights: number }>();
 
-    // Initialiser tous les membres actifs
-    activeMembers.forEach((member) => {
+    // Initialiser tous les profils
+    allMembers.forEach((member) => {
       if (member.twitchLogin) {
         memberStatsMap.set(member.twitchLogin.toLowerCase(), {
           presences: 0,

@@ -36,7 +36,7 @@ export default function EvaluationBEventsServeurPage() {
     return `${year}-${month}`;
   });
 
-  const [activeMembers, setActiveMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
@@ -70,8 +70,8 @@ export default function EvaluationBEventsServeurPage() {
         const membersData = membersRes.ok ? (await membersRes.json()).members || [] : [];
         const presenceData = presenceRes.ok ? await presenceRes.json() : { events: [] };
 
-        const active = membersData
-          .filter((m: any) => m.twitchLogin && m.isActive !== false)
+        const allProfiles = membersData
+          .filter((m: any) => m.twitchLogin)
           .map((m: any) => ({
             twitchLogin: m.twitchLogin,
             displayName: m.displayName || m.twitchLogin,
@@ -81,7 +81,7 @@ export default function EvaluationBEventsServeurPage() {
           }))
           .sort((a: Member, b: Member) => (a.displayName || "").localeCompare(b.displayName || ""));
 
-        setActiveMembers(active);
+        setMembers(allProfiles);
         setEvents(presenceData.events || []);
       } catch (e) {
         console.error("Erreur chargement events-serveur:", e);
@@ -102,7 +102,7 @@ export default function EvaluationBEventsServeurPage() {
         }
       }
     }
-    const membersWithPoints = (activeMembers || []).map((m) => {
+    const membersWithPoints = (members || []).map((m) => {
       const hasPresence = presentLogins.has(m.twitchLogin.toLowerCase());
       return {
         ...m,
@@ -116,7 +116,7 @@ export default function EvaluationBEventsServeurPage() {
       nonSpotlightEventsCount: nonSpotlight.length,
       withPresenceCount,
     };
-  }, [activeMembers, events]);
+  }, [members, events]);
 
   function getMonthOptions(): string[] {
     const options: string[] = [];
@@ -169,7 +169,7 @@ export default function EvaluationBEventsServeurPage() {
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Events serveur — Engagement Communautaire</h1>
         <p className="text-gray-400">
-          Membres actifs (gestion). 2 points si au moins une présence validée à un event du mois (hors Spotlight).
+          Tous profils (gestion). 2 points si au moins une présence validée à un event du mois (hors Spotlight).
         </p>
       </div>
 
@@ -197,7 +197,7 @@ export default function EvaluationBEventsServeurPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Membres actifs (gestion)</p>
+          <p className="text-sm text-gray-400 mb-2">Profils (gestion)</p>
           <p className="text-3xl font-bold text-white">{membersWithPoints.length}</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">

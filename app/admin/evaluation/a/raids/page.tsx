@@ -108,7 +108,7 @@ export default function EvaluationARaidsPage() {
         raidsData = await raidsResponse.json();
       }
 
-      // Charger tous les membres actifs depuis la base de données centralisée (comme /admin/membres/gestion)
+      // Charger tous les profils (actifs/inactifs/nouveaux) depuis la base centralisée
       const membersResponse = await fetch("/api/admin/members", {
         cache: 'no-store',
         headers: {
@@ -119,14 +119,8 @@ export default function EvaluationARaidsPage() {
       let allMembers: any[] = [];
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        // Filtrer uniquement les membres actifs (isActive === true, ou undefined/null = actif par défaut)
-        // Certains membres peuvent ne pas avoir isActive défini explicitement, on les considère comme actifs
-        allMembers = (membersData.members || []).filter((m: any) => {
-          // Si isActive est explicitement false, on exclut le membre
-          // Sinon, on l'inclut (isActive === true ou undefined/null)
-          return m.isActive !== false;
-        });
-        console.log(`[Evaluation Raids] Total membres de l'API: ${(membersData.members || []).length}, membres actifs: ${allMembers.length}`);
+        allMembers = (membersData.members || []).filter((m: any) => m?.twitchLogin);
+        console.log(`[Evaluation Raids] Total membres de l'API: ${(membersData.members || []).length}, profils éligibles: ${allMembers.length}`);
       } else {
         const errorText = await membersResponse.text().catch(() => 'Erreur inconnue');
         console.error("Erreur lors du chargement des membres:", membersResponse.status, membersResponse.statusText, errorText);
@@ -194,8 +188,8 @@ export default function EvaluationARaidsPage() {
         }
       });
 
-      // Créer la liste des membres avec leurs stats (tous les membres actifs, même sans raids)
-      console.log(`[Evaluation Raids] Membres actifs chargés: ${allMembers.length}`);
+      // Créer la liste des membres avec leurs stats (tous profils, même sans raids)
+      console.log(`[Evaluation Raids] Profils chargés: ${allMembers.length}`);
       console.log(`[Evaluation Raids] Stats de raids:`, memberStatsMap.size, 'membres avec raids');
       
       const membersList: MemberRaidStats[] = allMembers
@@ -558,7 +552,7 @@ export default function EvaluationARaidsPage() {
               {sortedMembers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400">
-                    Aucun membre actif trouvé
+                    Aucun profil trouvé
                   </td>
                 </tr>
               ) : (

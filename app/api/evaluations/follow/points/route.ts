@@ -6,6 +6,8 @@ import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
 
 /**
  * Fonction de normalisation pour les logins (identique à la page C)
@@ -80,6 +82,18 @@ function computeScores(members: string[], sheets: any[], maxPoints = 5) {
   });
 }
 
+async function fetchAllMembersForEvaluation() {
+  const rows: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 /**
  * GET - Récupère les points Follow pour le mois demandé depuis /admin/follow
  * (validations followStorage = même source que https://tenf-community.com/admin/follow)
@@ -112,10 +126,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Charger les membres (actifs) pour la liste des logins
-    const allMembers = await memberRepository.findAll(1000, 0);
+    // Charger tous les profils (actifs/inactifs/nouveaux) pour la liste des logins
+    const allMembers = await fetchAllMembersForEvaluation();
     const memberLogins = allMembers
-      .filter(m => m.isActive !== false && m.twitchLogin)
+      .filter(m => m.twitchLogin)
       .map(m => m.twitchLogin.toLowerCase());
 
     // Convertir chaque validation staff en "sheet" pour computeScores (format D: members array avec meSuit)
