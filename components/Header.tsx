@@ -47,7 +47,7 @@ const dropdownGroups: DropdownGroup[] = [
     items: [
       { href: "/events2", label: "Calendrier / événements" },
       { href: "/evenements-communautaires", label: "Événements communautaires" },
-      { href: "/upa-event", label: "New Family Aventura" },
+      { href: "/new-family-aventura", label: "New Family Aventura" },
     ],
   },
   {
