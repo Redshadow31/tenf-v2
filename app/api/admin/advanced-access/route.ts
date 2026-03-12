@@ -4,6 +4,7 @@ import { isFounder } from '@/lib/adminRoles';
 import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
+import { resetAdvancedAccessCache } from '@/lib/advancedAccess';
 
 const ACCESS_STORE = 'tenf-admin-access';
 const ADVANCED_ACCESS_KEY = 'admin-advanced-access-list';
@@ -189,6 +190,7 @@ export async function POST(request: NextRequest) {
     });
 
     await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
+    resetAdvancedAccessCache();
 
     const { logAction } = await import("@/lib/admin/logger");
     await logAction({
@@ -257,6 +259,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
+    resetAdvancedAccessCache();
 
     const { logAction } = await import("@/lib/admin/logger");
     await logAction({

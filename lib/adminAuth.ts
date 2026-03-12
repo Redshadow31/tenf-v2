@@ -4,6 +4,7 @@
 import { cookies } from "next/headers";
 import { getAdminRole, hasAdminDashboardAccess, hasPermission, ROLE_PERMISSIONS, type AdminRole, type Permission } from "./adminRoles";
 import { logAdminAction } from "./adminAudit";
+import { hasAdvancedAdminAccess } from "./advancedAccess";
 
 export interface AdminUser {
   id: string;
@@ -78,6 +79,11 @@ export async function requirePermission(permission: Permission): Promise<AdminUs
   const admin = await getCurrentAdmin();
   if (!admin) {
     return null;
+  }
+
+  // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return admin;
   }
 
   // Vérifier les permissions en utilisant directement le rôle de l'admin (qui inclut le cache Blobs)

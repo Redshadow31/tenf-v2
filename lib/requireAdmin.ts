@@ -15,6 +15,7 @@ import {
 } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 import { loadSectionPermissionsCache, hasSectionAccess } from "./sectionPermissions";
+import { hasAdvancedAdminAccess } from "./advancedAccess";
 
 export interface AuthenticatedAdmin {
   id: string; // Alias de discordId pour compatibilité avec le code legacy
@@ -139,6 +140,11 @@ export async function requirePermission(requiredPermission: Permission): Promise
     return null;
   }
 
+  // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return admin;
+  }
+
   // Vérifier que l'admin a la permission requise
   const permissions = ROLE_PERMISSIONS[admin.role] || [];
   if (!permissions.includes(requiredPermission)) {
@@ -158,6 +164,11 @@ export async function checkPermission(requiredPermission: Permission): Promise<b
   
   if (!admin) {
     return false;
+  }
+
+  // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return true;
   }
 
   const permissions = ROLE_PERMISSIONS[admin.role] || [];
@@ -190,6 +201,11 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
     return false;
   }
 
+  // Bypass total des permissions par section
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return true;
+  }
+
   // Charger le cache des permissions des sections
   try {
     await loadSectionPermissionsCache();
@@ -213,6 +229,11 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
 
   if (!admin) {
     return null;
+  }
+
+  // Bypass total des permissions par section
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return admin;
   }
 
   // Charger le cache des permissions des sections
