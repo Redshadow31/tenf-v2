@@ -8,8 +8,10 @@ export const revalidate = 0;
 
 type BootstrapBody = {
   discordUsername?: string;
+  creatorName?: string;
   twitchChannelUrl?: string;
   parrain?: string;
+  countryCode?: string;
   notes?: string;
   birthday?: string;
   twitchAffiliateDate?: string;
@@ -35,6 +37,12 @@ function extractTwitchLogin(urlOrLogin: string): string | null {
   return null;
 }
 
+function normalizeCountryCode(input?: string): string {
+  const value = (input || "FR").trim().toUpperCase();
+  if (!value) return "FR";
+  return value.slice(0, 2);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -45,8 +53,10 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as BootstrapBody;
     const discordUsername = (body.discordUsername || session.user.username || "").trim();
+    const creatorName = (body.creatorName || "").trim();
     const parrain = (body.parrain || "").trim();
-    const timezone = (body.timezone || "").trim();
+    const timezone = (body.timezone || "Europe/Paris").trim();
+    const countryCode = normalizeCountryCode(body.countryCode);
     const notes = (body.notes || "").trim();
     const twitchChannelUrl = (body.twitchChannelUrl || "").trim();
     const twitchLogin = extractTwitchLogin(twitchChannelUrl);
@@ -60,8 +70,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!parrain) {
-      return NextResponse.json({ error: "Le parrain TENF est requis" }, { status: 400 });
+    if (!creatorName) {
+      return NextResponse.json({ error: "Le nom du créateur est requis" }, { status: 400 });
     }
 
     const birthday = normalizeDateInput(body.birthday);
@@ -98,17 +108,20 @@ export async function POST(request: NextRequest) {
       member = await memberRepository.create({
         twitchLogin,
         twitchUrl: `https://www.twitch.tv/${twitchLogin}`,
-        displayName: discordUsername,
+        displayName: creatorName,
+        siteUsername: creatorName,
         discordId,
         discordUsername,
         role: "Nouveau",
         isActive: false,
         isVip: false,
         badges: [],
-        parrain,
+        parrain: parrain || undefined,
         birthday,
         twitchAffiliateDate,
         timezone: timezone || undefined,
+        countryCode,
+        primaryLanguage: "fr",
         description: notes || undefined,
         profileValidationStatus: "non_soumis",
         onboardingStatus: "a_faire",
@@ -122,11 +135,15 @@ export async function POST(request: NextRequest) {
         (member.twitchLogin.startsWith("nouveau_") || member.twitchLogin.startsWith("nouveau-"));
 
       const updates: any = {
+        displayName: creatorName || member.displayName,
+        siteUsername: creatorName || member.siteUsername,
         discordUsername,
-        parrain,
+        parrain: parrain || member.parrain,
         birthday,
         twitchAffiliateDate,
         timezone: timezone || undefined,
+        countryCode,
+        primaryLanguage: member.primaryLanguage || "fr",
         description: notes || member.description,
         role: member.role || "Nouveau",
         isActive: false,

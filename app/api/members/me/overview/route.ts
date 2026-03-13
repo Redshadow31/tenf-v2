@@ -3,12 +3,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { eventRepository, memberRepository, vipRepository } from "@/lib/repositories";
 import { getMonthKey, loadRaidsFaits } from "@/lib/raidStorage";
+import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function normalize(value?: string | null): string {
-  return (value || "").toLowerCase().trim().replace(/^@+/, "");
+function normalize(value?: unknown): string {
+  return String(value ?? "").toLowerCase().trim().replace(/^@+/, "");
 }
 
 function isFormationCategory(category?: string | null): boolean {
@@ -90,10 +91,16 @@ export async function GET() {
 
     let allEvents: Awaited<ReturnType<typeof eventRepository.findAll>> = [];
     try {
-      allEvents = await eventRepository.findAll(500, 0);
+      allEvents = await eventRepository.findAll(300, 0);
     } catch {
       allEvents = [];
     }
+    const eventById = new Map<string, (typeof allEvents)[number]>();
+    for (const event of allEvents) {
+      if (!event?.id) continue;
+      eventById.set(String(event.id), event);
+    }
+
     const upcomingEvents = allEvents
       .filter((event) => {
         const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
@@ -113,34 +120,41 @@ export async function GET() {
     const formationHistory: Array<{ id: string; title: string; date: string }> = [];
     const eventPresenceHistory: Array<{ id: string; title: string; date: string; category: string }> = [];
 
-    for (const event of allEvents) {
+    let memberPresences: Array<{ event_id: string; validated_at: string | null; created_at: string | null }> = [];
+    try {
+      const { data } = await supabaseAdmin
+        .from("event_presences")
+        .select("event_id,validated_at,created_at,twitch_login,present")
+        .eq("present", true)
+        .eq("twitch_login", normalize(member.twitchLogin))
+        .limit(2000);
+      memberPresences = (data || []).map((row: any) => ({
+        event_id: String(row.event_id),
+        validated_at: row.validated_at || null,
+        created_at: row.created_at || null,
+      }));
+    } catch {
+      memberPresences = [];
+    }
+
+    const seenEvents = new Set<string>();
+    for (const presence of memberPresences) {
+      if (seenEvents.has(presence.event_id)) continue;
+      seenEvents.add(presence.event_id);
+
+      const event = eventById.get(presence.event_id);
+      if (!event || !event.isPublished) continue;
       const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
       if (Number.isNaN(eventDate.getTime())) continue;
-      if (!event.isPublished) continue;
-      const key = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}`;
-      let presences: any[] = [];
-      try {
-        presences = await eventRepository.getPresences(event.id);
-      } catch {
-        presences = [];
-      }
-      const isPresent = presences.some((presence) => {
-        if (!presence?.present) return false;
-        return identity.has(normalize(presence.twitchLogin));
-      });
-      if (!isPresent) continue;
 
+      const key = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}`;
       eventPresenceHistory.push({
         id: event.id,
         title: event.title,
         category: event.category || "Evenement",
         date: eventDate.toISOString(),
       });
-
-      if (key === monthKey) {
-        eventPresencesThisMonth += 1;
-      }
-
+      if (key === monthKey) eventPresencesThisMonth += 1;
       if (isFormationCategory(event.category)) {
         formationsValidated += 1;
         formationHistory.push({ id: event.id, title: event.title, date: eventDate.toISOString() });

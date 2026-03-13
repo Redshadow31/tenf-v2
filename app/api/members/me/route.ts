@@ -24,6 +24,31 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (session?.user?.discordId) {
       member = await memberRepository.findByDiscordId(session.user.discordId);
+      if (!member) {
+        const discordId = String(session.user.discordId).trim();
+        const discordUsername = String(session.user.username || session.user.name || "").trim();
+        const placeholderLogin = `nouveau_${discordId.toLowerCase()}`;
+        member = await memberRepository.create({
+          twitchLogin: placeholderLogin,
+          twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
+          displayName: discordUsername || `Nouveau membre ${discordId.slice(-4)}`,
+          siteUsername: discordUsername || undefined,
+          discordId,
+          discordUsername: discordUsername || undefined,
+          role: "Nouveau",
+          isActive: false,
+          isVip: false,
+          badges: [],
+          profileValidationStatus: "non_soumis",
+          onboardingStatus: "a_faire",
+          timezone: "Europe/Paris",
+          countryCode: "FR",
+          primaryLanguage: "fr",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          updatedBy: discordId,
+        });
+      }
     }
 
     // Sinon par twitchLogin si fourni

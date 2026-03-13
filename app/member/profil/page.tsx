@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, Crown, ShieldCheck, UserCircle2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -14,6 +15,15 @@ import ProfileCompletionCard from "@/components/member/ui/ProfileCompletionCard"
 import QuickActionsCard from "@/components/member/ui/QuickActionsCard";
 import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
 import type { MemberOverview } from "@/components/member/hooks/useMemberOverview";
+
+const MAX_DESCRIPTION = 800;
+const TIMEZONE_OPTIONS = [
+  { value: "Europe/Paris", label: "France (Europe/Paris)" },
+  { value: "Europe/Brussels", label: "Belgique (Europe/Brussels)" },
+  { value: "Europe/Zurich", label: "Suisse (Europe/Zurich)" },
+  { value: "Europe/Luxembourg", label: "Luxembourg (Europe/Luxembourg)" },
+  { value: "America/Montreal", label: "Quebec (America/Montreal)" },
+];
 
 type MemberApiResponse = {
   member: {
@@ -39,7 +49,17 @@ type MemberApiResponse = {
       parrain: string | null;
     };
     integrationDate?: string | null;
+    birthday?: string | null;
+    twitchAffiliateDate?: string | null;
   };
+  pending: {
+    description?: string;
+    instagram?: string;
+    tiktok?: string;
+    twitter?: string;
+    birthday?: string;
+    twitchAffiliateDate?: string;
+  } | null;
 };
 
 type StreamPlanningItem = {
@@ -53,17 +73,42 @@ type StreamPlanningItem = {
 const LIVE_PLANNING_ROUTE = "/member/planning";
 
 export default function MemberProfilePage() {
+  const searchParams = useSearchParams();
   const [profileData, setProfileData] = useState<MemberApiResponse | null>(null);
   const [overview, setOverview] = useState<MemberOverview | null>(null);
   const [plannings, setPlannings] = useState<StreamPlanningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overviewWarning, setOverviewWarning] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [createProfileSuccess, setCreateProfileSuccess] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [description, setDescription] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [twitchAffiliateDate, setTwitchAffiliateDate] = useState("");
+  const [timezone, setTimezone] = useState("Europe/Paris");
+  const [bootstrapForm, setBootstrapForm] = useState({
+    discordUsername: "",
+    creatorName: "",
+    twitchChannelUrl: "",
+    parrain: "",
+    notes: "",
+    birthday: "",
+    twitchAffiliateDate: "",
+    timezone: "Europe/Paris",
+    countryCode: "FR",
+  });
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         setError(null);
+        setOverviewWarning(null);
         const [profileRes, overviewRes, planningRes] = await Promise.all([
           fetch("/api/members/me", { cache: "no-store" }),
           fetch("/api/members/me/overview", { cache: "no-store" }),
@@ -81,13 +126,43 @@ export default function MemberProfilePage() {
           setError(profileBody.error || "Impossible de charger ton profil.");
           return;
         }
-        if (!overviewRes.ok) {
-          setError(overviewBody.error || "Impossible de charger les donnees de synthese.");
-          return;
-        }
 
         setProfileData(profileBody);
-        setOverview(overviewBody);
+        setDescription(profileBody.pending?.description ?? profileBody.member.bio ?? "");
+        setInstagram(profileBody.pending?.instagram ?? profileBody.member.socials.instagram ?? "");
+        setTiktok(profileBody.pending?.tiktok ?? profileBody.member.socials.tiktok ?? "");
+        setTwitter(profileBody.pending?.twitter ?? profileBody.member.socials.twitter ?? "");
+        setBirthday(
+          profileBody.pending?.birthday ||
+            (profileBody.member.birthday ? String(profileBody.member.birthday).slice(0, 10) : "")
+        );
+        setTwitchAffiliateDate(
+          profileBody.pending?.twitchAffiliateDate ||
+            (profileBody.member.twitchAffiliateDate ? String(profileBody.member.twitchAffiliateDate).slice(0, 10) : "")
+        );
+        setTimezone(profileBody.member.timezone || "Europe/Paris");
+        setBootstrapForm((prev) => ({
+          ...prev,
+          discordUsername: profileBody.member.socials.discord || prev.discordUsername,
+          creatorName: profileBody.member.displayName || prev.creatorName,
+          twitchChannelUrl:
+            profileBody.member.twitchLogin.startsWith("nouveau_") || profileBody.member.twitchLogin.startsWith("nouveau-")
+              ? prev.twitchChannelUrl
+              : `https://www.twitch.tv/${profileBody.member.twitchLogin || ""}`,
+          parrain: profileBody.member.tenfSummary?.parrain || prev.parrain,
+          birthday: profileBody.member.birthday ? String(profileBody.member.birthday).slice(0, 10) : prev.birthday,
+          twitchAffiliateDate: profileBody.member.twitchAffiliateDate
+            ? String(profileBody.member.twitchAffiliateDate).slice(0, 10)
+            : prev.twitchAffiliateDate,
+          timezone: profileBody.member.timezone || prev.timezone || "Europe/Paris",
+          countryCode: "FR",
+        }));
+        if (!overviewRes.ok) {
+          setOverviewWarning(overviewBody.error || "Synthese indisponible temporairement.");
+          setOverview(null);
+        } else {
+          setOverview(overviewBody);
+        }
         setPlannings(planningRes.ok ? planningBody.plannings || [] : []);
       } catch {
         if (active) setError("Erreur de connexion.");
@@ -121,12 +196,109 @@ export default function MemberProfilePage() {
     ];
   }, [profileData, plannings.length]);
 
+  async function handleSubmitProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profileData?.member) return;
+    setSubmitting(true);
+    setSubmitSuccess(false);
+    try {
+      const response = await fetch("/api/members/me/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description,
+          instagram,
+          tiktok,
+          twitter,
+          birthday,
+          twitchAffiliateDate,
+          timezone,
+          twitchLogin: profileData.member.twitchLogin,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        alert(body.error || "Erreur lors de la soumission");
+        return;
+      }
+      setSubmitSuccess(true);
+    } catch {
+      alert("Erreur de connexion");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCreateProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setCreatingProfile(true);
+    setCreateProfileSuccess(false);
+    try {
+      const response = await fetch("/api/members/me/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bootstrapForm),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        alert(body.error || "Erreur lors de la creation du profil");
+        return;
+      }
+      setCreateProfileSuccess(true);
+    } catch {
+      alert("Erreur de connexion");
+    } finally {
+      setCreatingProfile(false);
+    }
+  }
+
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement du profil...</p>;
-  if (error || !profileData || !overview) return <EmptyFeatureCard title="Mon profil" description={error || "Impossible de charger le profil."} />;
+  if (error || !profileData) return <EmptyFeatureCard title="Mon profil" description={error || "Impossible de charger le profil."} />;
 
   const member = profileData.member;
-  const vip = overview.vip;
-  const profilePercent = overview.profile?.percent ?? 0;
+  const safeOverview: MemberOverview = overview || {
+    member: {
+      twitchLogin: member.twitchLogin,
+      displayName: member.displayName,
+      role: member.role,
+      profileValidationStatus: member.profileValidationStatus,
+      integrationDate: member.integrationDate || null,
+      parrain: member.tenfSummary?.parrain || null,
+      bio: member.bio || "",
+      socials: {
+        twitch: member.socials.twitch || "",
+        discord: member.socials.discord || "",
+        instagram: member.socials.instagram || "",
+        tiktok: member.socials.tiktok || "",
+        twitter: member.socials.twitter || "",
+        youtube: "",
+      },
+    },
+    vip: {
+      activeThisMonth: false,
+      statusLabel: "Indisponible",
+      source: "none",
+      startsAt: null,
+      endsAt: null,
+    },
+    monthKey: "",
+    stats: {
+      raidsThisMonth: 0,
+      raidsTotal: 0,
+      eventPresencesThisMonth: 0,
+      participationThisMonth: 0,
+      formationsValidated: 0,
+    },
+    profile: {
+      completed: false,
+      percent: 0,
+    },
+    upcomingEvents: [],
+    formationHistory: [],
+    eventPresenceHistory: [],
+  };
+  const vip = safeOverview.vip;
+  const profilePercent = safeOverview.profile?.percent ?? 0;
   const validationLabel =
     member.profileValidationStatus === "valide"
       ? "Profil valide par le staff"
@@ -140,10 +312,20 @@ export default function MemberProfilePage() {
         ? "warning"
         : "neutral";
   const hasPublicProfileLink = false;
+  const needsOnboarding =
+    member.role === "Nouveau" ||
+    member.twitchLogin.startsWith("nouveau_") ||
+    member.twitchLogin.startsWith("nouveau-") ||
+    searchParams.get("onboarding") === "1";
 
   return (
     <MemberSurface>
       <MemberPageHeader title="Mon profil" description="Ton espace identitaire TENF : statut, planning, validation et actions rapides." />
+      {overviewWarning ? (
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+          {overviewWarning}
+        </div>
+      ) : null}
 
       <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -190,6 +372,134 @@ export default function MemberProfilePage() {
           <StatCard title="VIP TENF" value={vip?.statusLabel || "Indisponible"} subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"} icon={Crown} />
         </div>
       </section>
+
+      {needsOnboarding ? (
+        <MemberInfoCard title="Creation / activation du profil">
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Ton profil reste inactif tant qu il n est pas valide par le staff apres la reunion d integration.
+          </p>
+          <form onSubmit={handleCreateProfile} className="mt-4 space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Pseudo Discord *</label>
+                <input
+                  required
+                  value={bootstrapForm.discordUsername}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, discordUsername: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Nom du createur *</label>
+                <input
+                  required
+                  value={bootstrapForm.creatorName}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, creatorName: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Pseudo Twitch / URL Twitch *</label>
+                <input
+                  required
+                  value={bootstrapForm.twitchChannelUrl}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, twitchChannelUrl: e.target.value }))}
+                  placeholder="https://www.twitch.tv/pseudo"
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Fuseau horaire *</label>
+                <select
+                  required
+                  value={bootstrapForm.timezone}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, timezone: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Pays *</label>
+                <select
+                  required
+                  value={bootstrapForm.countryCode}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, countryCode: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                >
+                  <option value="FR">France (FR)</option>
+                  <option value="BE">Belgique (BE)</option>
+                  <option value="CH">Suisse (CH)</option>
+                  <option value="CA">Canada (CA)</option>
+                  <option value="LU">Luxembourg (LU)</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Parrain TENF</label>
+                <input
+                  value={bootstrapForm.parrain}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, parrain: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d anniversaire</label>
+                <input
+                  type="date"
+                  value={bootstrapForm.birthday}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, birthday: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  Date d affiliation Twitch
+                </label>
+                <input
+                  type="date"
+                  value={bootstrapForm.twitchAffiliateDate}
+                  onChange={(e) => setBootstrapForm((prev) => ({ ...prev, twitchAffiliateDate: e.target.value }))}
+                  className="w-full rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+                <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  Procedure: Tableau de bord createur {">"} Parametres {">"} Chaine {">"} Evenements de streaming.
+                </p>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Notes</label>
+              <textarea
+                value={bootstrapForm.notes}
+                onChange={(e) => setBootstrapForm((prev) => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                className="w-full rounded-lg border px-3 py-2"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+              />
+            </div>
+            {createProfileSuccess ? (
+              <p className="text-sm text-green-500">Profil cree/mis a jour. Le staff doit encore le valider.</p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={creatingProfile}
+              className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              {creatingProfile ? "Creation..." : "Creer mon profil"}
+            </button>
+          </form>
+        </MemberInfoCard>
+      ) : null}
 
       <PlanningPreviewCard plannings={plannings} planningHref={LIVE_PLANNING_ROUTE} />
 
@@ -247,12 +557,65 @@ export default function MemberProfilePage() {
           <p style={{ color: "var(--color-text-secondary)" }}>Jeux principaux : Donnee indisponible pour le moment</p>
           <p style={{ color: "var(--color-text-secondary)" }}>Style de contenu : Donnee indisponible pour le moment</p>
         </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          >
+            Demander a passer en streamer affilie (en dev)
+          </button>
+        </div>
         <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
             Description (rendu markdown Discord)
           </p>
           <DiscordMarkdownPreview content={member.bio || ""} emptyFallback="Aucune description fournie." />
         </div>
+      </MemberInfoCard>
+
+      <MemberInfoCard title="Mise a jour rapide (soumission staff)">
+        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Cette zone conserve le flux historique de soumission profile pour validation staff.
+        </p>
+        <form onSubmit={handleSubmitProfile} className="mt-4 space-y-3">
+          <div>
+            <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Description ({description.length}/{MAX_DESCRIPTION})
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={MAX_DESCRIPTION}
+              rows={4}
+              className="w-full rounded-lg border px-3 py-2"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <input value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="TikTok" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <input value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="X / Twitter" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <input type="date" value={twitchAffiliateDate} onChange={(e) => setTwitchAffiliateDate(e.target.value)} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
+              {TIMEZONE_OPTIONS.map((tz) => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+          </div>
+          {submitSuccess ? <p className="text-sm text-green-500">Modifications soumises pour validation.</p> : null}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          >
+            {submitting ? "Envoi..." : "Soumettre pour validation"}
+          </button>
+        </form>
       </MemberInfoCard>
 
       <ProfileCompletionCard items={completionChecklist} percent={profilePercent} ctaHref="/member/profil/completer" />
