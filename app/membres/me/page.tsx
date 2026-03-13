@@ -544,14 +544,39 @@ export default function MyProfilePage() {
 
         {/* Descriptif de chaîne + Réseaux à remplir */}
         <div className="rounded-xl border p-6 mb-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <h2 className="text-xl font-semibold mb-2">Descriptif de chaîne</h2>
+          <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+            <span>Descriptif de chaîne</span>
+            <span className="relative inline-flex items-center group">
+              <button
+                type="button"
+                aria-label="Aide markdown Discord"
+                className="h-5 w-5 rounded-full border text-xs font-bold leading-none"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+              >
+                ?
+              </button>
+              <span
+                className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-lg border p-3 text-xs opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+                style={{
+                  borderColor: "var(--color-border)",
+                  backgroundColor: "var(--color-card)",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                Markdown Discord accepte: **gras**, *italique*, __souligne__, ~~barre~~, &gt; citation, listes avec - ou 1., liens.
+                Les sauts de ligne et espaces sont conserves sur la fiche publique.
+              </span>
+            </span>
+          </h2>
           <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
             Remplis ici ton descriptif et tes réseaux. Les modifications seront soumises à validation par le staff avant affichage sur la page Membres.
           </p>
 
           <form onSubmit={handleSubmitProfile} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>Descriptif (max {MAX_DESCRIPTION} caractères)</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                Descriptif (max {MAX_DESCRIPTION} caractères)
+              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

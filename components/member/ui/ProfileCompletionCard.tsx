@@ -1,3 +1,4 @@
+import Link from "next/link";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 
 type ChecklistItem = {
@@ -8,9 +9,10 @@ type ChecklistItem = {
 type ProfileCompletionCardProps = {
   items: ChecklistItem[];
   percent: number;
+  ctaHref?: string;
 };
 
-export default function ProfileCompletionCard({ items, percent }: ProfileCompletionCardProps) {
+export default function ProfileCompletionCard({ items, percent, ctaHref }: ProfileCompletionCardProps) {
   return (
     <MemberInfoCard title="Etat du profil">
       <div className="space-y-2">
@@ -36,6 +38,15 @@ export default function ProfileCompletionCard({ items, percent }: ProfileComplet
           <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, percent))}%`, backgroundColor: "var(--color-primary)" }} />
         </div>
       </div>
+      {ctaHref ? (
+        <Link
+          href={ctaHref}
+          className="mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          Completer mon profil
+        </Link>
+      ) : null}
     </MemberInfoCard>
   );
 }

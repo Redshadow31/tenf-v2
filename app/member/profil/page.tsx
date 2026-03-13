@@ -12,6 +12,7 @@ import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 import PlanningPreviewCard from "@/components/member/ui/PlanningPreviewCard";
 import ProfileCompletionCard from "@/components/member/ui/ProfileCompletionCard";
 import QuickActionsCard from "@/components/member/ui/QuickActionsCard";
+import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
 import type { MemberOverview } from "@/components/member/hooks/useMemberOverview";
 
 type MemberApiResponse = {
@@ -111,6 +112,8 @@ export default function MemberProfilePage() {
         status: member.socials.instagram || member.socials.tiktok || member.socials.twitter ? "ok" : "warning" as const,
       },
       { label: "Planning live", status: plannings.length > 0 ? "ok" : "warning" as const },
+      { label: "Jeux principaux", status: "warning" as const },
+      { label: "Presentation prete", status: member.bio ? "ok" : "warning" as const },
       {
         label: "Profil valide",
         status: member.profileValidationStatus === "valide" ? "ok" : "warning" as const,
@@ -173,10 +176,15 @@ export default function MemberProfilePage() {
               <Link href={`/membres/${member.twitchLogin}`} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
                 Voir ma fiche publique
               </Link>
-            ) : null}
+            ) : (
+              <button type="button" disabled className="rounded-lg border px-3 py-2 text-sm opacity-65" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                Voir ma fiche publique (A venir)
+              </button>
+            )}
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <StatCard title="Date d'integration" value={member.integrationDate ? new Date(member.integrationDate).toLocaleDateString("fr-FR") : "Indisponible"} icon={Calendar} />
           <StatCard title="Reunion integration" value={member.tenfSummary.integration.integrated ? "Faite" : "Non faite"} subtitle={member.tenfSummary.integration.date || "Date non disponible"} icon={Calendar} />
           <StatCard title="Role TENF" value={member.role} icon={UserCircle2} />
           <StatCard title="VIP TENF" value={vip?.statusLabel || "Indisponible"} subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"} icon={Crown} />
@@ -190,9 +198,19 @@ export default function MemberProfilePage() {
           Cette section represente ce que les visiteurs peuvent voir sur le site.
         </p>
         <div className="mt-3 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)" }}>
+          <div className="mb-2 flex items-center gap-3">
+            <img src={member.avatar} alt={member.displayName} className="h-10 w-10 rounded-full border object-cover" style={{ borderColor: "var(--color-border)" }} />
+            <div>
+              <p style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                Visibilite: en attente / incomplet
+              </p>
+            </div>
+          </div>
           <p style={{ color: "var(--color-text)" }}>{member.displayName}</p>
-          <p style={{ color: "var(--color-text-secondary)" }}>
-            {member.bio ? member.bio : "Bio non renseignee"}
+          <DiscordMarkdownPreview content={member.bio || ""} emptyFallback="Bio non renseignee" />
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            Liens publics: Twitch {member.socials.twitch ? "OK" : "non renseigne"} - Reseaux: en cours.
           </p>
         </div>
         {hasPublicProfileLink ? (
@@ -213,6 +231,7 @@ export default function MemberProfilePage() {
             <p style={{ color: "var(--color-text-secondary)" }}>Pseudo Twitch : {member.twitchLogin}</p>
             <p style={{ color: "var(--color-text-secondary)" }}>Nom affiche : {member.displayName}</p>
             <p style={{ color: "var(--color-text-secondary)" }}>Role TENF : {member.role}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Type de createur : Donnee indisponible</p>
             <p style={{ color: "var(--color-text-secondary)" }}>Statut serveur : {member.tenfSummary.status}</p>
           </div>
           <div className="space-y-2 text-sm">
@@ -224,9 +243,19 @@ export default function MemberProfilePage() {
             <p style={{ color: "var(--color-text-secondary)" }}>YouTube : Donnee indisponible pour le moment</p>
           </div>
         </div>
+        <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
+          <p style={{ color: "var(--color-text-secondary)" }}>Jeux principaux : Donnee indisponible pour le moment</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>Style de contenu : Donnee indisponible pour le moment</p>
+        </div>
+        <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
+            Description (rendu markdown Discord)
+          </p>
+          <DiscordMarkdownPreview content={member.bio || ""} emptyFallback="Aucune description fournie." />
+        </div>
       </MemberInfoCard>
 
-      <ProfileCompletionCard items={completionChecklist} percent={profilePercent} />
+      <ProfileCompletionCard items={completionChecklist} percent={profilePercent} ctaHref="/member/profil/completer" />
 
       <MemberInfoCard title="Validation TENF">
         <div className="mb-3">
@@ -235,6 +264,9 @@ export default function MemberProfilePage() {
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
           Etat actuel de la fiche : {member.profileValidationStatus}. Derniere date de validation detaillee non disponible.
         </p>
+        <div className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          Derniere mise a jour envoyee : indisponible - Derniere validation : indisponible
+        </div>
         <div className="mt-3 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
           <ShieldCheck size={16} />
           <span>Soumission des modifications deja connectee au flux de validation staff.</span>
