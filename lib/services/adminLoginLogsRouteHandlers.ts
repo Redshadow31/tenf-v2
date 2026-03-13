@@ -3,6 +3,7 @@ import type { AuthenticatedAdmin } from "@/lib/requireAdmin";
 import { parseAdminLoginLogsFilters } from "@/lib/services/adminLoginLogsQuery";
 import {
   getLoginLogsMapData,
+  getDailyMemberLoginLogs,
   getLoginLogsStats,
   getPaginatedLoginLogs,
   getRealtimeLoginLogs,
@@ -37,6 +38,12 @@ export type LoginLogsRealtimeRouteDeps = {
   getRealtimeFn: typeof getRealtimeLoginLogs;
 };
 
+export type LoginLogsMembersDailyRouteDeps = {
+  requireAdminFn: RequireAdminFn;
+  ensureCleanupFn: EnsureCleanupFn;
+  getDailyMembersFn: typeof getDailyMemberLoginLogs;
+};
+
 export const loginLogsRouteDeps: LoginLogsRouteDeps = {
   requireAdminFn: requireAdmin,
   ensureCleanupFn: ensureConnectionLogsCleanupScheduler,
@@ -59,6 +66,12 @@ export const loginLogsRealtimeRouteDeps: LoginLogsRealtimeRouteDeps = {
   requireAdminFn: requireAdmin,
   ensureCleanupFn: ensureConnectionLogsCleanupScheduler,
   getRealtimeFn: getRealtimeLoginLogs,
+};
+
+export const loginLogsMembersDailyRouteDeps: LoginLogsMembersDailyRouteDeps = {
+  requireAdminFn: requireAdmin,
+  ensureCleanupFn: ensureConnectionLogsCleanupScheduler,
+  getDailyMembersFn: getDailyMemberLoginLogs,
 };
 
 export async function handleGetLoginLogs(request: NextRequest, deps: LoginLogsRouteDeps) {
@@ -153,6 +166,30 @@ export async function handleGetLoginLogsRealtime(
     return NextResponse.json(payload);
   } catch (error) {
     console.error("[admin/login-logs/realtime] error:", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+export async function handleGetLoginLogsMembersDaily(
+  request: NextRequest,
+  deps: LoginLogsMembersDailyRouteDeps
+) {
+  try {
+    deps.ensureCleanupFn();
+    const admin = await deps.requireAdminFn();
+    if (!admin) return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const filters = parseAdminLoginLogsFilters(searchParams);
+    const payload = await deps.getDailyMembersFn({
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      country: filters.country,
+    });
+
+    return NextResponse.json(payload);
+  } catch (error) {
+    console.error("[admin/login-logs/members-daily] error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

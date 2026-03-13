@@ -397,3 +397,73 @@ export async function getRealtimeLoginLogs(filters?: {
     })),
   };
 }
+
+export async function getDailyMemberLoginLogs(params: {
+  startDate?: string;
+  endDate?: string;
+  country?: string;
+}) {
+  await purgeConnectionLogs();
+
+  let query = supabaseAdmin
+    .from("connection_session_events")
+    .select("created_at,connection_type,user_id,username,country_code");
+
+  if (params.startDate) query = query.gte("created_at", params.startDate);
+  if (params.endDate) query = query.lte("created_at", params.endDate);
+  if (params.country) query = query.eq("country_code", params.country);
+
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(20000);
+  if (error) throw new Error(`[getDailyMemberLoginLogs] ${error.message}`);
+
+  const byDay = new Map<
+    string,
+    {
+      totalConnections: number;
+      entries: Map<string, { label: string; count: number; type: "member" | "unknown_visitor" }>;
+    }
+  >();
+
+  for (const row of data || []) {
+    const dayKey = new Date(row.created_at).toISOString().slice(0, 10);
+    const day = byDay.get(dayKey) || { totalConnections: 0, entries: new Map() };
+    day.totalConnections += 1;
+
+    const isUnknownVisitor = row.connection_type !== "discord";
+    const label = isUnknownVisitor ? "Visiteur inconnu" : row.username?.trim() || row.user_id || "Membre inconnu";
+    const type: "member" | "unknown_visitor" = isUnknownVisitor ? "unknown_visitor" : "member";
+    const existing = day.entries.get(label);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      day.entries.set(label, { label, count: 1, type });
+    }
+
+    byDay.set(dayKey, day);
+  }
+
+  const days = Array.from(byDay.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, value]) => {
+      const entries = Array.from(value.entries.values()).sort((a, b) => {
+        if (a.type !== b.type) return a.type === "member" ? -1 : 1;
+        return b.count - a.count;
+      });
+
+      return {
+        date,
+        totalConnections: value.totalConnections,
+        membersCount: entries.filter((entry) => entry.type === "member").length,
+        unknownVisitorsConnections: entries
+          .filter((entry) => entry.type === "unknown_visitor")
+          .reduce((sum, entry) => sum + entry.count, 0),
+        entries,
+      };
+    });
+
+  return {
+    days,
+    totalDays: days.length,
+    totalConnections: days.reduce((sum, day) => sum + day.totalConnections, 0),
+  };
+}

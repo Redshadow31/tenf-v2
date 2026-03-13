@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, Globe2, MousePointerClick } from "lucide-react";
+import { Activity, Globe2, MousePointerClick, Users } from "lucide-react";
 
 const sections = [
   {
@@ -10,6 +10,13 @@ const sections = [
     href: "/admin/audit-logs/connexions",
     icon: Globe2,
     color: "from-indigo-600 to-blue-800",
+  },
+  {
+    title: "Logs membres",
+    description: "Regroupement par jour des membres connectes et ligne unique pour les visiteurs inconnus.",
+    href: "/admin/audit-logs/membres",
+    icon: Users,
+    color: "from-violet-600 to-purple-800",
   },
   {
     title: "Temps reel",
@@ -38,7 +45,7 @@ export default function AuditLogsHubPage() {
         <p className="text-gray-400">Suivi des connexions membres et visiteurs en historique et en direct.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         {sections.map((section) => {
           const Icon = section.icon;
           return (
