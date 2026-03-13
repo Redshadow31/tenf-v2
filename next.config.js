@@ -11,8 +11,18 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: '/admin/integration/presentation',
+        destination: '/admin/integration/presentation-anime',
+        permanent: true,
+      },
+      {
         source: '/admin/evaluations/discours',
         destination: '/admin/integration/discours2',
+        permanent: true,
+      },
+      {
+        source: '/admin/evaluations/presentation',
+        destination: '/admin/integration/presentation-anime',
         permanent: true,
       },
       {

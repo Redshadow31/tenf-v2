@@ -40,7 +40,7 @@ export default function EvaluationsHubPage() {
       color: "from-amber-500 to-amber-600",
     },
     {
-      href: "/admin/integration/presentation",
+      href: "/admin/integration/presentation-anime",
       title: "Présentation",
       description: "Gérer les présentations des intégrations",
       icon: "📄",

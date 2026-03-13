@@ -82,7 +82,7 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/integration/inscription", label: "Inscriptions" },
           { href: "/admin/integration/presence-retour", label: "Présence & retours" },
           { href: "/admin/integration/statistique", label: "Statistiques" },
-          { href: "/admin/integration/presentation", label: "Présentation TENF" },
+          { href: "/admin/integration/presentation-anime", label: "Présentation TENF" },
           { href: "/admin/integration/discours2", label: "Discours & trame" },
         ],
       },
