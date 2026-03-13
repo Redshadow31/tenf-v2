@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { socialLinks } from "@/lib/socialLinks";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
 
 type EventType =
   | "Soirees jeux communautaires"
@@ -34,6 +37,7 @@ type FeaturedUpcomingEvent = {
   title: string;
   dateLabel: string;
   locationLabel: string;
+  locationUrl?: string;
   shortDescription: string;
   eventUrl: string;
   addToCalendarUrl: string;
@@ -188,6 +192,13 @@ function visualForCategory(category: string): string {
   return "🎉";
 }
 
+function normalizeMarkdownForCards(value?: string): string {
+  if (!value) return "";
+  // Les descriptions importées contiennent souvent des retours simples.
+  // On les convertit en sauts Markdown explicites pour conserver la mise en forme.
+  return value.replace(/\r\n/g, "\n").replace(/\n/g, "  \n");
+}
+
 export default function EvenementsCommunautairesPage() {
   const [events, setEvents] = useState<PublicEvent[]>([]);
   const [proposals, setProposals] = useState<CommunityProposal[]>([]);
@@ -195,6 +206,7 @@ export default function EvenementsCommunautairesPage() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingProposals, setLoadingProposals] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [locationLinks, setLocationLinks] = useState<EventLocationLink[]>([]);
   const [activeVibe, setActiveVibe] = useState(0);
   const [upcomingFilter, setUpcomingFilter] = useState<string>("all");
   const [spotlightIndex, setSpotlightIndex] = useState(0);
@@ -240,6 +252,20 @@ export default function EvenementsCommunautairesPage() {
 
   useEffect(() => {
     loadProposals();
+  }, []);
+
+  useEffect(() => {
+    async function loadLocationLinks() {
+      try {
+        const response = await fetch("/api/events/location-links", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setLocationLinks((data.links || []) as EventLocationLink[]);
+      } catch (error) {
+        console.error("[evenements-communautaires] Erreur chargement liens de lieux:", error);
+      }
+    }
+    loadLocationLinks();
   }, []);
 
   async function handleSubmit(event: FormEvent) {
@@ -345,6 +371,7 @@ export default function EvenementsCommunautairesPage() {
       title: item.title,
       dateLabel: formatDateTime(item.date),
       locationLabel: item.location || "Discord TENF",
+      locationUrl: item.location,
       shortDescription: item.description || "Un nouveau moment communautaire est prevu.",
       eventUrl: "/events2",
       addToCalendarUrl: calendarUrlForEvent(item),
@@ -568,7 +595,7 @@ export default function EvenementsCommunautairesPage() {
             {featuredUpcoming.map((eventCard) => (
               <article
                 key={`${eventCard.title}-${eventCard.dateLabel}`}
-                className={`rounded-xl border p-5 ${hoverGlowClass} group`}
+                className={`rounded-xl border p-5 ${hoverGlowClass} group flex flex-col h-full`}
                 style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
               >
                 <div className="flex items-center gap-2 mb-2 text-base font-semibold" style={{ color: "var(--color-text)" }}>
@@ -583,12 +610,34 @@ export default function EvenementsCommunautairesPage() {
                   📅 {eventCard.dateLabel}
                 </p>
                 <p className="text-sm mb-3" style={{ color: "var(--color-text-secondary)" }}>
-                  📍 {eventCard.locationLabel}
+                  📍{" "}
+                  {(() => {
+                    const locationDisplay = eventCard.locationUrl
+                      ? buildEventLocationDisplay(eventCard.locationUrl, locationLinks)
+                      : null;
+                    if (!locationDisplay) return eventCard.locationLabel;
+                    return (
+                      <a
+                        href={locationDisplay.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline decoration-dotted"
+                        style={{ color: "var(--color-primary)" }}
+                      >
+                        {locationDisplay.label}
+                      </a>
+                    );
+                  })()}
                 </p>
-                <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                  {eventCard.shortDescription}
-                </p>
-                <div className="flex flex-wrap gap-2">
+                <div
+                  className="text-sm mb-4 leading-relaxed grow prose prose-invert max-w-none prose-p:my-1 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff]"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {normalizeMarkdownForCards(eventCard.shortDescription)}
+                  </ReactMarkdown>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-auto pt-2">
                   <a
                     href={eventCard.eventUrl}
                     className="px-3 py-2 rounded-lg text-sm font-semibold border"
