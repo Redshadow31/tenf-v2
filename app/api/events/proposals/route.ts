@@ -153,7 +153,8 @@ export async function POST(request: NextRequest) {
         category: category.trim(),
         preferred_date: proposedDate ? parisLocalDateTimeToUtcIso(proposedDate) : null,
         status: "pending",
-        proposed_by_member_id: member.id || null,
+        // MemberData ne porte pas d'UUID SQL "members.id" dans ce codebase.
+        proposed_by_member_id: null,
       };
 
       const v2Insert = await supabaseAdmin

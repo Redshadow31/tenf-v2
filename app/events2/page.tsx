@@ -36,6 +36,26 @@ const statusFilters = [
   { id: "all", label: "Tous" },
 ] as const;
 
+function calendarUrlForEvent(event: EventItem): string {
+  const start = new Date(event.date);
+  if (Number.isNaN(start.getTime())) return "/events2";
+
+  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  const formatUtc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const details = `${event.description || "Evenement communautaire TENF"}\n\n${window.location.origin}/events2`;
+  const location = event.location || "Discord TENF";
+
+  const query = new URLSearchParams({
+    action: "TEMPLATE",
+    text: event.title,
+    dates: `${formatUtc(start)}/${formatUtc(end)}`,
+    details,
+    location,
+  });
+
+  return `https://calendar.google.com/calendar/render?${query.toString()}`;
+}
+
 function categoryColor(category: string): string {
   switch (category) {
     case "Spotlight":
@@ -401,6 +421,14 @@ export default function Events2Page() {
             >
               Voir details
             </button>
+            <a
+              href={calendarUrlForEvent(event)}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#9146ff] hover:bg-[#7c3aed] text-white"
+            >
+              Ajouter au calendrier
+            </a>
             {!isPast && (
               <button
                 onClick={() => (isRegistered ? handleUnregister(event.id) : handleRegister(event.id))}
@@ -768,6 +796,14 @@ export default function Events2Page() {
 
               {new Date(selectedEvent.date).getTime() >= Date.now() && (
                 <div className="pt-2 flex gap-2">
+                  <a
+                    href={calendarUrlForEvent(selectedEvent)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold"
+                  >
+                    Ajouter au calendrier
+                  </a>
                   {registeredEventIds.has(selectedEvent.id) ? (
                     <button
                       onClick={() => handleUnregister(selectedEvent.id)}
