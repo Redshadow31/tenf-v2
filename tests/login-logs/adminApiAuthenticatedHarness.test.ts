@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import { handleGetLoginLogs } from "@/app/api/admin/login-logs/route";
-import { handleGetLoginLogsStats } from "@/app/api/admin/login-logs/stats/route";
-import { handleGetLoginLogsMap } from "@/app/api/admin/login-logs/map/route";
-import { handleGetLoginLogsRealtime } from "@/app/api/admin/login-logs/realtime/route";
+import {
+  handleGetLoginLogs,
+  handleGetLoginLogsMap,
+  handleGetLoginLogsRealtime,
+  handleGetLoginLogsStats,
+} from "@/lib/services/adminLoginLogsRouteHandlers";
 
 const fakeAdmin = {
   id: "1",

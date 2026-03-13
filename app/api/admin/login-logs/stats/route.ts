@@ -1,50 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
-import { getLoginLogsStats } from "@/lib/services/connectionLogService";
-import { ensureConnectionLogsCleanupScheduler } from "@/lib/services/cleanupService";
-import { parseAdminLoginLogsFilters } from "@/lib/services/adminLoginLogsQuery";
+import { NextRequest } from "next/server";
+import {
+  handleGetLoginLogsStats,
+  loginLogsStatsRouteDeps,
+} from "@/lib/services/adminLoginLogsRouteHandlers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type RouteDeps = {
-  requireAdminFn: typeof requireAdmin;
-  ensureCleanupFn: typeof ensureConnectionLogsCleanupScheduler;
-  getStatsFn: typeof getLoginLogsStats;
-};
-
-const defaultDeps: RouteDeps = {
-  requireAdminFn: requireAdmin,
-  ensureCleanupFn: ensureConnectionLogsCleanupScheduler,
-  getStatsFn: getLoginLogsStats,
-};
-
-export async function handleGetLoginLogsStats(
-  request: NextRequest,
-  deps: RouteDeps = defaultDeps
-) {
-  try {
-    deps.ensureCleanupFn();
-    const admin = await deps.requireAdminFn();
-    if (!admin) return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
-
-    const { searchParams } = new URL(request.url);
-    const filters = parseAdminLoginLogsFilters(searchParams);
-
-    const payload = await deps.getStatsFn({
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      country: filters.country,
-      userId: filters.userId,
-      connectionType: filters.connectionType,
-    });
-    return NextResponse.json(payload);
-  } catch (error) {
-    console.error("[admin/login-logs/stats] error:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-}
-
 export async function GET(request: NextRequest) {
-  return handleGetLoginLogsStats(request);
+  return handleGetLoginLogsStats(request, loginLogsStatsRouteDeps);
 }

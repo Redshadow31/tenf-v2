@@ -5,7 +5,7 @@ import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/adminRoles";
 
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },

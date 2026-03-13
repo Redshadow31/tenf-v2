@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 
 type TabKey = "summary" | "evaluations" | "raids" | "events" | "notesSanctions" | "logs";

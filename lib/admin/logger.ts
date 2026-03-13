@@ -4,7 +4,7 @@
  */
 
 import { logAdminAction } from "@/lib/adminAudit";
-import { getCurrentAdmin } from "@/lib/admin";
+import { getCurrentAdmin } from "@/lib/adminAuth";
 import { getAdminRole, type AdminRole } from "@/lib/adminRoles";
 
 export interface LogActionParams {

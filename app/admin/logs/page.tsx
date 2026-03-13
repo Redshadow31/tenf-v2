@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCurrentAdmin } from "@/lib/admin";
 
 interface LogEntry {
   adminId: string;

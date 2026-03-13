@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/adminRoles";
 
 type StaffApplication = {
   id: string;

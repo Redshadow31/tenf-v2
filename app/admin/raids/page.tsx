@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { getDiscordUser } from "@/lib/discord";
-import { hasAdminDashboardAccess, isFounder } from "@/lib/admin";
+import { hasAdminDashboardAccess, isFounder } from "@/lib/adminRoles";
 import Link from "next/link";
 import { computeRaidStats, ComputedRaidStats } from "@/lib/computeRaidStats";
 import RaidStatsCard from "@/components/RaidStatsCard";

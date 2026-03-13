@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/adminRoles";
 import Link from "next/link";
 
 interface Member {

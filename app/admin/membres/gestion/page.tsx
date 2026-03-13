@@ -13,7 +13,7 @@ import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
-import { isFounder } from "@/lib/admin";
+import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 

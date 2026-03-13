@@ -30,7 +30,7 @@ import {
   hasAdminRole as hasNewAdminRole,
   isFounder as isNewFounder,
 } from "./adminRoles";
-import { getAuthenticatedAdmin } from "./requireAdmin";
+import { getCurrentAdmin as getCurrentAdminLegacy } from "./adminAuth";
 
 /**
  * @deprecated Utiliser getAdminRole de adminRoles.ts
@@ -68,9 +68,7 @@ export function isAdminRole(discordId: string, memberRole?: string): boolean {
  * Pour le client, utilisez getDiscordUser() de lib/discord puis vérifiez avec getAdminRole()
  */
 export async function getCurrentAdmin() {
-  // P0 sécurité: interdiction d'utiliser les cookies legacy pour l'auth admin.
-  // Source unique de vérité: session NextAuth serveur.
-  return getAuthenticatedAdmin();
+  return getCurrentAdminLegacy();
 }
 
 /**
