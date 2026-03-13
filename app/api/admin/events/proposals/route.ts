@@ -12,45 +12,72 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
-    const { data: proposals, error } = await supabaseAdmin
+    let proposals: Record<string, unknown>[] = [];
+    let schemaVariant: "legacy" | "v2" = "legacy";
+
+    const legacyQuery = await supabaseAdmin
       .from("event_proposals")
       .select(
         "id,title,description,category,proposed_date,status,is_anonymous,proposed_by_discord_id,proposed_by_twitch_login,proposed_by_display_name,created_at,updated_at"
       )
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (legacyQuery.error) {
+      const v2Query = await supabaseAdmin
+        .from("event_proposals")
+        .select("id,title,description,category,preferred_date,status,proposed_by_member_id,created_at,reviewed_at")
+        .order("created_at", { ascending: false });
 
-    const proposalIds = (proposals || []).map((p) => p.id);
+      if (v2Query.error) throw v2Query.error;
+      proposals = (v2Query.data || []) as Record<string, unknown>[];
+      schemaVariant = "v2";
+    } else {
+      proposals = (legacyQuery.data || []) as Record<string, unknown>[];
+    }
+
+    const proposalIds = (proposals || []).map((p) => String(p.id));
     let votesByProposal = new Map<string, number>();
     if (proposalIds.length > 0) {
       const { data: votes, error: votesError } = await supabaseAdmin
         .from("event_proposal_votes")
         .select("proposal_id")
         .in("proposal_id", proposalIds);
-      if (votesError) throw votesError;
-      votesByProposal = (votes || []).reduce((acc, vote) => {
+      // Certains environnements v2 n'ont pas encore la table de votes.
+      if (votesError && votesError.code !== "42P01") throw votesError;
+      votesByProposal = ((votes || []) as Array<{ proposal_id: string }>).reduce((acc, vote) => {
         acc.set(vote.proposal_id, (acc.get(vote.proposal_id) || 0) + 1);
         return acc;
       }, new Map<string, number>());
     }
 
     const formatted = (proposals || []).map((proposal) => ({
-      id: proposal.id,
-      title: proposal.title,
-      description: proposal.description,
-      category: proposal.category,
-      proposedDate: proposal.proposed_date,
-      status: proposal.status,
-      isAnonymous: proposal.is_anonymous,
+      id: String(proposal.id),
+      title: String(proposal.title || ""),
+      description: String(proposal.description || ""),
+      category: String(proposal.category || ""),
+      proposedDate: schemaVariant === "legacy" ? (proposal.proposed_date as string | null) : (proposal.preferred_date as string | null),
+      status: String(proposal.status || "pending"),
+      isAnonymous: schemaVariant === "legacy" ? Boolean(proposal.is_anonymous) : true,
       proposer: {
-        discordId: proposal.proposed_by_discord_id,
-        twitchLogin: proposal.proposed_by_twitch_login,
-        displayName: proposal.proposed_by_display_name,
+        discordId:
+          schemaVariant === "legacy"
+            ? ((proposal.proposed_by_discord_id as string | undefined) ?? undefined)
+            : undefined,
+        twitchLogin:
+          schemaVariant === "legacy"
+            ? ((proposal.proposed_by_twitch_login as string | undefined) ?? undefined)
+            : undefined,
+        displayName:
+          schemaVariant === "legacy"
+            ? ((proposal.proposed_by_display_name as string | undefined) ?? undefined)
+            : ((proposal.proposed_by_member_id as string | undefined) ?? undefined),
       },
-      votesCount: votesByProposal.get(proposal.id) || 0,
-      createdAt: proposal.created_at,
-      updatedAt: proposal.updated_at,
+      votesCount: votesByProposal.get(String(proposal.id)) || 0,
+      createdAt: String(proposal.created_at || new Date().toISOString()),
+      updatedAt:
+        schemaVariant === "legacy"
+          ? ((proposal.updated_at as string | undefined) ?? null)
+          : ((proposal.reviewed_at as string | undefined) ?? null),
     }));
 
     return NextResponse.json({ success: true, proposals: formatted });

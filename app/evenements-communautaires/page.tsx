@@ -38,6 +38,7 @@ type FeaturedUpcomingEvent = {
   dateLabel: string;
   locationLabel: string;
   locationUrl?: string;
+  locationDisplayLabel?: string;
   shortDescription: string;
   eventUrl: string;
   addToCalendarUrl: string;
@@ -86,12 +87,6 @@ const fallbackUpcomingEvents: FeaturedUpcomingEvent[] = [
     eventUrl: "/events2",
     addToCalendarUrl: "/events2",
   },
-];
-
-const fallbackIdeas: CommunityIdeaCard[] = [
-  { title: "Tournoi Fortnite", votesCount: 18, potentialParticipants: 9 },
-  { title: "Soiree blind test", votesCount: 14, potentialParticipants: 7 },
-  { title: "Challenge Sims", votesCount: 11, potentialParticipants: 5 },
 ];
 
 const vibeModes = [
@@ -371,16 +366,18 @@ export default function EvenementsCommunautairesPage() {
       title: item.title,
       dateLabel: formatDateTime(item.date),
       locationLabel: item.location || "Discord TENF",
+      locationDisplayLabel: item.location
+        ? buildEventLocationDisplay(item.location, locationLinks)?.label || (item.location || "Discord TENF")
+        : "Discord TENF",
       locationUrl: item.location,
       shortDescription: item.description || "Un nouveau moment communautaire est prevu.",
       eventUrl: "/events2",
       addToCalendarUrl: calendarUrlForEvent(item),
       category: item.category,
     }));
-  }, [filteredUpcomingEvents, upcomingEvents]);
+  }, [filteredUpcomingEvents, upcomingEvents, locationLinks]);
 
   const ideasWithVotes = useMemo<CommunityIdeaCard[]>(() => {
-    if (proposals.length === 0) return fallbackIdeas;
     return proposals.slice(0, 6).map((proposal) => {
       const votes = proposal.votesCount || 0;
       return {
@@ -580,14 +577,32 @@ export default function EvenementsCommunautairesPage() {
               style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "rgba(145,70,255,0.08)" }}
             >
               <p className="text-xs mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                Spotlight automatique
+                Prochain Événements
               </p>
               <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
                 {featuredUpcoming[spotlightIndex]?.title}
               </p>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                {featuredUpcoming[spotlightIndex]?.dateLabel} - {featuredUpcoming[spotlightIndex]?.locationLabel}
+                {featuredUpcoming[spotlightIndex]?.dateLabel} -{" "}
+                {featuredUpcoming[spotlightIndex]?.locationDisplayLabel || featuredUpcoming[spotlightIndex]?.locationLabel}
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {featuredUpcoming.map((event, index) => (
+                  <button
+                    key={`${event.title}-${index}`}
+                    type="button"
+                    onClick={() => setSpotlightIndex(index)}
+                    className="px-2.5 py-1 rounded-md text-xs border"
+                    style={{
+                      borderColor: index === spotlightIndex ? "rgba(145,70,255,0.6)" : "var(--color-border)",
+                      color: "var(--color-text)",
+                      backgroundColor: index === spotlightIndex ? "rgba(145,70,255,0.16)" : "transparent",
+                    }}
+                  >
+                    {event.title}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -841,48 +856,57 @@ export default function EvenementsCommunautairesPage() {
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
             Idees proposees par la communaute
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {ideasWithVotes.map((idea) => (
-              <div
-                key={idea.id ?? idea.title}
-                className={`rounded-lg border p-4 text-sm ${hoverGlowClass}`}
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-              >
-                <p className="font-semibold mb-1">{idea.title}</p>
-                {"category" in idea && typeof idea.category === "string" ? (
-                  <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
-                    {visualForCategory(idea.category)} {idea.category}
+          {ideasWithVotes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {ideasWithVotes.map((idea) => (
+                <div
+                  key={idea.id ?? idea.title}
+                  className={`rounded-lg border p-4 text-sm ${hoverGlowClass}`}
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                >
+                  <p className="font-semibold mb-1">{idea.title}</p>
+                  {"category" in idea && typeof idea.category === "string" ? (
+                    <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
+                      {visualForCategory(idea.category)} {idea.category}
+                    </p>
+                  ) : null}
+                  {"description" in idea && typeof idea.description === "string" ? (
+                    <p className="text-xs mb-3 line-clamp-2" style={{ color: "var(--color-text-secondary)" }}>
+                      {idea.description}
+                    </p>
+                  ) : null}
+                  {"proposedDate" in idea ? (
+                    <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
+                      📅 {formatShortDate(idea.proposedDate)}
+                    </p>
+                  ) : null}
+                  <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    👍 {idea.votesCount} interesses
                   </p>
-                ) : null}
-                {"description" in idea && typeof idea.description === "string" ? (
-                  <p className="text-xs mb-3 line-clamp-2" style={{ color: "var(--color-text-secondary)" }}>
-                    {idea.description}
+                  <p className="text-xs mb-3" style={{ color: "var(--color-text-secondary)" }}>
+                    🔥 {idea.potentialParticipants} participants potentiels
                   </p>
-                ) : null}
-                {"proposedDate" in idea ? (
-                  <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
-                    📅 {formatShortDate(idea.proposedDate)}
-                  </p>
-                ) : null}
-                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  👍 {idea.votesCount} interesses
-                </p>
-                <p className="text-xs mb-3" style={{ color: "var(--color-text-secondary)" }}>
-                  🔥 {idea.potentialParticipants} participants potentiels
-                </p>
-                {"hasVoted" in idea ? (
-                  <button
-                    onClick={() => handleToggleVote(idea)}
-                    disabled={actionLoading}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-                    style={{ backgroundColor: "var(--color-primary)" }}
-                  >
-                    {idea.hasVoted ? "Retirer mon vote" : "Ca m'interesse"}
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
+                  {"hasVoted" in idea ? (
+                    <button
+                      onClick={() => handleToggleVote(idea)}
+                      disabled={actionLoading}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+                      style={{ backgroundColor: "var(--color-primary)" }}
+                    >
+                      {idea.hasVoted ? "Retirer mon vote" : "Ca m'interesse"}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="rounded-lg border p-4 text-sm"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)" }}
+            >
+              Aucune proposition publique disponible pour le moment.
+            </div>
+          )}
           {loadingProposals && (
             <p className="text-xs mt-3" style={{ color: "var(--color-text-secondary)" }}>
               Chargement des idees en cours...

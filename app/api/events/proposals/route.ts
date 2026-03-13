@@ -12,9 +12,10 @@ type ProposalRow = {
   title: string;
   description: string;
   category: string;
-  proposed_date: string | null;
+  proposed_date?: string | null;
+  preferred_date?: string | null;
   status: string;
-  is_anonymous: boolean;
+  is_anonymous?: boolean;
   created_at: string;
 };
 
@@ -23,17 +24,29 @@ export async function GET() {
     const cookieStore = cookies();
     const discordUserId = cookieStore.get("discord_user_id")?.value || null;
 
-    const { data: proposals, error } = await supabaseAdmin
+    let proposals: ProposalRow[] = [];
+    let schemaVariant: "legacy" | "v2" = "legacy";
+
+    const legacyQuery = await supabaseAdmin
       .from("event_proposals")
       .select("id,title,description,category,proposed_date,status,is_anonymous,created_at")
-      .in("status", ["pending", "approved"])
+      .neq("status", "archived")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw error;
+    if (legacyQuery.error) {
+      const v2Query = await supabaseAdmin
+        .from("event_proposals")
+        .select("id,title,description,category,preferred_date,status,created_at")
+        .neq("status", "archived")
+        .order("created_at", { ascending: false });
+      if (v2Query.error) throw v2Query.error;
+      proposals = (v2Query.data || []) as ProposalRow[];
+      schemaVariant = "v2";
+    } else {
+      proposals = (legacyQuery.data || []) as ProposalRow[];
     }
 
-    const proposalIds = (proposals || []).map((p) => p.id);
+    const proposalIds = proposals.map((p) => p.id);
     let voteRows: Array<{ proposal_id: string; voter_discord_id: string }> = [];
 
     if (proposalIds.length > 0) {
@@ -42,7 +55,8 @@ export async function GET() {
         .select("proposal_id,voter_discord_id")
         .in("proposal_id", proposalIds);
 
-      if (votesError) throw votesError;
+      // La table de votes peut ne pas exister sur certaines bases.
+      if (votesError && votesError.code !== "42P01") throw votesError;
       voteRows = votes || [];
     }
 
@@ -56,14 +70,14 @@ export async function GET() {
       }
     }
 
-    const formatted = ((proposals || []) as ProposalRow[]).map((proposal) => ({
+    const formatted = proposals.map((proposal) => ({
       id: proposal.id,
       title: proposal.title,
       description: proposal.description,
       category: proposal.category,
-      proposedDate: proposal.proposed_date,
+      proposedDate: schemaVariant === "legacy" ? (proposal.proposed_date ?? null) : (proposal.preferred_date ?? null),
       status: proposal.status,
-      isAnonymous: proposal.is_anonymous,
+      isAnonymous: schemaVariant === "legacy" ? Boolean(proposal.is_anonymous) : true,
       createdAt: proposal.created_at,
       votesCount: voteCountByProposal.get(proposal.id) || 0,
       hasVoted: userVotes.has(proposal.id),
@@ -101,7 +115,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Membre introuvable pour ce compte Discord" }, { status: 404 });
     }
 
-    const payload = {
+    const legacyPayload = {
       title: title.trim(),
       description: description.trim(),
       category: category.trim(),
@@ -113,13 +127,55 @@ export async function POST(request: NextRequest) {
       proposed_by_display_name: member.displayName || member.twitchLogin,
     };
 
-    const { data, error } = await supabaseAdmin
+    const legacyInsert = await supabaseAdmin
       .from("event_proposals")
-      .insert(payload)
+      .insert(legacyPayload)
       .select("id,title,description,category,proposed_date,status,is_anonymous,created_at")
       .single();
 
-    if (error) throw error;
+    let data:
+      | {
+          id: string;
+          title: string;
+          description: string;
+          category: string;
+          proposed_date: string | null;
+          status: string;
+          is_anonymous: boolean;
+          created_at: string;
+        }
+      | null = null;
+
+    if (legacyInsert.error) {
+      const v2Payload = {
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim(),
+        preferred_date: proposedDate ? parisLocalDateTimeToUtcIso(proposedDate) : null,
+        status: "pending",
+        proposed_by_member_id: member.id || null,
+      };
+
+      const v2Insert = await supabaseAdmin
+        .from("event_proposals")
+        .insert(v2Payload)
+        .select("id,title,description,category,preferred_date,status,created_at")
+        .single();
+      if (v2Insert.error) throw v2Insert.error;
+
+      data = {
+        id: v2Insert.data.id,
+        title: v2Insert.data.title,
+        description: v2Insert.data.description,
+        category: v2Insert.data.category,
+        proposed_date: v2Insert.data.preferred_date,
+        status: v2Insert.data.status,
+        is_anonymous: true,
+        created_at: v2Insert.data.created_at,
+      };
+    } else {
+      data = legacyInsert.data;
+    }
 
     return NextResponse.json({
       proposal: {

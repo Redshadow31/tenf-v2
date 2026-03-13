@@ -6,12 +6,19 @@ import { memberRepository } from "@/lib/repositories";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function isMissingTableError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "42P01");
+}
+
 async function getVoteCount(proposalId: string): Promise<number> {
   const { count, error } = await supabaseAdmin
     .from("event_proposal_votes")
     .select("*", { count: "exact", head: true })
     .eq("proposal_id", proposalId);
-  if (error) throw error;
+  if (error) {
+    if (isMissingTableError(error)) return 0;
+    throw error;
+  }
   return count || 0;
 }
 
@@ -33,7 +40,12 @@ export async function POST(_request: NextRequest, { params }: { params: { propos
     });
 
     // unique constraint collision -> déjà voté
-    if (error && error.code !== "23505") throw error;
+    if (error && error.code !== "23505") {
+      if (isMissingTableError(error)) {
+        return NextResponse.json({ error: "Le vote n'est pas encore disponible (migration SQL manquante)" }, { status: 503 });
+      }
+      throw error;
+    }
 
     const votesCount = await getVoteCount(proposalId);
     return NextResponse.json({ success: true, hasVoted: true, votesCount });
@@ -58,7 +70,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: { prop
       .eq("proposal_id", proposalId)
       .eq("voter_discord_id", discordUserId);
 
-    if (error) throw error;
+    if (error) {
+      if (isMissingTableError(error)) {
+        return NextResponse.json({ error: "Le vote n'est pas encore disponible (migration SQL manquante)" }, { status: 503 });
+      }
+      throw error;
+    }
 
     const votesCount = await getVoteCount(proposalId);
     return NextResponse.json({ success: true, hasVoted: false, votesCount });
