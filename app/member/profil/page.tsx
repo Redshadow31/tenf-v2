@@ -63,14 +63,12 @@ export default function MemberProfilePage() {
   const [plannings, setPlannings] = useState<StreamPlanningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [overviewWarning, setOverviewWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         setError(null);
-        setOverviewWarning(null);
         const [profileRes, overviewRes, planningRes] = await Promise.all([
           fetch("/api/members/me", { cache: "no-store" }),
           fetch("/api/members/me/overview", { cache: "no-store" }),
@@ -91,7 +89,6 @@ export default function MemberProfilePage() {
 
         setProfileData(profileBody);
         if (!overviewRes.ok) {
-          setOverviewWarning(overviewBody.error || "Synthese indisponible temporairement.");
           setOverview(null);
         } else {
           setOverview(overviewBody);
@@ -198,11 +195,6 @@ export default function MemberProfilePage() {
   return (
     <MemberSurface>
       <MemberPageHeader title="Mon profil" description="Ton espace identitaire TENF : statut, planning, validation et actions rapides." />
-      {overviewWarning ? (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-          {overviewWarning}
-        </div>
-      ) : null}
 
       <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -243,7 +235,6 @@ export default function MemberProfilePage() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <StatCard title="Date d'integration" value={member.integrationDate ? new Date(member.integrationDate).toLocaleDateString("fr-FR") : "Indisponible"} icon={Calendar} />
           <StatCard title="Reunion integration" value={member.tenfSummary.integration.integrated ? "Faite" : "Non faite"} subtitle={member.tenfSummary.integration.date || "Date non disponible"} icon={Calendar} />
           <StatCard title="Role TENF" value={member.role} icon={UserCircle2} />
           <StatCard title="VIP TENF" value={vip?.statusLabel || "Indisponible"} subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"} icon={Crown} />
