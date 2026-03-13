@@ -1,77 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } from "@/lib/discord";
+import { memberSidebarSections } from "@/lib/navigation/memberSidebar";
+import SidebarSection from "@/components/member/navigation/SidebarSection";
+import SidebarCollapsibleGroup from "@/components/member/navigation/SidebarCollapsibleGroup";
 
-type SidebarItem = {
+function SidebarLink({
+  href,
+  label,
+  active,
+  icon: Icon,
+}: {
   href: string;
   label: string;
-  adminOnly?: boolean;
-};
-
-type SidebarSection = {
-  title: string;
-  items: SidebarItem[];
-};
-
-const memberSections: SidebarSection[] = [
-  {
-    title: "Espace membre",
-    items: [
-      { href: "/membres/dashboard", label: "Dashboard" },
-      { href: "/membres/planning", label: "Planning" },
-      { href: "/membres/me", label: "Mon profil" },
-      { href: "/evaluation", label: "Mon évaluation" },
-    ],
-  },
-  {
-    title: "Academy & progression",
-    items: [
-      { href: "/academy", label: "TENF Academy" },
-      { href: "/postuler", label: "Postuler staff" },
-      { href: "/membres/formations-validees", label: "Mes formations validées" },
-    ],
-  },
-  {
-    title: "Activité TENF",
-    items: [{ href: "/vip/historique", label: "Historique de raids" }],
-  },
-  {
-    title: "Administration",
-    items: [
-      { href: "/admin/dashboard", label: "Dashboard Admin", adminOnly: true },
-      { href: "/admin/membres", label: "Gestion membres", adminOnly: true },
-      { href: "/admin/evaluation", label: "Gestion évaluations", adminOnly: true },
-      { href: "/admin/events", label: "Gestion événements", adminOnly: true },
-      { href: "/admin/gestion-acces", label: "Gestion profils site", adminOnly: true },
-    ],
-  },
-];
-
-function SidebarLink({ href, label }: { href: string; label: string }) {
+  active: boolean;
+  icon?: ComponentType<{ size?: number }>;
+}) {
   return (
     <Link
       href={href}
       className="block rounded-lg px-4 py-2.5 text-sm font-medium transition-colors border"
       style={{
-        backgroundColor: "var(--color-card)",
-        borderColor: "var(--color-border)",
-        color: "var(--color-text)",
+        backgroundColor: active ? "rgba(145, 70, 255, 0.18)" : "var(--color-card)",
+        borderColor: active ? "rgba(145, 70, 255, 0.45)" : "var(--color-border)",
+        color: active ? "#d7beff" : "var(--color-text)",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
+        if (!active) e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "var(--color-card)";
+        if (!active) e.currentTarget.style.backgroundColor = "var(--color-card)";
       }}
     >
-      {label}
+      <span className="flex items-center gap-2">
+        {Icon ? <Icon size={14} /> : null}
+        <span>{label}</span>
+      </span>
     </Link>
   );
 }
 
 export default function UserSidebar() {
+  const pathname = usePathname();
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -157,24 +130,30 @@ export default function UserSidebar() {
         </div>
 
         <nav className="space-y-4">
-          {memberSections.map((section) => {
-            const visibleItems = section.items.filter((item) => !item.adminOnly || hasAdminAccess);
-            if (visibleItems.length === 0) return null;
+          {memberSidebarSections.map((section) => {
+            if (section.adminOnly && !hasAdminAccess) return null;
 
             return (
-              <div key={section.title} className="space-y-2">
-                <div
-                  className="px-1 text-[11px] font-semibold tracking-[0.14em] uppercase"
-                  style={{ color: "var(--color-text-secondary)", opacity: 0.85 }}
-                >
-                  {section.title}
-                </div>
-                <div className="space-y-2">
-                  {visibleItems.map((item) => (
-                    <SidebarLink key={`${section.title}-${item.href}`} href={item.href} label={item.label} />
-                  ))}
-                </div>
-              </div>
+              <SidebarSection key={section.title} title={section.title}>
+                {section.groups.map((group) => {
+                  const visibleItems = group.items.filter((item) => !item.adminOnly || hasAdminAccess);
+                  if (visibleItems.length === 0) return null;
+
+                  return (
+                    <SidebarCollapsibleGroup key={`${section.title}-${group.title}`} title={group.title}>
+                      {visibleItems.map((item) => (
+                        <SidebarLink
+                          key={`${group.title}-${item.href}`}
+                          href={item.href}
+                          label={item.label}
+                          active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
+                          icon={item.icon}
+                        />
+                      ))}
+                    </SidebarCollapsibleGroup>
+                  );
+                })}
+              </SidebarSection>
             );
           })}
 

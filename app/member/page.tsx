@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function MembreDashboardPage() {
+export default function MemberRootPage() {
   redirect("/member/dashboard");
 }
-
