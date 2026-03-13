@@ -1,43 +1,257 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, UserCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Calendar, Crown, ShieldCheck, UserCircle2 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
-import StatCard from "@/components/member/ui/StatCard";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
-import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
+import StatCard from "@/components/member/ui/StatCard";
+import StatusBadge from "@/components/member/ui/StatusBadge";
+import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
+import PlanningPreviewCard from "@/components/member/ui/PlanningPreviewCard";
+import ProfileCompletionCard from "@/components/member/ui/ProfileCompletionCard";
+import QuickActionsCard from "@/components/member/ui/QuickActionsCard";
+import type { MemberOverview } from "@/components/member/hooks/useMemberOverview";
+
+type MemberApiResponse = {
+  member: {
+    displayName: string;
+    twitchLogin: string;
+    memberId: string;
+    avatar: string;
+    role: string;
+    bio: string;
+    profileValidationStatus: "non_soumis" | "en_cours_examen" | "valide" | string;
+    socials: {
+      twitch: string;
+      discord: string;
+      instagram: string;
+      tiktok: string;
+      twitter: string;
+    };
+    timezone?: string | null;
+    tenfSummary: {
+      role: string;
+      status: string;
+      integration: { integrated: boolean; date: string | null };
+      parrain: string | null;
+    };
+    integrationDate?: string | null;
+  };
+};
+
+type StreamPlanningItem = {
+  id: string;
+  date: string;
+  time: string;
+  liveType: string;
+  title?: string;
+};
+
+const LIVE_PLANNING_ROUTE = "/member/planning";
 
 export default function MemberProfilePage() {
-  const { data, loading, error } = useMemberOverview();
+  const [profileData, setProfileData] = useState<MemberApiResponse | null>(null);
+  const [overview, setOverview] = useState<MemberOverview | null>(null);
+  const [plannings, setPlannings] = useState<StreamPlanningItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setError(null);
+        const [profileRes, overviewRes, planningRes] = await Promise.all([
+          fetch("/api/members/me", { cache: "no-store" }),
+          fetch("/api/members/me/overview", { cache: "no-store" }),
+          fetch("/api/members/me/stream-plannings", { cache: "no-store" }),
+        ]);
+
+        const [profileBody, overviewBody, planningBody] = await Promise.all([
+          profileRes.json(),
+          overviewRes.json(),
+          planningRes.json(),
+        ]);
+
+        if (!active) return;
+        if (!profileRes.ok) {
+          setError(profileBody.error || "Impossible de charger ton profil.");
+          return;
+        }
+        if (!overviewRes.ok) {
+          setError(overviewBody.error || "Impossible de charger les donnees de synthese.");
+          return;
+        }
+
+        setProfileData(profileBody);
+        setOverview(overviewBody);
+        setPlannings(planningRes.ok ? planningBody.plannings || [] : []);
+      } catch {
+        if (active) setError("Erreur de connexion.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const completionChecklist: Array<{ label: string; status: "ok" | "warning" | "missing" }> = useMemo(() => {
+    if (!profileData) return [];
+    const member = profileData.member;
+    return [
+      { label: "Avatar", status: member.avatar ? "ok" : "missing" as const },
+      { label: "Bio", status: member.bio ? "ok" : "warning" as const },
+      { label: "Lien Twitch", status: member.socials.twitch ? "ok" : "missing" as const },
+      {
+        label: "Reseaux sociaux",
+        status: member.socials.instagram || member.socials.tiktok || member.socials.twitter ? "ok" : "warning" as const,
+      },
+      { label: "Planning live", status: plannings.length > 0 ? "ok" : "warning" as const },
+      {
+        label: "Profil valide",
+        status: member.profileValidationStatus === "valide" ? "ok" : "warning" as const,
+      },
+    ];
+  }, [profileData, plannings.length]);
 
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement du profil...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Mon profil" description={error || "Impossible de charger le profil."} />;
+  if (error || !profileData || !overview) return <EmptyFeatureCard title="Mon profil" description={error || "Impossible de charger le profil."} />;
+
+  const member = profileData.member;
+  const vip = overview.vip;
+  const profilePercent = overview.profile?.percent ?? 0;
+  const validationLabel =
+    member.profileValidationStatus === "valide"
+      ? "Profil valide par le staff"
+      : member.profileValidationStatus === "en_cours_examen"
+        ? "Modifications en attente de validation"
+        : "Informations manquantes";
+  const validationTone =
+    member.profileValidationStatus === "valide"
+      ? "success"
+      : member.profileValidationStatus === "en_cours_examen"
+        ? "warning"
+        : "neutral";
+  const hasPublicProfileLink = false;
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Mon profil" description="Consulte tes informations et gere ton profil membre." />
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatCard title="Pseudo Twitch" value={data.member.twitchLogin} icon={UserCircle2} />
-        <StatCard title="Profil complet" value={`${data.profile.percent}%`} />
-        <StatCard
-          title="Reunion integration"
-          value={data.member.integrationDate ? "Faite" : "A faire"}
-          subtitle={data.member.integrationDate ? new Date(data.member.integrationDate).toLocaleDateString("fr-FR") : "Aucune date enregistree"}
-          icon={Calendar}
-        />
-      </section>
+      <MemberPageHeader title="Mon profil" description="Ton espace identitaire TENF : statut, planning, validation et actions rapides." />
+
       <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-        <h2 className="text-lg font-semibold">Actions profil</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link href="/member/profil/completer" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-            Completer mon profil
-          </Link>
-          <Link href="/member/profil/modifier" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-            Modifier mes informations
-          </Link>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-center gap-4">
+            <img src={member.avatar} alt={member.displayName} className="h-16 w-16 rounded-full border object-cover" style={{ borderColor: "var(--color-border)" }} />
+            <div>
+              <h2 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
+                {member.displayName}
+              </h2>
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                @{member.twitchLogin} - {member.role}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <StatusBadge
+                  label={vip?.activeThisMonth ? "VIP TENF actif ce mois" : vip ? "VIP TENF non actif ce mois" : "Statut VIP indisponible"}
+                  tone={vip?.activeThisMonth ? "success" : "neutral"}
+                />
+                <StatusBadge label={validationLabel} tone={validationTone} />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/member/profil/modifier" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+              Modifier mon profil
+            </Link>
+            <Link href="/member/profil/completer" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+              Completer mon profil
+            </Link>
+            {hasPublicProfileLink ? (
+              <Link href={`/membres/${member.twitchLogin}`} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+                Voir ma fiche publique
+              </Link>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <StatCard title="Reunion integration" value={member.tenfSummary.integration.integrated ? "Faite" : "Non faite"} subtitle={member.tenfSummary.integration.date || "Date non disponible"} icon={Calendar} />
+          <StatCard title="Role TENF" value={member.role} icon={UserCircle2} />
+          <StatCard title="VIP TENF" value={vip?.statusLabel || "Indisponible"} subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"} icon={Crown} />
         </div>
       </section>
+
+      <PlanningPreviewCard plannings={plannings} planningHref={LIVE_PLANNING_ROUTE} />
+
+      <MemberInfoCard title="Ma fiche publique">
+        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Cette section represente ce que les visiteurs peuvent voir sur le site.
+        </p>
+        <div className="mt-3 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)" }}>
+          <p style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>
+            {member.bio ? member.bio : "Bio non renseignee"}
+          </p>
+        </div>
+        {hasPublicProfileLink ? (
+          <Link href={`/membres/${member.twitchLogin}`} className="mt-3 inline-flex rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+            Voir ma fiche publique
+          </Link>
+        ) : (
+          <p className="mt-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            Fiche publique detaillee : fonctionnalite a venir.
+          </p>
+        )}
+      </MemberInfoCard>
+
+      <MemberInfoCard title="Informations du profil">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 text-sm">
+            <p style={{ color: "var(--color-text)" }}><strong>Identite createur :</strong></p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Pseudo Twitch : {member.twitchLogin}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Nom affiche : {member.displayName}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Role TENF : {member.role}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Statut serveur : {member.tenfSummary.status}</p>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p style={{ color: "var(--color-text)" }}><strong>Liens :</strong></p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Twitch : {member.socials.twitch || "Non renseigne"}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Discord : {member.socials.discord || "Non renseigne"}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>Instagram : {member.socials.instagram || "Non renseigne"}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>TikTok : {member.socials.tiktok || "Non renseigne"}</p>
+            <p style={{ color: "var(--color-text-secondary)" }}>YouTube : Donnee indisponible pour le moment</p>
+          </div>
+        </div>
+      </MemberInfoCard>
+
+      <ProfileCompletionCard items={completionChecklist} percent={profilePercent} />
+
+      <MemberInfoCard title="Validation TENF">
+        <div className="mb-3">
+          <StatusBadge label={validationLabel} tone={validationTone} />
+        </div>
+        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Etat actuel de la fiche : {member.profileValidationStatus}. Derniere date de validation detaillee non disponible.
+        </p>
+        <div className="mt-3 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          <ShieldCheck size={16} />
+          <span>Soumission des modifications deja connectee au flux de validation staff.</span>
+        </div>
+      </MemberInfoCard>
+
+      <QuickActionsCard
+        actions={[
+          { label: "Modifier mon profil", href: "/member/profil/modifier" },
+          { label: "Completer mon profil", href: "/member/profil/completer" },
+          { label: "Modifier mon planning", href: LIVE_PLANNING_ROUTE },
+          { label: "Voir ma fiche publique", soon: true },
+          { label: "Declarer un raid", href: "/member/raids/declarer" },
+          { label: "Voir mes formations", href: "/member/formations/validees" },
+          { label: "Voir mon activite", href: "/member/activite" },
+        ]}
+      />
     </MemberSurface>
   );
 }

@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react";
 const labelMap: Record<string, string> = {
   member: "Espace membre",
   dashboard: "Dashboard",
-  planning: "Planning TENF",
+  planning: "Mon planning live",
   notifications: "Notifications",
   profil: "Mon profil",
   completer: "Completer",

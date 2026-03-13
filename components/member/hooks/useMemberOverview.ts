@@ -6,8 +6,26 @@ export type MemberOverview = {
   member: {
     twitchLogin: string;
     displayName: string;
+    role?: string;
+    profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide" | string;
     integrationDate: string | null;
     parrain: string | null;
+    bio?: string;
+    socials?: {
+      twitch?: string;
+      discord?: string;
+      instagram?: string;
+      tiktok?: string;
+      twitter?: string;
+      youtube?: string;
+    };
+  };
+  vip?: {
+    activeThisMonth: boolean;
+    statusLabel: string;
+    source: "vip_history" | "member_flag" | "none";
+    startsAt: string | null;
+    endsAt: string | null;
   };
   monthKey: string;
   stats: {

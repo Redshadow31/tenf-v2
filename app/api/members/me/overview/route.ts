@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { eventRepository, memberRepository } from "@/lib/repositories";
+import { eventRepository, memberRepository, vipRepository } from "@/lib/repositories";
 import { getMonthKey, loadRaidsFaits } from "@/lib/raidStorage";
 
 export const dynamic = "force-dynamic";
@@ -134,13 +134,47 @@ export async function GET() {
 
     const completion = profileCompletion(member);
     const participationThisMonth = raidsThisMonth + eventPresencesThisMonth;
+    let vipActiveThisMonth = false;
+    let vipSource: "vip_history" | "member_flag" | "none" = "none";
+    try {
+      const vipMonthEntries = await vipRepository.findByMonth(monthKey);
+      vipActiveThisMonth = vipMonthEntries.some((entry) => normalize(entry.twitchLogin) === normalize(member.twitchLogin));
+      if (vipActiveThisMonth) vipSource = "vip_history";
+    } catch {
+      // Fallback sur le flag membre si l'historique VIP n'est pas accessible
+      vipActiveThisMonth = !!member.isVip;
+      vipSource = vipActiveThisMonth ? "member_flag" : "none";
+    }
+
+    if (!vipActiveThisMonth && member.isVip) {
+      vipActiveThisMonth = true;
+      vipSource = "member_flag";
+    }
 
     return NextResponse.json({
       member: {
         twitchLogin: member.twitchLogin,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        role: member.role,
+        profileValidationStatus: member.profileValidationStatus || "non_soumis",
         integrationDate: member.integrationDate ? member.integrationDate.toISOString() : null,
         parrain: member.parrain || null,
+        bio: member.description || member.customBio || "",
+        socials: {
+          twitch: member.twitchLogin ? `https://www.twitch.tv/${member.twitchLogin}` : "",
+          discord: member.discordUsername || "",
+          instagram: member.instagram || "",
+          tiktok: member.tiktok || "",
+          twitter: member.twitter || "",
+          youtube: "",
+        },
+      },
+      vip: {
+        activeThisMonth: vipActiveThisMonth,
+        statusLabel: vipActiveThisMonth ? "Actif ce mois" : "Non actif ce mois",
+        source: vipSource,
+        startsAt: null,
+        endsAt: null,
       },
       monthKey,
       stats: {

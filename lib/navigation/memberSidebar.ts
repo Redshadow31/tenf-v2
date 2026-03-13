@@ -44,7 +44,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Navigation",
         items: [
           { href: "/member/dashboard", label: "Dashboard", icon: LayoutDashboard },
-          { href: "/member/planning", label: "Planning TENF", icon: Calendar },
+          { href: "/member/evenements", label: "Planning TENF", icon: Calendar },
           { href: "/member/notifications", label: "Mes notifications", icon: Bell },
         ],
       },
@@ -58,7 +58,13 @@ export const memberSidebarSections: SidebarNavSection[] = [
         items: [
           { href: "/member/profil", label: "Mon profil", icon: UserCircle },
           { href: "/member/profil/completer", label: "Completer mon profil", icon: ListChecks },
-          { href: "/member/profil/modifier", label: "Modifier mes informations", icon: PencilLine },
+          { href: "/member/profil/modifier", label: "Modifier mon profil", icon: PencilLine },
+        ],
+      },
+      {
+        title: "Planning",
+        items: [
+          { href: "/member/planning", label: "Mon planning de live", icon: Calendar },
         ],
       },
     ],
@@ -117,6 +123,11 @@ export const memberSidebarSections: SidebarNavSection[] = [
           { href: "/member/formations/historique", label: "Historique des formations", icon: History },
         ],
       },
+    ],
+  },
+  {
+    title: "Evaluation",
+    groups: [
       {
         title: "Evaluation",
         items: [
