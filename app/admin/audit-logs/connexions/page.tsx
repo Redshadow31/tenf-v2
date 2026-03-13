@@ -25,6 +25,8 @@ interface LoginLogRow {
   connectionType: "discord" | "guest";
   country: string | null;
   countryCode: string | null;
+  geoStatus: string | null;
+  geoReason: string | null;
   region: string | null;
   city: string | null;
   deviceType: string | null;
@@ -62,6 +64,15 @@ interface LoginRealtimeResponse {
 
 function formatConnectionType(value: "discord" | "guest"): string {
   return value === "discord" ? "Membre Discord" : "Visiteur general";
+}
+
+function formatGeoLabel(row: LoginLogRow): string {
+  if (row.country) return row.country;
+  if (row.countryCode) return row.countryCode;
+  if (row.geoStatus === "missing_ip") return "IP indisponible";
+  if (row.geoStatus === "private_ip" || row.geoStatus === "proxy_ip_only") return "Proxy / non localisable";
+  if (row.geoStatus === "old_log_without_enrichment") return "Inconnu (ancien log)";
+  return "Inconnu";
 }
 
 export default function ConnectionLogsPage() {
@@ -399,7 +410,7 @@ export default function ConnectionLogsPage() {
                       {row.username || row.userId || <span className="text-gray-500">Visiteur anonyme</span>}
                     </td>
                     <td className="px-4 py-3">{formatConnectionType(row.connectionType)}</td>
-                    <td className="px-4 py-3">{row.country || row.countryCode || "Inconnu"}</td>
+                    <td className="px-4 py-3">{formatGeoLabel(row)}</td>
                     <td className="px-4 py-3">
                       {[row.region, row.city].filter(Boolean).join(" / ") || <span className="text-gray-500">N/A</span>}
                     </td>

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { parseUserAgent } from "@/lib/connection-logs/userAgent";
+import { type ClientIpGeoReason } from "@/lib/connection-logs/network";
 import { hashIpAddress, maskIpAddress } from "@/lib/connection-logs/network";
 import { isSessionRecentlyActive, purgeConnectionLogs } from "@/lib/connectionLogs";
 import { type LoginLogsQuery } from "@/lib/models/connectionLog";
@@ -21,6 +22,8 @@ export interface RecordSessionConnectionInput {
     city: string | null;
     latitude: number | null;
     longitude: number | null;
+    status?: "resolved" | ClientIpGeoReason;
+    reason?: ClientIpGeoReason | null;
   };
 }
 
@@ -63,6 +66,8 @@ export async function recordSessionConnection(input: RecordSessionConnectionInpu
       city: input.geo.city,
       latitude: input.geo.latitude,
       longitude: input.geo.longitude,
+      geo_status: input.geo.status || null,
+      geo_reason: input.geo.reason || null,
       user_agent: input.userAgent,
       device_type: ua.deviceType,
       browser: ua.browser,
@@ -94,6 +99,8 @@ export async function recordSessionConnection(input: RecordSessionConnectionInpu
     city: input.geo.city,
     latitude: input.geo.latitude,
     longitude: input.geo.longitude,
+    geo_status: input.geo.status || null,
+    geo_reason: input.geo.reason || null,
     user_agent: input.userAgent,
     device_type: ua.deviceType,
     browser: ua.browser,
@@ -146,6 +153,8 @@ export async function getPaginatedLoginLogs(query: LoginLogsQuery) {
       city: row.city,
       latitude: row.latitude,
       longitude: row.longitude,
+      geoStatus: row.geo_status,
+      geoReason: row.geo_reason,
       deviceType: row.device_type,
       browser: row.browser,
       os: row.os,
@@ -374,6 +383,8 @@ export async function getRealtimeLoginLogs(filters?: {
       userId: row.user_id,
       country: row.country,
       countryCode: row.country_code,
+      geoStatus: row.geo_status,
+      geoReason: row.geo_reason,
       region: row.region,
       city: row.city,
       lastSeenAt: row.last_seen_at,

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { hashIpAddress } from "@/lib/connection-logs/network";
+import { type ClientIpGeoReason, hashIpAddress } from "@/lib/connection-logs/network";
 
 export interface IpGeolocationResult {
   country: string | null;
@@ -13,10 +13,21 @@ export interface IpGeolocationResult {
 export interface IpGeolocationContext {
   request: NextRequest;
   ipAddress: string | null;
+  ipReason?: ClientIpGeoReason | null;
 }
 
 interface IpGeolocationProvider {
   resolve(context: IpGeolocationContext): Promise<IpGeolocationResult | null>;
+}
+
+export interface IpGeolocationDiagnostics {
+  status: "resolved" | ClientIpGeoReason;
+  reason: ClientIpGeoReason | null;
+}
+
+export interface IpGeolocationResolution {
+  geo: IpGeolocationResult;
+  diagnostics: IpGeolocationDiagnostics;
 }
 
 const COUNTRY_NAMES: Record<string, string> = {
@@ -149,7 +160,12 @@ class HttpIpGeolocationProvider implements IpGeolocationProvider {
 
 const providers: IpGeolocationProvider[] = [new HeaderIpGeolocationProvider(), new HttpIpGeolocationProvider()];
 
-function logGeoDebug(stage: string, context: IpGeolocationContext, result: IpGeolocationResult | null): void {
+function logGeoDebug(
+  stage: string,
+  context: IpGeolocationContext,
+  result: IpGeolocationResult | null,
+  diagnostics: IpGeolocationDiagnostics
+): void {
   if (process.env.LOG_IP_GEO_DEBUG !== "1") return;
   console.info("[ip-geolocation]", {
     stage,
@@ -157,17 +173,40 @@ function logGeoDebug(stage: string, context: IpGeolocationContext, result: IpGeo
     hasIp: Boolean(context.ipAddress),
     countryCode: result?.countryCode || null,
     country: result?.country || null,
+    status: diagnostics.status,
+    reason: diagnostics.reason,
   });
 }
 
-export async function resolveIpGeolocation(context: IpGeolocationContext): Promise<IpGeolocationResult> {
+export async function resolveIpGeolocationWithDiagnostics(
+  context: IpGeolocationContext
+): Promise<IpGeolocationResolution> {
+  let hadProviderFailure = false;
+
   for (const provider of providers) {
-    const result = await provider.resolve(context);
-    if (result) {
-      logGeoDebug("resolved", context, result);
-      return result;
+    try {
+      const result = await provider.resolve(context);
+      if (result) {
+        const diagnostics: IpGeolocationDiagnostics = {
+          status: "resolved",
+          reason: null,
+        };
+        logGeoDebug("resolved", context, result, diagnostics);
+        return {
+          geo: result,
+          diagnostics,
+        };
+      }
+    } catch {
+      hadProviderFailure = true;
     }
   }
+
+  const reason = context.ipReason || (hadProviderFailure ? "geolocation_failed" : "provider_no_result");
+  const diagnostics: IpGeolocationDiagnostics = {
+    status: reason,
+    reason,
+  };
   const fallback = {
     country: null,
     countryCode: null,
@@ -176,6 +215,14 @@ export async function resolveIpGeolocation(context: IpGeolocationContext): Promi
     latitude: null,
     longitude: null,
   };
-  logGeoDebug("fallback-null", context, fallback);
-  return fallback;
+  logGeoDebug("fallback-null", context, fallback, diagnostics);
+  return {
+    geo: fallback,
+    diagnostics,
+  };
+}
+
+export async function resolveIpGeolocation(context: IpGeolocationContext): Promise<IpGeolocationResult> {
+  const resolved = await resolveIpGeolocationWithDiagnostics(context);
+  return resolved.geo;
 }

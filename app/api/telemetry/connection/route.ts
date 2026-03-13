@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { type ConnectionType } from "@/lib/connectionLogs";
-import { getClientIp, getReferer } from "@/lib/connection-logs/network";
-import { resolveIpGeolocation } from "@/lib/services/ipGeolocationService";
+import { getClientIpDiagnostics, getReferer } from "@/lib/connection-logs/network";
+import { resolveIpGeolocationWithDiagnostics } from "@/lib/services/ipGeolocationService";
 import { recordSessionConnection } from "@/lib/services/connectionLogService";
 import { ensureConnectionLogsCleanupScheduler } from "@/lib/services/cleanupService";
 import { checkRateLimit } from "@/lib/security/rateLimit";
@@ -64,8 +64,12 @@ export async function POST(request: NextRequest) {
     }
 
     const connectionType: ConnectionType = session?.user?.discordId ? "discord" : "guest";
-    const ipAddress = getClientIp(request);
-    const geo = await resolveIpGeolocation({ request, ipAddress });
+    const ipDiagnostics = getClientIpDiagnostics(request);
+    const geoResolution = await resolveIpGeolocationWithDiagnostics({
+      request,
+      ipAddress: ipDiagnostics.ipAddress,
+      ipReason: ipDiagnostics.reason,
+    });
 
     await recordSessionConnection({
       sessionId,
@@ -76,8 +80,12 @@ export async function POST(request: NextRequest) {
       userId: session?.user?.discordId || null,
       username: session?.user?.username || null,
       isDiscordAuth: Boolean(session?.user?.discordId),
-      ipAddress,
-      geo,
+      ipAddress: ipDiagnostics.ipAddress,
+      geo: {
+        ...geoResolution.geo,
+        status: geoResolution.diagnostics.status,
+        reason: geoResolution.diagnostics.reason,
+      },
     });
 
     const response = NextResponse.json({ success: true, sessionId });
