@@ -39,6 +39,17 @@ type FeaturedUpcomingEvent = {
   addToCalendarUrl: string;
 };
 
+type CommunityIdeaCard = {
+  id?: string;
+  title: string;
+  category?: string;
+  description?: string;
+  proposedDate?: string | null;
+  votesCount: number;
+  potentialParticipants: number;
+  hasVoted?: boolean;
+};
+
 const typeOptions: EventType[] = [
   "Soirees jeux communautaires",
   "Evenements speciaux",
@@ -73,7 +84,7 @@ const fallbackUpcomingEvents: FeaturedUpcomingEvent[] = [
   },
 ];
 
-const fallbackIdeas = [
+const fallbackIdeas: CommunityIdeaCard[] = [
   { title: "Tournoi Fortnite", votesCount: 18, potentialParticipants: 9 },
   { title: "Soiree blind test", votesCount: 14, potentialParticipants: 7 },
   { title: "Challenge Sims", votesCount: 11, potentialParticipants: 5 },
@@ -275,7 +286,8 @@ export default function EvenementsCommunautairesPage() {
     }
   }
 
-  async function handleToggleVote(proposal: CommunityProposal) {
+  async function handleToggleVote(proposal: CommunityIdeaCard) {
+    if (!proposal.id) return;
     try {
       setActionLoading(true);
       setNotice(null);
@@ -340,7 +352,7 @@ export default function EvenementsCommunautairesPage() {
     }));
   }, [filteredUpcomingEvents, upcomingEvents]);
 
-  const ideasWithVotes = useMemo(() => {
+  const ideasWithVotes = useMemo<CommunityIdeaCard[]>(() => {
     if (proposals.length === 0) return fallbackIdeas;
     return proposals.slice(0, 6).map((proposal) => {
       const votes = proposal.votesCount || 0;
@@ -783,7 +795,7 @@ export default function EvenementsCommunautairesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {ideasWithVotes.map((idea) => (
               <div
-                key={"id" in idea ? idea.id : idea.title}
+                key={idea.id ?? idea.title}
                 className={`rounded-lg border p-4 text-sm ${hoverGlowClass}`}
                 style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
               >
@@ -811,12 +823,12 @@ export default function EvenementsCommunautairesPage() {
                 </p>
                 {"hasVoted" in idea ? (
                   <button
-                    onClick={() => handleToggleVote(idea as CommunityProposal)}
+                    onClick={() => handleToggleVote(idea)}
                     disabled={actionLoading}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
                     style={{ backgroundColor: "var(--color-primary)" }}
                   >
-                    {(idea as CommunityProposal).hasVoted ? "Retirer mon vote" : "Ca m'interesse"}
+                    {idea.hasVoted ? "Retirer mon vote" : "Ca m'interesse"}
                   </button>
                 ) : null}
               </div>
