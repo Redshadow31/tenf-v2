@@ -56,15 +56,20 @@ export async function GET() {
     const now = new Date();
     const monthKey = getCurrentMonthKey();
 
-    const raidsCurrentMonth = await loadRaidsFaits(monthKey);
-    const raidsThisMonth = raidsCurrentMonth
-      .filter((raid) => {
-        const source = raid.source || (raid.manual ? "manual" : "twitch-live");
-        if (source === "discord") return false;
-        const raider = normalize(raid.raider);
-        return identity.has(raider);
-      })
-      .reduce((total, raid) => total + (raid.count || 1), 0);
+    let raidsThisMonth = 0;
+    try {
+      const raidsCurrentMonth = await loadRaidsFaits(monthKey);
+      raidsThisMonth = raidsCurrentMonth
+        .filter((raid) => {
+          const source = raid.source || (raid.manual ? "manual" : "twitch-live");
+          if (source === "discord") return false;
+          const raider = normalize(raid.raider);
+          return identity.has(raider);
+        })
+        .reduce((total, raid) => total + (raid.count || 1), 0);
+    } catch {
+      raidsThisMonth = 0;
+    }
 
     let raidsTotal = raidsThisMonth;
     try {
@@ -83,7 +88,12 @@ export async function GET() {
       // fallback raidsThisMonth
     }
 
-    const allEvents = await eventRepository.findAll(500, 0);
+    let allEvents: Awaited<ReturnType<typeof eventRepository.findAll>> = [];
+    try {
+      allEvents = await eventRepository.findAll(500, 0);
+    } catch {
+      allEvents = [];
+    }
     const upcomingEvents = allEvents
       .filter((event) => {
         const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
@@ -108,7 +118,12 @@ export async function GET() {
       if (Number.isNaN(eventDate.getTime())) continue;
       if (!event.isPublished) continue;
       const key = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}`;
-      const presences = await eventRepository.getPresences(event.id);
+      let presences: any[] = [];
+      try {
+        presences = await eventRepository.getPresences(event.id);
+      } catch {
+        presences = [];
+      }
       const isPresent = presences.some((presence) => {
         if (!presence?.present) return false;
         return identity.has(normalize(presence.twitchLogin));
