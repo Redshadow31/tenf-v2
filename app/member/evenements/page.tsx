@@ -11,6 +11,7 @@ type CommunityEvent = {
   category: string;
   date: string;
   location?: string;
+  image?: string;
 };
 
 export default function MemberEventsPlanningPage() {
@@ -22,7 +23,14 @@ export default function MemberEventsPlanningPage() {
       try {
         const response = await fetch("/api/events", { cache: "no-store" });
         const body = await response.json();
-        setEvents((body.events || []).slice(0, 30));
+        const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+        const upcomingEvents = (body.events || [])
+          .filter((event: CommunityEvent) => new Date(event.date).getTime() >= threeHoursAgo)
+          .sort((a: CommunityEvent, b: CommunityEvent) => {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+          })
+          .slice(0, 30);
+        setEvents(upcomingEvents);
       } finally {
         setLoading(false);
       }
@@ -39,16 +47,32 @@ export default function MemberEventsPlanningPage() {
         {loading ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement du planning...</p>
         ) : events.length === 0 ? (
-          <EmptyFeatureCard title="Planning des evenements" description="Aucun evenement publie pour le moment." />
+          <EmptyFeatureCard
+            title="Planning des evenements"
+            description="Aucun evenement a venir pour le moment."
+          />
         ) : (
           <div className="space-y-2">
             {events.map((event) => (
-              <div key={event.id} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-                <p style={{ color: "var(--color-text)" }}>{event.title}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>
-                  {new Date(event.date).toLocaleString("fr-FR")} - {event.category}
-                  {event.location ? ` - ${event.location}` : ""}
-                </p>
+              <div
+                key={event.id}
+                className="overflow-hidden rounded-lg border text-sm"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                {event.image ? (
+                  <img
+                    src={event.image}
+                    alt={`Banniere ${event.title}`}
+                    className="h-28 w-full object-cover"
+                  />
+                ) : null}
+                <div className="px-3 py-2">
+                  <p style={{ color: "var(--color-text)" }}>{event.title}</p>
+                  <p style={{ color: "var(--color-text-secondary)" }}>
+                    {new Date(event.date).toLocaleString("fr-FR")} - {event.category}
+                    {event.location ? ` - ${event.location}` : ""}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

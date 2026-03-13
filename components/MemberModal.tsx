@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getRoleBadgeStyles } from "@/lib/roleColors";
 import StreamPlanningCalendar, { type StreamPlanningCalendarItem } from "@/components/member/StreamPlanningCalendar";
+import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
 
 type MemberModalProps = {
   member: {
@@ -136,7 +137,7 @@ export default function MemberModal({
       onClick={onClose}
     >
       <div
-        className="card relative max-h-[90vh] w-full max-w-2xl overflow-y-auto border p-8"
+        className="card relative max-h-[90vh] w-full max-w-2xl overflow-y-auto border p-8 lg:max-w-4xl xl:max-w-5xl"
         style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -223,10 +224,10 @@ export default function MemberModal({
           {/* Description Twitch - aligné à gauche, retours à la ligne préservés */}
           <div className="w-full space-y-2 text-left">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
-            <p className="whitespace-pre-wrap text-left" style={{ color: 'var(--color-text-secondary)' }}>
-              {member.description ||
-                "Aucune description disponible pour le moment."}
-            </p>
+            <DiscordMarkdownPreview
+              content={member.description || ""}
+              emptyFallback="Aucune description disponible pour le moment."
+            />
             {isAdmin && (
               <button className="mt-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors border" style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-medium)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-light)'; }}>
                 Modifier la description
