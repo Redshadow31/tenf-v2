@@ -717,6 +717,17 @@ export async function PUT(request: NextRequest) {
       updates.roleManuallySet = true;
     }
 
+    // Quand un membre est activé depuis l'admin, le rendre visible côté public par défaut.
+    // La route /api/members/public filtre sur profileValidationStatus === "valide".
+    // On n'écrase pas une valeur explicitement fournie dans le payload.
+    if (
+      updates.isActive === true &&
+      updates.profileValidationStatus === undefined &&
+      existingMember.profileValidationStatus !== "valide"
+    ) {
+      updates.profileValidationStatus = "valide";
+    }
+
     // Synchronisation VIP Élite <-> isVip
     // Si isVip est modifié, synchroniser avec le badge VIP Élite
     if (updates.isVip !== undefined) {
