@@ -3,7 +3,7 @@
 ## Variables Configurées ✅
 
 - [x] `NEXT_PUBLIC_SUPABASE_URL` = `https://ggcpwaexhougomfnnsob.supabase.co`
-- [x] `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7`
+- [x] `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_EXAMPLE_PLACEHOLDER`
 
 ## Variables Manquantes ⚠️
 
@@ -69,7 +69,7 @@ Si vous voulez migrer les données depuis Netlify Blobs, vous aurez besoin de :
 ```env
 # Déjà fait ✅
 NEXT_PUBLIC_SUPABASE_URL=https://ggcpwaexhougomfnnsob.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_EXAMPLE_PLACEHOLDER
 
 # À ajouter ⚠️
 SUPABASE_SERVICE_ROLE_KEY=votre_service_role_key (SECRET)

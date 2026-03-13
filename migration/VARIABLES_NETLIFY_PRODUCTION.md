@@ -9,9 +9,9 @@ Allez dans **Netlify Dashboard → Site settings → Environment variables** et 
 | Variable | Valeur | Secret |
 |----------|--------|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://ggcpwaexhougomfnnsob.supabase.co` | ❌ Non |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7` | ❌ Non |
-| `SUPABASE_SERVICE_ROLE_KEY` | `sb_secret_pt1XELVAoYCbc-WM7Jfdjg_W1adRP20` | ✅ **OUI** |
-| `DATABASE_URL` | `postgresql://postgres.ggcpwaexhougomfnnsob:DpDAkhQCrsJrsWXl@aws-0-eu-central-1.pooler.supabase.com:6543/postgres` | ✅ **OUI** |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_EXAMPLE_PLACEHOLDER` | ❌ Non |
+| `SUPABASE_SERVICE_ROLE_KEY` | `sb_secret_EXAMPLE_PLACEHOLDER` | ✅ **OUI** |
+| `DATABASE_URL` | `postgresql://postgres.[PROJECT_REF]:[DB_PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres` | ✅ **OUI** |
 
 ### Variables Existantes (Vérifier qu'elles sont toujours là)
 
@@ -42,7 +42,7 @@ Ces variables devraient déjà être configurées, mais vérifiez qu'elles sont 
 
 1. Cliquer sur **"Add variable"**
 2. **Key** : `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. **Value** : `sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7`
+3. **Value** : `sb_publishable_EXAMPLE_PLACEHOLDER`
 4. **Contains secret values** : ❌ Non coché
 5. Cliquer sur **"Create variable"**
 
@@ -50,7 +50,7 @@ Ces variables devraient déjà être configurées, mais vérifiez qu'elles sont 
 
 1. Cliquer sur **"Add variable"**
 2. **Key** : `SUPABASE_SERVICE_ROLE_KEY`
-3. **Value** : `sb_secret_pt1XELVAoYCbc-WM7Jfdjg_W1adRP20`
+3. **Value** : `sb_secret_EXAMPLE_PLACEHOLDER`
 4. **Contains secret values** : ✅ **COCHER** (très important !)
 5. Cliquer sur **"Create variable"**
 
@@ -58,7 +58,7 @@ Ces variables devraient déjà être configurées, mais vérifiez qu'elles sont 
 
 1. Cliquer sur **"Add variable"**
 2. **Key** : `DATABASE_URL`
-3. **Value** : `postgresql://postgres.ggcpwaexhougomfnnsob:DpDAkhQCrsJrsWXl@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`
+3. **Value** : `postgresql://postgres.[PROJECT_REF]:[DB_PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres`
 4. **Contains secret values** : ✅ **COCHER** (très important !)
 5. Cliquer sur **"Create variable"**
 

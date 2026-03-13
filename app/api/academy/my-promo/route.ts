@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { loadAccesses, loadPromos } from '@/lib/academyStorage';
+import { requireUser } from '@/lib/requireUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,9 +10,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Lire les cookies directement côté serveur
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
     
     if (!userId) {
       return NextResponse.json(

@@ -1,61 +1,25 @@
 // Helper pour l'authentification et l'autorisation admin
 // Utilisé dans les routes API
 
-import { cookies } from "next/headers";
-import { getAdminRole, hasAdminDashboardAccess, hasPermission, ROLE_PERMISSIONS, type AdminRole, type Permission } from "./adminRoles";
+import { type AdminRole, type Permission } from "./adminRoles";
 import { logAdminAction } from "./adminAudit";
-import { hasAdvancedAdminAccess } from "./advancedAccess";
+import {
+  getAuthenticatedAdmin,
+  requireAuth as requireAuthStrict,
+  requirePermission as requirePermissionStrict,
+  type AuthenticatedAdmin,
+} from "./requireAdmin";
 
-export interface AdminUser {
-  id: string;
-  discordId: string; // Alias de id pour compatibilité (id est le Discord ID dans ce système)
-  username: string;
-  role: AdminRole;
-}
+export type AdminUser = AuthenticatedAdmin;
 
 /**
  * Récupère l'utilisateur admin actuel depuis les cookies (serveur uniquement)
  * Vérifie d'abord les rôles hardcodés, puis le cache Blobs (uniquement dans Node.js runtime)
  */
 export async function getCurrentAdmin(): Promise<AdminUser | null> {
-  try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("discord_user_id")?.value;
-    const username = cookieStore.get("discord_username")?.value;
-
-    if (!userId) {
-      return null;
-    }
-
-    // Vérifier d'abord les rôles hardcodés
-    let role = getAdminRole(userId);
-    
-    // Si pas trouvé dans les hardcodés, vérifier le cache Blobs (uniquement dans Node.js runtime)
-    if (!role && typeof process !== 'undefined' && process.versions?.node) {
-      try {
-        const { loadAdminAccessCache, getAdminRoleFromCache } = await import('./adminAccessCache');
-        await loadAdminAccessCache();
-        role = getAdminRoleFromCache(userId);
-      } catch (error) {
-        // Si Blobs n'est pas disponible (Edge Runtime), ignorer l'erreur
-        console.warn('[AdminAuth] Cannot load admin access cache (Edge Runtime):', error);
-      }
-    }
-
-    if (!role) {
-      return null;
-    }
-
-    return {
-      id: userId,
-      discordId: userId, // Alias de id pour compatibilité (id est le Discord ID dans ce système)
-      username: username || "Unknown",
-      role,
-    };
-  } catch (error) {
-    console.error("[AdminAuth] Erreur getCurrentAdmin:", error);
-    return null;
-  }
+  // P0 sécurité: suppression totale de la confiance sur discord_user_id (cookie forgeable).
+  // Auth admin strictement basée sur la session serveur NextAuth.
+  return getAuthenticatedAdmin();
 }
 
 /**
@@ -63,11 +27,7 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
  * Utilisé dans les routes API pour vérifier l'accès
  */
 export async function requireAuth(): Promise<AdminUser | null> {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
-    return null;
-  }
-  return admin;
+  return requireAuthStrict();
 }
 
 /**
@@ -76,23 +36,7 @@ export async function requireAuth(): Promise<AdminUser | null> {
  * Utilise le rôle de l'admin (qui inclut le cache Blobs) au lieu de hasPermission
  */
 export async function requirePermission(permission: Permission): Promise<AdminUser | null> {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
-    return null;
-  }
-
-  // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
-    return admin;
-  }
-
-  // Vérifier les permissions en utilisant directement le rôle de l'admin (qui inclut le cache Blobs)
-  const permissions = ROLE_PERMISSIONS[admin.role] || [];
-  if (!permissions.includes(permission)) {
-    return null;
-  }
-
-  return admin;
+  return requirePermissionStrict(permission);
 }
 
 /**

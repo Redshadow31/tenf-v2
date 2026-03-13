@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDiscordActivityForMonth } from '@/lib/discordActivityStorage';
 import { memberRepository } from '@/lib/repositories';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month') || new Date().toISOString().slice(0, 7); // YYYY-MM
 

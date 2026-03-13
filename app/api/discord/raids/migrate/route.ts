@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/requireAdmin';
 import {
   migrateLegacyData,
   isMonthMigrated,
@@ -12,6 +13,11 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    const admin = await requirePermission("write");
+    if (!admin) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { month } = body;
 
@@ -72,6 +78,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const admin = await requirePermission("read");
+    if (!admin) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
 

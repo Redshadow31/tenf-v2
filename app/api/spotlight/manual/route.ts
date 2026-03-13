@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, isFounder } from '@/lib/admin';
+import { requireRole } from '@/lib/requireAdmin';
 import { spotlightRepository, evaluationRepository, memberRepository } from '@/lib/repositories';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
-import { cookies } from 'next/headers';
 
 /**
  * POST - Crée un spotlight manuellement (réservé aux fondateurs)
@@ -17,18 +16,8 @@ import { cookies } from 'next/headers';
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    
-    // Vérifier que l'utilisateur est authentifié
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      );
-    }
-
-    // Vérifier que l'utilisateur est fondateur
-    if (!isFounder(admin.discordId)) {
       return NextResponse.json(
         { error: 'Accès refusé. Cette fonctionnalité est réservée aux fondateurs.' },
         { status: 403 }
@@ -89,9 +78,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Récupérer le username depuis les cookies
-    const cookieStore = cookies();
-    const username = cookieStore.get('discord_username')?.value || admin.username;
+    const username = admin.username;
 
     // Créer le spotlight avec status = completed
     const createdSpotlight = await spotlightRepository.create({

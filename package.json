@@ -23,7 +23,9 @@
     "test:routes-spotlight-events-follow": "tsx migration/test-routes-evaluation-spotlight-events-follow.ts",
     "test:timezone-events": "tsx scripts/test-event-timezone.ts",
     "test:connections": "tsx scripts/test-connections.ts",
-    "migration:migrate-events": "tsx migration/migrate-events-blobs-to-supabase.ts"
+    "migration:migrate-events": "tsx migration/migrate-events-blobs-to-supabase.ts",
+    "test:logs-admin": "tsx --test tests/login-logs/**/*.test.ts",
+    "test:e2e:logs-admin": "playwright test tests/e2e/admin-login-logs.spec.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^4.2.0",
@@ -48,11 +50,13 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.12",
     "@types/pg": "^8.16.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@playwright/test": "^1.56.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.5",

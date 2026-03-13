@@ -1,7 +1,7 @@
 // Schéma de base de données Supabase pour TENF V3
 // Utilise Drizzle ORM pour la type-safety et les migrations
 
-import { pgTable, text, uuid, boolean, timestamp, jsonb, integer, date, pgEnum, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, boolean, timestamp, jsonb, integer, date, pgEnum, unique, doublePrecision } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ============================================
@@ -415,6 +415,61 @@ export const structuredLogs = pgTable('structured_logs', {
   route: text('route'), // Route API concernée
   durationMs: integer('duration_ms'), // Durée de l'opération en millisecondes
   statusCode: integer('status_code'), // Code HTTP de la réponse
+});
+
+// Table: connection_sessions (logs de connexion - session)
+export const connectionSessions = pgTable('connection_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: text('session_id').notNull().unique(),
+  userId: text('user_id'),
+  username: text('username'),
+  isDiscordAuth: boolean('is_discord_auth').notNull().default(false),
+  connectionType: text('connection_type').notNull(), // 'discord' | 'guest'
+  ipMasked: text('ip_masked'),
+  ipHash: text('ip_hash'),
+  country: text('country'),
+  countryCode: text('country_code'),
+  region: text('region'),
+  city: text('city'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  userAgent: text('user_agent'),
+  deviceType: text('device_type'),
+  browser: text('browser'),
+  os: text('os'),
+  path: text('path'),
+  referer: text('referer'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').notNull().default(true),
+  lastEventAt: timestamp('last_event_at'),
+});
+
+// Table: connection_session_events (échantillons temporels pour stats/map)
+export const connectionSessionEvents = pgTable('connection_session_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: text('session_id').notNull(),
+  userId: text('user_id'),
+  username: text('username'),
+  isDiscordAuth: boolean('is_discord_auth').notNull().default(false),
+  connectionType: text('connection_type').notNull(), // 'discord' | 'guest'
+  ipMasked: text('ip_masked'),
+  ipHash: text('ip_hash'),
+  country: text('country'),
+  countryCode: text('country_code'),
+  region: text('region'),
+  city: text('city'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  userAgent: text('user_agent'),
+  deviceType: text('device_type'),
+  browser: text('browser'),
+  os: text('os'),
+  path: text('path'),
+  referer: text('referer'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // ============================================

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { getIntegration, registerForIntegration } from '@/lib/integrationStorage';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { memberRepository } from '@/lib/repositories';
+import { requireUser } from '@/lib/requireUser';
 
 /**
  * POST - Inscription à une intégration
@@ -35,11 +33,10 @@ export async function POST(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté (NextAuth en priorité)
-    const session = await getServerSession(authOptions);
-    const cookieStore = cookies();
-    const discordUserId = session?.user?.discordId || cookieStore.get('discord_user_id')?.value;
-    const discordUsername = session?.user?.username || cookieStore.get('discord_username')?.value;
+    // P0 sécurité: utilisateur connecté déterminé uniquement via session serveur.
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
+    const discordUsername = user?.username;
     
     // Fonction pour extraire le pseudo Twitch d'un lien de chaîne
     const extractTwitchLogin = (url: string): string | null => {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { hasAccess, loadAccesses, loadPromos } from '@/lib/academyStorage';
 import { 
   getStreamPlanningsByUser, 
   createStreamPlanning, 
   deleteStreamPlanning 
 } from '@/lib/academyStorage';
+import { requireUser } from '@/lib/requireUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,8 +18,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
     
     if (!userId) {
       return NextResponse.json(
@@ -69,8 +69,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
     
     if (!userId) {
       return NextResponse.json(
@@ -138,8 +138,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
     
     if (!userId) {
       return NextResponse.json(

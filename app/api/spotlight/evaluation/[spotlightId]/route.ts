@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { spotlightRepository } from '@/lib/repositories';
 
 /**
@@ -11,8 +11,8 @@ export async function PUT(
   { params }: { params: { spotlightId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -58,7 +58,7 @@ export async function PUT(
       maxScore,
       moderatorComments: moderatorComments || '',
       evaluatedAt: new Date(), // Mettre à jour la date d'évaluation
-      evaluatedBy: admin.id, // Mettre à jour l'évaluateur
+      evaluatedBy: admin.discordId, // Mettre à jour l'évaluateur
       validated: existingEvaluation.validated,
       validatedAt: existingEvaluation.validatedAt,
     });
@@ -97,8 +97,8 @@ export async function GET(
   { params }: { params: { spotlightId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

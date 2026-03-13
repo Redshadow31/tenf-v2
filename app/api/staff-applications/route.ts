@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { requireUser } from "@/lib/requireUser";
 import {
   createStaffApplication,
   loadStaffApplications,
@@ -197,10 +197,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const discordId = cookieStore.get("discord_user_id")?.value;
-    const discordUsername = cookieStore.get("discord_username")?.value;
-    const discordAvatar = cookieStore.get("discord_avatar")?.value;
+    const user = await requireUser();
+    const discordId = user?.discordId;
+    const discordUsername = user?.username;
+    const discordAvatar = user?.avatar;
 
     if (!discordId || !discordUsername) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });

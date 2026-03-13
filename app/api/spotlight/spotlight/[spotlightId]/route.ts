@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { evaluationRepository, memberRepository } from '@/lib/repositories';
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -25,8 +25,8 @@ export async function PUT(
   { params }: { params: { spotlightId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -229,8 +229,8 @@ export async function GET(
   { params }: { params: { spotlightId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

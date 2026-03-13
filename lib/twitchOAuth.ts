@@ -1,5 +1,6 @@
 // Gestion du stockage des tokens OAuth Twitch pour les membres du staff
 
+import crypto from "crypto";
 import { getStore } from "@netlify/blobs";
 import fs from "fs";
 import path from "path";
@@ -28,6 +29,91 @@ function isNetlify(): boolean {
 const STORE_NAME = "tenf-twitch-oauth";
 const DATA_DIR = path.join(process.cwd(), "data");
 const TOKENS_DIR = path.join(DATA_DIR, "twitch-oauth");
+const ENCRYPTION_ALGO = "aes-256-gcm";
+
+interface EncryptedTokenEnvelope {
+  version: 1;
+  alg: typeof ENCRYPTION_ALGO;
+  iv: string;
+  tag: string;
+  data: string;
+}
+
+type StoredTokensPayload = TwitchOAuthTokens | EncryptedTokenEnvelope;
+
+function getEncryptionKey(): Buffer | null {
+  const secret = process.env.TWITCH_OAUTH_ENCRYPTION_KEY;
+  if (!secret) return null;
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+function serializeTokens(tokens: TwitchOAuthTokens): string {
+  const key = getEncryptionKey();
+  if (!key) {
+    return JSON.stringify(tokens);
+  }
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ENCRYPTION_ALGO, key, iv);
+  const plaintext = JSON.stringify(tokens);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const payload: EncryptedTokenEnvelope = {
+    version: 1,
+    alg: ENCRYPTION_ALGO,
+    iv: iv.toString("base64"),
+    tag: tag.toString("base64"),
+    data: encrypted.toString("base64"),
+  };
+  return JSON.stringify(payload);
+}
+
+function deserializeTokens(raw: unknown): TwitchOAuthTokens | null {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      return deserializeTokens(JSON.parse(raw) as StoredTokensPayload);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw !== "object") return null;
+
+  const candidate = raw as Partial<TwitchOAuthTokens> & Partial<EncryptedTokenEnvelope>;
+  if (typeof candidate.access_token === "string" && typeof candidate.refresh_token === "string" && typeof candidate.expires_at === "number") {
+    return {
+      access_token: candidate.access_token,
+      refresh_token: candidate.refresh_token,
+      expires_at: candidate.expires_at,
+      scope: candidate.scope,
+    };
+  }
+
+  if (candidate.version !== 1 || candidate.alg !== ENCRYPTION_ALGO || !candidate.iv || !candidate.tag || !candidate.data) {
+    return null;
+  }
+
+  const key = getEncryptionKey();
+  if (!key) {
+    return null;
+  }
+
+  try {
+    const decipher = crypto.createDecipheriv(
+      ENCRYPTION_ALGO,
+      key,
+      Buffer.from(candidate.iv, "base64")
+    );
+    decipher.setAuthTag(Buffer.from(candidate.tag, "base64"));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(candidate.data, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
+    return deserializeTokens(JSON.parse(decrypted) as StoredTokensPayload);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Sauvegarde les tokens OAuth pour un membre du staff
@@ -37,18 +123,19 @@ export async function saveTwitchOAuthTokens(
   tokens: TwitchOAuthTokens
 ): Promise<void> {
   try {
+    const serialized = serializeTokens(tokens);
     if (isNetlify()) {
       const store = getStore(STORE_NAME);
-      await store.set(`${staffKey}.json`, JSON.stringify(tokens, null, 2));
+      await store.set(`${staffKey}.json`, serialized);
     } else {
       if (!fs.existsSync(TOKENS_DIR)) {
         fs.mkdirSync(TOKENS_DIR, { recursive: true });
       }
       const filePath = path.join(TOKENS_DIR, `${staffKey}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(tokens, null, 2), "utf-8");
+      fs.writeFileSync(filePath, serialized, "utf-8");
     }
   } catch (error) {
-    console.error(`[TwitchOAuth] Erreur sauvegarde tokens pour ${staffKey}:`, error);
+    console.error(`[TwitchOAuth] Erreur sauvegarde tokens (${staffKey})`);
     throw error;
   }
 }
@@ -62,18 +149,18 @@ export async function getTwitchOAuthTokens(
   try {
     if (isNetlify()) {
       const store = getStore(STORE_NAME);
-      const data = await store.get(`${staffKey}.json`, { type: "json" }).catch(() => null);
-      return data as TwitchOAuthTokens | null;
+      const data = await store.get(`${staffKey}.json`, { type: "text" }).catch(() => null);
+      return deserializeTokens(data);
     } else {
       const filePath = path.join(TOKENS_DIR, `${staffKey}.json`);
       if (fs.existsSync(filePath)) {
         const content = fs.readFileSync(filePath, "utf-8");
-        return JSON.parse(content) as TwitchOAuthTokens;
+        return deserializeTokens(content);
       }
       return null;
     }
   } catch (error) {
-    console.error(`[TwitchOAuth] Erreur récupération tokens pour ${staffKey}:`, error);
+    console.error(`[TwitchOAuth] Erreur récupération tokens (${staffKey})`);
     return null;
   }
 }
@@ -93,7 +180,7 @@ export async function deleteTwitchOAuthTokens(staffKey: string): Promise<void> {
       }
     }
   } catch (error) {
-    console.error(`[TwitchOAuth] Erreur suppression tokens pour ${staffKey}:`, error);
+    console.error(`[TwitchOAuth] Erreur suppression tokens (${staffKey})`);
     throw error;
   }
 }
@@ -138,8 +225,7 @@ export async function refreshTwitchToken(
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[TwitchOAuth] Erreur rafraîchissement token:", errorText);
+      console.error("[TwitchOAuth] Erreur rafraîchissement token (HTTP non OK)");
       return null;
     }
 
@@ -154,7 +240,7 @@ export async function refreshTwitchToken(
     await saveTwitchOAuthTokens(staffKey, tokens);
     return tokens;
   } catch (error) {
-    console.error("[TwitchOAuth] Erreur rafraîchissement token:", error);
+    console.error("[TwitchOAuth] Erreur rafraîchissement token");
     return null;
   }
 }
@@ -173,7 +259,6 @@ export async function getValidTwitchToken(
 
   // Si le token est expiré, le rafraîchir
   if (!isTokenValid(tokens)) {
-    console.log(`[TwitchOAuth] Token expiré pour ${staffKey}, rafraîchissement...`);
     tokens = await refreshTwitchToken(staffKey, tokens.refresh_token);
     if (!tokens) {
       return null;

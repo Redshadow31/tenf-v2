@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 import fs from 'fs';
 import path from 'path';
 
@@ -43,8 +42,8 @@ async function getVipMonthStore() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.id, "write")) {
+    const admin = await requirePermission("write");
+    if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
       month,
       vipLogins: vipLogins.map((login: string) => login.toLowerCase()),
       savedAt: new Date().toISOString(),
-      savedBy: admin.id,
+      savedBy: admin.discordId,
     };
 
     try {
@@ -112,8 +111,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.id, "read")) {
+    const admin = await requirePermission("read");
+    if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { eventRepository, memberRepository } from '@/lib/repositories';
+import { requireUser } from '@/lib/requireUser';
 
 /**
  * POST - Inscription à un événement
@@ -30,31 +30,14 @@ export async function POST(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté depuis les cookies
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get('discord_user_id')?.value;
-    const discordUsername = cookieStore.get('discord_username')?.value;
-    const discordAvatar = cookieStore.get('discord_avatar')?.value;
+    // P0 sécurité: identité utilisateur basée uniquement sur la session NextAuth.
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
+    const discordUsername = user?.username;
     
     if (!discordUserId) {
-      // Debug en développement
-      const isDev = process.env.NODE_ENV === 'development';
-      const allCookies = cookieStore.getAll();
-      const debugInfo = isDev ? {
-        hasDiscordUserIdCookie: !!cookieStore.get('discord_user_id'),
-        cookieNames: allCookies.map(c => c.name),
-        origin: request.headers.get('origin'),
-        host: request.headers.get('host'),
-        referer: request.headers.get('referer'),
-      } : undefined;
-      
-      console.error('[Event Registration] Utilisateur non connecté', debugInfo);
-      
       return NextResponse.json(
-        { 
-          error: 'Vous devez être connecté pour vous inscrire',
-          ...(debugInfo && { debug: debugInfo })
-        },
+        { error: 'Vous devez être connecté pour vous inscrire' },
         { status: 401 }
       );
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 interface CSVRow {
   horodatage: string;
@@ -13,6 +14,11 @@ interface CSVRow {
  */
 export async function GET() {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
     // Lire le fichier CSV
     const csvPath = join(process.cwd(), 'data', 'members_chart.csv');
     const csvContent = readFileSync(csvPath, 'utf-8');

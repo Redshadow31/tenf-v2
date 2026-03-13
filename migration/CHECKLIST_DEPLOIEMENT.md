@@ -4,9 +4,9 @@
 
 ### Variables Supabase (OBLIGATOIRES)
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` = `https://ggcpwaexhougomfnnsob.supabase.co`
-- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` = `sb_secret_pt1XELVAoYCbc-WM7Jfdjg_W1adRP20` (SECRET)
-- [ ] `DATABASE_URL` = `postgresql://postgres.ggcpwaexhougomfnnsob:DpDAkhQCrsJrsWXl@aws-0-eu-central-1.pooler.supabase.com:6543/postgres` (SECRET)
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_EXAMPLE_PLACEHOLDER`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` = `sb_secret_EXAMPLE_PLACEHOLDER` (SECRET)
+- [ ] `DATABASE_URL` = `postgresql://postgres.[PROJECT_REF]:[DB_PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres` (SECRET)
 
 ### Variables Existantes (Vérifier qu'elles sont toujours là)
 - [ ] `NEXTAUTH_URL` = `https://tenf-community.com`

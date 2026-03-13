@@ -43,7 +43,7 @@ npx tsx migration/import-to-supabase.ts
 La clé service_role peut avoir deux formats :
 
 1. **Format JWT** : `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (longue, commence par eyJ)
-2. **Format Secret** : `sb_secret_pt1XELVAoYCbc-WM7Jfdjg_W1adRP20` (commence par sb_secret_)
+2. **Format Secret** : `sb_secret_EXAMPLE_PLACEHOLDER` (commence par sb_secret_)
 
 Les deux formats sont valides, mais vous devez utiliser **exactement** celle qui est dans votre dashboard Supabase.
 

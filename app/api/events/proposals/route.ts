@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { memberRepository } from "@/lib/repositories";
 import { parisLocalDateTimeToUtcIso } from "@/lib/timezone";
+import { requireUser } from "@/lib/requireUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ type ProposalRow = {
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get("discord_user_id")?.value || null;
+    const user = await requireUser();
+    const discordUserId = user?.discordId || null;
 
     let proposals: ProposalRow[] = [];
     let schemaVariant: "legacy" | "v2" = "legacy";
@@ -92,8 +92,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get("discord_user_id")?.value;
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
     if (!discordUserId) {
       return NextResponse.json({ error: "Vous devez être connecté pour proposer un événement" }, { status: 401 });
     }

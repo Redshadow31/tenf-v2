@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireUser } from '@/lib/requireUser';
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
-  const userId = cookieStore.get('discord_user_id')?.value;
-  const username = cookieStore.get('discord_username')?.value;
-  const avatar = cookieStore.get('discord_avatar')?.value;
+  const user = await requireUser();
+  const userId = user?.discordId;
+  const username = user?.username;
+  const avatar = user?.avatar;
 
   if (!userId) {
     return NextResponse.json(

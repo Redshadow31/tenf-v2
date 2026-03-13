@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { deleteAllSpotlightData } from '@/lib/spotlightStorage';
 import { loadSectionAData, saveSectionAData, getMonthKey } from '@/lib/evaluationStorage';
 
@@ -11,8 +11,8 @@ export async function DELETE(
   { params }: { params: { spotlightId: string } }
 ) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

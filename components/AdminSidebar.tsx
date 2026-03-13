@@ -13,6 +13,7 @@ const adminLinks = [
   { href: "/admin/boutique", label: "Boutique" },
   { href: "/admin/events", label: "Événements" },
   { href: "/admin/academy", label: "🎓 TENF Academy" },
+  { href: "/admin/audit-logs", label: "Audit & Logs" },
 ];
 
 export default function AdminSidebar() {
@@ -40,6 +41,8 @@ export default function AdminSidebar() {
           const isEventsActive = pathname?.startsWith("/admin/events");
           const isAcademySection = link.href === "/admin/academy";
           const isAcademyActive = pathname?.startsWith("/admin/academy");
+          const isAuditSection = link.href === "/admin/audit-logs";
+          const isAuditActive = pathname?.startsWith("/admin/audit-logs");
           
           return (
             <div key={link.href}>
@@ -54,7 +57,11 @@ export default function AdminSidebar() {
                     ? "bg-[#9146ff] text-white"
                     : isAcademySection && pathname === "/admin/academy"
                     ? "bg-[#9146ff] text-white"
-                    : isAcademyActive
+                  : isAcademyActive
+                    ? "bg-[#9146ff] text-white"
+                    : isAuditSection && pathname === "/admin/audit-logs"
+                    ? "bg-[#9146ff] text-white"
+                    : isAuditActive
                     ? "bg-[#9146ff] text-white"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
@@ -163,6 +170,31 @@ export default function AdminSidebar() {
                     }`}
                   >
                     Participants
+                  </Link>
+                </div>
+              )}
+              {/* Sous-menu pour Audit & Logs */}
+              {isAuditSection && (
+                <div className="ml-4 mt-1 flex flex-col gap-1">
+                  <Link
+                    href="/admin/audit-logs/connexions"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/audit-logs/connexions"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Logs de connexion
+                  </Link>
+                  <Link
+                    href="/admin/audit-logs/temps-reel"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/audit-logs/temps-reel"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Temps réel
                   </Link>
                 </div>
               )}

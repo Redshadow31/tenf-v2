@@ -1,9 +1,51 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/security/rateLimit";
+
+const ADMIN_LOGIN_IP_POLICY = {
+  name: "admin-login-ip",
+  limit: 8,
+  windowSeconds: 10 * 60,
+} as const;
+
+const ADMIN_LOGIN_IDENTITY_POLICY = {
+  name: "admin-login-identity",
+  limit: 6,
+  windowSeconds: 10 * 60,
+} as const;
 
 export async function POST(req: Request) {
   try {
     const { username, password, pin } = await req.json();
+
+    const ipLimit = await checkRateLimit({
+      request: req,
+      policy: ADMIN_LOGIN_IP_POLICY,
+    });
+    if (!ipLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipLimit.retryAfterSeconds) },
+        }
+      );
+    }
+
+    const identityLimit = await checkRateLimit({
+      request: req,
+      policy: ADMIN_LOGIN_IDENTITY_POLICY,
+      identity: typeof username === "string" ? username.toLowerCase() : "unknown",
+    });
+    if (!identityLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(identityLimit.retryAfterSeconds) },
+        }
+      );
+    }
 
     // Vérification du nom d'utilisateur
     if (username !== process.env.ADMIN_USERNAME) {

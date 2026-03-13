@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { eventRepository, memberRepository } from '@/lib/repositories';
+import { requireUser } from '@/lib/requireUser';
 
 /**
  * DELETE - Désinscription d'un événement
@@ -21,9 +21,9 @@ export async function DELETE(
       );
     }
     
-    // Récupérer l'utilisateur Discord connecté depuis les cookies
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get('discord_user_id')?.value;
+    // P0 sécurité: identité utilisateur basée uniquement sur la session NextAuth.
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
     
     if (!discordUserId) {
       return NextResponse.json(

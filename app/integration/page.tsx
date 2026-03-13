@@ -70,14 +70,6 @@ export default function Page() {
           }
         }
 
-        // 2) Fallback legacy (cookies discord_user_id / discord_username)
-        const legacyResponse = await fetch('/api/auth/discord/user', { cache: 'no-store' });
-        if (legacyResponse.ok) {
-          const legacy = await legacyResponse.json();
-          setIsDiscordConnected(legacy?.authenticated === true);
-          return;
-        }
-
         setIsDiscordConnected(false);
       } catch (error) {
         console.error('Erreur vérification session:', error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, isFounder } from '@/lib/admin';
+import { requireRole } from '@/lib/requireAdmin';
 import { getAllMemberData, loadMemberDataFromStorage, loadAdminDataFromStorage, loadBotDataFromStorage, saveBotData, type MemberData } from '@/lib/memberData';
 import { DISCORD_ROLE_IDS, GUILD_ID, mapDiscordRoleToSiteRole } from '@/lib/discordRoles';
 
@@ -29,16 +29,8 @@ interface DiscordMember {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    
+    const admin = await requireRole("FONDATEUR");
     if (!admin) {
-      return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    if (!isFounder(admin.id)) {
       return NextResponse.json(
         { error: "Accès refusé. Réservé aux fondateurs." },
         { status: 403 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { grantAccess, addLog, loadSettings, loadPromos } from '@/lib/academyStorage';
+import { requireUser } from '@/lib/requireUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,11 +10,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Lire les cookies directement côté serveur
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
-    const username = cookieStore.get('discord_username')?.value;
-    const avatar = cookieStore.get('discord_avatar')?.value;
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
+    const username = sessionUser?.username;
+    const avatar = sessionUser?.avatar;
     
     if (!userId) {
       return NextResponse.json(
@@ -42,9 +41,7 @@ export async function POST(request: NextRequest) {
     // Pour l'instant, on vérifie via l'API user/role pour voir si c'est staff/admin
     try {
       const roleResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/user/role`, {
-        headers: {
-          'Cookie': request.headers.get('cookie') || '',
-        },
+        headers: { 'Cookie': request.headers.get('cookie') || '' },
       });
 
       if (roleResponse.ok) {

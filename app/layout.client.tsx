@@ -6,6 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Header from "@/components/Header";
 import UserSidebar from "@/components/UserSidebar";
+import ConnectionTracker from "@/components/ConnectionTracker";
 
 type ClientLayoutProps = {
   children: ReactNode;
@@ -21,6 +22,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     return (
       <SessionProvider>
         <ThemeProvider>
+          <ConnectionTracker />
           {children}
         </ThemeProvider>
       </SessionProvider>
@@ -32,6 +34,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     return (
       <SessionProvider>
         <ThemeProvider>
+          <ConnectionTracker />
           <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
             <Header />
             <main>{children}</main>
@@ -44,6 +47,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <SessionProvider>
       <ThemeProvider>
+        <ConnectionTracker />
         <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
           <Header />
           <div className="flex">

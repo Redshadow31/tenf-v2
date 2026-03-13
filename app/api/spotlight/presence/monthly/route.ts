@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { evaluationRepository, memberRepository, spotlightRepository } from '@/lib/repositories';
 const PAGE_SIZE = 1000;
@@ -23,8 +23,8 @@ async function fetchAllMembersForMonthlySpotlight() {
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

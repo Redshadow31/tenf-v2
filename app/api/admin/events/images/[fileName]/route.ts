@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 /**
  * GET - Récupère une image d'événement
@@ -9,6 +10,11 @@ export async function GET(
   { params }: { params: { fileName: string } }
 ) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
     const { fileName } = params;
 
     if (!fileName) {

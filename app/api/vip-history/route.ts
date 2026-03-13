@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadVipHistory, getVipHistoryByMonth, getConsecutiveVipMonths, getVipBadgeText, addVipEntry, saveVipHistory } from '@/lib/vipHistory';
-import { getCurrentAdmin } from '@/lib/adminAuth';
-import { hasPermission } from '@/lib/adminRoles';
+import { requirePermission } from '@/lib/requireAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,8 +48,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.id, "write")) {
+    const admin = await requirePermission("write");
+    if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
@@ -92,8 +91,8 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasPermission(admin.id, "write")) {
+    const admin = await requirePermission("write");
+    if (!admin) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 

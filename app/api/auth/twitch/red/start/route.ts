@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/admin';
+import crypto from 'crypto';
+import { requireAdmin } from '@/lib/requireAdmin';
+
+const TWITCH_OAUTH_STATE_COOKIE = "twitch_red_oauth_state";
+const TWITCH_OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60; // 10 minutes
 
 /**
  * GET - Démarre le flux OAuth Twitch pour Red
@@ -8,7 +12,7 @@ import { getCurrentAdmin } from '@/lib/admin';
 export async function GET() {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json(
         { error: "Non authentifié" },
@@ -30,11 +34,8 @@ export async function GET() {
       );
     }
 
-    // Générer un state pour la sécurité (CSRF protection)
-    const state = Buffer.from(`${Date.now()}-${Math.random()}`).toString('base64url');
-    
-    // Stocker le state dans un cookie sécurisé (ou session)
-    // Pour simplifier, on le passe dans l'URL et on le vérifie dans le callback
+    // Générer un state cryptographiquement fort pour la protection CSRF.
+    const state = crypto.randomBytes(32).toString('base64url');
     
     const authUrl = new URL('https://id.twitch.tv/oauth2/authorize');
     authUrl.searchParams.set('client_id', clientId);
@@ -43,8 +44,16 @@ export async function GET() {
     authUrl.searchParams.set('scope', 'user:read:follows');
     authUrl.searchParams.set('state', state);
 
-    // Rediriger vers l'URL d'autorisation Twitch
-    return NextResponse.redirect(authUrl.toString());
+    // Rediriger et stocker le state en cookie HttpOnly à durée courte.
+    const response = NextResponse.redirect(authUrl.toString());
+    response.cookies.set(TWITCH_OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: TWITCH_OAUTH_STATE_MAX_AGE_SECONDS,
+      path: "/",
+    });
+    return response;
   } catch (error) {
     console.error('[Twitch OAuth Start] Erreur:', error);
     return NextResponse.json(

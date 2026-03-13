@@ -578,29 +578,57 @@ export class EventRepository {
       })) || [],
     });
 
-    if ((data?.length || 0) === 0) {
-      const { data: allRegistrations } = await supabaseAdmin
-        .from('event_registrations')
-        .select('event_id, twitch_login, display_name')
-        .limit(20);
-      console.log(`[EventRepository] Debug: Aucune inscription trouvée pour ${eventId}. Exemples d'inscriptions dans la table (premiers 20):`, {
-        total: allRegistrations?.length || 0,
-        uniqueEventIds: [...new Set(allRegistrations?.map(r => r.event_id) || [])],
-        sample: allRegistrations?.slice(0, 5) || [],
-      });
-      
-      // Vérifier si l'eventId existe dans les inscriptions mais avec un format différent
-      const matchingRegistrations = allRegistrations?.filter(r => {
-        return r.event_id === eventId || 
-               String(r.event_id) === String(eventId) ||
-               r.event_id?.toString() === eventId?.toString();
-      });
-      if (matchingRegistrations && matchingRegistrations.length > 0) {
-        console.log(`[EventRepository] ⚠️ Trouvé ${matchingRegistrations.length} inscription(s) avec event_id qui correspond (format différent?)`, matchingRegistrations);
+    let sourceRows = data || [];
+    if (sourceRows.length === 0) {
+      // Fallback migration: certaines bases historiques ont des présences avec
+      // marqueur d'inscription, mais sans lignes dans event_registrations.
+      const fallbackRows: any[] = [];
+      for (const id of eventIds) {
+        let { data: presenceRows, error } = await supabaseAdmin
+          .from('event_presences')
+          .select('*')
+          .eq('event_id', id)
+          .limit(10000);
+
+        if (error) {
+          const message = (error.message || '').toLowerCase();
+          if (message.includes('invalid input syntax for type uuid')) {
+            continue;
+          }
+          console.warn(`[EventRepository] Fallback presences indisponible pour ${eventId} (id=${id}):`, error.message);
+          continue;
+        }
+
+        (presenceRows || []).forEach((presence) => {
+          const isRegistered =
+            presence?.is_registered === true ||
+            presence?.is_registered === 1 ||
+            !!presence?.registration_id;
+          if (!isRegistered) return;
+          if (!presence?.twitch_login) return;
+
+          fallbackRows.push({
+            id: presence.id ? `presence-${presence.id}` : `presence-${id}-${presence.twitch_login}`,
+            event_id: presence.event_id,
+            twitch_login: presence.twitch_login,
+            display_name: presence.display_name || presence.twitch_login || 'Membre',
+            discord_id: presence.discord_id || null,
+            discord_username: presence.discord_username || null,
+            notes: presence.note || null,
+            registered_at: presence.validated_at || presence.created_at || new Date().toISOString(),
+          });
+        });
+      }
+
+      if (fallbackRows.length > 0) {
+        console.log(
+          `[EventRepository] Fallback présences -> inscriptions activé pour ${eventId}: ${fallbackRows.length} ligne(s)`
+        );
+        sourceRows = fallbackRows;
       }
     }
 
-    const registrations = (data || []).map(this.mapToRegistration);
+    const registrations = sourceRows.map(this.mapToRegistration);
     console.log(`[EventRepository] Récupéré ${registrations.length} inscriptions mappées pour événement ${eventId}`);
     
     return registrations;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { getTwitchOAuthTokens, isTokenValid } from '@/lib/twitchOAuth';
 
 /**
@@ -8,7 +8,7 @@ import { getTwitchOAuthTokens, isTokenValid } from '@/lib/twitchOAuth';
 export async function GET() {
   try {
     // Vérifier l'authentification
-    const admin = await getCurrentAdmin();
+    const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json(
         { error: "Non authentifié" },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { memberRepository } from "@/lib/repositories";
+import { requireUser } from "@/lib/requireUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +24,8 @@ async function getVoteCount(proposalId: string): Promise<number> {
 
 export async function POST(_request: NextRequest, { params }: { params: { proposalId: string } }) {
   try {
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get("discord_user_id")?.value;
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
     if (!discordUserId) {
       return NextResponse.json({ error: "Vous devez être connecté pour voter" }, { status: 401 });
     }
@@ -57,8 +57,8 @@ export async function POST(_request: NextRequest, { params }: { params: { propos
 
 export async function DELETE(_request: NextRequest, { params }: { params: { proposalId: string } }) {
   try {
-    const cookieStore = cookies();
-    const discordUserId = cookieStore.get("discord_user_id")?.value;
+    const user = await requireUser();
+    const discordUserId = user?.discordId;
     if (!discordUserId) {
       return NextResponse.json({ error: "Vous devez être connecté pour voter" }, { status: 401 });
     }

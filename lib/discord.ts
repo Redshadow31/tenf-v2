@@ -12,7 +12,7 @@ export interface DiscordUser {
  */
 export async function getDiscordUser(): Promise<DiscordUser | null> {
   try {
-    // Source principale: session NextAuth (système d'auth officiel du projet)
+    // Source unique de vérité: session NextAuth.
     const sessionResponse = await fetch('/api/auth/session', {
       credentials: 'include',
       cache: 'no-store',
@@ -30,17 +30,7 @@ export async function getDiscordUser(): Promise<DiscordUser | null> {
         };
       }
     }
-
-    // Fallback legacy (ancienne auth cookies) pour compatibilité progressive.
-    const legacyResponse = await fetch('/api/auth/discord/user', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (!legacyResponse.ok) {
-      return null;
-    }
-    const legacyData = await legacyResponse.json();
-    return legacyData.authenticated ? legacyData.user : null;
+    return null;
   } catch (error) {
     console.error('Error fetching Discord user:', error);
     return null;
@@ -75,11 +65,6 @@ export async function logoutDiscord(): Promise<void> {
       });
     }
 
-    // Nettoyage cookies legacy (compat)
-    await fetch('/api/auth/discord/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
   } catch (error) {
     console.error('Error logging out:', error);
   }

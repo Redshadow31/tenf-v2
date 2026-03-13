@@ -30,6 +30,7 @@ import {
   hasAdminRole as hasNewAdminRole,
   isFounder as isNewFounder,
 } from "./adminRoles";
+import { getAuthenticatedAdmin } from "./requireAdmin";
 
 /**
  * @deprecated Utiliser getAdminRole de adminRoles.ts
@@ -67,34 +68,9 @@ export function isAdminRole(discordId: string, memberRole?: string): boolean {
  * Pour le client, utilisez getDiscordUser() de lib/discord puis vérifiez avec getAdminRole()
  */
 export async function getCurrentAdmin() {
-  // Cette fonction doit être utilisée uniquement côté serveur (API routes)
-  // Pour le client, utilisez getDiscordUser() puis getAdminRole()
-  try {
-    const { cookies } = await import("next/headers");
-    const cookieStore = cookies();
-    const userId = cookieStore.get("discord_user_id")?.value;
-    const username = cookieStore.get("discord_username")?.value;
-
-    if (!userId) {
-      return null;
-    }
-
-    // Utiliser la fonction importée depuis adminRoles
-    const role = getNewAdminRole(userId);
-    if (!role) {
-      return null;
-    }
-
-    return {
-      id: userId,
-      discordId: userId, // Alias de id pour compatibilité (id est le Discord ID dans ce système)
-      username: username || "Unknown",
-      role,
-    };
-  } catch (error) {
-    // Si appelé côté client, retourner null
-    return null;
-  }
+  // P0 sécurité: interdiction d'utiliser les cookies legacy pour l'auth admin.
+  // Source unique de vérité: session NextAuth serveur.
+  return getAuthenticatedAdmin();
 }
 
 /**

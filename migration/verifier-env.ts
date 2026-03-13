@@ -54,13 +54,13 @@ if (allPresent) {
         example = 'https://ggcpwaexhougomfnnsob.supabase.co';
         break;
       case 'NEXT_PUBLIC_SUPABASE_ANON_KEY':
-        example = 'sb_publishable_TC-xB59hf4FEewC8kdFaCQ_3NqsJxc7';
+        example = 'sb_publishable_EXAMPLE_PLACEHOLDER';
         break;
       case 'SUPABASE_SERVICE_ROLE_KEY':
-        example = 'sb_secret_pt1XELVAoYCbc-WM7Jfdjg_W1adRP20';
+        example = 'sb_secret_EXAMPLE_PLACEHOLDER';
         break;
       case 'DATABASE_URL':
-        example = 'postgresql://postgres.ggcpwaexhougomfnnsob:DpDAkhQCrsJrsWXl@aws-0-eu-central-1.pooler.supabase.com:6543/postgres';
+        example = 'postgresql://postgres.[PROJECT_REF]:[DB_PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres';
         break;
     }
     console.log(`   ${key}=${example}`);

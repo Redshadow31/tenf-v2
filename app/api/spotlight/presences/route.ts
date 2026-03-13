@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin, hasAdminDashboardAccess } from '@/lib/admin';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { spotlightRepository } from '@/lib/repositories';
 
 /**
@@ -7,8 +7,8 @@ import { spotlightRepository } from '@/lib/repositories';
  */
 export async function GET(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
@@ -180,8 +180,8 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-    if (!admin || !hasAdminDashboardAccess(admin.id)) {
+    const admin = await requireAdmin();
+    if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

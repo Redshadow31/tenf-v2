@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { loadAccesses, grantAccess, addLog, getPromo } from '@/lib/academyStorage';
-import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,9 +85,8 @@ export async function POST(
       );
     }
 
-    // Accorder l'accès
-    const cookieStore = cookies();
-    const adminId = cookieStore.get('discord_user_id')?.value || admin.discordId;
+    // Accorder l'accès (identité admin issue de la session serveur uniquement)
+    const adminId = admin.discordId;
     
     const newAccess = await grantAccess({
       userId,

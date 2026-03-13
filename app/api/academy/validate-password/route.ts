@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { loadPromos, grantAccess, addLog, loadSettings } from '@/lib/academyStorage';
+import { requireUser } from '@/lib/requireUser';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const ACADEMY_PASSWORD_IP_POLICY = {
+  name: "academy-password-ip",
+  limit: 20,
+  windowSeconds: 10 * 60,
+} as const;
+
+const ACADEMY_PASSWORD_USER_POLICY = {
+  name: "academy-password-user",
+  limit: 8,
+  windowSeconds: 10 * 60,
+} as const;
 
 /**
  * POST - Valide un mot de passe promo et accorde l'accès
@@ -12,11 +25,24 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Lire les cookies directement côté serveur
-    const cookieStore = cookies();
-    const userId = cookieStore.get('discord_user_id')?.value;
-    const username = cookieStore.get('discord_username')?.value;
-    const avatar = cookieStore.get('discord_avatar')?.value;
+    const ipLimit = await checkRateLimit({
+      request,
+      policy: ACADEMY_PASSWORD_IP_POLICY,
+    });
+    if (!ipLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Trop de tentatives. Réessayez plus tard." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipLimit.retryAfterSeconds) },
+        }
+      );
+    }
+
+    const sessionUser = await requireUser();
+    const userId = sessionUser?.discordId;
+    const username = sessionUser?.username;
+    const avatar = sessionUser?.avatar;
     
     if (!userId) {
       return NextResponse.json(
@@ -30,6 +56,21 @@ export async function POST(request: NextRequest) {
       username: username || 'Unknown',
       avatar: avatar || null,
     };
+
+    const userLimit = await checkRateLimit({
+      request,
+      policy: ACADEMY_PASSWORD_USER_POLICY,
+      identity: user.id,
+    });
+    if (!userLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Trop de tentatives. Réessayez plus tard." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(userLimit.retryAfterSeconds) },
+        }
+      );
+    }
 
     // Vérifier si Academy est activée
     const settings = await loadSettings();
