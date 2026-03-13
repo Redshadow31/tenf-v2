@@ -30,6 +30,7 @@
   "dependencies": {
     "@netlify/blobs": "^4.2.0",
     "@supabase/supabase-js": "^2.91.0",
+    "@svg-maps/world": "^2.0.0",
     "@tailwindcss/typography": "^0.5.19",
     "@upstash/redis": "^1.36.1",
     "bcryptjs": "^2.4.3",
@@ -50,13 +51,12 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.56.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.12",
     "@types/pg": "^8.16.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@playwright/test": "^1.56.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.5",

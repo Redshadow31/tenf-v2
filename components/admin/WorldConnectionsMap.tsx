@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import worldMap from "@svg-maps/world";
 
 export interface CountryConnectionPoint {
   countryCode: string;
@@ -52,6 +53,21 @@ function project(lat: number, lng: number, width: number, height: number) {
   return { x, y };
 }
 
+interface SvgMapLocation {
+  id: string;
+  name: string;
+  path: string;
+}
+
+function parseViewBox(viewBox: string): { minX: number; minY: number; width: number; height: number } {
+  const parts = viewBox
+    .split(/\s+/)
+    .map((value) => Number.parseFloat(value))
+    .filter((value) => Number.isFinite(value));
+  if (parts.length !== 4) return { minX: 0, minY: 0, width: 2000, height: 1001 };
+  return { minX: parts[0], minY: parts[1], width: parts[2], height: parts[3] };
+}
+
 export default function WorldConnectionsMap({
   countries,
   onCountryClick,
@@ -62,16 +78,32 @@ export default function WorldConnectionsMap({
   selectedCountry?: string;
 }) {
   const [hovered, setHovered] = useState<CountryConnectionPoint | null>(null);
+  const mapData = worldMap as unknown as {
+    viewBox: string;
+    locations: SvgMapLocation[];
+  };
+  const worldViewBox = useMemo(() => parseViewBox(mapData.viewBox), [mapData.viewBox]);
+  const countryIndex = useMemo(() => {
+    const index = new Map<string, CountryConnectionPoint>();
+    for (const country of countries) {
+      index.set(country.countryCode.toLowerCase(), country);
+    }
+    return index;
+  }, [countries]);
+
   const points = useMemo(
     () =>
       countries
         .map((country) => {
           const centroid = COUNTRY_CENTROIDS[country.countryCode];
           if (!centroid) return null;
-          return { ...country, ...project(centroid.lat, centroid.lng, 920, 420) };
+          return {
+            ...country,
+            ...project(centroid.lat, centroid.lng, worldViewBox.width, worldViewBox.height),
+          };
         })
         .filter(Boolean) as Array<CountryConnectionPoint & { x: number; y: number }>,
-    [countries]
+    [countries, worldViewBox.width, worldViewBox.height]
   );
 
   const maxCount = Math.max(1, ...countries.map((country) => country.count));
@@ -83,38 +115,66 @@ export default function WorldConnectionsMap({
         <p className="text-xs text-gray-400">Regroupement par pays</p>
       </div>
       <div className="relative overflow-hidden rounded-lg border border-[#26262a] bg-[#0b0b0e]">
-        <svg viewBox="0 0 920 420" className="h-[360px] w-full">
+        <svg viewBox={mapData.viewBox} className="h-[360px] w-full" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id="worldGrad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#121220" />
               <stop offset="100%" stopColor="#0a0a12" />
             </linearGradient>
+            <linearGradient id="countryFill" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#1c2438" />
+              <stop offset="100%" stopColor="#161d2f" />
+            </linearGradient>
           </defs>
 
-          <rect x="0" y="0" width="920" height="420" fill="url(#worldGrad)" />
+          <rect
+            x={worldViewBox.minX}
+            y={worldViewBox.minY}
+            width={worldViewBox.width}
+            height={worldViewBox.height}
+            fill="url(#worldGrad)"
+          />
 
           {[1, 2, 3, 4, 5].map((line) => (
             <line
               key={`h-${line}`}
-              x1="0"
-              x2="920"
-              y1={line * 70}
-              y2={line * 70}
-              stroke="#1d2033"
-              strokeWidth="1"
+              x1={worldViewBox.minX}
+              x2={worldViewBox.minX + worldViewBox.width}
+              y1={worldViewBox.minY + (line * worldViewBox.height) / 6}
+              y2={worldViewBox.minY + (line * worldViewBox.height) / 6}
+              stroke="#1b1f31"
+              strokeWidth={1}
             />
           ))}
           {[1, 2, 3, 4, 5, 6, 7].map((line) => (
             <line
               key={`v-${line}`}
-              y1="0"
-              y2="420"
-              x1={line * 115}
-              x2={line * 115}
-              stroke="#1a1d2c"
-              strokeWidth="1"
+              y1={worldViewBox.minY}
+              y2={worldViewBox.minY + worldViewBox.height}
+              x1={worldViewBox.minX + (line * worldViewBox.width) / 8}
+              x2={worldViewBox.minX + (line * worldViewBox.width) / 8}
+              stroke="#181c2a"
+              strokeWidth={1}
             />
           ))}
+
+          <g>
+            {mapData.locations.map((location) => {
+              const country = countryIndex.get(location.id.toLowerCase());
+              const isSelected = selectedCountry?.toLowerCase() === location.id.toLowerCase();
+              const hasConnections = Boolean(country && country.count > 0);
+              return (
+                <path
+                  key={location.id}
+                  d={location.path}
+                  fill={isSelected ? "#2c3f7e" : hasConnections ? "#263a71" : "url(#countryFill)"}
+                  stroke={isSelected ? "#8ea9ff" : hasConnections ? "#6f8ef7" : "#3b4866"}
+                  strokeWidth={isSelected ? 1.4 : 0.85}
+                  opacity={hasConnections ? 0.95 : 0.78}
+                />
+              );
+            })}
+          </g>
 
           {points.map((point) => {
             const ratio = point.count / maxCount;
