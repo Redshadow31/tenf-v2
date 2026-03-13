@@ -6,6 +6,7 @@ import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 
+const MAX_DESCRIPTION = 800;
 const TIMEZONE_OPTIONS = [
   { value: "Europe/Paris", label: "France (Europe/Paris)" },
   { value: "Europe/Brussels", label: "Belgique (Europe/Brussels)" },
@@ -19,19 +20,46 @@ type MemberResponse = {
     displayName: string;
     twitchLogin: string;
     role: string;
-    socials: { discord: string };
+    bio?: string;
+    socials: {
+      discord: string;
+      instagram?: string;
+      tiktok?: string;
+      twitter?: string;
+    };
     tenfSummary: { parrain: string | null };
     birthday?: string | null;
     twitchAffiliateDate?: string | null;
     timezone?: string | null;
   };
+  pending?: {
+    description?: string;
+    instagram?: string;
+    tiktok?: string;
+    twitter?: string;
+    birthday?: string;
+    twitchAffiliateDate?: string;
+  } | null;
 };
 
 export default function MemberProfileCompletePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileAlreadyCreated, setProfileAlreadyCreated] = useState(false);
+  const [submittingPublicProfile, setSubmittingPublicProfile] = useState(false);
+  const [submitPublicProfileSuccess, setSubmitPublicProfileSuccess] = useState(false);
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [createProfileSuccess, setCreateProfileSuccess] = useState(false);
+  const [publicProfileForm, setPublicProfileForm] = useState({
+    description: "",
+    instagram: "",
+    tiktok: "",
+    twitter: "",
+    birthday: "",
+    twitchAffiliateDate: "",
+    timezone: "Europe/Paris",
+    games: "",
+  });
   const [form, setForm] = useState({
     discordUsername: "",
     creatorName: "",
@@ -57,6 +85,9 @@ export default function MemberProfileCompletePage() {
           return;
         }
         const data = body as MemberResponse;
+        const isPlaceholder =
+          data.member.twitchLogin.startsWith("nouveau_") || data.member.twitchLogin.startsWith("nouveau-");
+        setProfileAlreadyCreated(!isPlaceholder);
         setForm((prev) => ({
           ...prev,
           discordUsername: data.member.socials.discord || prev.discordUsername,
@@ -73,6 +104,18 @@ export default function MemberProfileCompletePage() {
           timezone: data.member.timezone || prev.timezone || "Europe/Paris",
           countryCode: "FR",
         }));
+        setPublicProfileForm((prev) => ({
+          ...prev,
+          description: data.pending?.description ?? data.member.bio ?? "",
+          instagram: data.pending?.instagram ?? data.member.socials.instagram ?? "",
+          tiktok: data.pending?.tiktok ?? data.member.socials.tiktok ?? "",
+          twitter: data.pending?.twitter ?? data.member.socials.twitter ?? "",
+          birthday: data.pending?.birthday || (data.member.birthday ? String(data.member.birthday).slice(0, 10) : ""),
+          twitchAffiliateDate:
+            data.pending?.twitchAffiliateDate ||
+            (data.member.twitchAffiliateDate ? String(data.member.twitchAffiliateDate).slice(0, 10) : ""),
+          timezone: data.member.timezone || prev.timezone || "Europe/Paris",
+        }));
       } catch {
         if (active) setError("Erreur de connexion.");
       } finally {
@@ -83,6 +126,51 @@ export default function MemberProfileCompletePage() {
       active = false;
     };
   }, []);
+
+  async function onSubmitPublicProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmittingPublicProfile(true);
+    setSubmitPublicProfileSuccess(false);
+    try {
+      const descriptionWithGames = [
+        (publicProfileForm.description || "").trim(),
+        publicProfileForm.games.trim()
+          ? `Jeux proposes sur la chaine: ${publicProfileForm.games.trim()}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      if (descriptionWithGames.length > MAX_DESCRIPTION) {
+        alert(`La description finale depasse ${MAX_DESCRIPTION} caracteres.`);
+        return;
+      }
+
+      const res = await fetch("/api/members/me/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: descriptionWithGames,
+          instagram: publicProfileForm.instagram,
+          tiktok: publicProfileForm.tiktok,
+          twitter: publicProfileForm.twitter,
+          birthday: publicProfileForm.birthday,
+          twitchAffiliateDate: publicProfileForm.twitchAffiliateDate,
+          timezone: publicProfileForm.timezone,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert(body.error || "Erreur lors de la soumission du profil public");
+        return;
+      }
+      setSubmitPublicProfileSuccess(true);
+    } catch {
+      alert("Erreur de connexion");
+    } finally {
+      setSubmittingPublicProfile(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,6 +201,55 @@ export default function MemberProfileCompletePage() {
   return (
     <MemberSurface>
       <MemberPageHeader title="Completer mon profil" description="Renseigne ton profil de base pour finaliser ton activation TENF." />
+      <MemberInfoCard title="Profil public - descriptif streamer">
+        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Cette partie alimente la fiche publique (description, reseaux, informations de chaine).
+        </p>
+        <form onSubmit={onSubmitPublicProfile} className="mt-4 space-y-3">
+          <div>
+            <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Descriptif chaine (Markdown Discord) ({publicProfileForm.description.length}/{MAX_DESCRIPTION})
+            </label>
+            <textarea
+              value={publicProfileForm.description}
+              onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, description: e.target.value }))}
+              rows={5}
+              maxLength={MAX_DESCRIPTION}
+              className="w-full rounded-lg border px-3 py-2"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+            />
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Supporte le Markdown Discord: **gras**, *italique*, __souligne__, &gt; citation.
+            </p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Jeux proposes sur la chaine</label>
+            <input
+              value={publicProfileForm.games}
+              onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, games: e.target.value }))}
+              placeholder="Ex: GTA RP, Valorant, Minecraft"
+              className="w-full rounded-lg border px-3 py-2"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input value={publicProfileForm.instagram} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))} placeholder="Instagram" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <input value={publicProfileForm.tiktok} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))} placeholder="TikTok" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+            <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="X / Twitter" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+          </div>
+          {submitPublicProfileSuccess ? (
+            <p className="text-sm text-green-500">Profil public soumis avec succes pour validation.</p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={submittingPublicProfile}
+            className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          >
+            {submittingPublicProfile ? "Envoi..." : "Soumettre le profil public"}
+          </button>
+        </form>
+      </MemberInfoCard>
       <MemberInfoCard title="Creation / activation du profil">
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
           Ton profil reste inactif tant qu il n est pas valide par le staff apres la reunion d integration.
@@ -169,9 +306,15 @@ export default function MemberProfileCompletePage() {
             <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Notes</label>
             <textarea value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} rows={3} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
           </div>
-          {createProfileSuccess ? <p className="text-sm text-green-500">Profil cree/mis a jour. Le staff doit encore le valider.</p> : null}
+          {createProfileSuccess ? (
+            <p className="text-sm text-green-500">
+              {profileAlreadyCreated
+                ? "Changement signale avec succes. Le staff doit encore le valider."
+                : "Profil cree/mis a jour. Le staff doit encore le valider."}
+            </p>
+          ) : null}
           <button type="submit" disabled={creatingProfile} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
-            {creatingProfile ? "Creation..." : "Creer mon profil"}
+            {creatingProfile ? "Envoi..." : profileAlreadyCreated ? "Signaler un changement" : "Creer mon profil"}
           </button>
         </form>
       </MemberInfoCard>
