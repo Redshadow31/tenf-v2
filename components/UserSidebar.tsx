@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } from "@/lib/discord";
 import { memberSidebarSections } from "@/lib/navigation/memberSidebar";
 import SidebarSection from "@/components/member/navigation/SidebarSection";
@@ -17,7 +18,7 @@ function SidebarLink({
   href: string;
   label: string;
   active: boolean;
-  icon?: ComponentType<{ size?: number }>;
+  icon?: LucideIcon;
 }) {
   return (
     <Link
