@@ -187,6 +187,16 @@ export default function AdminSidebar() {
                     Logs de connexion
                   </Link>
                   <Link
+                    href="/admin/audit-logs/historique-pages"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      pathname === "/admin/audit-logs/historique-pages"
+                        ? "bg-[#9146ff]/80 text-white"
+                        : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
+                    }`}
+                  >
+                    Historique des pages
+                  </Link>
+                  <Link
                     href="/admin/audit-logs/temps-reel"
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       pathname === "/admin/audit-logs/temps-reel"

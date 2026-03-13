@@ -472,6 +472,21 @@ export const connectionSessionEvents = pgTable('connection_session_events', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Table: page_activity_events (historique navigation/clics)
+export const pageActivityEvents = pgTable('page_activity_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: text('session_id').notNull(),
+  userId: text('user_id'),
+  username: text('username'),
+  isAuthenticated: boolean('is_authenticated').notNull().default(false),
+  zone: text('zone').notNull(), // 'public' | 'admin'
+  path: text('path').notNull(),
+  title: text('title'),
+  eventType: text('event_type').notNull(), // 'page_view' | 'click'
+  target: text('target'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // ============================================
 // RELATIONS
 // ============================================

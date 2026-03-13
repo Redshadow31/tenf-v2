@@ -140,6 +140,7 @@ export async function purgeConnectionLogs(force = false): Promise<void> {
   const cutoffIso = new Date(now - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   await supabaseAdmin.from("connection_session_events").delete().lt("created_at", cutoffIso);
+  await supabaseAdmin.from("page_activity_events").delete().lt("created_at", cutoffIso);
   await supabaseAdmin.from("connection_sessions").delete().lt("last_seen_at", cutoffIso);
   await supabaseAdmin.from("connection_sessions").delete().lt("expires_at", new Date().toISOString());
 }

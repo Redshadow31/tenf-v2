@@ -211,6 +211,7 @@ export const adminNavigation: NavItem[] = [
       { href: "/admin/log-center", label: "Logs & audit (legacy)" },
       { href: "/admin/audit-logs", label: "Audit & Logs" },
       { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
+      { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
       { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
     ],
   },
@@ -294,6 +295,7 @@ export const adminNavigationSimple: NavItem[] = [
     icon: "🧾",
     children: [
       { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
+      { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
       { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
     ],
   },
