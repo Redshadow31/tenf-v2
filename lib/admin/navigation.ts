@@ -130,6 +130,9 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/follow", label: "Feuilles de follow" },
           { href: "/admin/raids", label: "Suivi des raids" },
+          { href: "/admin/engagement/raids-a-valider", label: "Raids à valider (fonctionnalité à venir)" },
+          { href: "/admin/engagement/historique-raids", label: "Historique des raids (fonctionnalité à venir)" },
+          { href: "/admin/engagement/points-discord", label: "Points Discord (fonctionnalité à venir)" },
         ],
       },
     ],
