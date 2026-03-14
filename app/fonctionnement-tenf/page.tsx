@@ -2412,10 +2412,10 @@ export default function Page() {
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      Communauté (mineur)
+                      Communauté
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Jeunes viewers / membres : accès à la vie du serveur et aux activités, avec un environnement encadré et respectueux.
+                      Viewers et membres de la communauté : accès à la vie du serveur et aux activités, avec un environnement encadré et respectueux.
                     </p>
                   </div>
 
