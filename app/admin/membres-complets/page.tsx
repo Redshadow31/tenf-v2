@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { logAction } from "@/lib/logAction";
 import EditMemberCompletModal from "@/components/admin/EditMemberCompletModal";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface MemberData {
   twitchLogin: string;
@@ -265,14 +266,8 @@ export default function MembresCompletsPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        member.role === "Fondateur" || member.role === "Admin"
-                          ? "bg-[#9146ff] text-white"
-                          : member.role === "Développement"
-                          ? "bg-[#5a32b4] text-white"
-                          : "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30"
-                      }`}>
-                        {member.role}
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
                       </span>
                     </td>
                     <td className="py-4 px-6">

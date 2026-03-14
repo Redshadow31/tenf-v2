@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface MemberToMerge {
   twitchLogin: string;
@@ -175,7 +176,9 @@ export default function MergeMemberModal({
                 </div>
                 <div>
                   <span className="text-gray-400">Rôle:</span>{" "}
-                  <span className="text-white">{member.role}</span>
+                  <span className={getRoleBadgeClassName(member.role)}>
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-400">VIP:</span>{" "}
@@ -258,7 +261,9 @@ export default function MergeMemberModal({
             </div>
             <div>
               <span className="text-gray-400">Rôle:</span>{" "}
-              {members[selectedFields.role || 0]?.role}
+              <span className={getRoleBadgeClassName(members[selectedFields.role || 0]?.role || "")}>
+                {getRoleBadgeLabel(members[selectedFields.role || 0]?.role || "")}
+              </span>
             </div>
           </div>
         </div>

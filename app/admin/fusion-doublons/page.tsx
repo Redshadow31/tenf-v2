@@ -6,6 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 const navLinks = [
   { href: "/admin/dashboard", label: "Dashboard Général" },
@@ -243,8 +244,11 @@ export default function FusionDoublonsPage() {
                           <div className="text-sm text-gray-400">
                             Twitch: {member.twitchLogin}
                           </div>
-                          <div className="text-sm text-gray-400">
-                            Rôle: {member.role}
+                          <div className="text-sm text-gray-400 flex items-center gap-2">
+                            <span>Rôle:</span>
+                            <span className={getRoleBadgeClassName(member.role)}>
+                              {getRoleBadgeLabel(member.role)}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right">
@@ -253,14 +257,8 @@ export default function FusionDoublonsPage() {
                               VIP
                             </span>
                           )}
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            member.role === "Admin" || member.role === "Admin Adjoint"
-                              ? "bg-[#9146ff] text-white"
-                              : member.role === "Développement"
-                              ? "bg-[#5a32b4] text-white"
-                              : "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30"
-                          }`}>
-                            {member.role}
+                          <span className={getRoleBadgeClassName(member.role)}>
+                            {getRoleBadgeLabel(member.role)}
                           </span>
                         </div>
                       </div>

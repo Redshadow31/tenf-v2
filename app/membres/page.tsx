@@ -347,13 +347,13 @@ export default function Page() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
           {filteredMembers.map((member) => {
             return (
               <div
                 key={member.twitchLogin}
                 onClick={() => handleMemberClick(member)}
-                className="card flex min-h-[182px] cursor-pointer flex-col items-center justify-between space-y-3 overflow-hidden border p-4 text-center transition-transform hover:scale-[1.02]"
+                className="card flex min-h-[196px] cursor-pointer flex-col items-center justify-between space-y-3 overflow-hidden border p-4 text-center transition-transform hover:scale-[1.02]"
                 style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
               >
                 {/* Avatar avec badge VIP */}
@@ -393,7 +393,7 @@ export default function Page() {
 
                 {/* Badge rôle */}
                 <span
-                  className={`${getRoleBadgeClassName(member.role)} w-full max-w-full justify-center overflow-hidden text-ellipsis`}
+                  className={`${getRoleBadgeClassName(member.role)} member-grid-role-badge`}
                 >
                   {getRoleBadgeLabel(member.role)}
                 </span>

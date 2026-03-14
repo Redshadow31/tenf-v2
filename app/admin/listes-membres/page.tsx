@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface Member {
   twitchLogin: string;
@@ -145,7 +146,9 @@ export default function ListesMembresPage() {
                   className="bg-[#252529] border border-gray-600 rounded p-3 cursor-move hover:border-[#9146ff] transition-colors"
                 >
                   <div className="font-medium text-white">{member.displayName}</div>
-                  <div className="text-sm text-gray-400">{member.role}</div>
+                  <span className={`${getRoleBadgeClassName(member.role)} mt-2`}>
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
                 </div>
               ))}
               {lists.list1.length === 0 && (
@@ -177,7 +180,9 @@ export default function ListesMembresPage() {
                   className="bg-[#252529] border border-gray-600 rounded p-3 cursor-move hover:border-[#9146ff] transition-colors"
                 >
                   <div className="font-medium text-white">{member.displayName}</div>
-                  <div className="text-sm text-gray-400">{member.role}</div>
+                  <span className={`${getRoleBadgeClassName(member.role)} mt-2`}>
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
                 </div>
               ))}
               {lists.list2.length === 0 && (
@@ -209,7 +214,9 @@ export default function ListesMembresPage() {
                   className="bg-[#252529] border border-gray-600 rounded p-3 cursor-move hover:border-[#9146ff] transition-colors"
                 >
                   <div className="font-medium text-white">{member.displayName}</div>
-                  <div className="text-sm text-gray-400">{member.role}</div>
+                  <span className={`${getRoleBadgeClassName(member.role)} mt-2`}>
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
                 </div>
               ))}
               {lists.list3.length === 0 && (
@@ -233,7 +240,9 @@ export default function ListesMembresPage() {
                   className="bg-[#252529] border border-gray-600 rounded p-3 cursor-pointer hover:border-[#9146ff] transition-colors text-center"
                 >
                   <div className="font-medium text-white text-sm">{member.displayName}</div>
-                  <div className="text-xs text-gray-400 mt-1">{member.role}</div>
+                  <span className={`${getRoleBadgeClassName(member.role)} mt-2`}>
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
                   <div className="text-xs text-[#9146ff] mt-2">Cliquer pour assigner</div>
                 </div>
               ))}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface Promo {
   id: string;
@@ -272,7 +273,12 @@ export default function PromoManagementPage() {
                     {member.discordUsername && (
                       <span className="ml-4">Discord: {member.discordUsername}</span>
                     )}
-                    <span className="ml-4">Rôle: {member.role}</span>
+                    <span className="ml-4 inline-flex items-center gap-2">
+                      <span>Rôle:</span>
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
+                      </span>
+                    </span>
                   </div>
                   {!member.discordId && (
                     <div className="mt-2 text-xs text-yellow-400 flex items-center gap-2">

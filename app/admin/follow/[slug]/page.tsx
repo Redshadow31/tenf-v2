@@ -7,6 +7,7 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
 import WizebotImportModal from "@/components/admin/WizebotImportModal";
 import FollowImportFollowingModal from "@/components/admin/FollowImportFollowingModal";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type FollowStatus = 'followed' | 'not_followed' | 'unknown';
 
@@ -820,9 +821,9 @@ export default function FollowMemberPage() {
                                   </p>
                                 )}
                                 {member.role && (
-                                  <p className="text-gray-500 text-xs mt-1">
-                                    {member.role}
-                                  </p>
+                                  <span className={`${getRoleBadgeClassName(member.role)} mt-2`}>
+                                    {getRoleBadgeLabel(member.role)}
+                                  </span>
                                 )}
                               </div>
                               <div className="flex-shrink-0">
