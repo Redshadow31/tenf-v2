@@ -10,7 +10,7 @@ export default function BoutiqueAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"products" | "categories" | "counters">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "categories" | "counters" | "sections">("products");
   
   // Product form
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -40,6 +40,12 @@ export default function BoutiqueAdminPage() {
     supporters: "42",
     eventsFunded: "3",
   });
+  const [sectionsForm, setSectionsForm] = useState({
+    creatorsProductIds: [] as string[],
+    dropsProductIds: [] as string[],
+    goodiesProductIds: [] as string[],
+    communityProductIds: [] as string[],
+  });
 
   useEffect(() => {
     loadData();
@@ -62,6 +68,15 @@ export default function BoutiqueAdminPage() {
           productsSold: String(counters.productsSold ?? 128),
           supporters: String(counters.supporters ?? 42),
           eventsFunded: String(counters.eventsFunded ?? 3),
+        });
+      }
+      const sections = data?.settings?.sections;
+      if (sections) {
+        setSectionsForm({
+          creatorsProductIds: Array.isArray(sections.creatorsProductIds) ? sections.creatorsProductIds : [],
+          dropsProductIds: Array.isArray(sections.dropsProductIds) ? sections.dropsProductIds : [],
+          goodiesProductIds: Array.isArray(sections.goodiesProductIds) ? sections.goodiesProductIds : [],
+          communityProductIds: Array.isArray(sections.communityProductIds) ? sections.communityProductIds : [],
         });
       }
     } catch (err: any) {
@@ -307,6 +322,42 @@ export default function BoutiqueAdminPage() {
     }
   }
 
+  function toggleSectionProduct(
+    sectionKey: "creatorsProductIds" | "dropsProductIds" | "goodiesProductIds" | "communityProductIds",
+    productId: string
+  ) {
+    setSectionsForm((prev) => {
+      const current = prev[sectionKey];
+      const exists = current.includes(productId);
+      return {
+        ...prev,
+        [sectionKey]: exists ? current.filter((id) => id !== productId) : [...current, productId],
+      };
+    });
+  }
+
+  async function handleSaveSections() {
+    try {
+      setError(null);
+      const response = await fetch("/api/admin/shop/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections: sectionsForm }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la sauvegarde des sections");
+      }
+
+      setSuccess("Sections boutique mises a jour avec succes !");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Error updating sections:", err);
+      setError(err.message || "Erreur lors de la sauvegarde des sections");
+    }
+  }
+
   function resetProductForm() {
     setProductForm({
       name: "",
@@ -470,6 +521,24 @@ export default function BoutiqueAdminPage() {
         >
           Compteurs communauté
           {activeTab === "counters" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("sections");
+            setIsAddingProduct(false);
+            setIsAddingCategory(false);
+            setEditingCategory(null);
+            setEditingProduct(null);
+          }}
+          className="px-4 py-2 font-medium transition-colors relative"
+          style={{
+            color: activeTab === "sections" ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+          }}
+        >
+          Sections boutique
+          {activeTab === "sections" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />
           )}
         </button>
@@ -1051,6 +1120,115 @@ export default function BoutiqueAdminPage() {
           </div>
         </div>
       )}
+
+      {activeTab === "sections" && (
+        <div className="rounded-lg border p-6 space-y-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div>
+            <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+              Configuration des sections boutique
+            </h2>
+            <p className="text-sm mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              Selectionne les produits qui doivent apparaitre dans les sections publiques.
+            </p>
+          </div>
+
+          <SectionPicker
+            title="Produits createurs TENF"
+            selectedIds={sectionsForm.creatorsProductIds}
+            products={sortedProducts}
+            onToggle={(productId) => toggleSectionProduct("creatorsProductIds", productId)}
+          />
+
+          <SectionPicker
+            title="Drops communautaires"
+            selectedIds={sectionsForm.dropsProductIds}
+            products={sortedProducts}
+            onToggle={(productId) => toggleSectionProduct("dropsProductIds", productId)}
+          />
+
+          <SectionPicker
+            title="Petits goodies TENF"
+            selectedIds={sectionsForm.goodiesProductIds}
+            products={sortedProducts}
+            onToggle={(productId) => toggleSectionProduct("goodiesProductIds", productId)}
+          />
+
+          <SectionPicker
+            title="Produits communaute"
+            selectedIds={sectionsForm.communityProductIds}
+            products={sortedProducts}
+            onToggle={(productId) => toggleSectionProduct("communityProductIds", productId)}
+          />
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveSections}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white transition-colors"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              <Save className="w-4 h-4" />
+              Enregistrer les sections
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionPicker({
+  title,
+  selectedIds,
+  products,
+  onToggle,
+}: {
+  title: string;
+  selectedIds: string[];
+  products: ShopProduct[];
+  onToggle: (productId: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm md:text-base font-semibold" style={{ color: "var(--color-text)" }}>
+          {title}
+        </h3>
+        <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
+          {selectedIds.length} selection(s)
+        </span>
+      </div>
+
+      <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+        {products.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Aucun produit disponible.
+          </p>
+        ) : (
+          products.map((product) => {
+            const checked = selectedIds.includes(product.id);
+            return (
+              <label
+                key={`${title}-${product.id}`}
+                className="flex items-center gap-3 rounded-lg border p-2 cursor-pointer"
+                style={{
+                  borderColor: checked ? "var(--color-primary)" : "var(--color-border)",
+                  backgroundColor: checked ? "var(--color-card)" : "transparent",
+                }}
+              >
+                <input type="checkbox" checked={checked} onChange={() => onToggle(product.id)} className="w-4 h-4" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium line-clamp-1" style={{ color: "var(--color-text)" }}>
+                    {product.name}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    {product.isStartingPrice ? "A partir de " : ""}€{product.price.toFixed(2)}
+                  </p>
+                </div>
+              </label>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

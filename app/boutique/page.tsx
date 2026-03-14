@@ -37,6 +37,12 @@ interface ShopSettings {
     supporters?: number;
     eventsFunded?: number;
   };
+  sections?: {
+    creatorsProductIds?: string[];
+    dropsProductIds?: string[];
+    goodiesProductIds?: string[];
+    communityProductIds?: string[];
+  };
 }
 
 const DEFAULT_COUNTERS = {
@@ -44,6 +50,14 @@ const DEFAULT_COUNTERS = {
   supporters: 42,
   eventsFunded: 3,
 };
+
+const DEFAULT_SECTIONS = {
+  creatorsProductIds: [] as string[],
+  dropsProductIds: [] as string[],
+  goodiesProductIds: [] as string[],
+  communityProductIds: [] as string[],
+};
+const DONATION_URL = "https://lydia-app.com/pots?id=10561-don-twitch-entraide";
 
 const COLLECTIONS = [
   {
@@ -103,6 +117,8 @@ export default function BoutiquePage() {
   const [loading, setLoading] = useState(true);
   const [popularMode, setPopularMode] = useState<PopularSortMode>("mostViewed");
   const [communityCounters, setCommunityCounters] = useState(DEFAULT_COUNTERS);
+  const [configuredSections, setConfiguredSections] = useState(DEFAULT_SECTIONS);
+  const [popularProductsFromApi, setPopularProductsFromApi] = useState<ShopProduct[]>([]);
 
   useEffect(() => {
     loadProducts();
@@ -128,6 +144,12 @@ export default function BoutiquePage() {
           productsSold: Number(settings?.communityCounters?.productsSold ?? DEFAULT_COUNTERS.productsSold),
           supporters: Number(settings?.communityCounters?.supporters ?? DEFAULT_COUNTERS.supporters),
           eventsFunded: Number(settings?.communityCounters?.eventsFunded ?? DEFAULT_COUNTERS.eventsFunded),
+        });
+        setConfiguredSections({
+          creatorsProductIds: settings?.sections?.creatorsProductIds || [],
+          dropsProductIds: settings?.sections?.dropsProductIds || [],
+          goodiesProductIds: settings?.sections?.goodiesProductIds || [],
+          communityProductIds: settings?.sections?.communityProductIds || [],
         });
       }
     } catch (error) {
@@ -156,7 +178,44 @@ export default function BoutiquePage() {
   function handleProductClick(product: ShopProduct) {
     setSelectedProduct(product);
     setIsModalOpen(true);
+    void trackProductEvent(product.id, "view");
   }
+
+  async function trackProductEvent(productId: string, event: "view" | "click") {
+    try {
+      await fetch(`/api/shop/products/${encodeURIComponent(productId)}/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event }),
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("Tracking failed:", error);
+    }
+  }
+
+  useEffect(() => {
+    async function loadPopularProducts() {
+      try {
+        const params = new URLSearchParams({
+          mode: popularMode,
+          limit: "8",
+        });
+        if (selectedCategory) {
+          params.set("categoryId", selectedCategory);
+        }
+
+        const response = await fetch(`/api/shop/popular?${params.toString()}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setPopularProductsFromApi(data.products || []);
+      } catch (error) {
+        console.error("Error loading popular products:", error);
+      }
+    }
+
+    void loadPopularProducts();
+  }, [popularMode, selectedCategory]);
 
   function scrollToSection(sectionId: string) {
     const section = document.getElementById(sectionId);
@@ -170,7 +229,7 @@ export default function BoutiquePage() {
     handleProductClick(random);
   }
 
-  const communityProducts = useMemo(() => {
+  const communityProductsFallback = useMemo(() => {
     return filteredProducts
       .filter((product) => {
         const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
@@ -179,7 +238,7 @@ export default function BoutiquePage() {
       .slice(0, 5);
   }, [filteredProducts]);
 
-  const creatorProducts = useMemo(() => {
+  const creatorProductsFallback = useMemo(() => {
     return filteredProducts
       .filter((product) => {
         const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
@@ -188,7 +247,7 @@ export default function BoutiquePage() {
       .slice(0, 5);
   }, [filteredProducts]);
 
-  const drops = useMemo(() => {
+  const dropsFallback = useMemo(() => {
     const filtered = filteredProducts.filter((product) => {
       const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
       return includesAny(source, ["drop", "anniversaire", "event", "edition", "limited", "hoodie"]);
@@ -198,36 +257,47 @@ export default function BoutiquePage() {
     return filteredProducts.filter((product) => isRecentProduct(product)).slice(0, 3);
   }, [filteredProducts]);
 
-  const affordableGoodies = useMemo(() => {
+  const affordableGoodiesFallback = useMemo(() => {
     return filteredProducts.filter((product) => product.price <= 20).slice(0, 6);
   }, [filteredProducts]);
 
-  const popularProducts = useMemo(() => {
-    const list = [...filteredProducts];
-    if (popularMode === "newest") {
-      return list
-        .sort((a, b) => {
-          const aTs = new Date(a.createdAt || 0).getTime();
-          const bTs = new Date(b.createdAt || 0).getTime();
-          return bTs - aTs;
-        })
-        .slice(0, 8);
-    }
+  const productsById = useMemo(() => {
+    const map = new Map<string, ShopProduct>();
+    for (const product of orderedProducts) map.set(product.id, product);
+    return map;
+  }, [orderedProducts]);
 
-    if (popularMode === "mostClicked") {
-      return list
-        .sort((a, b) => {
-          const scoreA = Number(Boolean(a.buyUrl)) + Number(a.featured) + (a.isStartingPrice ? 0 : 1);
-          const scoreB = Number(Boolean(b.buyUrl)) + Number(b.featured) + (b.isStartingPrice ? 0 : 1);
-          return scoreB - scoreA;
-        })
-        .slice(0, 8);
-    }
+  function resolveConfiguredList(ids: string[] | undefined, fallback: ShopProduct[], limit: number) {
+    const sourceIds = ids || [];
+    const configured = sourceIds
+      .map((id) => productsById.get(id))
+      .filter((product): product is ShopProduct => Boolean(product))
+      .filter((product) => !selectedCategory || product.categoryId === selectedCategory);
+    if (configured.length > 0) return configured.slice(0, limit);
+    return fallback.slice(0, limit);
+  }
 
-    return list
-      .sort((a, b) => Number(b.featured) - Number(a.featured))
-      .slice(0, 8);
-  }, [filteredProducts, popularMode]);
+  const creatorProducts = useMemo(
+    () => resolveConfiguredList(configuredSections.creatorsProductIds, creatorProductsFallback, 5),
+    [configuredSections.creatorsProductIds, creatorProductsFallback, selectedCategory, productsById]
+  );
+
+  const drops = useMemo(
+    () => resolveConfiguredList(configuredSections.dropsProductIds, dropsFallback, 3),
+    [configuredSections.dropsProductIds, dropsFallback, selectedCategory, productsById]
+  );
+
+  const affordableGoodies = useMemo(
+    () => resolveConfiguredList(configuredSections.goodiesProductIds, affordableGoodiesFallback, 6),
+    [configuredSections.goodiesProductIds, affordableGoodiesFallback, selectedCategory, productsById]
+  );
+
+  const communityProducts = useMemo(
+    () => resolveConfiguredList(configuredSections.communityProductIds, communityProductsFallback, 5),
+    [configuredSections.communityProductIds, communityProductsFallback, selectedCategory, productsById]
+  );
+
+  const popularProducts = popularProductsFromApi.length > 0 ? popularProductsFromApi : filteredProducts.slice(0, 8);
 
   const seasonalLabel = useMemo(() => {
     const month = new Date().getMonth();
@@ -272,7 +342,7 @@ export default function BoutiquePage() {
             style={{ backgroundColor: "rgba(220,38,38,0.18)" }}
           />
 
-          <div className="relative z-10 space-y-6">
+          <div className="relative z-10 space-y-6 xl:pr-64 2xl:pr-72">
             <div className="space-y-3">
               <p className="inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide border" style={{ color: "#f2e8ff", borderColor: "rgba(139,92,246,0.6)" }}>
                 BOUTIQUE TENF
@@ -297,11 +367,20 @@ export default function BoutiquePage() {
               >
                 🎁 Voir les nouveautes
               </button>
+              <a
+                href={DONATION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-3 rounded-lg font-semibold border transition-transform hover:scale-[1.03]"
+                style={{ borderColor: "rgba(220,38,38,0.7)", color: "#ffd7e0", backgroundColor: "rgba(220,38,38,0.14)" }}
+              >
+                💜 Soutenir TENF (don)
+              </a>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {COMMUNITY_STATS.map((stat) => (
-                <div key={stat.label} className="rounded-xl border p-4 hover-scale-soft" style={{ borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(20,20,28,0.9)" }}>
+                <div key={stat.label} className="rounded-xl border p-4 hover-scale-soft min-h-[96px]" style={{ borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(20,20,28,0.9)" }}>
                   <p className="text-sm" style={{ color: "#cab7ff" }}>
                     {stat.icon} {stat.label}
                   </p>
@@ -314,8 +393,8 @@ export default function BoutiquePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {impactCounters.map((item) => (
-                <div key={item.label} className="rounded-lg border p-3 hover-scale-soft" style={{ borderColor: "rgba(220,38,38,0.25)", backgroundColor: "rgba(30,16,20,0.65)" }}>
-                  <p className="text-sm" style={{ color: "#f5d5db" }}>
+                <div key={item.label} className="rounded-lg border p-3 hover-scale-soft min-h-[92px]" style={{ borderColor: "rgba(220,38,38,0.25)", backgroundColor: "rgba(30,16,20,0.65)" }}>
+                  <p className="text-sm leading-snug" style={{ color: "#f5d5db" }}>
                     {item.label}
                   </p>
                   <p className="text-xl font-bold" style={{ color: "#ffffff" }}>
@@ -421,7 +500,7 @@ export default function BoutiquePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {popularProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="popular" />
+              <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="popular" />
             ))}
           </div>
         </section>
@@ -433,7 +512,7 @@ export default function BoutiquePage() {
           {creatorProducts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {creatorProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="creator" />
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="creator" />
               ))}
             </div>
           ) : (
@@ -451,7 +530,7 @@ export default function BoutiquePage() {
           {drops.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {drops.map((product) => (
-                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="drop" />
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="drop" />
               ))}
             </div>
           ) : (
@@ -466,7 +545,7 @@ export default function BoutiquePage() {
           {affordableGoodies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
               {affordableGoodies.map((product) => (
-                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="community" />
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="community" />
               ))}
             </div>
           ) : (
@@ -481,7 +560,7 @@ export default function BoutiquePage() {
           {communityProducts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {communityProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="community" />
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="community" />
               ))}
             </div>
           ) : (
@@ -562,7 +641,7 @@ export default function BoutiquePage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onClick={handleProductClick} />
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} />
               ))}
             </div>
           </section>
@@ -577,6 +656,17 @@ export default function BoutiquePage() {
           <p className="mt-3 max-w-2xl mx-auto" style={{ color: "#ccc4de" }}>
             Chaque commande participe au developpement des projets communautaires et aux prochains evenements.
           </p>
+          <div className="mt-5">
+            <a
+              href={DONATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-5 py-3 rounded-lg font-semibold text-white transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: "#dc2626" }}
+            >
+              💜 Faire un don TENF
+            </a>
+          </div>
         </section>
       </div>
 
@@ -686,6 +776,7 @@ type ProductCardEmphasis = "popular" | "creator" | "community" | "drop";
 interface ProductCardProps {
   product: ShopProduct;
   onClick: (product: ShopProduct) => void;
+  onTrackClick?: (productId: string, event: "view" | "click") => Promise<void> | void;
   emphasis?: ProductCardEmphasis;
 }
 
@@ -698,7 +789,7 @@ function resolveBadges(product: ShopProduct, emphasis?: ProductCardEmphasis): st
   return badges.slice(0, 2);
 }
 
-function ProductCard({ product, onClick, emphasis }: ProductCardProps) {
+function ProductCard({ product, onClick, onTrackClick, emphasis }: ProductCardProps) {
   const categoryColor = product.category?.color || "#8B5CF6";
   const mainImage = product.images[0] || "";
   const priceLabel = `${product.isStartingPrice ? "A partir de " : ""}€${product.price.toFixed(2)}`;
@@ -767,6 +858,7 @@ function ProductCard({ product, onClick, emphasis }: ProductCardProps) {
             style={{ backgroundColor: "#8B5CF6" }}
             onClick={(e) => {
               e.stopPropagation();
+              void onTrackClick?.(product.id, "click");
               if (!product.buyUrl) onClick(product);
             }}
           >

@@ -13,6 +13,12 @@ export interface ShopSettings {
     supporters: number;
     eventsFunded: number;
   };
+  sections: {
+    creatorsProductIds: string[];
+    dropsProductIds: string[];
+    goodiesProductIds: string[];
+    communityProductIds: string[];
+  };
   updatedAt: string;
   updatedBy?: string;
 }
@@ -22,6 +28,12 @@ const DEFAULT_SHOP_SETTINGS: ShopSettings = {
     productsSold: 128,
     supporters: 42,
     eventsFunded: 3,
+  },
+  sections: {
+    creatorsProductIds: [],
+    dropsProductIds: [],
+    goodiesProductIds: [],
+    communityProductIds: [],
   },
   updatedAt: new Date(0).toISOString(),
 };
@@ -73,6 +85,10 @@ export async function GET(request: NextRequest) {
       communityCounters: {
         ...DEFAULT_SHOP_SETTINGS.communityCounters,
         ...(parsedSettings?.communityCounters || {}),
+      },
+      sections: {
+        ...DEFAULT_SHOP_SETTINGS.sections,
+        ...(parsedSettings?.sections || {}),
       },
     };
 

@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
       // Marquer comme modifié manuellement pour protéger contre les synchronisations
       roleManuallySet: true,
     };
+    const desiredDiscordId = String(mergedUpdates.discordId || "").trim() || undefined;
 
     const primaryExistsInSupabase = supabaseMembersByLogin.has(primaryTwitchLogin);
     const primaryExistsInLegacy = legacyMembersByLogin.has(primaryTwitchLogin);
@@ -132,21 +133,6 @@ export async function POST(request: NextRequest) {
         { error: `Membre principal introuvable: ${primaryTwitchLogin}` },
         { status: 404 }
       );
-    }
-
-    // Mettre à jour le membre principal dans Supabase si présent, sinon dans legacy.
-    if (primaryExistsInSupabase) {
-      await memberRepository.update(primaryTwitchLogin, mergedUpdates);
-      // Best effort: garder aussi legacy aligné si l'entrée existe.
-      if (primaryExistsInLegacy) {
-        try {
-          await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
-        } catch (legacySyncError) {
-          console.warn("[Merge Members] Sync legacy principal ignoré:", legacySyncError);
-        }
-      }
-    } else {
-      await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
     }
 
     // Supprimer les autres membres (doublons)
@@ -161,6 +147,40 @@ export async function POST(request: NextRequest) {
         await deleteMemberData(twitchLogin, admin.discordId);
       }
       membersToDelete.push(twitchLogin);
+    }
+
+    // Vérifier qu'un éventuel discordId final n'est pas détenu par un membre hors fusion
+    if (desiredDiscordId) {
+      const owner = await memberRepository.findByDiscordId(desiredDiscordId);
+      if (owner) {
+        const ownerLogin = owner.twitchLogin.toLowerCase();
+        const ownerIsPrimary = ownerLogin === primaryTwitchLogin;
+        const ownerWasMerged = otherMembers.includes(ownerLogin);
+        if (!ownerIsPrimary && !ownerWasMerged) {
+          return NextResponse.json(
+            {
+              error: `Impossible de finaliser la fusion: l'ID Discord ${desiredDiscordId} est déjà utilisé par ${owner.twitchLogin}.`,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
+    // Mettre à jour le membre principal APRÈS suppression des doublons.
+    // Cela évite les collisions de contrainte unique sur discord_id pendant la fusion.
+    if (primaryExistsInSupabase) {
+      await memberRepository.update(primaryTwitchLogin, mergedUpdates);
+      // Best effort: garder aussi legacy aligné si l'entrée existe.
+      if (primaryExistsInLegacy) {
+        try {
+          await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
+        } catch (legacySyncError) {
+          console.warn("[Merge Members] Sync legacy principal ignoré:", legacySyncError);
+        }
+      }
+    } else {
+      await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
     }
 
     return NextResponse.json({

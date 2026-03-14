@@ -11,6 +11,12 @@ export interface ShopSettings {
     supporters: number;
     eventsFunded: number;
   };
+  sections: {
+    creatorsProductIds: string[];
+    dropsProductIds: string[];
+    goodiesProductIds: string[];
+    communityProductIds: string[];
+  };
   updatedAt: string;
   updatedBy?: string;
 }
@@ -21,6 +27,12 @@ const DEFAULT_SHOP_SETTINGS: ShopSettings = {
     supporters: 42,
     eventsFunded: 3,
   },
+  sections: {
+    creatorsProductIds: [],
+    dropsProductIds: [],
+    goodiesProductIds: [],
+    communityProductIds: [],
+  },
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -28,6 +40,13 @@ function sanitizePositiveInt(value: unknown, fallback: number): number {
   const parsed = Number.parseInt(String(value), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return parsed;
+}
+
+function sanitizeIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
 }
 
 export async function GET() {
@@ -47,6 +66,10 @@ export async function GET() {
         ...DEFAULT_SHOP_SETTINGS.communityCounters,
         ...(parsed?.communityCounters || {}),
       },
+      sections: {
+        ...DEFAULT_SHOP_SETTINGS.sections,
+        ...(parsed?.sections || {}),
+      },
     };
 
     return NextResponse.json({ settings });
@@ -65,18 +88,40 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const counters = body?.communityCounters || {};
+    const sections = body?.sections || {};
+
+    const store = getStore(SHOP_STORE);
+    const existingSettingsJson = await store.get(SETTINGS_KEY);
+    const existingParsed = existingSettingsJson ? JSON.parse(existingSettingsJson) : null;
+    const previousSettings: ShopSettings = {
+      ...DEFAULT_SHOP_SETTINGS,
+      ...existingParsed,
+      communityCounters: {
+        ...DEFAULT_SHOP_SETTINGS.communityCounters,
+        ...(existingParsed?.communityCounters || {}),
+      },
+      sections: {
+        ...DEFAULT_SHOP_SETTINGS.sections,
+        ...(existingParsed?.sections || {}),
+      },
+    };
 
     const settings: ShopSettings = {
       communityCounters: {
-        productsSold: sanitizePositiveInt(counters.productsSold, DEFAULT_SHOP_SETTINGS.communityCounters.productsSold),
-        supporters: sanitizePositiveInt(counters.supporters, DEFAULT_SHOP_SETTINGS.communityCounters.supporters),
-        eventsFunded: sanitizePositiveInt(counters.eventsFunded, DEFAULT_SHOP_SETTINGS.communityCounters.eventsFunded),
+        productsSold: sanitizePositiveInt(counters.productsSold, previousSettings.communityCounters.productsSold),
+        supporters: sanitizePositiveInt(counters.supporters, previousSettings.communityCounters.supporters),
+        eventsFunded: sanitizePositiveInt(counters.eventsFunded, previousSettings.communityCounters.eventsFunded),
+      },
+      sections: {
+        creatorsProductIds: sanitizeIds(sections.creatorsProductIds ?? previousSettings.sections.creatorsProductIds),
+        dropsProductIds: sanitizeIds(sections.dropsProductIds ?? previousSettings.sections.dropsProductIds),
+        goodiesProductIds: sanitizeIds(sections.goodiesProductIds ?? previousSettings.sections.goodiesProductIds),
+        communityProductIds: sanitizeIds(sections.communityProductIds ?? previousSettings.sections.communityProductIds),
       },
       updatedAt: new Date().toISOString(),
       updatedBy: admin.discordId,
     };
 
-    const store = getStore(SHOP_STORE);
     await store.set(SETTINGS_KEY, JSON.stringify(settings, null, 2));
 
     return NextResponse.json({ success: true, settings });
