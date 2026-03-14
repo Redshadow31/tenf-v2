@@ -4,6 +4,7 @@ import Link from "next/link";
 import AboutPageEnhancer from "@/components/about/AboutPageEnhancer";
 import { getTwitchUsers } from "@/lib/twitch";
 import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
+import { parisLocalDateTimeToUtcIso } from "@/lib/timezone";
 import {
   ArrowRight,
   BookOpen,
@@ -65,6 +66,8 @@ type PublicEvent = {
   id: string;
   title: string;
   date: string;
+  startAtUtc?: string;
+  startAtParisLocal?: string;
   category?: string;
   location?: string;
 };
@@ -260,6 +263,34 @@ function formatEventDate(value: string): string {
   });
 }
 
+function parseEventTimestamp(event: PublicEvent): number {
+  const primaryCandidates = [event.startAtUtc, event.date].filter(Boolean) as string[];
+
+  for (const candidate of primaryCandidates) {
+    const parsed = Date.parse(candidate);
+    if (Number.isFinite(parsed)) return parsed;
+
+    // Formats legacy sans timezone: on les interprete comme heure locale Paris.
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(candidate)) {
+      const utcIso = parisLocalDateTimeToUtcIso(candidate);
+      const reparsed = Date.parse(utcIso);
+      if (Number.isFinite(reparsed)) return reparsed;
+    }
+  }
+
+  if (event.startAtParisLocal) {
+    try {
+      const utcIso = parisLocalDateTimeToUtcIso(event.startAtParisLocal);
+      const parsed = Date.parse(utcIso);
+      if (Number.isFinite(parsed)) return parsed;
+    } catch {
+      // no-op: fallback ci-dessous
+    }
+  }
+
+  return Number.NEGATIVE_INFINITY;
+}
+
 export const metadata: Metadata = {
   title: "A propos | TENF",
   description:
@@ -321,13 +352,8 @@ export default async function Page() {
       const eventsData = (await eventsRes.json()) as EventsApiResponse;
       const events = eventsData.events ?? [];
       activityFeed = events
-        .filter(
-          (event) =>
-            Boolean(event?.title) &&
-            Boolean(event?.date) &&
-            !Number.isNaN(new Date(event.date).getTime())
-        )
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .filter((event) => Boolean(event?.title) && Number.isFinite(parseEventTimestamp(event)))
+        .sort((a, b) => parseEventTimestamp(b) - parseEventTimestamp(a))
         .slice(0, 6);
     }
 
@@ -577,21 +603,32 @@ export default async function Page() {
               Chaque brique est reliee aux autres pour que l&apos;entraide reste fluide, visible et utile au quotidien.
             </p>
           </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-6">
-            {ecosystemItems.map((item) => {
+          <div className="grid gap-4 md:gap-5 md:grid-cols-2 xl:grid-cols-12">
+            {ecosystemItems.map((item, index) => {
               const Icon = item.icon;
-              const isHighlight = item.title === "Serveur Discord structure" || item.title === "Evenements communautaires";
+              const layoutClass =
+                index === 0
+                  ? "xl:col-span-7"
+                  : index === 1
+                    ? "xl:col-span-5"
+                    : index === 2
+                      ? "xl:col-span-4"
+                      : index === 3
+                        ? "xl:col-span-8"
+                        : index === 4
+                          ? "xl:col-span-6"
+                          : index === 5
+                            ? "xl:col-span-6"
+                            : "xl:col-span-12";
               return (
                 <article
                   key={item.title}
-                  className={`rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 about-reveal ${
-                    isHighlight ? "xl:col-span-3" : "xl:col-span-2"
-                  }`}
+                  className={`rounded-2xl border p-5 md:p-6 transition-all duration-200 hover:-translate-y-1 about-reveal ${layoutClass}`}
                   style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
                   <div
                     className="mb-4 inline-flex rounded-xl p-2.5"
-                    style={{ backgroundColor: isHighlight ? "color-mix(in srgb, var(--color-primary) 22%, transparent)" : "color-mix(in srgb, var(--color-primary) 15%, transparent)" }}
+                    style={{ backgroundColor: "color-mix(in srgb, var(--color-primary) 18%, transparent)" }}
                   >
                     <Icon size={20} style={{ color: "var(--color-primary)" }} />
                   </div>
@@ -676,7 +713,15 @@ export default async function Page() {
                       {founder.roleLabel}
                     </p>
                     <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                      twitch.tv/{founder.twitchLogin}
+                      <a
+                        href={`https://www.twitch.tv/${founder.twitchLogin}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline decoration-dotted underline-offset-2"
+                        style={{ color: "var(--color-text-secondary)" }}
+                      >
+                        twitch.tv/{founder.twitchLogin}
+                      </a>
                     </p>
                   </div>
                 </div>
@@ -688,51 +733,6 @@ export default async function Page() {
                 </p>
               </article>
             ))}
-          </div>
-        </section>
-
-        <section className="space-y-8 about-fade-up">
-          <div className="max-w-3xl space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-              TENF en chiffres
-            </p>
-            <h2 className="text-3xl font-bold sm:text-4xl" style={{ color: "var(--color-text)" }}>
-              Une communaute active, en mouvement permanent
-            </h2>
-          </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-2xl border p-6 about-reveal" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-4xl font-bold" style={{ color: "var(--color-primary)" }}>
-                <span className="about-counter" data-counter-target={totalMembers} data-counter-prefix="" data-counter-suffix="">
-                  {formatNumber(totalMembers)}
-                </span>
-              </p>
-              <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>membres dans TENF aujourd&apos;hui</p>
-            </article>
-            <article className="rounded-2xl border p-6 about-reveal" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-4xl font-bold" style={{ color: "var(--color-primary)" }}>
-                <span className="about-counter" data-counter-target={activeMembers} data-counter-prefix="" data-counter-suffix="">
-                  {formatNumber(activeMembers)}
-                </span>
-              </p>
-              <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>membres actifs et engages dans l&apos;entraide</p>
-            </article>
-            <article className="rounded-2xl border p-6 about-reveal" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-4xl font-bold" style={{ color: "var(--color-primary)" }}>
-                <span className="about-counter" data-counter-target={monthlyGrowth} data-counter-prefix="+" data-counter-suffix="">
-                  {`+${formatNumber(monthlyGrowth)}`}
-                </span>
-              </p>
-              <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>nouveaux membres en moyenne par mois</p>
-            </article>
-            <article className="rounded-2xl border p-6 about-reveal" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-4xl font-bold" style={{ color: "var(--color-primary)" }}>
-                <span className="about-counter" data-counter-target={dailyGrowth} data-counter-prefix="" data-counter-suffix="+">
-                  {`${dailyGrowth}+`}
-                </span>
-              </p>
-              <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>nouveau membre chaque jour minimum</p>
-            </article>
           </div>
         </section>
 
