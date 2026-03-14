@@ -128,8 +128,8 @@ export default function BoutiquePage() {
     try {
       setLoading(true);
       const [productsResponse, settingsResponse] = await Promise.all([
-        fetch("/api/shop/products"),
-        fetch("/api/shop/settings"),
+        fetch("/api/shop/products", { cache: "no-store" }),
+        fetch("/api/shop/settings", { cache: "no-store" }),
       ]);
       if (!productsResponse.ok) throw new Error("Erreur lors du chargement des produits");
 
@@ -205,7 +205,7 @@ export default function BoutiquePage() {
           params.set("categoryId", selectedCategory);
         }
 
-        const response = await fetch(`/api/shop/popular?${params.toString()}`);
+        const response = await fetch(`/api/shop/popular?${params.toString()}`, { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         setPopularProductsFromApi(data.products || []);

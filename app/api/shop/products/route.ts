@@ -85,7 +85,14 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ products: enrichedProducts, categories, settings });
+    return NextResponse.json(
+      { products: enrichedProducts, categories, settings },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

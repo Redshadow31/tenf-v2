@@ -70,7 +70,14 @@ export async function GET(request: NextRequest) {
     }
 
     const productsOut = enriched.slice(0, limit).map(({ __position, __views, __clicks, ...rest }) => rest);
-    return NextResponse.json({ products: productsOut });
+    return NextResponse.json(
+      { products: productsOut },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching popular products:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

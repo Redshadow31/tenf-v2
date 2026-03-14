@@ -52,7 +52,14 @@ export async function GET() {
       },
     };
 
-    return NextResponse.json({ settings });
+    return NextResponse.json(
+      { settings },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching public shop settings:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
