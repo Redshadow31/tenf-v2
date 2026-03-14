@@ -298,9 +298,13 @@ export async function GET(request: NextRequest) {
     // Enrichir chaque membre avec son avatar
     const membersWithAvatars = members.map((m) => {
       const normalizedLogin = typeof m.twitchLogin === 'string' ? m.twitchLogin.toLowerCase() : '';
-      let avatar = getSavedAvatarUrl(m);
+      const savedAvatar = getSavedAvatarUrl(m);
+      let avatar = isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined;
       if (!avatar) {
         avatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      }
+      if (!avatar) {
+        avatar = savedAvatar;
       }
       if (!avatar && m.discordId) avatar = getDiscordDefaultAvatar(m.discordId);
       if (!avatar) {

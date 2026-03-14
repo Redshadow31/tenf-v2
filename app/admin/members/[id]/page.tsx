@@ -141,6 +141,10 @@ export default function Member360Page() {
   }
 
   const member = data.member;
+  const discordDefaultAvatar = member.discordId
+    ? `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`
+    : undefined;
+  const resolvedAvatar = member.avatar || member.twitchStatus?.profileImageUrl || discordDefaultAvatar;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -180,11 +184,11 @@ export default function Member360Page() {
           <div className="flex items-start gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              {member.discordId ? (
+              {resolvedAvatar ? (
                 <img
-                  src={`https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`}
+                  src={resolvedAvatar}
                   alt={member.displayName}
-                  className="w-20 h-20 rounded-full"
+                  className="w-20 h-20 rounded-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     if ((e.target as HTMLImageElement).nextElementSibling) {
@@ -193,7 +197,7 @@ export default function Member360Page() {
                   }}
                 />
               ) : null}
-              <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white text-2xl font-semibold ${member.discordId ? 'hidden' : ''}`}>
+              <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white text-2xl font-semibold ${resolvedAvatar ? 'hidden' : ''}`}>
                 {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
               </div>
             </div>

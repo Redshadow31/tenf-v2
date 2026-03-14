@@ -103,11 +103,15 @@ export async function GET() {
         const normalizedLogin = typeof member.twitchLogin === 'string'
           ? member.twitchLogin.toLowerCase()
           : '';
-        let avatar: string | undefined = getSavedAvatarUrl(member);
+        const savedAvatar = getSavedAvatarUrl(member);
+        let avatar: string | undefined = isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined;
         if (!avatar) {
           avatar = normalizedLogin
             ? avatarMap.get(normalizedLogin)
             : undefined;
+        }
+        if (!avatar) {
+          avatar = savedAvatar;
         }
         
         // Si pas d'avatar Twitch, utiliser Discord en fallback

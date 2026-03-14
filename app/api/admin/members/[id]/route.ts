@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage, findMemberByIdentifier } from "@/lib/memberData";
+import { getTwitchUsers } from "@/lib/twitch";
+
+function getDiscordDefaultAvatar(discordId?: string): string | undefined {
+  if (!discordId) return undefined;
+  const numericId = Number.parseInt(discordId, 10);
+  if (Number.isNaN(numericId)) return undefined;
+  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
+}
+
+function getSavedAvatarUrl(member: any): string | undefined {
+  const candidate = member?.twitchStatus?.profileImageUrl;
+  if (typeof candidate !== "string") return undefined;
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
 
 /**
  * GET - Récupère les données complètes d'un membre pour la fiche 360°
@@ -57,9 +72,28 @@ export async function GET(
       );
     }
 
+    let fetchedAvatar: string | undefined;
+    if (member.twitchLogin) {
+      try {
+        const twitchUsers = await getTwitchUsers([member.twitchLogin]);
+        fetchedAvatar = twitchUsers[0]?.profile_image_url;
+      } catch {
+        fetchedAvatar = undefined;
+      }
+    }
+
+    const avatar =
+      getSavedAvatarUrl(member) ||
+      fetchedAvatar ||
+      getDiscordDefaultAvatar(member.discordId) ||
+      `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin || "?").charAt(0).toUpperCase()}`;
+
     // Retourner les données complètes du membre
     return NextResponse.json({
-      member,
+      member: {
+        ...member,
+        avatar,
+      },
       success: true,
     });
   } catch (error) {

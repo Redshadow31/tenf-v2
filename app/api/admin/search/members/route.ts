@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
+import { getTwitchUsers, type TwitchUser } from "@/lib/twitch";
 
 export const dynamic = 'force-dynamic';
+
+function getDiscordDefaultAvatar(discordId?: string): string | undefined {
+  if (!discordId) return undefined;
+  const numericId = Number.parseInt(discordId, 10);
+  if (Number.isNaN(numericId)) return undefined;
+  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
+}
+
+function isUsableTwitchAvatar(url?: string): boolean {
+  if (!url) return false;
+  const normalized = url.toLowerCase();
+  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
+}
+
+function getSavedAvatarUrl(member: any): string | undefined {
+  const candidate = member?.twitchStatus?.profileImageUrl;
+  if (typeof candidate !== "string") return undefined;
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
 
 /**
  * GET - Recherche de membres (lecture seule)
@@ -44,7 +65,7 @@ export async function GET(request: NextRequest) {
     const normalizedQuery = query.toLowerCase().trim();
 
     // Filtrer les membres
-    const filteredMembers = allMembers
+    const matchingMembers = allMembers
       .filter((member) => {
         if (!includeInactive && member.isActive === false) return false;
         if (!includeCommunity && member.role === "Communauté") return false;
@@ -63,8 +84,41 @@ export async function GET(request: NextRequest) {
         // Vérifier si la requête correspond à au moins un champ
         return searchableFields.some((field) => field.includes(normalizedQuery));
       })
-      .slice(0, limit)
-      .map((member) => ({
+      .slice(0, limit);
+
+    const twitchLogins = Array.from(
+      new Set(
+        matchingMembers
+          .map((member) => member.twitchLogin)
+          .filter((login): login is string => typeof login === "string" && login.trim().length > 0)
+      )
+    );
+
+    let twitchUsers: TwitchUser[] = [];
+    try {
+      twitchUsers = await getTwitchUsers(twitchLogins);
+    } catch {
+      twitchUsers = [];
+    }
+
+    const avatarMap = new Map(
+      twitchUsers
+        .filter((user: TwitchUser) => isUsableTwitchAvatar(user.profile_image_url))
+        .map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url] as const)
+    );
+
+    const filteredMembers = matchingMembers.map((member) => {
+      const normalizedLogin = String(member.twitchLogin || "").toLowerCase();
+      const savedAvatar = getSavedAvatarUrl(member);
+      const fetchedAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      const avatar =
+        (isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined) ||
+        fetchedAvatar ||
+        savedAvatar ||
+        getDiscordDefaultAvatar(member.discordId) ||
+        `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin || "?").charAt(0).toUpperCase()}`;
+
+      return {
         id: member.twitchLogin || member.discordId || "",
         twitchLogin: member.twitchLogin,
         displayName: member.displayName,
@@ -77,7 +131,9 @@ export async function GET(request: NextRequest) {
         twitchUrl: member.twitchUrl,
         badges: member.badges || [],
         description: member.description,
-      }));
+        avatar,
+      };
+    });
 
     return NextResponse.json({
       members: filteredMembers,
