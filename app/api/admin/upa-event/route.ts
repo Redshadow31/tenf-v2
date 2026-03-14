@@ -58,8 +58,8 @@ export async function PUT(request: Request) {
 
     const normalizedStaffDraft = (staffInput as Array<Record<string, unknown>>)
       .map((item, index) => {
-        const rawLogin = String(item?.twitchLogin ?? item?.name ?? "").trim().replace(/^@/, "").toLowerCase();
-        if (!rawLogin) return null;
+        const rawLogin = String(item?.twitchLogin ?? "").trim().replace(/^@/, "").toLowerCase();
+        const fallbackName = String(item?.name ?? "").trim();
         const staffTypeRaw = String(item?.staffType ?? "moderator").trim();
         const staffType = staffTypeRaw === "high_staff" ? "high_staff" : "moderator";
         const orderRaw = Number.parseInt(String(item?.order ?? index + 1), 10);
@@ -67,7 +67,7 @@ export async function PUT(request: Request) {
         return {
           id: String(item?.id || `staff-${crypto.randomUUID()}`),
           twitchLogin: rawLogin,
-          name: rawLogin,
+          name: fallbackName || rawLogin || "Membre UPA",
           role: String(item?.role ?? "").trim(),
           description: String(item?.description ?? "").trim(),
           staffType,
@@ -75,8 +75,7 @@ export async function PUT(request: Request) {
           order,
           isActive: item?.isActive === false ? false : true,
         };
-      })
-      .filter(Boolean) as UpaEventContent["staff"];
+      }) as UpaEventContent["staff"];
 
     const uniqueLogins = extractUniqueTwitchLogins(
       normalizedStaffDraft.map((member) => ({ twitchLogin: member.twitchLogin }))
@@ -89,7 +88,7 @@ export async function PUT(request: Request) {
       const user = twitchUserMap.get(member.twitchLogin);
       return {
         ...member,
-        name: user?.display_name || member.twitchLogin,
+        name: user?.display_name || member.name || member.twitchLogin || "Membre UPA",
         avatarUrl: avatarMap.get(member.twitchLogin) || member.avatarUrl || "",
       };
     });

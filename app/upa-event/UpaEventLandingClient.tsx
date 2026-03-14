@@ -431,11 +431,11 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
         )}
 
         <div className="upa-staff-divider">
-          <span>Moderateurs UPA</span>
+          <span>Staff UPA</span>
         </div>
 
         {moderators.length === 0 ? (
-          <p className="upa-empty-text">Les moderateurs UPA seront ajoutes ici.</p>
+          <p className="upa-empty-text">Le staff UPA sera ajoute ici.</p>
         ) : (
           <div className="upa-grid upa-grid-3">
             {moderators.map((member) => (
