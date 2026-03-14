@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import MemberModal from "@/components/MemberModal";
-import { getRoleBadgeStyles } from "@/lib/roleColors";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import MembersDiscoveryNote from "@/components/MembersDiscoveryNote";
 
 const filters = ["Tous", "Développement", "Affiliés", "Staff"];
@@ -154,9 +154,6 @@ export default function Page() {
       return 0;
     });
   };
-
-  // Utiliser la fonction utilitaire pour les couleurs de rôles
-  const getBadgeColor = (role: string) => getRoleBadgeStyles(role);
 
   const handleMemberClick = (member: PublicMember) => {
     // Utiliser l'avatar déjà récupéré depuis l'API (pas besoin d'appel supplémentaire)
@@ -394,14 +391,9 @@ export default function Page() {
 
                 {/* Badge rôle */}
                 <span
-                  className="rounded-lg px-2 py-1 text-xs font-bold"
-                  style={{
-                    backgroundColor: getBadgeColor(member.role).bg,
-                    color: getBadgeColor(member.role).text,
-                    border: getBadgeColor(member.role).border ? `1px solid ${getBadgeColor(member.role).border}` : 'none',
-                  }}
+                  className={getRoleBadgeClassName(member.role)}
                 >
-                  {member.role}
+                  {getRoleBadgeLabel(member.role)}
                 </span>
               </div>
             );

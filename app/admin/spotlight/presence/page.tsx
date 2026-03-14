@@ -6,6 +6,7 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import ManualSpotlightModal from "@/components/admin/ManualSpotlightModal";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface SpotlightData {
   id: string;
@@ -389,8 +390,8 @@ export default function PresenceSpotlightPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-gray-700/50 text-gray-300">
-                        {member.role}
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center text-white">

@@ -16,6 +16,7 @@ export type MemberRole =
   | "Soutien TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
+  | "Les P'tits Jeunes"
   | "Communauté"
   // Compatibilité legacy
   | "Admin Adjoint"
@@ -54,6 +55,7 @@ const CANONICAL_MEMBER_ROLES: MemberRole[] = [
   "Soutien TENF",
   "Contributeur TENF du Mois",
   "Créateur Junior",
+  "Les P'tits Jeunes",
   "Communauté",
 ];
 
@@ -68,6 +70,9 @@ export function toCanonicalMemberRole(role: string): MemberRole {
 }
 
 export function toCanonicalBadgeLabel(badge: string): string {
+  if (badge === "Communauté (mineur)") {
+    return "Communauté";
+  }
   if (isLegacyMemberRole(badge)) {
     return LEGACY_BADGE_TO_CANONICAL[badge];
   }

@@ -7,6 +7,7 @@ type MemberRole =
   | "Affilié"
   | "Développement"
   | "Créateur Junior"
+  | "Les P'tits Jeunes"
   | "Communauté"
   | "Modérateur en formation"
   | "Modérateur"
@@ -186,6 +187,7 @@ export default function AddChannelModal({
               <option value="Affilié">Affilié</option>
               <option value="Développement">Développement</option>
               <option value="Créateur Junior">Créateur Junior</option>
+              <option value="Les P'tits Jeunes">Les P&apos;tits Jeunes</option>
               <option value="Communauté">Communauté</option>
               <option value="Modérateur en formation">Modérateur en formation</option>
               <option value="Modérateur">Modérateur</option>

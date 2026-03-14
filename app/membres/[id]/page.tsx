@@ -1,17 +1,9 @@
 import Link from "next/link";
 import { getTwitchUser } from "@/lib/twitch";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type MemberPageProps = {
   params: { id: string };
-};
-
-const roleBadgeClass: Record<string, string> = {
-  "Modérateur Junior": "bg-[#9146ff] text-white",
-  "Développement": "bg-[#5a32b4] text-white",
-  Affilié: "bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30",
-  Mentor: "bg-gray-700 text-white",
-  Admin: "bg-gray-700 text-white",
-  "Admin Adjoint": "bg-gray-700 text-white",
 };
 
 export default async function MemberPage({ params }: MemberPageProps) {
@@ -55,12 +47,8 @@ export default async function MemberPage({ params }: MemberPageProps) {
             <div>
               <h1 className="text-3xl font-bold text-white">{mockMember.name}</h1>
               <div className="mt-2 inline-flex items-center gap-2">
-                <span
-                  className={`rounded-lg px-3 py-1 text-xs font-bold ${
-                    roleBadgeClass[mockMember.role] ?? "bg-gray-700 text-white"
-                  }`}
-                >
-                  {mockMember.role}
+                <span className={getRoleBadgeClassName(mockMember.role)}>
+                  {getRoleBadgeLabel(mockMember.role)}
                 </span>
                 <span className="text-sm text-gray-400">ID : {mockMember.id}</span>
               </div>

@@ -174,17 +174,17 @@ const roleGroups = [
   {
     title: "Pilotage & encadrement",
     subtitle: "Le cadre qui maintient la cohesion de TENF",
-    roles: ["Fondateur", "Admin coordinateur", "Moderateur", "Moderateur en formation"],
+    roles: ["Admin Fondateurs", "Admin Coordinateur", "Modérateurs", "Modérateur en formation"],
   },
   {
     title: "Accompagnement des createurs",
     subtitle: "Des niveaux clairs pour progresser ensemble",
-    roles: ["Soutien TENF", "Createur affilie", "Createur en developpement", "Createur junior"],
+    roles: ["Soutien TENF", "Créateur Affilié", "Créateur en Développement", "Créateurs Juniors"],
   },
   {
     title: "Vie communautaire",
     subtitle: "Participation active et rythme durable",
-    roles: ["Createur en pause", "Communaute"],
+    roles: ["Les P'tits Jeunes", "Communauté"],
   },
 ];
 

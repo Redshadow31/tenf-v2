@@ -46,7 +46,8 @@ export async function GET() {
           roleStr.includes("créateur") ||
           roleStr === "Affilié" ||
           roleStr === "Développement" ||
-          roleStr === "Créateur Junior"
+          roleStr === "Créateur Junior" ||
+          roleStr === "Les P'tits Jeunes"
         );
         
         if (isCreator) {

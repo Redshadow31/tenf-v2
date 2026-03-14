@@ -1,23 +1,5 @@
 import type { LiveMember } from "@/components/lives/types";
-
-function getRoleBadge(role: string): { bg: string; text: string; border?: string } {
-  switch (role) {
-    case "Affilié":
-      return { bg: "rgba(145, 70, 255, 0.16)", text: "#c4b5fd", border: "rgba(145, 70, 255, 0.35)" };
-    case "Développement":
-      return { bg: "rgba(59, 130, 246, 0.16)", text: "#93c5fd", border: "rgba(59, 130, 246, 0.35)" };
-    case "Admin":
-    case "Admin Adjoint":
-    case "Admin Coordinateur":
-      return { bg: "rgba(239, 68, 68, 0.14)", text: "#fca5a5", border: "rgba(239, 68, 68, 0.35)" };
-    case "Mentor":
-    case "Modérateur":
-    case "Modérateur Junior":
-      return { bg: "rgba(16, 185, 129, 0.14)", text: "#86efac", border: "rgba(16, 185, 129, 0.35)" };
-    default:
-      return { bg: "rgba(148, 163, 184, 0.14)", text: "#cbd5e1", border: "rgba(148, 163, 184, 0.35)" };
-  }
-}
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 function formatLiveDuration(startedAt: string): string {
   const start = new Date(startedAt).getTime();
@@ -33,7 +15,6 @@ type LiveCardProps = {
 };
 
 export default function LiveCard({ live }: LiveCardProps) {
-  const roleBadge = getRoleBadge(live.role);
   return (
     <article
       className="group overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
@@ -88,10 +69,9 @@ export default function LiveCard({ live }: LiveCardProps) {
             {live.game || "Jeu non renseigne"}
           </span>
           <span
-            className="rounded-full border px-2.5 py-1 font-semibold"
-            style={{ backgroundColor: roleBadge.bg, color: roleBadge.text, borderColor: roleBadge.border || "transparent" }}
+            className={getRoleBadgeClassName(live.role)}
           >
-            {live.role}
+            {getRoleBadgeLabel(live.role)}
           </span>
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
             Duree: {formatLiveDuration(live.startedAt)}

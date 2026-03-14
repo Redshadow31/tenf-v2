@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Search, Crown, Calendar, Plus, X, Save, Users, Star, Trash2, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface Member {
   twitchLogin: string;
@@ -823,8 +824,8 @@ export default function GestionVipPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-700 text-gray-300">
-                        {member.role}
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
                       </span>
                     </td>
                     <td className="py-4 px-6">

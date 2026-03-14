@@ -16,6 +16,7 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type MemberRole =
   | "Nouveau"
@@ -30,6 +31,7 @@ type MemberRole =
   | "Soutien TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
+  | "Les P'tits Jeunes"
   | "Communauté"
   | "Admin Adjoint" // legacy
   | "Mentor" // legacy
@@ -891,7 +893,6 @@ export default function GestionMembresPage() {
       "Modérateur en formation",
       "Modérateur en activité réduite",
       "Modérateur en pause",
-      "Soutien TENF",
       // Compat legacy
       "Admin Adjoint",
       "Mentor",
@@ -1921,6 +1922,7 @@ export default function GestionMembresPage() {
                 <option value="Admin">Admin</option>
                 <option value="Admin Coordinateur">Admin Coordinateur</option>
                 <option value="Créateur Junior">Créateur Junior</option>
+                <option value="Les P'tits Jeunes">Les P&apos;tits Jeunes</option>
                 <option value="Soutien TENF">Soutien TENF</option>
                 <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                 <option value="Communauté">Communauté</option>
@@ -2175,12 +2177,8 @@ export default function GestionMembresPage() {
                       </>
                     )}
                     <td className="py-4 px-6">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit ${getRoleBadgeColor(
-                          member.role
-                        )}`}
-                      >
-                        {member.role}
+                      <span className={getRoleBadgeColor(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
                       </span>
                     </td>
                     <td className="py-4 px-6">

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Search, Plus, X, Save, Users, Tag, Trash2, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
+import { getRoleBadgeClassName, getRoleBadgeLabel, SYSTEM_BADGES } from "@/lib/roleBadgeSystem";
 
 interface Member {
   twitchLogin: string;
@@ -14,22 +15,7 @@ interface Member {
 }
 
 // Badges disponibles dans le système
-const AVAILABLE_BADGES = [
-  "VIP Élite",
-  "Modérateur en formation",
-  "Modérateur",
-  "Modérateur en activité réduite",
-  "Modérateur en pause",
-  "Admin Coordinateur",
-  "Admin Fondateurs",
-  "Soutien TENF",
-  "Contributeur TENF du Mois",
-  "Créateur Junior",
-  "Streamer Vétéran",
-  "Contributeur",
-  "Bénévole",
-  "Ambassadeur",
-];
+const AVAILABLE_BADGES = [...SYSTEM_BADGES, "Streamer Vétéran", "Contributeur", "Bénévole", "Ambassadeur"];
 
 const VIP_ELITE_BADGE = "VIP Élite";
 
@@ -41,6 +27,9 @@ function normalizeBadgeForStorage(badge: string): string {
   const trimmed = badge.trim();
   if (trimmed.toLowerCase() === "vip") {
     return VIP_ELITE_BADGE;
+  }
+  if (trimmed === "Communauté (mineur)") {
+    return "Communauté";
   }
   return trimmed;
 }
@@ -611,8 +600,8 @@ export default function GestionBadgesPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-700 text-gray-300">
-                        {member.role}
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {getRoleBadgeLabel(member.role)}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -621,9 +610,9 @@ export default function GestionBadgesPage() {
                           member.badges.map((badge) => (
                             <span
                               key={badge}
-                              className="px-2 py-1 rounded text-xs font-semibold bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30"
+                              className={getRoleBadgeClassName(badge)}
                             >
-                              {getBadgeDisplayName(badge)}
+                              {getBadgeDisplayName(getRoleBadgeLabel(badge))}
                             </span>
                           ))
                         ) : (
@@ -705,9 +694,9 @@ export default function GestionBadgesPage() {
                   editingBadges.map((badge) => (
                     <span
                       key={badge}
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30 text-sm font-semibold"
+                      className={`${getRoleBadgeClassName(badge)} inline-flex items-center gap-2`}
                     >
-                      {getBadgeDisplayName(badge)}
+                      {getBadgeDisplayName(getRoleBadgeLabel(badge))}
                       <button
                         onClick={() => toggleBadge(badge)}
                         className="hover:text-red-400 transition-colors"

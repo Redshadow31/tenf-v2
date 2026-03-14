@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getRoleBadgeStyles } from "@/lib/roleColors";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import StreamPlanningCalendar, { type StreamPlanningCalendarItem } from "@/components/member/StreamPlanningCalendar";
 import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
 
@@ -127,9 +127,6 @@ export default function MemberModal({
 
   if (!isOpen) return null;
 
-  // Utiliser la fonction utilitaire pour les couleurs de rôles
-  const getBadgeColor = (role: string) => getRoleBadgeStyles(role);
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -191,14 +188,9 @@ export default function MemberModal({
           <div className="space-y-2">
             <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>{member.name}</h2>
             <span
-              className="inline-block rounded-lg px-4 py-1 text-sm font-bold"
-              style={{
-                backgroundColor: getBadgeColor(member.role).bg,
-                color: getBadgeColor(member.role).text,
-                border: getBadgeColor(member.role).border ? `1px solid ${getBadgeColor(member.role).border}` : 'none',
-              }}
+              className={getRoleBadgeClassName(member.role)}
             >
-              {member.role}
+              {getRoleBadgeLabel(member.role)}
             </span>
             
             {/* Badges personnalisés */}
@@ -207,14 +199,9 @@ export default function MemberModal({
                 {member.badges.map((badge) => (
                   <span
                     key={badge}
-                    className="inline-block rounded-lg px-3 py-1 text-xs font-semibold border"
-                    style={{
-                      backgroundColor: 'rgba(145, 70, 255, 0.2)',
-                      color: '#c084fc',
-                      borderColor: 'rgba(145, 70, 255, 0.3)',
-                    }}
+                    className={getRoleBadgeClassName(badge)}
                   >
-                    {badge}
+                    {getRoleBadgeLabel(badge)}
                   </span>
                 ))}
               </div>

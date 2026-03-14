@@ -1,142 +1,31 @@
-/**
- * Utilitaires pour les couleurs de badges de rôles
- */
-
 import { MemberRole } from "./memberRoles";
+import { getRoleBadgeClassName, getRoleBadgeVariant } from "./roleBadgeSystem";
 
-/**
- * Styles pour les badges de rôles (pour pages publiques - styles inline)
- * Utilise des couleurs spécifiques selon les rôles
- */
+const INLINE_STYLES_BY_VARIANT: Record<string, { bg: string; text: string; border?: string }> = {
+  newcomer: { bg: "#31124f", text: "#f3e8ff", border: "#9333ea" },
+  "active-affilie": { bg: "rgba(154, 174, 219, 0.18)", text: "#dbe7ff", border: "rgba(154, 174, 219, 0.55)" },
+  "active-dev": { bg: "rgba(184, 115, 51, 0.2)", text: "#ffd7b0", border: "rgba(184, 115, 51, 0.5)" },
+  "active-support": { bg: "linear-gradient(120deg, rgba(124, 58, 237, 0.22), rgba(215, 190, 240, 0.24))", text: "#f3e8ff", border: "rgba(193, 144, 242, 0.55)" },
+  "minor-creator": { bg: "rgba(255, 61, 165, 0.22)", text: "#ffd4ec", border: "rgba(255, 61, 165, 0.55)" },
+  "minor-community": { bg: "rgba(34, 227, 165, 0.2)", text: "#d6fff2", border: "rgba(34, 227, 165, 0.55)" },
+  community: { bg: "rgba(6, 182, 212, 0.18)", text: "#cffafe", border: "rgba(6, 182, 212, 0.55)" },
+  "staff-founder": { bg: "linear-gradient(120deg, rgba(183, 73, 202, 0.24), rgba(255, 72, 72, 0.24))", text: "#fff7db", border: "rgba(255, 214, 102, 0.65)" },
+  "staff-coordinator": { bg: "linear-gradient(120deg, rgba(227, 100, 20, 0.24), rgba(177, 45, 69, 0.24))", text: "#ffe9df", border: "rgba(243, 147, 114, 0.62)" },
+  "staff-moderator": { bg: "linear-gradient(120deg, rgba(214, 40, 40, 0.24), rgba(241, 146, 146, 0.24))", text: "#ffe5e5", border: "rgba(248, 183, 183, 0.62)" },
+  "staff-trainee": { bg: "linear-gradient(120deg, rgba(239, 68, 68, 0.22), rgba(139, 92, 246, 0.22))", text: "#f9f5ff", border: "rgba(181, 151, 245, 0.62)" },
+  "staff-reduced": { bg: "linear-gradient(120deg, rgba(156, 163, 175, 0.2), rgba(229, 231, 235, 0.2))", text: "#f3f4f6", border: "rgba(209, 213, 219, 0.58)" },
+  "staff-paused": { bg: "linear-gradient(120deg, rgba(156, 163, 175, 0.18), rgba(229, 231, 235, 0.2))", text: "#f3f4f6", border: "rgba(209, 213, 219, 0.48)" },
+  contributor: { bg: "rgba(45, 212, 191, 0.2)", text: "#ccfbf1", border: "rgba(45, 212, 191, 0.55)" },
+  vip: { bg: "linear-gradient(120deg, rgba(145, 70, 255, 0.24), rgba(90, 50, 180, 0.24))", text: "#ede9fe", border: "rgba(167, 139, 250, 0.62)" },
+  default: { bg: "rgba(148, 163, 184, 0.2)", text: "#e2e8f0", border: "rgba(148, 163, 184, 0.52)" },
+};
+
 export function getRoleBadgeStyles(role: string): { bg: string; text: string; border?: string } {
-  switch (role) {
-    case "Nouveau":
-      return { bg: '#581c87', text: 'white', border: '#a855f7' };
-
-    case "Admin":
-    case "Fondateur":
-      // Rouge/violet pour Admin/Fondateur
-      return { bg: '#991b1b', text: 'white', border: '#dc2626' }; // red-900 avec bordure red-600
-    
-    case "Admin Coordinateur":
-    case "Admin Adjoint":
-      // Ambre/vert pour Admin Coordinateur
-      return { bg: '#854d0e', text: 'white', border: '#a16207' }; // amber-900 avec bordure amber-700
-    
-    case "Modérateur":
-    case "Mentor":
-      // Orange pour Modérateur
-      return { bg: '#c2410c', text: 'white', border: '#ea580c' }; // orange-700 avec bordure orange-600
-    
-    case "Modérateur en activité réduite":
-      return { bg: '#9a3412', text: 'white', border: '#fb923c' };
-
-    case "Modérateur en pause":
-      return { bg: '#374151', text: 'white', border: '#6b7280' };
-
-    case "Modérateur en formation":
-    case "Modérateur Junior":
-      // Bleu pour Modérateur en formation
-      return { bg: '#1e3a8a', text: 'white', border: '#2563eb' }; // blue-900 avec bordure blue-600
-    
-    case "Affilié":
-      // Argenté pour Affilié
-      return { bg: '#6b7280', text: 'white', border: '#9ca3af' }; // gray-500 avec bordure gray-400
-    
-    case "Développement":
-      // Bronze pour Développement
-      return { bg: '#78350f', text: 'white', border: '#92400e' }; // amber-900 avec bordure amber-800
-
-    case "Soutien TENF":
-      return { bg: '#14532d', text: 'white', border: '#22c55e' };
-
-    case "Contributeur TENF du Mois":
-      return { bg: '#0f766e', text: 'white', border: '#14b8a6' };
-    
-    case "Communauté":
-      // Cyan pour Communauté
-      return { bg: '#155e75', text: 'white', border: '#06b6d4' }; // cyan-900 avec bordure cyan-500
-    
-    case "Créateur Junior":
-      // Rose pour Créateur Junior
-      return { bg: '#be185d', text: 'white', border: '#ec4899' }; // pink-700 avec bordure pink-500
-    
-    case "Les P'tits Jeunes":
-    case "Communauté (mineur)":
-      // Violet pâle pour Les P'tits Jeunes / Communauté (mineur)
-      return { bg: '#7c3aed', text: 'white', border: '#a78bfa' }; // violet-600 avec bordure violet-400
-    
-    default:
-      // Fallback neutre
-      return { bg: 'var(--color-text-secondary)', text: 'white' };
-  }
+  const variant = getRoleBadgeVariant(role);
+  return INLINE_STYLES_BY_VARIANT[variant] || INLINE_STYLES_BY_VARIANT.default;
 }
 
-/**
- * Classes Tailwind CSS pour les badges de rôles (pour pages admin)
- * Utilise des couleurs spécifiques selon les rôles
- */
 export function getRoleBadgeClasses(role: MemberRole | string): string {
-  switch (role) {
-    case "Nouveau":
-      return "bg-purple-900 text-white border border-purple-500";
-
-    case "Admin":
-    case "Fondateur":
-      // Rouge/violet pour Admin/Fondateur
-      return "bg-red-900 text-white border border-red-600";
-    
-    case "Admin Coordinateur":
-    case "Admin Adjoint":
-      // Ambre/vert pour Admin Coordinateur
-      return "bg-amber-900 text-white border border-amber-700";
-    
-    case "Modérateur":
-    case "Mentor":
-      // Orange pour Modérateur
-      return "bg-orange-700 text-white border border-orange-600";
-    
-    case "Modérateur en activité réduite":
-      return "bg-orange-900 text-white border border-orange-400";
-
-    case "Modérateur en pause":
-      return "bg-gray-700 text-white border border-gray-500";
-
-    case "Modérateur en formation":
-    case "Modérateur Junior":
-      // Bleu pour Modérateur en formation
-      return "bg-blue-900 text-white border border-blue-600";
-    
-    case "Affilié":
-      // Argenté pour Affilié
-      return "bg-gray-500 text-white border border-gray-400";
-    
-    case "Développement":
-      // Bronze pour Développement
-      return "bg-amber-900 text-white border border-amber-800";
-
-    case "Soutien TENF":
-      return "bg-green-900 text-white border border-green-500";
-
-    case "Contributeur TENF du Mois":
-      return "bg-teal-900 text-white border border-teal-500";
-    
-    case "Communauté":
-      // Cyan pour Communauté
-      return "bg-cyan-900 text-white border border-cyan-500";
-    
-    case "Créateur Junior":
-      // Rose pour Créateur Junior
-      return "bg-pink-700 text-white border border-pink-500";
-    
-    case "Les P'tits Jeunes":
-    case "Communauté (mineur)":
-      // Violet pâle pour Les P'tits Jeunes / Communauté (mineur)
-      return "bg-violet-600 text-white border border-violet-400";
-    
-    default:
-      // Fallback neutre
-      return "bg-gray-700 text-white";
-  }
+  return getRoleBadgeClassName(role);
 }
 

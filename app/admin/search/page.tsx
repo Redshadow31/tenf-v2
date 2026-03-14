@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Search, User, ExternalLink } from "lucide-react";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface MemberSearchResult {
   id: string;
@@ -194,8 +195,8 @@ export default function AdminSearchPage() {
                               </span>
                             )}
                             {member.role && (
-                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getRoleBadgeClasses(member.role)}`}>
-                                {member.role}
+                              <span className={getRoleBadgeClasses(member.role)}>
+                                {getRoleBadgeLabel(member.role)}
                               </span>
                             )}
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold ${

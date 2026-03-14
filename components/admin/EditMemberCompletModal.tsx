@@ -129,11 +129,20 @@ export default function EditMemberCompletModal({
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded-lg px-4 py-2 text-white"
             >
+              <option value="Nouveau">Nouveau</option>
               <option value="Affilié">Affilié</option>
               <option value="Développement">Développement</option>
-              <option value="Modérateur Junior">Modérateur Junior</option>
-              <option value="Mentor">Mentor</option>
+              <option value="Créateur Junior">Créateur Junior</option>
+              <option value="Les P'tits Jeunes">Les P&apos;tits Jeunes</option>
+              <option value="Communauté">Communauté</option>
+              <option value="Modérateur en formation">Modérateur en formation</option>
+              <option value="Modérateur">Modérateur</option>
+              <option value="Modérateur en activité réduite">Modérateur en activité réduite</option>
+              <option value="Modérateur en pause">Modérateur en pause</option>
               <option value="Admin">Admin</option>
+              <option value="Admin Coordinateur">Admin Coordinateur</option>
+              <option value="Soutien TENF">Soutien TENF</option>
+              <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
             </select>
           </div>
 

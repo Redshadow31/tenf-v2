@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type MemberRole =
   | "Nouveau"
@@ -16,6 +17,7 @@ type MemberRole =
   | "Soutien TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
+  | "Les P'tits Jeunes"
   | "Communauté"
   | "Admin Adjoint" // legacy
   | "Mentor" // legacy
@@ -214,15 +216,6 @@ export default function EditMemberModal({
     onSave(dataToSave);
   };
 
-  const getRoleBadgeColor = (role: MemberRole) => {
-    switch (role) {
-      case "Créateur Junior":
-        return "bg-[#9146ff]/20 text-[#9146ff] border-[#9146ff]/30";
-      default:
-        return "bg-gray-700/20 text-gray-300 border-gray-700/30";
-    }
-  };
-
   const getStatusBadgeColor = (statut: "Actif" | "Inactif") => {
     return statut === "Actif"
       ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
@@ -252,8 +245,8 @@ export default function EditMemberModal({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getRoleBadgeColor(formData.role)}`}>
-              {formData.role}
+            <span className={getRoleBadgeClassName(formData.role)}>
+              {getRoleBadgeLabel(formData.role)}
             </span>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeColor(formData.statut)}`}>
               {formData.statut}
@@ -459,6 +452,7 @@ export default function EditMemberModal({
                         <option value="Admin">Admin</option>
                         <option value="Admin Coordinateur">Admin Coordinateur</option>
                         <option value="Créateur Junior">Créateur Junior</option>
+                        <option value="Les P'tits Jeunes">Les P'tits Jeunes</option>
                         <option value="Soutien TENF">Soutien TENF</option>
                         <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
                         <option value="Communauté">Communauté (évaluation)</option>

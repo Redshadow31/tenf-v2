@@ -5,6 +5,7 @@ import type { TwitchUser } from '@/lib/twitch';
 import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
 import { logApi, LogCategory } from '@/lib/logging/logger';
+import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 
 // Désactiver le cache ISR pour cette route critique (page /lives doit toujours fonctionner)
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
@@ -128,7 +129,7 @@ export async function GET() {
           description = getMemberDescription({
             description: member.description,
             displayName: member.displayName || member.siteUsername || member.twitchLogin,
-            role: member.role,
+            role: toCanonicalMemberRole(member.role),
           });
         } catch (e) {
           console.warn(`[Members Public API] Erreur génération description pour ${member.twitchLogin}:`, e);
@@ -160,12 +161,12 @@ export async function GET() {
           twitchLogin: member.twitchLogin,
           twitchUrl: `https://www.twitch.tv/${member.twitchLogin}`,
           displayName: member.displayName || member.siteUsername || member.twitchLogin,
-          role: member.role,
+          role: toCanonicalMemberRole(member.role),
           isVip: member.isVip,
           isActive: member.isActive, // Inclure isActive pour les filtres côté client
           shadowbanLives: member.shadowbanLives === true,
           vipBadge: vipBadge,
-          badges: member.badges || [],
+          badges: toCanonicalBadges(member.badges) || [],
           discordId: member.discordId,
           discordUsername: member.discordUsername,
           avatar: avatar,
@@ -184,12 +185,12 @@ export async function GET() {
           twitchLogin: member.twitchLogin || '',
           twitchUrl: member.twitchLogin ? `https://www.twitch.tv/${member.twitchLogin}` : '',
           displayName: member.displayName || member.siteUsername || member.twitchLogin || 'Unknown',
-          role: member.role || 'Affilié',
+          role: toCanonicalMemberRole(member.role || "Affilié"),
           isVip: member.isVip || false,
           isActive: member.isActive !== false,
           shadowbanLives: member.shadowbanLives === true,
           vipBadge: undefined,
-          badges: member.badges || [],
+          badges: toCanonicalBadges(member.badges) || [],
           discordId: member.discordId,
           discordUsername: member.discordUsername,
           avatar: undefined,

@@ -81,6 +81,184 @@ h3 {
   padding: 1.25rem;
 }
 
+/* ============================================
+   Unified Role / Badge System
+   ============================================ */
+
+.role-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.72rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.012em;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.role-badge--animated {
+  background-size: 220% 220%;
+  animation: role-badge-shift 9s ease-in-out infinite;
+}
+
+.role-badge--shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.22) 48%, transparent 76%);
+  transform: translateX(-135%);
+  animation: role-badge-shimmer 4.6s ease-in-out infinite;
+}
+
+.role-badge--newcomer {
+  color: #f3e8ff;
+  border-color: rgba(147, 51, 234, 0.58);
+  background: linear-gradient(120deg, rgba(88, 28, 135, 0.48), rgba(147, 51, 234, 0.38));
+}
+
+.role-badge--active-affilie {
+  color: #dbe7ff;
+  border-color: rgba(154, 174, 219, 0.58);
+  background: linear-gradient(120deg, rgba(154, 174, 219, 0.2), rgba(111, 135, 189, 0.23));
+}
+
+.role-badge--active-dev {
+  color: #ffd7b0;
+  border-color: rgba(184, 115, 51, 0.55);
+  background: linear-gradient(120deg, rgba(184, 115, 51, 0.22), rgba(160, 98, 41, 0.26));
+}
+
+.role-badge--active-support {
+  color: #f3e8ff;
+  border-color: rgba(193, 144, 242, 0.58);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.22), 0 0 16px rgba(183, 132, 238, 0.14);
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.24), rgba(215, 190, 240, 0.3), rgba(124, 58, 237, 0.22));
+}
+
+.role-badge--minor-creator {
+  color: #ffd4ec;
+  border-color: rgba(255, 61, 165, 0.56);
+  background: linear-gradient(120deg, rgba(255, 61, 165, 0.24), rgba(245, 88, 180, 0.26));
+}
+
+.role-badge--minor-community {
+  color: #d6fff2;
+  border-color: rgba(34, 227, 165, 0.58);
+  background: linear-gradient(120deg, rgba(34, 227, 165, 0.22), rgba(19, 198, 142, 0.26));
+}
+
+.role-badge--community {
+  color: #cffafe;
+  border-color: rgba(6, 182, 212, 0.56);
+  background: linear-gradient(120deg, rgba(6, 182, 212, 0.22), rgba(14, 165, 233, 0.22));
+}
+
+.role-badge--staff-founder {
+  color: #fff7db;
+  border-color: rgba(255, 214, 102, 0.68);
+  box-shadow: 0 0 0 1px rgba(255, 214, 102, 0.18), 0 0 18px rgba(183, 73, 202, 0.22);
+  background: linear-gradient(115deg, rgba(183, 73, 202, 0.34), rgba(255, 72, 72, 0.26), rgba(107, 184, 255, 0.24), rgba(255, 214, 102, 0.24), rgba(183, 73, 202, 0.32));
+}
+
+.role-badge--staff-coordinator {
+  color: #ffe9df;
+  border-color: rgba(243, 147, 114, 0.64);
+  box-shadow: 0 0 14px rgba(227, 100, 20, 0.2);
+  background: linear-gradient(120deg, rgba(227, 100, 20, 0.28), rgba(177, 45, 69, 0.28), rgba(227, 100, 20, 0.24));
+}
+
+.role-badge--staff-moderator {
+  color: #ffe5e5;
+  border-color: rgba(248, 183, 183, 0.62);
+  box-shadow: 0 0 14px rgba(214, 40, 40, 0.2);
+  background: linear-gradient(120deg, rgba(214, 40, 40, 0.28), rgba(241, 146, 146, 0.28), rgba(214, 40, 40, 0.24));
+}
+
+.role-badge--staff-trainee {
+  color: #f9f5ff;
+  border-color: rgba(181, 151, 245, 0.62);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.2);
+  background: linear-gradient(120deg, rgba(239, 68, 68, 0.24), rgba(139, 92, 246, 0.28), rgba(239, 68, 68, 0.22));
+}
+
+.role-badge--staff-reduced {
+  color: #f3f4f6;
+  border-color: rgba(209, 213, 219, 0.58);
+  background: linear-gradient(120deg, rgba(156, 163, 175, 0.24), rgba(229, 231, 235, 0.3));
+}
+
+.role-badge--staff-paused {
+  color: #f3f4f6;
+  border-color: rgba(209, 213, 219, 0.5);
+  opacity: 0.92;
+  background: linear-gradient(120deg, rgba(156, 163, 175, 0.18), rgba(229, 231, 235, 0.24));
+}
+
+.role-badge--contributor {
+  color: #ccfbf1;
+  border-color: rgba(45, 212, 191, 0.56);
+  background: linear-gradient(120deg, rgba(45, 212, 191, 0.2), rgba(20, 184, 166, 0.24));
+}
+
+.role-badge--vip {
+  color: #ede9fe;
+  border-color: rgba(167, 139, 250, 0.6);
+  background: linear-gradient(120deg, rgba(145, 70, 255, 0.3), rgba(90, 50, 180, 0.26));
+}
+
+.role-badge--default {
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.52);
+  background: linear-gradient(120deg, rgba(148, 163, 184, 0.2), rgba(100, 116, 139, 0.24));
+}
+
+@keyframes role-badge-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes role-badge-shimmer {
+  0%,
+  85%,
+  100% {
+    transform: translateX(-135%);
+    opacity: 0;
+  }
+  30%,
+  60% {
+    opacity: 0.95;
+  }
+  70% {
+    transform: translateX(135%);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-badge--animated {
+    animation: none;
+  }
+
+  .role-badge--shimmer::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 [data-theme="light"] .card {
   box-shadow: 0 4px 15px rgba(124, 58, 237, 0.1);
 }

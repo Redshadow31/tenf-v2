@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type TabKey = "summary" | "evaluations" | "raids" | "events" | "notesSanctions" | "logs";
 
@@ -245,8 +246,8 @@ export default function MemberFichePage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-2xl font-bold">{headerName}</h2>
                 {member.role && (
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRoleBadgeClasses(member.role)}`}>
-                    {member.role}
+                  <span className={getRoleBadgeClasses(member.role)}>
+                    {getRoleBadgeLabel(member.role)}
                   </span>
                 )}
                 <span

@@ -10,7 +10,7 @@ import {
   calculateSeniority,
 } from "@/lib/evaluationSynthesisHelpers";
 import { calculateBonusTotal, TIMEZONE_BONUS_POINTS, type MemberBonus } from "@/lib/evaluationBonusHelpers";
-import { getRoleBadgeStyles } from "@/lib/roleColors";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 // ============================================
 // TYPES
@@ -1343,7 +1343,6 @@ export default function EvaluationDPage() {
               </thead>
               <tbody>
                 {filteredMembers.map((member, index) => {
-                  const roleStyles = getRoleBadgeStyles(member.role);
                   const bonusInEdit = editingBonuses[member.twitchLogin];
                   const currentTimezoneBonus = bonusInEdit?.timezone ?? member.timezoneBonusEnabled;
                   const currentModerationBonus = bonusInEdit?.moderation ?? member.moderationBonus;
@@ -1400,14 +1399,9 @@ export default function EvaluationDPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className="px-2 py-1 rounded-full text-xs font-semibold border"
-                          style={{
-                            backgroundColor: isPassedToCommunaute ? '#ef444420' : roleStyles.bg,
-                            color: isPassedToCommunaute ? '#ef4444' : roleStyles.text,
-                            borderColor: isPassedToCommunaute ? '#ef4444' : (roleStyles.border || roleStyles.bg),
-                          }}
+                          className={isPassedToCommunaute ? "role-badge role-badge--community" : getRoleBadgeClassName(currentRole)}
                         >
-                          {currentRole}
+                          {getRoleBadgeLabel(currentRole)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>

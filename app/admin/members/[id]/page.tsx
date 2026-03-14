@@ -10,6 +10,7 @@ import {
   Eye, ArrowLeft
 } from "lucide-react";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface Member360Data {
   member: any;
@@ -209,8 +210,8 @@ export default function Member360Page() {
                   </span>
                 )}
                 {member.role && (
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getRoleBadgeClasses(member.role)}`}>
-                    {member.role}
+                  <span className={getRoleBadgeClasses(member.role)}>
+                    {getRoleBadgeLabel(member.role)}
                   </span>
                 )}
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${

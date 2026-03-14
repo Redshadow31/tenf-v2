@@ -46,6 +46,8 @@ function getRoleText(role: MemberRole): string {
       return "Administrateur Coordinateur";
     case "Créateur Junior":
       return "Créateur Junior";
+    case "Les P'tits Jeunes":
+      return "Les P'tits Jeunes";
     case "Soutien TENF":
       return "Soutien TENF";
     case "Contributeur TENF du Mois":
