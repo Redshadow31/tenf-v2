@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getRoleBadgeClassName } from "@/lib/roleBadgeSystem";
+import styles from "./fonctionnement.module.css";
 
 // Lien unique Discord pour tous les achats
 const DISCORD_SHOP_URL = "https://discord.com/channels/535244857891880970/1278839967962894459";
@@ -2207,10 +2208,10 @@ export default function Page() {
   const completedIntegrationSteps = Object.values(integrationChecklist).filter(Boolean).length;
 
   return (
-    <main id="top-fonctionnement" className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <main id="top-fonctionnement" className={`min-h-screen ${styles.fonctionnementPage}`} style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
         {/* HERO INTRO */}
-        <section className="mb-10 rounded-2xl border p-6 md:p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <section className={`mb-10 rounded-2xl border p-6 md:p-8 about-glow about-fade-up ${styles.fonctionnementHero}`} style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
           <div className="max-w-4xl space-y-5">
             <h1 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
               Comment fonctionne TENF
@@ -2219,13 +2220,13 @@ export default function Page() {
               Cette page est le guide du fonctionnement de la communauté TENF: tu y retrouves les repères essentiels pour t&apos;intégrer, participer, progresser et profiter pleinement de l&apos;entraide.
             </p>
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
                 🤝 Entraide
               </span>
-              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
                 🚀 Progression
               </span>
-              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
                 🎉 Événements
               </span>
             </div>
@@ -2257,7 +2258,7 @@ export default function Page() {
         </section>
 
         {/* Onglets + progression */}
-        <div id="tenf-onglets" className="mb-8">
+        <div id="tenf-onglets" className="mb-8 about-fade-up">
           <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
               Étape {currentStep}/{tabs.length}
@@ -2275,12 +2276,14 @@ export default function Page() {
               }}
             />
           </div>
-          <div className="flex flex-wrap gap-2 justify-center border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex flex-wrap gap-2 justify-center border-b pb-2" style={{ borderColor: 'var(--color-border)' }}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="px-4 md:px-5 py-2.5 text-sm font-medium transition-all rounded-full border"
+                className={`px-4 md:px-5 py-2.5 text-sm font-medium transition-all rounded-full border ${styles.fonctionnementTabPill} ${
+                  activeTab === tab.id ? styles.active : ""
+                }`}
                 style={{
                   color: activeTab === tab.id ? 'white' : 'var(--color-text-secondary)',
                   borderColor: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-border)',
@@ -2313,7 +2316,7 @@ export default function Page() {
 
         {/* Contenu des onglets */}
         <div className="mt-8">
-          <section className="mb-6 rounded-xl border p-4 md:p-5 about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <section className="mb-6 rounded-xl border p-4 md:p-5 about-fade-up about-glow" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="space-y-1">
                 <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--color-primary)' }}>
@@ -2333,7 +2336,7 @@ export default function Page() {
           </section>
 
           {/* TL;DR */}
-          <section className="mb-8 rounded-xl border p-5 md:p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <section className="mb-8 rounded-xl border p-5 md:p-6 about-glow" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
               À retenir
             </h2>
@@ -2361,7 +2364,7 @@ export default function Page() {
               return (
                 <article
                   key={accordion.key}
-                  className="rounded-xl border transition-all duration-200"
+                  className="rounded-xl border transition-all duration-200 about-glow"
                   style={{ borderColor, backgroundColor: bgColor }}
                 >
                   <button
@@ -2728,7 +2731,7 @@ export default function Page() {
           </div>
 
           {/* CTA contextuel onglet */}
-          <section className="mt-10 rounded-xl border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <section className="mt-10 rounded-xl border p-6 about-glow about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
               {currentGuide.cta.title}
             </h3>
@@ -2781,7 +2784,7 @@ export default function Page() {
         </div>
 
         {/* CTA final */}
-        <section className="mt-12 rounded-2xl border p-8 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <section className="mt-12 rounded-2xl border p-8 text-center about-glow about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
           <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--color-text)' }}>
             Prêt à rejoindre la dynamique TENF ?
           </h2>
