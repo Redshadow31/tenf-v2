@@ -1457,6 +1457,18 @@ function SystemePointsContent() {
             Le système de points TENF récompense l&apos;engagement réel, la présence humaine et l&apos;entraide sincère sur le serveur Discord. Ici, chaque action compte — pas la performance, mais l&apos;implication.
           </p>
         </div>
+        <div className="rounded-xl p-5 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-primary)' }}>
+            Comment progresser dans TENF ?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-sm">
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>💬 Échanger</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>📺 Passer sur les lives</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>⚡ Participer aux raids & events</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>🤝 Faire vivre l&apos;entraide</p>
+            <p className="rounded-lg px-3 py-2 font-semibold" style={{ backgroundColor: 'rgba(145, 70, 255, 0.12)', color: 'var(--color-primary)' }}>⭐ Gagner naturellement des points</p>
+          </div>
+        </div>
       </section>
 
       {/* Comment gagner des points */}
@@ -1493,7 +1505,7 @@ function SystemePointsContent() {
               Tous les 3 niveaux
             </p>
             <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Gagnés automatiquement grâce à ton activité : discussions textuelles, entraide, présence en vocal… (hors spam ou messages artificiels).
+              Tes échanges, ton aide aux autres et ta présence régulière sur les salons font progresser naturellement ton impact dans TENF (hors spam ou activité artificielle).
             </p>
           </div>
 
@@ -1508,7 +1520,7 @@ function SystemePointsContent() {
               </span>
             </div>
             <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-              Organise un raid Twitch entre membres TENF.
+              Lancer un raid, c&apos;est mettre un membre en lumière et créer un vrai moment collectif entre créateurs.
             </p>
             <div className="rounded-lg p-4 mb-3 systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
               <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📋 Format obligatoire :</p>
@@ -1537,7 +1549,7 @@ function SystemePointsContent() {
               </span>
             </div>
             <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Invite une personne qui partage les valeurs TENF et qui s&apos;implique réellement dans la communauté.
+              Invite des créateurs qui partagent les valeurs TENF et ont envie de s&apos;impliquer dans une dynamique d&apos;entraide sincère.
             </p>
           </div>
 
@@ -1557,7 +1569,7 @@ function SystemePointsContent() {
             <div className="rounded-lg p-3 mt-3 systeme-points-reminder" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)' }}>
               <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 📸 <strong style={{ color: 'var(--color-text)' }}>Preuve obligatoire</strong> à poster dans 📂・preuves-suivi.<br />
-                500 points attribués par réseau validé.
+                Chaque validation aide la visibilité de TENF et des membres actifs : 500 points attribués par réseau.
               </p>
             </div>
           </div>
@@ -1573,9 +1585,16 @@ function SystemePointsContent() {
               </span>
             </div>
             <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Jeux communautaires, soirées fun, events spéciaux… Le montant dépend de l&apos;implication et du type d&apos;événement.
+              Jeux communautaires, soirées, événements spéciaux... plus tu participes vraiment, plus tu contribues à l&apos;énergie collective et plus ta progression est reconnue.
             </p>
           </div>
+        </div>
+
+        <div className="rounded-xl p-5 border systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-primary)' }}>Exemple concret</h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            Un membre qui participe aux discussions, passe sur les lives, organise un raid et aide un nouveau membre progresse naturellement dans TENF et gagne des points grâce à son implication réelle.
+          </p>
         </div>
       </section>
 
@@ -1596,7 +1615,7 @@ function SystemePointsContent() {
               </span>
             </div>
             <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
-              Attribués aux nouveaux streamers rejoignant TENF.
+              Attribués aux nouveaux streamers pour démarrer avec un vrai coup de pouce communautaire.
             </p>
           </div>
 
@@ -1631,7 +1650,7 @@ function SystemePointsContent() {
               </span>
             </div>
             <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
-              1000 points tous les 3 niveaux au lieu de 500. Récompense la régularité, la fidélité et l&apos;implication dans la durée.
+              1000 points tous les 3 niveaux au lieu de 500. Un bonus qui valorise la régularité, la présence utile et l&apos;implication dans la durée.
             </p>
           </div>
         </div>
@@ -1642,10 +1661,10 @@ function SystemePointsContent() {
         <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🏆 Utiliser ses points</h2>
         <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
           <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-            Les points permettent de débloquer différents avantages communautaires (rôles temporaires, bonus, accès spécifiques…).
+            Tes points te permettent de débloquer des avantages concrets dans l&apos;écosystème TENF : défis en live, mises en avant, bonus, coaching ou outils utiles selon la boutique et les salons dédiés.
           </p>
           <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-            Les détails sont disponibles dans la boutique des points ou les salons dédiés.
+            L&apos;idée reste simple : plus ton implication est utile à la communauté, plus tu ouvres des options fun et pertinentes pour ta progression.
           </p>
         </div>
       </section>
