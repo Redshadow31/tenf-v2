@@ -5,6 +5,7 @@ import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
+import TwitchLinkCard from "@/components/member/ui/TwitchLinkCard";
 
 const MAX_DESCRIPTION = 800;
 const TIMEZONE_OPTIONS = [
@@ -187,6 +188,7 @@ export default function MemberProfileCompletePage() {
   return (
     <MemberSurface>
       <MemberPageHeader title="Completer mon profil" description="Renseigne ton profil de base pour finaliser ton activation TENF." />
+      <TwitchLinkCard />
       <MemberInfoCard title="Profil public - descriptif streamer">
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
           Cette partie alimente la fiche publique (description, reseaux, informations de chaine).

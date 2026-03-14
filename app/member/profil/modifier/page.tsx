@@ -5,6 +5,7 @@ import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
+import TwitchLinkCard from "@/components/member/ui/TwitchLinkCard";
 
 const MAX_DESCRIPTION = 800;
 const TIMEZONE_OPTIONS = [
@@ -122,6 +123,7 @@ export default function MemberProfileEditPage() {
   return (
     <MemberSurface>
       <MemberPageHeader title="Modifier mon profil" description="Renseigne ou mets a jour tes informations. Les modifications sont soumises au staff." />
+      <TwitchLinkCard />
       <MemberInfoCard title="Edition de la fiche profil">
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
