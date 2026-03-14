@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import ProductModal from "@/components/ProductModal";
 
 interface ShopProduct {
@@ -15,11 +14,84 @@ interface ShopProduct {
   images: string[];
   featured: boolean;
   buyUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
   category?: {
     id: string;
     name: string;
     color: string;
   } | null;
+}
+
+type PopularSortMode = "mostViewed" | "mostClicked" | "newest";
+
+const COMMUNITY_STATS = [
+  { label: "Membres", value: "560", icon: "👥" },
+  { label: "Createurs", value: "220", icon: "🎮" },
+  { label: "Soutien communaute", value: "100%", icon: "💜" },
+];
+
+interface ShopSettings {
+  communityCounters?: {
+    productsSold?: number;
+    supporters?: number;
+    eventsFunded?: number;
+  };
+}
+
+const DEFAULT_COUNTERS = {
+  productsSold: 128,
+  supporters: 42,
+  eventsFunded: 3,
+};
+
+const COLLECTIONS = [
+  {
+    id: "founders",
+    emoji: "🔥",
+    name: "Collection Fondateurs",
+    description: "Red, Clara, Nexou",
+    keywords: ["red", "clara", "nexou", "fondateur"],
+  },
+  {
+    id: "community",
+    emoji: "🎮",
+    name: "Collection Communaute",
+    description: "Logo TENF et goodies communautaires",
+    keywords: ["communaute", "community", "logo", "tenf"],
+  },
+  {
+    id: "creators",
+    emoji: "⭐",
+    name: "Collection Createurs",
+    description: "Produits dedies aux streamers TENF",
+    keywords: ["createur", "creator", "stream", "merch"],
+  },
+  {
+    id: "goodies",
+    emoji: "🎁",
+    name: "Collection Goodies",
+    description: "Bougies, stickers et petits objets",
+    keywords: ["bougie", "sticker", "mug", "goodie"],
+  },
+];
+
+function normalize(value: string): string {
+  return value.toLowerCase();
+}
+
+function includesAny(haystack: string, keywords: string[]): boolean {
+  const text = normalize(haystack);
+  return keywords.some((keyword) => text.includes(normalize(keyword)));
+}
+
+function isRecentProduct(product: ShopProduct): boolean {
+  const rawDate = product.createdAt || product.updatedAt;
+  if (!rawDate) return false;
+  const date = new Date(rawDate).getTime();
+  if (Number.isNaN(date)) return false;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  return Date.now() - date <= thirtyDaysMs;
 }
 
 export default function BoutiquePage() {
@@ -29,6 +101,8 @@ export default function BoutiquePage() {
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [popularMode, setPopularMode] = useState<PopularSortMode>("mostViewed");
+  const [communityCounters, setCommunityCounters] = useState(DEFAULT_COUNTERS);
 
   useEffect(() => {
     loadProducts();
@@ -37,12 +111,25 @@ export default function BoutiquePage() {
   async function loadProducts() {
     try {
       setLoading(true);
-      const response = await fetch("/api/shop/products");
-      if (!response.ok) throw new Error("Erreur lors du chargement");
+      const [productsResponse, settingsResponse] = await Promise.all([
+        fetch("/api/shop/products"),
+        fetch("/api/shop/settings"),
+      ]);
+      if (!productsResponse.ok) throw new Error("Erreur lors du chargement des produits");
 
-      const data = await response.json();
-      setProducts(data.products || []);
-      setCategories(data.categories || []);
+      const productsData = await productsResponse.json();
+      setProducts(productsData.products || []);
+      setCategories(productsData.categories || []);
+
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        const settings: ShopSettings | undefined = settingsData?.settings;
+        setCommunityCounters({
+          productsSold: Number(settings?.communityCounters?.productsSold ?? DEFAULT_COUNTERS.productsSold),
+          supporters: Number(settings?.communityCounters?.supporters ?? DEFAULT_COUNTERS.supporters),
+          eventsFunded: Number(settings?.communityCounters?.eventsFunded ?? DEFAULT_COUNTERS.eventsFunded),
+        });
+      }
     } catch (error) {
       console.error("Error loading products:", error);
     } finally {
@@ -60,135 +147,437 @@ export default function BoutiquePage() {
     }))
     .sort((a, b) => a.__resolvedSortOrder - b.__resolvedSortOrder);
 
+  const allProducts = orderedProducts;
+
   const filteredProducts = selectedCategory
     ? orderedProducts.filter((p) => p.categoryId === selectedCategory)
     : orderedProducts;
-
-  const featuredProducts = orderedProducts.filter((p) => p.featured);
-  const regularProducts = filteredProducts.filter((p) => !p.featured);
 
   function handleProductClick(product: ShopProduct) {
     setSelectedProduct(product);
     setIsModalOpen(true);
   }
 
+  function scrollToSection(sectionId: string) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function discoverRandomProduct() {
+    if (allProducts.length === 0) return;
+    const random = allProducts[Math.floor(Math.random() * allProducts.length)];
+    handleProductClick(random);
+  }
+
+  const communityProducts = useMemo(() => {
+    return filteredProducts
+      .filter((product) => {
+        const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
+        return includesAny(source, ["communaute", "community", "logo", "tenf"]);
+      })
+      .slice(0, 5);
+  }, [filteredProducts]);
+
+  const creatorProducts = useMemo(() => {
+    return filteredProducts
+      .filter((product) => {
+        const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
+        return includesAny(source, ["nexou", "clara", "red", "createur", "creator", "stream"]);
+      })
+      .slice(0, 5);
+  }, [filteredProducts]);
+
+  const drops = useMemo(() => {
+    const filtered = filteredProducts.filter((product) => {
+      const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
+      return includesAny(source, ["drop", "anniversaire", "event", "edition", "limited", "hoodie"]);
+    });
+
+    if (filtered.length > 0) return filtered.slice(0, 3);
+    return filteredProducts.filter((product) => isRecentProduct(product)).slice(0, 3);
+  }, [filteredProducts]);
+
+  const affordableGoodies = useMemo(() => {
+    return filteredProducts.filter((product) => product.price <= 20).slice(0, 6);
+  }, [filteredProducts]);
+
+  const popularProducts = useMemo(() => {
+    const list = [...filteredProducts];
+    if (popularMode === "newest") {
+      return list
+        .sort((a, b) => {
+          const aTs = new Date(a.createdAt || 0).getTime();
+          const bTs = new Date(b.createdAt || 0).getTime();
+          return bTs - aTs;
+        })
+        .slice(0, 8);
+    }
+
+    if (popularMode === "mostClicked") {
+      return list
+        .sort((a, b) => {
+          const scoreA = Number(Boolean(a.buyUrl)) + Number(a.featured) + (a.isStartingPrice ? 0 : 1);
+          const scoreB = Number(Boolean(b.buyUrl)) + Number(b.featured) + (b.isStartingPrice ? 0 : 1);
+          return scoreB - scoreA;
+        })
+        .slice(0, 8);
+    }
+
+    return list
+      .sort((a, b) => Number(b.featured) - Number(a.featured))
+      .slice(0, 8);
+  }, [filteredProducts, popularMode]);
+
+  const seasonalLabel = useMemo(() => {
+    const month = new Date().getMonth();
+    if (month === 9) return "🎃 Saison Halloween TENF";
+    if (month === 11) return "🎄 Saison Noel TENF";
+    return "🎉 Saison anniversaire serveur";
+  }, []);
+
+  const floatingHeroProducts = useMemo(() => {
+    if (allProducts.length === 0) return [];
+    return allProducts.slice(0, 3);
+  }, [allProducts]);
+
+  const impactCounters = useMemo(
+    () => [
+      { label: "Produits vendus", value: String(communityCounters.productsSold) },
+      { label: "Membres soutiens", value: String(communityCounters.supporters) },
+      { label: "Evenements finances", value: String(communityCounters.eventsFunded) },
+    ],
+    [communityCounters]
+  );
+
   return (
-    <main className="p-6 min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="max-w-7xl mx-auto space-y-12">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold" style={{ color: 'var(--color-text)' }}>BOUTIQUE TENF</h1>
-          <p className="text-2xl font-semibold" style={{ color: 'var(--color-primary)' }}>MERCH OFFICIEL</p>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            Soutiens la communauté et porte les couleurs de la New Family
-          </p>
-        </div>
+    <main
+      className="p-6 min-h-screen"
+      style={{
+        background:
+          "radial-gradient(circle at 20% 0%, rgba(139,92,246,0.22) 0%, rgba(10,10,13,0.95) 40%, rgba(6,6,8,1) 100%)",
+      }}
+    >
+      <div className="max-w-7xl mx-auto space-y-10">
+        <section
+          className="rounded-2xl border p-6 md:p-10 relative overflow-hidden reveal-card"
+          style={{ borderColor: "rgba(139,92,246,0.55)", backgroundColor: "rgba(14,14,20,0.9)" }}
+        >
+          <div
+            className="absolute -top-16 -right-10 w-64 h-64 rounded-full blur-3xl"
+            style={{ backgroundColor: "rgba(139,92,246,0.24)" }}
+          />
+          <div
+            className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full blur-3xl"
+            style={{ backgroundColor: "rgba(220,38,38,0.18)" }}
+          />
 
-        {/* Message "Pourquoi cette boutique existe ?" */}
-        <div className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            💜 Pourquoi cette boutique existe ?
+          <div className="relative z-10 space-y-6">
+            <div className="space-y-3">
+              <p className="inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide border" style={{ color: "#f2e8ff", borderColor: "rgba(139,92,246,0.6)" }}>
+                BOUTIQUE TENF
+              </p>
+              <h1 className="text-4xl md:text-6xl font-bold" style={{ color: "#f7f5ff" }}>
+                Soutenir la communaute et porter les couleurs de New Family.
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => scrollToSection("collections")}
+                className="px-5 py-3 rounded-lg font-semibold text-white transition-transform hover:scale-[1.03]"
+                style={{ backgroundColor: "#8B5CF6" }}
+              >
+                🛍 Decouvrir les collections
+              </button>
+              <button
+                onClick={() => setPopularMode("newest")}
+                className="px-5 py-3 rounded-lg font-semibold border transition-transform hover:scale-[1.03]"
+                style={{ borderColor: "rgba(139,92,246,0.65)", color: "#e7d9ff" }}
+              >
+                🎁 Voir les nouveautes
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {COMMUNITY_STATS.map((stat) => (
+                <div key={stat.label} className="rounded-xl border p-4 hover-scale-soft" style={{ borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(20,20,28,0.9)" }}>
+                  <p className="text-sm" style={{ color: "#cab7ff" }}>
+                    {stat.icon} {stat.label}
+                  </p>
+                  <p className="text-2xl font-bold mt-1" style={{ color: "#ffffff" }}>
+                    {stat.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {impactCounters.map((item) => (
+                <div key={item.label} className="rounded-lg border p-3 hover-scale-soft" style={{ borderColor: "rgba(220,38,38,0.25)", backgroundColor: "rgba(30,16,20,0.65)" }}>
+                  <p className="text-sm" style={{ color: "#f5d5db" }}>
+                    {item.label}
+                  </p>
+                  <p className="text-xl font-bold" style={{ color: "#ffffff" }}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {floatingHeroProducts.length > 0 && (
+            <div className="absolute right-4 top-6 z-20 hidden xl:flex flex-col gap-3 pointer-events-none">
+              {floatingHeroProducts.map((product, index) => (
+                <div
+                  key={`hero-float-${product.id}`}
+                  className="w-52 rounded-xl border p-3 backdrop-blur-sm hero-float-card"
+                  style={{
+                    borderColor: "rgba(139,92,246,0.45)",
+                    backgroundColor: "rgba(14,14,20,0.78)",
+                    animationDelay: `${index * 180}ms`,
+                  }}
+                >
+                  <p className="text-xs uppercase tracking-wide" style={{ color: "#c8b3ff" }}>
+                    Produit soutien
+                  </p>
+                  <p className="text-sm font-semibold mt-1 line-clamp-2" style={{ color: "#fff" }}>
+                    {product.name}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#d7c9f8" }}>
+                    €{product.price.toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border p-6 md:p-8 space-y-4 reveal-card" style={{ backgroundColor: "rgba(18,18,25,0.95)", borderColor: "rgba(139,92,246,0.4)" }}>
+          <h2 className="text-2xl md:text-3xl font-bold" style={{ color: "#ffffff" }}>
+            💜 Pourquoi soutenir TENF ?
           </h2>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            Chaque achat soutient directement :
+          <p className="text-base leading-relaxed" style={{ color: "#cdc6de" }}>
+            Quand tu portes un produit TENF, tu representes la communaute, tu aides a financer les evenements et tu soutiens les createurs.
           </p>
-          <ul className="list-disc list-inside space-y-2 text-base" style={{ color: 'var(--color-text-secondary)' }}>
-            <li>le projet New Family Aventura 2026</li>
-            <li>le financement des bots et outils du serveur</li>
-            <li>les futurs giveaways communautaires</li>
-            <li>l'amélioration continue de notre espace TENF</li>
-          </ul>
-          <p className="text-base leading-relaxed pt-2" style={{ color: 'var(--color-text)' }}>
-            Tout cela nous permet de continuer à construire une communauté vivante et dynamique.
+          <p className="text-base leading-relaxed" style={{ color: "#cdc6de" }}>
+            Chaque achat aide la communaute a grandir.
           </p>
-        </div>
+        </section>
 
-        {/* Promotion */}
-        <div className="rounded-lg border p-6 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: '#10b981' }}>
-          <p className="text-xl font-semibold mb-2" style={{ color: '#10b981' }}>
-            🎉 Promotion limitée !
+        <section id="collections" className="space-y-4 reveal-card">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+              Collections
+            </h2>
+            <button
+              onClick={discoverRandomProduct}
+              disabled={allProducts.length === 0}
+              className="px-4 py-2 rounded-lg font-semibold border disabled:opacity-50"
+              style={{ borderColor: "rgba(139,92,246,0.5)", color: "#e8ddff" }}
+            >
+              🎲 Decouvrir un produit
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {COLLECTIONS.map((collection) => {
+              const productsInCollection = filteredProducts.filter((product) => {
+                const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
+                return includesAny(source, collection.keywords);
+              });
+
+              return (
+                <div
+                  key={collection.id}
+                  className="rounded-xl border p-5 min-h-[180px] flex flex-col justify-between hover-scale-soft"
+                  style={{ backgroundColor: "rgba(17,17,24,0.95)", borderColor: "rgba(139,92,246,0.4)" }}
+                >
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold" style={{ color: "#c8b3ff" }}>
+                      {collection.emoji} {collection.name}
+                    </p>
+                    <p className="text-sm" style={{ color: "#c7bfd7" }}>
+                      {collection.description}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold mt-4" style={{ color: "#fff" }}>
+                    {productsInCollection.length} produit{productsInCollection.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="space-y-4 reveal-card">
+          <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+            ⭐ Les favoris de la communaute
+          </h2>
+          <div className="flex gap-2 flex-wrap">
+            <SortButton label="Plus vus" active={popularMode === "mostViewed"} onClick={() => setPopularMode("mostViewed")} />
+            <SortButton label="Plus cliques" active={popularMode === "mostClicked"} onClick={() => setPopularMode("mostClicked")} />
+            <SortButton label="Plus recents" active={popularMode === "newest"} onClick={() => setPopularMode("newest")} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {popularProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="popular" />
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4 reveal-card">
+          <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+            🎮 Produits createurs TENF
+          </h2>
+          {creatorProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+              {creatorProducts.map((product) => (
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="creator" />
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="Aucun produit createur detecte pour le moment." />
+          )}
+        </section>
+
+        <section className="space-y-4 reveal-card">
+          <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+            ✨ Drops communautaires
+          </h2>
+          <p className="text-sm" style={{ color: "#b8b0ca" }}>
+            Produits disponibles pour une duree limitee (30 jours max).
           </p>
-          <p className="text-lg" style={{ color: 'var(--color-text)' }}>
-            5% de réduction avec le code <strong className="font-bold" style={{ color: 'var(--color-primary)' }}>TENF5</strong>
+          {drops.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {drops.map((product) => (
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="drop" />
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="Aucun drop detecte dans le catalogue actuel." />
+          )}
+        </section>
+
+        <section className="space-y-4 reveal-card">
+          <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+            🎁 Petits goodies TENF
+          </h2>
+          {affordableGoodies.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+              {affordableGoodies.map((product) => (
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="community" />
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="Pas de goodies sous 20EUR actuellement." />
+          )}
+        </section>
+
+        <section className="space-y-4 reveal-card">
+          <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+            Produits communaute
+          </h2>
+          {communityProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+              {communityProducts.map((product) => (
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} emphasis="community" />
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="Aucun produit communaute detecte pour le moment." />
+          )}
+        </section>
+
+        <section className="rounded-2xl border p-6 reveal-card" style={{ backgroundColor: "rgba(21,15,21,0.9)", borderColor: "rgba(220,38,38,0.4)" }}>
+          <h3 className="text-2xl font-bold" style={{ color: "#fff" }}>
+            🎉 Collection anniversaire TENF
+          </h3>
+          <p className="mt-2" style={{ color: "#e0d7ea" }}>
+            Collection speciale evenement: mug anniversaire, hoodie evenement et editions limitees.
           </p>
-        </div>
+          <p className="mt-3 text-sm" style={{ color: "#f2c9d4" }}>
+            {seasonalLabel}
+          </p>
+        </section>
+
+        <section className="rounded-2xl border p-6 space-y-4 reveal-card" style={{ backgroundColor: "rgba(16,16,24,0.95)", borderColor: "rgba(139,92,246,0.35)" }}>
+          <h3 className="text-2xl font-bold" style={{ color: "#fff" }}>
+            Pack fondateur
+          </h3>
+          <p style={{ color: "#c9c0dc" }}>
+            Un pack simple pour soutenir TENF: mug + sticker + bougie.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <PackItem label="☕ Mug" />
+            <PackItem label="🏷 Sticker" />
+            <PackItem label="🕯 Bougie" />
+          </div>
+        </section>
 
         {/* Category Filter */}
         {categories.length > 0 && (
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === null ? "text-white" : ""
-              }`}
-              style={{
-                backgroundColor: selectedCategory === null ? "var(--color-primary)" : "var(--color-surface)",
-                color: selectedCategory === null ? "white" : "var(--color-text-secondary)",
-              }}
-            >
-              Tous
-            </button>
-            {categories.map((category) => (
+          <section className="space-y-3 reveal-card">
+            <h3 className="text-xl font-bold" style={{ color: "#ffffff" }}>
+              Decouvrir
+            </h3>
+            <div className="flex flex-wrap gap-3">
               <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  selectedCategory === category.id ? "text-white" : ""
-                }`}
+                onClick={() => setSelectedCategory(null)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === null ? "text-white" : ""}`}
                 style={{
-                  backgroundColor: selectedCategory === category.id ? category.color : "var(--color-surface)",
-                  color: selectedCategory === category.id ? "white" : "var(--color-text-secondary)",
-                  border: selectedCategory !== category.id ? `2px solid ${category.color}` : "none",
+                  backgroundColor: selectedCategory === null ? "#8B5CF6" : "rgba(24,24,35,0.95)",
+                  color: selectedCategory === null ? "white" : "#ccc2e4",
                 }}
               >
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: selectedCategory === category.id ? "white" : category.color }} />
-                {category.name}
+                Tous
               </button>
-            ))}
-          </div>
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${selectedCategory === category.id ? "text-white" : ""}`}
+                  style={{
+                    backgroundColor: selectedCategory === category.id ? category.color : "rgba(24,24,35,0.95)",
+                    color: selectedCategory === category.id ? "white" : "#ccc2e4",
+                    border: selectedCategory !== category.id ? `1px solid ${category.color}` : "none",
+                  }}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedCategory === category.id ? "white" : category.color }} />
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Loading State */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: "#8B5CF6" }} />
           </div>
+        ) : filteredProducts.length > 0 ? (
+          <section className="space-y-4 reveal-card">
+            <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
+              Participer
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} onClick={handleProductClick} />
+              ))}
+            </div>
+          </section>
         ) : (
-          <>
-            {/* Section PRODUITS EN AVANT */}
-            {featuredProducts.length > 0 && (
-              <section className="space-y-6">
-                <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>PRODUITS EN AVANT</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {featuredProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} onClick={handleProductClick} featured />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Section PRODUITS */}
-            {regularProducts.length > 0 && (
-              <section className="space-y-6">
-                <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>PRODUITS</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                  {regularProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} onClick={handleProductClick} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* No Products */}
-            {filteredProducts.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-                  Aucun produit trouvé{selectedCategory ? " dans cette catégorie" : ""}.
-                </p>
-              </div>
-            )}
-          </>
+          <EmptyState text="Aucun produit trouve dans cette categorie." />
         )}
+
+        <section className="rounded-2xl border p-8 text-center reveal-card" style={{ backgroundColor: "rgba(16,16,23,0.95)", borderColor: "rgba(139,92,246,0.35)" }}>
+          <h2 className="text-2xl md:text-3xl font-bold" style={{ color: "#ffffff" }}>
+            💜 Merci a ceux qui soutiennent TENF
+          </h2>
+          <p className="mt-3 max-w-2xl mx-auto" style={{ color: "#ccc4de" }}>
+            Chaque commande participe au developpement des projets communautaires et aux prochains evenements.
+          </p>
+        </section>
       </div>
 
       {/* Product Modal */}
@@ -202,98 +591,194 @@ export default function BoutiquePage() {
           }}
         />
       )}
+
+      <style jsx>{`
+        .reveal-card {
+          animation: revealUp 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .hero-float-card {
+          animation: heroFloat 6s ease-in-out infinite;
+          box-shadow: 0 10px 30px rgba(139, 92, 246, 0.22);
+        }
+
+        .hover-scale-soft {
+          transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+
+        .hover-scale-soft:hover {
+          transform: translateY(-2px) scale(1.01);
+          box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+        }
+
+        @keyframes revealUp {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes heroFloat {
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
+        }
+      `}</style>
     </main>
   );
 }
 
+function SortButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+      style={{
+        backgroundColor: active ? "#8B5CF6" : "rgba(25,25,34,0.95)",
+        color: active ? "white" : "#cbc3df",
+        border: active ? "1px solid #8B5CF6" : "1px solid rgba(139,92,246,0.4)",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function PackItem({ label }: { label: string }) {
+  return (
+    <span
+      className="px-3 py-2 rounded-lg text-sm font-semibold"
+      style={{ backgroundColor: "rgba(29,22,38,0.95)", border: "1px solid rgba(139,92,246,0.4)", color: "#ddd1f8" }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border p-8 text-center" style={{ borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(18,18,27,0.95)" }}>
+      <p style={{ color: "#bfb7cf" }}>{text}</p>
+    </div>
+  );
+}
+
+type ProductCardEmphasis = "popular" | "creator" | "community" | "drop";
+
 interface ProductCardProps {
   product: ShopProduct;
   onClick: (product: ShopProduct) => void;
-  featured?: boolean;
+  emphasis?: ProductCardEmphasis;
 }
 
-function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
+function resolveBadges(product: ShopProduct, emphasis?: ProductCardEmphasis): string[] {
+  const badges: string[] = [];
+  if (product.featured || emphasis === "popular") badges.push("⭐ Favori");
+  if (emphasis === "drop" || isRecentProduct(product)) badges.push("🔥 Populaire");
+  if (emphasis === "creator") badges.push("🎮 Createur");
+  if (emphasis === "community") badges.push("💜 Communaute");
+  return badges.slice(0, 2);
+}
+
+function ProductCard({ product, onClick, emphasis }: ProductCardProps) {
   const categoryColor = product.category?.color || "#8B5CF6";
   const mainImage = product.images[0] || "";
   const priceLabel = `${product.isStartingPrice ? "A partir de " : ""}€${product.price.toFixed(2)}`;
+  const badges = resolveBadges(product, emphasis);
 
   return (
-    <div
-      className="rounded-lg overflow-hidden transition-transform hover:scale-105 cursor-pointer"
+    <article
+      className="group rounded-xl overflow-hidden transition-all cursor-pointer hover:-translate-y-1"
       style={{
-        backgroundColor: "var(--color-card)",
-        border: `2px solid ${categoryColor}`,
+        backgroundColor: "rgba(18,18,26,0.98)",
+        border: `1px solid ${categoryColor}`,
+        boxShadow: "0 0 0 rgba(139,92,246,0)",
       }}
       onClick={() => onClick(product)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 0 24px rgba(139,92,246,0.28)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "0 0 0 rgba(139,92,246,0)";
+      }}
     >
-      {/* Image du produit */}
-      <div className="aspect-square w-full relative" style={{ backgroundColor: "var(--color-surface)" }}>
+      <div className="aspect-square w-full relative overflow-hidden" style={{ backgroundColor: "rgba(26,26,36,0.95)" }}>
         {mainImage ? (
           <img
             src={mainImage}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--color-text-secondary)" }}>
+          <div className="w-full h-full flex items-center justify-center" style={{ color: "#aaa0be" }}>
             <span className="text-sm">Aucune image</span>
           </div>
         )}
       </div>
 
-      {/* Informations du produit */}
       <div className="p-4 space-y-3">
-        <h3 className="text-lg font-semibold line-clamp-1" style={{ color: "var(--color-text)" }}>
+        {badges.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {badges.map((badge) => (
+              <span key={`${product.id}-${badge}`} className="text-[11px] px-2 py-1 rounded-full font-semibold" style={{ backgroundColor: "rgba(139,92,246,0.2)", color: "#dfd3ff" }}>
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <h3 className="text-base font-semibold line-clamp-2" style={{ color: "#ffffff" }}>
           {product.name}
         </h3>
-        {featured && (
-          <p className="text-sm line-clamp-2" style={{ color: "var(--color-text-secondary)" }}>
-            {product.description}
-          </p>
-        )}
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
-            {priceLabel}
-          </span>
-          {product.buyUrl ? (
-            <a
-              href={product.buyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-white transition-colors text-center"
-              style={{ backgroundColor: "var(--color-primary)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              Acheter
-            </a>
-          ) : (
-            <Link
-              href={`/boutique/${product.id}`}
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-white transition-colors text-center"
-              style={{ backgroundColor: "var(--color-primary)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              Acheter
-            </Link>
-          )}
+
+        <div className="flex items-end justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-lg font-bold" style={{ color: "#c7adff" }}>
+              {priceLabel}
+            </p>
+            <p className="text-xs font-semibold" style={{ color: "#eec7d2" }}>
+              💜 Soutien communaute
+            </p>
+          </div>
+
+          <a
+            href={product.buyUrl || "#"}
+            target={product.buyUrl ? "_blank" : undefined}
+            rel={product.buyUrl ? "noopener noreferrer" : undefined}
+            className="px-3 py-2 rounded-lg text-xs font-semibold text-white text-center min-w-[120px]"
+            style={{ backgroundColor: "#8B5CF6" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!product.buyUrl) onClick(product);
+            }}
+          >
+            <span className="inline group-hover:hidden">🛍 Ajouter</span>
+            <span className="hidden group-hover:inline">🛍 Soutenir TENF</span>
+          </a>
         </div>
+
+        <p className="text-xs leading-relaxed" style={{ color: "#b8afcc" }}>
+          Ce produit soutient directement les projets de la communaute TENF.
+        </p>
       </div>
-    </div>
+    </article>
   );
 }

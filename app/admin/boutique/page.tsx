@@ -10,7 +10,7 @@ export default function BoutiqueAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"products" | "categories">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "categories" | "counters">("products");
   
   // Product form
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -34,6 +34,13 @@ export default function BoutiqueAdminPage() {
     color: "#8B5CF6", // Purple default
   });
 
+  // Community counters form
+  const [countersForm, setCountersForm] = useState({
+    productsSold: "128",
+    supporters: "42",
+    eventsFunded: "3",
+  });
+
   useEffect(() => {
     loadData();
   }, []);
@@ -49,6 +56,14 @@ export default function BoutiqueAdminPage() {
       const data = await response.json();
       setProducts(data.products || []);
       setCategories(data.categories || []);
+      const counters = data?.settings?.communityCounters;
+      if (counters) {
+        setCountersForm({
+          productsSold: String(counters.productsSold ?? 128),
+          supporters: String(counters.supporters ?? 42),
+          eventsFunded: String(counters.eventsFunded ?? 3),
+        });
+      }
     } catch (err: any) {
       console.error("Error loading data:", err);
       setError(err.message || "Erreur lors du chargement");
@@ -262,6 +277,36 @@ export default function BoutiqueAdminPage() {
     setIsAddingCategory(true);
   }
 
+  async function handleSaveCounters() {
+    try {
+      setError(null);
+      const payload = {
+        communityCounters: {
+          productsSold: Math.max(0, parseInt(countersForm.productsSold || "0", 10) || 0),
+          supporters: Math.max(0, parseInt(countersForm.supporters || "0", 10) || 0),
+          eventsFunded: Math.max(0, parseInt(countersForm.eventsFunded || "0", 10) || 0),
+        },
+      };
+
+      const response = await fetch("/api/admin/shop/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la sauvegarde des compteurs");
+      }
+
+      setSuccess("Compteurs communautaires mis a jour avec succes !");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Error updating counters:", err);
+      setError(err.message || "Erreur lors de la sauvegarde des compteurs");
+    }
+  }
+
   function resetProductForm() {
     setProductForm({
       name: "",
@@ -407,6 +452,24 @@ export default function BoutiqueAdminPage() {
         >
           Catégories
           {activeTab === "categories" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("counters");
+            setIsAddingProduct(false);
+            setIsAddingCategory(false);
+            setEditingCategory(null);
+            setEditingProduct(null);
+          }}
+          className="px-4 py-2 font-medium transition-colors relative"
+          style={{
+            color: activeTab === "counters" ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+          }}
+        >
+          Compteurs communauté
+          {activeTab === "counters" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />
           )}
         </button>
@@ -917,6 +980,74 @@ export default function BoutiqueAdminPage() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "counters" && (
+        <div className="rounded-lg border p-6 space-y-5" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div>
+            <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+              Compteur communautaire de la boutique
+            </h2>
+            <p className="text-sm mt-1" style={{ color: "var(--color-text-secondary)" }}>
+              Ces valeurs sont affichees dans le hero de la boutique publique.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                Produits vendus
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={countersForm.productsSold}
+                onChange={(e) => setCountersForm((prev) => ({ ...prev, productsSold: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                Membres soutiens
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={countersForm.supporters}
+                onChange={(e) => setCountersForm((prev) => ({ ...prev, supporters: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-text)" }}>
+                Evenements finances
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={countersForm.eventsFunded}
+                onChange={(e) => setCountersForm((prev) => ({ ...prev, eventsFunded: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg border"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveCounters}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white transition-colors"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              <Save className="w-4 h-4" />
+              Enregistrer les compteurs
+            </button>
           </div>
         </div>
       )}

@@ -4,6 +4,25 @@ import { getStore } from '@netlify/blobs';
 const SHOP_STORE = 'tenf-shop';
 const PRODUCTS_KEY = 'products';
 const CATEGORIES_KEY = 'categories';
+const SETTINGS_KEY = 'settings';
+
+interface ShopSettings {
+  communityCounters: {
+    productsSold: number;
+    supporters: number;
+    eventsFunded: number;
+  };
+  updatedAt: string;
+}
+
+const DEFAULT_SHOP_SETTINGS: ShopSettings = {
+  communityCounters: {
+    productsSold: 128,
+    supporters: 42,
+    eventsFunded: 3,
+  },
+  updatedAt: new Date(0).toISOString(),
+};
 
 /**
  * GET - Récupère tous les produits (publique)
@@ -17,9 +36,19 @@ export async function GET(request: NextRequest) {
     const store = getStore(SHOP_STORE);
     const productsJson = await store.get(PRODUCTS_KEY);
     const categoriesJson = await store.get(CATEGORIES_KEY);
+    const settingsJson = await store.get(SETTINGS_KEY);
 
     let products: any[] = productsJson ? JSON.parse(productsJson) : [];
     const categories: any[] = categoriesJson ? JSON.parse(categoriesJson) : [];
+    const parsedSettings = settingsJson ? JSON.parse(settingsJson) : null;
+    const settings: ShopSettings = {
+      ...DEFAULT_SHOP_SETTINGS,
+      ...parsedSettings,
+      communityCounters: {
+        ...DEFAULT_SHOP_SETTINGS.communityCounters,
+        ...(parsedSettings?.communityCounters || {}),
+      },
+    };
 
     // Filtrer par catégorie si spécifié
     if (categoryId) {
@@ -40,7 +69,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ products: enrichedProducts, categories });
+    return NextResponse.json({ products: enrichedProducts, categories, settings });
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(
