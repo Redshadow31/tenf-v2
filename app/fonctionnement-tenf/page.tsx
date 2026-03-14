@@ -160,6 +160,33 @@ const tabs: Tab[] = [
   { id: "conseil", label: "Conseils" },
 ];
 
+const tabUiMeta: Record<TabId, { icon: string; subtitle: string }> = {
+  integration: {
+    icon: "✨",
+    subtitle: "Onboarding progressif pour bien démarrer dans TENF.",
+  },
+  reglement: {
+    icon: "📜",
+    subtitle: "Cadre clair pour garder une ambiance saine et bienveillante.",
+  },
+  "systeme-points": {
+    icon: "⭐",
+    subtitle: "Ton implication se transforme en progression concrète.",
+  },
+  "boutique-points": {
+    icon: "🛍️",
+    subtitle: "Récompenses utiles, fun et orientées évolution de chaîne.",
+  },
+  spotlight: {
+    icon: "🌟",
+    subtitle: "Moments de visibilité communautaire et soutien collectif.",
+  },
+  conseil: {
+    icon: "🎯",
+    subtitle: "Conseils pratiques pour progresser avec régularité.",
+  },
+};
+
 type TabGuidance = {
   tldr: string[];
   accordions: {
@@ -2176,6 +2203,7 @@ export default function Page() {
   const isLastStep = currentStep === tabs.length;
   const nextTabId = isLastStep ? tabs[0].id : tabs[currentStep].id;
   const currentGuide = tabGuidance[activeTab];
+  const currentTabMeta = tabUiMeta[activeTab];
   const completedIntegrationSteps = Object.values(integrationChecklist).filter(Boolean).length;
 
   return (
@@ -2252,25 +2280,32 @@ export default function Page() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="px-6 py-3 text-sm font-medium transition-colors border-b-2"
+                className="px-4 md:px-5 py-2.5 text-sm font-medium transition-all rounded-full border"
                 style={{
-                  color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                  borderColor: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
+                  color: activeTab === tab.id ? 'white' : 'var(--color-text-secondary)',
+                  borderColor: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-border)',
+                  backgroundColor: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
+                  boxShadow: activeTab === tab.id ? '0 8px 24px rgba(145, 70, 255, 0.28)' : 'none',
                 }}
                 onMouseEnter={(e) => {
                   if (activeTab !== tab.id) {
                     e.currentTarget.style.color = 'var(--color-text)';
-                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.borderColor = 'rgba(145, 70, 255, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (activeTab !== tab.id) {
                     e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
               >
-                {tab.label}
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden>{tabUiMeta[tab.id].icon}</span>
+                  <span>{tab.label}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -2278,6 +2313,25 @@ export default function Page() {
 
         {/* Contenu des onglets */}
         <div className="mt-8">
+          <section className="mb-6 rounded-xl border p-4 md:p-5 about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--color-primary)' }}>
+                  {currentTabMeta.icon} Cap actuel
+                </p>
+                <h2 className="text-lg md:text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
+                  {tabs[activeTabIndex]?.label || "Parcours TENF"}
+                </h2>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {currentTabMeta.subtitle}
+                </p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-full border" style={{ color: 'var(--color-primary)', borderColor: 'var(--color-border)' }}>
+                Expérience inspirée d&apos;À propos
+              </span>
+            </div>
+          </section>
+
           {/* TL;DR */}
           <section className="mb-8 rounded-xl border p-5 md:p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
@@ -2329,6 +2383,7 @@ export default function Page() {
             })}
           </section>
 
+          <div key={activeTab} className="about-fade-up">
           {activeTab === "integration" && (
             <div className="space-y-8">
               {/* Section : Introduction */}
@@ -2670,6 +2725,7 @@ export default function Page() {
           {activeTab === "conseil" && (
             <ConseilContent />
           )}
+          </div>
 
           {/* CTA contextuel onglet */}
           <section className="mt-10 rounded-xl border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
