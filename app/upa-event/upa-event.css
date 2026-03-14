@@ -3,6 +3,7 @@
   --upa-blue-deep: #003580;
   --upa-blue-soft: #e7f1ff;
   --upa-green: #00aa00;
+  --upa-green-deep: #008f00;
   --upa-green-soft: #e5f9e5;
   --upa-white: #ffffff;
   --upa-ink: #12407a;
@@ -24,6 +25,8 @@
 
 .upa-page {
   color: var(--upa-ink);
+  background: linear-gradient(180deg, #f6fbff 0%, #fbfffb 100%);
+  border-radius: var(--upa-radius-lg);
   padding: 0 0 80px;
 }
 
@@ -165,6 +168,16 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.upa-page .upa-btn-accent {
+  background: var(--upa-green);
+  color: var(--upa-white);
+  box-shadow: 0 8px 20px rgba(0, 170, 0, 0.24);
+}
+
+.upa-page .upa-btn-accent:hover {
+  background: var(--upa-green-deep);
+}
+
 .upa-page .upa-hero-social-proof {
   margin: 26px auto 0;
   display: flex;
@@ -211,7 +224,7 @@
   margin-top: 18px;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .upa-page .upa-proof-stats > div {

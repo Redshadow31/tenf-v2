@@ -45,7 +45,7 @@ export default function UpaEventPage() {
           </div>
 
           <div className="upa-hero-social-proof upa-fade-up upa-delay-4">
-            <strong>23 inscrits déjà mobilisés</strong>
+            <strong>D&eacute;j&agrave; plus de 23 participants inscrits</strong>
             <span>La dynamique est lancée, rejoins le mouvement UPA.</span>
           </div>
         </div>
@@ -54,16 +54,12 @@ export default function UpaEventPage() {
       <section className="upa-proof-strip">
         <div className="upa-container">
           <div className="upa-proof-card">
-            <h2>D&eacute;j&agrave; 23 participants inscrits</h2>
+            <h2>D&eacute;j&agrave; plus de 23 participants inscrits</h2>
             <p>
-              La premi&egrave;re session rassemble d&eacute;j&agrave; des profils engag&eacute;s. Plus la mobilisation grandit, plus l&apos;impact
+              La premi&egrave;re session rassemble d&eacute;j&agrave; plus de 23 profils engag&eacute;s. Plus la mobilisation grandit, plus l&apos;impact
               collectif peut faire la diff&eacute;rence.
             </p>
             <div className="upa-proof-stats">
-              <div>
-                <strong>23</strong>
-                <span>participants</span>
-              </div>
               <div>
                 <strong>9 jours</strong>
                 <span>de mobilisation</span>
@@ -260,10 +256,10 @@ export default function UpaEventPage() {
                 </p>
               </div>
               <div className="upa-btn-group">
-                <a href={moderatorTwitchFormUrl} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
+                <a href={moderatorTwitchFormUrl} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
                   Modérateur Twitch
                 </a>
-                <a href={moderatorDiscordFormUrl} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
+                <a href={moderatorDiscordFormUrl} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
                   Modérateur Discord
                 </a>
               </div>
