@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
                 discordUsername: memberData.discordUsername || existingMember.discordUsername,
                 parrain: memberData.parrain || existingMember.parrain,
                 integrationDate: existingMember.integrationDate || memberData.integrationDate,
-                twitchStatus: hydrateTwitchStatusAvatar(existingMember.twitchStatus, fetchedAvatar),
+                twitchStatus: hydrateTwitchStatusAvatar(existingMember.twitchStatus, fetchedAvatar) as any,
               },
               admin.discordId
             );
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
                 isVip: memberData.isVip,
                 integrationDate: memberData.integrationDate,
                 parrain: memberData.parrain,
-                twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar),
+                twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar) as any,
               },
               admin.discordId
             );

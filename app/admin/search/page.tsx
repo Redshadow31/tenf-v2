@@ -177,6 +177,7 @@ export default function AdminSearchPage() {
                                   (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
                                 }
                               }}
+                            />
                           ) : null}
                           <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-semibold ${member.avatar ? 'hidden' : ''}`}>
                             {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}

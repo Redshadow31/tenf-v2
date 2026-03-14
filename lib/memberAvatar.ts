@@ -4,6 +4,7 @@ type AnyMember = {
   displayName?: string;
   twitchLogin?: string;
   twitchStatus?: {
+    isLive?: boolean;
     profileImageUrl?: string;
     profileImageSource?: "twitch_api" | "manual";
     profileImageUpdatedAt?: string;
@@ -57,9 +58,9 @@ export function buildTwitchAvatarMap(twitchUsers: TwitchUser[]): Map<string, str
 }
 
 export function resolveMemberAvatar(member: AnyMember, fetchedAvatar?: string): string {
-  if (isUsableTwitchAvatar(fetchedAvatar)) return fetchedAvatar;
+  if (fetchedAvatar && isUsableTwitchAvatar(fetchedAvatar)) return fetchedAvatar;
   const storedAvatar = getStoredTwitchAvatar(member);
-  if (isUsableTwitchAvatar(storedAvatar)) return storedAvatar;
+  if (storedAvatar && isUsableTwitchAvatar(storedAvatar)) return storedAvatar;
   return buildMemberAvatarPlaceholder(member);
 }
 
@@ -91,6 +92,7 @@ export function hydrateTwitchStatusAvatar(
 ): AnyMember["twitchStatus"] | undefined {
   if (!isUsableTwitchAvatar(avatarUrl)) return existingStatus;
   return {
+    isLive: typeof existingStatus?.isLive === "boolean" ? existingStatus.isLive : false,
     ...(existingStatus || {}),
     profileImageUrl: avatarUrl,
     profileImageSource: "twitch_api",
