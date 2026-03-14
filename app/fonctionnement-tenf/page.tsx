@@ -2194,18 +2194,12 @@ function ConseilContent() {
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
   const [expandedGuide, setExpandedGuide] = useState<string>("essentiel");
-  const [integrationChecklist, setIntegrationChecklist] = useState({
-    discordConnecte: false,
-    espaceCree: false,
-    reunionPlanifiee: false,
-  });
   const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
   const currentStep = activeTabIndex + 1;
   const isLastStep = currentStep === tabs.length;
   const nextTabId = isLastStep ? tabs[0].id : tabs[currentStep].id;
   const currentGuide = tabGuidance[activeTab];
   const currentTabMeta = tabUiMeta[activeTab];
-  const completedIntegrationSteps = Object.values(integrationChecklist).filter(Boolean).length;
 
   return (
     <main id="top-fonctionnement" className={`min-h-screen ${styles.fonctionnementPage}`} style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -2329,9 +2323,6 @@ export default function Page() {
                   {currentTabMeta.subtitle}
                 </p>
               </div>
-              <span className="text-xs px-2.5 py-1 rounded-full border" style={{ color: 'var(--color-primary)', borderColor: 'var(--color-border)' }}>
-                Expérience inspirée d&apos;À propos
-              </span>
             </div>
           </section>
 
@@ -2353,7 +2344,6 @@ export default function Page() {
           {/* Accordéons guide */}
           <section className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             {currentGuide.accordions.map((accordion) => {
-              const isOpen = expandedGuide === accordion.key;
               const borderColor = accordion.key === "details" ? "rgba(239,68,68,0.3)" : "var(--color-border)";
               const bgColor = accordion.key === "bonnes-pratiques"
                 ? "rgba(145, 70, 255, 0.1)"
@@ -2361,6 +2351,22 @@ export default function Page() {
                   ? "rgba(239,68,68,0.08)"
                   : "var(--color-card)";
 
+              if (activeTab === "integration") {
+                return (
+                  <article
+                    key={accordion.key}
+                    className="rounded-xl border transition-all duration-200 about-glow p-4"
+                    style={{ borderColor, backgroundColor: bgColor }}
+                  >
+                    <p className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{accordion.title}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      {accordion.text}
+                    </p>
+                  </article>
+                );
+              }
+
+              const isOpen = expandedGuide === accordion.key;
               return (
                 <article
                   key={accordion.key}
@@ -2403,82 +2409,16 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Processus d'Intégration
                 </h2>
-                <div
-                  className="mb-6 rounded-xl border p-4 md:p-5"
-                  style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                      Progression de ton intégration: {completedIntegrationSteps}/3
-                    </p>
-                    <span
-                      className="text-xs px-2.5 py-1 rounded-full border"
-                      style={{ color: "var(--color-primary)", borderColor: "var(--color-border)" }}
-                    >
-                      Ludique & interactif
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${(completedIntegrationSteps / 3) * 100}%`, backgroundColor: "var(--color-primary)" }}
-                    />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() =>
-                        setIntegrationChecklist((prev) => ({ ...prev, discordConnecte: !prev.discordConnecte }))
-                      }
-                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: integrationChecklist.discordConnecte ? "var(--color-text)" : "var(--color-text-secondary)",
-                        backgroundColor: integrationChecklist.discordConnecte ? "var(--color-surface)" : "transparent",
-                      }}
-                    >
-                      {integrationChecklist.discordConnecte ? "✅" : "⬜"} Discord connecté
-                    </button>
-                    <button
-                      onClick={() => setIntegrationChecklist((prev) => ({ ...prev, espaceCree: !prev.espaceCree }))}
-                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: integrationChecklist.espaceCree ? "var(--color-text)" : "var(--color-text-secondary)",
-                        backgroundColor: integrationChecklist.espaceCree ? "var(--color-surface)" : "transparent",
-                      }}
-                    >
-                      {integrationChecklist.espaceCree ? "✅" : "⬜"} Espace membre créé
-                    </button>
-                    <button
-                      onClick={() =>
-                        setIntegrationChecklist((prev) => ({ ...prev, reunionPlanifiee: !prev.reunionPlanifiee }))
-                      }
-                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: integrationChecklist.reunionPlanifiee ? "var(--color-text)" : "var(--color-text-secondary)",
-                        backgroundColor: integrationChecklist.reunionPlanifiee ? "var(--color-surface)" : "transparent",
-                      }}
-                    >
-                      {integrationChecklist.reunionPlanifiee ? "✅" : "⬜"} Réunion planifiée
-                    </button>
-                  </div>
-                </div>
                 <div className="space-y-6">
                   <div className="rounded-xl p-6 shadow-lg border integration-card transition-transform duration-300 hover:-translate-y-0.5" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       1. Inscription
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Remplis le formulaire d'intégration via le site : tes informations arrivent directement dans notre tableau de suivi. L'équipe d'accueil vérifie ta demande et te guide si quelque chose manque.
-                    </p>
-                    <p className="leading-relaxed mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-                      N&apos;hésitez pas à vous connecter avec votre compte Discord et à créer votre espace membre sur le site afin de compléter votre profil et faciliter votre intégration dans la communauté.
+                      Commence par te connecter avec ton compte Discord sur le site. Une fois connecté, tu peux créer ou compléter ton espace membre pour finaliser ton profil et faciliter ton intégration dans la communauté.
                     </p>
                     <a
-                      href="https://tenf-community.com/integration"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href="/api/auth/discord/login?callbackUrl=/integration"
                       className="inline-block mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
                       style={{ backgroundColor: 'var(--color-primary)' }}
                     >
@@ -2491,10 +2431,7 @@ export default function Page() {
                       2. Réunion d'intégration
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Ta place se valide en participant à une réunion d'intégration. On t'explique TENF, on te montre où trouver les infos importantes, et tu peux poser toutes tes questions. La présence et l'échange sont essentiels.
-                    </p>
-                    <p className="leading-relaxed mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-                      Les réunions d&apos;intégration sont organisées régulièrement. Vous pouvez consulter le calendrier et vous inscrire directement sur la page{" "}
+                      Les réunions d&apos;intégration sont organisées régulièrement. Tu peux consulter le calendrier et t&apos;inscrire directement sur la page{" "}
                       <a
                         href="https://tenf-community.com/integration"
                         target="_blank"
@@ -2502,9 +2439,9 @@ export default function Page() {
                         className="underline"
                         style={{ color: 'var(--color-primary)' }}
                       >
-                        dédiée
+                        d&apos;intégration
                       </a>
-                      .
+                      . C&apos;est le meilleur point de départ pour comprendre le fonctionnement TENF, poser tes questions et avancer sereinement.
                     </p>
                     <a
                       href="https://tenf-community.com/integration"
@@ -2522,8 +2459,15 @@ export default function Page() {
                       3. Découvrir les autres & s'impliquer
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Fais connaissance avec la communauté : sois actif sur le serveur, participe aux événements et passe sur les lives des membres TENF. Plus tu échanges, plus l'entraide devient naturelle (et efficace).
+                      Découvre les autres membres et commence à t&apos;impliquer dans la vie de TENF : échange sur le serveur, participe aux événements, passe sur les lives et prends le temps de suivre les créateurs actifs du système d&apos;entraide. C&apos;est souvent comme ça que la porte s&apos;ouvre vraiment : en créant des liens, en découvrant les univers des autres et en rendant l&apos;entraide plus naturelle au quotidien.
                     </p>
+                    <a
+                      href="/lives"
+                      className="inline-block mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      Découvrir les autres
+                    </a>
                   </div>
                 </div>
               </section>
@@ -2616,14 +2560,14 @@ export default function Page() {
                 </h2>
                 <div className="rounded-xl p-8 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                    TENF propose des rendez-vous réguliers pour se découvrir, progresser et créer des liens entre streamers et membres :
+                    TENF propose des rendez-vous réguliers pensés pour créer du lien, gagner en visibilité et progresser ensemble dans une vraie dynamique d&apos;entraide :
                   </p>
                   <ul className="leading-relaxed text-lg space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Spotlight</strong> : mises en avant régulières de membres et de contenus (live, clip, projet)</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Films communautaires</strong> : moments "watch party" en vocal pour partager un bon moment</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Jeux communautaires</strong> : soirées fun (Petit Bac, Fortnite, Gartic Phone, etc.)</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Sessions de mentorat (petits groupes encadrés)</strong> : suivi, retours, objectifs et progression ensemble</li>
-                    <li>• <strong style={{ color: 'var(--color-text)' }}>Formations</strong> : ateliers pratiques autour du streaming (outils, organisation, bonnes pratiques)</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Spotlight</strong> : un temps fort pour mettre un créateur en lumière et mobiliser la communauté autour de son univers</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Films communautaires</strong> : des moments partagés en vocal pour renforcer les liens entre membres hors live</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Jeux communautaires</strong> : des sessions conviviales pour se découvrir autrement et faire vivre l&apos;entraide dans l&apos;action</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Sessions de mentorat (petits groupes encadrés)</strong> : échanges guidés, retours concrets et progression collective</li>
+                    <li>• <strong style={{ color: 'var(--color-text)' }}>Formations</strong> : ateliers pratiques pour mieux structurer ses lives, ses outils et son évolution de créateur</li>
                   </ul>
                 </div>
               </section>
@@ -2639,7 +2583,7 @@ export default function Page() {
                       Support Personnalisé
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Accès à un mentor dédié et à l'équipe pour toutes vos questions.
+                      L&apos;équipe de staff reste disponible pour accompagner la communauté, répondre aux questions, aider à mieux comprendre le fonctionnement de TENF et orienter les membres lorsqu&apos;ils en ont besoin.
                     </p>
                   </div>
 
@@ -2648,7 +2592,7 @@ export default function Page() {
                       Outils et Automatisation
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Bots Discord, intégrations Twitch et outils pour faciliter votre streaming.
+                      TENF met à disposition plusieurs ressources utiles pour la vie communautaire : le serveur Discord, les automatisations pratiques et le site TENF, qui centralise les informations, les parcours et différents outils utiles à l&apos;intégration.
                     </p>
                   </div>
 
@@ -2674,34 +2618,79 @@ export default function Page() {
                       Comment puis-je rejoindre TENF ?
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Remplissez le formulaire d'intégration disponible sur la page "Intégration" de notre site.
+                      Commence par te connecter avec ton compte Discord, puis complète ton intégration via la page dédiée du site.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-                      Y a-t-il des critères pour rejoindre ?
+                      Dois-je obligatoirement passer par la réunion d&apos;intégration ?
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Nous accueillons tous les streamers motivés, quel que soit leur niveau. L'important est l'envie de progresser et de s'entraider.
+                      Oui, la réunion d&apos;intégration fait partie du parcours prévu pour bien comprendre le fonctionnement de TENF et démarrer dans de bonnes conditions.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-                      Comment fonctionnent les évaluations ?
+                      Comment créer mon espace membre ?
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Les évaluations mensuelles permettent de faire un point sur votre progression, votre engagement et vos besoins. C'est un outil de suivi, pas de sanction.
+                      Une fois connecté via Discord sur le site, ton profil peut être reconnu automatiquement. Si tu es nouveau, le formulaire adapté s&apos;affichera pour créer ton espace membre.
                     </p>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-                      Puis-je évoluer dans la hiérarchie ?
+                      Comment découvrir les membres actifs de TENF ?
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Oui ! En fonction de votre implication, de votre progression et de votre volonté d'aider les autres, vous pouvez évoluer vers des rôles plus importants.
+                      Tu peux passer par la page Live, les événements communautaires et les échanges sur le serveur pour découvrir les créateurs actifs du système d&apos;entraide.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                      Comment savoir où participer en premier ?
+                    </h3>
+                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      Le plus simple est de commencer par une réunion d&apos;intégration, puis de rejoindre un live, un événement communautaire ou un échange textuel qui te correspond.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                      Le staff peut-il m&apos;aider si je suis perdu ?
+                    </h3>
+                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      Oui, l&apos;équipe de staff est là pour orienter, répondre aux questions et t&apos;aider à mieux comprendre comment trouver ta place dans la communauté.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                      À quoi sert le site TENF dans mon intégration ?
+                    </h3>
+                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      Le site centralise plusieurs informations utiles : intégration, calendrier, ressources, événements et outils pratiques pour mieux t&apos;impliquer dans la communauté.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                      Est-ce que je dois suivre les autres membres ?
+                    </h3>
+                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      Ce n&apos;est pas une obligation imposée, mais découvrir et suivre les membres actifs aide fortement à créer du lien et à rendre l&apos;entraide plus naturelle.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                      Comment commencer à m&apos;impliquer sans me sentir perdu ?
+                    </h3>
+                    <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      Avance étape par étape : réunion d&apos;intégration, premiers échanges sur le serveur, puis découverte des lives et des événements. L&apos;important est de garder un rythme simple et régulier.
                     </p>
                   </div>
                 </div>
