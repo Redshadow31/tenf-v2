@@ -382,7 +382,6 @@ const tabGuidance: Record<TabId, TabGuidance> = {
 
 function BoutiquePointsContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [copiedTicket, setCopiedTicket] = useState(false);
 
   const filteredItems = selectedCategory
@@ -397,35 +396,35 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
   const faqItems = [
     {
       q: "Je viens d'acheter, que faire maintenant ?",
-      a: "Ouvre un ticket Discord dès l'achat avec la récompense choisie, ton pseudo Twitch et les infos utiles pour lancer le traitement.",
+      a: "Après ton achat, ouvre un ticket sur Discord pour que l'équipe puisse traiter ta demande. Indique la récompense achetée, ton pseudo Twitch et les informations nécessaires à la mise en place.",
     },
     {
       q: "C'est quoi un cooldown ?",
-      a: "Le cooldown est un délai avant de pouvoir racheter la même récompense. Exemple : Spotlight = 2 mois entre deux achats.",
+      a: "Certaines récompenses ne peuvent pas être utilisées trop souvent afin de garder un équilibre dans la communauté et permettre à plusieurs membres d'en profiter.",
     },
     {
       q: "Combien de temps pour traiter une demande ?",
-      a: "Le délai dépend de la récompense et de la charge staff. Les demandes simples sont traitées rapidement, les formats premium nécessitent une planification.",
+      a: "Le délai dépend du type de récompense et des disponibilités de l'équipe, mais les demandes sont traitées aussi rapidement que possible.",
     },
     {
       q: "Puis-je annuler un achat ?",
-      a: "Contacte le staff en ticket dès que possible. Selon l'avancement, une solution pourra être étudiée avec toi.",
+      a: "Si la demande n'a pas encore été traitée, une annulation peut parfois être possible. Signale-le rapidement dans ton ticket Discord.",
     },
     {
       q: "Pourquoi certaines récompenses demandent plus d'infos ?",
-      a: "Les récompenses coaching, feedback ou visibilité demandent du contexte pour être utiles et personnalisées.",
+      a: "Certaines récompenses nécessitent des éléments supplémentaires (liens, disponibilités, VOD, etc.) afin que l'équipe puisse préparer correctement l'intervention ou l'analyse.",
     },
     {
       q: "Le Spotlight a-t-il un délai entre deux passages ?",
-      a: "Oui, le Spotlight est soumis à un cooldown de 2 mois pour garder un rythme juste pour toute la communauté.",
+      a: "Oui. Le Spotlight New Family possède un cooldown de 2 mois entre deux passages pour permettre à différents membres de bénéficier de cette mise en avant.",
     },
     {
       q: "Puis-je offrir une récompense à un autre membre ?",
-      a: "Oui, c'est possible sur validation staff. Précise clairement le membre concerné dans ton ticket.",
+      a: "Non. Les récompenses de la boutique sont liées au membre qui les achète et ne peuvent pas être offertes à un autre membre.",
     },
     {
       q: "Que faire si je me suis trompé dans mon ticket ?",
-      a: "Réponds simplement dans le même ticket avec les corrections. Inutile d'en ouvrir un deuxième.",
+      a: "Tu peux simplement corriger les informations directement dans le ticket ou prévenir l'équipe pour ajuster la demande.",
     },
   ];
 
@@ -661,29 +660,42 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
         <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
           Questions fréquentes
         </h2>
-        {faqItems.map((faq, index) => (
-          <article key={faq.q} className="rounded-xl border overflow-hidden shop-faq" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <button
-              onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-              className="w-full px-5 py-4 text-left flex items-center justify-between"
-              style={{ backgroundColor: expandedFaq === index ? "var(--color-surface)" : "transparent" }}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {faqItems.map((faq) => (
+            <article
+              key={faq.q}
+              className="rounded-xl border p-5 shop-faq"
+              style={{ backgroundColor: "var(--color-card)", borderColor: "rgba(145, 70, 255, 0.25)" }}
             >
-              <h3 className="font-semibold pr-4" style={{ color: "var(--color-text)" }}>
-                {faq.q}
+              <h3 className="font-semibold mb-2 flex items-start gap-2" style={{ color: "var(--color-text)" }}>
+                <span aria-hidden style={{ color: "var(--color-primary)" }}>❓</span>
+                <span>{faq.q}</span>
               </h3>
-              <span className="text-xl" style={{ color: "var(--color-primary)" }}>
-                {expandedFaq === index ? "−" : "+"}
-              </span>
-            </button>
-            {expandedFaq === index && (
-              <div className="px-5 py-4 border-t" style={{ borderColor: "var(--color-border)" }}>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                  {faq.a}
-                </p>
-              </div>
-            )}
-          </article>
-        ))}
+              <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                {faq.a}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <article
+          className="rounded-xl border p-5 md:p-6"
+          style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-primary)" }}
+        >
+          <h3 className="font-semibold mb-3 flex items-start gap-2" style={{ color: "var(--color-text)" }}>
+            <span aria-hidden style={{ color: "var(--color-primary)" }}>⭐</span>
+            <span>Important – Organisation du Spotlight</span>
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Lors de l'achat d'un Spotlight, c'est le membre qui choisit lui-même la date et l'horaire de passage.
+            <br />
+            Ce créneau est ensuite validé avec l'équipe.
+            <br />
+            Les retards ou absences peuvent entraîner l'annulation du Spotlight.
+            <br />
+            Dans ce cas, les points utilisés ne sont pas remboursés, afin de respecter l'organisation des événements communautaires.
+          </p>
+        </article>
       </section>
 
       {/* CTA final boutique */}
