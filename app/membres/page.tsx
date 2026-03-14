@@ -21,6 +21,7 @@ interface PublicMember {
   twitter?: string;
   shadowbanLives?: boolean;
   createdAt?: string;
+  integrationDate?: string;
 }
 
 type FollowState = "followed" | "not_followed" | "unknown";
@@ -54,13 +55,22 @@ type PlanningItem = {
 
 type PlanningStatus = "shared" | "partial" | "none";
 type MemberActivityLevel = "live" | "week" | "normal";
-type FilterKey = "all" | "dev" | "affilie" | "staff";
+type FilterKey = "all" | "dev" | "affilie" | "staff" | "unfollowed";
+type StaffTier =
+  | "admin_fondateur"
+  | "admin_coordinateur"
+  | "moderateur"
+  | "moderateur_formation"
+  | "moderateur_pause"
+  | "soutien_tenf"
+  | null;
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "🎮 Tous" },
   { key: "dev", label: "🌱 Créateurs en développement" },
   { key: "affilie", label: "⭐ Affiliés Twitch" },
   { key: "staff", label: "🛡 Staff TENF" },
+  { key: "unfollowed", label: "⚪ Chaînes non suivies" },
 ];
 
 const INITIAL_VISIBLE_COUNT = 24;
@@ -79,13 +89,6 @@ function getMonthKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
-}
-
-function toDayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
 }
 
 function toDateTime(date: string, time: string): Date {
@@ -108,17 +111,7 @@ function endOfWeekSunday(date: Date): Date {
 }
 
 function isStaffCategory(role: string): boolean {
-  return (
-    role === "Admin" ||
-    role === "Admin Coordinateur" ||
-    role === "Admin Adjoint" ||
-    role === "Modérateur" ||
-    role === "Mentor" ||
-    role === "Modérateur en formation" ||
-    role === "Modérateur Junior" ||
-    role === "Modérateur en activité réduite" ||
-    role === "Modérateur en pause"
-  );
+  return normalizeMemberRole(role) !== null;
 }
 
 function isAffiliated(role: string): boolean {
@@ -138,8 +131,51 @@ function shuffleArray<T>(items: T[]): T[] {
   return next;
 }
 
+function normalizeMemberRole(role: string): StaffTier {
+  const normalized = normalizeText(role);
+
+  if (normalized.includes("admin") && (normalized.includes("fondateur") || normalized === "admin")) {
+    return "admin_fondateur";
+  }
+  if (normalized.includes("admin") && (normalized.includes("coordinateur") || normalized.includes("adjoint"))) {
+    return "admin_coordinateur";
+  }
+  if (normalized.includes("moderateur") && normalized.includes("formation")) {
+    return "moderateur_formation";
+  }
+  if (normalized.includes("moderateur") && normalized.includes("pause")) {
+    return "moderateur_pause";
+  }
+  if (normalized.includes("soutien tenf") || normalized === "soutien") {
+    return "soutien_tenf";
+  }
+  if (normalized.includes("moderateur") || normalized.includes("mentor")) {
+    return "moderateur";
+  }
+  return null;
+}
+
+const STAFF_PRIORITY: StaffTier[] = [
+  "admin_fondateur",
+  "admin_coordinateur",
+  "moderateur",
+  "moderateur_formation",
+  "moderateur_pause",
+  "soutien_tenf",
+];
+
+function hashString(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 export default function Page() {
   const liveSectionRef = useRef<HTMLDivElement | null>(null);
+  const sessionShuffleSeedRef = useRef<number>(Math.floor(Math.random() * 1_000_000_000));
 
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
@@ -394,6 +430,7 @@ export default function Page() {
         planningStatus,
         isAffiliated: isAffiliated(member.role),
         isDevelopment: isDevelopment(member.role),
+        staffTier: normalizeMemberRole(member.role),
         isStaff: isStaffCategory(member.role),
         followState: showFollowStatuses ? followStatuses[login]?.state || "unknown" : undefined,
         streamTags: categories.slice(0, 3).map(([name]) => name),
@@ -464,14 +501,36 @@ export default function Page() {
     return fallback.slice(0, 6);
   }, [fallbackDiscoverLogins, liveShowcaseLogins, memberCards, showFollowStatuses]);
 
-  const discoveryChannels = useMemo(() => {
+  const recentIntegratedMembers = useMemo(() => {
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const eligible = memberCards.filter((member) => {
+      if (!member.integrationDate) return false;
+      const ts = new Date(member.integrationDate).getTime();
+      if (Number.isNaN(ts)) return false;
+      return now - ts <= sevenDaysMs && now >= ts;
+    });
+    if (eligible.length <= 6) return eligible;
+    return shuffleArray(eligible).slice(0, 6);
+  }, [memberCards]);
+
+  const randomRankByLogin = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const member of memberCards) {
+      const score = hashString(`${member.login}-${sessionShuffleSeedRef.current}`);
+      map.set(member.login, score);
+    }
+    return map;
+  }, [memberCards]);
+
+  const nonFollowedChannels = useMemo(() => {
     if (!showFollowStatuses) return [];
     return memberCards
       .filter((member) => member.followState === "not_followed")
       .sort((a, b) => {
-        const rank = (member: (typeof memberCards)[number]) =>
+        const activityRank = (member: (typeof memberCards)[number]) =>
           member.activity === "live" ? 3 : member.activity === "week" ? 2 : 1;
-        if (rank(a) !== rank(b)) return rank(b) - rank(a);
+        if (activityRank(a) !== activityRank(b)) return activityRank(b) - activityRank(a);
         if (a.isAffiliated !== b.isAffiliated) return Number(b.isAffiliated) - Number(a.isAffiliated);
         return a.displayName.localeCompare(b.displayName, "fr");
       })
@@ -487,6 +546,12 @@ export default function Page() {
       filtered = filtered.filter((member) => member.isAffiliated);
     } else if (activeFilter === "staff") {
       filtered = filtered.filter((member) => member.isStaff);
+    } else if (activeFilter === "unfollowed") {
+      if (!showFollowStatuses) {
+        filtered = [];
+      } else {
+        filtered = filtered.filter((member) => member.followState === "not_followed");
+      }
     }
 
     const normalizedQuery = normalizeText(debouncedSearchQuery);
@@ -501,19 +566,34 @@ export default function Page() {
       });
     }
 
-    filtered.sort((a, b) => {
-      const activityRank = (member: (typeof filtered)[number]) =>
-        member.activity === "live" ? 3 : member.activity === "week" ? 2 : 1;
-      if (activityRank(a) !== activityRank(b)) return activityRank(b) - activityRank(a);
-      if (a.isAffiliated !== b.isAffiliated) return Number(b.isAffiliated) - Number(a.isAffiliated);
+    const staff = filtered.filter((member) => member.staffTier !== null);
+    const others = filtered.filter((member) => member.staffTier === null);
+
+    staff.sort((a, b) => {
+      const aTier = STAFF_PRIORITY.indexOf(a.staffTier);
+      const bTier = STAFF_PRIORITY.indexOf(b.staffTier);
+      if (aTier !== bTier) return aTier - bTier;
       return a.displayName.localeCompare(b.displayName, "fr");
     });
-    return filtered;
-  }, [activeFilter, debouncedSearchQuery, memberCards]);
+
+    others.sort((a, b) => {
+      const rankA = randomRankByLogin.get(a.login) ?? 0;
+      const rankB = randomRankByLogin.get(b.login) ?? 0;
+      return rankA - rankB;
+    });
+
+    return [...staff, ...others];
+  }, [activeFilter, debouncedSearchQuery, memberCards, randomRankByLogin, showFollowStatuses]);
 
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE_COUNT);
   }, [activeFilter, debouncedSearchQuery]);
+
+  useEffect(() => {
+    if (activeFilter === "unfollowed" && !showFollowStatuses) {
+      setActiveFilter("all");
+    }
+  }, [activeFilter, showFollowStatuses]);
 
   const visibleMembers = filteredMembers.slice(0, visibleCount);
   const hasMoreMembers = visibleCount < filteredMembers.length;
@@ -874,22 +954,96 @@ export default function Page() {
         </section>
       )}
 
-      {/* Chaines a decouvrir */}
+      {/* Nouveaux createurs a decouvrir */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>📺 Chaînes à découvrir</h2>
+          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>✨ Nouveaux créateurs à découvrir</h2>
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Une sélection de chaînes TENF à explorer en priorité.
+            Une sélection de créateurs récemment intégrés à TENF.
           </p>
         </div>
 
+        {recentIntegratedMembers.length > 0 ? (
+          <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {recentIntegratedMembers.map((member) => (
+                <article
+                  key={`recent-integrated-${member.login}`}
+                  className="rounded-xl border p-3"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+                >
+                  <div className="mb-2 flex items-start gap-2.5">
+                    <img
+                      src={member.avatar || `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`}
+                      alt={member.displayName}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                        {member.displayName}
+                      </p>
+                      <p className="truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                        🎮 {member.primaryGame}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-2 flex flex-wrap gap-1.5 text-[11px]">
+                    <span className={getRoleBadgeClassName(member.role)}>
+                      {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
+                    </span>
+                    {member.activity !== "normal" ? (
+                      <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                        🔥 Actif cette semaine
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://www.twitch.tv/${member.twitchLogin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: "var(--color-primary)" }}
+                    >
+                      🚪 Ouvrir la porte
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleMemberClick(member)}
+                      className="rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-white/5"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    >
+                      Voir profil
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
+            Aucun nouveau créateur intégré cette semaine pour le moment 💜
+          </div>
+        )}
+      </section>
+
+      {/* Chaines non suivies */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>⚪ Chaînes non suivies</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Retrouve les chaînes TENF que tu ne suis pas encore.
+          </p>
+        </div>
         {showFollowStatuses ? (
-          discoveryChannels.length > 0 ? (
+          nonFollowedChannels.length > 0 ? (
             <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
               <div className="flex flex-wrap gap-2">
-                {discoveryChannels.map((member) => (
+                {nonFollowedChannels.map((member) => (
                   <a
-                    key={`channel-discover-${member.login}`}
+                    key={`channel-unfollowed-${member.login}`}
                     href={`https://www.twitch.tv/${member.twitchLogin}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -958,21 +1112,35 @@ export default function Page() {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((filter) => (
+          {FILTERS.map((filter) => {
+            const disabled = filter.key === "unfollowed" && !showFollowStatuses;
+            const tooltip = disabled
+              ? "Connecte ton compte Twitch pour utiliser ce filtre"
+              : undefined;
+            return (
             <button
               key={filter.key}
               type="button"
-              onClick={() => setActiveFilter(filter.key)}
+              onClick={() => !disabled && setActiveFilter(filter.key)}
+              disabled={disabled}
+              title={tooltip}
               className="rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:-translate-y-[1px]"
               style={{
-                backgroundColor: activeFilter === filter.key ? "rgba(145,70,255,0.15)" : "var(--color-card)",
+                backgroundColor: activeFilter === filter.key && !disabled ? "rgba(145,70,255,0.15)" : "var(--color-card)",
                 borderColor: activeFilter === filter.key ? "rgba(145,70,255,0.6)" : "var(--color-border)",
-                color: activeFilter === filter.key ? "var(--color-text)" : "var(--color-text-secondary)",
+                color: disabled
+                  ? "rgba(148,163,184,0.6)"
+                  : activeFilter === filter.key
+                    ? "var(--color-text)"
+                    : "var(--color-text-secondary)",
+                opacity: disabled ? 0.65 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
               }}
             >
               {filter.label}
             </button>
-          ))}
+            );
+          })}
         </div>
       </section>
 

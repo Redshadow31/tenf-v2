@@ -142,6 +142,11 @@ export async function GET() {
           tiktok: member.tiktok || undefined,
           twitter: member.twitter || undefined,
           profileValidationStatus: member.profileValidationStatus,
+          integrationDate: member.integrationDate
+            ? (member.integrationDate instanceof Date
+                ? member.integrationDate.toISOString()
+                : String(member.integrationDate))
+            : undefined,
         };
       } catch (memberError) {
         console.error(`[Members Public API] Erreur mapping membre ${member.twitchLogin}:`, memberError);
@@ -166,6 +171,11 @@ export async function GET() {
                 : typeof member.createdAt === 'string' 
                   ? member.createdAt 
                   : new Date(member.createdAt).toISOString())
+            : undefined,
+          integrationDate: member.integrationDate
+            ? (member.integrationDate instanceof Date
+                ? member.integrationDate.toISOString()
+                : String(member.integrationDate))
             : undefined,
         };
       }
