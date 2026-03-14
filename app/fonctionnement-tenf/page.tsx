@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getRoleBadgeClassName } from "@/lib/roleBadgeSystem";
 
 // Lien unique Discord pour tous les achats
 const DISCORD_SHOP_URL = "https://discord.com/channels/535244857891880970/1278839967962894459";
@@ -2346,6 +2347,18 @@ export default function Page() {
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                       Remplis le formulaire d'intégration via le site : tes informations arrivent directement dans notre tableau de suivi. L'équipe d'accueil vérifie ta demande et te guide si quelque chose manque.
                     </p>
+                    <p className="leading-relaxed mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+                      N&apos;hésitez pas à vous connecter avec votre compte Discord et à créer votre espace membre sur le site afin de compléter votre profil et faciliter votre intégration dans la communauté.
+                    </p>
+                    <a
+                      href="https://tenf-community.com/integration"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      Créer mon espace membre
+                    </a>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
@@ -2355,6 +2368,28 @@ export default function Page() {
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                       Ta place se valide en participant à une réunion d'intégration. On t'explique TENF, on te montre où trouver les infos importantes, et tu peux poser toutes tes questions. La présence et l'échange sont essentiels.
                     </p>
+                    <p className="leading-relaxed mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+                      Les réunions d&apos;intégration sont organisées régulièrement. Vous pouvez consulter le calendrier et vous inscrire directement sur la page{" "}
+                      <a
+                        href="https://tenf-community.com/integration"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                        style={{ color: 'var(--color-primary)' }}
+                      >
+                        dédiée
+                      </a>
+                      .
+                    </p>
+                    <a
+                      href="https://tenf-community.com/integration"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      Voir les prochaines réunions d&apos;intégration
+                    </a>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
@@ -2397,17 +2432,26 @@ export default function Page() {
                       Membres Actifs
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Le cœur de TENF : ils participent à l'entraide, aux raids, aux events et font vivre les échanges au quotidien.
+                      Cette catégorie représente les créateurs actifs qui font vivre l&apos;entraide au quotidien.
                     </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className={getRoleBadgeClassName("Affilié")}>Créateurs affiliés</span>
+                      <span className={getRoleBadgeClassName("Développement")}>Créateurs en développement</span>
+                      <span className={getRoleBadgeClassName("Soutien TENF")}>Soutien TENF</span>
+                    </div>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
-                      Créateur Junior (mineur)
+                      Mineurs
                     </h3>
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      Jeunes créateurs : un cadre adapté et bienveillant, pour progresser et participer à la communauté en toute sécurité.
+                      Membres mineurs de la communauté, avec un cadre adapté, bienveillant et sécurisé.
                     </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className={getRoleBadgeClassName("Créateur Junior")}>Créateurs Juniors</span>
+                      <span className={getRoleBadgeClassName("Les P'tits Jeunes")}>Les P&apos;tits Jeunes</span>
+                    </div>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
@@ -2417,6 +2461,9 @@ export default function Page() {
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                       Viewers et membres de la communauté : accès à la vie du serveur et aux activités, avec un environnement encadré et respectueux.
                     </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className={getRoleBadgeClassName("Communauté")}>Communauté</span>
+                    </div>
                   </div>
 
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
@@ -2426,6 +2473,13 @@ export default function Page() {
                     <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                       L'équipe qui organise, anime et veille au bon fonctionnement : accueil, événements, accompagnement et modération.
                     </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className={getRoleBadgeClassName("Admin Fondateurs")}>Admin Fondateurs</span>
+                      <span className={getRoleBadgeClassName("Admin Coordinateur")}>Admin Coordinateur</span>
+                      <span className={getRoleBadgeClassName("Modérateur")}>Modérateurs</span>
+                      <span className={getRoleBadgeClassName("Modérateur en formation")}>Modérateur en Formation</span>
+                      <span className={getRoleBadgeClassName("Modérateur en pause")}>Modérateur en Pause</span>
+                    </div>
                   </div>
                 </div>
               </section>
