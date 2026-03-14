@@ -15,7 +15,6 @@ type ClientLayoutProps = {
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const isLandingPage = pathname === "/upa-event";
 
   // Pour les routes admin, laisser le layout admin gérer l'affichage
   if (isAdmin) {
@@ -24,21 +23,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         <ThemeProvider>
           <ConnectionTracker />
           {children}
-        </ThemeProvider>
-      </SessionProvider>
-    );
-  }
-
-  // Pages landing (UPA Event, etc.) : header visible, pas de sidebar, pleine largeur
-  if (isLandingPage) {
-    return (
-      <SessionProvider>
-        <ThemeProvider>
-          <ConnectionTracker />
-          <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-            <Header />
-            <main>{children}</main>
-          </div>
         </ThemeProvider>
       </SessionProvider>
     );
