@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import worldMap from "@svg-maps/world";
 
 export interface CountryConnectionPoint {
@@ -10,47 +10,6 @@ export interface CountryConnectionPoint {
   count: number;
   members?: number;
   general?: number;
-}
-
-const COUNTRY_CENTROIDS: Record<string, { lat: number; lng: number }> = {
-  FR: { lat: 46.22, lng: 2.21 },
-  BE: { lat: 50.5, lng: 4.47 },
-  CH: { lat: 46.82, lng: 8.23 },
-  CA: { lat: 56.13, lng: -106.35 },
-  US: { lat: 39.82, lng: -98.57 },
-  MX: { lat: 23.63, lng: -102.55 },
-  BR: { lat: -14.23, lng: -51.92 },
-  AR: { lat: -38.42, lng: -63.62 },
-  GB: { lat: 55.38, lng: -3.43 },
-  IE: { lat: 53.14, lng: -8.24 },
-  ES: { lat: 40.46, lng: -3.75 },
-  PT: { lat: 39.4, lng: -8.22 },
-  DE: { lat: 51.16, lng: 10.45 },
-  IT: { lat: 41.87, lng: 12.57 },
-  NL: { lat: 52.13, lng: 5.29 },
-  AT: { lat: 47.52, lng: 14.55 },
-  PL: { lat: 51.92, lng: 19.15 },
-  SE: { lat: 60.13, lng: 18.64 },
-  NO: { lat: 60.47, lng: 8.47 },
-  FI: { lat: 61.92, lng: 25.75 },
-  DZ: { lat: 28.03, lng: 1.66 },
-  MA: { lat: 31.79, lng: -7.09 },
-  TN: { lat: 33.89, lng: 9.54 },
-  SN: { lat: 14.5, lng: -14.45 },
-  CM: { lat: 7.37, lng: 12.35 },
-  CI: { lat: 7.54, lng: -5.55 },
-  JP: { lat: 36.2, lng: 138.25 },
-  KR: { lat: 35.91, lng: 127.77 },
-  CN: { lat: 35.86, lng: 104.2 },
-  IN: { lat: 20.59, lng: 78.96 },
-  AU: { lat: -25.27, lng: 133.77 },
-  NZ: { lat: -40.9, lng: 174.89 },
-};
-
-function project(lat: number, lng: number, width: number, height: number) {
-  const x = ((lng + 180) / 360) * width;
-  const y = ((90 - lat) / 180) * height;
-  return { x, y };
 }
 
 interface SvgMapLocation {
@@ -78,6 +37,8 @@ export default function WorldConnectionsMap({
   selectedCountry?: string;
 }) {
   const [hovered, setHovered] = useState<CountryConnectionPoint | null>(null);
+  const pathRefs = useRef<Record<string, SVGPathElement | null>>({});
+  const [pathCenters, setPathCenters] = useState<Record<string, { x: number; y: number }>>({});
   const mapData = worldMap as unknown as {
     viewBox: string;
     locations: SvgMapLocation[];
@@ -91,19 +52,35 @@ export default function WorldConnectionsMap({
     return index;
   }, [countries]);
 
+  useEffect(() => {
+    const nextCenters: Record<string, { x: number; y: number }> = {};
+    for (const country of countries) {
+      const code = country.countryCode.toLowerCase();
+      const path = pathRefs.current[code];
+      if (!path) continue;
+      const box = path.getBBox();
+      if (!Number.isFinite(box.x) || !Number.isFinite(box.y) || box.width <= 0 || box.height <= 0) continue;
+      nextCenters[code] = {
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2,
+      };
+    }
+    setPathCenters(nextCenters);
+  }, [countries]);
+
   const points = useMemo(
     () =>
       countries
         .map((country) => {
-          const centroid = COUNTRY_CENTROIDS[country.countryCode];
-          if (!centroid) return null;
+          const center = pathCenters[country.countryCode.toLowerCase()];
+          if (!center) return null;
           return {
             ...country,
-            ...project(centroid.lat, centroid.lng, worldViewBox.width, worldViewBox.height),
+            ...center,
           };
         })
         .filter(Boolean) as Array<CountryConnectionPoint & { x: number; y: number }>,
-    [countries, worldViewBox.width, worldViewBox.height]
+    [countries, pathCenters]
   );
 
   const maxCount = Math.max(1, ...countries.map((country) => country.count));
@@ -115,7 +92,7 @@ export default function WorldConnectionsMap({
         <p className="text-xs text-gray-400">Regroupement par pays</p>
       </div>
       <div className="relative overflow-hidden rounded-lg border border-[#26262a] bg-[#0b0b0e]">
-        <svg viewBox={mapData.viewBox} className="h-[360px] w-full" preserveAspectRatio="xMidYMid meet">
+        <svg viewBox={mapData.viewBox} className="h-[420px] w-full md:h-[540px]" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id="worldGrad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#121220" />
@@ -166,6 +143,9 @@ export default function WorldConnectionsMap({
               return (
                 <path
                   key={location.id}
+                  ref={(node) => {
+                    pathRefs.current[location.id.toLowerCase()] = node;
+                  }}
                   d={location.path}
                   fill={isSelected ? "#2c3f7e" : hasConnections ? "#263a71" : "url(#countryFill)"}
                   stroke={isSelected ? "#8ea9ff" : hasConnections ? "#6f8ef7" : "#3b4866"}
