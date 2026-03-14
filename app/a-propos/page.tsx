@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import AboutPageEnhancer from "@/components/about/AboutPageEnhancer";
+import { getTwitchUsers } from "@/lib/twitch";
+import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
 import {
   ArrowRight,
   BookOpen,
@@ -68,6 +71,17 @@ type PublicEvent = {
 
 type EventsApiResponse = {
   events?: PublicEvent[];
+};
+
+type EventLocationLinksApiResponse = {
+  links?: EventLocationLink[];
+};
+
+type FounderProfile = {
+  name: string;
+  twitchLogin: string;
+  roleLabel: string;
+  description: string;
 };
 
 const differentiators: Differentiator[] = [
@@ -153,17 +167,22 @@ const ecosystemItems: EcosystemItem[] = [
   },
 ];
 
-const roles = [
-  "Fondateur",
-  "Admin coordinateur",
-  "Moderateur",
-  "Moderateur en formation",
-  "Soutien TENF",
-  "Createur affilie",
-  "Createur en developpement",
-  "Createur junior",
-  "Createur en pause",
-  "Communaute",
+const roleGroups = [
+  {
+    title: "Pilotage & encadrement",
+    subtitle: "Le cadre qui maintient la cohesion de TENF",
+    roles: ["Fondateur", "Admin coordinateur", "Moderateur", "Moderateur en formation"],
+  },
+  {
+    title: "Accompagnement des createurs",
+    subtitle: "Des niveaux clairs pour progresser ensemble",
+    roles: ["Soutien TENF", "Createur affilie", "Createur en developpement", "Createur junior"],
+  },
+  {
+    title: "Vie communautaire",
+    subtitle: "Participation active et rythme durable",
+    roles: ["Createur en pause", "Communaute"],
+  },
 ];
 
 const timeline: TimelineEvent[] = [
@@ -174,7 +193,29 @@ const timeline: TimelineEvent[] = [
   { date: "Mars 2026", label: "Mise a jour majeure de la plateforme" },
 ];
 
-const founders = ["Red", "Nexou", "Clara"];
+const founderProfiles: FounderProfile[] = [
+  {
+    name: "Red",
+    twitchLogin: "red_shadow_31",
+    roleLabel: "Cofondateur de TENF",
+    description:
+      "Pilier de la moderation et de l'encadrement, il veille a garder une structure humaine, claire et accueillante pour chaque membre.",
+  },
+  {
+    name: "Nexou",
+    twitchLogin: "nexou31",
+    roleLabel: "Cofondateur de TENF",
+    description:
+      "Il porte la partie outils et technique, avec une approche pratique qui facilite les formations et l'accompagnement des createurs.",
+  },
+  {
+    name: "Clara",
+    twitchLogin: "clarastonewall",
+    roleLabel: "Cofondatrice de TENF",
+    description:
+      "Au coeur de l'organisation et de la coordination, elle impulse la dynamique communautaire au quotidien avec energie et constance.",
+  },
+];
 
 function average(values: number[]): number {
   if (values.length === 0) return 0;
@@ -239,9 +280,14 @@ export default async function Page() {
   let monthlyGrowth = 89;
   let dailyGrowth = 1;
   let activityFeed: PublicEvent[] = [];
+  let locationLinks: EventLocationLink[] = [];
+  let foundersWithAvatar = founderProfiles.map((founder) => ({
+    ...founder,
+    avatarUrl: `https://unavatar.io/twitch/${founder.twitchLogin}`,
+  }));
 
   try {
-    const [homeRes, dashboardRes, eventsRes] = await Promise.all([
+    const [homeRes, dashboardRes, eventsRes, locationLinksRes, twitchUsers] = await Promise.all([
       fetch(`${baseUrl}/api/home`, {
         next: { revalidate: 60 },
       }),
@@ -251,6 +297,10 @@ export default async function Page() {
       fetch(`${baseUrl}/api/events`, {
         next: { revalidate: 60 },
       }),
+      fetch(`${baseUrl}/api/events/location-links`, {
+        next: { revalidate: 300 },
+      }),
+      getTwitchUsers(founderProfiles.map((founder) => founder.twitchLogin)),
     ]);
 
     if (homeRes.ok) {
@@ -271,10 +321,30 @@ export default async function Page() {
       const eventsData = (await eventsRes.json()) as EventsApiResponse;
       const events = eventsData.events ?? [];
       activityFeed = events
-        .filter((event) => Boolean(event?.title) && Boolean(event?.date))
+        .filter(
+          (event) =>
+            Boolean(event?.title) &&
+            Boolean(event?.date) &&
+            !Number.isNaN(new Date(event.date).getTime())
+        )
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 6);
     }
+
+    if (locationLinksRes.ok) {
+      const linksData = (await locationLinksRes.json()) as EventLocationLinksApiResponse;
+      locationLinks = linksData.links ?? [];
+    }
+
+    const avatarByLogin = new Map(
+      (twitchUsers || []).map((user) => [user.login.toLowerCase(), user.profile_image_url])
+    );
+    foundersWithAvatar = founderProfiles.map((founder) => ({
+      ...founder,
+      avatarUrl:
+        avatarByLogin.get(founder.twitchLogin.toLowerCase()) ||
+        `https://unavatar.io/twitch/${founder.twitchLogin}`,
+    }));
   } catch (error) {
     console.error("[A propos] Erreur chargement stats dynamiques:", error);
   }
@@ -371,7 +441,7 @@ export default async function Page() {
               activityFeed.map((event) => (
                 <article
                   key={event.id}
-                  className="rounded-2xl border p-5 about-reveal"
+                  className="rounded-2xl border p-5 about-reveal transition-all duration-200 hover:-translate-y-1"
                   style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
                   <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
@@ -381,12 +451,42 @@ export default async function Page() {
                   <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
                     {event.title}
                   </h3>
-                  <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    {formatEventDate(event.date)}
-                  </p>
-                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    {event.category || "Evenement TENF"}{event.location ? ` · ${event.location}` : ""}
-                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                    >
+                      {event.category || "Evenement TENF"}
+                    </span>
+                    <span
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                    >
+                      {formatEventDate(event.date)}
+                    </span>
+                  </div>
+                  {event.location && (
+                    <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                      {(() => {
+                        const display = buildEventLocationDisplay(event.location, locationLinks);
+                        if (!display) return null;
+                        return (
+                          <>
+                            Lieu:{" "}
+                            <a
+                              href={display.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline decoration-dotted underline-offset-2"
+                              style={{ color: "var(--color-primary)" }}
+                            >
+                              {display.label}
+                            </a>
+                          </>
+                        );
+                      })()}
+                    </p>
+                  )}
                 </article>
               ))
             ) : (
@@ -473,17 +573,26 @@ export default async function Page() {
             <h2 className="text-3xl font-bold sm:text-4xl" style={{ color: "var(--color-text)" }}>
               Discord, site et outils: tout est pense pour progresser ensemble
             </h2>
+            <p className="text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
+              Chaque brique est reliee aux autres pour que l&apos;entraide reste fluide, visible et utile au quotidien.
+            </p>
           </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-6">
             {ecosystemItems.map((item) => {
               const Icon = item.icon;
+              const isHighlight = item.title === "Serveur Discord structure" || item.title === "Evenements communautaires";
               return (
                 <article
                   key={item.title}
-                  className="rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 about-reveal"
+                  className={`rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 about-reveal ${
+                    isHighlight ? "xl:col-span-3" : "xl:col-span-2"
+                  }`}
                   style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
-                  <div className="mb-4 inline-flex rounded-xl p-2.5" style={{ backgroundColor: "color-mix(in srgb, var(--color-primary) 15%, transparent)" }}>
+                  <div
+                    className="mb-4 inline-flex rounded-xl p-2.5"
+                    style={{ backgroundColor: isHighlight ? "color-mix(in srgb, var(--color-primary) 22%, transparent)" : "color-mix(in srgb, var(--color-primary) 15%, transparent)" }}
+                  >
                     <Icon size={20} style={{ color: "var(--color-primary)" }} />
                   </div>
                   <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
@@ -496,19 +605,41 @@ export default async function Page() {
               );
             })}
           </div>
-          <div className="rounded-2xl border p-6 about-reveal" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <p className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+          <div
+            className="rounded-2xl border p-6 about-reveal"
+            style={{ backgroundColor: "color-mix(in srgb, var(--color-card) 86%, var(--color-bg) 14%)", borderColor: "var(--color-border)" }}
+          >
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
               Structure de roles communautaire
             </p>
-            <div className="flex flex-wrap gap-2.5">
-              {roles.map((role) => (
-                <span
-                  key={role}
-                  className="rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+            <p className="mb-5 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Une organisation lisible qui valorise l&apos;engagement staff, l&apos;evolution des createurs et la vie collective.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {roleGroups.map((group) => (
+                <article
+                  key={group.title}
+                  className="rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5"
+                  style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
-                  {role}
-                </span>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                    {group.title}
+                  </h3>
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    {group.subtitle}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {group.roles.map((role) => (
+                      <span
+                        key={role}
+                        className="rounded-lg border px-2.5 py-1 text-[11px] font-medium"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                      >
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </article>
               ))}
             </div>
           </div>
@@ -524,20 +655,36 @@ export default async function Page() {
             </h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {founders.map((founder) => (
+            {foundersWithAvatar.map((founder) => (
               <article
-                key={founder}
+                key={founder.name}
                 className="rounded-2xl border p-6 about-reveal"
                 style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
               >
-                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold" style={{ backgroundColor: "color-mix(in srgb, var(--color-primary) 18%, transparent)", color: "var(--color-primary)" }}>
-                  {founder.charAt(0)}
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="relative h-14 w-14 overflow-hidden rounded-full border" style={{ borderColor: "var(--color-border)" }}>
+                    <Image
+                      src={founder.avatarUrl}
+                      alt={`Avatar Twitch de ${founder.name}`}
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+                      {founder.roleLabel}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                      twitch.tv/{founder.twitchLogin}
+                    </p>
+                  </div>
                 </div>
                 <h3 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
-                  {founder}
+                  {founder.name}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                  Cofondateur de TENF et acteur cle de l&apos;identite humaine, evolutive et solidaire de la communaute.
+                  {founder.description}
                 </p>
               </article>
             ))}
