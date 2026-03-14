@@ -142,21 +142,13 @@ function createDefaultContent(): UpaEventContent {
 }
 
 const tabs: { key: TabKey; label: string }[] = [
-  { key: "general", label: "Informations generales" },
-  { key: "proof", label: "Preuve sociale" },
-  { key: "timeline", label: "Timeline" },
-  { key: "sections", label: "Sections editoriales" },
-  { key: "staff", label: "Staff" },
-  { key: "faq", label: "FAQ" },
-  { key: "links", label: "Liens officiels" },
-  { key: "partners", label: "Communautes partenaires" },
-  { key: "cta", label: "CTA et messages" },
-  { key: "display", label: "Affichage" },
+  { key: "proof", label: "Participants" },
+  { key: "staff", label: "Staff UPA" },
 ];
 
 export default function AdminUpaEventPage() {
   const [content, setContent] = useState<UpaEventContent>(createDefaultContent());
-  const [activeTab, setActiveTab] = useState<TabKey>("general");
+  const [activeTab, setActiveTab] = useState<TabKey>("proof");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -276,12 +268,15 @@ export default function AdminUpaEventPage() {
       const response = await fetch("/api/admin/upa-event", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          totalRegistered: content.socialProof.totalRegistered,
+          staff: content.staff,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Erreur sauvegarde");
       setContent(data.content as UpaEventContent);
-      setFeedback("Configuration UPA Event enregistree avec succes.");
+      setFeedback("Participants et staff UPA enregistres avec succes.");
     } catch (error) {
       console.error("[admin/upa-event] save error:", error);
       setFeedback(error instanceof Error ? error.message : "Erreur lors de l'enregistrement.");
@@ -305,7 +300,7 @@ export default function AdminUpaEventPage() {
             Gestion UPA Event
           </h1>
           <p style={{ color: "var(--color-text-secondary)" }}>
-            Mini backoffice pour piloter la page publique <code>/upa-event</code> sans modifier le code.
+            Edition ciblee: compteur participants et equipe staff (haut staff + moderateurs).
           </p>
           <p className="text-xs mt-2" style={{ color: "var(--color-text-secondary)" }}>
             Derniere mise a jour: {lastUpdateLabel}
@@ -403,33 +398,16 @@ export default function AdminUpaEventPage() {
         {activeTab === "proof" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextField
-              label="Message de preuve sociale"
-              value={content.socialProof.socialProofMessage}
-              onChange={(v) => setSocialField("socialProofMessage", v)}
-            />
-            <label className="flex items-center gap-2 mt-7">
-              <input
-                type="checkbox"
-                checked={content.socialProof.isVisible}
-                onChange={(e) => setSocialField("isVisible", e.target.checked)}
-              />
-              <span style={{ color: "var(--color-text)" }}>Afficher le bloc sur la page publique</span>
-            </label>
-            <TextField
-              label="Nombre total d'inscrits"
+              label="Nombre total d'inscrits / participants"
               value={String(content.socialProof.totalRegistered)}
               onChange={(v) => setSocialField("totalRegistered", Number.parseInt(v || "0", 10) || 0)}
             />
-            <TextField
-              label="Nombre de streamers inscrits"
-              value={String(content.socialProof.streamersRegistered)}
-              onChange={(v) => setSocialField("streamersRegistered", Number.parseInt(v || "0", 10) || 0)}
-            />
-            <TextField
-              label="Nombre de moderateurs / benevoles"
-              value={String(content.socialProof.moderatorsRegistered)}
-              onChange={(v) => setSocialField("moderatorsRegistered", Number.parseInt(v || "0", 10) || 0)}
-            />
+            <div
+              className="rounded-lg border px-4 py-3 text-sm"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+            >
+              Le message de preuve sociale est genere automatiquement a partir de cette valeur.
+            </div>
           </div>
         )}
 
@@ -609,69 +587,138 @@ export default function AdminUpaEventPage() {
 
         {activeTab === "staff" && (
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() =>
-                setContent((prev) => ({
-                  ...prev,
-                  staff: [
-                    ...prev.staff,
-                    {
-                      id: makeId("staff"),
-                      name: "",
-                      role: "",
-                      description: "",
-                      avatarUrl: "",
-                      order: prev.staff.length + 1,
-                      isActive: true,
-                    },
-                  ],
-                }))
-              }
-              className="rounded-lg border px-3 py-2 text-sm"
-              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-            >
-              + Ajouter un membre staff
-            </button>
-            {content.staff.map((item, index) => (
-              <div key={item.id} className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--color-border)" }}>
-                <div className="flex justify-between items-center">
-                  <strong style={{ color: "var(--color-text)" }}>Staff #{index + 1}</strong>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => ({ ...prev, staff: prev.staff.filter((x) => x.id !== item.id) }))}
-                    className="text-sm"
-                    style={{ color: "#ef4444" }}
-                  >
-                    Supprimer
-                  </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setContent((prev) => ({
+                    ...prev,
+                    staff: [
+                      ...prev.staff,
+                      {
+                        id: makeId("staff"),
+                        twitchLogin: "",
+                        name: "",
+                        role: "Haut staff UPA",
+                        description: "",
+                        staffType: "high_staff",
+                        avatarUrl: "",
+                        order: prev.staff.filter((x) => x.staffType === "high_staff").length + 1,
+                        isActive: true,
+                      },
+                    ],
+                  }))
+                }
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                + Ajouter haut staff
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setContent((prev) => ({
+                    ...prev,
+                    staff: [
+                      ...prev.staff,
+                      {
+                        id: makeId("staff"),
+                        twitchLogin: "",
+                        name: "",
+                        role: "Moderateur UPA",
+                        description: "",
+                        staffType: "moderator",
+                        avatarUrl: "",
+                        order: prev.staff.filter((x) => x.staffType !== "high_staff").length + 1,
+                        isActive: true,
+                      },
+                    ],
+                  }))
+                }
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                + Ajouter moderateur
+              </button>
+            </div>
+
+            {(["high_staff", "moderator"] as const).map((group) => {
+              const label = group === "high_staff" ? "Haut staff UPA" : "Moderateurs UPA";
+              const list = content.staff
+                .map((member, index) => ({ member, index }))
+                .filter(({ member }) => (member.staffType || "moderator") === group);
+
+              return (
+                <div key={group} className="space-y-3">
+                  <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+                    {label}
+                  </h3>
+                  {list.length === 0 ? (
+                    <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                      Aucun profil dans cette section.
+                    </p>
+                  ) : (
+                    list.map(({ member: item, index }) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border p-3 space-y-3"
+                        style={{ borderColor: "var(--color-border)" }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <strong style={{ color: "var(--color-text)" }}>{item.twitchLogin || "Nouveau profil"}</strong>
+                          <button
+                            type="button"
+                            onClick={() => setContent((prev) => ({ ...prev, staff: prev.staff.filter((x) => x.id !== item.id) }))}
+                            className="text-sm"
+                            style={{ color: "#ef4444" }}
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <TextField
+                            label="Nom Twitch"
+                            value={item.twitchLogin || ""}
+                            onChange={(v) =>
+                              updateStaff(index, {
+                                twitchLogin: v.trim().replace(/^@/, "").toLowerCase(),
+                                name: v.trim().replace(/^@/, ""),
+                              })
+                            }
+                            placeholder="ex: symaog"
+                          />
+                          <TextField label="Role" value={item.role} onChange={(v) => updateStaff(index, { role: v })} />
+                          <TextField
+                            label="Ordre"
+                            value={String(item.order)}
+                            onChange={(v) => updateStaff(index, { order: Number.parseInt(v || "0", 10) || 0 })}
+                          />
+                          <label className="flex items-center gap-2 mt-7">
+                            <input
+                              type="checkbox"
+                              checked={item.isActive}
+                              onChange={(e) => updateStaff(index, { isActive: e.target.checked })}
+                            />
+                            <span style={{ color: "var(--color-text)" }}>Actif</span>
+                          </label>
+                        </div>
+
+                        <TextAreaField
+                          label="Description courte"
+                          value={item.description}
+                          onChange={(v) => updateStaff(index, { description: v })}
+                          rows={3}
+                        />
+                        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                          Avatar et nom affichable recuperes automatiquement depuis Twitch lors de l'enregistrement.
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <TextField label="Nom" value={item.name} onChange={(v) => updateStaff(index, { name: v })} />
-                  <TextField label="Role" value={item.role} onChange={(v) => updateStaff(index, { role: v })} />
-                  <TextField label="Avatar URL (optionnel)" value={item.avatarUrl || ""} onChange={(v) => updateStaff(index, { avatarUrl: v })} />
-                  <TextField
-                    label="Ordre"
-                    value={String(item.order)}
-                    onChange={(v) => updateStaff(index, { order: Number.parseInt(v || "0", 10) || 0 })}
-                  />
-                  <label className="flex items-center gap-2 mt-7">
-                    <input
-                      type="checkbox"
-                      checked={item.isActive}
-                      onChange={(e) => updateStaff(index, { isActive: e.target.checked })}
-                    />
-                    <span style={{ color: "var(--color-text)" }}>Actif</span>
-                  </label>
-                </div>
-                <TextAreaField
-                  label="Description courte"
-                  value={item.description}
-                  onChange={(v) => updateStaff(index, { description: v })}
-                  rows={3}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

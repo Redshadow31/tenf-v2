@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireAdvancedAdminAccess } from "@/lib/requireAdmin";
 import { createFollowEngagementSnapshot } from "@/lib/admin/followEngagement";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 export async function POST() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdvancedAdminAccess();
     if (!admin) {
       return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
     }

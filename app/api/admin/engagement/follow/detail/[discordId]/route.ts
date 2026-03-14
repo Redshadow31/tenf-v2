@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireAdvancedAdminAccess } from "@/lib/requireAdmin";
 import { buildFollowEngagementMemberDetail } from "@/lib/admin/followEngagement";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ type Params = {
 
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdvancedAdminAccess();
     if (!admin) {
       return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
     }

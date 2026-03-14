@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requirePermission, requireSectionAccess } from "@/lib/requireAdmin";
 import { upaEventRepository } from "@/lib/repositories/UpaEventRepository";
 import type { UpaEventContent } from "@/lib/upaEvent/types";
+import { getTwitchUsers } from "@/lib/twitch";
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins } from "@/lib/memberAvatar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,17 +38,73 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const incomingContent = body?.content as UpaEventContent | undefined;
 
-    if (!incomingContent || typeof incomingContent !== "object") {
-      return NextResponse.json({ error: "Payload invalide: content requis" }, { status: 400 });
-    }
+    const existingContent = await upaEventRepository.getContent("upa-event");
 
-    const content = await upaEventRepository.upsertContent(
-      "upa-event",
-      incomingContent,
-      writeAdmin.discordId
+    const incomingTotalRegistered = Number.parseInt(
+      String(body?.totalRegistered ?? body?.content?.socialProof?.totalRegistered ?? existingContent.socialProof.totalRegistered),
+      10
     );
+    const totalRegistered =
+      Number.isFinite(incomingTotalRegistered) && incomingTotalRegistered >= 0
+        ? incomingTotalRegistered
+        : existingContent.socialProof.totalRegistered;
+
+    const staffInput = Array.isArray(body?.staff)
+      ? body.staff
+      : Array.isArray(body?.content?.staff)
+        ? body.content.staff
+        : existingContent.staff;
+
+    const normalizedStaffDraft = (staffInput as Array<Record<string, unknown>>)
+      .map((item, index) => {
+        const rawLogin = String(item?.twitchLogin ?? item?.name ?? "").trim().replace(/^@/, "").toLowerCase();
+        if (!rawLogin) return null;
+        const staffTypeRaw = String(item?.staffType ?? "moderator").trim();
+        const staffType = staffTypeRaw === "high_staff" ? "high_staff" : "moderator";
+        const orderRaw = Number.parseInt(String(item?.order ?? index + 1), 10);
+        const order = Number.isFinite(orderRaw) && orderRaw > 0 ? orderRaw : index + 1;
+        return {
+          id: String(item?.id || `staff-${crypto.randomUUID()}`),
+          twitchLogin: rawLogin,
+          name: rawLogin,
+          role: String(item?.role ?? "").trim(),
+          description: String(item?.description ?? "").trim(),
+          staffType,
+          avatarUrl: "",
+          order,
+          isActive: item?.isActive === false ? false : true,
+        };
+      })
+      .filter(Boolean) as UpaEventContent["staff"];
+
+    const uniqueLogins = extractUniqueTwitchLogins(
+      normalizedStaffDraft.map((member) => ({ twitchLogin: member.twitchLogin }))
+    );
+    const twitchUsers = await getTwitchUsers(uniqueLogins);
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
+    const twitchUserMap = new Map(twitchUsers.map((user) => [user.login.toLowerCase(), user]));
+
+    const enrichedStaff = normalizedStaffDraft.map((member) => {
+      const user = twitchUserMap.get(member.twitchLogin);
+      return {
+        ...member,
+        name: user?.display_name || member.twitchLogin,
+        avatarUrl: avatarMap.get(member.twitchLogin) || member.avatarUrl || "",
+      };
+    });
+
+    const nextContent: UpaEventContent = {
+      ...existingContent,
+      socialProof: {
+        ...existingContent.socialProof,
+        totalRegistered,
+        socialProofMessage: `Deja ${totalRegistered} participants inscrits`,
+      },
+      staff: enrichedStaff,
+    };
+
+    const content = await upaEventRepository.upsertContent("upa-event", nextContent, writeAdmin.discordId);
 
     return NextResponse.json({ success: true, content });
   } catch (error) {

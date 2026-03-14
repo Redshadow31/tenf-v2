@@ -456,6 +456,24 @@
   font-weight: 700;
 }
 
+.upa-page .upa-staff-divider {
+  margin: 22px 0 14px;
+  border-top: 2px solid rgba(0, 74, 173, 0.15);
+  padding-top: 10px;
+}
+
+.upa-page .upa-staff-divider span {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--upa-blue-soft);
+  color: var(--upa-blue-deep);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .upa-page .upa-tenf-partnership {
   margin-top: 20px;
   border-radius: var(--upa-radius-md);

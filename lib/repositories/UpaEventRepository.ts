@@ -119,9 +119,11 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
   staff: [
     {
       id: makeId("staff"),
+      twitchLogin: "symaog",
       name: "Symaog",
       role: "Organisateur",
       description: "Coordonne la vision globale de l'evenement.",
+      staffType: "high_staff",
       avatarUrl: "",
       order: 1,
       isActive: true,
@@ -233,11 +235,17 @@ function normalizeStaff(value: unknown): UpaEventStaffMember[] {
   const source = Array.isArray(value) ? value : [];
   return source.map((item, index) => {
     const obj = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    const rawLogin = trimText(obj.twitchLogin, trimText(obj.name, ""));
+    const twitchLogin = rawLogin.replace(/^@/, "").toLowerCase();
+    const staffTypeRaw = trimText(obj.staffType, "moderator");
+    const staffType = staffTypeRaw === "high_staff" ? "high_staff" : "moderator";
     return {
       id: trimText(obj.id, makeId("staff")),
-      name: trimText(obj.name, ""),
+      twitchLogin,
+      name: trimText(obj.name, twitchLogin || ""),
       role: trimText(obj.role, ""),
       description: trimText(obj.description, ""),
+      staffType,
       avatarUrl: trimText(obj.avatarUrl, ""),
       order: toInt(obj.order, index + 1),
       isActive: toBool(obj.isActive, true),

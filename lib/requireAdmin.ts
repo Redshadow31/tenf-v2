@@ -254,3 +254,22 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
 
   return admin;
 }
+
+/**
+ * Exige un accès admin avancé (ou fondateur)
+ * Retourne l'admin authentifié si autorisé, sinon null
+ */
+export async function requireAdvancedAdminAccess(): Promise<AuthenticatedAdmin | null> {
+  const admin = await requireAdmin();
+
+  if (!admin) {
+    return null;
+  }
+
+  const hasAdvancedAccess = await hasAdvancedAdminAccess(admin.discordId);
+  if (!hasAdvancedAccess) {
+    return null;
+  }
+
+  return admin;
+}

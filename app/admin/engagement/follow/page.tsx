@@ -86,6 +86,8 @@ function stateBadge(row: FollowOverviewRow): { label: string; className: string 
 }
 
 export default function AdminEngagementFollowPage() {
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [runningSnapshot, setRunningSnapshot] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,8 +156,30 @@ export default function AdminEngagementFollowPage() {
   }
 
   useEffect(() => {
-    loadOverview();
+    async function verifyAccess() {
+      try {
+        setCheckingAccess(true);
+        const response = await fetch("/api/admin/engagement/follow/access", {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          window.location.href = "/unauthorized";
+          return;
+        }
+        setHasAccess(true);
+      } catch (_error) {
+        window.location.href = "/unauthorized";
+      } finally {
+        setCheckingAccess(false);
+      }
+    }
+    verifyAccess();
   }, []);
+
+  useEffect(() => {
+    if (!hasAccess) return;
+    loadOverview();
+  }, [hasAccess]);
 
   const summary = useMemo(() => {
     const rows = overview?.rows || [];
@@ -178,6 +202,20 @@ export default function AdminEngagementFollowPage() {
       averageRate,
     };
   }, [overview]);
+
+  if (checkingAccess) {
+    return (
+      <div className="text-white">
+        <div className="rounded-lg border p-6 text-sm text-gray-300" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          Verification des permissions...
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return null;
+  }
 
   return (
     <div className="text-white">

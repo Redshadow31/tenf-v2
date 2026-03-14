@@ -45,9 +45,11 @@ export interface UpaEventEditorialSection {
 
 export interface UpaEventStaffMember {
   id: string;
+  twitchLogin: string;
   name: string;
   role: string;
   description: string;
+  staffType: "high_staff" | "moderator";
   avatarUrl?: string;
   order: number;
   isActive: boolean;

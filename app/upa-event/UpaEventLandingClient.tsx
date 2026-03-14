@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { UpaEventContent, UpaEventEditorialSection } from "@/lib/upaEvent/types";
 
-type TabKey = "discover" | "event" | "team" | "faq";
+type TabKey = "discover" | "event" | "staff" | "faq";
 
 const STREAMER_FORM_URL = "https://www.upa-event.fr/formulaire-streameur";
 const MODERATOR_FORM_URL = "https://www.upa-event.fr/formulaire-mod%C3%A9rateurs-twitch";
@@ -12,7 +12,7 @@ const MODERATOR_DISCORD_FORM_URL = "https://www.upa-event.fr/formulaire-moderate
 const TAB_LABELS: { key: TabKey; label: string }[] = [
   { key: "discover", label: "Decouvrir UPA" },
   { key: "event", label: "L'evenement" },
-  { key: "team", label: "Equipe & valeurs" },
+  { key: "staff", label: "Staff" },
   { key: "faq", label: "FAQ" },
 ];
 
@@ -64,6 +64,14 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   const staff = useMemo(
     () => [...content.staff].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
     [content.staff]
+  );
+  const highStaff = useMemo(
+    () => staff.filter((member) => member.staffType === "high_staff"),
+    [staff]
+  );
+  const moderators = useMemo(
+    () => staff.filter((member) => member.staffType !== "high_staff"),
+    [staff]
   );
   const faq = useMemo(
     () => [...content.faq].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
@@ -189,56 +197,53 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     );
   }
 
-  function renderTeamTab() {
+  function renderStaffTab() {
     return (
       <div className="upa-tab-panel">
-        {hasStaff && (
-          <>
-            <h3 className="upa-tab-title">Staff organisateur</h3>
-            <div className="upa-grid upa-grid-3">
-              {staff.map((member) => (
-                <article key={member.id} className="upa-card upa-staff-card">
-                  <div className="upa-staff-avatar-wrap">
-                    {member.avatarUrl ? (
-                      <img src={member.avatarUrl} alt={member.name} className="upa-staff-avatar" />
-                    ) : (
-                      <span className="upa-staff-avatar-fallback">{member.name.slice(0, 1).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <h4>{member.name}</h4>
-                  <p className="upa-staff-role">{member.role}</p>
-                  <p>{member.description}</p>
-                </article>
-              ))}
-            </div>
-          </>
+        <h3 className="upa-tab-title">Haut staff UPA</h3>
+        {!hasStaff || highStaff.length === 0 ? (
+          <p className="upa-empty-text">Le haut staff sera bientot affiche.</p>
+        ) : (
+          <div className="upa-grid upa-grid-3">
+            {highStaff.map((member) => (
+              <article key={member.id} className="upa-card upa-staff-card">
+                <div className="upa-staff-avatar-wrap">
+                  {member.avatarUrl ? (
+                    <img src={member.avatarUrl} alt={member.name} className="upa-staff-avatar" />
+                  ) : (
+                    <span className="upa-staff-avatar-fallback">{member.name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </div>
+                <h4>{member.name}</h4>
+                <p className="upa-staff-role">{member.role}</p>
+                <p>{member.description}</p>
+              </article>
+            ))}
+          </div>
         )}
 
-        <div className="upa-subsection">
-          <h4>Nos valeurs</h4>
-          <div className="upa-grid upa-grid-3">
-            <article className="upa-card">
-              <h5>Respect</h5>
-              <p>Chaque personne et chaque cause merite ecoute, consideration et dignite.</p>
-            </article>
-            <article className="upa-card">
-              <h5>Bienveillance</h5>
-              <p>Un cadre humain, sain et positif pour federer la communaute autour de l'impact.</p>
-            </article>
-            <article className="upa-card">
-              <h5>Solidarite</h5>
-              <p>L'union des communautes permet de soutenir une cause plus grande que nous.</p>
-            </article>
-          </div>
+        <div className="upa-staff-divider">
+          <span>Moderateurs UPA</span>
         </div>
 
-        {content.displaySettings.showTenfPartnershipBlock && (
-          <div className="upa-tenf-partnership">
-            <h4>TENF partenaire communautaire</h4>
-            <p>
-              TENF accompagne la mobilisation des createurs et de leurs communautes pour amplifier l'impact de l'evenement
-              organise par UPA.
-            </p>
+        {moderators.length === 0 ? (
+          <p className="upa-empty-text">Les moderateurs UPA seront ajoutes ici.</p>
+        ) : (
+          <div className="upa-grid upa-grid-3">
+            {moderators.map((member) => (
+              <article key={member.id} className="upa-card upa-staff-card">
+                <div className="upa-staff-avatar-wrap">
+                  {member.avatarUrl ? (
+                    <img src={member.avatarUrl} alt={member.name} className="upa-staff-avatar" />
+                  ) : (
+                    <span className="upa-staff-avatar-fallback">{member.name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </div>
+                <h4>{member.name}</h4>
+                <p className="upa-staff-role">{member.role}</p>
+                <p>{member.description}</p>
+              </article>
+            ))}
           </div>
         )}
       </div>
@@ -278,7 +283,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   function renderTabContent(tab: TabKey) {
     if (tab === "discover") return renderDiscoverTab();
     if (tab === "event") return renderEventTab();
-    if (tab === "team") return renderTeamTab();
+    if (tab === "staff") return renderStaffTab();
     return renderFaqTab();
   }
 
