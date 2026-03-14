@@ -30,12 +30,16 @@ export async function GET(request: NextRequest) {
       memberRepository.findActive(5000, 0),
     ]);
 
-    const memberNameByLogin = new Map<string, string>();
+    const memberMetaByLogin = new Map<
+      string,
+      { displayName: string; avatarUrl?: string; twitchUrl?: string }
+    >();
     for (const member of activeMembers) {
-      memberNameByLogin.set(
-        member.twitchLogin.toLowerCase(),
-        member.displayName || member.siteUsername || member.twitchLogin
-      );
+      memberMetaByLogin.set(member.twitchLogin.toLowerCase(), {
+        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        avatarUrl: member.twitchStatus?.profileImageUrl || undefined,
+        twitchUrl: member.twitchUrl || `https://www.twitch.tv/${member.twitchLogin}`,
+      });
     }
 
     const items = plannings
@@ -45,16 +49,21 @@ export async function GET(request: NextRequest) {
         const bMs = new Date(`${b.date}T${b.time}`).getTime();
         return aMs - bMs;
       })
-      .map((planning) => ({
-        id: planning.id,
-        date: planning.date,
-        time: planning.time,
-        liveType: planning.liveType,
-        title: planning.title,
-        twitchLogin: planning.twitchLogin,
-        displayName:
-          memberNameByLogin.get(planning.twitchLogin.toLowerCase()) || planning.twitchLogin,
-      }));
+      .map((planning) => {
+        const memberMeta = memberMetaByLogin.get(planning.twitchLogin.toLowerCase());
+        return {
+          id: planning.id,
+          date: planning.date,
+          time: planning.time,
+          endTime: (planning as any).endTime || undefined,
+          liveType: planning.liveType,
+          title: planning.title,
+          twitchLogin: planning.twitchLogin,
+          displayName: memberMeta?.displayName || planning.twitchLogin,
+          avatarUrl: memberMeta?.avatarUrl,
+          twitchUrl: memberMeta?.twitchUrl || `https://www.twitch.tv/${planning.twitchLogin}`,
+        };
+      });
 
     return NextResponse.json({ month: monthParam, items });
   } catch (error) {
