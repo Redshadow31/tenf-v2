@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { memberRepository, vipRepository } from '../lib/repositories';
 import { getTwitchUsers } from '../lib/twitch';
 import { getVipBadgeText, getConsecutiveVipMonths } from '../lib/vipHistory';
+import { buildTwitchAvatarMap, resolveMemberAvatar } from '../lib/memberAvatar';
 
 dotenv.config({ path: '.env.local' });
 
@@ -46,20 +47,11 @@ async function testRoute() {
     console.log(`   ✅ ${twitchUsers.length} avatars Twitch récupérés\n`);
 
     console.log('📋 Étape 4: Formatage des données (simulation de la route)...');
-    const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
 
     const vipMembers = vipMemberData.slice(0, 5).map((member) => {
       const twitchAvatar = avatarMap.get(member.twitchLogin.toLowerCase());
-      
-      let avatar = twitchAvatar;
-      if (!avatar && member.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-      }
-      if (!avatar) {
-        avatar = `https://placehold.co/128x128?text=${member.displayName.charAt(0)}`;
-      }
+      const avatar = resolveMemberAvatar(member, twitchAvatar);
 
       const vipBadge = getVipBadgeText(member.twitchLogin);
       const consecutiveMonths = getConsecutiveVipMonths(member.twitchLogin);

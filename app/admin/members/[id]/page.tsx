@@ -141,10 +141,7 @@ export default function Member360Page() {
   }
 
   const member = data.member;
-  const discordDefaultAvatar = member.discordId
-    ? `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`
-    : undefined;
-  const resolvedAvatar = member.avatar || member.twitchStatus?.profileImageUrl || discordDefaultAvatar;
+  const resolvedAvatar = member.avatar || member.twitchStatus?.profileImageUrl;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { getTwitchUsers } from '@/lib/twitch';
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from '@/lib/memberAvatar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
     const allMembers = getAllMemberData();
 
     // Rechercher dans displayName, twitchLogin, discordUsername
-    const filteredMembers = allMembers.filter((member) => {
+    const matchingMembers = allMembers.filter((member) => {
       if (!includeInactive && member.isActive === false) return false;
       if (!includeCommunity && member.role === "Communauté") return false;
 
@@ -52,14 +54,29 @@ export async function GET(request: NextRequest) {
     });
 
     // Limiter à 20 résultats
-    const results = filteredMembers.slice(0, 20).map((member) => ({
+    const limitedMembers = matchingMembers.slice(0, 20);
+    const twitchLogins = extractUniqueTwitchLogins(limitedMembers);
+    let avatarMap = new Map<string, string>();
+    try {
+      const twitchUsers = await getTwitchUsers(twitchLogins);
+      avatarMap = buildTwitchAvatarMap(twitchUsers);
+    } catch {
+      avatarMap = new Map<string, string>();
+    }
+
+    const results = limitedMembers.map((member) => {
+      const login = String(member.twitchLogin || "").toLowerCase();
+      const fetchedAvatar = login ? avatarMap.get(login) : undefined;
+      return {
       twitchLogin: member.twitchLogin,
       displayName: member.displayName,
       discordId: member.discordId,
       discordUsername: member.discordUsername,
       role: member.role,
       isActive: member.isActive !== false,
-    }));
+      avatar: resolveMemberAvatar(member, fetchedAvatar),
+      };
+    });
 
     return NextResponse.json({
       members: results,

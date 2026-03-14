@@ -270,7 +270,7 @@ export default function SynchronisationMembresPage() {
       }
 
       // Récupérer l'avatar depuis l'API publique
-      let avatar = `https://placehold.co/64x64?text=${(fullMemberData.displayName || fullMemberData.twitchLogin).charAt(0).toUpperCase()}`;
+      let avatar = fullMemberData.avatar || `https://placehold.co/64x64?text=${(fullMemberData.displayName || fullMemberData.twitchLogin).charAt(0).toUpperCase()}`;
       
       if (fullMemberData.twitchLogin) {
         try {
@@ -290,11 +290,6 @@ export default function SynchronisationMembresPage() {
         } catch (err) {
           console.warn("Erreur lors de la récupération de l'avatar:", err);
         }
-      }
-
-      // Fallback Discord avatar si disponible
-      if (!avatar && fullMemberData.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(fullMemberData.discordId) % 5}.png`;
       }
 
       // Convertir les données vers le format attendu par EditMemberModal

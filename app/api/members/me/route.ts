@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
-import { getTwitchUsers } from "@/lib/twitch";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import {
+  fetchCanonicalTwitchAvatarForLogin,
+  hydrateTwitchStatusAvatar,
+  resolveMemberAvatar,
+} from "@/lib/memberAvatar";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -63,13 +67,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Récupérer l'avatar Twitch
-    let avatar: string | undefined;
-    try {
-      const twitchUsers = await getTwitchUsers([member.twitchLogin]);
-      avatar = twitchUsers[0]?.profile_image_url;
-    } catch {
-      // Ignorer
+    // Récupérer et hydrater l'avatar Twitch canonique si disponible
+    const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(member.twitchLogin);
+    if (fetchedAvatar) {
+      member = await memberRepository.update(member.twitchLogin, {
+        twitchStatus: hydrateTwitchStatusAvatar(member.twitchStatus, fetchedAvatar),
+        updatedAt: new Date(),
+        updatedBy: session?.user?.discordId || member.updatedBy,
+      } as any);
     }
 
     // Vérifier s'il y a des modifications en attente
@@ -90,7 +95,7 @@ export async function GET(request: NextRequest) {
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         twitchLogin: member.twitchLogin,
         memberId,
-        avatar: avatar || `https://placehold.co/120x120?text=${(member.displayName || member.twitchLogin).charAt(0)}`,
+        avatar: resolveMemberAvatar(member, fetchedAvatar),
         role: member.role,
         bio: member.description || member.customBio || "",
         memberSince,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { memberRepository, vipRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from '@/lib/memberAvatar';
 
 export const runtime = 'nodejs';
 // Cache ISR de 30 secondes pour les membres VIP
@@ -54,30 +55,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Récupérer tous les logins Twitch uniques
-    const twitchLogins = vipMemberData
-      .map(member => member.twitchLogin)
-      .filter(Boolean) as string[];
+    const twitchLogins = extractUniqueTwitchLogins(vipMemberData);
     
     // Récupérer tous les avatars Twitch en batch
     const twitchUsers = await getTwitchUsers(twitchLogins);
     
     // Créer un map pour un accès rapide par login
-    const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
     
     // Mapper vers le format attendu par la page VIP
     const vipMembers: VipMember[] = vipMemberData.map((member) => {
-      const twitchAvatar = avatarMap.get(member.twitchLogin.toLowerCase());
-      
-      // Avatar Discord en fallback si pas d'avatar Twitch
-      let avatar = twitchAvatar;
-      if (!avatar && member.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-      }
-      if (!avatar) {
-        avatar = `https://placehold.co/128x128?text=${member.displayName.charAt(0)}`;
-      }
+      const normalizedLogin = member.twitchLogin.toLowerCase();
+      const twitchAvatar = avatarMap.get(normalizedLogin);
+      const avatar = resolveMemberAvatar(member, twitchAvatar);
 
       // Calculer le badge VIP+N
       const vipBadge = getVipBadgeText(member.twitchLogin);

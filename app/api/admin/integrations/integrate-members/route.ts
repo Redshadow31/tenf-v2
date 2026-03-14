@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { findMemberByIdentifier, updateMemberData, createMemberData, getAllActiveMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 import type { MemberRole } from '@/lib/memberRoles';
+import { fetchCanonicalTwitchAvatarForLogin, hydrateTwitchStatusAvatar } from '@/lib/memberAvatar';
 
 /**
  * POST - Intègre les membres présents au site et Discord
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
           memberData.discordId = discordId;
         }
         
+        const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(memberData.twitchLogin);
+
         if (existingMember) {
           // Mettre à jour le membre existant
           try {
@@ -112,6 +115,7 @@ export async function POST(request: NextRequest) {
                 discordUsername: memberData.discordUsername || existingMember.discordUsername,
                 parrain: memberData.parrain || existingMember.parrain,
                 integrationDate: existingMember.integrationDate || memberData.integrationDate,
+                twitchStatus: hydrateTwitchStatusAvatar(existingMember.twitchStatus, fetchedAvatar),
               },
               admin.discordId
             );
@@ -148,6 +152,7 @@ export async function POST(request: NextRequest) {
                 isVip: memberData.isVip,
                 integrationDate: memberData.integrationDate,
                 parrain: memberData.parrain,
+                twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar),
               },
               admin.discordId
             );

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { memberRepository } from "@/lib/repositories";
 import { getTwitchUsers, type TwitchUser } from "@/lib/twitch";
+import { resolveMemberAvatar } from "@/lib/memberAvatar";
 
 const SUPABASE_PAGE_SIZE = 1000;
 const SUPABASE_MAX_PAGES = 20;
@@ -19,13 +20,6 @@ function getSavedAvatarFromMember(member: any): string | undefined {
   if (typeof fromStatus !== "string") return undefined;
   const normalized = fromStatus.trim();
   return normalized.length > 0 ? normalized : undefined;
-}
-
-function getDiscordDefaultAvatar(discordId?: string): string | undefined {
-  if (!discordId) return undefined;
-  const numericId = Number.parseInt(discordId, 10);
-  if (Number.isNaN(numericId)) return undefined;
-  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
 }
 
 function classifyAvatar(url?: string): AvatarQuality {
@@ -103,13 +97,7 @@ export async function GET() {
         fetchedAvatar,
         fetchedAvatarQuality: fetchedQuality,
         hasIssue,
-        previewAvatar:
-          savedAvatar ||
-          fetchedAvatar ||
-          getDiscordDefaultAvatar(member.discordId) ||
-          `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin || "?")
-            .charAt(0)
-            .toUpperCase()}`,
+        previewAvatar: resolveMemberAvatar(member, fetchedAvatar),
       };
     });
 

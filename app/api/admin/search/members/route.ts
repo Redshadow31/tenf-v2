@@ -2,28 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 import { getTwitchUsers, type TwitchUser } from "@/lib/twitch";
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from "@/lib/memberAvatar";
 
 export const dynamic = 'force-dynamic';
-
-function getDiscordDefaultAvatar(discordId?: string): string | undefined {
-  if (!discordId) return undefined;
-  const numericId = Number.parseInt(discordId, 10);
-  if (Number.isNaN(numericId)) return undefined;
-  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
-}
-
-function isUsableTwitchAvatar(url?: string): boolean {
-  if (!url) return false;
-  const normalized = url.toLowerCase();
-  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
-}
-
-function getSavedAvatarUrl(member: any): string | undefined {
-  const candidate = member?.twitchStatus?.profileImageUrl;
-  if (typeof candidate !== "string") return undefined;
-  const normalized = candidate.trim();
-  return normalized.length > 0 ? normalized : undefined;
-}
 
 /**
  * GET - Recherche de membres (lecture seule)
@@ -86,13 +67,7 @@ export async function GET(request: NextRequest) {
       })
       .slice(0, limit);
 
-    const twitchLogins = Array.from(
-      new Set(
-        matchingMembers
-          .map((member) => member.twitchLogin)
-          .filter((login): login is string => typeof login === "string" && login.trim().length > 0)
-      )
-    );
+    const twitchLogins = extractUniqueTwitchLogins(matchingMembers);
 
     let twitchUsers: TwitchUser[] = [];
     try {
@@ -101,22 +76,12 @@ export async function GET(request: NextRequest) {
       twitchUsers = [];
     }
 
-    const avatarMap = new Map(
-      twitchUsers
-        .filter((user: TwitchUser) => isUsableTwitchAvatar(user.profile_image_url))
-        .map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url] as const)
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
 
     const filteredMembers = matchingMembers.map((member) => {
       const normalizedLogin = String(member.twitchLogin || "").toLowerCase();
-      const savedAvatar = getSavedAvatarUrl(member);
       const fetchedAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
-      const avatar =
-        (isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined) ||
-        fetchedAvatar ||
-        savedAvatar ||
-        getDiscordDefaultAvatar(member.discordId) ||
-        `https://placehold.co/64x64?text=${(member.displayName || member.twitchLogin || "?").charAt(0).toUpperCase()}`;
+      const avatar = resolveMemberAvatar(member, fetchedAvatar);
 
       return {
         id: member.twitchLogin || member.discordId || "",

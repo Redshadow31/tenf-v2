@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
+import {
+  fetchCanonicalTwitchAvatarForLogin,
+  hydrateTwitchStatusAvatar,
+  resolveMemberAvatar,
+} from "@/lib/memberAvatar";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -159,7 +164,23 @@ export async function POST(request: NextRequest) {
       member = await memberRepository.update(member.twitchLogin, updates);
     }
 
-    return NextResponse.json({ success: true, member });
+    // Hydratation immédiate de l'avatar Twitch pour les nouveaux espaces membres.
+    const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(member.twitchLogin);
+    if (fetchedAvatar) {
+      member = await memberRepository.update(member.twitchLogin, {
+        twitchStatus: hydrateTwitchStatusAvatar(member.twitchStatus, fetchedAvatar),
+        updatedAt: new Date(),
+        updatedBy: discordId,
+      } as any);
+    }
+
+    return NextResponse.json({
+      success: true,
+      member: {
+        ...member,
+        avatar: resolveMemberAvatar(member, fetchedAvatar),
+      },
+    });
   } catch (error) {
     console.error("[members/me/bootstrap] POST error:", error);
     return NextResponse.json({ error: "Erreur lors de la création du profil" }, { status: 500 });

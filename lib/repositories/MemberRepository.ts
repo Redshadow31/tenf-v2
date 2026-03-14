@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../db/supabase';
 import type { MemberData } from '../memberData';
 import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
 import { logDatabase, logCache } from '../logging/logger';
+import { fetchCanonicalTwitchAvatarForLogin, hydrateTwitchStatusAvatar } from '../memberAvatar';
 
 export class MemberRepository {
   /**
@@ -31,6 +32,7 @@ export class MemberRepository {
 
     const fallbackDisplayName = (input.displayName || normalizedLogin).trim() || normalizedLogin;
     const twitchUrl = `https://www.twitch.tv/${normalizedLogin}`;
+    const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(normalizedLogin);
 
     try {
       return await this.create({
@@ -43,6 +45,7 @@ export class MemberRepository {
         isVip: false,
         isActive: false,
         badges: [],
+        twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar) as any,
         profileValidationStatus: "non_soumis",
         onboardingStatus: "a_faire",
         createdAt: new Date(),

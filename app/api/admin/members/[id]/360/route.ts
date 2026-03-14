@@ -17,6 +17,7 @@ import {
 } from "@/lib/evaluationStorage";
 import { getMonthKey } from "@/lib/raidStorage";
 import { eventRepository, memberRepository } from "@/lib/repositories";
+import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
 
 function buildMonthKeys(months: number): string[] {
   const now = new Date();
@@ -160,9 +161,11 @@ export async function GET(
     const memberIds = buildMemberIdentifierSets(memberCanonical, decodedId);
 
     const memberId = memberCanonical.twitchLogin || memberCanonical.discordId || memberCanonical.displayName;
+    const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(memberCanonical.twitchLogin);
     const result: any = {
       member: {
         ...memberCanonical,
+        avatar: resolveMemberAvatar(memberCanonical, fetchedAvatar),
         createdAt: memberCanonical.createdAt?.toISOString?.() || memberCanonical.createdAt,
         updatedAt: memberCanonical.updatedAt?.toISOString?.() || memberCanonical.updatedAt,
         integrationDate: memberCanonical.integrationDate?.toISOString?.() || memberCanonical.integrationDate,

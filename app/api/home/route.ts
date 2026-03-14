@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { memberRepository } from '@/lib/repositories';
 import { getTwitchUsers } from '@/lib/twitch';
 import { GUILD_ID } from '@/lib/discordRoles';
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from '@/lib/memberAvatar';
 
 // Cache ISR de 30 secondes pour la page d'accueil
 export const revalidate = 30;
@@ -141,24 +142,15 @@ async function getVipMembersData() {
       return [];
     }
 
-    const twitchLogins = vipMemberData
-      .map(member => member.twitchLogin)
-      .filter(Boolean) as string[];
+    const twitchLogins = extractUniqueTwitchLogins(vipMemberData);
     
     const twitchUsers = await getTwitchUsers(twitchLogins);
-    const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
 
     return vipMemberData.map((member) => {
-      const twitchAvatar = avatarMap.get(member.twitchLogin?.toLowerCase());
-      let avatar = twitchAvatar;
-      if (!avatar && member.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-      }
-      if (!avatar) {
-        avatar = `https://placehold.co/128x128?text=${member.displayName?.charAt(0) || 'V'}`;
-      }
+      const normalizedLogin = member.twitchLogin?.toLowerCase() || "";
+      const twitchAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      const avatar = resolveMemberAvatar(member, twitchAvatar);
 
       return {
         discordId: member.discordId || '',
@@ -184,20 +176,15 @@ async function getActiveMembersData() {
     // Récupérer tous les membres actifs depuis Supabase (limite élevée pour avoir tous les membres)
     const activeMembers = await memberRepository.findActive(10000, 0);
     
-    const twitchLogins = activeMembers
-      .map(member => member.twitchLogin)
-      .filter(Boolean) as string[];
+    const twitchLogins = extractUniqueTwitchLogins(activeMembers);
     
     const twitchUsers = await getTwitchUsers(twitchLogins);
-    const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
 
     return activeMembers.map((member) => {
-      let avatar: string | undefined = avatarMap.get(member.twitchLogin?.toLowerCase());
-      if (!avatar && member.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-      }
+      const normalizedLogin = member.twitchLogin?.toLowerCase() || "";
+      const fetchedAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      const avatar = resolveMemberAvatar(member, fetchedAvatar);
 
       return {
         twitchLogin: member.twitchLogin,

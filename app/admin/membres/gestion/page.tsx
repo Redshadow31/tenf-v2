@@ -651,8 +651,8 @@ export default function GestionMembresPage() {
         
         const discordId = centralMember?.discordId || discordMember.discordId;
         
-        // Avatar : priorité centralMember.avatar (Twitch), sinon discordMember.avatar (Discord)
-        let avatar = centralMember?.avatar || discordMember.avatar;
+        // Avatar membre canonique: Twitch centralisé uniquement, sinon placeholder UI.
+        let avatar = centralMember?.avatar;
         if (!avatar) {
           avatar = `https://placehold.co/64x64?text=${(discordMember.discordNickname || discordMember.discordUsername || "?").charAt(0).toUpperCase()}`;
         }

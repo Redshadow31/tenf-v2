@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { memberRepository } from "@/lib/repositories";
 import { getTwitchUsers } from "@/lib/twitch";
-import type { TwitchUser } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
 import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
+import {
+  buildTwitchAvatarMap,
+  extractUniqueTwitchLogins,
+  fetchCanonicalTwitchAvatarForLogin,
+  hydrateTwitchStatusAvatar,
+  resolveMemberAvatar,
+} from "@/lib/memberAvatar";
 
 // Désactiver le cache pour cette route - les données doivent toujours être à jour
 export const dynamic = 'force-dynamic';
@@ -14,26 +20,6 @@ const LEGACY_FETCH_TIMEOUT_MS = 1500;
 const TWITCH_AVATARS_TIMEOUT_MS = 15000;
 const SUPABASE_PAGE_SIZE = 1000;
 const SUPABASE_MAX_PAGES = 20;
-
-function getDiscordDefaultAvatar(discordId?: string): string | undefined {
-  if (!discordId) return undefined;
-  const numericId = Number.parseInt(discordId, 10);
-  if (Number.isNaN(numericId)) return undefined;
-  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
-}
-
-function isUsableTwitchAvatar(url?: string): boolean {
-  if (!url) return false;
-  const normalized = url.toLowerCase();
-  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
-}
-
-function getSavedAvatarUrl(member: any): string | undefined {
-  const candidate = member?.twitchStatus?.profileImageUrl;
-  if (typeof candidate !== "string") return undefined;
-  const normalized = candidate.trim();
-  return normalized.length > 0 ? normalized : undefined;
-}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T, label: string): Promise<T> {
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -197,11 +183,13 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
+      const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(member.twitchLogin);
       const response = NextResponse.json({
         member: {
           ...member,
           role: toCanonicalMemberRole(member.role),
           badges: toCanonicalBadges(member.badges),
+          avatar: resolveMemberAvatar(member, fetchedAvatar),
         },
       });
       
@@ -237,11 +225,13 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
+      const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(member.twitchLogin);
       const response = NextResponse.json({
         member: {
           ...member,
           role: toCanonicalMemberRole(member.role),
           badges: toCanonicalBadges(member.badges),
+          avatar: resolveMemberAvatar(member, fetchedAvatar),
         },
       });
       
@@ -277,9 +267,7 @@ export async function GET(request: NextRequest) {
 
     // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
     // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
-    const twitchLogins = Array.from(
-      new Set(members.map((m) => m.twitchLogin).filter(Boolean) as string[])
-    );
+    const twitchLogins = extractUniqueTwitchLogins(members);
     let avatarMap = new Map<string, string>();
     if (twitchLogins.length > 0) {
       const twitchUsers = await withTimeout(
@@ -288,28 +276,14 @@ export async function GET(request: NextRequest) {
         [],
         "récupération avatars Twitch"
       );
-      twitchUsers.forEach((u: TwitchUser) => {
-        if (isUsableTwitchAvatar(u.profile_image_url)) {
-          avatarMap.set(u.login.toLowerCase(), u.profile_image_url);
-        }
-      });
+      avatarMap = buildTwitchAvatarMap(twitchUsers);
     }
 
     // Enrichir chaque membre avec son avatar
     const membersWithAvatars = members.map((m) => {
       const normalizedLogin = typeof m.twitchLogin === 'string' ? m.twitchLogin.toLowerCase() : '';
-      const savedAvatar = getSavedAvatarUrl(m);
-      let avatar = isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined;
-      if (!avatar) {
-        avatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
-      }
-      if (!avatar) {
-        avatar = savedAvatar;
-      }
-      if (!avatar && m.discordId) avatar = getDiscordDefaultAvatar(m.discordId);
-      if (!avatar) {
-        avatar = `https://placehold.co/64x64?text=${(m.displayName || m.twitchLogin || "?").charAt(0).toUpperCase()}`;
-      }
+      const fetchedAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+      const avatar = resolveMemberAvatar(m, fetchedAvatar);
       return {
         ...m,
         role: toCanonicalMemberRole(m.role),
@@ -473,6 +447,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Hydrater immédiatement l'avatar Twitch canonique quand le login est connu.
+    const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(newMember.twitchLogin);
+    if (fetchedAvatar) {
+      newMember = await memberRepository.update(newMember.twitchLogin, {
+        twitchStatus: hydrateTwitchStatusAvatar(newMember.twitchStatus, fetchedAvatar),
+        updatedBy: admin.discordId,
+      } as any);
+    }
+
     // Logger l'action avec before/after optimisés
     const { previousValue, newValue } = prepareAuditValues(undefined, newMember);
     
@@ -490,7 +473,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      member: newMember,
+      member: {
+        ...newMember,
+        avatar: resolveMemberAvatar(newMember, fetchedAvatar),
+      },
       success: true,
       roleFallbackApplied,
       warning: roleFallbackApplied
@@ -824,7 +810,16 @@ export async function PUT(request: NextRequest) {
       newParrain: updates.parrain,
     });
 
-    const updatedMember = await memberRepository.update(originalLogin, updates);
+    let updatedMember = await memberRepository.update(originalLogin, updates);
+
+    // Si login Twitch présent, retenter une hydratation avatar côté Twitch.
+    const hydratedAvatar = await fetchCanonicalTwitchAvatarForLogin(updatedMember.twitchLogin);
+    if (hydratedAvatar) {
+      updatedMember = await memberRepository.update(updatedMember.twitchLogin, {
+        twitchStatus: hydrateTwitchStatusAvatar(updatedMember.twitchStatus, hydratedAvatar),
+        updatedBy: admin.discordId,
+      } as any);
+    }
     
     // Log après mise à jour
     console.log(`[Update Member API] ✅ Après mise à jour:`, {
@@ -874,7 +869,13 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ member: updatedMember, success: true });
+    return NextResponse.json({
+      member: {
+        ...updatedMember,
+        avatar: resolveMemberAvatar(updatedMember, hydratedAvatar),
+      },
+      success: true,
+    });
   } catch (error) {
     logApi.error('/api/admin/members', error instanceof Error ? error : new Error(String(error)));
     const message = extractErrorMessage(error);

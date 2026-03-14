@@ -10,6 +10,8 @@ import { requireAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { memberRepository } from '@/lib/repositories';
 import type { MemberData } from '@/lib/memberData';
+import { getTwitchUsers } from '@/lib/twitch';
+import { buildTwitchAvatarMap, hydrateTwitchStatusAvatar } from '@/lib/memberAvatar';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes
@@ -92,6 +94,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const twitchLogins = membersToMigrate
+      .map((member) => member.twitchLogin?.toLowerCase())
+      .filter((login): login is string => typeof login === "string" && login.length > 0);
+    let avatarMap = new Map<string, string>();
+    try {
+      const twitchUsers = await getTwitchUsers(Array.from(new Set(twitchLogins)));
+      avatarMap = buildTwitchAvatarMap(twitchUsers);
+    } catch (avatarError) {
+      console.warn("[Migration Members] Impossible de précharger les avatars Twitch:", avatarError);
+    }
+
     let migrated = 0;
     let skipped = 0;
     let errors: string[] = [];
@@ -139,6 +152,10 @@ export async function POST(request: NextRequest) {
           integrationDate: member.integrationDate,
           roleHistory: member.roleHistory || [],
           parrain: member.parrain,
+          twitchStatus: hydrateTwitchStatusAvatar(
+            member.twitchStatus,
+            avatarMap.get(member.twitchLogin.toLowerCase())
+          ) as any,
           profileValidationStatus: "valide", // Membres migrés = visibles sur /membres
         });
 

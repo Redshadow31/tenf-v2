@@ -177,21 +177,8 @@ export default function AdminSearchPage() {
                                   (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
                                 }
                               }}
-                            />
-                          ) : member.discordId ? (
-                            <img
-                              src={`https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`}
-                              alt={member.displayName}
-                              className="w-12 h-12 rounded-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                if ((e.target as HTMLImageElement).nextElementSibling) {
-                                  (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
-                                }
-                              }}
-                            />
                           ) : null}
-                          <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-semibold ${(member.avatar || member.discordId) ? 'hidden' : ''}`}>
+                          <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#9146ff] to-[#5a32b4] flex items-center justify-center text-white font-semibold ${member.avatar ? 'hidden' : ''}`}>
                             {(member.displayName || member.twitchLogin || '?')[0].toUpperCase()}
                           </div>
                         </div>

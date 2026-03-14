@@ -5,6 +5,7 @@ import { memberRepository } from '../lib/repositories';
 import { getTwitchUsers } from '../lib/twitch';
 import { getVipBadgeText } from '../lib/vipHistory';
 import { getMemberDescription } from '../lib/memberDescriptions';
+import { buildTwitchAvatarMap, resolveMemberAvatar } from '../lib/memberAvatar';
 
 dotenv.config({ path: '.env.local' });
 
@@ -31,16 +32,10 @@ async function testRoute() {
     console.log(`   ✅ ${twitchUsers.length} avatars Twitch récupérés\n`);
 
     console.log('📋 Étape 3: Formatage des données (simulation de la route)...');
-    const avatarMap = new Map(
-      twitchUsers.map(user => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
 
     const publicMembers = activeMembers.slice(0, 5).map((member) => {
-      let avatar: string | undefined = avatarMap.get(member.twitchLogin.toLowerCase());
-      
-      if (!avatar && member.discordId) {
-        avatar = `https://cdn.discordapp.com/embed/avatars/${parseInt(member.discordId) % 5}.png`;
-      }
+      const avatar = resolveMemberAvatar(member, avatarMap.get(member.twitchLogin.toLowerCase()));
 
       const vipBadge = member.isVip ? getVipBadgeText(member.twitchLogin) : undefined;
 

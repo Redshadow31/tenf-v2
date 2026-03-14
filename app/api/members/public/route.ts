@@ -6,33 +6,17 @@ import { getVipBadgeText } from '@/lib/vipHistory';
 import { getMemberDescription } from '@/lib/memberDescriptions';
 import { logApi, LogCategory } from '@/lib/logging/logger';
 import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
+import {
+  buildTwitchAvatarMap,
+  extractUniqueTwitchLogins,
+  resolveMemberAvatar,
+} from "@/lib/memberAvatar";
 
 // Désactiver le cache ISR pour cette route critique (page /lives doit toujours fonctionner)
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Pas de cache ISR pour garantir la disponibilité
 const TWITCH_AVATARS_TIMEOUT_MS = 7000;
-
-function getDiscordDefaultAvatar(discordId?: string): string | undefined {
-  if (!discordId) return undefined;
-  const numericId = Number.parseInt(discordId, 10);
-  if (Number.isNaN(numericId)) return undefined;
-  return `https://cdn.discordapp.com/embed/avatars/${numericId % 5}.png`;
-}
-
-function isUsableTwitchAvatar(url?: string): boolean {
-  if (!url) return false;
-  const normalized = url.toLowerCase();
-  // Les placeholders techniques ne doivent pas bloquer les fallbacks Discord/UI.
-  return !normalized.includes("placehold.co") && !normalized.includes("text=twitch");
-}
-
-function getSavedAvatarUrl(member: any): string | undefined {
-  const candidate = member?.twitchStatus?.profileImageUrl;
-  if (typeof candidate !== "string") return undefined;
-  const normalized = candidate.trim();
-  return normalized.length > 0 ? normalized : undefined;
-}
 
 /**
  * GET - Récupère tous les membres actifs (API publique, pas d'authentification requise)
@@ -62,13 +46,7 @@ export async function GET() {
     }
     
     // Récupérer tous les logins Twitch uniques
-    const twitchLogins = Array.from(
-      new Set(
-        activeMembers
-          .map((member) => member.twitchLogin)
-          .filter(Boolean) as string[]
-      )
-    );
+    const twitchLogins = extractUniqueTwitchLogins(activeMembers);
     
     console.log(`[Members Public API] Logins Twitch: ${twitchLogins.length}`);
     
@@ -90,11 +68,7 @@ export async function GET() {
     console.log(`[Members Public API] Avatars Twitch récupérés: ${twitchUsers.length}`);
     
     // Créer un map pour un accès rapide par login
-    const avatarMap = new Map(
-      twitchUsers
-        .filter((user: TwitchUser) => isUsableTwitchAvatar(user.profile_image_url))
-        .map((user: TwitchUser) => [user.login.toLowerCase(), user.profile_image_url])
-    );
+    const avatarMap = buildTwitchAvatarMap(twitchUsers);
     
     // Mapper vers un format simplifié pour la page publique avec avatars Twitch
     const publicMembers = activeMembers.map((member) => {
@@ -103,21 +77,8 @@ export async function GET() {
         const normalizedLogin = typeof member.twitchLogin === 'string'
           ? member.twitchLogin.toLowerCase()
           : '';
-        const savedAvatar = getSavedAvatarUrl(member);
-        let avatar: string | undefined = isUsableTwitchAvatar(savedAvatar) ? savedAvatar : undefined;
-        if (!avatar) {
-          avatar = normalizedLogin
-            ? avatarMap.get(normalizedLogin)
-            : undefined;
-        }
-        if (!avatar) {
-          avatar = savedAvatar;
-        }
-        
-        // Si pas d'avatar Twitch, utiliser Discord en fallback
-        if (!avatar && member.discordId) {
-          avatar = getDiscordDefaultAvatar(member.discordId);
-        }
+        const fetchedAvatar = normalizedLogin ? avatarMap.get(normalizedLogin) : undefined;
+        const avatar = resolveMemberAvatar(member, fetchedAvatar);
 
         // Calculer le badge VIP+N si le membre est VIP
         let vipBadge: string | undefined = undefined;
