@@ -2193,7 +2193,6 @@ function ConseilContent() {
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
-  const [expandedGuide, setExpandedGuide] = useState<string>("essentiel");
   const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
   const currentStep = activeTabIndex + 1;
   const isLastStep = currentStep === tabs.length;
@@ -2228,7 +2227,6 @@ export default function Page() {
               <button
                 onClick={() => {
                   setActiveTab("integration");
-                  setExpandedGuide("essentiel");
                   document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
@@ -2239,7 +2237,6 @@ export default function Page() {
               <button
                 onClick={() => {
                   setActiveTab("systeme-points");
-                  setExpandedGuide("essentiel");
                   document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
@@ -2350,43 +2347,16 @@ export default function Page() {
                 : accordion.key === "details"
                   ? "rgba(239,68,68,0.08)"
                   : "var(--color-card)";
-
-              if (activeTab === "integration") {
-                return (
-                  <article
-                    key={accordion.key}
-                    className="rounded-xl border transition-all duration-200 about-glow p-4"
-                    style={{ borderColor, backgroundColor: bgColor }}
-                  >
-                    <p className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{accordion.title}</p>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                      {accordion.text}
-                    </p>
-                  </article>
-                );
-              }
-
-              const isOpen = expandedGuide === accordion.key;
               return (
                 <article
                   key={accordion.key}
-                  className="rounded-xl border transition-all duration-200 about-glow"
+                  className="rounded-xl border transition-all duration-200 about-glow p-4"
                   style={{ borderColor, backgroundColor: bgColor }}
                 >
-                  <button
-                    onClick={() => setExpandedGuide(isOpen ? "" : accordion.key)}
-                    className="w-full p-4 text-left flex items-center justify-between"
-                  >
-                    <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{accordion.title}</span>
-                    <span style={{ color: 'var(--color-primary)' }}>{isOpen ? "−" : "+"}</span>
-                  </button>
-                  {isOpen && (
-                    <div className="px-4 pb-4">
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                        {accordion.text}
-                      </p>
-                    </div>
-                  )}
+                  <p className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{accordion.title}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                    {accordion.text}
+                  </p>
                 </article>
               );
             })}
@@ -2730,7 +2700,6 @@ export default function Page() {
             <button
               onClick={() => {
                 setActiveTab(currentGuide.cta.targetTab);
-                setExpandedGuide("essentiel");
                 document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
@@ -2745,7 +2714,6 @@ export default function Page() {
             <button
               onClick={() => {
                 setActiveTab(nextTabId);
-                setExpandedGuide("essentiel");
                 document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
