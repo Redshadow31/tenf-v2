@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
+import { memberRepository } from "@/lib/repositories";
 import {
   getAllMemberData,
   updateMemberData,
@@ -51,16 +52,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedMembersToMerge = [...new Set(
+      membersToMerge
+        .map((login: string) => (typeof login === "string" ? login.trim().toLowerCase() : ""))
+        .filter(Boolean)
+    )];
+
+    if (normalizedMembersToMerge.length < 2) {
+      return NextResponse.json(
+        { error: "Au moins 2 membres valides doivent être fournis pour la fusion" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedPrimaryTwitchLogin = String(mergedData.twitchLogin || "").trim().toLowerCase();
+    if (!normalizedPrimaryTwitchLogin) {
+      return NextResponse.json(
+        { error: "Le membre principal (twitchLogin) est invalide" },
+        { status: 400 }
+      );
+    }
+
+    if (!normalizedMembersToMerge.includes(normalizedPrimaryTwitchLogin)) {
+      normalizedMembersToMerge.unshift(normalizedPrimaryTwitchLogin);
+    }
+
     // Réutiliser allMembers déjà chargé
+    const legacyMembersByLogin = new Map(
+      allMembers.map((m) => [m.twitchLogin.toLowerCase(), m] as const)
+    );
+
+    const supabaseMembers = await Promise.all(
+      normalizedMembersToMerge.map(async (login) => ({
+        login,
+        member: await memberRepository.findByTwitchLogin(login),
+      }))
+    );
+    const supabaseMembersByLogin = new Map(
+      supabaseMembers.filter((entry) => entry.member).map((entry) => [entry.login, entry.member] as const)
+    );
+
     const membersToDelete: string[] = [];
     const membersNotFound: string[] = [];
 
-    // Vérifier que tous les membres existent
-    for (const twitchLogin of membersToMerge) {
-      const member = allMembers.find(
-        (m) => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase()
-      );
-      if (!member) {
+    // Vérifier que tous les membres existent (Supabase OU legacy store)
+    for (const twitchLogin of normalizedMembersToMerge) {
+      const existsInSupabase = supabaseMembersByLogin.has(twitchLogin);
+      const existsInLegacy = legacyMembersByLogin.has(twitchLogin);
+      if (!existsInSupabase && !existsInLegacy) {
         membersNotFound.push(twitchLogin);
       }
     }
@@ -73,28 +112,54 @@ export async function POST(request: NextRequest) {
     }
 
     // Le membre principal (celui qui sera conservé) est celui avec le twitchLogin de mergedData
-    const primaryTwitchLogin = mergedData.twitchLogin.toLowerCase();
-    const otherMembers = membersToMerge.filter(
-      (login: string) => login.toLowerCase() !== primaryTwitchLogin
-    );
+    const primaryTwitchLogin = normalizedPrimaryTwitchLogin;
+    const otherMembers = normalizedMembersToMerge.filter((login) => login !== primaryTwitchLogin);
 
-    // Mettre à jour le membre principal avec les données fusionnées
-    await updateMemberData(
-      primaryTwitchLogin,
-      {
-        ...mergedData,
-        twitchLogin: primaryTwitchLogin, // S'assurer que le twitchLogin est correct
-        updatedBy: admin.discordId,
-        updatedAt: new Date(),
-        // Marquer comme modifié manuellement pour protéger contre les synchronisations
-        roleManuallySet: true,
-      },
-      admin.discordId
-    );
+    const mergedUpdates = {
+      ...mergedData,
+      twitchLogin: primaryTwitchLogin, // S'assurer que le twitchLogin est correct
+      updatedBy: admin.discordId,
+      updatedAt: new Date(),
+      // Marquer comme modifié manuellement pour protéger contre les synchronisations
+      roleManuallySet: true,
+    };
+
+    const primaryExistsInSupabase = supabaseMembersByLogin.has(primaryTwitchLogin);
+    const primaryExistsInLegacy = legacyMembersByLogin.has(primaryTwitchLogin);
+
+    if (!primaryExistsInSupabase && !primaryExistsInLegacy) {
+      return NextResponse.json(
+        { error: `Membre principal introuvable: ${primaryTwitchLogin}` },
+        { status: 404 }
+      );
+    }
+
+    // Mettre à jour le membre principal dans Supabase si présent, sinon dans legacy.
+    if (primaryExistsInSupabase) {
+      await memberRepository.update(primaryTwitchLogin, mergedUpdates);
+      // Best effort: garder aussi legacy aligné si l'entrée existe.
+      if (primaryExistsInLegacy) {
+        try {
+          await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
+        } catch (legacySyncError) {
+          console.warn("[Merge Members] Sync legacy principal ignoré:", legacySyncError);
+        }
+      }
+    } else {
+      await updateMemberData(primaryTwitchLogin, mergedUpdates, admin.discordId);
+    }
 
     // Supprimer les autres membres (doublons)
     for (const twitchLogin of otherMembers) {
-      await deleteMemberData(twitchLogin.toLowerCase(), admin.discordId);
+      const existsInSupabase = supabaseMembersByLogin.has(twitchLogin);
+      const existsInLegacy = legacyMembersByLogin.has(twitchLogin);
+
+      if (existsInSupabase) {
+        await memberRepository.hardDelete(twitchLogin);
+      }
+      if (existsInLegacy) {
+        await deleteMemberData(twitchLogin, admin.discordId);
+      }
       membersToDelete.push(twitchLogin);
     }
 
