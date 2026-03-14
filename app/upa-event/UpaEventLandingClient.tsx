@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { UpaEventContent, UpaEventEditorialSection } from "@/lib/upaEvent/types";
+import type { UpaEventContent } from "@/lib/upaEvent/types";
 
 type TabKey = "discover" | "event" | "staff" | "faq";
 
@@ -14,6 +14,109 @@ const TAB_LABELS: { key: TabKey; label: string }[] = [
   { key: "event", label: "L'evenement" },
   { key: "staff", label: "Staff" },
   { key: "faq", label: "FAQ" },
+];
+
+const FAQ_SECTIONS = [
+  {
+    id: "streamer",
+    icon: "🎥",
+    title: "Participer en tant que streamer",
+    items: [
+      {
+        id: "faq-streamer-who",
+        question: "Qui peut participer en tant que streamer ?",
+        answer:
+          "Tout createur de contenu peut participer a l'evenement, quel que soit son nombre de viewers ou son niveau d'experience sur Twitch. L'objectif est avant tout de rassembler des communautes autour d'une cause solidaire.",
+      },
+      {
+        id: "faq-streamer-frequency",
+        question: "Dois-je streamer tous les jours pendant l'evenement ?",
+        answer:
+          "Non. Chaque streamer participe selon ses disponibilites. Meme un seul live peut contribuer a soutenir la cause et a mobiliser sa communaute.",
+      },
+      {
+        id: "faq-streamer-size",
+        question: "Puis-je participer meme si je suis un petit streamer ?",
+        answer:
+          "Oui bien sur. L'evenement est justement concu pour rassembler des createurs de toutes tailles. Chaque communaute compte et chaque participation aide a amplifier l'impact de l'evenement.",
+      },
+      {
+        id: "faq-streamer-announce",
+        question: "Comment annoncer ma participation a ma communaute ?",
+        answer:
+          "Une fois inscrit, tu pourras annoncer ta participation pendant tes lives et sur tes reseaux. Le staff pourra egalement partager les createurs participants pour donner de la visibilite a l'evenement.",
+      },
+    ],
+  },
+  {
+    id: "moderation",
+    icon: "🛡️",
+    title: "Moderation et staff",
+    items: [
+      {
+        id: "faq-mod-role",
+        question: "Quel est le role des moderateurs volontaires ?",
+        answer:
+          "Les moderateurs volontaires participent a l'encadrement de l'evenement. Ils aident a maintenir un environnement bienveillant sur Twitch et Discord et soutiennent les streamers participants.",
+      },
+      {
+        id: "faq-mod-experience",
+        question: "Dois-je etre moderateur experimente pour participer ?",
+        answer:
+          "Non. L'important est surtout d'etre motive et respectueux de l'esprit communautaire de l'evenement.",
+      },
+      {
+        id: "faq-mod-time",
+        question: "Combien de temps dois-je consacrer a la moderation ?",
+        answer:
+          "La participation reste flexible. Les moderateurs peuvent aider ponctuellement pendant certains lives ou evenements selon leurs disponibilites.",
+      },
+    ],
+  },
+  {
+    id: "event",
+    icon: "📅",
+    title: "L'evenement",
+    items: [
+      {
+        id: "faq-event-when",
+        question: "Quand aura lieu l'evenement UPA ?",
+        answer:
+          "L'evenement se deroulera du 18 au 26 avril 2026. Pendant cette periode, les streamers participants diffuseront des lives pour mobiliser leurs communautes autour de la cause soutenue.",
+      },
+      {
+        id: "faq-event-cause",
+        question: "Quelle cause est soutenue ?",
+        answer:
+          "L'evenement met en avant une cause solidaire afin de sensibiliser les communautes et de soutenir les actions des associations partenaires.",
+      },
+      {
+        id: "faq-event-content",
+        question: "Dois-je modifier le contenu de mes streams ?",
+        answer:
+          "Non. Chaque streamer reste libre de son contenu. L'objectif est simplement de profiter de ses lives pour soutenir l'evenement et sensibiliser sa communaute.",
+      },
+    ],
+  },
+  {
+    id: "community",
+    icon: "🤝",
+    title: "Communaute",
+    items: [
+      {
+        id: "faq-community-not-streamer",
+        question: "Puis-je participer meme si je ne suis pas streamer ?",
+        answer:
+          "Oui. Les membres de la communaute peuvent soutenir l'evenement en regardant les lives, en partageant l'evenement et en encourageant les createurs participants.",
+      },
+      {
+        id: "faq-community-follow",
+        question: "Comment suivre l'evenement ?",
+        answer:
+          "Les informations et les createurs participants seront partages pendant toute la duree de l'evenement afin de permettre a chacun de decouvrir les lives et de soutenir la cause.",
+      },
+    ],
+  },
 ];
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -40,16 +143,6 @@ function getCountdownLabel(startDate: string): string {
   return "Evenement en cours ou deja lance";
 }
 
-function sectionMatches(key: string, expressions: RegExp[]): boolean {
-  return expressions.some((expr) => expr.test(key));
-}
-
-function getSectionVariantClass(section: UpaEventEditorialSection): string {
-  if (section.variant === "highlight") return "upa-card-highlight";
-  if (section.variant === "soft") return "upa-card-soft";
-  return "";
-}
-
 export default function UpaEventLandingClient({ initialContent }: { initialContent: UpaEventContent }) {
   const [activeTab, setActiveTab] = useState<TabKey>("discover");
   const [mobileOpenTab, setMobileOpenTab] = useState<TabKey>("discover");
@@ -73,10 +166,6 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     () => staff.filter((member) => member.staffType !== "high_staff"),
     [staff]
   );
-  const faq = useMemo(
-    () => [...content.faq].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
-    [content.faq]
-  );
   const officialLinks = useMemo(
     () => [...content.officialLinks].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
     [content.officialLinks]
@@ -85,96 +174,189 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     () => [...content.partnerCommunities].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
     [content.partnerCommunities]
   );
-  const activeEditorialSections = useMemo(
-    () => [...content.editorialSections].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
-    [content.editorialSections]
-  );
-
-  const discoverSections = useMemo(
-    () =>
-      activeEditorialSections.filter((section) =>
-        sectionMatches(section.key.toLowerCase(), [/organisation/, /mission/, /propos/, /avenir/, /upa/])
-      ),
-    [activeEditorialSections]
-  );
-  const eventSections = useMemo(
-    () =>
-      activeEditorialSections.filter(
-        (section) =>
-          !sectionMatches(section.key.toLowerCase(), [/organisation/, /mission/, /propos/, /avenir/, /upa/])
-      ),
-    [activeEditorialSections]
-  );
-
-  const fallbackEventCards = [
-    {
-      title: "Lives caritatifs",
-      content: "Des lives engages pour sensibiliser, mobiliser et agir autour de la cause soutenue.",
-    },
-    {
-      title: "Moments communautaires",
-      content: "Des temps forts collectifs pour rassembler streamers, moderateurs et viewers.",
-    },
-    {
-      title: "Sensibilisation",
-      content: "Une prise de parole claire sur la cause pour informer les communautes.",
-    },
-    {
-      title: "Mise en lumiere de la cause",
-      content: "Valoriser l'association soutenue et amplifier son impact durant l'evenement.",
-    },
-  ];
-
-  const eventCards = eventSections.length
-    ? eventSections.slice(0, 4).map((section) => ({ title: section.title, content: section.content }))
-    : fallbackEventCards;
-
   const totalParticipants = Math.max(content.socialProof.totalRegistered || 0, 0);
   const totalParticipantsLabel =
     totalParticipants > 0 ? `${totalParticipants} participants` : "Participants en cours de confirmation";
   const dateRange = formatDateRange(content.general.startDate, content.general.endDate);
   const countdownLabel = getCountdownLabel(content.general.startDate);
 
-  const hasDiscover = discoverSections.length > 0;
   const hasTimeline = content.displaySettings.showTimeline && timeline.length > 0;
-  const hasFaq = content.displaySettings.showFaq && faq.length > 0;
   const hasStaff = content.displaySettings.showStaff && staff.length > 0;
 
   function renderDiscoverTab() {
     return (
       <div className="upa-tab-panel">
         <h3 className="upa-tab-title">Unis pour l'Avenir (UPA)</h3>
-        <div className="upa-grid upa-grid-2">
-          {(hasDiscover ? discoverSections : activeEditorialSections.slice(0, 4)).map((section) => (
-            <article key={section.id} className={`upa-card ${getSectionVariantClass(section)}`}>
-              <h4>{section.title}</h4>
-              {section.subtitle ? <p className="upa-card-subtitle">{section.subtitle}</p> : null}
-              <p>{section.content}</p>
+
+        <div className="upa-grid upa-grid-2 upa-discover-main-grid">
+          <article className="upa-card upa-card-highlight">
+            <h4>Presentation de l'organisation</h4>
+            <p>
+              Unis pour l'Avenir (UPA) est une initiative caritative creee par le streamer Twitch <strong>Symaog</strong>.
+            </p>
+            <p>
+              L'objectif est de mobiliser les communautes en ligne autour d'evenements streaming et d'actions collectives.
+            </p>
+            <p>
+              UPA renforce la visibilite des associations partenaires et valorise les initiatives solidaires.
+            </p>
+          </article>
+
+          <article className="upa-card">
+            <h4>Notre mission</h4>
+            <p>Rassembler les communautes autour d'actions positives et utiles.</p>
+            <p>Associer la puissance du streaming, l'engagement des createurs et l'energie des viewers.</p>
+            <p>Transformer chaque live en opportunite concrete de faire avancer la solidarite.</p>
+          </article>
+        </div>
+
+        <div className="upa-subsection">
+          <h4>Ce que nous proposons</h4>
+          <div className="upa-grid upa-grid-2 upa-discover-proposals">
+            <article className="upa-card upa-card-soft upa-discover-proposal-card">
+              <h5><span aria-hidden="true">🎥</span> Organisation de lives caritatifs</h5>
+              <p>Des formats engages pour mobiliser rapidement les communautes.</p>
             </article>
-          ))}
+            <article className="upa-card upa-card-soft upa-discover-proposal-card">
+              <h5><span aria-hidden="true">🤝</span> Evenements communautaires</h5>
+              <p>Tournois, defis et animations pour creer une dynamique collective.</p>
+            </article>
+            <article className="upa-card upa-card-soft upa-discover-proposal-card">
+              <h5><span aria-hidden="true">📣</span> Campagnes de sensibilisation en ligne</h5>
+              <p>Des messages clairs pour informer, sensibiliser et engager.</p>
+            </article>
+            <article className="upa-card upa-card-soft upa-discover-proposal-card">
+              <h5><span aria-hidden="true">🫶</span> Partenariats associatifs reconnus</h5>
+              <p>Des collaborations utiles pour amplifier l'impact concret des actions.</p>
+            </article>
+          </div>
+        </div>
+
+        <div className="upa-subsection">
+          <article className="upa-card">
+            <h4>L'avenir se construit ensemble</h4>
+            <p>UPA croit en la force de l'unite, de la solidarite et de la generosite.</p>
+            <p>Chaque action, chaque partage et chaque don contribuent a une difference reelle.</p>
+            <p>En reunissant les communautes, nous amplifions durablement l'impact des causes soutenues.</p>
+          </article>
+        </div>
+
+        <div className="upa-subsection">
+          <h4>Nos valeurs</h4>
+          <div className="upa-grid upa-grid-2">
+            <article className="upa-card upa-card-soft">
+              <h5>Respect</h5>
+              <p>Chaque personne est ecoutee et consideree avec dignite, quel que soit son parcours.</p>
+            </article>
+            <article className="upa-card upa-card-soft">
+              <h5>Bienveillance</h5>
+              <p>Nous cultivons un cadre sain, positif et humain pour avancer ensemble en confiance.</p>
+            </article>
+            <article className="upa-card upa-card-soft">
+              <h5>Solidarite</h5>
+              <p>Nos communautes se rassemblent autour d'une meme cause pour creer un impact concret.</p>
+            </article>
+            <article className="upa-card upa-card-soft">
+              <h5>Entraide</h5>
+              <p>Chaque participant peut compter sur l'equipe et la communaute pour progresser sereinement.</p>
+            </article>
+          </div>
+        </div>
+
+        <div className="upa-subsection">
+          <article className="upa-card upa-discover-invite">
+            <h4>Invitation a rejoindre l'aventure</h4>
+            <p>Rejoignez l'aventure et participez a la construction d'un evenement solidaire.</p>
+            <p>Ensemble, nous pouvons transformer la force des communautes en moteur d'entraide.</p>
+          </article>
         </div>
       </div>
     );
   }
 
   function renderEventTab() {
+    const eventCards = [
+      {
+        title: "Lives caritatifs",
+        icon: "🎥",
+        content:
+          "Des createurs diffuseront des lives tout au long de l'evenement pour mobiliser leurs communautes et soutenir la cause.",
+      },
+      {
+        title: "Moments communautaires",
+        icon: "🤝",
+        content:
+          "Des temps forts collectifs permettront aux streamers, moderateurs et viewers de partager des moments ensemble.",
+      },
+      {
+        title: "Sensibilisation",
+        icon: "📣",
+        content:
+          "Les lives permettront aussi de mettre en lumiere la cause soutenue et d'informer les communautes.",
+      },
+      {
+        title: "Mise en lumiere de la cause",
+        icon: "🫶",
+        content:
+          "L'evenement vise a amplifier la visibilite de l'association soutenue grace a la mobilisation des communautes.",
+      },
+    ];
+
     return (
       <div className="upa-tab-panel">
         <h3 className="upa-tab-title">A quoi ressemblera l'evenement</h3>
-        <div className="upa-grid upa-grid-4">
-          {eventCards.map((card, index) => (
-            <article key={`${card.title}-${index}`} className="upa-card upa-card-soft">
-              <h4>{card.title}</h4>
+        <div className="upa-grid upa-grid-2 upa-event-cards-grid">
+          {eventCards.map((card) => (
+            <article key={card.title} className="upa-card upa-card-soft upa-event-card">
+              <h4>
+                <span aria-hidden="true">{card.icon}</span>
+                {card.title}
+              </h4>
               <p>{card.content}</p>
             </article>
           ))}
+        </div>
+
+        <div className="upa-subsection">
+          <h4>Comment participer</h4>
+          <div className="upa-grid upa-grid-2">
+            <article className="upa-card upa-participation-card">
+              <h4>Je participe en tant que streamer</h4>
+              <p>
+                Anime un ou plusieurs lives pendant la periode de l'evenement et mobilise ta communaute autour de la cause.
+              </p>
+              <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                {content.cta.streamerButtonText || "Participer comme streamer"}
+              </a>
+            </article>
+
+            <article className="upa-card upa-participation-card">
+              <h4>Je deviens moderateur volontaire</h4>
+              <p>
+                Contribue au bon deroulement des lives sur Twitch et Discord et participe a l'encadrement de l'evenement.
+              </p>
+              <div className="upa-participation-actions">
+                <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
+                  Moderateur Twitch
+                </a>
+                <a
+                  href={MODERATOR_DISCORD_FORM_URL}
+                  className="upa-btn upa-btn-accent"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Moderateur Discord
+                </a>
+              </div>
+            </article>
+          </div>
         </div>
 
         {content.displaySettings.showPartnerCommunities && (
           <div className="upa-subsection">
             <h4>Communautes partenaires</h4>
             {partnerCommunities.length === 0 ? (
-              <p className="upa-empty-text">Les communautes partenaires seront bientot ajoutees.</p>
+              <p className="upa-empty-text">Les communautes partenaires seront bientot annoncees.</p>
             ) : (
               <div className="upa-grid upa-grid-3">
                 {partnerCommunities.map((partner) => (
@@ -191,8 +373,34 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                 ))}
               </div>
             )}
+            <p className="upa-empty-text">
+              L'evenement rassemble plusieurs communautes de createurs et de viewers. De nouvelles communautes partenaires
+              seront ajoutees progressivement.
+            </p>
           </div>
         )}
+
+        <div className="upa-subsection">
+          <h4>Statut de l'evenement</h4>
+          <div className="upa-live-status">
+            <span className="upa-live-dot" />
+            <div>
+              <strong>{content.statusMessages.statusLabel || "Inscriptions ouvertes"}</strong>
+              <p>{content.statusMessages.statusMessage || "L'evenement est actuellement en phase de preparation."}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="upa-subsection">
+          <article className="upa-card upa-event-invite-card">
+            <h4>Invitation</h4>
+            <p>Chaque participation contribue a faire grandir l'evenement et a soutenir la cause.</p>
+            <p>
+              Que tu sois streamer, moderateur ou membre de la communaute, tu peux prendre part a cette aventure
+              collective.
+            </p>
+          </article>
+        </div>
       </div>
     );
   }
@@ -246,6 +454,69 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
             ))}
           </div>
         )}
+
+        <div className="upa-subsection">
+          <h4>Un staff engage pour l'evenement</h4>
+          <p className="upa-empty-text">
+            L'evenement UPA repose sur l'engagement d'une equipe de benevoles passionnes. Streamers, moderateurs et
+            organisateurs travaillent ensemble pour assurer une experience positive et bienveillante.
+          </p>
+          <div className="upa-grid upa-grid-3 upa-staff-info-grid">
+            <article className="upa-card upa-card-soft upa-staff-info-card">
+              <h5>
+                <span aria-hidden="true">📅</span>
+                Coordination de l'evenement
+              </h5>
+              <p>
+                Le staff organise la preparation des lives, coordonne les participants et veille au bon deroulement de
+                l'evenement.
+              </p>
+            </article>
+            <article className="upa-card upa-card-soft upa-staff-info-card">
+              <h5>
+                <span aria-hidden="true">🛡️</span>
+                Encadrement des communautes
+              </h5>
+              <p>
+                Les moderateurs accompagnent les streamers et veillent au respect d'un environnement sain sur Twitch et
+                Discord.
+              </p>
+            </article>
+            <article className="upa-card upa-card-soft upa-staff-info-card">
+              <h5>
+                <span aria-hidden="true">🤲</span>
+                Soutien aux participants
+              </h5>
+              <p>
+                Le staff reste disponible pour repondre aux questions et accompagner les participants pendant toute la
+                duree de l'evenement.
+              </p>
+            </article>
+          </div>
+        </div>
+
+        <div className="upa-subsection">
+          <article className="upa-card upa-staff-join-card">
+            <h4>Envie de contribuer a l'evenement ?</h4>
+            <p>
+              Les moderateurs volontaires jouent un role essentiel dans la reussite de l'evenement. Ils participent a la
+              gestion des lives, au soutien des streamers et a la coordination de la communaute.
+            </p>
+            <div className="upa-participation-actions">
+              <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
+                Moderateur Twitch
+              </a>
+              <a
+                href={MODERATOR_DISCORD_FORM_URL}
+                className="upa-btn upa-btn-accent"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Moderateur Discord
+              </a>
+            </div>
+          </article>
+        </div>
       </div>
     );
   }
@@ -254,28 +525,39 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     return (
       <div className="upa-tab-panel">
         <h3 className="upa-tab-title">Questions frequentes</h3>
-        {!hasFaq ? (
-          <p className="upa-empty-text">La FAQ sera disponible prochainement.</p>
-        ) : (
-          <div className="upa-faq-list">
-            {faq.map((item) => {
-              const isOpen = openFaqId === item.id;
-              return (
-                <article key={item.id} className={`upa-faq-item ${isOpen ? "open" : ""}`}>
-                  <button
-                    className="upa-faq-trigger"
-                    type="button"
-                    onClick={() => setOpenFaqId((prev) => (prev === item.id ? null : item.id))}
-                  >
-                    <span>{item.question}</span>
-                    <span>{isOpen ? "−" : "+"}</span>
-                  </button>
-                  {isOpen ? <p className="upa-faq-answer">{item.answer}</p> : null}
-                </article>
-              );
-            })}
+        <div className="upa-faq-sections">
+          {FAQ_SECTIONS.map((section) => (
+            <section key={section.id} className="upa-faq-theme">
+              <h4 className="upa-faq-theme-title">
+                <span aria-hidden="true">{section.icon}</span>
+                {section.title}
+              </h4>
+              <div className="upa-faq-list">
+                {section.items.map((item) => {
+                  const isOpen = openFaqId === item.id;
+                  return (
+                    <article key={item.id} className={`upa-faq-item ${isOpen ? "open" : ""}`}>
+                      <button
+                        className="upa-faq-trigger"
+                        type="button"
+                        onClick={() => setOpenFaqId((prev) => (prev === item.id ? null : item.id))}
+                      >
+                        <span>{item.question}</span>
+                        <span>{isOpen ? "−" : "+"}</span>
+                      </button>
+                      {isOpen ? <p className="upa-faq-answer">{item.answer}</p> : null}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+          <div className="upa-faq-help">
+            <p>
+              Besoin d'un accompagnement ? Le staff UPA reste disponible pour t'aider a rejoindre l'evenement sereinement.
+            </p>
           </div>
-        )}
+        </div>
       </div>
     );
   }
@@ -375,50 +657,6 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                 </div>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      <section className="upa-section">
-        <div className="upa-container">
-          <div className="upa-live-status">
-            <span className="upa-live-dot" />
-            <div>
-              <strong>{content.statusMessages.statusLabel || "Inscriptions ouvertes"}</strong>
-              <p>{content.statusMessages.statusMessage || "Les inscriptions continuent."}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="upa-section">
-        <div className="upa-container">
-          <h2 className="upa-section-title">Participer facilement</h2>
-          <div className="upa-grid upa-grid-2">
-            <article className="upa-card upa-participation-card">
-              <h3>Je participe en tant que streamer</h3>
-              <p>Anime un ou plusieurs lives pendant la periode de l'evenement et mobilise ta communaute.</p>
-              <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
-                {content.cta.streamerButtonText || "Participer comme streamer"}
-              </a>
-            </article>
-            <article className="upa-card upa-participation-card">
-              <h3>Je deviens moderateur volontaire</h3>
-              <p>Contribue au bon deroulement des lives, sur Twitch et Discord, dans un cadre bienveillant.</p>
-              <div className="upa-participation-actions">
-                <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
-                  Modérateur Twitch
-                </a>
-                <a
-                  href={MODERATOR_DISCORD_FORM_URL}
-                  className="upa-btn upa-btn-accent"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Modérateur Discord
-                </a>
-              </div>
-            </article>
           </div>
         </div>
       </section>

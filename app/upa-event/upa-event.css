@@ -413,6 +413,62 @@
   font-size: 1.1rem;
 }
 
+.upa-page .upa-event-cards-grid {
+  margin-top: 14px;
+}
+
+.upa-page .upa-event-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upa-page .upa-event-card h4 span {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(0, 74, 173, 0.1);
+  font-size: 0.95rem;
+}
+
+.upa-page .upa-event-invite-card {
+  border-color: rgba(0, 170, 0, 0.35);
+  background: linear-gradient(135deg, var(--upa-green-soft), var(--upa-white));
+}
+
+.upa-page .upa-discover-main-grid {
+  margin-top: 14px;
+}
+
+.upa-page .upa-discover-proposals {
+  margin-top: 12px;
+}
+
+.upa-page .upa-discover-proposal-card h5 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upa-page .upa-discover-proposal-card h5 span {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(0, 74, 173, 0.1);
+  font-size: 0.95rem;
+}
+
+.upa-page .upa-discover-invite {
+  border-color: rgba(0, 170, 0, 0.35);
+  background: linear-gradient(135deg, var(--upa-green-soft), var(--upa-white));
+}
+
 .upa-page .upa-partner-logo {
   width: 52px;
   height: 52px;
@@ -474,6 +530,32 @@
   text-transform: uppercase;
 }
 
+.upa-page .upa-staff-info-grid {
+  margin-top: 12px;
+}
+
+.upa-page .upa-staff-info-card h5 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upa-page .upa-staff-info-card h5 span {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(0, 74, 173, 0.1);
+  font-size: 0.95rem;
+}
+
+.upa-page .upa-staff-join-card {
+  border-color: rgba(0, 170, 0, 0.35);
+  background: linear-gradient(135deg, var(--upa-green-soft), var(--upa-white));
+}
+
 .upa-page .upa-tenf-partnership {
   margin-top: 20px;
   border-radius: var(--upa-radius-md);
@@ -497,6 +579,39 @@
   margin-top: 14px;
   display: grid;
   gap: 10px;
+}
+
+.upa-page .upa-faq-sections {
+  margin-top: 14px;
+  display: grid;
+  gap: 18px;
+}
+
+.upa-page .upa-faq-theme {
+  border-radius: 14px;
+  border: 1px solid rgba(0, 74, 173, 0.12);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12px;
+}
+
+.upa-page .upa-faq-theme-title {
+  margin: 0;
+  color: var(--upa-blue-deep);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.upa-page .upa-faq-theme-title span {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(0, 74, 173, 0.1);
+  font-size: 0.9rem;
 }
 
 .upa-page .upa-faq-item {
@@ -524,6 +639,19 @@
   padding: 0 14px 12px;
   color: var(--upa-muted);
   line-height: 1.6;
+}
+
+.upa-page .upa-faq-help {
+  border-radius: 12px;
+  border: 1px solid rgba(0, 170, 0, 0.3);
+  background: linear-gradient(135deg, var(--upa-green-soft), var(--upa-white));
+  padding: 12px 14px;
+}
+
+.upa-page .upa-faq-help p {
+  margin: 0;
+  color: var(--upa-ink);
+  font-weight: 600;
 }
 
 .upa-page .upa-tabs-mobile {
