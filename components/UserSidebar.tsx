@@ -190,12 +190,17 @@ export default function UserSidebar() {
                   const visibleItems = group.items.filter((item) => !item.adminOnly || hasAdminAccess);
                   const shouldInjectTwitchShortcut =
                     section.title === "Espace membre" && group.title === "Navigation" && Boolean(discordUser);
+                  const safeCallbackPath =
+                    pathname && pathname.startsWith("/") && !pathname.startsWith("//")
+                      ? pathname
+                      : "/member/profil/completer";
+                  const directTwitchLinkHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(safeCallbackPath)}`;
 
                   const groupItems = shouldInjectTwitchShortcut
                     ? [
                         ...visibleItems,
                         {
-                          href: "/member/profil",
+                          href: twitchLinked ? "/member/profil" : directTwitchLinkHref,
                           label:
                             twitchLinked === null
                               ? "Etat Twitch..."
