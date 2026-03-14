@@ -2166,11 +2166,17 @@ function ConseilContent() {
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
   const [expandedGuide, setExpandedGuide] = useState<string>("essentiel");
+  const [integrationChecklist, setIntegrationChecklist] = useState({
+    discordConnecte: false,
+    espaceCree: false,
+    reunionPlanifiee: false,
+  });
   const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
   const currentStep = activeTabIndex + 1;
   const isLastStep = currentStep === tabs.length;
   const nextTabId = isLastStep ? tabs[0].id : tabs[currentStep].id;
   const currentGuide = tabGuidance[activeTab];
+  const completedIntegrationSteps = Object.values(integrationChecklist).filter(Boolean).length;
 
   return (
     <main id="top-fonctionnement" className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -2339,8 +2345,69 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Processus d'Intégration
                 </h2>
+                <div
+                  className="mb-6 rounded-xl border p-4 md:p-5"
+                  style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                      Progression de ton intégration: {completedIntegrationSteps}/3
+                    </p>
+                    <span
+                      className="text-xs px-2.5 py-1 rounded-full border"
+                      style={{ color: "var(--color-primary)", borderColor: "var(--color-border)" }}
+                    >
+                      Ludique & interactif
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${(completedIntegrationSteps / 3) * 100}%`, backgroundColor: "var(--color-primary)" }}
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() =>
+                        setIntegrationChecklist((prev) => ({ ...prev, discordConnecte: !prev.discordConnecte }))
+                      }
+                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+                      style={{
+                        borderColor: "var(--color-border)",
+                        color: integrationChecklist.discordConnecte ? "var(--color-text)" : "var(--color-text-secondary)",
+                        backgroundColor: integrationChecklist.discordConnecte ? "var(--color-surface)" : "transparent",
+                      }}
+                    >
+                      {integrationChecklist.discordConnecte ? "✅" : "⬜"} Discord connecté
+                    </button>
+                    <button
+                      onClick={() => setIntegrationChecklist((prev) => ({ ...prev, espaceCree: !prev.espaceCree }))}
+                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+                      style={{
+                        borderColor: "var(--color-border)",
+                        color: integrationChecklist.espaceCree ? "var(--color-text)" : "var(--color-text-secondary)",
+                        backgroundColor: integrationChecklist.espaceCree ? "var(--color-surface)" : "transparent",
+                      }}
+                    >
+                      {integrationChecklist.espaceCree ? "✅" : "⬜"} Espace membre créé
+                    </button>
+                    <button
+                      onClick={() =>
+                        setIntegrationChecklist((prev) => ({ ...prev, reunionPlanifiee: !prev.reunionPlanifiee }))
+                      }
+                      className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+                      style={{
+                        borderColor: "var(--color-border)",
+                        color: integrationChecklist.reunionPlanifiee ? "var(--color-text)" : "var(--color-text-secondary)",
+                        backgroundColor: integrationChecklist.reunionPlanifiee ? "var(--color-surface)" : "transparent",
+                      }}
+                    >
+                      {integrationChecklist.reunionPlanifiee ? "✅" : "⬜"} Réunion planifiée
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-6">
-                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card transition-transform duration-300 hover:-translate-y-0.5" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       1. Inscription
                     </h3>
@@ -2361,7 +2428,7 @@ export default function Page() {
                     </a>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card transition-transform duration-300 hover:-translate-y-0.5" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       2. Réunion d'intégration
                     </h3>
@@ -2392,7 +2459,7 @@ export default function Page() {
                     </a>
                   </div>
 
-                  <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="rounded-xl p-6 shadow-lg border integration-card transition-transform duration-300 hover:-translate-y-0.5" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       3. Découvrir les autres & s'impliquer
                     </h3>
