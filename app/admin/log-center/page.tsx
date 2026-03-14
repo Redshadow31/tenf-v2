@@ -282,6 +282,7 @@ export default function LogCenterPage() {
         title="📜 Logs & audit"
         navLinks={[
           { href: "/admin/log-center", label: "Log Center", active: true },
+          { href: "/admin/log-center/notifications-lues", label: "Notifications lues" },
         ]}
       />
 

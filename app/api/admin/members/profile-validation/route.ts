@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { syncProfileValidationNotification } from "@/lib/memberNotifications";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,6 +31,12 @@ export async function GET() {
       .order("submitted_at", { ascending: false });
 
     if (error) throw error;
+
+    try {
+      await syncProfileValidationNotification();
+    } catch (notificationError) {
+      console.error("[profile-validation] notification sync error (GET):", notificationError);
+    }
 
     return NextResponse.json({ pending: data || [] });
   } catch (error) {
@@ -93,6 +100,12 @@ export async function POST(request: NextRequest) {
       await memberRepository.update(pending.twitch_login, {
         profileValidationStatus: "non_soumis",
       });
+    }
+
+    try {
+      await syncProfileValidationNotification();
+    } catch (notificationError) {
+      console.error("[profile-validation] notification sync error (POST):", notificationError);
     }
 
     return NextResponse.json({

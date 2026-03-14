@@ -85,10 +85,12 @@ export function mapDiscordRoleToSiteRole(discordRoleIds: string[]): {
       mainRole = "Créateur Junior";
       break;
     case DISCORD_ROLE_IDS.CREATEUR_AFFILIE:
-      mainRole = "Affilié";
+      // Inversion demandée: ce rôle Discord alimente désormais "Développement".
+      mainRole = "Développement";
       break;
     case DISCORD_ROLE_IDS.CREATEUR_DEVELOPPEMENT:
-      mainRole = "Développement";
+      // Inversion demandée: ce rôle Discord alimente désormais "Affilié".
+      mainRole = "Affilié";
       break;
     default:
       mainRole = "Affilié";

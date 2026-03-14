@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { syncProfileValidationNotification } from "@/lib/memberNotifications";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -100,6 +101,13 @@ export async function POST(request: NextRequest) {
       profileValidationStatus: "en_cours_examen",
       timezone: normalizedTimezone || member.timezone,
     });
+
+    // Maintenir la notification admin des profils en attente synchronisée.
+    try {
+      await syncProfileValidationNotification();
+    } catch (notificationError) {
+      console.error("[members/me/profile] notification sync error:", notificationError);
+    }
 
     return NextResponse.json({ success: true, message: "Modifications soumises pour validation" });
   } catch (error) {

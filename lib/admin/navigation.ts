@@ -212,6 +212,7 @@ export const adminNavigation: NavItem[] = [
     sectionLabel: "LOGS",
     children: [
       { href: "/admin/log-center", label: "Logs & audit (legacy)" },
+      { href: "/admin/log-center/notifications-lues", label: "Notifications lues (membres admin)" },
       { href: "/admin/audit-logs", label: "Audit & Logs" },
       { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
       { href: "/admin/audit-logs/membres", label: "Logs membres" },

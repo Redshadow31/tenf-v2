@@ -14,11 +14,13 @@ function SidebarLink({
   label,
   active,
   icon: Icon,
+  showUnreadDot = false,
 }: {
   href: string;
   label: string;
   active: boolean;
   icon?: LucideIcon;
+  showUnreadDot?: boolean;
 }) {
   return (
     <Link
@@ -39,6 +41,7 @@ function SidebarLink({
       <span className="flex items-center gap-2">
         {Icon ? <Icon size={14} /> : null}
         <span>{label}</span>
+        {showUnreadDot ? <span className="h-2.5 w-2.5 rounded-full bg-red-500" title="Notification non lue" /> : null}
       </span>
     </Link>
   );
@@ -49,6 +52,18 @@ export default function UserSidebar() {
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  async function loadUnreadNotificationsCount() {
+    try {
+      const response = await fetch("/api/members/me/notifications", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      setUnreadNotifications(Number(data?.unreadCount || 0));
+    } catch (error) {
+      console.error("Error loading member notifications count:", error);
+    }
+  }
 
   useEffect(() => {
     async function fetchUser() {
@@ -62,7 +77,13 @@ export default function UserSidebar() {
           
           if (roleResponse.ok) {
             const data = await roleResponse.json();
-            setHasAdminAccess(data.hasAdminAccess || false);
+            const hasAccess = data.hasAdminAccess || false;
+            setHasAdminAccess(hasAccess);
+            if (hasAccess) {
+              await loadUnreadNotificationsCount();
+            } else {
+              setUnreadNotifications(0);
+            }
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
@@ -73,6 +94,16 @@ export default function UserSidebar() {
     }
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (hasAdminAccess) {
+        loadUnreadNotificationsCount();
+      }
+    };
+    window.addEventListener("member-notifications-refresh", handler);
+    return () => window.removeEventListener("member-notifications-refresh", handler);
+  }, [hasAdminAccess]);
 
   const handleDiscordLogin = () => {
     loginWithDiscord();
@@ -149,6 +180,7 @@ export default function UserSidebar() {
                           label={item.label}
                           active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
                           icon={item.icon}
+                          showUnreadDot={item.href === "/member/notifications" && unreadNotifications > 0}
                         />
                       ))}
                     </SidebarCollapsibleGroup>
