@@ -7,7 +7,7 @@ import {
 import type { MemberData } from "@/lib/memberData";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
-const MAX_ACTIVE_MEMBERS_PAGES = 10;
+const MAX_ACTIVE_MEMBERS_PAGES = 100;
 const ACTIVE_MEMBERS_PAGE_SIZE = 1000;
 const MAX_TWITCH_PAGINATION_PAGES = 30;
 const TWITCH_PAGE_SIZE = 100;
@@ -101,7 +101,6 @@ function normalizeTwitchLogin(login: string | null | undefined): string | null {
 function memberToTenfChannel(member: MemberData): TenfChannel | null {
   const login = normalizeTwitchLogin(member.twitchLogin);
   if (!member.isActive || !login) return null;
-  if (member.profileValidationStatus !== "valide") return null;
 
   return {
     discordId: member.discordId || null,
