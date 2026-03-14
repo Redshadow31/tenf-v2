@@ -27,6 +27,11 @@ type MemberModalProps = {
     vipBadge?: string;
     badges?: string[];
     followStatus?: "followed" | "not_followed" | "unknown";
+    mainGame?: string;
+    isAffiliated?: boolean;
+    isActiveThisWeek?: boolean;
+    planningStatus?: "shared" | "partial" | "none";
+    streamTags?: string[];
   };
   isOpen: boolean;
   onClose: () => void;
@@ -244,9 +249,9 @@ export default function MemberModal({
             )}
           </div>
 
-          {/* Lien Twitch */}
+          {/* Bloc soutien */}
           <div className="w-full space-y-3">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Chaîne Twitch</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>💜 Soutenir ce créateur</h3>
             {followStatusConfig && (
               <div className="flex justify-center">
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${followStatusConfig.className}`}>
@@ -254,24 +259,77 @@ export default function MemberModal({
                 </span>
               </div>
             )}
-            <Link
-              href={`https://www.twitch.tv/${member.twitchLogin}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-colors"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-              }}
-            >
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-              </svg>
-              Voir sur Twitch
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href={`https://www.twitch.tv/${member.twitchLogin}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                🚪 Ouvrir la porte
+              </Link>
+              <Link
+                href={`https://www.twitch.tv/${member.twitchLogin}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                ⭐ Suivre sur Twitch
+              </Link>
+              <Link
+                href="/lives/calendrier"
+                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                📅 Voir le planning
+              </Link>
+            </div>
+          </div>
+
+          {/* Bloc infos */}
+          <div className="w-full space-y-3 text-left">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Infos stream</h3>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                🎮 {member.mainGame || "Communaute"}
+              </span>
+              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
+              </span>
+              {member.streamTags && member.streamTags.length > 0
+                ? member.streamTags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border px-2.5 py-1"
+                      style={{ borderColor: 'rgba(145,70,255,0.45)', color: 'var(--color-text)' }}
+                    >
+                      #{tag}
+                    </span>
+                  ))
+                : null}
+            </div>
+          </div>
+
+          {/* Bloc activité */}
+          <div className="w-full space-y-3 text-left">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Activité</h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                {member.isActiveThisWeek ? "🔥 Actif cette semaine" : "🌙 Activité plus calme"}
+              </div>
+              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                {member.planningStatus === "shared"
+                  ? "📅 Stream régulier"
+                  : member.planningStatus === "partial"
+                    ? "📅 Planning partiel"
+                    : "📅 Planning non renseigné"}
+              </div>
+              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                💜 Soutien communautaire recommandé
+              </div>
+            </div>
           </div>
 
           {/* Statistiques Discord du mois */}

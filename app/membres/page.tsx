@@ -1,11 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MemberModal from "@/components/MemberModal";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
-import MembersDiscoveryNote from "@/components/MembersDiscoveryNote";
-
-const filters = ["Tous", "Développement", "Affiliés", "Staff"];
 
 interface PublicMember {
   twitchLogin: string;
@@ -22,6 +19,8 @@ interface PublicMember {
   instagram?: string;
   tiktok?: string;
   twitter?: string;
+  shadowbanLives?: boolean;
+  createdAt?: string;
 }
 
 type FollowState = "followed" | "not_followed" | "unknown";
@@ -31,8 +30,118 @@ type FollowStatusEntry = {
   visual: "coeur_plein" | "coeur_vide" | "point_interrogation";
 };
 
+type LiveStream = {
+  id: string;
+  userLogin: string;
+  userName: string;
+  gameName: string;
+  title: string;
+  viewerCount: number;
+  startedAt: string;
+  thumbnailUrl: string;
+  type: string;
+};
+
+type PlanningItem = {
+  id: string;
+  date: string;
+  time: string;
+  liveType: string;
+  title?: string;
+  twitchLogin: string;
+  displayName: string;
+};
+
+type PlanningStatus = "shared" | "partial" | "none";
+type MemberActivityLevel = "live" | "week" | "normal";
+type FilterKey = "all" | "dev" | "affilie" | "staff";
+
+const FILTERS: Array<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "🎮 Tous" },
+  { key: "dev", label: "🌱 Créateurs en développement" },
+  { key: "affilie", label: "⭐ Affiliés Twitch" },
+  { key: "staff", label: "🛡 Staff TENF" },
+];
+
+const INITIAL_VISIBLE_COUNT = 24;
+const LOAD_MORE_COUNT = 24;
+
+function normalizeText(text: string | undefined | null): string {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function getMonthKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function toDayKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function toDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00`);
+}
+
+function startOfWeekMonday(date: Date): Date {
+  const clone = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  const day = (clone.getDay() + 6) % 7;
+  clone.setDate(clone.getDate() - day);
+  return clone;
+}
+
+function endOfWeekSunday(date: Date): Date {
+  const start = startOfWeekMonday(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function isStaffCategory(role: string): boolean {
+  return (
+    role === "Admin" ||
+    role === "Admin Coordinateur" ||
+    role === "Admin Adjoint" ||
+    role === "Modérateur" ||
+    role === "Mentor" ||
+    role === "Modérateur en formation" ||
+    role === "Modérateur Junior" ||
+    role === "Modérateur en activité réduite" ||
+    role === "Modérateur en pause"
+  );
+}
+
+function isAffiliated(role: string): boolean {
+  return role === "Affilié";
+}
+
+function isDevelopment(role: string): boolean {
+  return role === "Développement";
+}
+
+function shuffleArray<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
 export default function Page() {
-  const [activeFilter, setActiveFilter] = useState("Tous");
+  const liveSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMembers, setActiveMembers] = useState<PublicMember[]>([]);
@@ -40,26 +149,37 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [followStatuses, setFollowStatuses] = useState<Record<string, FollowStatusEntry>>({});
-  const [showFollowStatuses, setShowFollowStatuses] = useState(false);
+  const [followStatusesState, setFollowStatusesState] = useState({
+    authenticated: false,
+    linked: false,
+  });
+  const [liveStreamsByLogin, setLiveStreamsByLogin] = useState<Record<string, LiveStream>>({});
+  const [liveShowcaseLogins, setLiveShowcaseLogins] = useState<string[]>([]);
+  const [loadingLive, setLoadingLive] = useState(true);
+  const [planningItems, setPlanningItems] = useState<PlanningItem[]>([]);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const [fallbackDiscoverLogins, setFallbackDiscoverLogins] = useState<string[]>([]);
+
+  const showFollowStatuses = followStatusesState.authenticated && followStatusesState.linked;
 
   const getFollowBadge = (state?: FollowState) => {
     if (state === "followed") {
       return {
-        label: "Coeur plein",
-        icon: "❤️",
+        label: "Déjà suivi",
+        icon: "🟢",
         className: "bg-green-500/20 text-green-300 border border-green-500/30",
       };
     }
     if (state === "not_followed") {
       return {
-        label: "Coeur vide",
-        icon: "🤍",
+        label: "Pas encore suivi",
+        icon: "⚪",
         className: "bg-gray-500/20 text-gray-200 border border-gray-500/30",
       };
     }
     return {
-      label: "Inconnu",
-      icon: "❔",
+      label: "Statut inconnu",
+      icon: "⚫",
       className: "bg-amber-500/20 text-amber-200 border border-amber-500/30",
     };
   };
@@ -94,7 +214,7 @@ export default function Page() {
         const response = await fetch("/api/members/follow-status", { cache: "no-store" });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data?.authenticated !== true) {
-          setShowFollowStatuses(false);
+          setFollowStatusesState({ authenticated: false, linked: false });
           return;
         }
 
@@ -112,13 +232,89 @@ export default function Page() {
           };
         }
         setFollowStatuses(normalized);
-        setShowFollowStatuses(true);
+        setFollowStatusesState({
+          authenticated: data?.authenticated === true,
+          linked: data?.linked === true,
+        });
       } catch (error) {
         console.error("Erreur lors du chargement des statuts follow:", error);
-        setShowFollowStatuses(false);
+        setFollowStatusesState({ authenticated: false, linked: false });
       }
     }
     loadFollowStatuses();
+  }, []);
+
+  useEffect(() => {
+    async function loadLiveStreams() {
+      if (activeMembers.length === 0) {
+        setLiveStreamsByLogin({});
+        setLiveShowcaseLogins([]);
+        setLoadingLive(false);
+        return;
+      }
+
+      setLoadingLive(true);
+      try {
+        const eligible = activeMembers
+          .filter((member) => !member.shadowbanLives)
+          .map((member) => member.twitchLogin)
+          .filter(Boolean);
+
+        const response = await fetch("/api/twitch/streams", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+          body: JSON.stringify({ logins: eligible }),
+          cache: "no-store",
+        });
+        const body = response.ok ? await response.json() : { streams: [] };
+        const streams = Array.isArray(body.streams) ? (body.streams as LiveStream[]) : [];
+
+        const map: Record<string, LiveStream> = {};
+        for (const stream of streams) {
+          if (stream.type !== "live") continue;
+          map[stream.userLogin.toLowerCase()] = stream;
+        }
+        setLiveStreamsByLogin(map);
+      } catch (error) {
+        console.error("Erreur lors du chargement des lives:", error);
+        setLiveStreamsByLogin({});
+      } finally {
+        setLoadingLive(false);
+      }
+    }
+
+    loadLiveStreams();
+  }, [activeMembers]);
+
+  useEffect(() => {
+    async function loadPlanningInsights() {
+      try {
+        const now = new Date();
+        const currentMonth = getMonthKey(now);
+        const nextMonth = getMonthKey(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+
+        const responses = await Promise.all([
+          fetch(`/api/members/public/stream-plannings?month=${currentMonth}`, { cache: "no-store" }),
+          currentMonth === nextMonth
+            ? Promise.resolve(null)
+            : fetch(`/api/members/public/stream-plannings?month=${nextMonth}`, { cache: "no-store" }),
+        ]);
+
+        const firstBody = responses[0] && responses[0].ok ? await responses[0].json() : { items: [] };
+        const secondBody = responses[1] && responses[1].ok ? await responses[1].json() : { items: [] };
+
+        const merged = [
+          ...(Array.isArray(firstBody.items) ? firstBody.items : []),
+          ...(Array.isArray(secondBody.items) ? secondBody.items : []),
+        ] as PlanningItem[];
+        setPlanningItems(merged);
+      } catch (error) {
+        console.error("Erreur lors du chargement des plannings publics:", error);
+        setPlanningItems([]);
+      }
+    }
+
+    loadPlanningInsights();
   }, []);
 
   // Debounce de la recherche (250ms)
@@ -130,101 +326,233 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fonction pour déterminer si un membre appartient à la catégorie "Staff"
-  const isStaffCategory = (role: string): boolean => {
-    return (
-      role === "Admin" ||
-      role === "Admin Coordinateur" ||
-      role === "Admin Adjoint" || // compatibilité legacy
-      role === "Modérateur" ||
-      role === "Mentor" || // compatibilité legacy
-      role === "Modérateur en formation" ||
-      role === "Modérateur Junior" || // compatibilité legacy
-      role === "Modérateur en activité réduite" ||
-      role === "Modérateur en pause"
-    );
-  };
-
-  // Fonction pour obtenir l'ordre de tri des rôles Staff
-  const getStaffRoleOrder = (role: string): number => {
-    switch (role) {
-      case "Admin": return 1;
-      case "Admin Coordinateur":
-      case "Admin Adjoint": return 2;
-      case "Modérateur":
-      case "Mentor": return 3;
-      case "Modérateur en activité réduite": return 4;
-      case "Modérateur en pause": return 5;
-      case "Modérateur en formation":
-      case "Modérateur Junior": return 6;
-      default: return 999;
-    }
-  };
-
-  // Fonction de normalisation pour la recherche (insensible à la casse et aux accents)
-  const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return "";
-    return text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-  };
-
-  const getFilteredMembers = () => {
-    let filtered = activeMembers;
-
-    // Appliquer le filtre de rôle d'abord
-    if (activeFilter !== "Tous") {
-      if (activeFilter === "Staff") {
-        filtered = filtered.filter((member) => isStaffCategory(member.role));
-      } else {
-        const filterMap: Record<string, string> = {
-          Développement: "Développement",
-          Affiliés: "Affilié",
-        };
-        filtered = filtered.filter((member) => {
-          return member.role === filterMap[activeFilter];
-        });
+  const planningByLogin = useMemo(() => {
+    const now = new Date();
+    const nowMs = now.getTime();
+    const weekStart = startOfWeekMonday(now).getTime();
+    const weekEnd = endOfWeekSunday(now).getTime();
+    const map = new Map<
+      string,
+      {
+        totalUpcoming: number;
+        weekCount: number;
+        categories: Map<string, number>;
       }
+    >();
+
+    for (const item of planningItems) {
+      const login = item.twitchLogin.toLowerCase();
+      const current = map.get(login) || {
+        totalUpcoming: 0,
+        weekCount: 0,
+        categories: new Map<string, number>(),
+      };
+      const dateMs = toDateTime(item.date, item.time).getTime();
+      const category = (item.liveType || "").trim();
+
+      if (dateMs >= nowMs) {
+        current.totalUpcoming += 1;
+      }
+      if (dateMs >= weekStart && dateMs <= weekEnd) {
+        current.weekCount += 1;
+      }
+      if (category) {
+        current.categories.set(category, (current.categories.get(category) || 0) + 1);
+      }
+
+      map.set(login, current);
     }
 
-    // Appliquer la recherche (si présente)
-    if (debouncedSearchQuery.trim().length > 0) {
-      const normalizedQuery = normalizeText(debouncedSearchQuery);
-      filtered = filtered.filter((member) => {
-        const normalizedTwitch = normalizeText(member.twitchLogin);
-        const normalizedDisplayName = normalizeText(member.displayName);
-        const normalizedDiscord = normalizeText(member.discordUsername);
+    return map;
+  }, [planningItems]);
 
+  const memberCards = useMemo(() => {
+    return activeMembers.map((member) => {
+      const login = member.twitchLogin.toLowerCase();
+      const stream = liveStreamsByLogin[login];
+      const planning = planningByLogin.get(login);
+      const categories = planning ? [...planning.categories.entries()].sort((a, b) => b[1] - a[1]) : [];
+      const primaryGame = stream?.gameName || categories[0]?.[0] || "Communaute";
+      const activity: MemberActivityLevel = stream
+        ? "live"
+        : (planning?.weekCount || 0) > 0
+          ? "week"
+          : "normal";
+      const planningStatus: PlanningStatus =
+        (planning?.totalUpcoming || 0) >= 3
+          ? "shared"
+          : (planning?.totalUpcoming || 0) >= 1
+            ? "partial"
+            : "none";
+
+      return {
+        ...member,
+        login,
+        stream,
+        primaryGame,
+        activity,
+        planningStatus,
+        isAffiliated: isAffiliated(member.role),
+        isDevelopment: isDevelopment(member.role),
+        isStaff: isStaffCategory(member.role),
+        followState: showFollowStatuses ? followStatuses[login]?.state || "unknown" : undefined,
+        streamTags: categories.slice(0, 3).map(([name]) => name),
+      };
+    });
+  }, [activeMembers, followStatuses, liveStreamsByLogin, planningByLogin, showFollowStatuses]);
+
+  const liveMembers = useMemo(
+    () => memberCards.filter((member) => Boolean(member.stream)),
+    [memberCards]
+  );
+
+  useEffect(() => {
+    if (liveMembers.length === 0) {
+      setLiveShowcaseLogins([]);
+      return;
+    }
+    const logins = shuffleArray(liveMembers.map((member) => member.login)).slice(0, 3);
+    setLiveShowcaseLogins(logins);
+  }, [liveMembers]);
+
+  useEffect(() => {
+    const pool = shuffleArray(memberCards.map((member) => member.login)).slice(
+      0,
+      Math.min(6, memberCards.length)
+    );
+    setFallbackDiscoverLogins(pool);
+  }, [memberCards]);
+
+  const liveShowcaseMembers = useMemo(() => {
+    const byLogin = new Map(memberCards.map((member) => [member.login, member]));
+    return liveShowcaseLogins
+      .map((login) => byLogin.get(login))
+      .filter((member): member is (typeof memberCards)[number] => Boolean(member));
+  }, [liveShowcaseLogins, memberCards]);
+
+  const discoverForYouMembers = useMemo(() => {
+    if (!showFollowStatuses) return [];
+    const liveShowcaseSet = new Set(liveShowcaseLogins);
+    const candidates = memberCards.filter((member) => {
+      if (member.followState !== "not_followed") return false;
+      if (liveShowcaseSet.has(member.login)) return false;
+      return true;
+    });
+
+    return [...candidates]
+      .sort((a, b) => {
+        const score = (member: (typeof candidates)[number]) => {
+          const liveScore = member.activity === "live" ? 100 : 0;
+          const weekScore = member.activity === "week" ? 20 : 0;
+          const affiliateScore = member.isAffiliated ? 8 : 0;
+          const richProfileScore = member.description && member.description.length > 20 ? 4 : 0;
+          return liveScore + weekScore + affiliateScore + richProfileScore;
+        };
+        return score(b) - score(a);
+      })
+      .slice(0, 6);
+  }, [memberCards, liveShowcaseLogins, showFollowStatuses]);
+
+  const discoverTodayMembers = useMemo(() => {
+    if (showFollowStatuses) return [];
+    const liveShowcaseSet = new Set(liveShowcaseLogins);
+    const byLogin = new Map(memberCards.map((member) => [member.login, member]));
+    const fallback = fallbackDiscoverLogins
+      .map((login) => byLogin.get(login))
+      .filter((member): member is (typeof memberCards)[number] => Boolean(member))
+      .filter((member) => !liveShowcaseSet.has(member.login));
+    return fallback.slice(0, 6);
+  }, [fallbackDiscoverLogins, liveShowcaseLogins, memberCards, showFollowStatuses]);
+
+  const discoveryChannels = useMemo(() => {
+    if (!showFollowStatuses) return [];
+    return memberCards
+      .filter((member) => member.followState === "not_followed")
+      .sort((a, b) => {
+        const rank = (member: (typeof memberCards)[number]) =>
+          member.activity === "live" ? 3 : member.activity === "week" ? 2 : 1;
+        if (rank(a) !== rank(b)) return rank(b) - rank(a);
+        if (a.isAffiliated !== b.isAffiliated) return Number(b.isAffiliated) - Number(a.isAffiliated);
+        return a.displayName.localeCompare(b.displayName, "fr");
+      })
+      .slice(0, 8);
+  }, [memberCards, showFollowStatuses]);
+
+  const filteredMembers = useMemo(() => {
+    let filtered = [...memberCards];
+
+    if (activeFilter === "dev") {
+      filtered = filtered.filter((member) => member.isDevelopment);
+    } else if (activeFilter === "affilie") {
+      filtered = filtered.filter((member) => member.isAffiliated);
+    } else if (activeFilter === "staff") {
+      filtered = filtered.filter((member) => member.isStaff);
+    }
+
+    const normalizedQuery = normalizeText(debouncedSearchQuery);
+    if (normalizedQuery) {
+      filtered = filtered.filter((member) => {
         return (
-          normalizedTwitch.includes(normalizedQuery) ||
-          normalizedDisplayName.includes(normalizedQuery) ||
-          (normalizedDiscord && normalizedDiscord.includes(normalizedQuery))
+          normalizeText(member.twitchLogin).includes(normalizedQuery) ||
+          normalizeText(member.displayName).includes(normalizedQuery) ||
+          normalizeText(member.primaryGame).includes(normalizedQuery) ||
+          normalizeText(member.description).includes(normalizedQuery)
         );
       });
     }
 
-    // Trier les résultats
-    return filtered.sort((a, b) => {
-      const aIsStaff = isStaffCategory(a.role);
-      const bIsStaff = isStaffCategory(b.role);
-      
-      if (aIsStaff && bIsStaff) {
-        return getStaffRoleOrder(a.role) - getStaffRoleOrder(b.role);
-      }
-      if (aIsStaff && !bIsStaff) return -1;
-      if (!aIsStaff && bIsStaff) return 1;
-      return 0;
+    filtered.sort((a, b) => {
+      const activityRank = (member: (typeof filtered)[number]) =>
+        member.activity === "live" ? 3 : member.activity === "week" ? 2 : 1;
+      if (activityRank(a) !== activityRank(b)) return activityRank(b) - activityRank(a);
+      if (a.isAffiliated !== b.isAffiliated) return Number(b.isAffiliated) - Number(a.isAffiliated);
+      return a.displayName.localeCompare(b.displayName, "fr");
     });
+    return filtered;
+  }, [activeFilter, debouncedSearchQuery, memberCards]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+  }, [activeFilter, debouncedSearchQuery]);
+
+  const visibleMembers = filteredMembers.slice(0, visibleCount);
+  const hasMoreMembers = visibleCount < filteredMembers.length;
+  const twitchLinkHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent("/membres")}`;
+  const discordLoginHref = `/api/auth/signin/discord?callbackUrl=${encodeURIComponent("/membres")}`;
+
+  const stats = useMemo(() => {
+    const totalMembers = activeMembers.length;
+    const activeCreators = activeMembers.filter(
+      (member) => isAffiliated(member.role) || isDevelopment(member.role)
+    ).length;
+    const liveCount = liveMembers.length;
+
+    return { totalMembers, activeCreators, liveCount };
+  }, [activeMembers, liveMembers.length]);
+
+  const getPlanningLabel = (status: PlanningStatus) => {
+    if (status === "shared") return "📅 Planning partagé";
+    if (status === "partial") return "📅 Planning partiel";
+    return "📅 Planning non renseigné";
   };
 
-  const handleMemberClick = (member: PublicMember) => {
-    // Utiliser l'avatar déjà récupéré depuis l'API (pas besoin d'appel supplémentaire)
-    const avatar = member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`;
-    
+  const openRandomMember = (pool?: typeof memberCards) => {
+    const source = pool && pool.length > 0 ? pool : memberCards;
+    if (source.length === 0) return;
+    const selected = source[Math.floor(Math.random() * source.length)];
+    handleMemberClick(selected);
+  };
+
+  const handleMemberClick = (member: (PublicMember & {
+    primaryGame?: string;
+    activity?: MemberActivityLevel;
+    planningStatus?: PlanningStatus;
+    streamTags?: string[];
+    followState?: FollowState;
+  })) => {
+    const avatar = member.avatar || `https://placehold.co/96x96?text=${member.displayName.charAt(0)}`;
     const followState = showFollowStatuses
-      ? followStatuses[member.twitchLogin.toLowerCase()]?.state || "unknown"
+      ? member.followState || followStatuses[member.twitchLogin.toLowerCase()]?.state || "unknown"
       : undefined;
 
     setSelectedMember({
@@ -246,245 +574,542 @@ export default function Page() {
         tiktok: member.tiktok ? (member.tiktok.startsWith('http') ? member.tiktok : `https://tiktok.com/@${member.tiktok.replace(/^@/, '')}`) : undefined,
       },
       followStatus: followState,
+      mainGame: member.primaryGame || "Communaute",
+      isAffiliated: isAffiliated(member.role),
+      isActiveThisWeek: member.activity === "week" || member.activity === "live",
+      planningStatus: member.planningStatus || "none",
+      streamTags: member.streamTags || [],
     });
     setIsModalOpen(true);
   };
 
-  const filteredMembers = getFilteredMembers();
-
   return (
-    <div className="space-y-8">
-      {/* Titre de page */}
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>Membres Actifs</h1>
-      </div>
-
-      {/* Encart encourageant */}
-      <MembersDiscoveryNote />
-
-      {/* Barre de recherche */}
-      <div className="relative">
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg
-              className="w-5 h-5 text-gray-400 group-focus-within:text-[#9146ff] transition-colors"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+    <div className="space-y-8 pb-10">
+      {/* HERO découverte TENF */}
+      <section
+        className="relative overflow-hidden rounded-2xl border p-6 md:p-8"
+        style={{
+          borderColor: "rgba(145,70,255,0.35)",
+          background:
+            "linear-gradient(120deg, rgba(20,20,28,0.98) 0%, rgba(42,24,62,0.9) 60%, rgba(28,18,42,0.92) 100%)",
+          boxShadow: "0 18px 42px rgba(0,0,0,0.28)",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -left-14 -top-14 h-44 w-44 rounded-full opacity-60 blur-3xl"
+          style={{ background: "rgba(145,70,255,0.4)" }}
+        />
+        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-4">
+            <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl" style={{ color: "var(--color-text)" }}>
+              Découvrir les créateurs TENF
+            </h1>
+            <p className="max-w-2xl text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
+              Chaque créateur ici a son univers, son rythme et son histoire.
+              <br />
+              La découverte fait partie de l&apos;entraide 💜
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => openRandomMember()}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
+                style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.26)" }}
+              >
+                🎲 Découvrir un créateur
+              </button>
+              <button
+                type="button"
+                onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                🔴 Voir les créateurs en live
+              </button>
+            </div>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>👥 Membres</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.totalMembers}</p>
+            </div>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🎮 Créateurs actifs</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.activeCreators}</p>
+            </div>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🔴 En live</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.liveCount}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* EN LIVE MAINTENANT */}
+      <section ref={liveSectionRef} className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>🔴 En live maintenant</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Des créateurs TENF sont en direct en ce moment.
+          </p>
+        </div>
+        {loadingLive ? (
+          <div className="rounded-xl border p-5 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-card)" }}>
+            Chargement des lives...
+          </div>
+        ) : liveShowcaseMembers.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {liveShowcaseMembers.map((member) => {
+              const stream = member.stream!;
+              const followBadge = getFollowBadge(member.followState);
+              return (
+                <article
+                  key={member.twitchLogin}
+                  className="group relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[2px]"
+                  style={{
+                    borderColor: "rgba(145,70,255,0.34)",
+                    backgroundColor: "var(--color-card)",
+                    boxShadow: "0 14px 28px rgba(0,0,0,0.24)",
+                  }}
+                >
+                  {showFollowStatuses ? (
+                    <span
+                      className={`absolute right-3 top-3 rounded-full px-2 py-1 text-[10px] ${followBadge.className}`}
+                      title={followBadge.label}
+                    >
+                      {followBadge.icon} {followBadge.label}
+                    </span>
+                  ) : null}
+                  <div className="mb-3 flex items-start gap-3">
+                    <img
+                      src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
+                      alt={member.displayName}
+                      className="h-12 w-12 rounded-full border object-cover"
+                      style={{ borderColor: "var(--color-border)" }}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-base font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white animate-pulse">LIVE</span>
+                      </div>
+                      <p className="truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>@{member.twitchLogin}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    <p style={{ color: "var(--color-text)" }}>🎮 {stream.gameName || "Just Chatting"}</p>
+                    <p style={{ color: "var(--color-text-secondary)" }}>👀 {stream.viewerCount || 0} viewers</p>
+                    <p className="line-clamp-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>{stream.title || "Live TENF"}</p>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <a
+                      href={`https://www.twitch.tv/${member.twitchLogin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-white transition-all group-hover:translate-x-[1px]"
+                      style={{ backgroundColor: "var(--color-primary)" }}
+                    >
+                      🚪 Ouvrir la porte
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleMemberClick(member)}
+                      className="rounded-xl border px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/5"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    >
+                      Voir profil
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            className="rounded-xl border p-5 text-sm"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
+          >
+            Aucun créateur TENF en direct pour le moment. Reviens un peu plus tard 💜
+          </div>
+        )}
+      </section>
+
+      {/* A DECOUVRIR POUR TOI / FALLBACK */}
+      {showFollowStatuses ? (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>💜 À découvrir pour toi</h2>
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Ces créateurs TENF ne sont pas encore suivis par ton compte Twitch.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {discoverForYouMembers.length > 0 ? (
+              discoverForYouMembers.map((member) => {
+                const followBadge = getFollowBadge(member.followState);
+                return (
+                  <article
+                    key={`discover-${member.twitchLogin}`}
+                    className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[1px]"
+                    style={{
+                      borderColor: "var(--color-border)",
+                      backgroundColor: "var(--color-card)",
+                      boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
+                          alt={member.displayName}
+                          className="h-11 w-11 rounded-full border object-cover"
+                          style={{ borderColor: "var(--color-border)" }}
+                        />
+                        <div>
+                          <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+                          <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-[10px] ${followBadge.className}`}>{followBadge.icon} {followBadge.label}</span>
+                    </div>
+                    <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
+                      <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
+                      {member.activity !== "normal" ? (
+                        <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                          🔥 Actif cette semaine
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`https://www.twitch.tv/${member.twitchLogin}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: "var(--color-primary)" }}
+                      >
+                        🚪 Ouvrir la porte
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleMemberClick(member)}
+                        className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                      >
+                        Voir profil
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div
+                className="col-span-full rounded-xl border p-4 text-sm"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-card)" }}
+              >
+                Tu suis déjà une grande partie des créateurs proposés. Bien joué 💜
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>⭐ Créateurs à découvrir aujourd&apos;hui</h2>
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Une sélection découverte du jour, même sans personnalisation Twitch.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {discoverTodayMembers.map((member) => (
+              <article
+                key={`fallback-${member.twitchLogin}`}
+                className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[1px]"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+              >
+                <div className="mb-3 flex items-start gap-3">
+                  <img
+                    src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
+                    alt={member.displayName}
+                    className="h-11 w-11 rounded-full border object-cover"
+                    style={{ borderColor: "var(--color-border)" }}
+                  />
+                  <div>
+                    <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
+                  </div>
+                </div>
+                <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
+                  <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
+                  {member.activity !== "normal" ? (
+                    <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                      🔥 Actif cette semaine
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={`https://www.twitch.tv/${member.twitchLogin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                  >
+                    🚪 Ouvrir la porte
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleMemberClick(member)}
+                    className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  >
+                    Voir profil
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Chaines a decouvrir */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>📺 Chaînes à découvrir</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Une sélection de chaînes TENF à explorer en priorité.
+          </p>
+        </div>
+
+        {showFollowStatuses ? (
+          discoveryChannels.length > 0 ? (
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+              <div className="flex flex-wrap gap-2">
+                {discoveryChannels.map((member) => (
+                  <a
+                    key={`channel-discover-${member.login}`}
+                    href={`https://www.twitch.tv/${member.twitchLogin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all hover:-translate-y-[1px]"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  >
+                    <img
+                      src={member.avatar || `https://placehold.co/32x32?text=${member.displayName.charAt(0)}`}
+                      alt={member.displayName}
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                    {member.displayName}
+                    {member.activity === "live" ? " 🔴" : ""}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
+              Tu suis déjà les chaînes principales proposées. Top support 💜
+            </div>
+          )
+        ) : (
+          <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Cette fonctionnalité nécessite de lier ton Twitch{followStatusesState.authenticated ? "" : " et d'être connecté à Discord"}.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {followStatusesState.authenticated ? (
+                <a
+                  href={twitchLinkHref}
+                  className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  🔗 Lier mon Twitch
+                </a>
+              ) : (
+                <a
+                  href={discordLoginHref}
+                  className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  💬 Se connecter avec Discord
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Recherche + filtres */}
+      <section className="space-y-4">
+        <div className="relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un membre (Twitch ou Discord)…"
-            className="w-full pl-10 pr-10 py-3 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9146ff]/50 placeholder-gray-500"
+            placeholder="Rechercher un pseudo, un jeu/catégorie ou une bio..."
+            className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all focus:ring-2"
             style={{
-              backgroundColor: 'var(--color-card)',
-              borderColor: searchQuery ? 'var(--color-primary)' : 'var(--color-border)',
-              color: 'var(--color-text)',
-            }}
-            onMouseEnter={(e) => {
-              if (!e.currentTarget.matches(':focus')) {
-                e.currentTarget.style.borderColor = 'rgba(145, 70, 255, 0.5)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!e.currentTarget.matches(':focus') && !searchQuery) {
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-              }
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-primary)';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(145, 70, 255, 0.1)';
-            }}
-            onBlur={(e) => {
-              if (!searchQuery) {
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-              }
-              e.currentTarget.style.boxShadow = 'none';
+              backgroundColor: "var(--color-card)",
+              borderColor: searchQuery ? "var(--color-primary)" : "var(--color-border)",
+              color: "var(--color-text)",
+              boxShadow: "none",
             }}
           />
-          {searchQuery && (
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((filter) => (
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setDebouncedSearchQuery("");
+              key={filter.key}
+              type="button"
+              onClick={() => setActiveFilter(filter.key)}
+              className="rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:-translate-y-[1px]"
+              style={{
+                backgroundColor: activeFilter === filter.key ? "rgba(145,70,255,0.15)" : "var(--color-card)",
+                borderColor: activeFilter === filter.key ? "rgba(145,70,255,0.6)" : "var(--color-border)",
+                color: activeFilter === filter.key ? "var(--color-text)" : "var(--color-text-secondary)",
               }}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-[#9146ff] transition-colors"
-              aria-label="Réinitialiser la recherche"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              {filter.label}
             </button>
-          )}
+          ))}
         </div>
-        {debouncedSearchQuery && (
-          <div className="mt-2 text-xs flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-            {filteredMembers.length === 0 ? (
-              <span>
-                Aucun membre trouvé pour &quot;{debouncedSearchQuery}&quot;.
-              </span>
-            ) : (
-              <span>
-                {filteredMembers.length} {filteredMembers.length > 1 ? "membres trouvés" : "membre trouvé"}
-                {activeFilter !== "Tous" && " (filtré par " + activeFilter + ")"}
-              </span>
-            )}
+      </section>
+
+      {/* Grille des membres */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Communauté TENF</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: "var(--color-primary)" }} />
           </div>
-        )}
-      </div>
-
-      {/* Barre de filtres */}
-      <div className="flex flex-wrap gap-3">
-        {filters.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className="rounded-lg px-4 py-2 text-sm font-medium transition-all border text-white"
-            style={{
-              backgroundColor: activeFilter === filter ? 'var(--color-primary)' : 'var(--color-card)',
-              borderColor: activeFilter === filter ? 'transparent' : 'var(--color-border)',
-            }}
-            onMouseEnter={(e) => {
-              if (activeFilter !== filter) {
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.opacity = '0.8';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeFilter !== filter) {
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-                e.currentTarget.style.opacity = '1';
-              }
-            }}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
-
-      {/* Grille de membres */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
-        </div>
-      ) : filteredMembers.length === 0 && debouncedSearchQuery.trim().length > 0 ? (
-        <div className="text-center py-12">
-          <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-            Aucun membre trouvé pour &quot;{debouncedSearchQuery}&quot;.
-          </p>
-          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
-            Essayez avec un autre terme de recherche.
-          </p>
-          <button
-            onClick={() => {
-              setSearchQuery("");
-              setDebouncedSearchQuery("");
-            }}
-            className="mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--color-primary)',
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary-dark)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-            }}
-          >
-            Réinitialiser la recherche
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
-          {filteredMembers.map((member) => {
-            const followState = showFollowStatuses
-              ? followStatuses[member.twitchLogin.toLowerCase()]?.state || "unknown"
-              : undefined;
-            const followBadge = getFollowBadge(followState);
-            return (
-              <div
-                key={member.twitchLogin}
-                onClick={() => handleMemberClick(member)}
-                className="card flex min-h-[196px] cursor-pointer flex-col items-center justify-between space-y-3 overflow-hidden border p-4 text-center transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
-              >
-                {/* Avatar avec badge VIP */}
-                <div className="relative">
-                  {member.avatar ? (
-                    <img
-                      src={member.avatar}
-                      alt={member.displayName}
-                      className="h-16 w-16 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.nextElementSibling as HTMLElement;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className={`h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-lg ${member.avatar ? 'hidden' : ''}`}
-                    style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}
+        ) : visibleMembers.length === 0 ? (
+          <div className="rounded-xl border p-6 text-center" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              Aucun créateur trouvé avec ces filtres.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleMembers.map((member) => {
+                const followBadge = getFollowBadge(member.followState);
+                return (
+                  <article
+                    key={member.twitchLogin}
+                    className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[2px]"
+                    style={{
+                      borderColor: "var(--color-border)",
+                      backgroundColor: "var(--color-card)",
+                      boxShadow: "0 10px 24px rgba(0,0,0,0.2)",
+                    }}
                   >
-                    {member.displayName.charAt(0).toUpperCase()}
-                  </div>
-                  {member.isVip && (
-                    <div className="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-                      {member.vipBadge || "VIP"}
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
+                          alt={member.displayName}
+                          className="h-12 w-12 rounded-full border object-cover"
+                          style={{ borderColor: "var(--color-border)" }}
+                        />
+                        <div>
+                          <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
+                          <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
+                        </div>
+                      </div>
+                      {showFollowStatuses ? (
+                        <span className={`rounded-full px-2 py-1 text-[10px] ${followBadge.className}`} title={followBadge.label}>
+                          {followBadge.icon}
+                        </span>
+                      ) : null}
                     </div>
-                  )}
-                </div>
 
-                {/* Pseudo */}
-                <div className="w-full">
-                  <h3 className="w-full truncate text-xs font-semibold sm:text-sm" style={{ color: 'var(--color-text)' }}>
-                    {member.displayName}
-                  </h3>
-                </div>
+                    <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
+                      </span>
+                      {member.activity !== "normal" ? (
+                        <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                          🔥 Actif cette semaine
+                        </span>
+                      ) : null}
+                      <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                        {getPlanningLabel(member.planningStatus)}
+                      </span>
+                      {showFollowStatuses ? (
+                        <span className={`rounded-full px-2 py-0.5 ${followBadge.className}`}>
+                          {followBadge.icon} {followBadge.label}
+                        </span>
+                      ) : null}
+                    </div>
 
-                {/* Badge rôle */}
-                <div className="flex flex-col items-center gap-2">
-                  <span
-                    className={`${getRoleBadgeClassName(member.role)} member-grid-role-badge`}
-                  >
-                    {getRoleBadgeLabel(member.role)}
-                  </span>
-                  {showFollowStatuses && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${followBadge.className}`}
-                      title={`Statut follow: ${followBadge.label}`}
-                    >
-                      {followBadge.icon} {followBadge.label}
-                    </span>
-                  )}
-                </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`https://www.twitch.tv/${member.twitchLogin}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold text-white transition-all group-hover:translate-x-[1px]"
+                        style={{ backgroundColor: "var(--color-primary)" }}
+                      >
+                        🚪 Ouvrir la porte
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleMemberClick(member)}
+                        className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                      >
+                        Voir profil
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {hasMoreMembers ? (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
+                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                >
+                  Voir plus
+                </button>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ) : null}
+          </>
+        )}
+      </section>
+
+      {/* Bloc final Decouvrir au hasard */}
+      <section
+        className="rounded-2xl border p-6 text-center"
+        style={{
+          borderColor: "rgba(145,70,255,0.35)",
+          background: "linear-gradient(135deg, rgba(145,70,255,0.11), rgba(145,70,255,0.03))",
+        }}
+      >
+        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>🎲 Découvrir un créateur</h2>
+        <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Clique et découvre un créateur TENF au hasard.
+        </p>
+        <button
+          type="button"
+          onClick={() => openRandomMember(filteredMembers)}
+          className="mt-4 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
+          style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
+        >
+          🎲 Découvrir
+        </button>
+      </section>
 
       {/* Modal membre */}
       {selectedMember && (
