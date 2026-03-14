@@ -11,11 +11,14 @@ export default function LivesPhilosophyBanner() {
         💜 Sur TENF, chaque live compte
       </h2>
       <p className="mt-3 max-w-4xl text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-        L entraide ne depend ni du nombre de viewers, ni du jeu streame.
+        Peu importe le nombre de viewers ou le jeu streamé.
         <br />
-        Que l on soit 1 ou 100, chacun fait partie de la meme famille.
+        Ici, chaque créateur mérite d’être découvert et soutenu.
         <br />
-        Regarder, discuter, raider : tout le monde merite la meme attention.
+        <br />
+        Regarder, discuter, partager, raider :
+        <br />
+        nous construisons ensemble une communauté où chacun a sa place.
       </p>
     </section>
   );

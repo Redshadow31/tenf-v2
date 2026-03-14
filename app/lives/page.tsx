@@ -122,7 +122,10 @@ export default function LivesPage() {
               : Number.isFinite(allMembersBody.total)
                 ? allMembersBody.total
                 : allMembersList.length;
-          const activeCount = allMembersList.filter((member: any) => member.isActive !== false).length;
+          const activeCount =
+            Number.isFinite(homeBody?.stats?.activeMembers) && homeBody?.stats?.activeMembers >= 0
+              ? homeBody.stats.activeMembers
+              : null;
           setTotalMembers(membersTotal);
           setActiveMembers(activeCount);
 
