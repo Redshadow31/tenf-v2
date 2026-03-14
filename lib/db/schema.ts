@@ -142,6 +142,61 @@ export const linkedTwitchAccounts = pgTable('linked_twitch_accounts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Table: follow_engagement_snapshots
+export const followEngagementSnapshots = pgTable('follow_engagement_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+  sourceDataRetrievedAt: timestamp('source_data_retrieved_at').notNull(),
+  totalActiveTenfChannels: integer('total_active_tenf_channels').notNull(),
+  trackedMembersCount: integer('tracked_members_count').notNull(),
+  generatedByDiscordId: text('generated_by_discord_id'),
+  status: text('status').notNull().default('completed'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Table: follow_engagement_snapshot_members
+export const followEngagementSnapshotMembers = pgTable(
+  'follow_engagement_snapshot_members',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    snapshotId: uuid('snapshot_id')
+      .notNull()
+      .references(() => followEngagementSnapshots.id, { onDelete: 'cascade' }),
+    discordId: text('discord_id'),
+    displayName: text('display_name').notNull(),
+    memberTwitchLogin: text('member_twitch_login').notNull(),
+    linkedTwitchLogin: text('linked_twitch_login'),
+    linkedTwitchDisplayName: text('linked_twitch_display_name'),
+    followedCount: integer('followed_count'),
+    totalActiveTenfChannels: integer('total_active_tenf_channels').notNull(),
+    followRate: doublePrecision('follow_rate'),
+    state: text('state').notNull(),
+    reason: text('reason'),
+    lastCheckedAt: timestamp('last_checked_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueSnapshotMember: unique().on(table.snapshotId, table.memberTwitchLogin),
+  })
+);
+
+// Table: follow_engagement_snapshot_member_channels
+export const followEngagementSnapshotMemberChannels = pgTable(
+  'follow_engagement_snapshot_member_channels',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    snapshotMemberId: uuid('snapshot_member_id')
+      .notNull()
+      .references(() => followEngagementSnapshotMembers.id, { onDelete: 'cascade' }),
+    twitchLogin: text('twitch_login').notNull(),
+    twitchId: text('twitch_id'),
+    displayName: text('display_name').notNull(),
+    isFollowed: boolean('is_followed').notNull(),
+    isOwnChannel: boolean('is_own_channel').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  }
+);
+
 // Table: events
 export const events = pgTable('events', {
   id: text('id').primaryKey(), // Utiliser text pour accepter les IDs personnalisés
@@ -573,3 +628,31 @@ export const vipHistoryRelations = relations(vipHistory, ({ one }) => ({
     references: [members.twitchLogin],
   }),
 }));
+
+export const followEngagementSnapshotsRelations = relations(
+  followEngagementSnapshots,
+  ({ many }) => ({
+    members: many(followEngagementSnapshotMembers),
+  })
+);
+
+export const followEngagementSnapshotMembersRelations = relations(
+  followEngagementSnapshotMembers,
+  ({ one, many }) => ({
+    snapshot: one(followEngagementSnapshots, {
+      fields: [followEngagementSnapshotMembers.snapshotId],
+      references: [followEngagementSnapshots.id],
+    }),
+    channels: many(followEngagementSnapshotMemberChannels),
+  })
+);
+
+export const followEngagementSnapshotMemberChannelsRelations = relations(
+  followEngagementSnapshotMemberChannels,
+  ({ one }) => ({
+    snapshotMember: one(followEngagementSnapshotMembers, {
+      fields: [followEngagementSnapshotMemberChannels.snapshotMemberId],
+      references: [followEngagementSnapshotMembers.id],
+    }),
+  })
+);

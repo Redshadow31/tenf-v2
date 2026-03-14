@@ -128,6 +128,7 @@ export const adminNavigation: NavItem[] = [
         href: "/admin/raids",
         label: "Engagement",
         children: [
+          { href: "/admin/engagement/follow", label: "Follow" },
           { href: "/admin/follow", label: "Feuilles de follow" },
           { href: "/admin/raids", label: "Suivi des raids" },
           { href: "/admin/engagement/raids-a-valider", label: "Raids à valider (fonctionnalité à venir)" },
@@ -293,7 +294,15 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/new-family-aventura/parametres-page", label: "Paramètres page" },
     ],
   },
-  { href: "/admin/follow", label: "Suivi de l'engagement", icon: "👁️" },
+  {
+    href: "/admin/engagement/follow",
+    label: "Suivi de l'engagement",
+    icon: "👁️",
+    children: [
+      { href: "/admin/engagement/follow", label: "Follow (global)" },
+      { href: "/admin/follow", label: "Feuilles de follow (legacy)" },
+    ],
+  },
   {
     href: "/admin/audit-logs",
     label: "Audit & Logs",
