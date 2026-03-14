@@ -30,6 +30,10 @@ function clearStateCookie(response: NextResponse): NextResponse {
   return response;
 }
 
+function buildLinkCallbackRedirectUri(request: NextRequest): string {
+  return new URL("/api/auth/twitch/link/callback", request.nextUrl.origin).toString();
+}
+
 export async function GET(request: NextRequest) {
   const defaultTarget = "/member/profil";
   try {
@@ -96,13 +100,9 @@ export async function GET(request: NextRequest) {
 
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
-    const redirectUri = process.env.NEXT_PUBLIC_BASE_URL
-      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/twitch/link/callback`
-      : process.env.NEXTAUTH_URL
-        ? `${process.env.NEXTAUTH_URL}/api/auth/twitch/link/callback`
-        : null;
+    const redirectUri = buildLinkCallbackRedirectUri(request);
 
-    if (!clientId || !clientSecret || !redirectUri) {
+    if (!clientId || !clientSecret) {
       return clearStateCookie(
         NextResponse.redirect(
           new URL(

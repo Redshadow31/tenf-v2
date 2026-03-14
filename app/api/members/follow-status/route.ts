@@ -183,8 +183,14 @@ export async function GET() {
     const statuses: Record<string, FollowStatusEntry> = {};
     for (const member of members) {
       let state: FollowState = "unknown";
+      const isViewerOwnChannel =
+        (Boolean(linked.twitchUserId) && Boolean(member.twitchId) && member.twitchId === linked.twitchUserId) ||
+        (Boolean(linked.twitchLogin) && member.twitchLogin === linked.twitchLogin.toLowerCase());
 
-      if (member.twitchId) {
+      if (isViewerOwnChannel) {
+        // Produit: la propre chaine du viewer doit toujours apparaitre comme deja suivie/liee.
+        state = "followed";
+      } else if (member.twitchId) {
         state = followedSets.ids.has(member.twitchId) ? "followed" : "not_followed";
       } else if (member.twitchLogin) {
         state = followedSets.logins.has(member.twitchLogin) ? "followed" : "not_followed";

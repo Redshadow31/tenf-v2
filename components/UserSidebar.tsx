@@ -53,6 +53,7 @@ export default function UserSidebar() {
   const [loading, setLoading] = useState(true);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [twitchLinked, setTwitchLinked] = useState<boolean | null>(null);
 
   async function loadUnreadNotificationsCount() {
     try {
@@ -62,6 +63,21 @@ export default function UserSidebar() {
       setUnreadNotifications(Number(data?.unreadCount || 0));
     } catch (error) {
       console.error("Error loading member notifications count:", error);
+    }
+  }
+
+  async function loadTwitchLinkStatus() {
+    try {
+      const response = await fetch("/api/auth/twitch/link/status", { cache: "no-store" });
+      if (!response.ok) {
+        setTwitchLinked(false);
+        return;
+      }
+      const data = await response.json();
+      setTwitchLinked(Boolean(data?.connected));
+    } catch (error) {
+      console.error("Error loading Twitch link status:", error);
+      setTwitchLinked(false);
     }
   }
 
@@ -88,6 +104,9 @@ export default function UserSidebar() {
         } catch (error) {
           console.error("Error fetching user role:", error);
         }
+        await loadTwitchLinkStatus();
+      } else {
+        setTwitchLinked(null);
       }
       
       setLoading(false);
@@ -169,11 +188,28 @@ export default function UserSidebar() {
               <SidebarSection key={section.title} title={section.title}>
                 {section.groups.map((group) => {
                   const visibleItems = group.items.filter((item) => !item.adminOnly || hasAdminAccess);
-                  if (visibleItems.length === 0) return null;
+                  const shouldInjectTwitchShortcut =
+                    section.title === "Espace membre" && group.title === "Navigation" && Boolean(discordUser);
+
+                  const groupItems = shouldInjectTwitchShortcut
+                    ? [
+                        ...visibleItems,
+                        {
+                          href: "/member/profil",
+                          label:
+                            twitchLinked === null
+                              ? "Etat Twitch..."
+                              : twitchLinked
+                                ? "Twitch lie"
+                                : "Lier mon Twitch",
+                        },
+                      ]
+                    : visibleItems;
+                  if (groupItems.length === 0) return null;
 
                   return (
                     <SidebarCollapsibleGroup key={`${section.title}-${group.title}`} title={group.title}>
-                      {visibleItems.map((item) => (
+                      {groupItems.map((item) => (
                         <SidebarLink
                           key={`${group.title}-${item.href}`}
                           href={item.href}

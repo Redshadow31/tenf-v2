@@ -12,6 +12,10 @@ function sanitizeCallbackPath(input: string | null): string {
   return input;
 }
 
+function buildLinkCallbackRedirectUri(request: NextRequest): string {
+  return new URL("/api/auth/twitch/link/callback", request.nextUrl.origin).toString();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -22,13 +26,9 @@ export async function GET(request: NextRequest) {
     }
 
     const clientId = process.env.TWITCH_CLIENT_ID;
-    const redirectUri = process.env.NEXT_PUBLIC_BASE_URL
-      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/twitch/link/callback`
-      : process.env.NEXTAUTH_URL
-        ? `${process.env.NEXTAUTH_URL}/api/auth/twitch/link/callback`
-        : null;
+    const redirectUri = buildLinkCallbackRedirectUri(request);
 
-    if (!clientId || !redirectUri) {
+    if (!clientId) {
       return NextResponse.json(
         { error: "Configuration Twitch OAuth manquante" },
         { status: 500 }
