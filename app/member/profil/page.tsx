@@ -55,6 +55,14 @@ type StreamPlanningItem = {
 };
 
 const LIVE_PLANNING_ROUTE = "/member/planning";
+const TWITCH_LINK_CALLBACK = "/member/profil";
+
+type TwitchLinkStatus = {
+  loading: boolean;
+  connected: boolean;
+  login: string | null;
+  displayName: string | null;
+};
 
 export default function MemberProfilePage() {
   const searchParams = useSearchParams();
@@ -63,6 +71,13 @@ export default function MemberProfilePage() {
   const [plannings, setPlannings] = useState<StreamPlanningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [twitchLinkStatus, setTwitchLinkStatus] = useState<TwitchLinkStatus>({
+    loading: true,
+    connected: false,
+    login: null,
+    displayName: null,
+  });
+  const [disconnectingTwitch, setDisconnectingTwitch] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -104,6 +119,71 @@ export default function MemberProfilePage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/auth/twitch/link/status", { cache: "no-store" });
+        const body = await response.json();
+        if (!active) return;
+
+        if (!response.ok || !body?.connected) {
+          setTwitchLinkStatus({
+            loading: false,
+            connected: false,
+            login: null,
+            displayName: null,
+          });
+          return;
+        }
+
+        setTwitchLinkStatus({
+          loading: false,
+          connected: true,
+          login: body?.twitch?.login || null,
+          displayName: body?.twitch?.displayName || null,
+        });
+      } catch {
+        if (!active) return;
+        setTwitchLinkStatus({
+          loading: false,
+          connected: false,
+          login: null,
+          displayName: null,
+        });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleDisconnectTwitch() {
+    setDisconnectingTwitch(true);
+    try {
+      const response = await fetch("/api/auth/twitch/link/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        alert("Impossible de deconnecter le compte Twitch.");
+        return;
+      }
+
+      setTwitchLinkStatus({
+        loading: false,
+        connected: false,
+        login: null,
+        displayName: null,
+      });
+    } catch {
+      alert("Erreur reseau pendant la deconnexion Twitch.");
+    } finally {
+      setDisconnectingTwitch(false);
+    }
+  }
 
   const completionChecklist: Array<{ label: string; status: "ok" | "warning" | "missing" }> = useMemo(() => {
     if (!profileData) return [];
@@ -191,6 +271,14 @@ export default function MemberProfilePage() {
     member.twitchLogin.startsWith("nouveau_") ||
     member.twitchLogin.startsWith("nouveau-") ||
     searchParams.get("onboarding") === "1";
+  const twitchLinkedNow = searchParams.get("twitch_linked") === "1";
+  const twitchError = searchParams.get("twitch_error");
+  const twitchStartHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(
+    TWITCH_LINK_CALLBACK
+  )}`;
+  const twitchReconnectHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(
+    TWITCH_LINK_CALLBACK
+  )}`;
 
   return (
     <MemberSurface>
@@ -240,6 +328,66 @@ export default function MemberProfilePage() {
           <StatCard title="VIP TENF" value={vip?.statusLabel || "Indisponible"} subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"} icon={Crown} />
         </div>
       </section>
+
+      <MemberInfoCard title="Connexion Twitch">
+        {twitchLinkedNow ? (
+          <p className="mb-3 text-sm text-green-500">
+            Compte Twitch lie avec succes.
+          </p>
+        ) : null}
+        {twitchError ? (
+          <p className="mb-3 text-sm text-red-500">
+            Liaison Twitch echouee ({twitchError}).
+          </p>
+        ) : null}
+        {twitchLinkStatus.loading ? (
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Verification du lien Twitch...
+          </p>
+        ) : twitchLinkStatus.connected ? (
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              <span style={{ color: "var(--color-text)" }}>Compte Twitch connecte</span>
+              {" : "}
+              <span style={{ color: "var(--color-text)" }}>
+                {twitchLinkStatus.displayName || twitchLinkStatus.login || "Twitch"}
+              </span>
+              {twitchLinkStatus.login ? ` (@${twitchLinkStatus.login})` : ""}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={twitchReconnectHref}
+                className="inline-flex rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                Reconnecter mon compte Twitch
+              </a>
+              <button
+                type="button"
+                onClick={handleDisconnectTwitch}
+                disabled={disconnectingTwitch}
+                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                {disconnectingTwitch ? "Deconnexion..." : "Deconnecter mon compte Twitch"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Connecte ton compte Twitch pour activer les fonctionnalites liees au suivi.
+            </p>
+            <a
+              href={twitchStartHref}
+              className="inline-flex rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              Connecter mon compte Twitch
+            </a>
+          </div>
+        )}
+      </MemberInfoCard>
 
       {needsOnboarding ? (
         <MemberInfoCard title="Creation / activation du profil">

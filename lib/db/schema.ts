@@ -126,6 +126,22 @@ export const members = pgTable('members', {
   parrain: text('parrain'),
 });
 
+// Table: linked_twitch_accounts
+export const linkedTwitchAccounts = pgTable('linked_twitch_accounts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  discordId: text('discord_id').notNull().unique(),
+  twitchUserId: text('twitch_user_id').notNull().unique(),
+  twitchLogin: text('twitch_login').notNull(),
+  twitchDisplayName: text('twitch_display_name'),
+  twitchAvatar: text('twitch_avatar'),
+  accessTokenEncrypted: text('access_token_encrypted').notNull(),
+  refreshTokenEncrypted: text('refresh_token_encrypted').notNull(),
+  tokenExpiry: timestamp('token_expiry').notNull(),
+  scope: text('scope'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Table: events
 export const events = pgTable('events', {
   id: text('id').primaryKey(), // Utiliser text pour accepter les IDs personnalisés

@@ -26,6 +26,7 @@ type MemberModalProps = {
     isVip?: boolean;
     vipBadge?: string;
     badges?: string[];
+    followStatus?: "followed" | "not_followed" | "unknown";
   };
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +39,27 @@ export default function MemberModal({
   onClose,
   isAdmin = false,
 }: MemberModalProps) {
+  const followStatusConfig =
+    member.followStatus === "followed"
+      ? {
+          icon: "❤️",
+          label: "Tu suis deja cette chaine",
+          className: "bg-green-500/20 text-green-300 border border-green-500/30",
+        }
+      : member.followStatus === "not_followed"
+        ? {
+            icon: "🤍",
+            label: "Tu ne suis pas encore cette chaine",
+            className: "bg-gray-500/20 text-gray-200 border border-gray-500/30",
+          }
+        : member.followStatus === "unknown"
+          ? {
+              icon: "❔",
+              label: "Statut follow inconnu",
+              className: "bg-amber-500/20 text-amber-200 border border-amber-500/30",
+            }
+          : null;
+
   const [discordStats, setDiscordStats] = useState<{
     messages: number;
     voiceMinutes: number;
@@ -225,6 +247,13 @@ export default function MemberModal({
           {/* Lien Twitch */}
           <div className="w-full space-y-3">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Chaîne Twitch</h3>
+            {followStatusConfig && (
+              <div className="flex justify-center">
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${followStatusConfig.className}`}>
+                  {followStatusConfig.icon} {followStatusConfig.label}
+                </span>
+              </div>
+            )}
             <Link
               href={`https://www.twitch.tv/${member.twitchLogin}`}
               target="_blank"

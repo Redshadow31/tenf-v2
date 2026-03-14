@@ -24,6 +24,13 @@ interface PublicMember {
   twitter?: string;
 }
 
+type FollowState = "followed" | "not_followed" | "unknown";
+
+type FollowStatusEntry = {
+  state: FollowState;
+  visual: "coeur_plein" | "coeur_vide" | "point_interrogation";
+};
+
 export default function Page() {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
@@ -32,6 +39,30 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [followStatuses, setFollowStatuses] = useState<Record<string, FollowStatusEntry>>({});
+  const [showFollowStatuses, setShowFollowStatuses] = useState(false);
+
+  const getFollowBadge = (state?: FollowState) => {
+    if (state === "followed") {
+      return {
+        label: "Coeur plein",
+        icon: "❤️",
+        className: "bg-green-500/20 text-green-300 border border-green-500/30",
+      };
+    }
+    if (state === "not_followed") {
+      return {
+        label: "Coeur vide",
+        icon: "🤍",
+        className: "bg-gray-500/20 text-gray-200 border border-gray-500/30",
+      };
+    }
+    return {
+      label: "Inconnu",
+      icon: "❔",
+      className: "bg-amber-500/20 text-amber-200 border border-amber-500/30",
+    };
+  };
 
   // Charger les membres depuis l'API publique
   useEffect(() => {
@@ -55,6 +86,39 @@ export default function Page() {
       }
     }
     loadMembers();
+  }, []);
+
+  useEffect(() => {
+    async function loadFollowStatuses() {
+      try {
+        const response = await fetch("/api/members/follow-status", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data?.authenticated !== true) {
+          setShowFollowStatuses(false);
+          return;
+        }
+
+        const rawStatuses = (data?.statuses || {}) as Record<
+          string,
+          { state?: FollowState; visual?: FollowStatusEntry["visual"] }
+        >;
+        const normalized: Record<string, FollowStatusEntry> = {};
+        for (const [login, entry] of Object.entries(rawStatuses)) {
+          const key = login.toLowerCase();
+          const state = entry?.state || "unknown";
+          normalized[key] = {
+            state,
+            visual: entry?.visual || "point_interrogation",
+          };
+        }
+        setFollowStatuses(normalized);
+        setShowFollowStatuses(true);
+      } catch (error) {
+        console.error("Erreur lors du chargement des statuts follow:", error);
+        setShowFollowStatuses(false);
+      }
+    }
+    loadFollowStatuses();
   }, []);
 
   // Debounce de la recherche (250ms)
@@ -159,6 +223,10 @@ export default function Page() {
     // Utiliser l'avatar déjà récupéré depuis l'API (pas besoin d'appel supplémentaire)
     const avatar = member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`;
     
+    const followState = showFollowStatuses
+      ? followStatuses[member.twitchLogin.toLowerCase()]?.state || "unknown"
+      : undefined;
+
     setSelectedMember({
       id: member.twitchLogin,
       name: member.displayName,
@@ -177,6 +245,7 @@ export default function Page() {
         twitter: member.twitter ? (member.twitter.startsWith('http') ? member.twitter : `https://twitter.com/${member.twitter.replace(/^@/, '')}`) : undefined,
         tiktok: member.tiktok ? (member.tiktok.startsWith('http') ? member.tiktok : `https://tiktok.com/@${member.tiktok.replace(/^@/, '')}`) : undefined,
       },
+      followStatus: followState,
     });
     setIsModalOpen(true);
   };
@@ -349,6 +418,10 @@ export default function Page() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
           {filteredMembers.map((member) => {
+            const followState = showFollowStatuses
+              ? followStatuses[member.twitchLogin.toLowerCase()]?.state || "unknown"
+              : undefined;
+            const followBadge = getFollowBadge(followState);
             return (
               <div
                 key={member.twitchLogin}
@@ -392,11 +465,21 @@ export default function Page() {
                 </div>
 
                 {/* Badge rôle */}
-                <span
-                  className={`${getRoleBadgeClassName(member.role)} member-grid-role-badge`}
-                >
-                  {getRoleBadgeLabel(member.role)}
-                </span>
+                <div className="flex flex-col items-center gap-2">
+                  <span
+                    className={`${getRoleBadgeClassName(member.role)} member-grid-role-badge`}
+                  >
+                    {getRoleBadgeLabel(member.role)}
+                  </span>
+                  {showFollowStatuses && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${followBadge.className}`}
+                      title={`Statut follow: ${followBadge.label}`}
+                    >
+                      {followBadge.icon} {followBadge.label}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
