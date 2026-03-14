@@ -89,6 +89,7 @@ h3 {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   padding: 0.28rem 0.72rem;
   border-radius: 9999px;
@@ -96,8 +97,11 @@ h3 {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.012em;
-  line-height: 1.1;
-  white-space: nowrap;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
@@ -110,13 +114,8 @@ h3 {
   text-align: center;
   line-height: 1.15;
   min-height: 2.1rem;
-  max-height: 2.35rem;
   padding-top: 0.34rem;
   padding-bottom: 0.34rem;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 .role-badge--animated {
@@ -156,7 +155,7 @@ h3 {
 .role-badge--active-support {
   color: #f3e8ff;
   border-color: rgba(193, 144, 242, 0.58);
-  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.22), 0 0 16px rgba(183, 132, 238, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.22);
   background: linear-gradient(120deg, rgba(124, 58, 237, 0.24), rgba(215, 190, 240, 0.3), rgba(124, 58, 237, 0.22));
 }
 
@@ -181,28 +180,28 @@ h3 {
 .role-badge--staff-founder {
   color: #fff7db;
   border-color: rgba(255, 214, 102, 0.68);
-  box-shadow: 0 0 0 1px rgba(255, 214, 102, 0.18), 0 0 18px rgba(183, 73, 202, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 102, 0.18);
   background: linear-gradient(115deg, rgba(183, 73, 202, 0.34), rgba(255, 72, 72, 0.26), rgba(107, 184, 255, 0.24), rgba(255, 214, 102, 0.24), rgba(183, 73, 202, 0.32));
 }
 
 .role-badge--staff-coordinator {
   color: #ffe9df;
   border-color: rgba(243, 147, 114, 0.64);
-  box-shadow: 0 0 14px rgba(227, 100, 20, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(227, 100, 20, 0.22);
   background: linear-gradient(120deg, rgba(227, 100, 20, 0.28), rgba(177, 45, 69, 0.28), rgba(227, 100, 20, 0.24));
 }
 
 .role-badge--staff-moderator {
   color: #ffe5e5;
   border-color: rgba(248, 183, 183, 0.62);
-  box-shadow: 0 0 14px rgba(214, 40, 40, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(214, 40, 40, 0.22);
   background: linear-gradient(120deg, rgba(214, 40, 40, 0.28), rgba(241, 146, 146, 0.28), rgba(214, 40, 40, 0.24));
 }
 
 .role-badge--staff-trainee {
   color: #f9f5ff;
   border-color: rgba(181, 151, 245, 0.62);
-  box-shadow: 0 0 14px rgba(139, 92, 246, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.24);
   background: linear-gradient(120deg, rgba(239, 68, 68, 0.24), rgba(139, 92, 246, 0.28), rgba(239, 68, 68, 0.22));
 }
 

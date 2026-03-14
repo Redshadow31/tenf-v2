@@ -234,19 +234,19 @@ export default function GestionAccesPage() {
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
       case "FONDATEUR":
-        return "bg-red-900 text-white border border-red-600";
+        return "role-badge role-badge--staff-founder role-badge--animated role-badge--shimmer";
       case "ADMIN_COORDINATEUR":
-        return "bg-amber-900 text-white border border-amber-700";
+        return "role-badge role-badge--staff-coordinator role-badge--animated role-badge--shimmer";
       case "MODERATEUR":
-        return "bg-orange-700 text-white border border-orange-600";
+        return "role-badge role-badge--staff-moderator role-badge--animated role-badge--shimmer";
       case "MODERATEUR_EN_FORMATION":
-        return "bg-blue-900 text-white border border-blue-600";
+        return "role-badge role-badge--staff-trainee role-badge--animated role-badge--shimmer";
       case "MODERATEUR_EN_PAUSE":
-        return "bg-slate-700 text-white border border-slate-500";
+        return "role-badge role-badge--staff-paused role-badge--animated role-badge--shimmer";
       case "SOUTIEN_TENF":
-        return "bg-teal-900 text-white border border-teal-600";
+        return "role-badge role-badge--active-support role-badge--animated role-badge--shimmer";
       default:
-        return "bg-gray-700 text-white";
+        return "role-badge role-badge--default";
     }
   };
 
@@ -546,9 +546,7 @@ export default function GestionAccesPage() {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getRoleBadgeClass(access.role)}`}
-                        >
+                        <span className={getRoleBadgeClass(access.role)}>
                           {ROLE_LABELS[access.role] || access.role}
                         </span>
                       </td>
@@ -674,9 +672,7 @@ export default function GestionAccesPage() {
                           {access.discordId}
                         </div>
                       </div>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${getRoleBadgeClass(access.role)}`}
-                      >
+                      <span className={`${getRoleBadgeClass(access.role)} flex-shrink-0`}>
                         {ROLE_LABELS[access.role] || access.role}
                       </span>
                     </li>
