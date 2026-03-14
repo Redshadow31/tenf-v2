@@ -385,6 +385,20 @@ export default function GestionMembresPage() {
     });
   }
 
+  function getMemberStableKey(member: Pick<Member, "discordId" | "twitchId" | "twitch" | "id">): string {
+    const discordId = member.discordId?.trim();
+    if (discordId) return `discord:${discordId}`;
+    const twitchId = member.twitchId?.trim();
+    if (twitchId) return `twitchId:${twitchId}`;
+    const twitchLogin = member.twitch?.trim().toLowerCase();
+    if (twitchLogin) return `twitch:${twitchLogin}`;
+    return `fallback:${member.id}`;
+  }
+
+  function areSameMember(a: Pick<Member, "discordId" | "twitchId" | "twitch" | "id">, b: Pick<Member, "discordId" | "twitchId" | "twitch" | "id">): boolean {
+    return getMemberStableKey(a) === getMemberStableKey(b);
+  }
+
   function mapAdminMemberToUi(member: any, index: number): Member {
     const avatar =
       member.avatar ||
@@ -1063,7 +1077,7 @@ export default function GestionMembresPage() {
     }
   }, [loading]); // Seulement quand le chargement change
 
-  const handleToggleStatus = async (memberId: number) => {
+  const handleToggleStatus = async (memberToUpdate: Member) => {
     if (!currentAdmin) {
       alert("Vous devez être connecté pour effectuer cette action");
       return;
@@ -1079,7 +1093,7 @@ export default function GestionMembresPage() {
       return;
     }
 
-    const member = members.find((m) => m.id === memberId);
+    const member = members.find((m) => areSameMember(m, memberToUpdate)) ?? memberToUpdate;
     if (!member || !member.twitch) return;
 
     const oldStatus = member.statut;
@@ -1180,7 +1194,9 @@ export default function GestionMembresPage() {
       return;
     }
 
-    const oldMember = members.find((m) => m.id === updatedMember.id);
+    const oldMember =
+      (selectedMember ? members.find((m) => areSameMember(m, selectedMember)) : undefined) ??
+      members.find((m) => areSameMember(m, updatedMember));
     if (!oldMember) return;
 
     // Fusionner les données du modal avec les données existantes
@@ -2047,7 +2063,7 @@ export default function GestionMembresPage() {
               <tbody>
                 {displayedMembers.map((member) => (
                   <tr
-                    key={member.id}
+                    key={getMemberStableKey(member)}
                     className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
                   >
                     {currentAdmin?.isFounder && (
@@ -2295,7 +2311,7 @@ export default function GestionMembresPage() {
                           👁️ Fiche
                         </Link>
                         <button
-                          onClick={() => handleToggleStatus(member.id)}
+                          onClick={() => handleToggleStatus(member)}
                           className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                             member.statut === "Actif"
                               ? "bg-red-600/20 text-red-300 hover:bg-red-600/30"
