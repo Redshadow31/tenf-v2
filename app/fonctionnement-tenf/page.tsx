@@ -154,10 +154,214 @@ const tabs: Tab[] = [
   { id: "integration", label: "Intégration" },
   { id: "reglement", label: "Règlement" },
   { id: "systeme-points", label: "Système de points" },
-  { id: "boutique-points", label: "Boutique des points" },
+  { id: "boutique-points", label: "Boutique" },
   { id: "spotlight", label: "Spotlight" },
-  { id: "conseil", label: "Conseil" },
+  { id: "conseil", label: "Conseils" },
 ];
+
+type TabGuidance = {
+  tldr: string[];
+  accordions: {
+    key: "essentiel" | "bonnes-pratiques" | "details";
+    title: string;
+    text: string;
+  }[];
+  cta: {
+    title: string;
+    description: string;
+    buttonLabel: string;
+    targetTab: TabId;
+  };
+};
+
+const tabGuidance: Record<TabId, TabGuidance> = {
+  integration: {
+    tldr: [
+      "Respecte les étapes d’arrivée pour une intégration solide",
+      "Participe aux échanges et aux événements communautaires",
+      "Demande de l’aide: l’entraide est le cœur de TENF",
+      "Évite les actions passives: l’implication fait la différence",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "Remplis ton intégration, participe à la réunion, puis prends place dans la vie du serveur pour créer tes premiers liens.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Présente-toi clairement, pose des questions, rejoins les lives et les events pour avancer plus vite avec les autres membres.",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Les évaluations et l’évolution des rôles servent à suivre ta progression, pas à sanctionner. Le but est d’accompagner durablement.",
+      },
+    ],
+    cta: {
+      title: "Prêt à passer à l’étape suivante ?",
+      description: "Découvre les règles clés pour garder un cadre sain et bienveillant.",
+      buttonLabel: "Voir le règlement",
+      targetTab: "reglement",
+    },
+  },
+  reglement: {
+    tldr: [
+      "Respect et bienveillance en priorité",
+      "Participation active sans spam ni comportements toxiques",
+      "Cadre vocal et textuel clair pour tous",
+      "Le staff protège la communauté quand nécessaire",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "Le règlement existe pour protéger la communauté. Respect, écoute et entraide sont non négociables.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Privilégie les échanges constructifs, évite les tensions publiques et contacte le staff en cas de besoin.",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Les règles couvrent les salons textuels, vocaux et comportements globaux. Le but est de préserver un espace sûr.",
+      },
+    ],
+    cta: {
+      title: "Tu veux transformer ton implication en progression ?",
+      description: "Passe au système de points pour comprendre comment ton engagement est valorisé.",
+      buttonLabel: "Voir le système de points",
+      targetTab: "systeme-points",
+    },
+  },
+  "systeme-points": {
+    tldr: [
+      "Les points valorisent l’implication, pas la compétition",
+      "Quêtes, entraide, raids, événements: tout compte",
+      "Des bonus réguliers renforcent la progression",
+      "Pas de triche/spam: qualité > quantité",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "Le système de points récompense la présence utile et les actions qui font grandir la communauté.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Reste régulier, participe proprement, et privilégie les actions d’entraide concrètes plutôt que les actions artificielles.",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Certaines actions demandent un format précis ou une preuve. Les règles détaillées sont listées dans les sections ci-dessous.",
+      },
+    ],
+    cta: {
+      title: "Tes points, tu les utilises comment ?",
+      description: "Découvre la boutique pour convertir ton engagement en récompenses utiles ou fun.",
+      buttonLabel: "Voir la boutique",
+      targetTab: "boutique-points",
+    },
+  },
+  "boutique-points": {
+    tldr: [
+      "Choisis une récompense adaptée à ton objectif",
+      "Achat via Discord puis ticket obligatoire",
+      "Cool-down et limites selon les items",
+      "Communication claire = traitement plus rapide",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "Après achat, ouvre un ticket avec les infos demandées. Sans ticket, la demande ne peut pas être traitée.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Prépare ton pseudo, tes disponibilités et tes liens utiles dès le départ pour éviter les allers-retours.",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Certaines récompenses ont des délais, quotas ou cooldown. Vérifie chaque carte avant de valider.",
+      },
+    ],
+    cta: {
+      title: "Envie d’aller plus loin dans la mise en avant ?",
+      description: "Le Spotlight t’explique comment créer un vrai temps fort communautaire.",
+      buttonLabel: "Comprendre le spotlight",
+      targetTab: "spotlight",
+    },
+  },
+  spotlight: {
+    tldr: [
+      "Le spotlight valorise un créateur dans un cadre communautaire",
+      "Viewer ou streamer: chacun a un rôle utile",
+      "Présence possible sans pression inutile",
+      "Objectif: lien humain, découverte, soutien",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "Le spotlight est un moment collectif pour mettre en lumière un membre et renforcer la cohésion TENF.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Prépare ton passage, communique clairement et adopte une posture d’entraide des deux côtés (viewer/streamer).",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Les recommandations détaillent ce qui est attendu avant, pendant et après un spotlight pour une expérience réussie.",
+      },
+    ],
+    cta: {
+      title: "Tu veux optimiser ta présence globale ?",
+      description: "Passe aux conseils pour consolider ton rythme, ta communication et ton bien-être.",
+      buttonLabel: "Voir les conseils",
+      targetTab: "conseil",
+    },
+  },
+  conseil: {
+    tldr: [
+      "Construis une présence régulière et soutenable",
+      "Soigne ton image et tes interactions",
+      "Protège ton énergie mentale dans la durée",
+      "Reste aligné avec les valeurs TENF",
+    ],
+    accordions: [
+      {
+        key: "essentiel",
+        title: "Essentiel",
+        text: "La régularité et la cohérence priment sur l’intensité ponctuelle. Garde un rythme que tu peux tenir.",
+      },
+      {
+        key: "bonnes-pratiques",
+        title: "Bonnes pratiques",
+        text: "Prépare ton contenu, anticipe ta communication et reste bienveillant sur toutes les plateformes.",
+      },
+      {
+        key: "details",
+        title: "Détails",
+        text: "Les sections listent des conseils concrets sur image, positionnement, réseau et équilibre personnel.",
+      },
+    ],
+    cta: {
+      title: "Prêt pour ton prochain cap TENF ?",
+      description: "Reviens à l’intégration pour valider les bases et relancer ton parcours communautaire.",
+      buttonLabel: "Revenir à l’intégration",
+      targetTab: "integration",
+    },
+  },
+};
 
 function BoutiquePointsContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -1960,19 +2164,82 @@ function ConseilContent() {
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("integration");
+  const [expandedGuide, setExpandedGuide] = useState<string>("essentiel");
+  const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+  const currentStep = activeTabIndex + 1;
+  const isLastStep = currentStep === tabs.length;
+  const nextTabId = isLastStep ? tabs[0].id : tabs[currentStep].id;
+  const currentGuide = tabGuidance[activeTab];
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <main id="top-fonctionnement" className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Titre principal */}
-        <section className="mb-8">
-          <h1 className="text-3xl font-bold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
-            Fonctionnement TENF
-          </h1>
+        {/* HERO INTRO */}
+        <section className="mb-10 rounded-2xl border p-6 md:p-8" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <div className="max-w-4xl space-y-5">
+            <h1 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
+              Comment fonctionne TENF
+            </h1>
+            <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Cette page est le guide du fonctionnement de la communauté TENF: tu y retrouves les repères essentiels pour t&apos;intégrer, participer, progresser et profiter pleinement de l&apos;entraide.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🤝 Entraide
+              </span>
+              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🚀 Progression
+              </span>
+              <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🎉 Événements
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setActiveTab("integration");
+                  setExpandedGuide("essentiel");
+                  document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                Commencer par l&apos;intégration
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("systeme-points");
+                  setExpandedGuide("essentiel");
+                  document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                Voir le système de points
+              </button>
+            </div>
+          </div>
         </section>
 
-        {/* Onglets */}
-        <div className="mb-8">
+        {/* Onglets + progression */}
+        <div id="tenf-onglets" className="mb-8">
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+              Étape {currentStep}/{tabs.length}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Parcours communautaire TENF
+            </p>
+          </div>
+          <div className="mb-5 h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${(currentStep / tabs.length) * 100}%`,
+                backgroundColor: 'var(--color-primary)',
+              }}
+            />
+          </div>
           <div className="flex flex-wrap gap-2 justify-center border-b" style={{ borderColor: 'var(--color-border)' }}>
             {tabs.map((tab) => (
               <button
@@ -2004,6 +2271,57 @@ export default function Page() {
 
         {/* Contenu des onglets */}
         <div className="mt-8">
+          {/* TL;DR */}
+          <section className="mb-8 rounded-xl border p-5 md:p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+              À retenir
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {currentGuide.tldr.map((item) => (
+                <p key={item} className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {item.startsWith("Évite") || item.startsWith("Pas") ? "❌ " : "✔ "}
+                  {item}
+                </p>
+              ))}
+            </div>
+          </section>
+
+          {/* Accordéons guide */}
+          <section className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {currentGuide.accordions.map((accordion) => {
+              const isOpen = expandedGuide === accordion.key;
+              const borderColor = accordion.key === "details" ? "rgba(239,68,68,0.3)" : "var(--color-border)";
+              const bgColor = accordion.key === "bonnes-pratiques"
+                ? "rgba(145, 70, 255, 0.1)"
+                : accordion.key === "details"
+                  ? "rgba(239,68,68,0.08)"
+                  : "var(--color-card)";
+
+              return (
+                <article
+                  key={accordion.key}
+                  className="rounded-xl border transition-all duration-200"
+                  style={{ borderColor, backgroundColor: bgColor }}
+                >
+                  <button
+                    onClick={() => setExpandedGuide(isOpen ? "" : accordion.key)}
+                    className="w-full p-4 text-left flex items-center justify-between"
+                  >
+                    <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{accordion.title}</span>
+                    <span style={{ color: 'var(--color-primary)' }}>{isOpen ? "−" : "+"}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4">
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                        {accordion.text}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+
           {activeTab === "integration" && (
             <div className="space-y-8">
               {/* Section : Introduction */}
@@ -2231,7 +2549,78 @@ export default function Page() {
           {activeTab === "conseil" && (
             <ConseilContent />
           )}
+
+          {/* CTA contextuel onglet */}
+          <section className="mt-10 rounded-xl border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+              {currentGuide.cta.title}
+            </h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              {currentGuide.cta.description}
+            </p>
+            <button
+              onClick={() => {
+                setActiveTab(currentGuide.cta.targetTab);
+                setExpandedGuide("essentiel");
+                document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              {currentGuide.cta.buttonLabel}
+            </button>
+          </section>
+
+          {/* Navigation utilitaire */}
+          <section className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setActiveTab(nextTabId);
+                setExpandedGuide("essentiel");
+                document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              Continuer
+            </button>
+            <button
+              onClick={() => document.getElementById("top-fonctionnement")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Retour en haut
+            </button>
+            <a
+              href="https://discord.gg/WnpazgcZHk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Ouvrir Discord
+            </a>
+          </section>
         </div>
+
+        {/* CTA final */}
+        <section className="mt-12 rounded-2xl border p-8 text-center" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--color-text)' }}>
+            Prêt à rejoindre la dynamique TENF ?
+          </h2>
+          <p className="text-sm md:text-base mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+            Rejoins une communauté active qui avance sur l&apos;entraide, la progression et des actions concrètes.
+          </p>
+          <a
+            href="https://discord.gg/WnpazgcZHk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-6 py-3 rounded-lg font-semibold text-white transition-transform hover:-translate-y-0.5"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            Rejoindre Discord
+          </a>
+        </section>
       </div>
     </main>
   );
