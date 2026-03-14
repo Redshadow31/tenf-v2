@@ -46,8 +46,6 @@ export default function MemberProfileCompletePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileAlreadyCreated, setProfileAlreadyCreated] = useState(false);
-  const [submittingPublicProfile, setSubmittingPublicProfile] = useState(false);
-  const [submitPublicProfileSuccess, setSubmitPublicProfileSuccess] = useState(false);
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [createProfileSuccess, setCreateProfileSuccess] = useState(false);
   const [publicProfileForm, setPublicProfileForm] = useState({
@@ -127,10 +125,10 @@ export default function MemberProfileCompletePage() {
     };
   }, []);
 
-  async function onSubmitPublicProfile(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmittingPublicProfile(true);
-    setSubmitPublicProfileSuccess(false);
+    setCreatingProfile(true);
+    setCreateProfileSuccess(false);
     try {
       const descriptionWithGames = [
         (publicProfileForm.description || "").trim(),
@@ -146,7 +144,7 @@ export default function MemberProfileCompletePage() {
         return;
       }
 
-      const res = await fetch("/api/members/me/profile", {
+      const profileRes = await fetch("/api/members/me/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -159,24 +157,12 @@ export default function MemberProfileCompletePage() {
           timezone: publicProfileForm.timezone,
         }),
       });
-      const body = await res.json();
-      if (!res.ok) {
-        alert(body.error || "Erreur lors de la soumission du profil public");
+      const profileBody = await profileRes.json();
+      if (!profileRes.ok) {
+        alert(profileBody.error || "Erreur lors de la soumission du profil public");
         return;
       }
-      setSubmitPublicProfileSuccess(true);
-    } catch {
-      alert("Erreur de connexion");
-    } finally {
-      setSubmittingPublicProfile(false);
-    }
-  }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setCreatingProfile(true);
-    setCreateProfileSuccess(false);
-    try {
       const res = await fetch("/api/members/me/bootstrap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,7 +191,7 @@ export default function MemberProfileCompletePage() {
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
           Cette partie alimente la fiche publique (description, reseaux, informations de chaine).
         </p>
-        <form onSubmit={onSubmitPublicProfile} className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3">
           <div>
             <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>
               Descriptif chaine (Markdown Discord) ({publicProfileForm.description.length}/{MAX_DESCRIPTION})
@@ -237,18 +223,10 @@ export default function MemberProfileCompletePage() {
             <input value={publicProfileForm.tiktok} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))} placeholder="TikTok" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
             <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="X / Twitter" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
           </div>
-          {submitPublicProfileSuccess ? (
-            <p className="text-sm text-green-500">Profil public soumis avec succes pour validation.</p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={submittingPublicProfile}
-            className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
-            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          >
-            {submittingPublicProfile ? "Envoi..." : "Soumettre le profil public"}
-          </button>
-        </form>
+          <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            Ces informations seront envoyees a validation avec le bouton final en bas de page.
+          </p>
+        </div>
       </MemberInfoCard>
       <MemberInfoCard title="Creation / activation du profil">
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -314,7 +292,7 @@ export default function MemberProfileCompletePage() {
             </p>
           ) : null}
           <button type="submit" disabled={creatingProfile} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
-            {creatingProfile ? "Envoi..." : profileAlreadyCreated ? "Signaler un changement" : "Creer mon profil"}
+            {creatingProfile ? "Envoi..." : "Envoyer mon profil a valider"}
           </button>
         </form>
       </MemberInfoCard>
