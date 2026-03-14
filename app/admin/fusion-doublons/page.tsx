@@ -20,7 +20,7 @@ const navLinks = [
 
 interface DuplicateGroup {
   key: string;
-  type: "discordId" | "discordUsername";
+  type: "discordId" | "discordUsername" | "displayName" | "twitchLogin" | "identity";
   members: Array<{
     twitchLogin: string;
     displayName: string;
@@ -39,6 +39,14 @@ interface DuplicateGroup {
 }
 
 export default function FusionDoublonsPage() {
+  const duplicateTypeLabels: Record<DuplicateGroup["type"], string> = {
+    discordId: "Même ID Discord",
+    discordUsername: "Même pseudo Discord",
+    displayName: "Même nom d'affichage",
+    twitchLogin: "Même login Twitch",
+    identity: "Identité normalisée proche",
+  };
+
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +220,7 @@ export default function FusionDoublonsPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-white">
-                      Doublon {index + 1} - {duplicate.type === "discordId" ? "Même ID Discord" : "Même pseudo Discord"}
+                      Doublon {index + 1} - {duplicateTypeLabels[duplicate.type] || "Critère inconnu"}
                     </h3>
                     <p className="text-sm text-gray-400">
                       Clé: {duplicate.key} ({duplicate.members.length} membres)
