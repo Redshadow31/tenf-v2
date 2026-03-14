@@ -9,7 +9,7 @@ import {
   Compass,
   Gift,
   GraduationCap,
-  HandHeart,
+  HeartHandshake,
   LayoutDashboard,
   Rocket,
   Sparkles,
@@ -75,7 +75,7 @@ const differentiators: Differentiator[] = [
     title: "Entraide concrète",
     description:
       "Ici, on se répond, on se suit, on se conseille. L'entraide est une pratique quotidienne, pas un slogan.",
-    icon: HandHeart,
+    icon: HeartHandshake,
   },
   {
     title: "Progression collective",
@@ -654,53 +654,6 @@ export default async function Page() {
       </div>
 
       <AboutPageEnhancer />
-
-      <style jsx>{`
-        .about-fade-up {
-          animation: fadeUp 0.6s ease-out both;
-        }
-
-        :global(.about-js-enabled) .about-reveal {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.6s ease, transform 0.6s ease;
-          will-change: opacity, transform;
-        }
-
-        :global(.about-js-enabled) .about-reveal.is-visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-
-        .about-glow {
-          box-shadow:
-            0 10px 30px color-mix(in srgb, var(--color-primary) 12%, transparent),
-            0 0 0 1px color-mix(in srgb, var(--color-primary) 6%, transparent);
-        }
-
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .about-fade-up {
-            animation: none !important;
-          }
-
-          :global(.about-js-enabled) .about-reveal {
-            opacity: 1 !important;
-            transform: none !important;
-            transition: none !important;
-          }
-        }
-      `}</style>
     </main>
   );
 }
