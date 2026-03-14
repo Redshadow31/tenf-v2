@@ -195,6 +195,8 @@ export default function Page() {
   const [planningItems, setPlanningItems] = useState<PlanningItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
   const [fallbackDiscoverLogins, setFallbackDiscoverLogins] = useState<string[]>([]);
+  const [membersTotalCount, setMembersTotalCount] = useState<number | null>(null);
+  const [activeCreatorsCount, setActiveCreatorsCount] = useState<number | null>(null);
 
   const showFollowStatuses = followStatusesState.authenticated && followStatusesState.linked;
 
@@ -233,6 +235,9 @@ export default function Page() {
         if (response.ok) {
           const data = await response.json();
           setActiveMembers(data.members || []);
+          setMembersTotalCount(
+            Number.isFinite(data?.total) ? Number(data.total) : (Array.isArray(data?.members) ? data.members.length : null)
+          );
         }
       } catch (error) {
         console.error("Erreur lors du chargement des membres:", error);
@@ -242,6 +247,23 @@ export default function Page() {
       }
     }
     loadMembers();
+  }, []);
+
+  useEffect(() => {
+    async function loadActiveCreatorsCount() {
+      try {
+        const response = await fetch("/api/home", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+        const value = data?.stats?.activeMembers;
+        if (Number.isFinite(value)) {
+          setActiveCreatorsCount(Number(value));
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement du total de créateurs actifs:", error);
+      }
+    }
+    loadActiveCreatorsCount();
   }, []);
 
   useEffect(() => {
@@ -601,14 +623,21 @@ export default function Page() {
   const discordLoginHref = `/api/auth/signin/discord?callbackUrl=${encodeURIComponent("/membres")}`;
 
   const stats = useMemo(() => {
-    const totalMembers = activeMembers.length;
-    const activeCreators = activeMembers.filter(
+    const fallbackActiveCreators = activeMembers.filter(
       (member) => isAffiliated(member.role) || isDevelopment(member.role)
     ).length;
+    const totalMembers = membersTotalCount ?? activeMembers.length;
+    const activeCreators = activeCreatorsCount ?? fallbackActiveCreators;
     const liveCount = liveMembers.length;
 
     return { totalMembers, activeCreators, liveCount };
-  }, [activeMembers, liveMembers.length]);
+  }, [activeCreatorsCount, activeMembers, liveMembers.length, membersTotalCount]);
+
+  const formatStatValue = (value: number | null | undefined, isLoading: boolean): string => {
+    if (isLoading) return "…";
+    if (!Number.isFinite(value || 0)) return "—";
+    return String(value || 0);
+  };
 
   const getPlanningLabel = (status: PlanningStatus) => {
     if (status === "shared") return "📅 Planning partagé";
@@ -667,7 +696,7 @@ export default function Page() {
     <div className="space-y-8 pb-10">
       {/* HERO découverte TENF */}
       <section
-        className="relative overflow-hidden rounded-2xl border p-6 md:p-8"
+        className="relative overflow-hidden rounded-2xl border p-6 md:p-8 lg:p-10"
         style={{
           borderColor: "rgba(145,70,255,0.35)",
           background:
@@ -676,51 +705,74 @@ export default function Page() {
         }}
       >
         <div
-          className="pointer-events-none absolute -left-14 -top-14 h-44 w-44 rounded-full opacity-60 blur-3xl"
+          className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full opacity-70 blur-3xl"
           style={{ background: "rgba(145,70,255,0.4)" }}
         />
-        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
-            <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl" style={{ color: "var(--color-text)" }}>
-              Découvrir les créateurs TENF
-            </h1>
-            <p className="max-w-2xl text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-              Chaque créateur ici a son univers, son rythme et son histoire.
-              <br />
-              La découverte fait partie de l&apos;entraide 💜
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => openRandomMember()}
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
-                style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.26)" }}
-              >
-                🎲 Découvrir un créateur
-              </button>
-              <button
-                type="button"
-                onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-              >
-                🔴 Voir les créateurs en live
-              </button>
+        <div
+          className="pointer-events-none absolute -bottom-20 right-0 h-56 w-56 rounded-full opacity-50 blur-3xl"
+          style={{ background: "rgba(236,72,153,0.22)" }}
+        />
+        <div className="relative grid items-stretch gap-6 lg:grid-cols-[1.35fr_0.9fr]">
+          <div className="relative rounded-2xl border p-5 md:p-6" style={{ borderColor: "rgba(145,70,255,0.25)", backgroundColor: "rgba(255,255,255,0.02)" }}>
+            <div
+              className="pointer-events-none absolute -bottom-8 left-14 h-24 w-24 rounded-full blur-2xl"
+              style={{ backgroundColor: "rgba(145,70,255,0.26)" }}
+            />
+            <div className="relative space-y-5">
+              <span className="inline-flex rounded-full border px-3 py-1 text-xs font-medium" style={{ borderColor: "rgba(145,70,255,0.45)", color: "var(--color-text-secondary)" }}>
+                Découverte communautaire
+              </span>
+              <h1 className="text-3xl font-black tracking-tight md:text-5xl" style={{ color: "var(--color-text)" }}>
+                Découvrir les créateurs{" "}
+                <span style={{ color: "#c8a5ff" }}>TENF</span>
+              </h1>
+              <p className="max-w-2xl text-sm leading-relaxed md:text-[1.03rem]" style={{ color: "var(--color-text-secondary)" }}>
+                Chaque créateur ici a son univers, son rythme et son histoire.
+                <br />
+                La découverte fait partie de l&apos;entraide 💜
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => openRandomMember()}
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
+                  style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 12px 26px rgba(145,70,255,0.34)" }}
+                >
+                  🎲 Découvrir un créateur
+                </button>
+                <button
+                  type="button"
+                  onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                >
+                  🔴 Voir les créateurs en live
+                </button>
+              </div>
+              <p className="text-xs md:text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                Des profils variés, du live, et de belles découvertes à portée de clic.
+              </p>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
               <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>👥 Membres</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.totalMembers}</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+                {formatStatValue(stats.totalMembers, loading)}
+              </p>
             </div>
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
               <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🎮 Créateurs actifs</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.activeCreators}</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+                {formatStatValue(stats.activeCreators, loading)}
+              </p>
             </div>
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
               <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🔴 En live</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>{stats.liveCount}</p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+                {formatStatValue(stats.liveCount, loadingLive)}
+              </p>
             </div>
           </div>
         </div>
