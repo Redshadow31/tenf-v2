@@ -94,6 +94,10 @@ function getAvatarFallback(name: string): string {
   return `https://placehold.co/80x80?text=${encodeURIComponent(initial)}`;
 }
 
+function getUnavatarUrl(login: string): string {
+  return `https://unavatar.io/twitch/${encodeURIComponent((login || "").toLowerCase())}`;
+}
+
 export default function CalendrierLivesPage() {
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
@@ -474,7 +478,7 @@ export default function CalendrierLivesPage() {
                 >
                   <div className="flex items-center gap-2.5">
                     <img
-                      src={item.avatarUrl || getAvatarFallback(item.displayName)}
+                      src={item.avatarUrl || getUnavatarUrl(item.twitchLogin)}
                       alt={item.displayName}
                       className="h-9 w-9 rounded-full border object-cover"
                       style={{ borderColor: "var(--color-border)" }}
@@ -782,7 +786,7 @@ export default function CalendrierLivesPage() {
                     >
                       <div className="flex items-start gap-3">
                         <img
-                          src={item.avatarUrl || getAvatarFallback(item.displayName)}
+                          src={item.avatarUrl || getUnavatarUrl(item.twitchLogin)}
                           alt={item.displayName}
                           className="h-11 w-11 rounded-full border object-cover"
                           style={{ borderColor: "var(--color-border)" }}
