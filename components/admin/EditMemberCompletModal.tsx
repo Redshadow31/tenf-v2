@@ -24,16 +24,97 @@ interface MemberData {
 
 interface EditMemberCompletModalProps {
   member: MemberData;
+  allMembers?: MemberData[];
   onClose: () => void;
   onSave: (member: MemberData) => void;
+  onMerged?: () => void;
 }
 
 export default function EditMemberCompletModal({
   member,
+  allMembers = [],
   onClose,
   onSave,
+  onMerged,
 }: EditMemberCompletModalProps) {
   const [formData, setFormData] = useState<MemberData>(member);
+  const [quickMergeLoading, setQuickMergeLoading] = useState(false);
+
+  const normalizedCurrentLogin = (formData.twitchLogin || "").toLowerCase().trim();
+  const normalizedDiscordId = (formData.discordId || "").trim();
+  const discordConflictMember =
+    normalizedDiscordId.length > 0
+      ? allMembers.find(
+          (m) =>
+            (m.discordId || "").trim() === normalizedDiscordId &&
+            (m.twitchLogin || "").toLowerCase().trim() !== normalizedCurrentLogin
+        )
+      : undefined;
+
+  const handleQuickMergeFromDiscordConflict = async () => {
+    if (!discordConflictMember) {
+      alert("Aucun conflit Discord détecté.");
+      return;
+    }
+
+    const currentLogin = normalizedCurrentLogin;
+    const conflictLogin = (discordConflictMember.twitchLogin || "").toLowerCase().trim();
+    if (!currentLogin || !conflictLogin || currentLogin === conflictLogin) {
+      alert("Impossible de préparer la fusion (logins invalides).");
+      return;
+    }
+
+    const confirmed = confirm(
+      `Fusionner "${currentLogin}" avec "${conflictLogin}" ?\n\n` +
+      `Le profil "${currentLogin}" sera conservé.`
+    );
+    if (!confirmed) return;
+
+    setQuickMergeLoading(true);
+    try {
+      const response = await fetch("/api/admin/members/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          membersToMerge: [currentLogin, conflictLogin],
+          mergedData: {
+            twitchLogin: currentLogin,
+            displayName: formData.displayName,
+            twitchUrl: formData.twitchUrl || `https://www.twitch.tv/${currentLogin}`,
+            discordId: normalizedDiscordId || discordConflictMember.discordId || undefined,
+            discordUsername: formData.discordUsername,
+            role: formData.role,
+            isVip: formData.isVip,
+            isActive: formData.isActive,
+            description: formData.description,
+            customBio: formData.customBio,
+            siteUsername: formData.siteUsername || formData.displayName,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Fusion impossible");
+      }
+
+      alert(
+        `Fusion réussie !\n\n` +
+        `Profil conservé: ${data.primaryMember}\n` +
+        `Profil(s) fusionné(s): ${(data.deletedMembers || []).join(", ")}`
+      );
+      if (onMerged) {
+        onMerged();
+      } else {
+        onClose();
+      }
+    } catch (error) {
+      console.error("Erreur fusion rapide (membres-complets):", error);
+      alert(`Erreur de fusion: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    } finally {
+      setQuickMergeLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -117,6 +198,25 @@ export default function EditMemberCompletModal({
                 className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded-lg px-4 py-2 text-white font-mono text-sm"
                 placeholder="Ex: 535244297214361603"
               />
+              {discordConflictMember && (
+                <div className="mt-2">
+                  <p className="text-xs text-red-400 mb-2">
+                    Cet ID Discord est deja lie a{" "}
+                    <span className="font-semibold">
+                      {discordConflictMember.displayName || discordConflictMember.twitchLogin}
+                    </span>{" "}
+                    ({discordConflictMember.twitchLogin}).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleQuickMergeFromDiscordConflict}
+                    disabled={quickMergeLoading}
+                    className="text-xs bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-3 py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {quickMergeLoading ? "Fusion en cours..." : "Fusionner ces 2 profils maintenant"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -77,10 +77,12 @@ export default function EditMemberModal({
   const [showRoleHistory, setShowRoleHistory] = useState(false);
   const [roleChangeReason, setRoleChangeReason] = useState("");
   const [availableMembers, setAvailableMembers] = useState<Array<{ nom: string; twitch: string }>>([]);
-  const [existingMembers, setExistingMembers] = useState<Array<{ twitchLogin: string; discordId?: string }>>([]);
+  const [existingMembers, setExistingMembers] = useState<Array<{ twitchLogin: string; discordId?: string; displayName?: string }>>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [parrainSuggestions, setParrainSuggestions] = useState<string[]>([]);
   const [showParrainSuggestions, setShowParrainSuggestions] = useState(false);
+  const [discordConflictMember, setDiscordConflictMember] = useState<{ twitchLogin: string; discordId?: string; displayName?: string } | null>(null);
+  const [quickMergeLoading, setQuickMergeLoading] = useState(false);
   const originalRole = member.role;
 
   useEffect(() => {
@@ -118,7 +120,12 @@ export default function EditMemberModal({
       );
       if (duplicateDiscord) {
         errors.discordId = "Cet ID Discord est déjà lié à un autre membre";
+        setDiscordConflictMember(duplicateDiscord);
+      } else {
+        setDiscordConflictMember(null);
       }
+    } else {
+      setDiscordConflictMember(null);
     }
 
     const createdAt = formData.createdAt ? new Date(formData.createdAt) : null;
@@ -170,6 +177,7 @@ export default function EditMemberModal({
       const rows = (data.members || []).map((m: any) => ({
         twitchLogin: (m.twitchLogin || "").toLowerCase(),
         discordId: m.discordId || undefined,
+        displayName: m.displayName || undefined,
       }));
       setExistingMembers(rows);
     } catch (error) {
@@ -192,6 +200,68 @@ export default function EditMemberModal({
     } else {
       setParrainSuggestions([]);
       setShowParrainSuggestions(false);
+    }
+  };
+
+  const handleQuickMergeFromDiscordConflict = async () => {
+    if (!discordConflictMember?.twitchLogin) {
+      alert("Membre en conflit introuvable pour la fusion.");
+      return;
+    }
+
+    const currentLogin = (formData.twitch || member.twitch || "").trim().toLowerCase();
+    const conflictLogin = discordConflictMember.twitchLogin.trim().toLowerCase();
+
+    if (!currentLogin || !conflictLogin || currentLogin === conflictLogin) {
+      alert("Impossible de préparer la fusion (logins invalides).");
+      return;
+    }
+
+    const confirmed = confirm(
+      `Fusionner "${currentLogin}" avec "${conflictLogin}" maintenant ?\n\n` +
+      `Le profil "${currentLogin}" sera conservé comme profil principal.`
+    );
+    if (!confirmed) return;
+
+    setQuickMergeLoading(true);
+    try {
+      const response = await fetch("/api/admin/members/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          membersToMerge: [currentLogin, conflictLogin],
+          mergedData: {
+            twitchLogin: currentLogin,
+            displayName: formData.nom,
+            twitchUrl: `https://www.twitch.tv/${currentLogin}`,
+            discordId: (formData.discordId || discordConflictMember.discordId || "").trim() || undefined,
+            discordUsername: formData.discord,
+            role: toCanonicalMemberRole(formData.role),
+            isVip: formData.isVip || false,
+            badges: formData.badges || [],
+            description: formData.description,
+            siteUsername: formData.nom,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Fusion impossible");
+      }
+
+      alert(
+        `Fusion réussie !\n\n` +
+        `Profil conservé: ${data.primaryMember}\n` +
+        `Profil(s) fusionné(s): ${(data.deletedMembers || []).join(", ")}`
+      );
+      onClose();
+      window.location.reload();
+    } catch (error) {
+      console.error("Erreur fusion rapide:", error);
+      alert(`Erreur de fusion: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    } finally {
+      setQuickMergeLoading(false);
     }
   };
 
@@ -401,6 +471,25 @@ export default function EditMemberModal({
                       />
                       {validationErrors.discordId && (
                         <p className="text-xs text-red-400 mt-1">{validationErrors.discordId}</p>
+                      )}
+                      {validationErrors.discordId && discordConflictMember && (
+                        <div className="mt-2">
+                          <p className="text-xs text-amber-300 mb-2">
+                            Conflit détecté avec:{" "}
+                            <span className="font-semibold">
+                              {discordConflictMember.displayName || discordConflictMember.twitchLogin}
+                            </span>{" "}
+                            ({discordConflictMember.twitchLogin})
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleQuickMergeFromDiscordConflict}
+                            disabled={quickMergeLoading}
+                            className="text-xs bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-3 py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {quickMergeLoading ? "Fusion en cours..." : "Fusionner ces 2 profils maintenant"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

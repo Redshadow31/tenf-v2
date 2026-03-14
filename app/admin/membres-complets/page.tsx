@@ -325,11 +325,17 @@ export default function MembresCompletsPage() {
         {isEditModalOpen && selectedMember && (
           <EditMemberCompletModal
             member={selectedMember}
+            allMembers={members}
             onClose={() => {
               setIsEditModalOpen(false);
               setSelectedMember(null);
             }}
             onSave={handleSave}
+            onMerged={async () => {
+              await fetchMembers();
+              setIsEditModalOpen(false);
+              setSelectedMember(null);
+            }}
           />
         )}
       </div>
