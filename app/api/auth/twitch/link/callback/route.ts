@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/requireUser";
-import { upsertLinkedTwitchAccount } from "@/lib/twitchLinkedAccount";
+import {
+  getLinkedTwitchAccountByTwitchUserId,
+  upsertLinkedTwitchAccount,
+} from "@/lib/twitchLinkedAccount";
 
 const TWITCH_LINK_STATE_COOKIE = "twitch_link_oauth_state";
 
@@ -181,21 +184,59 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await upsertLinkedTwitchAccount({
-      discordId: user.discordId,
-      twitchUserId: twitchUser.id,
-      twitchLogin: twitchUser.login,
-      twitchDisplayName: twitchUser.display_name || twitchUser.login,
-      twitchAvatar: twitchUser.profile_image_url || null,
-      accessToken,
-      refreshToken,
-      tokenExpiry: new Date(Date.now() + Number(tokenData.expires_in || 0) * 1000),
-      scope: Array.isArray(tokenData.scope)
-        ? tokenData.scope.join(" ")
-        : typeof tokenData.scope === "string"
-          ? tokenData.scope
-          : null,
-    });
+    const existingForTwitchUser = await getLinkedTwitchAccountByTwitchUserId(
+      String(twitchUser.id)
+    );
+    if (
+      existingForTwitchUser &&
+      existingForTwitchUser.discordId &&
+      existingForTwitchUser.discordId !== user.discordId
+    ) {
+      return clearStateCookie(
+        NextResponse.redirect(
+          new URL(
+            appendStatusParam(callbackPath, "twitch_error", "already_linked_elsewhere"),
+            request.url
+          )
+        )
+      );
+    }
+
+    try {
+      await upsertLinkedTwitchAccount({
+        discordId: user.discordId,
+        twitchUserId: twitchUser.id,
+        twitchLogin: twitchUser.login,
+        twitchDisplayName: twitchUser.display_name || twitchUser.login,
+        twitchAvatar: twitchUser.profile_image_url || null,
+        accessToken,
+        refreshToken,
+        tokenExpiry: new Date(Date.now() + Number(tokenData.expires_in || 0) * 1000),
+        scope: Array.isArray(tokenData.scope)
+          ? tokenData.scope.join(" ")
+          : typeof tokenData.scope === "string"
+            ? tokenData.scope
+            : null,
+      });
+    } catch (upsertError: any) {
+      const errorMessage = String(upsertError?.message || "");
+      const errorCode = String(upsertError?.code || "");
+      const isUniqueTwitchConflict =
+        errorCode === "23505" &&
+        (errorMessage.includes("twitch_user_id") ||
+          errorMessage.includes("linked_twitch_accounts_twitch_user_id_key"));
+      if (isUniqueTwitchConflict) {
+        return clearStateCookie(
+          NextResponse.redirect(
+            new URL(
+              appendStatusParam(callbackPath, "twitch_error", "already_linked_elsewhere"),
+              request.url
+            )
+          )
+        );
+      }
+      throw upsertError;
+    }
 
     return clearStateCookie(
       NextResponse.redirect(

@@ -30,6 +30,12 @@ export default function TwitchLinkCard() {
   const connectHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(callbackPath)}`;
   const linkedNow = searchParams.get("twitch_linked") === "1";
   const errorCode = searchParams.get("twitch_error");
+  const errorMessage =
+    errorCode === "already_linked_elsewhere"
+      ? "Ce compte Twitch est deja lie a un autre compte Discord TENF. Contacte un admin."
+      : errorCode
+        ? `Liaison Twitch echouee (${errorCode}).`
+        : null;
 
   useEffect(() => {
     let active = true;
@@ -99,8 +105,8 @@ export default function TwitchLinkCard() {
       {linkedNow ? (
         <p className="mb-3 text-sm text-green-500">Compte Twitch lie avec succes.</p>
       ) : null}
-      {errorCode ? (
-        <p className="mb-3 text-sm text-red-500">Liaison Twitch echouee ({errorCode}).</p>
+      {errorMessage ? (
+        <p className="mb-3 text-sm text-red-500">{errorMessage}</p>
       ) : null}
 
       {status.loading ? (

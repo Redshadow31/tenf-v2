@@ -167,6 +167,22 @@ export async function getLinkedTwitchAccountByDiscordId(
   return mapRowToPublic(data);
 }
 
+export async function getLinkedTwitchAccountByTwitchUserId(
+  twitchUserId: string
+): Promise<LinkedTwitchAccountPublic | null> {
+  const { data, error } = await supabaseAdmin
+    .from(TABLE_NAME)
+    .select("*")
+    .eq("twitch_user_id", twitchUserId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!data) return null;
+  return mapRowToPublic(data);
+}
+
 async function getLinkedTwitchAccountWithTokensByDiscordId(
   discordId: string
 ): Promise<LinkedTwitchAccountWithTokens | null> {
