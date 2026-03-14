@@ -23,9 +23,10 @@ export interface LiveMember {
   avatar: string;
   role: string;
   isVip: boolean;
+  isSpotlight?: boolean;
+  isBirthdayToday?: boolean;
+  isAffiliateAnniversaryToday?: boolean;
 }
-
-export type LivesSortOption = "alpha" | "recent" | "viewers" | "duration";
 
 export interface PublicEventItem {
   id: string;

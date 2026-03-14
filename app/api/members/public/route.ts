@@ -12,6 +12,13 @@ import {
   resolveMemberAvatar,
 } from "@/lib/memberAvatar";
 
+function isSameMonthDay(dateValue: unknown, now: Date): boolean {
+  if (!dateValue) return false;
+  const date = dateValue instanceof Date ? dateValue : new Date(String(dateValue));
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getUTCMonth() === now.getUTCMonth() && date.getUTCDate() === now.getUTCDate();
+}
+
 // Désactiver le cache ISR pour cette route critique (page /lives doit toujours fonctionner)
 // Les avatars Twitch sont mis en cache séparément dans lib/twitch.ts (24h)
 export const dynamic = 'force-dynamic';
@@ -24,6 +31,7 @@ const TWITCH_AVATARS_TIMEOUT_MS = 7000;
 export async function GET() {
   const startTime = Date.now();
   try {
+    const now = new Date();
     // Récupérer tous les membres actifs depuis Supabase via le repository
     let activeMembers: any[] = [];
     try {
@@ -142,6 +150,8 @@ export async function GET() {
           tiktok: member.tiktok || undefined,
           twitter: member.twitter || undefined,
           profileValidationStatus: member.profileValidationStatus,
+          isBirthdayToday: isSameMonthDay(member.birthday, now),
+          isAffiliateAnniversaryToday: isSameMonthDay(member.twitchAffiliateDate, now),
           integrationDate: member.integrationDate
             ? (member.integrationDate instanceof Date
                 ? member.integrationDate.toISOString()
@@ -165,6 +175,8 @@ export async function GET() {
           discordUsername: member.discordUsername,
           avatar: undefined,
           description: member.description,
+          isBirthdayToday: isSameMonthDay(member.birthday, now),
+          isAffiliateAnniversaryToday: isSameMonthDay(member.twitchAffiliateDate, now),
           createdAt: member.createdAt 
             ? (member.createdAt instanceof Date 
                 ? member.createdAt.toISOString() 

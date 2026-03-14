@@ -8,7 +8,7 @@ import LivesFilters from "@/components/lives/LivesFilters";
 import LivesHero from "@/components/lives/LivesHero";
 import LivesPhilosophyBanner from "@/components/lives/LivesPhilosophyBanner";
 import UpcomingEventsSection from "@/components/lives/UpcomingEventsSection";
-import type { LiveMember, LiveStream, LivesSortOption, PublicEventItem } from "@/components/lives/types";
+import type { LiveMember, LiveStream, PublicEventItem } from "@/components/lives/types";
 
 function normalizeText(value: string): string {
   return (value || "")
@@ -23,6 +23,22 @@ function safeToDateMs(value: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function getLivePriority(live: LiveMember): number {
+  if (live.isSpotlight) return 3;
+  if (live.isBirthdayToday) return 2;
+  if (live.isAffiliateAnniversaryToday) return 1;
+  return 0;
+}
+
 export default function LivesPage() {
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<PublicEventItem[]>([]);
@@ -31,11 +47,12 @@ export default function LivesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [randomHint, setRandomHint] = useState<string | null>(null);
+  const [spotlightLogin, setSpotlightLogin] = useState<string | null>(null);
+  const [sessionShuffleSeed] = useState(() => `${Date.now()}-${Math.random()}`);
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRole, setSelectedRole] = useState("all");
-  const [sortBy, setSortBy] = useState<LivesSortOption>("alpha");
 
   const fetchWithTimeout = async (
     input: RequestInfo | URL,
@@ -98,6 +115,8 @@ export default function LivesPage() {
               avatar,
               role: member.role || "Membre",
               isVip: member.isVip === true,
+              isBirthdayToday: member.isBirthdayToday === true,
+              isAffiliateAnniversaryToday: member.isAffiliateAnniversaryToday === true,
             } as LiveMember;
           })
           .filter((item): item is LiveMember => item !== null);
@@ -105,10 +124,11 @@ export default function LivesPage() {
         setLiveMembers(mappedLives);
 
         try {
-          const [homeResponse, allMembersResponse, eventsResponse] = await Promise.all([
+          const [homeResponse, allMembersResponse, eventsResponse, spotlightResponse] = await Promise.all([
             fetchWithTimeout("/api/home", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/members/get-members", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/events", { cache: "no-store" }, 10000),
+            fetchWithTimeout("/api/spotlight/live", { cache: "no-store" }, 10000),
           ]);
 
           const homeBody = homeResponse.ok
@@ -143,6 +163,13 @@ export default function LivesPage() {
               category: event.category || "Communaute",
             }));
           setUpcomingEvents(nextEvents);
+
+          const spotlightBody = spotlightResponse.ok ? await spotlightResponse.json() : { spotlight: null };
+          const liveSpotlightLogin =
+            typeof spotlightBody?.spotlight?.streamerTwitchLogin === "string"
+              ? spotlightBody.spotlight.streamerTwitchLogin.toLowerCase()
+              : null;
+          setSpotlightLogin(liveSpotlightLogin);
         } catch (contextError) {
           console.warn("[Lives Page] Contexte indisponible:", contextError);
         }
@@ -188,25 +215,22 @@ export default function LivesPage() {
       result = result.filter((live) => live.role === selectedRole);
     }
 
-    switch (sortBy) {
-      case "alpha":
-        result.sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
-        break;
-      case "recent":
-        result.sort((a, b) => safeToDateMs(b.startedAt) - safeToDateMs(a.startedAt));
-        break;
-      case "viewers":
-        result.sort((a, b) => b.viewerCount - a.viewerCount);
-        break;
-      case "duration":
-        result.sort((a, b) => (Date.now() - safeToDateMs(b.startedAt)) - (Date.now() - safeToDateMs(a.startedAt)));
-        break;
-      default:
-        break;
-    }
+    const withPriority = result.map((live) => ({
+      ...live,
+      isSpotlight: !!spotlightLogin && live.twitchLogin.toLowerCase() === spotlightLogin,
+    }));
 
-    return result;
-  }, [liveMembers, search, selectedGame, selectedRole, sortBy]);
+    withPriority.sort((a, b) => {
+      const priorityDiff = getLivePriority(b) - getLivePriority(a);
+      if (priorityDiff !== 0) return priorityDiff;
+
+      const aHash = stableHash(`${sessionShuffleSeed}:${a.twitchLogin.toLowerCase()}:${safeToDateMs(a.startedAt)}`);
+      const bHash = stableHash(`${sessionShuffleSeed}:${b.twitchLogin.toLowerCase()}:${safeToDateMs(b.startedAt)}`);
+      return aHash - bHash;
+    });
+
+    return withPriority;
+  }, [liveMembers, search, selectedGame, selectedRole, spotlightLogin, sessionShuffleSeed]);
 
   const handlePickRandomLive = () => {
     if (filteredLives.length === 0) {
@@ -262,8 +286,6 @@ export default function LivesPage() {
         onGameChange={setSelectedGame}
         selectedRole={selectedRole}
         onRoleChange={setSelectedRole}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         games={availableGames}
         roles={availableRoles}
       />
@@ -308,7 +330,7 @@ export default function LivesPage() {
             Aucun live ne correspond aux filtres actuels.
           </p>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Ajuste la recherche, les filtres de jeu/role ou le tri.
+            Ajuste la recherche ou les filtres de jeu/role.
           </p>
         </section>
       )}

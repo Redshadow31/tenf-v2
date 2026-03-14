@@ -40,6 +40,26 @@ export default function LiveCard({ live }: LiveCardProps) {
       </div>
 
       <div className="space-y-2.5 p-3.5 md:space-y-3 md:p-5">
+        {(live.isSpotlight || live.isBirthdayToday || live.isAffiliateAnniversaryToday) && (
+          <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
+            {live.isSpotlight && (
+              <span className="rounded-full border border-amber-300/50 bg-amber-500/20 px-2.5 py-1 font-semibold text-amber-200">
+                Spotlight TENF
+              </span>
+            )}
+            {live.isBirthdayToday && (
+              <span className="rounded-full border border-pink-300/50 bg-pink-500/20 px-2.5 py-1 font-semibold text-pink-200">
+                Anniversaire du streamer
+              </span>
+            )}
+            {live.isAffiliateAnniversaryToday && (
+              <span className="rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 font-semibold text-cyan-200">
+                Anniversaire d'affiliation
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="flex items-start gap-3">
           <img
             src={live.avatar}
