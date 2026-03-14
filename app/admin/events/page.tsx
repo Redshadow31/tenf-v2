@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, List, BarChart3, Archive, Lightbulb, Link2, CalendarHeart } from "lucide-react";
+import { Calendar, List, BarChart3, Archive, Lightbulb, Link2, CalendarHeart, HandHeart } from "lucide-react";
 
 const eventSections = [
   {
@@ -67,6 +67,14 @@ const eventSections = [
     icon: Link2,
     href: "/admin/events/liens-vocaux",
     color: "from-cyan-600 to-blue-800",
+  },
+  {
+    id: "upa-event",
+    title: "UPA Event",
+    description: "Piloter le contenu de la landing publique /upa-event",
+    icon: HandHeart,
+    href: "/admin/upa-event",
+    color: "from-emerald-600 to-blue-800",
   },
 ];
 

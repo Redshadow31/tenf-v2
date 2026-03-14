@@ -125,6 +125,11 @@ export const adminNavigation: NavItem[] = [
         ],
       },
       {
+        href: "/admin/upa-event",
+        label: "UPA Event",
+        children: [{ href: "/admin/upa-event", label: "Gestion UPA Event" }],
+      },
+      {
         href: "/admin/raids",
         label: "Engagement",
         children: [
@@ -279,6 +284,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/events/propositions", label: "Événements proposés" },
       { href: "/admin/events/spotlight", label: "Groupe Spotlight" },
       { href: "/admin/events/anniversaires", label: "Groupe Anniversaires" },
+      { href: "/admin/upa-event", label: "Gestion UPA Event" },
     ],
   },
   {
