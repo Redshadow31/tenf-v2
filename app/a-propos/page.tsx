@@ -351,9 +351,14 @@ export default async function Page() {
     if (eventsRes.ok) {
       const eventsData = (await eventsRes.json()) as EventsApiResponse;
       const events = eventsData.events ?? [];
+      const nowTs = Date.now();
       activityFeed = events
-        .filter((event) => Boolean(event?.title) && Number.isFinite(parseEventTimestamp(event)))
-        .sort((a, b) => parseEventTimestamp(b) - parseEventTimestamp(a))
+        .filter((event) => {
+          if (!event?.title) return false;
+          const ts = parseEventTimestamp(event);
+          return Number.isFinite(ts) && ts >= nowTs;
+        })
+        .sort((a, b) => parseEventTimestamp(a) - parseEventTimestamp(b))
         .slice(0, 6);
     }
 
