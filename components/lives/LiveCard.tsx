@@ -94,9 +94,6 @@ export default function LiveCard({ live }: LiveCardProps) {
             {live.role}
           </span>
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-            {live.viewerCount} viewers
-          </span>
-          <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
             Duree: {formatLiveDuration(live.startedAt)}
           </span>
         </div>

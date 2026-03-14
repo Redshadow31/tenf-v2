@@ -105,14 +105,23 @@ export default function LivesPage() {
         setLiveMembers(mappedLives);
 
         try {
-          const [allMembersResponse, eventsResponse] = await Promise.all([
+          const [homeResponse, allMembersResponse, eventsResponse] = await Promise.all([
+            fetchWithTimeout("/api/home", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/members/get-members", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/events", { cache: "no-store" }, 10000),
           ]);
 
+          const homeBody = homeResponse.ok
+            ? await homeResponse.json()
+            : { stats: { totalMembers: null } };
           const allMembersBody = allMembersResponse.ok ? await allMembersResponse.json() : { members: [], total: 0 };
           const allMembersList = Array.isArray(allMembersBody.members) ? allMembersBody.members : [];
-          const membersTotal = Number.isFinite(allMembersBody.total) ? allMembersBody.total : allMembersList.length;
+          const membersTotal =
+            Number.isFinite(homeBody?.stats?.totalMembers) && homeBody?.stats?.totalMembers >= 0
+              ? homeBody.stats.totalMembers
+              : Number.isFinite(allMembersBody.total)
+                ? allMembersBody.total
+                : allMembersList.length;
           const activeCount = allMembersList.filter((member: any) => member.isActive !== false).length;
           setTotalMembers(membersTotal);
           setActiveMembers(activeCount);
@@ -275,6 +284,12 @@ export default function LivesPage() {
         </p>
       ) : null}
 
+      <CommunityStatsSection
+        liveCount={liveMembers.length}
+        totalMembers={totalMembers}
+        activeMembers={activeMembers}
+      />
+
       {filteredLives.length > 0 ? (
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredLives.map((live) => (
@@ -294,12 +309,6 @@ export default function LivesPage() {
           </p>
         </section>
       )}
-
-      <CommunityStatsSection
-        liveCount={liveMembers.length}
-        totalMembers={totalMembers}
-        activeMembers={activeMembers}
-      />
 
       <UpcomingEventsSection events={upcomingEvents} allEventsHref="/events2" />
 

@@ -11,8 +11,8 @@ export default function CommunityStatsSection({
 }: CommunityStatsSectionProps) {
   const stats = [
     { label: "Streamers en direct", value: String(liveCount) },
-    { label: "Membres sur le serveur", value: totalMembers !== null ? String(totalMembers) : "..." },
-    { label: "Membres actifs", value: activeMembers !== null ? String(activeMembers) : "..." },
+    { label: "Membres (createurs engages)", value: totalMembers !== null ? String(totalMembers) : "..." },
+    { label: "Membres actifs (statut admin)", value: activeMembers !== null ? String(activeMembers) : "..." },
     { label: "Esprit TENF", value: "Entraide quotidienne" },
   ];
 
