@@ -1446,6 +1446,8 @@ function ReglementContent() {
 }
 
 function SystemePointsContent() {
+  const [showRaidFormat, setShowRaidFormat] = useState(false);
+
   return (
     <div className="space-y-12">
       {/* HERO */}
@@ -1474,119 +1476,147 @@ function SystemePointsContent() {
       {/* Comment gagner des points */}
       <section className="space-y-8">
         <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎯 Comment gagner des points ?</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Quête quotidienne */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                🗓 Quête quotidienne
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                500 pts
-              </span>
-            </div>
-            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Utilise la commande /journalier une fois par jour dans le salon 🗓・bonus-journalier.
-            </p>
-          </div>
 
-          {/* Participation à la vie du serveur */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                💬 Participation à la vie du serveur
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                500 pts
-              </span>
-            </div>
-            <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              Tous les 3 niveaux
-            </p>
-            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Tes échanges, ton aide aux autres et ta présence régulière sur les salons font progresser naturellement ton impact dans TENF (hors spam ou activité artificielle).
-            </p>
-          </div>
-
-          {/* Organisation de raids */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                🤜🤛 Organisation de raids
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                500 pts
-              </span>
-            </div>
-            <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-              Lancer un raid, c&apos;est mettre un membre en lumière et créer un vrai moment collectif entre créateurs.
-            </p>
-            <div className="rounded-lg p-4 mb-3 systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
-              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📋 Format obligatoire :</p>
-              <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                Pour que le raid soit comptabilisé, le message doit être posté obligatoirement et uniquement dans #⚡・coordination-raid, sans aucun texte supplémentaire, sous le format exact suivant :
-              </p>
-              <div className="bg-[var(--color-surface)] rounded-lg p-4 border" style={{ borderColor: 'var(--color-border)' }}>
-                <code className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
-                  @membre1 a raid @membre2
-                </code>
+        {/* Activité quotidienne */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Activité quotidienne</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Quête quotidienne */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🗓 Quête quotidienne
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
               </div>
-              <p className="leading-relaxed text-xs mt-3 italic" style={{ color: 'var(--color-text-secondary)' }}>
-                Tout message qui ne respecte pas strictement ce format ne sera pas pris en compte.
-              </p>
-            </div>
-          </div>
-
-          {/* Parrainage de nouveaux membres */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                🆕 Parrainage de nouveaux membres
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                300 pts
-              </span>
-            </div>
-            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Invite des créateurs qui partagent les valeurs TENF et ont envie de s&apos;impliquer dans une dynamique d&apos;entraide sincère.
-            </p>
-          </div>
-
-          {/* Suivi des réseaux TENF */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                🔔 Suivi des réseaux TENF
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                500 pts
-              </span>
-            </div>
-            <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              Réseaux concernés : X (Twitter), TikTok, Instagram.
-            </p>
-            <div className="rounded-lg p-3 mt-3 systeme-points-reminder" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)' }}>
               <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                📸 <strong style={{ color: 'var(--color-text)' }}>Preuve obligatoire</strong> à poster dans 📂・preuves-suivi.<br />
-                Chaque validation aide la visibilité de TENF et des membres actifs : 500 points attribués par réseau.
+                Utilise la commande /journalier une fois par jour dans le salon 🗓・bonus-journalier.
+              </p>
+            </div>
+
+            {/* Participation à la vie du serveur */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  💬 Participation à la vie du serveur
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Tous les 3 niveaux
+              </p>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Tes échanges, ton aide aux autres et ta présence régulière sur les salons font progresser naturellement ton impact dans TENF (hors spam ou activité artificielle).
               </p>
             </div>
           </div>
+        </div>
 
-          {/* Participation aux événements communautaires */}
-          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                🎉 Participation aux événements communautaires
-              </h3>
-              <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
-                200-500 pts
-              </span>
+        {/* Actions communautaires */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Actions communautaires</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Organisation de raids */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🤜🤛 Organisation de raids
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                Lancer un raid, c&apos;est mettre un membre en lumière et créer un vrai moment collectif entre créateurs.
+              </p>
+              <button
+                onClick={() => setShowRaidFormat((prev) => !prev)}
+                className="w-fit text-sm font-semibold underline underline-offset-2"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                {showRaidFormat ? "Masquer le format" : "Voir le format"}
+              </button>
+              {showRaidFormat && (
+                <div className="rounded-lg p-4 mt-3 systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📋 Format obligatoire :</p>
+                  <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                    Pour que le raid soit comptabilisé, le message doit être posté obligatoirement et uniquement dans #⚡・coordination-raid, sans aucun texte supplémentaire, sous le format exact suivant :
+                  </p>
+                  <div className="bg-[var(--color-surface)] rounded-lg p-4 border" style={{ borderColor: 'var(--color-border)' }}>
+                    <code className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
+                      @membre1 a raid @membre2
+                    </code>
+                  </div>
+                  <p className="leading-relaxed text-xs mt-3 italic" style={{ color: 'var(--color-text-secondary)' }}>
+                    Tout message qui ne respecte pas strictement ce format ne sera pas pris en compte.
+                  </p>
+                </div>
+              )}
             </div>
-            <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Jeux communautaires, soirées, événements spéciaux... plus tu participes vraiment, plus tu contribues à l&apos;énergie collective et plus ta progression est reconnue.
-            </p>
+
+            {/* Participation aux événements communautaires */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🎉 Participation aux événements communautaires
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  200-500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Jeux communautaires, soirées, événements spéciaux... plus tu participes vraiment, plus tu contribues à l&apos;énergie collective et plus ta progression est reconnue.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Soutien et visibilité */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Soutien et visibilité</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Parrainage de nouveaux membres */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🆕 Parrainage de nouveaux membres
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  300 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Invite des créateurs qui partagent les valeurs TENF et ont envie de s&apos;impliquer dans une dynamique d&apos;entraide sincère.
+              </p>
+              <p className="leading-relaxed text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Le but n&apos;est pas de faire du nombre, mais d&apos;accueillir des profils qui feront vivre la communauté dans la durée.
+              </p>
+            </div>
+
+            {/* Suivi des réseaux TENF */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🔔 Suivi des réseaux TENF
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Réseaux concernés : X (Twitter), TikTok, Instagram.
+              </p>
+              <div className="rounded-lg p-3 mt-3 systeme-points-reminder" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)' }}>
+                <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  📸 <strong style={{ color: 'var(--color-text)' }}>Preuve obligatoire</strong> à poster dans 📂・preuves-suivi.<br />
+                  Chaque validation aide la visibilité de TENF et des membres actifs : 500 points attribués par réseau.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
