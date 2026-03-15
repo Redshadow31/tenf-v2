@@ -14,6 +14,52 @@ function parseDateFromDb(value?: string | null): Date | undefined {
   return parsed;
 }
 
+function isDiscordPlaceholderLogin(value?: string | null): boolean {
+  const login = (value || "").trim().toLowerCase();
+  return login.startsWith("nouveau_");
+}
+
+async function ensureSupabaseMemberForPending(pending: any, updatedBy: string) {
+  const normalizedLogin = String(pending?.twitch_login || "").trim().toLowerCase();
+  if (!normalizedLogin) return null;
+
+  const byLogin = await memberRepository.findByTwitchLogin(normalizedLogin);
+  if (byLogin) return byLogin;
+
+  if (!isDiscordPlaceholderLogin(normalizedLogin)) {
+    return null;
+  }
+
+  const discordId = String(pending?.discord_id || "").trim() || undefined;
+  const fallbackDisplayName = discordId
+    ? `Nouveau membre ${discordId.slice(-4)}`
+    : normalizedLogin;
+
+  try {
+    return await memberRepository.create({
+      twitchLogin: normalizedLogin,
+      twitchUrl: `https://www.twitch.tv/${normalizedLogin}`,
+      displayName: fallbackDisplayName,
+      siteUsername: fallbackDisplayName,
+      discordId,
+      role: "Nouveau",
+      isVip: false,
+      isActive: false,
+      badges: [],
+      profileValidationStatus: "non_soumis",
+      onboardingStatus: "a_faire",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy,
+    });
+  } catch (createError) {
+    // Tolérance aux courses d'écriture: un autre process a pu le créer entre-temps.
+    const lateRead = await memberRepository.findByTwitchLogin(normalizedLogin);
+    if (lateRead) return lateRead;
+    throw createError;
+  }
+}
+
 /**
  * GET - Liste les demandes de modification de profil en attente
  */
@@ -75,6 +121,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "approve") {
+      const ensuredMember = await ensureSupabaseMemberForPending(pending, admin.discordId);
+      if (!ensuredMember) {
+        return NextResponse.json(
+          { error: "Membre introuvable en base pour cette demande" },
+          { status: 404 }
+        );
+      }
       await memberRepository.update(pending.twitch_login, {
         description: pending.description || undefined,
         instagram: pending.instagram || undefined,

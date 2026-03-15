@@ -52,6 +52,11 @@ function normalizeLogin(value?: string | null): string | undefined {
   return v ? v.toLowerCase() : undefined;
 }
 
+function isDiscordPlaceholderLogin(value?: string | null): boolean {
+  const login = normalizeLogin(value);
+  return typeof login === "string" && login.startsWith("nouveau_");
+}
+
 function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -166,11 +171,14 @@ export async function GET(request: NextRequest) {
     if (twitchLogin) {
       // Récupérer un membre spécifique par login Twitch
       let member = await memberRepository.findByTwitchLogin(twitchLogin);
-      if (!member) {
+      if (!member && !isDiscordPlaceholderLogin(twitchLogin)) {
         try {
           const { loadMemberDataFromStorage, getMemberData } = await import('@/lib/memberData');
           await loadMemberDataFromStorage();
           member = getMemberData(twitchLogin) as any;
+          if (member && isDiscordPlaceholderLogin(member.twitchLogin)) {
+            member = null;
+          }
         } catch (error) {
           console.warn(`[Admin Members] Fallback legacy échoué (twitchLogin=${twitchLogin}):`, error);
         }
@@ -213,6 +221,9 @@ export async function GET(request: NextRequest) {
           await loadMemberDataFromStorage();
           member =
             (getAllMemberData() as any[]).find((m) => normalizeId(m.discordId) === normalizeId(discordId)) || null;
+          if (member && isDiscordPlaceholderLogin(member.twitchLogin)) {
+            member = null;
+          }
         } catch (error) {
           console.warn(`[Admin Members] Fallback legacy échoué (discordId=${discordId}):`, error);
         }
@@ -263,7 +274,8 @@ export async function GET(request: NextRequest) {
       supabaseMembersPromise,
       legacyMembersPromise,
     ]);
-    const members = mergeMembersWithoutDuplicates(legacyMembers, supabaseMembers);
+    const sanitizedLegacyMembers = legacyMembers.filter((member) => !isDiscordPlaceholderLogin(member?.twitchLogin));
+    const members = mergeMembersWithoutDuplicates(sanitizedLegacyMembers, supabaseMembers);
 
     // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
     // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
