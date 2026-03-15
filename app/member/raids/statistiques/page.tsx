@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronRight, Flame, Shield, Target, TrendingUp, User } from "lucide-react";
+import { CalendarDays, ChevronRight, Flame, Target, TrendingUp } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -21,17 +21,13 @@ type RaidApiItem = {
 type MonthRaidHistory = {
   monthKey: string;
   sent: number;
-  received: number;
   uniqueTargets: number;
-  interactionScore: number;
 };
 
 type RaidSummary = {
   sent: number;
-  received: number;
   uniqueTargets: number;
   topTarget: { key: string; label: string; count: number } | null;
-  topRaider: { key: string; label: string; count: number } | null;
 };
 
 function formatMonthLabel(key: string): string {
@@ -69,9 +65,8 @@ function getLast12Months(): string[] {
   }).reverse();
 }
 
-function computeSummary(sentRaids: RaidApiItem[], receivedRaids: RaidApiItem[]): RaidSummary {
+function computeSummary(sentRaids: RaidApiItem[]): RaidSummary {
   const sent = sentRaids.reduce((sum, raid) => sum + (raid.count || 1), 0);
-  const received = receivedRaids.length;
 
   const targetsCount = new Map<string, { label: string; count: number }>();
   for (const raid of sentRaids) {
@@ -82,24 +77,12 @@ function computeSummary(sentRaids: RaidApiItem[], receivedRaids: RaidApiItem[]):
     targetsCount.set(key, current);
   }
 
-  const raidersCount = new Map<string, { label: string; count: number }>();
-  for (const raid of receivedRaids) {
-    const key = normalizeLogin(raid.raiderTwitchLogin || raid.raiderDisplayName);
-    if (!key) continue;
-    const current = raidersCount.get(key) || { label: raid.raiderDisplayName || raid.raiderTwitchLogin || "Membre", count: 0 };
-    current.count += 1;
-    raidersCount.set(key, current);
-  }
-
   const topTargetEntry = Array.from(targetsCount.entries()).sort((a, b) => b[1].count - a[1].count)[0];
-  const topRaiderEntry = Array.from(raidersCount.entries()).sort((a, b) => b[1].count - a[1].count)[0];
 
   return {
     sent,
-    received,
     uniqueTargets: targetsCount.size,
     topTarget: topTargetEntry ? { key: topTargetEntry[0], label: topTargetEntry[1].label, count: topTargetEntry[1].count } : null,
-    topRaider: topRaiderEntry ? { key: topRaiderEntry[0], label: topRaiderEntry[1].label, count: topRaiderEntry[1].count } : null,
   };
 }
 
@@ -146,10 +129,8 @@ function ProgressRing({ value, label }: { value: number; label: string }) {
 export default function MemberRaidStatsPage() {
   const { data: overview, loading: loadingOverview, error } = useMemberOverview();
   const [selectedMonth, setSelectedMonth] = useState("");
-  const [activeTab, setActiveTab] = useState<"general" | "received">("general");
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [sentRaids, setSentRaids] = useState<RaidApiItem[]>([]);
-  const [receivedRaids, setReceivedRaids] = useState<RaidApiItem[]>([]);
   const [history, setHistory] = useState<MonthRaidHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -171,14 +152,9 @@ export default function MemberRaidStatsPage() {
         const mineSent = (body.raidsFaits || [])
           .filter((raid: RaidApiItem) => normalizeLogin(raid.raiderTwitchLogin) === login)
           .sort((a: RaidApiItem, b: RaidApiItem) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const mineReceived = (body.raidsRecus || [])
-          .filter((raid: RaidApiItem) => normalizeLogin(raid.targetTwitchLogin) === login)
-          .sort((a: RaidApiItem, b: RaidApiItem) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setSentRaids(mineSent);
-        setReceivedRaids(mineReceived);
       } catch {
         setSentRaids([]);
-        setReceivedRaids([]);
       } finally {
         setLoadingMonth(false);
       }
@@ -197,14 +173,11 @@ export default function MemberRaidStatsPage() {
             const response = await fetch(`/api/discord/raids/data-v2?month=${monthKey}`, { cache: "no-store" });
             const body = await response.json();
             const mineSent = (body.raidsFaits || []).filter((raid: RaidApiItem) => normalizeLogin(raid.raiderTwitchLogin) === login);
-            const mineReceived = (body.raidsRecus || []).filter((raid: RaidApiItem) => normalizeLogin(raid.targetTwitchLogin) === login);
-            const summary = computeSummary(mineSent, mineReceived);
+            const summary = computeSummary(mineSent);
             return {
               monthKey,
               sent: summary.sent,
-              received: summary.received,
               uniqueTargets: summary.uniqueTargets,
-              interactionScore: summary.sent + summary.received,
             };
           })
         );
@@ -217,13 +190,13 @@ export default function MemberRaidStatsPage() {
     })();
   }, [overview?.member?.twitchLogin]);
 
-  const summary = useMemo(() => computeSummary(sentRaids, receivedRaids), [sentRaids, receivedRaids]);
+  const summary = useMemo(() => computeSummary(sentRaids), [sentRaids]);
   const selectedHistory = useMemo(() => history.find((entry) => entry.monthKey === selectedMonth) || null, [history, selectedMonth]);
   const previousHistory = useMemo(() => history.find((entry) => entry.monthKey === getPreviousMonthKey(selectedMonth)) || null, [history, selectedMonth]);
-  const delta = (selectedHistory?.interactionScore || 0) - (previousHistory?.interactionScore || 0);
+  const delta = (selectedHistory?.sent || 0) - (previousHistory?.sent || 0);
   const completionRate = goals.raids > 0 ? (summary.sent / goals.raids) * 100 : 0;
   const remainingToTarget = Math.max(0, goals.raids - summary.sent);
-  const tier = getTier(summary.sent + summary.received);
+  const tier = getTier(summary.sent);
 
   const targetBreakdown = useMemo(() => {
     const map = new Map<string, { label: string; count: number }>();
@@ -245,28 +218,8 @@ export default function MemberRaidStatsPage() {
       .sort((a, b) => b.count - a.count);
   }, [sentRaids]);
 
-  const raiderBreakdown = useMemo(() => {
-    const map = new Map<string, { label: string; count: number }>();
-    for (const raid of receivedRaids) {
-      const key = normalizeLogin(raid.raiderTwitchLogin || raid.raiderDisplayName);
-      if (!key) continue;
-      const item = map.get(key) || { label: raid.raiderDisplayName || raid.raiderTwitchLogin || "Membre", count: 0 };
-      item.count += 1;
-      map.set(key, item);
-    }
-    const max = Math.max(1, ...Array.from(map.values()).map((item) => item.count));
-    return Array.from(map.entries())
-      .map(([key, value]) => ({
-        key,
-        label: value.label,
-        count: value.count,
-        rate: Math.round((value.count / max) * 100),
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [receivedRaids]);
-
-  const sparklineData = history.filter((entry) => entry.interactionScore > 0).slice(-6);
-  const maxInteractions = Math.max(1, ...sparklineData.map((entry) => entry.interactionScore));
+  const sparklineData = history.filter((entry) => entry.sent > 0).slice(-6);
+  const maxSent = Math.max(1, ...sparklineData.map((entry) => entry.sent));
 
   return (
     <MemberSurface>
@@ -282,28 +235,12 @@ export default function MemberRaidStatsPage() {
           <section className="rounded-xl border p-3 md:p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="inline-flex rounded-lg border p-1" style={{ borderColor: "rgba(255,255,255,0.14)" }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("general")}
-                  className="rounded-md px-3 py-1.5 text-sm font-semibold transition"
-                  style={{
-                    backgroundColor: activeTab === "general" ? "rgba(139,92,246,0.28)" : "transparent",
-                    color: activeTab === "general" ? "var(--color-text)" : "var(--color-text-secondary)",
-                  }}
+                <span
+                  className="rounded-md px-3 py-1.5 text-sm font-semibold"
+                  style={{ backgroundColor: "rgba(139,92,246,0.28)", color: "var(--color-text)" }}
                 >
-                  General raids
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("received")}
-                  className="rounded-md px-3 py-1.5 text-sm font-semibold transition"
-                  style={{
-                    backgroundColor: activeTab === "received" ? "rgba(240,201,107,0.22)" : "transparent",
-                    color: activeTab === "received" ? "#f0c96b" : "var(--color-text-secondary)",
-                  }}
-                >
-                  Recus
-                </button>
+                  Mes raids TENF
+                </span>
               </div>
 
               <select
@@ -324,8 +261,7 @@ export default function MemberRaidStatsPage() {
             </div>
           </section>
 
-          {activeTab === "general" ? (
-            <>
+          <>
               <section
                 className="rounded-2xl border p-5 md:p-6"
                 style={{
@@ -387,10 +323,10 @@ export default function MemberRaidStatsPage() {
                       </div>
                       <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
                         <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                          Recus
+                          Top cible
                         </p>
                         <p className="text-sm font-semibold" style={{ color: "#60a5fa" }}>
-                          {summary.received}
+                          {summary.topTarget?.label || "Aucune"}
                         </p>
                       </div>
                     </div>
@@ -420,15 +356,13 @@ export default function MemberRaidStatsPage() {
                         <div key={entry.monthKey}>
                           <div className="mb-1 flex items-center justify-between text-sm">
                             <span style={{ color: "var(--color-text)" }}>{formatMonthLabel(entry.monthKey)}</span>
-                            <span style={{ color: "var(--color-text-secondary)" }}>
-                              {entry.sent} faits / {entry.received} recus
-                            </span>
+                            <span style={{ color: "var(--color-text-secondary)" }}>{entry.sent} raid(s) faits</span>
                           </div>
                           <div className="h-2.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
                             <div
                               className="h-full rounded-full"
                               style={{
-                                width: `${Math.max(8, (entry.interactionScore / maxInteractions) * 100)}%`,
+                                width: `${Math.max(8, (entry.sent / maxSent) * 100)}%`,
                                 background: "linear-gradient(90deg, rgba(240,201,107,0.9), rgba(139,92,246,0.85))",
                               }}
                             />
@@ -520,129 +454,7 @@ export default function MemberRaidStatsPage() {
                   </div>
                 )}
               </section>
-            </>
-          ) : (
-            <section
-              className="rounded-xl border p-5"
-              style={{
-                borderColor: "rgba(96,165,250,0.35)",
-                background: "linear-gradient(145deg, rgba(96,165,250,0.09), rgba(17,17,22,0.95))",
-              }}
-            >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                  <Shield size={17} />
-                  Raids recus
-                </h3>
-                <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "rgba(96,165,250,0.45)", color: "#93c5fd" }}>
-                  Sur {formatMonthLabel(selectedMonth)}
-                </span>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-4">
-                <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-                  <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                    Total recus
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold" style={{ color: "#93c5fd" }}>
-                    {summary.received}
-                  </p>
-                </div>
-                <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-                  <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                    Raids faits
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-                    {summary.sent}
-                  </p>
-                </div>
-                <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-                  <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                    Top raider
-                  </p>
-                  <p className="mt-1 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                    {summary.topRaider?.label || "Aucun"}
-                  </p>
-                </div>
-                <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-                  <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                    Cible principale
-                  </p>
-                  <p className="mt-1 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                    {summary.topTarget?.label || "Aucune"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                  Repartition des raiders
-                </p>
-                {raiderBreakdown.length === 0 ? (
-                  <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    Aucun raid recu ce mois-ci.
-                  </p>
-                ) : (
-                  raiderBreakdown.map((item) => (
-                    <div key={item.key} className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span style={{ color: "var(--color-text)" }}>{item.label}</span>
-                        <span style={{ color: "var(--color-text-secondary)" }}>{item.count} raid(s)</span>
-                      </div>
-                      <div className="mt-2 h-1.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.11)" }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${item.rate}%`,
-                            backgroundColor: "#60a5fa",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-5 space-y-2">
-                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                  Historique des raids recus
-                </p>
-                {loadingMonth ? (
-                  <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    Chargement des raids recus...
-                  </p>
-                ) : receivedRaids.length === 0 ? (
-                  <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    Aucun raid recu enregistre pour ce mois.
-                  </p>
-                ) : (
-                  receivedRaids.map((raid, index) => (
-                    <div
-                      key={`${raid.date}-${index}-received`}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                      style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: "rgba(0,0,0,0.08)" }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <User size={14} style={{ color: "#93c5fd" }} />
-                        <div>
-                          <p style={{ color: "var(--color-text)" }}>{raid.raiderDisplayName || raid.raiderTwitchLogin || "Membre"}</p>
-                          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                            {new Date(raid.date).toLocaleString("fr-FR")}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
-                        style={{ borderColor: "rgba(96,165,250,0.5)", color: "#93c5fd" }}
-                      >
-                        Recu
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-      </section>
-          )}
+          </>
         </>
       ) : null}
     </MemberSurface>
