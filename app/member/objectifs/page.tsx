@@ -30,28 +30,13 @@ export default function MemberGoalsPage() {
   const { data, loading } = useMemberOverview();
   const [selectedMonth, setSelectedMonth] = useState("");
   const [raidsForMonth, setRaidsForMonth] = useState(0);
+  const months = useMemo(() => getLast12Months(), []);
 
   useEffect(() => {
     if (data?.monthKey) setSelectedMonth(data.monthKey);
   }, [data?.monthKey]);
 
   const { goals, updateGoals, resetGoals } = useMemberMonthlyGoals(selectedMonth);
-
-  if (loading || !data) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des objectifs...</p>;
-
-  const selectedAttendance = data.attendance?.monthlyHistory.find((entry) => entry.monthKey === selectedMonth) || null;
-  const eventsCurrent = selectedAttendance?.attendedEvents || 0;
-
-  const selectedMonthEvents =
-    data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || [];
-  const spotlightCurrent = selectedMonthEvents.filter((event) => isSpotlightCategory(event.category) && event.attended).length;
-
-  const formationsFromAttendance = (data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || []).filter(
-    (event) => event.attended && String(event.category || "").toLowerCase().includes("formation")
-  ).length;
-  const formationsFallback =
-    data.stats.formationsValidatedThisMonth ?? data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
-  const formationsCurrent = formationsFromAttendance > 0 ? formationsFromAttendance : formationsFallback;
 
   useEffect(() => {
     if (!selectedMonth || !data?.member?.twitchLogin) return;
@@ -70,7 +55,21 @@ export default function MemberGoalsPage() {
     })();
   }, [selectedMonth, data?.member?.twitchLogin]);
 
-  const months = useMemo(() => getLast12Months(), []);
+  if (loading || !data) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des objectifs...</p>;
+
+  const selectedAttendance = data.attendance?.monthlyHistory.find((entry) => entry.monthKey === selectedMonth) || null;
+  const eventsCurrent = selectedAttendance?.attendedEvents || 0;
+
+  const selectedMonthEvents =
+    data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || [];
+  const spotlightCurrent = selectedMonthEvents.filter((event) => isSpotlightCategory(event.category) && event.attended).length;
+
+  const formationsFromAttendance = (data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || []).filter(
+    (event) => event.attended && String(event.category || "").toLowerCase().includes("formation")
+  ).length;
+  const formationsFallback =
+    data.stats.formationsValidatedThisMonth ?? data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
+  const formationsCurrent = formationsFromAttendance > 0 ? formationsFromAttendance : formationsFallback;
 
   return (
     <MemberSurface>
