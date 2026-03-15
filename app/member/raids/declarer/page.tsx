@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarClock, CheckCircle2, Clock3, Info, Search, Sparkles, Twitch, UserRound, XCircle } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, Clock3, Info, Search, Sparkles, Twitch, UserCircle, XCircle } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 
@@ -374,7 +374,7 @@ export default function MemberDeclareRaidPage() {
                         style={{ borderColor: "rgba(255,255,255,0.11)", color: "var(--color-text)" }}
                       >
                         <span className="inline-flex items-center gap-2">
-                          <UserRound size={13} style={{ color: "#a78bfa" }} />
+                          <UserCircle size={13} style={{ color: "#a78bfa" }} />
                           {item.label}
                         </span>
                         <span className="text-xs" style={{ color: item.role === "Moderateur" ? "#f0c96b" : "var(--color-text-secondary)" }}>
