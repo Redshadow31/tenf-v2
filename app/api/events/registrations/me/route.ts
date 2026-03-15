@@ -50,29 +50,23 @@ export async function GET() {
     const legacyIds = Array.from(rawIds).filter((id) => !isUuid(id));
     const canonicalIds = new Set<string>(rawIds);
 
-    const queries: Promise<any>[] = [];
     if (uuidIds.length > 0) {
-      queries.push(
-        supabaseAdmin
-          .from("community_events")
-          .select("id")
-          .in("id", uuidIds)
-          .eq("is_published", true)
-      );
+      const { data: uuidEvents } = await supabaseAdmin
+        .from("community_events")
+        .select("id")
+        .in("id", uuidIds)
+        .eq("is_published", true);
+      for (const row of uuidEvents || []) {
+        if (row?.id) canonicalIds.add(String(row.id));
+      }
     }
     if (legacyIds.length > 0) {
-      queries.push(
-        supabaseAdmin
-          .from("community_events")
-          .select("id,legacy_event_id")
-          .in("legacy_event_id", legacyIds)
-          .eq("is_published", true)
-      );
-    }
-
-    const results = await Promise.all(queries);
-    for (const result of results) {
-      for (const row of result?.data || []) {
+      const { data: legacyEvents } = await supabaseAdmin
+        .from("community_events")
+        .select("id,legacy_event_id")
+        .in("legacy_event_id", legacyIds)
+        .eq("is_published", true);
+      for (const row of legacyEvents || []) {
         if (row?.id) canonicalIds.add(String(row.id));
       }
     }
