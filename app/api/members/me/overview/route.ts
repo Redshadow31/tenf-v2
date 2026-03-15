@@ -22,6 +22,10 @@ function getCurrentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function toIsoMonthKey(value: Date): string {
+  return value.toISOString().slice(0, 7);
+}
+
 function getMonthKeyFromDate(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -35,6 +39,54 @@ function getLastMonthKeys(from: Date, count: number): string[] {
     const cursor = new Date(from.getFullYear(), from.getMonth() - index, 1);
     return getMonthKeyFromDate(cursor);
   }).reverse();
+}
+
+async function loadEventsWithoutCache(): Promise<
+  Array<{
+    id: string;
+    title: string;
+    description: string;
+    date: Date;
+    category: string;
+    location?: string;
+    isPublished: boolean;
+    createdAt: Date;
+    createdBy: string;
+    updatedAt?: Date;
+  }>
+> {
+  const tryQuery = async (
+    table: "community_events" | "events",
+    orderColumn: "starts_at" | "date"
+  ) => {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select("*")
+      .order(orderColumn, { ascending: false })
+      .limit(1000);
+    if (error) return null;
+    return data || [];
+  };
+
+  const rows =
+    (await tryQuery("community_events", "starts_at")) ??
+    (await tryQuery("community_events", "date")) ??
+    (await tryQuery("events", "date")) ??
+    (await tryQuery("events", "starts_at")) ??
+    [];
+
+  return rows.map((row: any) => ({
+    id: String(row.id),
+    title: row.title || "Sans titre",
+    description: row.description || "",
+    date: new Date(row.starts_at || row.date || row.created_at || new Date().toISOString()),
+    category: row.category || "Non classé",
+    location: row.location || undefined,
+    isPublished: row.is_published ?? row.isPublished ?? false,
+    createdAt: new Date(row.created_at || new Date().toISOString()),
+    createdBy: row.created_by || "system",
+    updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+  }));
 }
 
 function profileCompletion(member: any): { completed: boolean; percent: number } {
@@ -106,9 +158,16 @@ export async function GET() {
 
     let allEvents: Awaited<ReturnType<typeof eventRepository.findAll>> = [];
     try {
-      allEvents = await eventRepository.findAll(300, 0);
+      allEvents = await eventRepository.findAll(1000, 0);
     } catch {
       allEvents = [];
+    }
+    if (!allEvents.length) {
+      try {
+        allEvents = await loadEventsWithoutCache();
+      } catch {
+        allEvents = [];
+      }
     }
     const eventById = new Map<string, (typeof allEvents)[number]>();
     for (const event of allEvents) {
@@ -158,11 +217,11 @@ export async function GET() {
       seenEvents.add(presence.event_id);
 
       const event = eventById.get(presence.event_id);
-      if (!event || !event.isPublished) continue;
+      if (!event) continue;
       const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
       if (Number.isNaN(eventDate.getTime())) continue;
 
-      const key = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}`;
+      const key = toIsoMonthKey(eventDate);
       eventPresenceHistory.push({
         id: event.id,
         title: event.title,
@@ -182,7 +241,7 @@ export async function GET() {
     const trackedEvents = allEvents
       .map((event) => {
         const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
-        if (!event.isPublished || Number.isNaN(eventDate.getTime()) || eventDate.getTime() > now.getTime()) {
+        if (Number.isNaN(eventDate.getTime())) {
           return null;
         }
         return {
@@ -196,7 +255,7 @@ export async function GET() {
 
     const last12MonthKeys = getLastMonthKeys(now, 12);
     const monthlyHistory = last12MonthKeys.map((month) => {
-      const monthEvents = trackedEvents.filter((event) => getMonthKeyFromDate(event.date) === month);
+      const monthEvents = trackedEvents.filter((event) => toIsoMonthKey(event.date) === month);
       const totalEvents = monthEvents.length;
       const attendedEvents = monthEvents.reduce((count, event) => count + (seenEvents.has(event.id) ? 1 : 0), 0);
       const attendanceRate = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 0;
@@ -211,7 +270,7 @@ export async function GET() {
     const monthEventsByMonth = last12MonthKeys.map((key) => ({
       monthKey: key,
       events: trackedEvents
-        .filter((event) => getMonthKeyFromDate(event.date) === key)
+        .filter((event) => toIsoMonthKey(event.date) === key)
         .sort((a, b) => b.date.getTime() - a.date.getTime())
         .map((event) => {
           const normalizedCategory = normalize(event.category);
