@@ -31,6 +31,12 @@ function normalizeTitle(value?: string): string {
   return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+function isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const message = String(error.message || "").toLowerCase();
+  return error.code === "42P01" || message.includes("does not exist") || message.includes("could not find the table");
+}
+
 export async function GET() {
   try {
     const admin = await requireAdmin();
@@ -69,7 +75,7 @@ export async function GET() {
       .select("id,formation_title,member_discord_id,member_twitch_login,member_display_name,status,requested_at")
       .order("requested_at", { ascending: false });
 
-    if (requestsError) {
+    if (requestsError && !isMissingRelationError(requestsError)) {
       return NextResponse.json({ error: "Impossible de charger les demandes formation" }, { status: 500 });
     }
 
@@ -95,7 +101,7 @@ export async function GET() {
       groups.set(key, group);
     }
 
-    for (const request of requestRows || []) {
+    for (const request of requestsError ? [] : requestRows || []) {
       const title = String(request.formation_title || "").trim();
       if (!title) continue;
       const key = normalizeTitle(title);

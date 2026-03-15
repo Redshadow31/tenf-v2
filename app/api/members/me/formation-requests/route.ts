@@ -8,6 +8,12 @@ function sanitizeFormationTitle(input: string): string {
   return input.replace(/\s+/g, " ").trim();
 }
 
+function isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const message = String(error.message || "").toLowerCase();
+  return error.code === "42P01" || message.includes("does not exist") || message.includes("could not find the table");
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -22,19 +28,19 @@ export async function GET() {
       .eq("member_discord_id", discordId)
       .order("requested_at", { ascending: false });
 
-    if (error) {
+    if (error && !isMissingRelationError(error)) {
       return NextResponse.json({ error: "Impossible de charger les demandes" }, { status: 500 });
     }
 
     const pendingTitles = new Set<string>();
-    for (const row of data || []) {
+    for (const row of error ? [] : data || []) {
       if (row.status === "pending") {
         pendingTitles.add(String(row.formation_title || ""));
       }
     }
 
     return NextResponse.json({
-      requests: data || [],
+      requests: error ? [] : data || [],
       pendingTitles: Array.from(pendingTitles.values()),
     });
   } catch (error) {
@@ -75,6 +81,9 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingError) {
+      if (isMissingRelationError(existingError)) {
+        return NextResponse.json({ error: "Module demandes de formation non actif (migration 0033 manquante)" }, { status: 503 });
+      }
       return NextResponse.json({ error: "Impossible de verifier la demande existante" }, { status: 500 });
     }
 
@@ -98,6 +107,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
+      if (isMissingRelationError(insertError)) {
+        return NextResponse.json({ error: "Module demandes de formation non actif (migration 0033 manquante)" }, { status: 503 });
+      }
       return NextResponse.json({ error: "Impossible d enregistrer la demande" }, { status: 500 });
     }
 
