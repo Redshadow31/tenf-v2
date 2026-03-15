@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { BookOpen, ArrowRight } from "lucide-react";
+import { BookOpen, ArrowRight, ClipboardList } from "lucide-react";
 
 export default function FormationHubPage() {
   return (
@@ -61,6 +61,47 @@ export default function FormationHubPage() {
                 </p>
                 <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
                   Accéder à la formation
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/formation/demandes"
+            className="rounded-lg border p-6 transition-all duration-200 hover:shadow-lg"
+            style={{
+              backgroundColor: "var(--color-card)",
+              borderColor: "var(--color-border)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-primary)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(145, 70, 255, 0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className="p-3 rounded-lg"
+                style={{
+                  backgroundColor: "var(--color-surface)",
+                  color: "var(--color-primary)",
+                }}
+              >
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+                  Demandes de formation
+                </h3>
+                <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
+                  Tableau des demandes membres pour relancer une formation avec details sessions et demandeurs.
+                </p>
+                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "var(--color-primary)" }}>
+                  Voir les demandes
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
