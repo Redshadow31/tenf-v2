@@ -42,6 +42,41 @@ export type MemberOverview = {
   upcomingEvents: Array<{ id: string; title: string; category: string; date: string }>;
   formationHistory: Array<{ id: string; title: string; date: string }>;
   eventPresenceHistory: Array<{ id: string; title: string; date: string; category: string }>;
+  attendance?: {
+    currentMonthKey: string;
+    previousMonthKey: string;
+    monthlyHistory: Array<{
+      monthKey: string;
+      totalEvents: number;
+      attendedEvents: number;
+      attendanceRate: number;
+    }>;
+    monthEvents: Array<{
+      id: string;
+      title: string;
+      date: string;
+      category: string;
+      attended: boolean;
+      isKeyEvent: boolean;
+    }>;
+    monthEventsByMonth: Array<{
+      monthKey: string;
+      events: Array<{
+        id: string;
+        title: string;
+        date: string;
+        category: string;
+        attended: boolean;
+        isKeyEvent: boolean;
+      }>;
+    }>;
+    categoryBreakdown: Array<{
+      category: string;
+      totalEvents: number;
+      attendedEvents: number;
+      attendanceRate: number;
+    }>;
+  };
 };
 
 export function useMemberOverview() {

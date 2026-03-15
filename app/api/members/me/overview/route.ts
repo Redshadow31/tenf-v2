@@ -22,6 +22,21 @@ function getCurrentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function getMonthKeyFromDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getPreviousMonthKey(from: Date): string {
+  return getMonthKeyFromDate(new Date(from.getFullYear(), from.getMonth() - 1, 1));
+}
+
+function getLastMonthKeys(from: Date, count: number): string[] {
+  return Array.from({ length: count }, (_, index) => {
+    const cursor = new Date(from.getFullYear(), from.getMonth() - index, 1);
+    return getMonthKeyFromDate(cursor);
+  }).reverse();
+}
+
 function profileCompletion(member: any): { completed: boolean; percent: number } {
   const checks = [
     !!member?.displayName,
@@ -161,6 +176,76 @@ export async function GET() {
       }
     }
 
+    eventPresenceHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    formationHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const trackedEvents = allEvents
+      .map((event) => {
+        const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+        if (!event.isPublished || Number.isNaN(eventDate.getTime()) || eventDate.getTime() > now.getTime()) {
+          return null;
+        }
+        return {
+          id: String(event.id),
+          title: event.title || "Evenement",
+          date: eventDate,
+          category: event.category || "Evenement",
+        };
+      })
+      .filter((event): event is { id: string; title: string; date: Date; category: string } => Boolean(event));
+
+    const last12MonthKeys = getLastMonthKeys(now, 12);
+    const monthlyHistory = last12MonthKeys.map((month) => {
+      const monthEvents = trackedEvents.filter((event) => getMonthKeyFromDate(event.date) === month);
+      const totalEvents = monthEvents.length;
+      const attendedEvents = monthEvents.reduce((count, event) => count + (seenEvents.has(event.id) ? 1 : 0), 0);
+      const attendanceRate = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 0;
+      return {
+        monthKey: month,
+        totalEvents,
+        attendedEvents,
+        attendanceRate,
+      };
+    });
+
+    const monthEventsByMonth = last12MonthKeys.map((key) => ({
+      monthKey: key,
+      events: trackedEvents
+        .filter((event) => getMonthKeyFromDate(event.date) === key)
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .map((event) => {
+          const normalizedCategory = normalize(event.category);
+          return {
+            id: event.id,
+            title: event.title,
+            date: event.date.toISOString(),
+            category: event.category,
+            attended: seenEvents.has(event.id),
+            isKeyEvent: normalizedCategory.includes("spotlight") || isFormationCategory(event.category),
+          };
+        }),
+    }));
+
+    const monthEvents = monthEventsByMonth.find((entry) => entry.monthKey === monthKey)?.events || [];
+
+    const categoryAccumulator = new Map<string, { totalEvents: number; attendedEvents: number }>();
+    for (const event of monthEvents) {
+      const current = categoryAccumulator.get(event.category) || { totalEvents: 0, attendedEvents: 0 };
+      current.totalEvents += 1;
+      if (event.attended) current.attendedEvents += 1;
+      categoryAccumulator.set(event.category, current);
+    }
+    const categoryBreakdown = Array.from(categoryAccumulator.entries())
+      .map(([category, values]) => ({
+        category,
+        totalEvents: values.totalEvents,
+        attendedEvents: values.attendedEvents,
+        attendanceRate: values.totalEvents > 0 ? Math.round((values.attendedEvents / values.totalEvents) * 100) : 0,
+      }))
+      .sort((a, b) => b.totalEvents - a.totalEvents || b.attendanceRate - a.attendanceRate);
+
+    const previousMonthKey = getPreviousMonthKey(now);
+
     const completion = profileCompletion(member);
     const participationThisMonth = raidsThisMonth + eventPresencesThisMonth;
     let vipActiveThisMonth = false;
@@ -220,6 +305,14 @@ export async function GET() {
       upcomingEvents,
       formationHistory,
       eventPresenceHistory,
+      attendance: {
+        currentMonthKey: monthKey,
+        previousMonthKey,
+        monthlyHistory,
+        monthEvents,
+        monthEventsByMonth,
+        categoryBreakdown,
+      },
     });
   } catch (error) {
     console.error("[members/me/overview] GET error:", error);
