@@ -15,6 +15,25 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "support", label: "Soutien TENF" },
 ];
 
+const SECTION_META: Record<string, { subtitle: string; accent: string }> = {
+  founders: {
+    subtitle: "Vision et cap communautaire",
+    accent: "rgba(59,130,246,0.35)",
+  },
+  adminCoordinators: {
+    subtitle: "Coordination des projets et des equipes",
+    accent: "rgba(99,102,241,0.35)",
+  },
+  moderators: {
+    subtitle: "Encadrement, securite et accompagnement",
+    accent: "rgba(168,85,247,0.35)",
+  },
+  support: {
+    subtitle: "Soutien transversal et dynamique communautaire",
+    accent: "rgba(34,197,94,0.35)",
+  },
+};
+
 function matchesFilter(entry: OrgChartEntry, filter: FilterKey): boolean {
   if (filter === "all") return true;
   if (filter === "direction") {
@@ -73,11 +92,17 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
     { key: "support", title: "Soutien TENF", items: grouped.support },
   ].filter((section) => section.items.length > 0);
 
+  const totalVisible = visibleEntries.length;
+
   return (
-    <main className="min-h-screen py-12" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen overflow-hidden py-12" style={{ backgroundColor: "var(--color-bg)" }}>
+      <div className="org-bg-mesh" aria-hidden="true" />
+      <div className="org-bg-glow org-bg-glow-left" aria-hidden="true" />
+      <div className="org-bg-glow org-bg-glow-right" aria-hidden="true" />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
         <section
-          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14"
+          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14 org-fade-up"
           style={{
             borderColor: "var(--color-border)",
             background:
@@ -98,12 +123,45 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
             Decouvre la structure humaine de la communaute TENF, ses roles, ses poles et son fonctionnement collectif.
             Cette vue est alimentee depuis l'administration, a partir des membres existants.
           </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="org-stat-card">
+              <span className="org-stat-label">Profils visibles</span>
+              <strong className="org-stat-value">{totalVisible}</strong>
+            </div>
+            <div className="org-stat-card">
+              <span className="org-stat-label">Direction</span>
+              <strong className="org-stat-value">{grouped.founders.length + grouped.adminCoordinators.length}</strong>
+            </div>
+            <div className="org-stat-card">
+              <span className="org-stat-label">Moderation TENF</span>
+              <strong className="org-stat-value">{grouped.moderators.length}</strong>
+            </div>
+            <div className="org-stat-card">
+              <span className="org-stat-label">Soutien TENF</span>
+              <strong className="org-stat-value">{grouped.support.length}</strong>
+            </div>
+          </div>
         </section>
 
-        <section className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-            Navigation rapide
-          </p>
+        <section className="rounded-2xl border p-5 org-fade-up org-filters" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+              Filtres intelligents
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveFilter("all");
+                setPoleFilter("all");
+              }}
+              className="rounded-full border px-3 py-1 text-xs font-semibold transition"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+            >
+              Reinitialiser
+            </button>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {FILTERS.map((filter) => {
               const active = activeFilter === filter.key;
@@ -145,27 +203,41 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
         </section>
 
         {sections.length === 0 ? (
-          <section className="rounded-2xl border p-6" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <section className="rounded-2xl border p-6 org-fade-up" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
             <p style={{ color: "var(--color-text-secondary)" }}>
               Aucun profil visible pour le filtre actuel.
             </p>
           </section>
         ) : (
           sections.map((section) => (
-            <section key={section.key} className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-                Organigramme
-              </p>
-              <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-                {section.title}
-              </h2>
+            <section key={section.key} className="space-y-4 org-fade-up">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
+                    {section.title}
+                  </h2>
+                  <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    {SECTION_META[section.key]?.subtitle}
+                  </p>
+                </div>
+                <span
+                  className="rounded-full border px-3 py-1 text-xs font-semibold"
+                  style={{
+                    borderColor: SECTION_META[section.key]?.accent || "var(--color-border)",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  {section.items.length} profil{section.items.length > 1 ? "s" : ""}
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {section.items.map((entry) => (
+                {section.items.map((entry, index) => (
                   <button
                     key={entry.id}
                     type="button"
                     onClick={() => setSelectedEntry(entry)}
-                    className="group rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-1"
+                    className="group rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 org-card"
                     style={{
                       borderColor:
                         section.key === "support"
@@ -175,6 +247,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                         section.key === "support"
                           ? "linear-gradient(135deg, rgba(22,163,74,0.14), rgba(15,23,42,0.85) 35%, rgba(2,6,23,0.95) 100%)"
                           : "var(--color-card)",
+                      animationDelay: `${Math.min(index * 45, 300)}ms`,
                     }}
                   >
                     <div className="flex items-start gap-3">
@@ -236,7 +309,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                       </p>
                     ) : null}
                     {entry.secondaryPoleKeys.length > 0 ? (
-                      <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                      <p className="mt-1 text-xs org-secondary-poles" style={{ color: "var(--color-text-secondary)" }}>
                         Multi-pole: {entry.secondaryPoleKeys.map((pole) => poleTagFromKey(pole).label).join(" • ")}
                       </p>
                     ) : null}
@@ -249,18 +322,38 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       </div>
 
       {selectedEntry ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSelectedEntry(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 org-modal-backdrop" onClick={() => setSelectedEntry(null)}>
           <div
-            className="w-full max-w-xl rounded-2xl border p-6"
+            className="w-full max-w-xl rounded-2xl border p-6 org-modal"
             style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
-              {selectedEntry.member.displayName}
-            </h3>
-            <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              @{selectedEntry.member.twitchLogin}
-            </p>
+            <div className="flex items-center gap-4">
+              {selectedEntry.member.avatarUrl ? (
+                <img
+                  src={selectedEntry.member.avatarUrl}
+                  alt={selectedEntry.member.displayName}
+                  className="h-16 w-16 rounded-full border object-cover"
+                  style={{ borderColor: "var(--color-border)" }}
+                />
+              ) : (
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full border text-xl font-semibold"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                >
+                  {selectedEntry.member.displayName.slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h3 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+                  {selectedEntry.member.displayName}
+                </h3>
+                <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  @{selectedEntry.member.twitchLogin}
+                </p>
+              </div>
+            </div>
+
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                 {selectedEntry.roleLabel}
@@ -298,6 +391,125 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
           </div>
         </div>
       ) : null}
+
+      <style jsx>{`
+        .org-bg-mesh {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.3;
+          background-image:
+            radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.12), transparent 35%),
+            radial-gradient(circle at 80% 10%, rgba(99, 102, 241, 0.1), transparent 30%),
+            radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.08), transparent 35%);
+        }
+
+        .org-bg-glow {
+          position: absolute;
+          width: 300px;
+          height: 300px;
+          filter: blur(80px);
+          pointer-events: none;
+          opacity: 0.2;
+          animation: orgFloat 8s ease-in-out infinite;
+        }
+
+        .org-bg-glow-left {
+          left: -120px;
+          top: 160px;
+          background: rgba(59, 130, 246, 0.35);
+        }
+
+        .org-bg-glow-right {
+          right: -120px;
+          bottom: 120px;
+          background: rgba(124, 58, 237, 0.35);
+          animation-delay: 1.2s;
+        }
+
+        .org-fade-up {
+          opacity: 0;
+          transform: translateY(10px);
+          animation: orgFadeUp 0.55s ease forwards;
+        }
+
+        .org-filters {
+          position: sticky;
+          top: 16px;
+          z-index: 20;
+          backdrop-filter: blur(8px);
+        }
+
+        .org-card {
+          opacity: 0;
+          transform: translateY(8px);
+          animation: orgCardIn 0.45s ease forwards;
+          box-shadow: 0 14px 30px rgba(2, 6, 23, 0.25);
+        }
+
+        .org-card:hover {
+          box-shadow: 0 18px 38px rgba(2, 6, 23, 0.38);
+        }
+
+        .org-stat-card {
+          border: 1px solid var(--color-border);
+          border-radius: 14px;
+          padding: 10px 12px;
+          background: rgba(2, 6, 23, 0.22);
+        }
+
+        .org-stat-label {
+          display: block;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--color-text-secondary);
+        }
+
+        .org-stat-value {
+          display: block;
+          margin-top: 4px;
+          font-size: 20px;
+          line-height: 1;
+          color: var(--color-text);
+        }
+
+        .org-secondary-poles {
+          opacity: 0.85;
+        }
+
+        .org-modal-backdrop {
+          backdrop-filter: blur(6px);
+        }
+
+        .org-modal {
+          box-shadow: 0 25px 60px rgba(2, 6, 23, 0.55);
+        }
+
+        @keyframes orgFadeUp {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes orgCardIn {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes orgFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-14px);
+          }
+        }
+      `}</style>
     </main>
   );
 }
