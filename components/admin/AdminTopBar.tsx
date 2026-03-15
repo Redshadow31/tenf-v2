@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getDiscordUser } from "@/lib/discord";
@@ -64,7 +65,7 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
       className="sticky top-0 z-40 border-b backdrop-blur supports-[backdrop-filter]:bg-[#0f111a]/90"
       style={{ borderColor: "var(--color-sidebar-border)", backgroundColor: "var(--color-bg)" }}
     >
-      <div className="h-16 px-4 md:px-6 flex items-center gap-4">
+      <div className="h-20 px-4 md:px-6 flex items-center gap-4">
         <button
           type="button"
           onClick={onOpenMobileMenu}
@@ -76,12 +77,14 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
         </button>
 
         <Link href="/admin/dashboard" className="flex items-center gap-3 shrink-0">
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-lg"
-            style={{ background: "linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))" }}
-          >
-            <span className="text-sm font-bold text-white">TENF</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="TENF"
+            width={42}
+            height={42}
+            className="h-10 w-10 object-contain"
+            priority
+          />
           <span className="hidden sm:inline text-sm font-semibold" style={{ color: "var(--color-text)" }}>
             Espace Admin
           </span>
@@ -101,7 +104,6 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
                   color: isActive ? "white" : "var(--color-text-secondary)",
                 }}
               >
-                {hub.icon ? `${hub.icon} ` : ""}
                 {hub.label}
               </Link>
             );

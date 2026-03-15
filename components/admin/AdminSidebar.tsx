@@ -172,7 +172,6 @@ export default function AdminSidebar({
               color: active ? "white" : "var(--color-text-secondary)",
             }}
           >
-            {depth === 0 && item.icon ? <span>{item.icon}</span> : null}
             <span className="font-medium flex-1 text-left">{item.label}</span>
             <span className={`text-xs transition-transform ${isMenuOpen ? "rotate-90" : ""}`}>▶</span>
           </button>
@@ -196,7 +195,6 @@ export default function AdminSidebar({
           opacity: active || depth === 0 ? "1" : "0.85",
         }}
       >
-        {depth === 0 && item.icon ? <span>{item.icon}</span> : null}
         <span className="font-medium">{item.label}</span>
       </Link>
     );
@@ -204,52 +202,10 @@ export default function AdminSidebar({
 
   const sidebarContent = (
     <>
-      <div className="mb-4">
-        <p
-          className="text-[11px] uppercase tracking-[0.16em] mb-2"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          Hubs
+      <div className="mb-6">
+        <p className="text-[10px] tracking-[0.18em] font-semibold uppercase px-1" style={{ color: "var(--color-text-secondary)", opacity: 0.75 }}>
+          {activeHub?.label || "Navigation"}
         </p>
-        <div className="flex flex-wrap gap-2">
-          {navItems.map((hub) => {
-            const isHubActive = activeHub?.href === hub.href;
-            return (
-              <Link
-                key={hub.href}
-                href={hub.href}
-                className="px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors"
-                style={{
-                  borderColor: isHubActive ? "var(--color-primary)" : "var(--color-sidebar-border)",
-                  backgroundColor: isHubActive ? "var(--color-primary)" : "transparent",
-                  color: isHubActive ? "white" : "var(--color-text-secondary)",
-                }}
-              >
-                {hub.icon ? `${hub.icon} ` : ""}
-                {hub.label}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-xl border p-4" style={{ borderColor: "var(--color-sidebar-border)" }}>
-        <p className="text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--color-text-secondary)" }}>
-          Hub actif
-        </p>
-        <div className="mt-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-          {activeHub?.icon ? `${activeHub.icon} ` : ""}
-          {activeHub?.label || "Administration"}
-        </div>
-        {activeHub ? (
-          <Link
-            href={activeHub.href}
-            className="mt-3 inline-flex text-xs font-semibold px-2 py-1 rounded-md border"
-            style={{ color: "var(--color-text-secondary)", borderColor: "var(--color-sidebar-border)" }}
-          >
-            Ouvrir le hub
-          </Link>
-        ) : null}
       </div>
 
       <nav className="space-y-2">
@@ -278,7 +234,7 @@ export default function AdminSidebar({
   return (
     <>
       <aside
-        className="hidden lg:block admin-sidebar-scroll w-80 max-w-[90vw] border-r h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto p-4"
+        className="hidden lg:block admin-sidebar-scroll w-72 max-w-[88vw] border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto p-4"
         style={{
           backgroundColor: "var(--color-sidebar-bg)",
           borderColor: "var(--color-sidebar-border)",

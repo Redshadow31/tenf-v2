@@ -19,7 +19,7 @@ export default function Layout({ children }: AdminLayoutProps) {
           isMobileOpen={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
-        <main className="flex-1 p-4 md:p-6 overflow-auto min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 p-4 md:p-6 overflow-auto min-h-[calc(100vh-5rem)]">
           {children}
         </main>
       </div>
