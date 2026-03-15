@@ -191,6 +191,7 @@ export async function GET() {
 
     let eventPresencesThisMonth = 0;
     let formationsValidated = 0;
+    let formationsValidatedThisMonth = 0;
     const formationHistory: Array<{ id: string; title: string; date: string }> = [];
     const eventPresenceHistory: Array<{ id: string; title: string; date: string; category: string }> = [];
 
@@ -231,6 +232,7 @@ export async function GET() {
       if (key === monthKey) eventPresencesThisMonth += 1;
       if (isFormationCategory(event.category)) {
         formationsValidated += 1;
+        if (key === monthKey) formationsValidatedThisMonth += 1;
         formationHistory.push({ id: event.id, title: event.title, date: eventDate.toISOString() });
       }
     }
@@ -356,6 +358,7 @@ export async function GET() {
         eventPresencesThisMonth,
         participationThisMonth,
         formationsValidated,
+        formationsValidatedThisMonth,
       },
       profile: {
         completed: completion.completed,

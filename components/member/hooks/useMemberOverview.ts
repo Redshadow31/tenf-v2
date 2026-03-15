@@ -34,6 +34,7 @@ export type MemberOverview = {
     eventPresencesThisMonth: number;
     participationThisMonth: number;
     formationsValidated: number;
+    formationsValidatedThisMonth?: number;
   };
   profile: {
     completed: boolean;

@@ -6,6 +6,7 @@ import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
+import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthlyGoals";
 
 type RaidApiItem = {
   date: string;
@@ -145,7 +146,6 @@ function ProgressRing({ value, label }: { value: number; label: string }) {
 export default function MemberRaidStatsPage() {
   const { data: overview, loading: loadingOverview, error } = useMemberOverview();
   const [selectedMonth, setSelectedMonth] = useState("");
-  const [targetRaids, setTargetRaids] = useState(8);
   const [activeTab, setActiveTab] = useState<"general" | "received">("general");
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [sentRaids, setSentRaids] = useState<RaidApiItem[]>([]);
@@ -153,19 +153,12 @@ export default function MemberRaidStatsPage() {
   const [history, setHistory] = useState<MonthRaidHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  const { goals } = useMemberMonthlyGoals(selectedMonth);
+
   useEffect(() => {
     const currentMonth = getLast12Months().slice(-1)[0] || "";
     setSelectedMonth(currentMonth);
-    const stored = window.localStorage.getItem("member-raids-target");
-    const parsed = Number(stored);
-    if (Number.isFinite(parsed) && parsed >= 3 && parsed <= 30) {
-      setTargetRaids(parsed);
-    }
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("member-raids-target", String(targetRaids));
-  }, [targetRaids]);
 
   useEffect(() => {
     if (!overview?.member?.twitchLogin || !selectedMonth) return;
@@ -228,8 +221,8 @@ export default function MemberRaidStatsPage() {
   const selectedHistory = useMemo(() => history.find((entry) => entry.monthKey === selectedMonth) || null, [history, selectedMonth]);
   const previousHistory = useMemo(() => history.find((entry) => entry.monthKey === getPreviousMonthKey(selectedMonth)) || null, [history, selectedMonth]);
   const delta = (selectedHistory?.interactionScore || 0) - (previousHistory?.interactionScore || 0);
-  const completionRate = targetRaids > 0 ? (summary.sent / targetRaids) * 100 : 0;
-  const remainingToTarget = Math.max(0, targetRaids - summary.sent);
+  const completionRate = goals.raids > 0 ? (summary.sent / goals.raids) * 100 : 0;
+  const remainingToTarget = Math.max(0, goals.raids - summary.sent);
   const tier = getTier(summary.interactionScore);
 
   const targetBreakdown = useMemo(() => {
@@ -353,7 +346,7 @@ export default function MemberRaidStatsPage() {
                       </h2>
                       <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                         {remainingToTarget > 0
-                          ? `Encore ${remainingToTarget} raid(s) pour atteindre ton objectif perso.`
+                          ? `Encore ${remainingToTarget} raid(s) pour atteindre ton objectif du mois.`
                           : "Objectif mensuel atteint. Continue pour consolider ton avance."}
                       </p>
                     </div>
@@ -363,21 +356,15 @@ export default function MemberRaidStatsPage() {
                     <div className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(12,12,15,0.45)" }}>
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                          Objectif perso
+                          Objectif raids (depuis /member/objectifs)
                         </span>
                         <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                          {targetRaids} raids
+                          {goals.raids} raids
                         </span>
                       </div>
-                      <input
-                        type="range"
-                        min={3}
-                        max={30}
-                        step={1}
-                        value={targetRaids}
-                        onChange={(event) => setTargetRaids(Number(event.target.value))}
-                        className="w-full accent-violet-400"
-                      />
+                      <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                        Modifie cet objectif depuis la page Objectifs pour garder la meme valeur partout.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-center">
@@ -654,7 +641,7 @@ export default function MemberRaidStatsPage() {
                   ))
                 )}
               </div>
-            </section>
+      </section>
           )}
         </>
       ) : null}

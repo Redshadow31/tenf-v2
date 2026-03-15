@@ -6,6 +6,7 @@ import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
+import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthlyGoals";
 
 type AttendanceEntry = {
   monthKey: string;
@@ -29,20 +30,18 @@ function getTier(rate: number): { label: string; color: string } {
   return { label: "Demarrage", color: "#f87171" };
 }
 
-function getEncouragement(input: { rate: number; delta: number; remainingToTarget: number; totalEvents: number; targetRate: number }): string {
-  const { rate, delta, remainingToTarget, totalEvents, targetRate } = input;
+function getEncouragement(input: { rate: number; delta: number; remainingToTarget: number; totalEvents: number; targetEvents: number; attendedEvents: number }): string {
+  const { rate, delta, remainingToTarget, totalEvents, targetEvents, attendedEvents } = input;
   if (totalEvents === 0) return "Aucun evenement termine ce mois. Des qu'un event est passe, ton suivi se mettra a jour.";
-  if (rate >= targetRate) return delta >= 0 ? "Excellent rythme. Tu maintiens un niveau premium ce mois-ci." : "Objectif atteint. Garde cette regularite jusqu'a la fin du mois.";
+  if (attendedEvents >= targetEvents) return delta >= 0 ? "Excellent rythme. Tu maintiens un niveau premium ce mois-ci." : "Objectif atteint. Garde cette regularite jusqu'a la fin du mois.";
   if (remainingToTarget <= 0) return "Objectif quasiment verrouille. Encore un petit effort pour passer au palier suivant.";
   if (delta > 0) return `Bonne dynamique: +${delta}% vs mois precedent. Encore ${remainingToTarget} evenement(s) pour atteindre ton objectif.`;
   if (delta < 0) return `Legere baisse vs mois precedent (${delta}%). Tu peux corriger vite avec ${remainingToTarget} presence(s) supplementaire(s).`;
-  return `Tu es stable. Vise ${remainingToTarget} presence(s) de plus pour franchir ${targetRate}%.`;
+  return `Tu es stable. Vise ${remainingToTarget} presence(s) de plus pour atteindre ton objectif du mois.`;
 }
 
-function getRemainingToTarget(totalEvents: number, attendedEvents: number, targetRate: number): number {
-  if (totalEvents <= 0) return 0;
-  const required = Math.ceil((targetRate / 100) * totalEvents);
-  return Math.max(0, required - attendedEvents);
+function getRemainingToTarget(attendedEvents: number, targetEvents: number): number {
+  return Math.max(0, targetEvents - attendedEvents);
 }
 
 function isSpotlightCategory(category: string): boolean {
@@ -91,21 +90,11 @@ function ProgressRing({ rate }: { rate: number }) {
 
 export default function MemberEventPresencesPage() {
   const { data, loading, error } = useMemberOverview();
-  const [targetRate, setTargetRate] = useState(70);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"general" | "spotlight">("general");
   const history = data?.attendance?.monthlyHistory || [];
   const currentMonthKey = data?.attendance?.currentMonthKey || data?.monthKey || "";
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("member-presence-target-rate");
-    const parsed = Number(stored);
-    if (Number.isFinite(parsed) && parsed >= 40 && parsed <= 100) setTargetRate(parsed);
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("member-presence-target-rate", String(targetRate));
-  }, [targetRate]);
+  const { goals } = useMemberMonthlyGoals(selectedMonth || currentMonthKey);
 
   useEffect(() => {
     if (!selectedMonth) setSelectedMonth(currentMonthKey);
@@ -174,8 +163,8 @@ export default function MemberEventPresencesPage() {
   const previousRate = previousAttendance?.attendanceRate ?? 0;
   const delta = rate - previousRate;
   const tier = getTier(rate);
-  const remainingToTarget = getRemainingToTarget(total, attended, targetRate);
-  const encouragement = getEncouragement({ rate, delta, remainingToTarget, totalEvents: total, targetRate });
+  const remainingToTarget = getRemainingToTarget(attended, goals.events);
+  const encouragement = getEncouragement({ rate, delta, remainingToTarget, totalEvents: total, targetEvents: goals.events, attendedEvents: attended });
 
   const sparklineData = history.filter((entry) => entry.totalEvents > 0 || entry.attendedEvents > 0).slice(-6);
   const maxRate = Math.max(1, ...sparklineData.map((entry) => entry.attendanceRate));
@@ -279,21 +268,12 @@ export default function MemberEventPresencesPage() {
                 <div className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(12,12,15,0.45)" }}>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                      Objectif perso
+                          Objectif presences (depuis /member/objectifs)
                     </span>
                     <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                      {targetRate}%
+                      {goals.events} presences
                     </span>
                   </div>
-                  <input
-                    type="range"
-                    min={40}
-                    max={100}
-                    step={5}
-                    value={targetRate}
-                    onChange={(event) => setTargetRate(Number(event.target.value))}
-                    className="w-full accent-violet-400"
-                  />
                   <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
                     {remainingToTarget > 0 ? `Encore ${remainingToTarget} evenement(s) pour atteindre ton objectif.` : "Objectif atteint sur ce mois."}
                   </p>
@@ -491,10 +471,10 @@ export default function MemberEventPresencesPage() {
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
               <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                Presence / total
+                Presence / objectif
               </p>
               <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-                {spotlightAttended}/{spotlightTotal}
+                {spotlightAttended}/{goals.spotlight}
               </p>
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
