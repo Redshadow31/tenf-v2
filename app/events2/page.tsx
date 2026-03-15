@@ -118,6 +118,31 @@ export default function Events2Page() {
     loadEvents();
   }, []);
 
+  useEffect(() => {
+    async function loadMyRegistrations() {
+      try {
+        const response = await fetch("/api/events/registrations/me", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        if (!response.ok) {
+          if (response.status === 401) {
+            setRegisteredEventIds(new Set());
+          }
+          return;
+        }
+        const data = await response.json();
+        const ids = Array.isArray(data?.registeredEventIds)
+          ? data.registeredEventIds.filter((id: unknown): id is string => typeof id === "string")
+          : [];
+        setRegisteredEventIds(new Set(ids));
+      } catch {
+        // Best-effort: garde un état vide si la récupération échoue.
+      }
+    }
+    loadMyRegistrations();
+  }, []);
+
   async function loadProposals() {
     try {
       setProposalLoading(true);
