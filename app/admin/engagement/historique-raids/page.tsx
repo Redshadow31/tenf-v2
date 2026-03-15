@@ -1,34 +1,426 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+type RaidDeclaration = {
+  id: string;
+  member_display_name: string;
+  member_twitch_login: string;
+  target_twitch_login: string;
+  raid_at: string;
+  is_approximate: boolean;
+  note: string;
+  status: "processing" | "validated" | "rejected";
+  staff_comment?: string | null;
+};
+
+type RaidApiItem = {
+  date: string;
+  count?: number;
+  source?: string;
+  raiderTwitchLogin?: string;
+  targetTwitchLogin?: string;
+  raiderDisplayName?: string;
+  targetDisplayName?: string;
+};
+
+type MemberRow = {
+  twitchLogin: string;
+  displayName: string;
+};
+
 export default function AdminEngagementHistoriqueRaidsPage() {
+  const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
+  const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("received");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [statsPage, setStatsPage] = useState(1);
+  const [declarations, setDeclarations] = useState<RaidDeclaration[]>([]);
+  const [raidsFaits, setRaidsFaits] = useState<RaidApiItem[]>([]);
+  const [raidsRecus, setRaidsRecus] = useState<RaidApiItem[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const now = new Date();
+    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  }, []);
+
+  const availableMonths = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, idx) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - idx, 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const [declarationsResponse, raidsResponse, membersResponse] = await Promise.all([
+          fetch(`/api/admin/engagement/raids-declarations?status=all&month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store" }),
+          fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store" }),
+          fetch("/api/admin/members", { cache: "no-store" }),
+        ]);
+
+        const [declarationsBody, raidsBody, membersBody] = await Promise.all([
+          declarationsResponse.json(),
+          raidsResponse.json(),
+          membersResponse.json(),
+        ]);
+
+        if (!declarationsResponse.ok) {
+          setError(declarationsBody.error || "Impossible de charger l historique des declarations.");
+          return;
+        }
+        if (!raidsResponse.ok) {
+          setError(raidsBody.error || "Impossible de charger les statistiques de raids.");
+          return;
+        }
+
+        const filterManualOnly = (raid: RaidApiItem) => {
+          const source = raid.source || "";
+          if (source === "discord") return false;
+          return source === "manual" || source === "admin" || !source;
+        };
+
+        setDeclarations((declarationsBody.declarations || []) as RaidDeclaration[]);
+        setRaidsFaits(((raidsBody.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly));
+        setRaidsRecus(((raidsBody.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly));
+        setMembers((membersBody.members || []) as MemberRow[]);
+      } catch {
+        setError("Erreur reseau pendant le chargement.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+    setStatsPage(1);
+  }, [selectedMonth, historySearch, statsSubTab, activeTab]);
+
+  const getMemberDisplayName = (login?: string): string => {
+    const key = String(login || "").toLowerCase();
+    const row = members.find((item) => String(item.twitchLogin || "").toLowerCase() === key);
+    return row?.displayName || login || "Inconnu";
+  };
+
+  const sentRanking = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const raid of raidsFaits) {
+      const login = String(raid.raiderTwitchLogin || "").toLowerCase();
+      if (!login) continue;
+      map.set(login, (map.get(login) || 0) + (raid.count || 1));
+    }
+    return Array.from(map.entries())
+      .map(([login, total]) => ({ login, label: getMemberDisplayName(login), total }))
+      .sort((a, b) => b.total - a.total);
+  }, [raidsFaits, members]);
+
+  const receivedRanking = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const raid of raidsRecus) {
+      const login = String(raid.targetTwitchLogin || "").toLowerCase();
+      if (!login) continue;
+      map.set(login, (map.get(login) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([login, total]) => ({ login, label: getMemberDisplayName(login), total }))
+      .sort((a, b) => b.total - a.total);
+  }, [raidsRecus, members]);
+
+  const totals = useMemo(
+    () => ({
+      declarations: declarations.length,
+      pending: declarations.filter((item) => item.status === "processing").length,
+      validated: declarations.filter((item) => item.status === "validated").length,
+      rejected: declarations.filter((item) => item.status === "rejected").length,
+      sent: raidsFaits.reduce((sum, raid) => sum + (raid.count || 1), 0),
+      received: raidsRecus.length,
+    }),
+    [declarations, raidsFaits, raidsRecus]
+  );
+
+  const filteredDeclarations = useMemo(() => {
+    const q = historySearch.trim().toLowerCase();
+    const base = declarations
+      .slice()
+      .sort((a, b) => new Date(b.raid_at).getTime() - new Date(a.raid_at).getTime());
+    if (!q) return base;
+    return base.filter((row) => {
+      const haystack = [row.member_display_name, row.member_twitch_login, row.target_twitch_login, row.note, row.staff_comment || ""]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [declarations, historySearch]);
+
+  const historyPerPage = 8;
+  const historyTotalPages = Math.max(1, Math.ceil(filteredDeclarations.length / historyPerPage));
+  const pagedDeclarations = filteredDeclarations.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
+
+  const activeStatsRows = statsSubTab === "received" ? receivedRanking : sentRanking;
+  const statsPerPage = 12;
+  const statsTotalPages = Math.max(1, Math.ceil(activeStatsRows.length / statsPerPage));
+  const pagedStatsRows = activeStatsRows.slice((statsPage - 1) * statsPerPage, statsPage * statsPerPage);
+
+  function statusBadge(status: RaidDeclaration["status"]): { label: string; border: string; color: string; bg: string } {
+    if (status === "validated") {
+      return { label: "Valide", border: "rgba(52,211,153,0.45)", color: "#34d399", bg: "rgba(52,211,153,0.12)" };
+    }
+    if (status === "rejected") {
+      return { label: "Refuse", border: "rgba(248,113,113,0.45)", color: "#f87171", bg: "rgba(248,113,113,0.12)" };
+    }
+    return { label: "En attente / en cours de resolution", border: "rgba(250,204,21,0.45)", color: "#facc15", bg: "rgba(250,204,21,0.12)" };
+  }
+
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
       <div className="mb-8">
         <Link href="/admin/raids" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
           ← Retour à Engagement
         </Link>
+        <div>
+          <Link
+            href="/admin/engagement/raids-a-valider"
+            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#facc15]"
+            style={{ borderColor: "rgba(250,204,21,0.4)" }}
+          >
+            Ouvrir raids a valider
+          </Link>
+        </div>
         <h1 className="mb-2 text-4xl font-bold">Historique des raids</h1>
-        <p className="text-gray-400">
-          Vue future pour consulter l’historique consolidé des raids entre la plateforme et Discord.
-        </p>
+        <p className="text-gray-400">Historique consolide relie au module de validation des raids membres.</p>
       </div>
 
-      <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/20 p-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🚧</span>
-          <div>
-            <p className="font-semibold text-yellow-300">Fonctionnalité à venir</p>
-            <p className="text-sm text-yellow-200">Le module historique sera activé avec le bot Discord.</p>
+      <div
+        className="mb-6 rounded-xl border p-4"
+        style={{
+          borderColor: "rgba(139,92,246,0.26)",
+          background: "radial-gradient(circle at 10% 8%, rgba(139,92,246,0.14), rgba(26,26,29,0.95) 42%)",
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-400">Mois:</span>
+          <select
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
+          >
+            {availableMonths.map((month) => (
+              <option key={month} value={month}>
+                {month}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+            style={{
+              borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+              color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
+            }}
+          >
+            Historique des raids
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("stats")}
+            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+            style={{
+              borderColor: activeTab === "stats" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+              color: activeTab === "stats" ? "#d8b4fe" : "#cbd5e1",
+            }}
+          >
+            Stats de raids
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-6">
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Declarations</p>
+            <p className="font-semibold">{totals.declarations}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">En attente</p>
+            <p className="font-semibold text-yellow-300">{totals.pending}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Valides</p>
+            <p className="font-semibold text-emerald-300">{totals.validated}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Refuses</p>
+            <p className="font-semibold text-red-300">{totals.rejected}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Raids faits</p>
+            <p className="font-semibold text-[#c4b5fd]">{totals.sent}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Raids recus</p>
+            <p className="font-semibold text-[#93c5fd]">{totals.received}</p>
           </div>
         </div>
       </div>
 
       <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
-        <p className="text-sm text-gray-300">
-          Placeholder ajouté sans modifier les pages de raids/follow déjà en production.
-        </p>
+        {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+        {loading ? (
+          <p className="text-sm text-gray-300">Chargement des donnees...</p>
+        ) : activeTab === "history" ? (
+          filteredDeclarations.length === 0 ? (
+            <p className="text-sm text-gray-300">Aucun raid declare sur ce mois.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <input
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="Rechercher dans l'historique..."
+                  className="w-full max-w-[420px] rounded-lg border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#101014", color: "#fff" }}
+                />
+                <span className="text-xs text-gray-400">
+                  {filteredDeclarations.length} resultat(s)
+                </span>
+              </div>
+
+              {pagedDeclarations.map((row) => {
+                const badge = statusBadge(row.status);
+                return (
+                  <article key={row.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-white">
+                        {row.member_display_name} ({row.member_twitch_login}) → {row.target_twitch_login}
+                      </p>
+                      <span
+                        className="rounded-full border px-2 py-1 text-xs font-semibold"
+                        style={{ borderColor: badge.border, color: badge.color, backgroundColor: badge.bg }}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {new Date(row.raid_at).toLocaleString("fr-FR")} {row.is_approximate ? "- heure approximative" : ""}
+                    </p>
+                    {row.note ? <p className="mt-1 text-sm text-gray-300">Note: {row.note}</p> : null}
+                    {row.staff_comment ? <p className="mt-1 text-xs text-gray-400">Commentaire staff: {row.staff_comment}</p> : null}
+                  </article>
+                );
+              })}
+
+              {historyTotalPages > 1 ? (
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                    disabled={historyPage === 1}
+                    className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                    style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                  >
+                    Precedent
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Page {historyPage}/{historyTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage((prev) => Math.min(historyTotalPages, prev + 1))}
+                    disabled={historyPage === historyTotalPages}
+                    className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                    style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                  >
+                    Suivant
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )
+        ) : (
+          <div>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStatsSubTab("received")}
+                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                style={{
+                  borderColor: statsSubTab === "received" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
+                  color: statsSubTab === "received" ? "#93c5fd" : "#cbd5e1",
+                }}
+              >
+                Raids recus
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsSubTab("sent")}
+                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                style={{
+                  borderColor: statsSubTab === "sent" ? "rgba(167,139,250,0.55)" : "rgba(255,255,255,0.18)",
+                  color: statsSubTab === "sent" ? "#c4b5fd" : "#cbd5e1",
+                }}
+              >
+                Raids faits
+              </button>
+            </div>
+
+            {activeStatsRows.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucune donnee disponible sur ce mois.</p>
+            ) : (
+              <div className="space-y-2">
+                {pagedStatsRows.map((item, index) => (
+                  <div
+                    key={`${statsSubTab}-${item.login}`}
+                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-[#101014] px-3 py-2"
+                  >
+                    <p className="text-sm text-white">
+                      {(statsPage - 1) * statsPerPage + index + 1}. {item.label} <span className="text-gray-400">({item.login})</span>
+                    </p>
+                    <span className="text-sm font-semibold" style={{ color: statsSubTab === "received" ? "#93c5fd" : "#c4b5fd" }}>
+                      {item.total}
+                    </span>
+                  </div>
+                ))}
+                {statsTotalPages > 1 ? (
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setStatsPage((prev) => Math.max(1, prev - 1))}
+                      disabled={statsPage === 1}
+                      className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                      style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                    >
+                      Precedent
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      Page {statsPage}/{statsTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStatsPage((prev) => Math.min(statsTotalPages, prev + 1))}
+                      disabled={statsPage === statsTotalPages}
+                      className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                      style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
