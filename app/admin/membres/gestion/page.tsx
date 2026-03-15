@@ -110,6 +110,10 @@ export default function GestionMembresPage() {
   type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive" | "completude";
   type PresetFilter = "all" | "nouveaux" | "incomplets" | "sans_twitch_id" | "sans_integration" | "vip" | "inactifs" | "revue_due";
   const [presetFilter, setPresetFilter] = useState<PresetFilter>("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | MemberRole>("all");
+  const [memberStatusFilter, setMemberStatusFilter] = useState<"all" | MemberStatus>("all");
+  const [joinedAfterFilter, setJoinedAfterFilter] = useState("");
+  const [joinedBeforeFilter, setJoinedBeforeFilter] = useState("");
   const [savedViews, setSavedViews] = useState<Array<{
     id: string;
     name: string;
@@ -118,6 +122,10 @@ export default function GestionMembresPage() {
     sortColumn: SortableColumn | null;
     sortDirection: "asc" | "desc";
     presetFilter: PresetFilter;
+    roleFilter?: "all" | MemberRole;
+    memberStatusFilter?: "all" | MemberStatus;
+    joinedAfterFilter?: string;
+    joinedBeforeFilter?: string;
   }>>([]);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState<string>("");
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
@@ -137,6 +145,13 @@ export default function GestionMembresPage() {
   const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [statusTab, setStatusTab] = useState<"actifs" | "inactifs" | "nouveaux">("actifs");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
@@ -255,6 +270,16 @@ export default function GestionMembresPage() {
     }
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, presetFilter, statusTab, viewMode, sortColumn, sortDirection, roleFilter, memberStatusFilter, joinedAfterFilter, joinedBeforeFilter]);
+
+  useEffect(() => {
+    if (!actionNotice) return;
+    const timeout = setTimeout(() => setActionNotice(null), 5000);
+    return () => clearTimeout(timeout);
+  }, [actionNotice]);
+
   function saveViewsToStorage(views: typeof savedViews) {
     setSavedViews(views);
     try {
@@ -262,6 +287,10 @@ export default function GestionMembresPage() {
     } catch (error) {
       console.warn("Impossible de sauvegarder les vues:", error);
     }
+  }
+
+  function pushNotice(type: "success" | "error" | "info", message: string) {
+    setActionNotice({ type, message });
   }
 
   function getMemberCompleteness(member: Member): { percent: number; missing: string[]; label: string } {
@@ -290,6 +319,10 @@ export default function GestionMembresPage() {
       sortColumn,
       sortDirection,
       presetFilter,
+      roleFilter,
+      memberStatusFilter,
+      joinedAfterFilter,
+      joinedBeforeFilter,
     };
     const nextViews = [newView, ...savedViews].slice(0, 20);
     saveViewsToStorage(nextViews);
@@ -305,6 +338,10 @@ export default function GestionMembresPage() {
     setSortColumn(view.sortColumn);
     setSortDirection(view.sortDirection);
     setPresetFilter(view.presetFilter);
+    setRoleFilter(view.roleFilter ?? "all");
+    setMemberStatusFilter(view.memberStatusFilter ?? "all");
+    setJoinedAfterFilter(view.joinedAfterFilter ?? "");
+    setJoinedBeforeFilter(view.joinedBeforeFilter ?? "");
   }
 
   function deleteSavedView(viewId: string) {
@@ -839,6 +876,23 @@ export default function GestionMembresPage() {
     });
   }
 
+  const joinedAfterMs = joinedAfterFilter ? new Date(`${joinedAfterFilter}T00:00:00`).getTime() : null;
+  const joinedBeforeMs = joinedBeforeFilter ? new Date(`${joinedBeforeFilter}T23:59:59.999`).getTime() : null;
+  if (roleFilter !== "all" || memberStatusFilter !== "all" || joinedAfterMs !== null || joinedBeforeMs !== null) {
+    filteredMembers = filteredMembers.filter((member) => {
+      if (roleFilter !== "all" && member.role !== roleFilter) return false;
+      if (memberStatusFilter !== "all" && member.statut !== memberStatusFilter) return false;
+      if (joinedAfterMs !== null || joinedBeforeMs !== null) {
+        if (!member.createdAt) return false;
+        const createdAtMs = new Date(member.createdAt).getTime();
+        if (!Number.isFinite(createdAtMs)) return false;
+        if (joinedAfterMs !== null && createdAtMs < joinedAfterMs) return false;
+        if (joinedBeforeMs !== null && createdAtMs > joinedBeforeMs) return false;
+      }
+      return true;
+    });
+  }
+
   // Trier les membres
   if (sortColumn) {
     filteredMembers = [...filteredMembers].sort((a, b) => {
@@ -934,6 +988,12 @@ export default function GestionMembresPage() {
     : statusTab === "inactifs"
     ? inactiveMembers
     : newMembers;
+  const totalPages = Math.max(1, Math.ceil(displayedMembers.length / pageSize));
+  const clampedCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (clampedCurrentPage - 1) * pageSize;
+  const startItem = displayedMembers.length === 0 ? 0 : startIndex + 1;
+  const endItem = Math.min(clampedCurrentPage * pageSize, displayedMembers.length);
+  const paginatedMembers = displayedMembers.slice(startIndex, endItem);
   const tableColumnCount =
     viewMode === "complet"
       ? currentAdmin?.isFounder
@@ -942,6 +1002,12 @@ export default function GestionMembresPage() {
       : currentAdmin?.isFounder
       ? 12
       : 11;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const reviewAlerts = (() => {
     const now = new Date();
@@ -957,6 +1023,15 @@ export default function GestionMembresPage() {
     }
     return { overdue, dueSoon };
   })();
+  const totalActiveMembers = members.filter((m) => m.statut === "Actif" && m.role !== "Nouveau").length;
+  const totalInactiveMembers = members.filter((m) => m.statut === "Inactif" && m.role !== "Nouveau").length;
+  const totalNewMembers = members.filter((m) => m.role === "Nouveau").length;
+  const totalIncompleteMembers = members.filter((m) => getMemberCompleteness(m).percent < 80).length;
+  const totalWithoutTwitchId = members.filter((m) => !m.twitchId).length;
+  const activeTabLabel = statusTab === "actifs" ? "Actifs" : statusTab === "inactifs" ? "Inactifs" : "Nouveaux";
+  const availableRoles = Array.from(new Set(members.map((member) => member.role))).sort((a, b) =>
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
 
   // Fonction pour gérer le clic sur un en-tête de colonne
   const handleSort = (column: SortableColumn) => {
@@ -1098,6 +1173,13 @@ export default function GestionMembresPage() {
 
     const oldStatus = member.statut;
     const newStatus = oldStatus === "Actif" ? "Inactif" : "Actif";
+    if (
+      !confirm(
+        `Confirmer le changement de statut ?\n\nMembre: ${member.nom}\nTwitch: ${member.twitch}\nStatut actuel: ${oldStatus}\nNouveau statut: ${newStatus}`
+      )
+    ) {
+      return;
+    }
 
     try {
       // Mettre à jour via l'API si c'est un fondateur
@@ -1138,9 +1220,10 @@ export default function GestionMembresPage() {
 
       // Recharger les membres depuis la base de données
       await loadMembers();
+      pushNotice("success", `Statut mis à jour pour ${member.nom} (${newStatus}).`);
     } catch (error) {
       console.error("Erreur lors de la modification du statut:", error);
-      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+      pushNotice("error", `Erreur statut: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
     }
   };
 
@@ -1405,7 +1488,11 @@ export default function GestionMembresPage() {
       return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${member.nom} ? Cette action est irréversible.`)) {
+    if (
+      !confirm(
+        `Suppression définitive du membre\n\nNom: ${member.nom}\nTwitch: ${member.twitch}\nDiscord: ${member.discord || "N/A"}\n\nCette action est irréversible.`
+      )
+    ) {
       return;
     }
 
@@ -1441,12 +1528,12 @@ export default function GestionMembresPage() {
         console.error("Erreur lors du logging:", err);
       }
 
-      alert("Membre supprimé avec succès");
+      pushNotice("success", `Membre supprimé: ${member.nom}`);
       // Recharger les membres depuis la base de données
       await loadMembers();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
-      alert(`Erreur : ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+      pushNotice("error", `Erreur suppression: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
     }
   };
 
@@ -1586,6 +1673,12 @@ export default function GestionMembresPage() {
       return "-";
     }
   };
+  const rowActionButtonBase = "px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1";
+  const rowActionInfo = `${rowActionButtonBase} bg-blue-600/20 text-blue-300 hover:bg-blue-600/30`;
+  const rowActionPrimary = `${rowActionButtonBase} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30`;
+  const rowActionEdit = `${rowActionButtonBase} bg-[#9146ff] text-white hover:bg-[#5a32b4]`;
+  const rowActionDanger = `${rowActionButtonBase} bg-red-600/20 text-red-300 hover:bg-red-600/30`;
+  const rowActionSuccess = `${rowActionButtonBase} bg-green-600/20 text-green-300 hover:bg-green-600/30`;
 
   if (loading) {
     return (
@@ -1609,6 +1702,19 @@ export default function GestionMembresPage() {
             </p>
           </div>
         </div>
+        {actionNotice && (
+          <div
+            className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+              actionNotice.type === "success"
+                ? "border-green-500/40 bg-green-500/10 text-green-200"
+                : actionNotice.type === "error"
+                ? "border-red-500/40 bg-red-500/10 text-red-200"
+                : "border-blue-500/40 bg-blue-500/10 text-blue-200"
+            }`}
+          >
+            {actionNotice.message}
+          </div>
+        )}
 
         {/* Barre de recherche et actions */}
         <div className="mb-6 sticky top-3 z-20 bg-[#0f1014]/95 backdrop-blur border border-gray-800 rounded-xl p-4 flex items-center gap-4 flex-wrap">
@@ -1634,6 +1740,59 @@ export default function GestionMembresPage() {
             <option value="inactifs">Inactifs</option>
             <option value="revue_due">Revue due</option>
           </select>
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters((prev) => !prev)}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+              showAdvancedFilters
+                ? "bg-purple-600/20 border-purple-500/40 text-purple-200"
+                : "bg-[#1a1a1d] border-gray-700 text-gray-300 hover:text-white"
+            }`}
+            title="Afficher/Masquer les filtres avancés"
+          >
+            Filtres avancés
+          </button>
+          {showAdvancedFilters && (
+            <>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as "all" | MemberRole)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                title="Filtrer par rôle"
+              >
+                <option value="all">Tous les rôles</option>
+                {availableRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {getRoleBadgeLabel(role)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={memberStatusFilter}
+                onChange={(e) => setMemberStatusFilter(e.target.value as "all" | MemberStatus)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                title="Filtrer par statut membre"
+              >
+                <option value="all">Tous statuts</option>
+                <option value="Actif">Actif</option>
+                <option value="Inactif">Inactif</option>
+              </select>
+              <input
+                type="date"
+                value={joinedAfterFilter}
+                onChange={(e) => setJoinedAfterFilter(e.target.value)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                title="Membre depuis - date minimum"
+              />
+              <input
+                type="date"
+                value={joinedBeforeFilter}
+                onChange={(e) => setJoinedBeforeFilter(e.target.value)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                title="Membre depuis - date maximum"
+              />
+            </>
+          )}
           <select
             value={selectedSavedViewId}
             onChange={(e) => applySavedView(e.target.value)}
@@ -1653,6 +1812,22 @@ export default function GestionMembresPage() {
             title="Enregistrer la vue actuelle"
           >
             Sauver vue
+          </button>
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setPresetFilter("all");
+              setRoleFilter("all");
+              setMemberStatusFilter("all");
+              setJoinedAfterFilter("");
+              setJoinedBeforeFilter("");
+              setSelectedSavedViewId("");
+              pushNotice("info", "Filtres réinitialisés");
+            }}
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+            title="Réinitialiser recherche et filtres"
+          >
+            Reset filtres
           </button>
           {selectedSavedViewId && (
             <button
@@ -1864,48 +2039,67 @@ export default function GestionMembresPage() {
             )}
           </div>
         </div>
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+          <span className="rounded-full border border-gray-700 bg-[#1a1a1d] px-3 py-1">
+            {displayedMembers.length} résultat{displayedMembers.length > 1 ? "s" : ""} ({activeTabLabel})
+          </span>
+          {isSearching && (
+            <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-purple-200">
+              Recherche: "{searchQuery.trim()}"
+            </span>
+          )}
+          {presetFilter !== "all" && (
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
+              Filtre métier actif: {presetFilter}
+            </span>
+          )}
+          {roleFilter !== "all" && (
+            <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-cyan-200">
+              Rôle: {getRoleBadgeLabel(roleFilter)}
+            </span>
+          )}
+          {memberStatusFilter !== "all" && (
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+              Statut: {memberStatusFilter}
+            </span>
+          )}
+          {joinedAfterFilter && (
+            <span className="rounded-full border border-slate-500/40 bg-slate-500/10 px-3 py-1 text-slate-200">
+              Depuis: {joinedAfterFilter}
+            </span>
+          )}
+          {joinedBeforeFilter && (
+            <span className="rounded-full border border-slate-500/40 bg-slate-500/10 px-3 py-1 text-slate-200">
+              Jusqu&apos;au: {joinedBeforeFilter}
+            </span>
+          )}
+        </div>
 
         {/* Encadré de statistiques des membres */}
-        <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <Users className="w-6 h-6 text-[#9146ff]" />
-            <div className="flex-1">
-              <h3 className="text-white font-semibold mb-1">Statistiques des membres</h3>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
-                <span>
-                  <span className="text-white font-semibold">{members.length}</span> membre{members.length > 1 ? 's' : ''} au total
-                </span>
-                {members.length > 0 && (
-                  <>
-                    <span>
-                      <span className="text-green-400 font-semibold">
-                        {members.filter(m => m.statut === "Actif" && m.role !== "Nouveau").length}
-                      </span> actif{members.filter(m => m.statut === "Actif" && m.role !== "Nouveau").length > 1 ? 's' : ''}
-                    </span>
-                    <span>
-                      <span className="text-red-400 font-semibold">
-                        {members.filter(m => m.statut === "Inactif" && m.role !== "Nouveau").length}
-                      </span> inactif{members.filter(m => m.statut === "Inactif" && m.role !== "Nouveau").length > 1 ? 's' : ''}
-                    </span>
-                    <span>
-                      <span className="text-purple-400 font-semibold">
-                        {members.filter(m => m.role === "Nouveau").length}
-                      </span> nouveau{members.filter(m => m.role === "Nouveau").length > 1 ? "x" : ""}
-                    </span>
-                    <span>
-                      <span className="text-yellow-400 font-semibold">
-                        {members.filter(m => getMemberCompleteness(m).percent < 80).length}
-                      </span> incomplet{members.filter(m => getMemberCompleteness(m).percent < 80).length > 1 ? 's' : ''}
-                    </span>
-                    <span>
-                      <span className="text-cyan-400 font-semibold">
-                        {members.filter(m => !m.twitchId).length}
-                      </span> sans ID Twitch
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+          <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Total</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{members.length}</p>
+          </div>
+          <div className="rounded-xl border border-green-500/25 bg-green-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-green-200">Actifs</p>
+            <p className="mt-2 text-2xl font-semibold text-green-300">{totalActiveMembers}</p>
+          </div>
+          <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-red-200">Inactifs</p>
+            <p className="mt-2 text-2xl font-semibold text-red-300">{totalInactiveMembers}</p>
+          </div>
+          <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-purple-200">Nouveaux</p>
+            <p className="mt-2 text-2xl font-semibold text-purple-300">{totalNewMembers}</p>
+          </div>
+          <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-yellow-200">Incomplets</p>
+            <p className="mt-2 text-2xl font-semibold text-yellow-300">{totalIncompleteMembers}</p>
+          </div>
+          <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-cyan-200">Sans ID Twitch</p>
+            <p className="mt-2 text-2xl font-semibold text-cyan-300">{totalWithoutTwitchId}</p>
           </div>
         </div>
 
@@ -1986,6 +2180,13 @@ export default function GestionMembresPage() {
             </div>
           </div>
         )}
+        {!currentAdmin?.isFounder && (
+          <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+            <p className="text-sm text-gray-300">
+              Les actions de masse (changement de rôle/statut en lot) sont disponibles uniquement pour les fondateurs.
+            </p>
+          </div>
+        )}
 
         {/* Onglets Actifs/Inactifs/Nouveaux */}
         <div className="mb-4 flex items-center gap-2">
@@ -2026,6 +2227,25 @@ export default function GestionMembresPage() {
 
         {/* Tableau des membres */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+          <div className="border-b border-gray-700/70 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#16171b]">
+            <p className="text-sm text-gray-300">
+              Affichage <span className="font-semibold text-white">{startItem}</span>-<span className="font-semibold text-white">{endItem}</span> sur{" "}
+              <span className="font-semibold text-white">{displayedMembers.length}</span>
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <label htmlFor="page-size" className="text-gray-400">Lignes/page</label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value) as 25 | 50 | 100)}
+                className="bg-[#0e0e10] border border-gray-700 rounded px-2 py-1 text-white"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="sticky top-0 z-10 bg-[#1a1a1d]">
@@ -2068,10 +2288,10 @@ export default function GestionMembresPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayedMembers.map((member) => (
+                {paginatedMembers.map((member, rowIndex) => (
                   <tr
                     key={getMemberStableKey(member)}
-                    className="border-b border-gray-700/80 hover:bg-[#202330] transition-colors"
+                    className={`border-b border-gray-700/80 hover:bg-[#202330] transition-colors ${rowIndex % 2 === 0 ? "bg-transparent" : "bg-[#17191f]"}`}
                   >
                     {currentAdmin?.isFounder && (
                       <td className="py-4 px-3">
@@ -2302,7 +2522,7 @@ export default function GestionMembresPage() {
                             setSelectedMember(member);
                             setShowMemberHistory(true);
                           }}
-                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 flex items-center gap-1"
+                          className={rowActionInfo}
                           title="Voir l'historique"
                         >
                           <History className="w-3 h-3" />
@@ -2312,18 +2532,14 @@ export default function GestionMembresPage() {
                           href={`/admin/membres/fiche/${encodeURIComponent(
                             member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
                           )}`}
-                          className="px-3 py-1 rounded text-xs font-semibold transition-colors bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 flex items-center gap-1"
+                          className={rowActionPrimary}
                           title="Voir la fiche membre"
                         >
                           👁️ Fiche
                         </Link>
                         <button
                           onClick={() => handleToggleStatus(member)}
-                          className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
-                            member.statut === "Actif"
-                              ? "bg-red-600/20 text-red-300 hover:bg-red-600/30"
-                              : "bg-green-600/20 text-green-300 hover:bg-green-600/30"
-                          }`}
+                          className={member.statut === "Actif" ? rowActionDanger : rowActionSuccess}
                         >
                           {member.statut === "Actif" ? "Désactiver" : "Activer"}
                         </button>
@@ -2331,13 +2547,13 @@ export default function GestionMembresPage() {
                           <>
                             <button
                               onClick={() => handleEdit(member)}
-                              className="bg-[#9146ff] hover:bg-[#5a32b4] px-3 py-1 rounded text-xs font-semibold text-white transition-colors"
+                              className={rowActionEdit}
                             >
                               Modifier
                             </button>
                             <button
                               onClick={() => handleDelete(member)}
-                              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-1 rounded text-xs font-semibold transition-colors"
+                              className={rowActionDanger}
                             >
                               Supprimer
                             </button>
@@ -2362,6 +2578,31 @@ export default function GestionMembresPage() {
               </tbody>
             </table>
           </div>
+          {displayedMembers.length > 0 && (
+            <div className="border-t border-gray-700/70 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#16171b]">
+              <p className="text-sm text-gray-400">
+                Page <span className="text-white font-semibold">{clampedCurrentPage}</span> / <span className="text-white font-semibold">{totalPages}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={clampedCurrentPage === 1}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-700 text-gray-200 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1f222a] transition-colors"
+                >
+                  Précédent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={clampedCurrentPage === totalPages}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-700 text-gray-200 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1f222a] transition-colors"
+                >
+                  Suivant
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal d'ajout (pour les fondateurs) */}
