@@ -181,55 +181,61 @@ export default function UserSidebar() {
         </div>
 
         <nav className="space-y-4">
-          {memberSidebarSections.map((section) => {
-            if (section.adminOnly && !hasAdminAccess) return null;
+          {memberSidebarSections
+            .filter((section) => !section.adminOnly || hasAdminAccess)
+            .map((section, sectionIndex, filteredSections) => (
+              <div key={section.title} className="space-y-3">
+                <SidebarSection title={section.title}>
+                  {section.groups.map((group) => {
+                    const visibleItems = group.items.filter((item) => !item.adminOnly || hasAdminAccess);
+                    const shouldInjectTwitchShortcut =
+                      section.title === "Espace membre" && group.title === "Navigation" && Boolean(discordUser);
+                    const safeCallbackPath =
+                      pathname && pathname.startsWith("/") && !pathname.startsWith("//")
+                        ? pathname
+                        : "/member/profil/completer";
+                    const directTwitchLinkHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(safeCallbackPath)}`;
 
-            return (
-              <SidebarSection key={section.title} title={section.title}>
-                {section.groups.map((group) => {
-                  const visibleItems = group.items.filter((item) => !item.adminOnly || hasAdminAccess);
-                  const shouldInjectTwitchShortcut =
-                    section.title === "Espace membre" && group.title === "Navigation" && Boolean(discordUser);
-                  const safeCallbackPath =
-                    pathname && pathname.startsWith("/") && !pathname.startsWith("//")
-                      ? pathname
-                      : "/member/profil/completer";
-                  const directTwitchLinkHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(safeCallbackPath)}`;
+                    const groupItems = shouldInjectTwitchShortcut
+                      ? [
+                          ...visibleItems,
+                          {
+                            href: twitchLinked ? "/member/profil" : directTwitchLinkHref,
+                            label:
+                              twitchLinked === null
+                                ? "Etat Twitch..."
+                                : twitchLinked
+                                  ? "Twitch lie"
+                                  : "Lier mon Twitch",
+                          },
+                        ]
+                      : visibleItems;
+                    if (groupItems.length === 0) return null;
 
-                  const groupItems = shouldInjectTwitchShortcut
-                    ? [
-                        ...visibleItems,
-                        {
-                          href: twitchLinked ? "/member/profil" : directTwitchLinkHref,
-                          label:
-                            twitchLinked === null
-                              ? "Etat Twitch..."
-                              : twitchLinked
-                                ? "Twitch lie"
-                                : "Lier mon Twitch",
-                        },
-                      ]
-                    : visibleItems;
-                  if (groupItems.length === 0) return null;
-
-                  return (
-                    <SidebarCollapsibleGroup key={`${section.title}-${group.title}`} title={group.title}>
-                      {groupItems.map((item) => (
-                        <SidebarLink
-                          key={`${group.title}-${item.href}`}
-                          href={item.href}
-                          label={item.label}
-                          active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
-                          icon={item.icon}
-                          showUnreadDot={item.href === "/member/notifications" && unreadNotifications > 0}
-                        />
-                      ))}
-                    </SidebarCollapsibleGroup>
-                  );
-                })}
-              </SidebarSection>
-            );
-          })}
+                    return (
+                      <SidebarCollapsibleGroup key={`${section.title}-${group.title}`} title={group.title}>
+                        {groupItems.map((item) => (
+                          <SidebarLink
+                            key={`${group.title}-${item.href}`}
+                            href={item.href}
+                            label={item.label}
+                            active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
+                            icon={item.icon}
+                            showUnreadDot={item.href === "/member/notifications" && unreadNotifications > 0}
+                          />
+                        ))}
+                      </SidebarCollapsibleGroup>
+                    );
+                  })}
+                </SidebarSection>
+                {sectionIndex < filteredSections.length - 1 ? (
+                  <div
+                    className="mx-1 h-px"
+                    style={{ backgroundColor: "rgba(145, 70, 255, 0.16)" }}
+                  />
+                ) : null}
+              </div>
+            ))}
 
           <button
             onClick={handleLogout}

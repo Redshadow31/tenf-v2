@@ -18,17 +18,32 @@ export default function SidebarCollapsibleGroup({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2 rounded-xl border p-2"
+      style={{ borderColor: "rgba(145, 70, 255, 0.2)", backgroundColor: "rgba(145, 70, 255, 0.04)" }}
+    >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-xs font-semibold uppercase tracking-[0.12em]"
-        style={{ color: "var(--color-text-secondary)" }}
+        className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm font-semibold tracking-[0.04em]"
+        style={{ color: "var(--color-text)" }}
       >
         <span>{title}</span>
-        <ChevronDown size={14} style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 120ms ease" }} />
+        <span
+          className="inline-flex h-5 w-5 items-center justify-center rounded-md"
+          style={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)" }}
+        >
+          <ChevronDown size={12} style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 120ms ease" }} />
+        </span>
       </button>
-      {open ? <div className="space-y-2">{children}</div> : null}
+      {open ? (
+        <div
+          className="space-y-2 pl-2"
+          style={{ borderLeft: "1px solid rgba(145, 70, 255, 0.26)", marginLeft: "0.35rem", paddingLeft: "0.65rem" }}
+        >
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
