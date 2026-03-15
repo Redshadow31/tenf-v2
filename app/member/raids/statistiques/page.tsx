@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronRight, Flame, Shield, Target, TrendingUp, UserRound } from "lucide-react";
+import { CalendarDays, ChevronRight, Flame, Shield, Target, TrendingUp, User } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -223,7 +223,7 @@ export default function MemberRaidStatsPage() {
   const delta = (selectedHistory?.interactionScore || 0) - (previousHistory?.interactionScore || 0);
   const completionRate = goals.raids > 0 ? (summary.sent / goals.raids) * 100 : 0;
   const remainingToTarget = Math.max(0, goals.raids - summary.sent);
-  const tier = getTier(summary.interactionScore);
+  const tier = getTier(summary.sent + summary.received);
 
   const targetBreakdown = useMemo(() => {
     const map = new Map<string, { label: string; count: number }>();
@@ -623,7 +623,7 @@ export default function MemberRaidStatsPage() {
                       style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: "rgba(0,0,0,0.08)" }}
                     >
                       <div className="flex items-center gap-2">
-                        <UserRound size={14} style={{ color: "#93c5fd" }} />
+                        <User size={14} style={{ color: "#93c5fd" }} />
                         <div>
                           <p style={{ color: "var(--color-text)" }}>{raid.raiderDisplayName || raid.raiderTwitchLogin || "Membre"}</p>
                           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>

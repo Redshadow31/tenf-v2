@@ -46,12 +46,12 @@ export default function MemberGoalsPage() {
     data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || [];
   const spotlightCurrent = selectedMonthEvents.filter((event) => isSpotlightCategory(event.category) && event.attended).length;
 
-  const formationsCurrent =
-    (data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || []).filter(
-      (event) => event.attended && String(event.category || "").toLowerCase().includes("formation")
-    ).length ||
-    data.stats.formationsValidatedThisMonth ??
-    data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
+  const formationsFromAttendance = (data.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedMonth)?.events || []).filter(
+    (event) => event.attended && String(event.category || "").toLowerCase().includes("formation")
+  ).length;
+  const formationsFallback =
+    data.stats.formationsValidatedThisMonth ?? data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
+  const formationsCurrent = formationsFromAttendance > 0 ? formationsFromAttendance : formationsFallback;
 
   useEffect(() => {
     if (!selectedMonth || !data?.member?.twitchLogin) return;
