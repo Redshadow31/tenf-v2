@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Circle, FileText, UserCircle2 } from "lucide-react";
+import { AtSign, CheckCircle2, Circle, FileText, Instagram, Music2, UserCircle2 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
@@ -388,10 +388,10 @@ export default function MemberProfileCompletePage() {
                 <textarea
                   value={publicProfileForm.description}
                   onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, description: e.target.value }))}
-                  rows={5}
+                  rows={10}
                   maxLength={MAX_DESCRIPTION}
                   className="w-full rounded-lg border px-3 py-2"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)", minHeight: "220px" }}
                 />
                 <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
                   Supporte le Markdown Discord: **gras**, *italique*, __souligne__, &gt; citation.
@@ -408,9 +408,45 @@ export default function MemberProfileCompletePage() {
                 />
               </div>
               <div className="grid gap-3 md:grid-cols-3">
-                <input value={publicProfileForm.instagram} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))} placeholder="Instagram" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
-                <input value={publicProfileForm.tiktok} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))} placeholder="TikTok" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
-                <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="X / Twitter" className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
+                <div>
+                  <label className="mb-1 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    <Instagram size={14} />
+                    <span>Instagram</span>
+                  </label>
+                  <input
+                    value={publicProfileForm.instagram}
+                    onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))}
+                    placeholder="Pseudo ou @pseudo"
+                    className="w-full rounded-lg border px-3 py-2"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    <Music2 size={14} />
+                    <span>TikTok</span>
+                  </label>
+                  <input
+                    value={publicProfileForm.tiktok}
+                    onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))}
+                    placeholder="Pseudo ou @pseudo"
+                    className="w-full rounded-lg border px-3 py-2"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    <AtSign size={14} />
+                    <span>X / Twitter</span>
+                  </label>
+                  <input
+                    value={publicProfileForm.twitter}
+                    onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))}
+                    placeholder="Pseudo ou @pseudo"
+                    className="w-full rounded-lg border px-3 py-2"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                  />
+                </div>
               </div>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                 Astuce: privilegie une description concise de ton style, ta frequence et tes jeux.
