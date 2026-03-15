@@ -4,6 +4,7 @@ import {
   loadDiscordActivity,
   updateDiscordActivityForMonth,
 } from '@/lib/discordActivityStorage';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,8 @@ export async function POST(request: NextRequest) {
         vocalsByUser: data,
       });
     }
+
+    await cacheDelete(cacheKey('api', 'admin', 'discord-activity', 'data', month, 'v1'));
 
     return NextResponse.json({
       success: true,

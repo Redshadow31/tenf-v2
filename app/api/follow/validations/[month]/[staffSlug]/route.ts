@@ -10,6 +10,7 @@ import {
 } from '@/lib/followStorage';
 import { getAllMemberData } from '@/lib/memberData';
 import { loadFollowStaffList } from '@/lib/followStaffStorage';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 /**
  * GET - Récupère la validation de follow pour un membre du staff et un mois
@@ -200,19 +201,19 @@ export async function POST(
 
     await saveStaffFollowValidation(validation);
 
+    const [yearStr, monthStr] = month.split('-');
+    const year = parseInt(yearStr, 10);
+    const monthNum = parseInt(monthStr, 10);
+    let nextMonth = monthNum + 1;
+    let nextYear = year;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear++;
+    }
+    const nextMonthKey = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+
     // Transfert automatique sur le mois suivant si la validation n'existe pas déjà
     try {
-      const [yearStr, monthStr] = month.split('-');
-      const year = parseInt(yearStr, 10);
-      const monthNum = parseInt(monthStr, 10);
-      let nextMonth = monthNum + 1;
-      let nextYear = year;
-      if (nextMonth > 12) {
-        nextMonth = 1;
-        nextYear++;
-      }
-      const nextMonthKey = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
-      
       // Vérifier si une validation existe déjà pour le mois suivant
       const nextMonthValidation = await getStaffFollowValidation(staffSlug, nextMonthKey);
       
@@ -232,6 +233,11 @@ export async function POST(
       // Ne pas faire échouer la sauvegarde principale si le transfert échoue
       console.warn('[Follow Validations] Erreur lors du transfert vers le mois suivant:', transferError);
     }
+
+    await Promise.all([
+      cacheDelete(cacheKey('api', 'follow', 'summary', month, 'v1')),
+      cacheDelete(cacheKey('api', 'follow', 'summary', nextMonthKey, 'v1')),
+    ]);
 
     return NextResponse.json({
       success: true,

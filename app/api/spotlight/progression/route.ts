@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
+import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const SPOTLIGHT_PROGRESSION_TTL_SECONDS = 120;
 
 function isSpotlightCategory(category: string | undefined): boolean {
   return (category || "").toLowerCase() === "spotlight";
@@ -18,6 +20,12 @@ export async function GET() {
     const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const cacheKeyStr = cacheKey('api', 'spotlight', 'progression', 'v1');
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const now = new Date();
@@ -92,10 +100,14 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
+    const payload = {
       success: true,
       data: formattedData,
-    });
+    };
+
+    await cacheSet(cacheKeyStr, payload, SPOTLIGHT_PROGRESSION_TTL_SECONDS);
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('[Spotlight Progression API] Erreur:', error);
     return NextResponse.json(

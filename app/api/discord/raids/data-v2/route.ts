@@ -7,8 +7,11 @@ import {
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
 import { memberRepository } from '@/lib/repositories';
+import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
+const RAIDS_CURRENT_MONTH_TTL_SECONDS = 45;
+const RAIDS_HISTORICAL_MONTH_TTL_SECONDS = 300;
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -51,6 +54,15 @@ export async function GET(request: NextRequest) {
       }
     } else {
       monthKey = getCurrentMonthKey();
+    }
+
+    const currentMonthKey = getCurrentMonthKey();
+    const ttlSeconds =
+      monthKey === currentMonthKey ? RAIDS_CURRENT_MONTH_TTL_SECONDS : RAIDS_HISTORICAL_MONTH_TTL_SECONDS;
+    const cacheKeyStr = cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1');
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     // Charger les membres depuis Supabase pour la conversion Discord ID / Twitch → displayName
@@ -186,7 +198,7 @@ export async function GET(request: NextRequest) {
       .map(([day, count]) => ({ day, count }))
       .sort((a, b) => a.day - b.day);
 
-    return NextResponse.json({
+    const payload = {
       month: monthKey,
       raidsFaits: raidsFaitsFormatted,
       raidsRecus: raidsRecusFormatted,
@@ -214,7 +226,11 @@ export async function GET(request: NextRequest) {
         dailySent, // Données quotidiennes pour les sparklines
         dailyReceived, // Données quotidiennes pour les sparklines
       },
-    });
+    };
+
+    await cacheSet(cacheKeyStr, payload, ttlSeconds);
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Erreur lors de la récupération des données:", error);
     return NextResponse.json(

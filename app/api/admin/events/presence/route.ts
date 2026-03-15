@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, requirePermission } from '@/lib/requireAdmin';
 import { eventRepository, evaluationRepository, spotlightRepository, memberRepository } from '@/lib/repositories';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
+
+async function invalidateEventDerivedCaches(): Promise<void> {
+  await Promise.all([
+    cacheDelete(cacheKey('api', 'admin', 'events', 'registrations', 'v1')),
+    cacheDelete(cacheKey('api', 'spotlight', 'progression', 'v1')),
+  ]);
+}
 
 function toIsoSafeDate(input: any): string {
   const d = input instanceof Date ? input : new Date(input);
@@ -402,6 +410,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await invalidateEventDerivedCaches();
+
     return NextResponse.json({
       success: true,
       message: present ? "Présence enregistrée avec succès" : "Présence mise à jour avec succès",
@@ -561,6 +571,8 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    await invalidateEventDerivedCaches();
+
     return NextResponse.json({
       success: true,
       message: "Présence supprimée avec succès",
@@ -619,6 +631,8 @@ export async function PATCH(request: NextRequest) {
       isPublished: false, // Non publié car c'est un événement passé ajouté rétrospectivement
       createdBy: admin.discordId,
     });
+
+    await invalidateEventDerivedCaches();
 
     return NextResponse.json({
       success: true,

@@ -8,6 +8,7 @@ import {
   MonthlyDataPoint,
   RankingMember,
 } from '@/lib/dashboardDataStorage';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
 export const runtime = 'nodejs';
@@ -70,6 +71,7 @@ export async function PUT(request: NextRequest) {
         updatedBy: admin.discordId,
       };
       await saveDashboardData(updatedData, admin.discordId);
+      await cacheDelete(cacheKey('api', 'dashboard', 'data', 'public', 'v1'));
 
       return NextResponse.json({
         success: true,
@@ -97,6 +99,7 @@ export async function PUT(request: NextRequest) {
       }
 
       await updateDashboardSection(section, data, admin.discordId);
+      await cacheDelete(cacheKey('api', 'dashboard', 'data', 'public', 'v1'));
 
       return NextResponse.json({
         success: true,

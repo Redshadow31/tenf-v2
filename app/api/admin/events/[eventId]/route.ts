@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,11 @@ export async function DELETE(
     }
 
     await eventRepository.delete(eventId);
+
+    await Promise.all([
+      cacheDelete(cacheKey('api', 'admin', 'events', 'registrations', 'v1')),
+      cacheDelete(cacheKey('api', 'spotlight', 'progression', 'v1')),
+    ]);
 
     return NextResponse.json({ success: true, deletedId: eventId });
   } catch (error) {

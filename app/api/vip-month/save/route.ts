@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/requireAdmin';
 import fs from 'fs';
 import path from 'path';
+import { cacheGet, cacheSet, cacheDelete, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const STORE_NAME = 'tenf-vip-month';
+const VIP_MONTH_CURRENT_TTL_SECONDS = 60;
+const VIP_MONTH_HISTORICAL_TTL_SECONDS = 600;
 
 interface VipMonthData {
   month: string; // YYYY-MM
@@ -86,6 +89,8 @@ export async function POST(request: NextRequest) {
         fs.writeFileSync(filePath, JSON.stringify(vipMonthData, null, 2), 'utf-8');
       }
 
+      await cacheDelete(cacheKey('api', 'vip-month', 'save', 'get', month, 'v1'));
+
       return NextResponse.json({
         success: true,
         message: `VIP du mois ${month} enregistrés avec succès`,
@@ -128,6 +133,14 @@ export async function GET(request: NextRequest) {
 
     try {
       let vipMonthData: VipMonthData | null = null;
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const ttlSeconds =
+        month === currentMonth ? VIP_MONTH_CURRENT_TTL_SECONDS : VIP_MONTH_HISTORICAL_TTL_SECONDS;
+      const cacheKeyStr = cacheKey('api', 'vip-month', 'save', 'get', month, 'v1');
+      const cached = await cacheGet<VipMonthData | { month: string; vipLogins: string[]; savedAt: null }>(cacheKeyStr);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
 
       const store = await getVipMonthStore();
       if (store) {
@@ -144,13 +157,16 @@ export async function GET(request: NextRequest) {
       }
 
       if (!vipMonthData) {
-        return NextResponse.json({
+        const emptyPayload = {
           month,
           vipLogins: [],
           savedAt: null,
-        });
+        };
+        await cacheSet(cacheKeyStr, emptyPayload, ttlSeconds);
+        return NextResponse.json(emptyPayload);
       }
 
+      await cacheSet(cacheKeyStr, vipMonthData, ttlSeconds);
       return NextResponse.json(vipMonthData);
     } catch (error) {
       console.error(`[VIP Month GET] Erreur récupération pour ${month}:`, error);

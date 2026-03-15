@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDiscordActivityForMonth } from '@/lib/discordActivityStorage';
 import { memberRepository } from '@/lib/repositories';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const DISCORD_ACTIVITY_CURRENT_MONTH_TTL_SECONDS = 45;
+const DISCORD_ACTIVITY_HISTORICAL_MONTH_TTL_SECONDS = 300;
 
 /**
  * GET - Récupère les données d'activité Discord pour un mois spécifique
@@ -28,11 +31,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const ttlSeconds =
+      month === currentMonth
+        ? DISCORD_ACTIVITY_CURRENT_MONTH_TTL_SECONDS
+        : DISCORD_ACTIVITY_HISTORICAL_MONTH_TTL_SECONDS;
+    const cacheKeyStr = cacheKey('api', 'admin', 'discord-activity', 'data', month, 'v1');
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     // Charger les données d'activité Discord
     const activityData = await getDiscordActivityForMonth(month);
 
     if (!activityData) {
-      return NextResponse.json({
+      const emptyPayload = {
         success: true,
         data: {
           month,
@@ -43,7 +57,10 @@ export async function GET(request: NextRequest) {
           totalMessages: 0,
           totalVoiceHours: 0,
         },
-      });
+      };
+
+      await cacheSet(cacheKeyStr, emptyPayload, ttlSeconds);
+      return NextResponse.json(emptyPayload);
     }
 
     // Charger les membres depuis Supabase (source de vérité V2)
@@ -104,7 +121,7 @@ export async function GET(request: NextRequest) {
         return sum;
       }, 0);
 
-    return NextResponse.json({
+    const payload = {
       success: true,
       data: {
         month,
@@ -115,7 +132,10 @@ export async function GET(request: NextRequest) {
         totalMessages,
         totalVoiceHours,
       },
-    });
+    };
+
+    await cacheSet(cacheKeyStr, payload, ttlSeconds);
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('[API Discord Activity Data] Erreur GET:', error);
     return NextResponse.json(

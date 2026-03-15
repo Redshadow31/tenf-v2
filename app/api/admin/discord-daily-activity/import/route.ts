@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/requireAdmin';
 import { upsertDiscordDailyActivity } from '@/lib/discordDailyActivityStorage';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
     }));
 
     await upsertDiscordDailyActivity(points, admin.discordId);
+    await cacheDelete(cacheKey('api', 'dashboard', 'data', 'public', 'v1'));
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eventRepository, memberRepository } from '@/lib/repositories';
 import { requireUser } from '@/lib/requireUser';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 /**
  * POST - Inscription à un événement
@@ -73,6 +74,8 @@ export async function POST(
       notes: registration.notes,
       registeredAt: registration.registeredAt.toISOString(),
     };
+
+    await cacheDelete(cacheKey('api', 'admin', 'events', 'registrations', 'v1'));
 
     return NextResponse.json({ 
       registration: formattedRegistration,

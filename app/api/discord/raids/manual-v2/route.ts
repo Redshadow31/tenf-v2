@@ -8,6 +8,7 @@ import {
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
 import { memberRepository } from '@/lib/repositories';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -69,6 +70,8 @@ export async function POST(request: NextRequest) {
 
     // Ajouter le raid (manual = true)
     await addRaidFait(monthKey, raiderId, targetId, date, true, undefined, "manual");
+
+    await cacheDelete(cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1'));
 
     return NextResponse.json({
       success: true,
@@ -164,6 +167,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    await cacheDelete(cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1'));
+
     return NextResponse.json({
       success: true,
       message: "Raid modifié",
@@ -232,6 +237,8 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    await cacheDelete(cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1'));
 
     return NextResponse.json({
       success: true,

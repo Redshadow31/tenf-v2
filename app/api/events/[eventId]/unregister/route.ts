@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eventRepository, memberRepository } from '@/lib/repositories';
 import { requireUser } from '@/lib/requireUser';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 /**
  * DELETE - Désinscription d'un événement
@@ -52,6 +53,8 @@ export async function DELETE(
     
     // Se désinscrire de l'événement
     await eventRepository.removeRegistration(eventId, member.twitchLogin);
+
+    await cacheDelete(cacheKey('api', 'admin', 'events', 'registrations', 'v1'));
     
     return NextResponse.json({ 
       success: true,

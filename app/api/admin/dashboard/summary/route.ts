@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const ADMIN_DASHBOARD_SUMMARY_TTL_SECONDS = 20;
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -138,10 +140,18 @@ export async function GET() {
       );
     }
 
+    const cacheKeyStr = cacheKey("api", "admin", "dashboard", "summary", "v1");
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     const rows = await fetchAllMemberSummaries();
     const data = computeDashboardSummary(rows);
 
-    return NextResponse.json({ success: true, data });
+    const payload = { success: true, data };
+    await cacheSet(cacheKeyStr, payload, ADMIN_DASHBOARD_SUMMARY_TTL_SECONDS);
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("[API Admin Dashboard Summary] Erreur GET:", error);
     return NextResponse.json({ error: "Erreur interne du serveur" }, { status: 500 });

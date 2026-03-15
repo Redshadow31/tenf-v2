@@ -8,6 +8,7 @@ import {
   getMonthKey,
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 /**
  * DELETE - Supprime tous les raids manuels pour un mois donné
@@ -61,6 +62,8 @@ export async function DELETE(request: NextRequest) {
       console.error("[Delete Manual Raids] Erreur lors du recalcul des alertes:", error);
       // Ne pas faire échouer la suppression si le recalcul des alertes échoue
     }
+
+    await cacheDelete(cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1'));
 
     return NextResponse.json({
       success: true,

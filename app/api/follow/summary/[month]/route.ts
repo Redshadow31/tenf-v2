@@ -7,6 +7,10 @@ import {
   calculateFollowStats 
 } from '@/lib/followStorage';
 import { getActiveFollowStaff } from '@/lib/followStaffStorage';
+import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
+
+const FOLLOW_SUMMARY_CURRENT_MONTH_TTL_SECONDS = 60;
+const FOLLOW_SUMMARY_HISTORICAL_MONTH_TTL_SECONDS = 300;
 
 /**
  * GET - Récupère le résumé des validations pour un mois donné
@@ -29,6 +33,17 @@ export async function GET(
         { error: 'Format de mois invalide (attendu: YYYY-MM)' },
         { status: 400 }
       );
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const ttlSeconds =
+      month === currentMonth
+        ? FOLLOW_SUMMARY_CURRENT_MONTH_TTL_SECONDS
+        : FOLLOW_SUMMARY_HISTORICAL_MONTH_TTL_SECONDS;
+    const cacheKeyStr = cacheKey('api', 'follow', 'summary', month, 'v1');
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     let allValidations = await getAllFollowValidationsForMonth(month);
@@ -81,7 +96,7 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
+    const payload = {
       month,
       dataSourceMonth,
       globalStats: {
@@ -92,7 +107,10 @@ export async function GET(
         obsoletePagesCount: obsoleteValidations.length,
       },
       summary,
-    });
+    };
+
+    await cacheSet(cacheKeyStr, payload, ttlSeconds);
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('[Follow Summary API] Erreur:', error);
     return NextResponse.json(

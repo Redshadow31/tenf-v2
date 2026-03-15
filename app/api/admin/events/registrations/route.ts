@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
+const ADMIN_EVENTS_REGISTRATIONS_TTL_SECONDS = 30;
 
 function toIsoSafeDate(input: any): string {
   const date = new Date(input);
@@ -115,6 +117,12 @@ export async function GET(request: NextRequest) {
     
     if (!admin) {
       return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
+    }
+
+    const cacheKeyStr = cacheKey('api', 'admin', 'events', 'registrations', 'v1');
+    const cached = await cacheGet<any>(cacheKeyStr);
+    if (cached) {
+      return NextResponse.json(cached);
     }
     
     // Récupérer tous les événements (limite élevée pour l'admin)
@@ -267,11 +275,14 @@ export async function GET(request: NextRequest) {
       };
     });
     
-    return NextResponse.json({ 
+    const payload = { 
       eventsWithRegistrations: result,
       totalEvents: events.length,
       totalRegistrations,
-    });
+    };
+
+    await cacheSet(cacheKeyStr, payload, ADMIN_EVENTS_REGISTRATIONS_TTL_SECONDS);
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('[Admin Events Registrations API] Erreur GET:', error);
     return NextResponse.json(

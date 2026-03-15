@@ -13,6 +13,7 @@ import {
 import { memberRepository } from '@/lib/repositories';
 import { getCurrentAdmin } from '@/lib/adminAuth';
 import { hasPermission } from '@/lib/adminRoles';
+import { cacheDelete, cacheKey } from '@/lib/cache';
 
 // Forcer l'utilisation du runtime Node.js (nécessaire pour @netlify/blobs)
 export const runtime = 'nodejs';
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
       console.error("[Import Manual] Erreur lors du recalcul des alertes:", error);
       // Ne pas faire échouer l'import si le recalcul des alertes échoue
     }
+
+    await cacheDelete(cacheKey('api', 'discord', 'raids', 'data-v2', monthKey, 'v1'));
 
     return NextResponse.json({
       success: true,
