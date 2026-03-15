@@ -1131,10 +1131,7 @@ function EventPresenceModal({
   });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div
         className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -1446,10 +1443,7 @@ function CreateEventModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div
         className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full"
         onClick={(e) => e.stopPropagation()}

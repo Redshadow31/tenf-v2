@@ -1003,7 +1003,6 @@ function LogDetailDrawer({
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-      onClick={onClose}
     >
       <div
         className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-lg sm:rounded-lg border"

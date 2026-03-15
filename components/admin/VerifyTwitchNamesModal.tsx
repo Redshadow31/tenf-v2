@@ -153,10 +153,7 @@ export default function VerifyTwitchNamesModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div
         className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}

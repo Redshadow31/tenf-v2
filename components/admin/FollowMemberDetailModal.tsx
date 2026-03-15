@@ -53,10 +53,7 @@ export default function FollowMemberDetailModal({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div
         className="w-full max-w-5xl rounded-xl border p-5 max-h-[88vh] overflow-y-auto"
         style={{

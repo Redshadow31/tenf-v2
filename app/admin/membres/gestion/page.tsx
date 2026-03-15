@@ -1601,10 +1601,17 @@ export default function GestionMembresPage() {
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
       <div className="p-8">
-        <h1 className="text-4xl font-bold text-white mb-8">Gestion des Membres</h1>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-white">Gestion des Membres</h1>
+            <p className="mt-2 text-sm text-gray-400">
+              {members.length} membre{members.length > 1 ? "s" : ""} • {activeMembers.length} actifs • {inactiveMembers.length} inactifs • {newMembers.length} nouveaux
+            </p>
+          </div>
+        </div>
 
         {/* Barre de recherche et actions */}
-        <div className="mb-6 flex items-center gap-4 flex-wrap">
+        <div className="mb-6 sticky top-3 z-20 bg-[#0f1014]/95 backdrop-blur border border-gray-800 rounded-xl p-4 flex items-center gap-4 flex-wrap">
           <input
             type="text"
             placeholder="Rechercher un membre..."
@@ -1916,7 +1923,7 @@ export default function GestionMembresPage() {
           </div>
         )}
 
-        {currentAdmin?.isFounder && (
+        {currentAdmin?.isFounder && selectedMemberLogins.length > 0 && (
           <div className="mb-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-gray-200 mb-3">Actions de masse</h3>
             <div className="flex flex-wrap gap-3 items-center">
@@ -2021,7 +2028,7 @@ export default function GestionMembresPage() {
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-[#1a1a1d]">
                 <tr className="border-b border-gray-700">
                   {currentAdmin?.isFounder && (
                     <th className="py-4 px-3 text-sm font-semibold text-gray-300">
@@ -2064,7 +2071,7 @@ export default function GestionMembresPage() {
                 {displayedMembers.map((member) => (
                   <tr
                     key={getMemberStableKey(member)}
-                    className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
+                    className="border-b border-gray-700/80 hover:bg-[#202330] transition-colors"
                   >
                     {currentAdmin?.isFounder && (
                       <td className="py-4 px-3">

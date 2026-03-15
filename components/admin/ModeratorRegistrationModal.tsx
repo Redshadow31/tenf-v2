@@ -101,10 +101,7 @@ export default function ModeratorRegistrationModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div
         className="card relative max-h-[90vh] w-full max-w-3xl overflow-y-auto bg-[#1a1a1d] border border-gray-700"
         onClick={(e) => e.stopPropagation()}

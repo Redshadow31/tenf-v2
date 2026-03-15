@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -72,10 +72,20 @@ export default function EditMemberModal({
   member,
   onSave,
 }: EditMemberModalProps) {
+  type EditTab = "comptes" | "role" | "suivi" | "badges" | "notes";
+  const tabOrder: EditTab[] = ["comptes", "role", "suivi", "badges", "notes"];
+  const tabLabels: Record<EditTab, string> = {
+    comptes: "Identité & comptes",
+    role: "Rôles & statut",
+    suivi: "Profil & suivi",
+    badges: "Badges",
+    notes: "Description & notes",
+  };
   const [formData, setFormData] = useState<Member>(member);
   const [badgeInput, setBadgeInput] = useState("");
   const [showRoleHistory, setShowRoleHistory] = useState(false);
   const [roleChangeReason, setRoleChangeReason] = useState("");
+  const [activeTab, setActiveTab] = useState<EditTab>("comptes");
   const [availableMembers, setAvailableMembers] = useState<Array<{ nom: string; twitch: string }>>([]);
   const [existingMembers, setExistingMembers] = useState<Array<{ twitchLogin: string; discordId?: string; displayName?: string }>>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -83,6 +93,7 @@ export default function EditMemberModal({
   const [showParrainSuggestions, setShowParrainSuggestions] = useState(false);
   const [discordConflictMember, setDiscordConflictMember] = useState<{ twitchLogin: string; discordId?: string; displayName?: string } | null>(null);
   const [quickMergeLoading, setQuickMergeLoading] = useState(false);
+  const tabButtonRefs = useRef<Partial<Record<EditTab, HTMLButtonElement | null>>>({});
   const originalRole = member.role;
 
   useEffect(() => {
@@ -90,6 +101,7 @@ export default function EditMemberModal({
       setFormData({ ...member, role: toCanonicalMemberRole(member.role) });
       setBadgeInput("");
       setRoleChangeReason("");
+      setActiveTab("comptes");
       // Charger la liste des membres actifs pour l'autocomplétion
       loadAvailableMembers();
       loadExistingMembersForValidation();
@@ -142,6 +154,20 @@ export default function EditMemberModal({
 
     setValidationErrors(errors);
   }, [formData.twitch, formData.discordId, formData.createdAt, formData.integrationDate, formData.lastReviewAt, formData.nextReviewAt, existingMembers, member.twitch, member.discordId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (showRoleHistory) {
+        setShowRoleHistory(false);
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, showRoleHistory]);
 
   const loadAvailableMembers = async () => {
     try {
@@ -272,6 +298,91 @@ export default function EditMemberModal({
 
   if (!isOpen) return null;
 
+  const normalizeText = (value?: string | null) => (value ?? "").trim();
+  const normalizeDateOnly = (value?: string | null) => ((value ?? "").split("T")[0] || "").trim();
+  const normalizeBadges = (badges?: string[]) =>
+    [...(badges || [])]
+      .map((badge) => badge.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  const areStringArraysEqual = (left?: string[], right?: string[]) => {
+    const normalizedLeft = normalizeBadges(left);
+    const normalizedRight = normalizeBadges(right);
+    if (normalizedLeft.length !== normalizedRight.length) return false;
+    return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+  };
+
+  const tabDirtyState = useMemo<Record<EditTab, boolean>>(() => {
+    const baseRole = toCanonicalMemberRole(member.role);
+    return {
+      comptes:
+        normalizeText(formData.nom) !== normalizeText(member.nom) ||
+        normalizeText(formData.twitch) !== normalizeText(member.twitch) ||
+        normalizeText(formData.twitchId) !== normalizeText(member.twitchId) ||
+        normalizeText(formData.discord) !== normalizeText(member.discord) ||
+        normalizeText(formData.discordId) !== normalizeText(member.discordId),
+      role:
+        formData.role !== baseRole ||
+        formData.statut !== member.statut ||
+        !!formData.isVip !== !!member.isVip ||
+        !!formData.shadowbanLives !== !!member.shadowbanLives ||
+        normalizeText(roleChangeReason).length > 0,
+      suivi:
+        normalizeDateOnly(formData.createdAt) !== normalizeDateOnly(member.createdAt) ||
+        normalizeDateOnly(formData.integrationDate) !== normalizeDateOnly(member.integrationDate) ||
+        normalizeDateOnly(formData.birthday) !== normalizeDateOnly(member.birthday) ||
+        normalizeDateOnly(formData.twitchAffiliateDate) !== normalizeDateOnly(member.twitchAffiliateDate) ||
+        normalizeText(formData.parrain) !== normalizeText(member.parrain) ||
+        normalizeText(formData.onboardingStatus) !== normalizeText(member.onboardingStatus) ||
+        normalizeText(formData.mentorTwitchLogin) !== normalizeText(member.mentorTwitchLogin) ||
+        normalizeText(formData.primaryLanguage) !== normalizeText(member.primaryLanguage) ||
+        normalizeText(formData.timezone) !== normalizeText(member.timezone) ||
+        normalizeText(formData.countryCode) !== normalizeText(member.countryCode) ||
+        normalizeDateOnly(formData.lastReviewAt) !== normalizeDateOnly(member.lastReviewAt) ||
+        normalizeDateOnly(formData.nextReviewAt) !== normalizeDateOnly(member.nextReviewAt),
+      badges: !areStringArraysEqual(formData.badges, member.badges),
+      notes:
+        normalizeText(formData.description) !== normalizeText(member.description) ||
+        normalizeText(formData.notesInternes) !== normalizeText(member.notesInternes),
+    };
+  }, [formData, member, roleChangeReason]);
+
+  const tabErrorState: Record<EditTab, boolean> = {
+    comptes: !!validationErrors.twitch || !!validationErrors.discordId,
+    role: false,
+    suivi: !!validationErrors.integrationDate || !!validationErrors.nextReviewAt,
+    badges: false,
+    notes: false,
+  };
+
+  const modifiedTabCount = tabOrder.filter((tab) => tabDirtyState[tab]).length;
+
+  const focusTab = (tab: EditTab) => {
+    const node = tabButtonRefs.current[tab];
+    if (node) node.focus();
+  };
+
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, currentTab: EditTab) => {
+    const currentIndex = tabOrder.indexOf(currentTab);
+    if (currentIndex < 0) return;
+    let targetIndex = currentIndex;
+    if (event.key === "ArrowRight") {
+      targetIndex = (currentIndex + 1) % tabOrder.length;
+    } else if (event.key === "ArrowLeft") {
+      targetIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = tabOrder.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    const nextTab = tabOrder[targetIndex];
+    setActiveTab(nextTab);
+    focusTab(nextTab);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.keys(validationErrors).length > 0) {
@@ -295,7 +406,6 @@ export default function EditMemberModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
     >
       <div
         className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-5xl w-full max-h-[85vh] flex flex-col overflow-hidden"
@@ -347,12 +457,57 @@ export default function EditMemberModal({
           </div>
         </div>
 
+        <div className="px-6 py-3 border-b border-gray-700 bg-[#141418]">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-xs text-gray-400">
+              Navigation clavier onglets: fleches gauche/droite, Home, End.
+            </p>
+            <span className="text-xs text-gray-400">
+              {modifiedTabCount > 0 ? `${modifiedTabCount} onglet(s) modifié(s)` : "Aucune modification"}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections du formulaire membre">
+            {tabOrder.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls={`edit-member-tab-panel-${tab}`}
+                id={`edit-member-tab-${tab}`}
+                ref={(node) => {
+                  tabButtonRefs.current[tab] = node;
+                }}
+                tabIndex={activeTab === tab ? 0 : -1}
+                onClick={() => setActiveTab(tab)}
+                onKeyDown={(event) => handleTabKeyDown(event, tab)}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors border ${
+                  activeTab === tab
+                    ? "bg-purple-600 text-white"
+                    : "bg-[#0e0e10] text-gray-300 border-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {tabLabels[tab]}
+                  {tabDirtyState[tab] && <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />}
+                  {tabErrorState[tab] && <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden="true" />}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Corps scrollable */}
         <div className="flex-1 overflow-y-auto p-6">
           <form onSubmit={handleSubmit} id="edit-member-form">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Colonne gauche */}
-              <div className="space-y-6">
+              <div
+                className={activeTab === "comptes" ? "space-y-6" : "hidden"}
+                role="tabpanel"
+                id="edit-member-tab-panel-comptes"
+                aria-labelledby="edit-member-tab-comptes"
+              >
                 {/* Section Identité */}
                 <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Identité</h3>
@@ -497,9 +652,14 @@ export default function EditMemberModal({
               </div>
 
               {/* Colonne droite */}
-              <div className="space-y-6">
+              <div className={activeTab === "role" || activeTab === "suivi" || activeTab === "badges" ? "space-y-6" : "hidden"}>
                 {/* Section Statut */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div
+                  className={activeTab === "role" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  role="tabpanel"
+                  id="edit-member-tab-panel-role"
+                  aria-labelledby="edit-member-tab-role"
+                >
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Statut</h3>
                   <div className="space-y-4">
                     <div>
@@ -611,7 +771,12 @@ export default function EditMemberModal({
                 </div>
 
                 {/* Section Badges */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div
+                  className={activeTab === "badges" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  role="tabpanel"
+                  id="edit-member-tab-panel-badges"
+                  aria-labelledby="edit-member-tab-badges"
+                >
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Badges</h3>
                   <div className="space-y-2">
                     <div className="flex gap-2">
@@ -678,7 +843,12 @@ export default function EditMemberModal({
                 </div>
 
                 {/* Section Dates */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div
+                  className={activeTab === "suivi" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  role="tabpanel"
+                  id="edit-member-tab-panel-suivi"
+                  aria-labelledby="edit-member-tab-suivi"
+                >
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Dates</h3>
                   <div className="space-y-4">
                     <div>
@@ -900,7 +1070,12 @@ export default function EditMemberModal({
             </div>
 
             {/* Bas pleine largeur */}
-            <div className="mt-6 space-y-4">
+            <div
+              className={activeTab === "notes" ? "mt-6 space-y-4" : "hidden"}
+              role="tabpanel"
+              id="edit-member-tab-panel-notes"
+              aria-labelledby="edit-member-tab-notes"
+            >
               <div>
                 <label className="block text-sm font-semibold text-gray-300 mb-2">
                   Descriptif du streamer
@@ -950,7 +1125,6 @@ export default function EditMemberModal({
         {showRoleHistory && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setShowRoleHistory(false)}
           >
             <div
               className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"

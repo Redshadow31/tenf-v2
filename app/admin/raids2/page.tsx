@@ -548,7 +548,7 @@ export default function Raids2Page() {
       />
 
       {showDuplicatesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowDuplicatesModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div
             className="bg-[#1a1a1d] border border-gray-700 rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}

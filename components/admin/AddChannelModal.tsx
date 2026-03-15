@@ -88,10 +88,7 @@ export default function AddChannelModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div
         className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
