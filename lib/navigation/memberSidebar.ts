@@ -119,7 +119,6 @@ export const memberSidebarSections: SidebarNavSection[] = [
         items: [
           { href: "/member/formations", label: "Catalogue des formations", icon: GraduationCap },
           { href: "/member/formations/validees", label: "Mes formations validees", icon: ListChecks },
-          { href: "/member/formations/historique", label: "Historique des formations", icon: History },
         ],
       },
     ],

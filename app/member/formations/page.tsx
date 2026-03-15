@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, BookOpen, CalendarDays, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Sparkles, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -11,12 +13,18 @@ type EventItem = {
   title: string;
   date: string;
   category: string;
+  description?: string;
+  image?: string;
+  location?: string;
 };
 
 export default function MemberFormationCatalogPage() {
   const [formations, setFormations] = useState<EventItem[]>([]);
   const [pendingTitles, setPendingTitles] = useState<Set<string>>(new Set());
   const [submittingTitle, setSubmittingTitle] = useState<string>("");
+  const [registeredEventIds, setRegisteredEventIds] = useState<Set<string>>(new Set());
+  const [registeringEventId, setRegisteringEventId] = useState<string>("");
+  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string>("");
 
@@ -36,6 +44,30 @@ export default function MemberFormationCatalogPage() {
         setPendingTitles(new Set<string>((requestsBody.pendingTitles || []).map((title: string) => String(title))));
       } finally {
         setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch("/api/events/registrations/me", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        if (!response.ok) {
+          if (response.status === 401) {
+            setRegisteredEventIds(new Set());
+          }
+          return;
+        }
+        const data = await response.json();
+        const ids = Array.isArray(data?.registeredEventIds)
+          ? data.registeredEventIds.filter((id: unknown): id is string => typeof id === "string")
+          : [];
+        setRegisteredEventIds(new Set(ids));
+      } catch {
+        setRegisteredEventIds(new Set());
       }
     })();
   }, []);
@@ -81,6 +113,62 @@ export default function MemberFormationCatalogPage() {
     } finally {
       setSubmittingTitle("");
     }
+  }
+
+  async function toggleRegistration(eventId: string) {
+    const isRegistered = registeredEventIds.has(eventId);
+    setRegisteringEventId(eventId);
+    setFeedback("");
+    try {
+      const response = await fetch(`/api/events/${eventId}/${isRegistered ? "unregister" : "register"}`, {
+        method: isRegistered ? "DELETE" : "POST",
+        credentials: "include",
+        headers: isRegistered ? undefined : { "Content-Type": "application/json" },
+        body: isRegistered ? undefined : JSON.stringify({}),
+      });
+      const body = await response.json();
+      if (response.ok || (!isRegistered && response.status === 409)) {
+        setRegisteredEventIds((previous) => {
+          const next = new Set(previous);
+          if (isRegistered) {
+            next.delete(eventId);
+          } else {
+            next.add(eventId);
+          }
+          return next;
+        });
+        setFeedback(
+          isRegistered
+            ? body.message || "Desinscription enregistree."
+            : response.status === 409
+              ? "Tu es deja inscrit a cette formation."
+              : body.message || "Inscription enregistree."
+        );
+        return;
+      }
+      setFeedback(body.error || "Impossible de mettre a jour ton inscription.");
+    } catch {
+      setFeedback("Erreur reseau. Reessaie dans quelques instants.");
+    } finally {
+      setRegisteringEventId("");
+    }
+  }
+
+  function calendarUrlForEvent(event: EventItem): string {
+    const start = new Date(event.date);
+    if (Number.isNaN(start.getTime())) return "/member/formations";
+    const end = new Date(start.getTime() + 90 * 60 * 1000);
+    const formatUtc = (value: Date) => value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const details = `${event.description || "Formation TENF"}\n\n${window.location.origin}/member/formations`;
+    const location = event.location || "Discord TENF";
+    const params = new URLSearchParams({
+      action: "TEMPLATE",
+      text: event.title,
+      dates: `${formatUtc(start)}/${formatUtc(end)}`,
+      details,
+      location,
+    });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
 
   return (
@@ -131,19 +219,42 @@ export default function MemberFormationCatalogPage() {
                   <CalendarDays size={14} className="mr-1 inline-block" />
                   {new Date(formation.date).toLocaleString("fr-FR")}
                 </p>
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => submitInterest(formation.title, formation.id)}
-                    disabled={pendingTitles.has(formation.title) || submittingTitle === formation.title}
+                    onClick={() => toggleRegistration(formation.id)}
+                    disabled={registeringEventId === formation.id}
                     className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
                     style={{
-                      borderColor: pendingTitles.has(formation.title) ? "rgba(52,211,153,0.45)" : "rgba(139,92,246,0.45)",
-                      color: pendingTitles.has(formation.title) ? "#34d399" : "#c4b5fd",
+                      borderColor: registeredEventIds.has(formation.id) ? "rgba(248,113,113,0.45)" : "rgba(139,92,246,0.45)",
+                      color: registeredEventIds.has(formation.id) ? "#f87171" : "#c4b5fd",
                     }}
                   >
-                    {pendingTitles.has(formation.title) ? "Demande envoyee" : "Cette formation m interesse"}
+                    {registeredEventIds.has(formation.id) ? "Se desinscrire" : "S'inscrire"}
                     <ArrowRight size={14} />
+                  </button>
+                  <a
+                    href={calendarUrlForEvent(formation)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                    style={{
+                      borderColor: "rgba(240,201,107,0.45)",
+                      color: "#f0c96b",
+                    }}
+                  >
+                    Ajouter au calendrier
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(formation)}
+                    className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                    style={{
+                      borderColor: "rgba(255,255,255,0.25)",
+                      color: "var(--color-text)",
+                    }}
+                  >
+                    Voir details
                   </button>
                 </div>
               </article>
@@ -190,6 +301,53 @@ export default function MemberFormationCatalogPage() {
           </div>
         )}
       </section>
+
+      {selectedEvent ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelectedEvent(null)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {selectedEvent.image ? (
+              <img
+                src={selectedEvent.image}
+                alt={selectedEvent.title}
+                className="h-auto max-h-[280px] w-full object-contain"
+                style={{ backgroundColor: "rgba(10,10,14,0.8)" }}
+              />
+            ) : null}
+            <div className="space-y-4 p-5 md:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
+                  {selectedEvent.title}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEvent(null)}
+                  className="inline-flex items-center rounded-md border p-2"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                {new Date(selectedEvent.date).toLocaleString("fr-FR")} - {selectedEvent.category}
+              </p>
+              <div
+                className="prose prose-invert max-w-none prose-p:my-2 prose-li:my-1 prose-headings:text-white prose-p:text-gray-300 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff] prose-a:hover:text-[#7c3aed] prose-ul:text-gray-300 prose-ol:text-gray-300 prose-li:text-gray-300"
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {selectedEvent.description || "Aucune description disponible pour cette formation."}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </MemberSurface>
   );
 }
