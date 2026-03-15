@@ -83,12 +83,12 @@ export default function MemberDashboardPage() {
   const goals = [
     { label: "Raids mensuels", current: data.stats.raidsThisMonth, target: monthlyGoals.raids, href: "/member/raids/declarer" },
     { label: "Presences evenements", current: data.stats.eventPresencesThisMonth, target: monthlyGoals.presences, href: "/member/evenements" },
-    { label: "Profil membre", current: data.profile.percent, target: 100, href: data.profile.completed ? "/member/profil/modifier" : "/member/profil/completer" },
+    { label: "Profil membre", current: data.profile.percent, target: 100, href: "/member/profil/completer" },
   ];
 
   const priorityActions = [
     { href: "/member/raids/declarer", label: "Declarer un raid", description: "Ajoute ta derniere action pour booster ton score." },
-    { href: data.profile.completed ? "/member/profil/modifier" : "/member/profil/completer", label: data.profile.completed ? "Mettre a jour mon profil" : "Completer mon profil", description: "Ton profil nourrit les recommandations et opportunites." },
+    { href: "/member/profil/completer", label: data.profile.completed ? "Mettre a jour mon profil" : "Completer mon profil", description: "Ton profil nourrit les recommandations et opportunites." },
     { href: "/member/evenements", label: "Consulter les evenements", description: "Repere les rendez-vous a plus fort impact cette semaine." },
     { href: "/member/formations", label: "Continuer mes formations", description: "Maintiens un rythme regulier pour accelerer ta progression." },
   ];
@@ -139,7 +139,7 @@ export default function MemberDashboardPage() {
               {data.vip?.statusLabel || "Membre standard"}
             </span>
             <Link
-              href={data.profile.completed ? "/member/profil/modifier" : "/member/profil/completer"}
+              href="/member/profil/completer"
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
               style={{ backgroundColor: "rgba(212,175,55,0.95)", color: "#201b12" }}
             >

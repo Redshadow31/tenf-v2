@@ -10,7 +10,6 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
-  PencilLine,
   Rocket,
   Shield,
   Target,
@@ -59,7 +58,6 @@ export const memberSidebarSections: SidebarNavSection[] = [
         items: [
           { href: "/member/profil", label: "Mon profil", icon: UserCircle },
           { href: "/member/profil/completer", label: "Completer mon profil", icon: ListChecks },
-          { href: "/member/profil/modifier", label: "Modifier mon profil", icon: PencilLine },
         ],
       },
       {

@@ -305,9 +305,6 @@ export default function MemberProfilePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/member/profil/modifier" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-              Modifier mon profil
-            </Link>
             <Link href="/member/profil/completer" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
               Completer mon profil
             </Link>
@@ -499,7 +496,6 @@ export default function MemberProfilePage() {
 
       <QuickActionsCard
         actions={[
-          { label: "Modifier mon profil", href: "/member/profil/modifier" },
           { label: "Completer mon profil", href: "/member/profil/completer" },
           { label: "Modifier mon planning", href: LIVE_PLANNING_ROUTE },
           { label: "Voir ma fiche publique", soon: true },
