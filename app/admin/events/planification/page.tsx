@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Upload, X, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
+import { X, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
+import FilmAnnouncementTab from "@/components/admin/FilmAnnouncementTab";
 import {
   PARIS_TIMEZONE,
   formatEventDateTimeInTimezone,
@@ -96,6 +97,7 @@ export default function PlanificationPage() {
   const [externalLocationUrl, setExternalLocationUrl] = useState("");
   const [discordLocationId, setDiscordLocationId] = useState("");
   const [managedLocationLinks, setManagedLocationLinks] = useState<EventLocationLink[]>([]);
+  const [activePlanningTab, setActivePlanningTab] = useState<"events" | "public-film-announcement">("events");
 
   useEffect(() => {
     loadEvents();
@@ -168,35 +170,6 @@ export default function PlanificationPage() {
   const handleRemoveImage = () => {
     setFormData({ ...formData, image: null, imageUrl: null });
     setImagePreview(null);
-  };
-
-  const handleUploadImage = async () => {
-    if (!formData.image) return;
-
-    try {
-      setUploadingImage(true);
-      const uploadFormData = new FormData();
-      uploadFormData.append('image', formData.image);
-
-      const response = await fetch('/api/admin/events/upload-image', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({ ...formData, imageUrl: data.imageUrl });
-        alert('✅ Image uploadée avec succès !');
-      } else {
-        const error = await response.json();
-        alert(`❌ Erreur upload: ${error.error || 'Impossible d\'uploader l\'image'}`);
-      }
-    } catch (error) {
-      console.error('Erreur upload image:', error);
-      alert('❌ Erreur lors de l\'upload de l\'image');
-    } finally {
-      setUploadingImage(false);
-    }
   };
 
   const handleStartEdit = (event: any) => {
@@ -409,6 +382,30 @@ export default function PlanificationPage() {
         </p>
       </div>
 
+      <div className="mb-6 inline-flex rounded-lg border border-gray-700 bg-[#1a1a1d] p-1">
+        <button
+          type="button"
+          onClick={() => setActivePlanningTab("events")}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+            activePlanningTab === "events" ? "bg-[#9146ff] text-white" : "text-gray-300 hover:text-white"
+          }`}
+        >
+          Événements
+        </button>
+        <button
+          type="button"
+          onClick={() => setActivePlanningTab("public-film-announcement")}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+            activePlanningTab === "public-film-announcement" ? "bg-[#9146ff] text-white" : "text-gray-300 hover:text-white"
+          }`}
+        >
+          Annonce publique Soirée Film
+        </button>
+      </div>
+
+      {activePlanningTab === "public-film-announcement" ? (
+        <FilmAnnouncementTab />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulaire */}
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
@@ -827,6 +824,7 @@ ou
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

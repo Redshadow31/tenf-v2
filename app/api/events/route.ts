@@ -5,10 +5,73 @@ import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { logApi, logEvent } from '@/lib/logging/logger';
 import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalInput } from '@/lib/timezone';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { memberRepository } from "@/lib/repositories";
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
 export const revalidate = 60;
+
+type PublicAnnouncement = {
+  title: string;
+  description: string;
+  image?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  isActive: boolean;
+};
+
+const FILM_CATEGORY_CANONICAL = "Soirée Film";
+const DEFAULT_FILM_ANNOUNCEMENT: PublicAnnouncement = {
+  title: "Soirée Film communautaire",
+  description: "Connecte-toi avec un profil actif TENF pour découvrir la programmation complète des soirées film.",
+  isActive: true,
+};
+
+function normalizeCategory(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isMovieNightCategory(value: string): boolean {
+  const normalized = normalizeCategory(value || "");
+  return normalized === "soiree film";
+}
+
+async function loadFilmPublicAnnouncement(): Promise<PublicAnnouncement> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("event_category_public_announcements")
+      .select("title,description,image,cta_label,cta_url,is_active")
+      .eq("category", FILM_CATEGORY_CANONICAL)
+      .maybeSingle();
+
+    if (error || !data || data.is_active === false) {
+      return DEFAULT_FILM_ANNOUNCEMENT;
+    }
+
+    const title = typeof data.title === "string" && data.title.trim() ? data.title.trim() : DEFAULT_FILM_ANNOUNCEMENT.title;
+    const description = typeof data.description === "string" ? data.description : "";
+    const image = typeof data.image === "string" && data.image.trim() ? data.image.trim() : undefined;
+    const ctaLabel = typeof data.cta_label === "string" && data.cta_label.trim() ? data.cta_label.trim() : undefined;
+    const ctaUrl = typeof data.cta_url === "string" && data.cta_url.trim() ? data.cta_url.trim() : undefined;
+
+    return {
+      title,
+      description,
+      image,
+      ctaLabel,
+      ctaUrl,
+      isActive: true,
+    };
+  } catch {
+    return DEFAULT_FILM_ANNOUNCEMENT;
+  }
+}
 
 async function loadEventsDirectFallback(adminMode: boolean): Promise<any[]> {
   const tryQuery = async (
@@ -54,6 +117,20 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
       }
       isAdmin = true;
+    }
+
+    let canViewFullFilmEvents = false;
+    if (!isAdmin) {
+      const session = await getServerSession(authOptions);
+      const discordId = session?.user?.discordId;
+      if (discordId) {
+        try {
+          const member = await memberRepository.findByDiscordId(discordId);
+          canViewFullFilmEvents = member?.isActive === true;
+        } catch {
+          canViewFullFilmEvents = false;
+        }
+      }
     }
     
     // Récupérer les événements depuis Supabase
@@ -105,26 +182,50 @@ export async function GET(request: NextRequest) {
         }
       })
       .filter((event): event is NonNullable<typeof event> => event !== null);
+
+    const publicFilmAnnouncement =
+      !isAdmin && !canViewFullFilmEvents ? await loadFilmPublicAnnouncement() : null;
+
+    const audienceEvents =
+      !isAdmin && !canViewFullFilmEvents
+        ? formattedEvents.map((event) => {
+            if (!isMovieNightCategory(String(event.category || ""))) return event;
+            return {
+              ...event,
+              title: publicFilmAnnouncement?.title || DEFAULT_FILM_ANNOUNCEMENT.title,
+              description: publicFilmAnnouncement?.description || DEFAULT_FILM_ANNOUNCEMENT.description,
+              image: publicFilmAnnouncement?.image || undefined,
+              location: undefined,
+              ctaLabel: publicFilmAnnouncement?.ctaLabel || undefined,
+              ctaUrl: publicFilmAnnouncement?.ctaUrl || undefined,
+              isMaskedForAudience: true,
+            };
+          })
+        : formattedEvents;
     
     // Trier par date (plus récent en premier)
-    formattedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    audienceEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    const response = NextResponse.json({ events: formattedEvents });
+    const response = NextResponse.json({ events: audienceEvents });
     
     // Configurer les headers de cache ISR uniquement pour les requêtes publiques
     // Les requêtes admin ne sont pas mises en cache
     if (!isAdmin) {
-      response.headers.set(
-        'Cache-Control',
-        'public, s-maxage=60, stale-while-revalidate=300'
-      );
+      if (canViewFullFilmEvents) {
+        response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+      } else {
+        response.headers.set(
+          'Cache-Control',
+          'public, s-maxage=60, stale-while-revalidate=300'
+        );
+      }
     } else {
       // Désactiver le cache pour les requêtes admin
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     }
     
     const duration = Date.now() - startTime;
-    logApi.route('GET', '/api/events', 200, duration, undefined, { isAdmin, count: formattedEvents.length });
+    logApi.route('GET', '/api/events', 200, duration, undefined, { isAdmin, count: audienceEvents.length, canViewFullFilmEvents });
     
     return response;
   } catch (error) {

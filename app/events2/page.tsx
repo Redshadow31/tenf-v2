@@ -16,6 +16,9 @@ type EventItem = {
   category: string;
   location?: string;
   isPublished?: boolean;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  isMaskedForAudience?: boolean;
 };
 
 type ProposalItem = {
@@ -417,6 +420,8 @@ export default function Events2Page() {
   const renderCard = (event: EventItem) => {
     const isRegistered = registeredEventIds.has(event.id);
     const isPast = new Date(event.date).getTime() < Date.now();
+    const hasPublicCta = !!event.ctaUrl;
+    const hideRegistration = event.isMaskedForAudience === true;
 
     return (
       <div
@@ -454,7 +459,17 @@ export default function Events2Page() {
             >
               Ajouter au calendrier
             </a>
-            {!isPast && (
+            {hasPublicCta && (
+              <a
+                href={event.ctaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white"
+              >
+                {event.ctaLabel || "En savoir plus"}
+              </a>
+            )}
+            {!isPast && !hideRegistration && (
               <button
                 onClick={() => (isRegistered ? handleUnregister(event.id) : handleRegister(event.id))}
                 disabled={actionLoading}
@@ -829,23 +844,34 @@ export default function Events2Page() {
                   >
                     Ajouter au calendrier
                   </a>
-                  {registeredEventIds.has(selectedEvent.id) ? (
-                    <button
-                      onClick={() => handleUnregister(selectedEvent.id)}
-                      disabled={actionLoading}
-                      className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                  {selectedEvent.ctaUrl && (
+                    <a
+                      href={selectedEvent.ctaUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold"
                     >
-                      Se desinscrire
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleRegister(selectedEvent.id)}
-                      disabled={actionLoading}
-                      className="px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
-                    >
-                      S'inscrire
-                    </button>
+                      {selectedEvent.ctaLabel || "En savoir plus"}
+                    </a>
                   )}
+                  {!selectedEvent.isMaskedForAudience &&
+                    (registeredEventIds.has(selectedEvent.id) ? (
+                      <button
+                        onClick={() => handleUnregister(selectedEvent.id)}
+                        disabled={actionLoading}
+                        className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                      >
+                        Se desinscrire
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRegister(selectedEvent.id)}
+                        disabled={actionLoading}
+                        className="px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
+                      >
+                        S'inscrire
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
