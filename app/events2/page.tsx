@@ -798,10 +798,16 @@ export default function Events2Page() {
       {isModalOpen && selectedEvent && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setIsModalOpen(false)}>
           <div
-            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-gray-700 bg-[#1a1a1d]"
+            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl border border-gray-700 bg-[#1a1a1d]"
             onClick={(e) => e.stopPropagation()}
           >
-            {selectedEvent.image && <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-56 object-cover" />}
+            {selectedEvent.image && (
+              <img
+                src={selectedEvent.image}
+                alt={selectedEvent.title}
+                className="w-full h-auto max-h-[260px] object-contain bg-[#0e0e10]"
+              />
+            )}
             <div className="p-6 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-2xl font-bold">{selectedEvent.title}</h3>
