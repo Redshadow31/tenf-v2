@@ -26,6 +26,8 @@ export interface LiveMember {
   isSpotlight?: boolean;
   isBirthdayToday?: boolean;
   isAffiliateAnniversaryToday?: boolean;
+  followState?: "followed" | "not_followed" | "unknown";
+  integrationDate?: string;
 }
 
 export interface PublicEventItem {

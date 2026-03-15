@@ -22,6 +22,7 @@ const QUICK_RANGES = [
   { key: "weekend", label: "Ce week-end" },
   { key: "month", label: "Vue calendrier" },
 ] as const;
+const TIMELINE_VISIBILITY_WINDOW_MS = 8 * 60 * 60 * 1000;
 
 type QuickRange = (typeof QUICK_RANGES)[number]["key"];
 type ViewMode = "calendar" | "agenda";
@@ -204,6 +205,24 @@ export default function CalendrierLivesPage() {
     return grouped;
   }, [allLoadedItems, rangeBounds.end, rangeBounds.start]);
 
+  const timelineItemsByDate = useMemo(() => {
+    const nowMs = Date.now();
+    const grouped = new Map<string, PublicPlanning[]>();
+
+    for (const [dayKey, dayItems] of itemsByDate.entries()) {
+      const visibleItems = dayItems.filter((item) => {
+        const startMs = parseDateTime(item.date, item.time).getTime();
+        return nowMs - startMs <= TIMELINE_VISIBILITY_WINDOW_MS;
+      });
+
+      if (visibleItems.length > 0) {
+        grouped.set(dayKey, visibleItems);
+      }
+    }
+
+    return grouped;
+  }, [itemsByDate]);
+
   const monthCells = useMemo(() => {
     const year = monthCursor.getFullYear();
     const month = monthCursor.getMonth();
@@ -275,7 +294,11 @@ export default function CalendrierLivesPage() {
         month: "long",
       })
     : null;
-  const highlightedCreators = topDateItems.slice(0, 4).map((item) => item.displayName);
+  const todayItems = itemsByDate.get(todayKey) || [];
+  const todayCreators = useMemo(
+    () => [...new Set(todayItems.map((item) => item.displayName))],
+    [todayItems]
+  );
 
   const selectedDayByTime = useMemo(() => {
     const grouped = new Map<string, PublicPlanning[]>();
@@ -518,25 +541,23 @@ export default function CalendrierLivesPage() {
           }}
         >
           <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
-            Soiree la plus active
+            A la une aujourd'hui
           </p>
           <h3 className="mt-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-            {topDate
-              ? new Date(`${topDate.key}T00:00:00`).toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "long",
-                })
-              : "Aucune activite marquee"}
+            {new Date(`${todayKey}T00:00:00`).toLocaleDateString("fr-FR", {
+              weekday: "long",
+              day: "2-digit",
+              month: "long",
+            })}
           </h3>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            {topDate
-              ? `${topDate.count} lives prevus avec ${new Set(topDateItems.map((item) => item.twitchLogin)).size} createurs.`
-              : "Ajoute des plannings pour faire emerger les prochaines soirees fortes."}
+            {todayItems.length > 0
+              ? `${todayItems.length} live${todayItems.length > 1 ? "s" : ""} prevu${todayItems.length > 1 ? "s" : ""} avec ${new Set(todayItems.map((item) => item.twitchLogin)).size} createur${new Set(todayItems.map((item) => item.twitchLogin)).size > 1 ? "s" : ""}.`
+              : "Aucun live programme pour aujourd'hui pour le moment."}
           </p>
-          {highlightedCreators.length > 0 ? (
+          {todayCreators.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {highlightedCreators.map((creator) => (
+              {todayCreators.slice(0, 4).map((creator) => (
                 <span
                   key={creator}
                   className="rounded-full border px-2 py-1 text-[11px]"
@@ -547,14 +568,18 @@ export default function CalendrierLivesPage() {
               ))}
             </div>
           ) : null}
-          {topDate ? (
+          {todayItems.length > 0 ? (
             <button
               type="button"
-              onClick={() => setSelectedDateKey(topDate.key)}
+              onClick={() => {
+                setActiveRange("today");
+                setViewMode("agenda");
+                setSelectedDateKey(todayKey);
+              }}
               className="mt-4 rounded-xl px-3 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
               style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 8px 22px rgba(145,70,255,0.25)" }}
             >
-              Voir le detail de cette journee
+              Voir les lives du jour
             </button>
           ) : null}
         </div>
@@ -593,7 +618,7 @@ export default function CalendrierLivesPage() {
           </div>
         ) : viewMode === "agenda" ? (
           <div className="space-y-3">
-            {[...itemsByDate.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([dayKey, dayItems]) => (
+            {[...timelineItemsByDate.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([dayKey, dayItems]) => (
               <div
                 key={dayKey}
                 className="rounded-xl border p-3 md:p-4 transition-all duration-300"
@@ -648,7 +673,7 @@ export default function CalendrierLivesPage() {
                 </div>
               </div>
             ))}
-            {itemsByDate.size === 0 ? (
+            {timelineItemsByDate.size === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 Aucun live planifie sur cette plage.
               </p>

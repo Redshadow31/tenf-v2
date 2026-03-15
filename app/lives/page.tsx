@@ -39,6 +39,11 @@ function getLivePriority(live: LiveMember): number {
   return 0;
 }
 
+type FollowState = "followed" | "not_followed" | "unknown";
+type FollowStatusEntry = {
+  state?: FollowState;
+};
+
 export default function LivesPage() {
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<PublicEventItem[]>([]);
@@ -49,6 +54,8 @@ export default function LivesPage() {
   const [randomHint, setRandomHint] = useState<string | null>(null);
   const [spotlightLogin, setSpotlightLogin] = useState<string | null>(null);
   const [sessionShuffleSeed] = useState(() => `${Date.now()}-${Math.random()}`);
+  const [followStatuses, setFollowStatuses] = useState<Record<string, FollowState>>({});
+  const [showFollowStatuses, setShowFollowStatuses] = useState(false);
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
@@ -67,6 +74,35 @@ export default function LivesPage() {
       clearTimeout(timeoutId);
     }
   };
+
+  useEffect(() => {
+    async function loadFollowStatuses() {
+      try {
+        const response = await fetch("/api/members/follow-status", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data?.authenticated !== true || data?.linked !== true) {
+          setFollowStatuses({});
+          setShowFollowStatuses(false);
+          return;
+        }
+
+        const rawStatuses = (data?.statuses || {}) as Record<string, FollowStatusEntry>;
+        const normalizedStatuses: Record<string, FollowState> = {};
+        for (const [login, entry] of Object.entries(rawStatuses)) {
+          normalizedStatuses[login.toLowerCase()] = entry?.state || "unknown";
+        }
+
+        setFollowStatuses(normalizedStatuses);
+        setShowFollowStatuses(true);
+      } catch (error) {
+        console.error("[Lives Page] Erreur chargement follow status:", error);
+        setFollowStatuses({});
+        setShowFollowStatuses(false);
+      }
+    }
+
+    loadFollowStatuses();
+  }, []);
 
   useEffect(() => {
     async function fetchLivesAndContext() {
@@ -117,6 +153,11 @@ export default function LivesPage() {
               isVip: member.isVip === true,
               isBirthdayToday: member.isBirthdayToday === true,
               isAffiliateAnniversaryToday: member.isAffiliateAnniversaryToday === true,
+              followState: showFollowStatuses
+                ? followStatuses[String(member.twitchLogin || "").toLowerCase()] || "unknown"
+                : undefined,
+              integrationDate:
+                typeof member.integrationDate === "string" ? member.integrationDate : undefined,
             } as LiveMember;
           })
           .filter((item): item is LiveMember => item !== null);
@@ -215,10 +256,16 @@ export default function LivesPage() {
       result = result.filter((live) => live.role === selectedRole);
     }
 
-    const withPriority = result.map((live) => ({
-      ...live,
-      isSpotlight: !!spotlightLogin && live.twitchLogin.toLowerCase() === spotlightLogin,
-    }));
+    const withPriority = result.map((live) => {
+      const normalizedLogin = live.twitchLogin.toLowerCase();
+      return {
+        ...live,
+        isSpotlight: !!spotlightLogin && normalizedLogin === spotlightLogin,
+        followState: showFollowStatuses
+          ? followStatuses[normalizedLogin] || "unknown"
+          : undefined,
+      };
+    });
 
     withPriority.sort((a, b) => {
       const priorityDiff = getLivePriority(b) - getLivePriority(a);
@@ -230,7 +277,16 @@ export default function LivesPage() {
     });
 
     return withPriority;
-  }, [liveMembers, search, selectedGame, selectedRole, spotlightLogin, sessionShuffleSeed]);
+  }, [
+    liveMembers,
+    search,
+    selectedGame,
+    selectedRole,
+    spotlightLogin,
+    sessionShuffleSeed,
+    followStatuses,
+    showFollowStatuses,
+  ]);
 
   const handlePickRandomLive = () => {
     if (filteredLives.length === 0) {
@@ -271,7 +327,6 @@ export default function LivesPage() {
     <div className="space-y-6 pb-24 md:pb-0">
       <LivesHero
         displayedLivesCount={filteredLives.length}
-        totalLivesCount={liveMembers.length}
         onPickRandomLive={handlePickRandomLive}
         randomDisabled={filteredLives.length === 0}
         eventsHref="/events2"

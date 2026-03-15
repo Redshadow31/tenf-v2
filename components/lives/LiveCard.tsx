@@ -15,6 +15,14 @@ type LiveCardProps = {
 };
 
 export default function LiveCard({ live }: LiveCardProps) {
+  const integrationTs = live.integrationDate ? new Date(live.integrationDate).getTime() : NaN;
+  const isNewMember =
+    Number.isFinite(integrationTs) &&
+    integrationTs <= Date.now() &&
+    Date.now() - integrationTs <= 7 * 24 * 60 * 60 * 1000;
+  const isVipMember = live.isVip === true;
+  const isDiscoverCta = live.followState === "not_followed";
+
   return (
     <article
       className="group overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
@@ -37,9 +45,25 @@ export default function LiveCard({ live }: LiveCardProps) {
         <div className="absolute left-3 top-3 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow">
           LIVE
         </div>
+        {isVipMember || isNewMember ? (
+          <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+            {isVipMember ? (
+              <div className="inline-flex animate-pulse items-center gap-1.5 rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-500/30 to-yellow-400/25 px-2.5 py-1 text-xs font-extrabold tracking-[0.02em] text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.32)]">
+                <span aria-hidden="true">⭐</span>
+                VIP
+              </div>
+            ) : null}
+            {isNewMember ? (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 text-xs font-semibold text-cyan-100 shadow">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-200" aria-hidden="true" />
+                Nouveau
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <div className="space-y-2.5 p-3.5 md:space-y-3 md:p-5">
+      <div className="flex h-full flex-col gap-2.5 p-3.5 md:gap-3 md:p-5">
         {(live.isSpotlight || live.isBirthdayToday || live.isAffiliateAnniversaryToday) && (
           <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
             {live.isSpotlight && (
@@ -102,10 +126,10 @@ export default function LiveCard({ live }: LiveCardProps) {
           href={live.twitchUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
+          className="mt-auto inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
           style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
         >
-          Rejoindre le live
+          {isDiscoverCta ? "Decouvrir le createur" : "Rejoindre le live"}
         </a>
       </div>
     </article>

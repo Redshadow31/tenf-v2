@@ -1,6 +1,5 @@
 type LivesHeroProps = {
   displayedLivesCount: number;
-  totalLivesCount: number;
   onPickRandomLive: () => void;
   randomDisabled: boolean;
   eventsHref: string;
@@ -8,7 +7,6 @@ type LivesHeroProps = {
 
 export default function LivesHero({
   displayedLivesCount,
-  totalLivesCount,
   onPickRandomLive,
   randomDisabled,
   eventsHref,
@@ -58,7 +56,7 @@ export default function LivesHero({
               Streamers en live
             </p>
             <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-              {displayedLivesCount} / {totalLivesCount}
+              {displayedLivesCount}
             </p>
           </div>
           <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
