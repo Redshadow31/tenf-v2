@@ -333,3 +333,25 @@ export const adminNavigationSimple: NavItem[] = [
  * Navigation admin avancé - menu complet
  */
 export const adminNavigationAvance = adminNavigation;
+
+export type AdminMode = "simple" | "advanced";
+
+export function getNavigationByMode(mode: AdminMode): NavItem[] {
+  return mode === "advanced" ? adminNavigationAvance : adminNavigationSimple;
+}
+
+function isItemActiveInTree(item: NavItem, pathname: string): boolean {
+  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+    return true;
+  }
+  if (!item.children || item.children.length === 0) {
+    return false;
+  }
+  return item.children.some((child) => isItemActiveInTree(child, pathname));
+}
+
+export function findActiveHub(navItems: NavItem[], pathname: string): NavItem | null {
+  if (!navItems.length) return null;
+  const matched = navItems.find((item) => isItemActiveInTree(item, pathname));
+  return matched || navItems[0];
+}

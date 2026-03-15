@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import AdminTopBar from "@/components/admin/AdminTopBar";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 type AdminLayoutProps = {
@@ -8,12 +9,20 @@ type AdminLayoutProps = {
 };
 
 export default function Layout({ children }: AdminLayoutProps) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <AdminSidebar />
-      <main className="flex-1 p-6 overflow-auto">
-        {children}
-      </main>
+    <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
+      <AdminTopBar onOpenMobileMenu={() => setIsMobileSidebarOpen(true)} />
+      <div className="flex">
+        <AdminSidebar
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        />
+        <main className="flex-1 p-4 md:p-6 overflow-auto min-h-[calc(100vh-4rem)]">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

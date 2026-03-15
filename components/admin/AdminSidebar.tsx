@@ -1,40 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { adminNavigationSimple, adminNavigationAvance, type NavItem } from "@/lib/admin/navigation";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import {
+  findActiveHub,
+  getNavigationByMode,
+  type AdminMode,
+  type NavItem,
+} from "@/lib/admin/navigation";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 
-function getAdminModeCookie(): string {
+type AdminSidebarProps = {
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+};
+
+function getAdminModeCookie(): AdminMode {
   if (typeof document === "undefined") return "simple";
   const match = document.cookie.match(new RegExp(`(?:^|; )${ADMIN_MODE_COOKIE}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : "simple";
+  const cookieValue = match ? decodeURIComponent(match[1]) : "simple";
+  return cookieValue === "advanced" ? "advanced" : "simple";
 }
 
-export default function AdminSidebar() {
+export default function AdminSidebar({
+  isMobileOpen = false,
+  onCloseMobile,
+}: AdminSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
   const [canAccessAdvanced, setCanAccessAdvanced] = useState(false);
-  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [adminMode, setAdminMode] = useState<AdminMode>("simple");
   const [navReady, setNavReady] = useState(false);
 
-  const navItems = isAdvancedMode ? adminNavigationAvance : adminNavigationSimple;
+  const navItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
+  const activeHub = useMemo(
+    () => findActiveHub(navItems, pathname || "/admin"),
+    [navItems, pathname]
+  );
+  const displayedItems = useMemo(() => {
+    if (!activeHub) return [];
+    if (activeHub.children && activeHub.children.length > 0) return activeHub.children;
+    return [activeHub];
+  }, [activeHub]);
 
   useEffect(() => {
     async function loadAccess() {
+      const modeFromCookie = getAdminModeCookie();
       try {
         const res = await fetch("/api/admin/advanced-access?check=1", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          setCanAccessAdvanced(!!data.canAccessAdvanced);
+          const hasAdvanced = !!data.canAccessAdvanced;
+          setCanAccessAdvanced(hasAdvanced);
+          if (!hasAdvanced && modeFromCookie === "advanced") {
+            setAdminMode("simple");
+          } else {
+            setAdminMode(modeFromCookie);
+          }
+        } else {
+          setAdminMode(modeFromCookie);
         }
       } catch (e) {
         console.error("[AdminSidebar] Erreur vérification accès avancé:", e);
+        setAdminMode(modeFromCookie);
       }
-      setIsAdvancedMode(getAdminModeCookie() === "advanced");
       setNavReady(true);
     }
     loadAccess();
@@ -43,7 +74,7 @@ export default function AdminSidebar() {
   useEffect(() => {
     if (!navReady) return;
     const newOpenMenus = new Set<string>();
-    navItems.forEach((item) => {
+    displayedItems.forEach((item) => {
       if (item.children && isParentActive(item)) {
         newOpenMenus.add(item.href);
         item.children?.forEach((child) => {
@@ -54,7 +85,25 @@ export default function AdminSidebar() {
       }
     });
     setOpenMenus(newOpenMenus);
-  }, [pathname, navReady, isAdvancedMode]);
+  }, [pathname, navReady, adminMode, displayedItems]);
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    onCloseMobile?.();
+    // ferme automatiquement le drawer mobile après navigation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onCloseMobile?.();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isMobileOpen, onCloseMobile]);
 
   /**
    * Vérifie si un élément de navigation est actif
@@ -62,26 +111,9 @@ export default function AdminSidebar() {
    */
   function isActive(item: NavItem): boolean {
     if (!pathname) return false;
-    
-    // Match exact
-    if (pathname === item.href) {
-      return true;
-    }
-    
-    // Si l'élément a des enfants, utiliser startsWith pour détecter les sous-pages
-    if (item.children && item.children.length > 0) {
-      return pathname.startsWith(item.href + "/");
-    }
-    
-    // Pour les éléments sans enfants mais avec routes dynamiques (ex: /admin/follow/[slug]),
-    // vérifier startsWith avec "/" pour éviter les faux positifs
-    const hasDynamicRoutes = item.href === "/admin/follow";
-    if (hasDynamicRoutes) {
-      return pathname.startsWith(item.href + "/");
-    }
-    
-    // Sinon, match exact uniquement
-    return false;
+    if (pathname === item.href || pathname.startsWith(item.href + "/")) return true;
+    if (!item.children || item.children.length === 0) return false;
+    return item.children.some((child) => isActive(child));
   }
 
   /**
@@ -90,46 +122,14 @@ export default function AdminSidebar() {
    */
   function isParentActive(item: NavItem): boolean {
     if (!pathname) return false;
-    
-    // Le parent est actif si pathname commence par son href (logique générique)
-    if (pathname.startsWith(item.href)) {
-      return true;
-    }
-    
-    // Ou si un de ses enfants est actif
+    if (pathname === item.href || pathname.startsWith(item.href + "/")) return true;
     if (item.children) {
       return item.children.some(child => {
-        // Pour les enfants avec sous-enfants, vérifier récursivement
-        if (child.children) {
-          return isParentActive(child);
-        }
-        return isChildActive(child);
+        if (child.children) return isParentActive(child);
+        return isActive(child);
       });
     }
-    
     return false;
-  }
-
-  /**
-   * Vérifie si un enfant spécifique est actif
-   * Logique générique: child actif si pathname === child.href OU pathname.startsWith(child.href + "/")
-   */
-  function isChildActive(child: NavItem): boolean {
-    if (!pathname) return false;
-    
-    // Match exact
-    if (pathname === child.href) {
-      return true;
-    }
-    
-    // Si l'enfant a des sous-enfants, utiliser startsWith pour détecter les sous-sous-pages
-    if (child.children && child.children.length > 0) {
-      return pathname.startsWith(child.href + "/");
-    }
-    
-    // Pour les enfants simples, vérifier si pathname commence par child.href + "/"
-    // Cela gère les routes dynamiques comme /admin/follow/[slug]
-    return pathname.startsWith(child.href + "/");
   }
 
   function toggleMenu(href: string) {
@@ -144,299 +144,182 @@ export default function AdminSidebar() {
     });
   }
 
-  return (
-    <div
-      className="admin-sidebar-scroll w-72 max-w-[88vw] border-r h-screen overflow-y-auto p-4"
-      style={{
-        backgroundColor: "var(--color-sidebar-bg)",
-        borderColor: "var(--color-sidebar-border)",
-        scrollbarWidth: "thin",
-        scrollbarColor: "#353544 transparent",
-      }}
-    >
-      <div className="mb-8">
-        <Link href="/" className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded" style={{ background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark))' }}>
-            <span className="text-lg font-bold text-white">T</span>
-          </div>
-          <span className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>TENF Admin</span>
-        </Link>
+  function renderItem(item: NavItem, depth = 0): JSX.Element {
+    const active = isActive(item);
+    const parentActive = isParentActive(item);
+    const hasChildren = !!item.children?.length;
+    const isMenuOpen = openMenus.has(item.href);
+    const depthClass =
+      depth === 0
+        ? "text-sm"
+        : depth === 1
+        ? "text-sm ml-3"
+        : "text-xs ml-6";
+
+    if (hasChildren) {
+      return (
+        <div key={item.href} className="space-y-1">
+          <button
+            type="button"
+            onClick={() => toggleMenu(item.href)}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${depthClass}`}
+            style={{
+              backgroundColor: active
+                ? "var(--color-primary)"
+                : parentActive
+                ? "var(--color-card-hover)"
+                : "transparent",
+              color: active ? "white" : "var(--color-text-secondary)",
+            }}
+          >
+            {depth === 0 && item.icon ? <span>{item.icon}</span> : null}
+            <span className="font-medium flex-1 text-left">{item.label}</span>
+            <span className={`text-xs transition-transform ${isMenuOpen ? "rotate-90" : ""}`}>▶</span>
+          </button>
+          {isMenuOpen && (
+            <div className="space-y-1">
+              {item.children!.map((child) => renderItem(child, depth + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${depthClass}`}
+        style={{
+          backgroundColor: active ? "var(--color-primary)" : "transparent",
+          color: active ? "white" : "var(--color-text-secondary)",
+          opacity: active || depth === 0 ? "1" : "0.85",
+        }}
+      >
+        {depth === 0 && item.icon ? <span>{item.icon}</span> : null}
+        <span className="font-medium">{item.label}</span>
+      </Link>
+    );
+  }
+
+  const sidebarContent = (
+    <>
+      <div className="mb-4">
+        <p
+          className="text-[11px] uppercase tracking-[0.16em] mb-2"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          Hubs
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {navItems.map((hub) => {
+            const isHubActive = activeHub?.href === hub.href;
+            return (
+              <Link
+                key={hub.href}
+                href={hub.href}
+                className="px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors"
+                style={{
+                  borderColor: isHubActive ? "var(--color-primary)" : "var(--color-sidebar-border)",
+                  backgroundColor: isHubActive ? "var(--color-primary)" : "transparent",
+                  color: isHubActive ? "white" : "var(--color-text-secondary)",
+                }}
+              >
+                {hub.icon ? `${hub.icon} ` : ""}
+                {hub.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-xl border p-4" style={{ borderColor: "var(--color-sidebar-border)" }}>
+        <p className="text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--color-text-secondary)" }}>
+          Hub actif
+        </p>
+        <div className="mt-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+          {activeHub?.icon ? `${activeHub.icon} ` : ""}
+          {activeHub?.label || "Administration"}
+        </div>
+        {activeHub ? (
+          <Link
+            href={activeHub.href}
+            className="mt-3 inline-flex text-xs font-semibold px-2 py-1 rounded-md border"
+            style={{ color: "var(--color-text-secondary)", borderColor: "var(--color-sidebar-border)" }}
+          >
+            Ouvrir le hub
+          </Link>
+        ) : null}
       </div>
 
       <nav className="space-y-2">
-        {navItems.map((item) => {
-          const active = isActive(item);
-          const parentActive = isParentActive(item);
-          const hasChildren = item.children && item.children.length > 0;
-          const isMenuOpen = openMenus.has(item.href);
-
-          return (
-            <div key={item.href} className="mb-3">
-              {item.sectionLabel ? (
-                <div className="mt-2 mb-2">
-                  <div className="h-px w-full" style={{ backgroundColor: "var(--color-sidebar-border)" }} />
-                  <p
-                    className="mt-2 px-1 text-[10px] tracking-[0.18em] font-semibold uppercase"
-                    style={{ color: "var(--color-text-secondary)", opacity: "0.75" }}
-                  >
-                    {item.sectionLabel}
-                  </p>
-                </div>
-              ) : null}
-              {hasChildren ? (
-                <button
-                  onClick={() => toggleMenu(item.href)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
-                  style={{
-                    backgroundColor: active ? 'var(--color-primary)' : parentActive ? 'var(--color-card-hover)' : 'transparent',
-                    color: active ? 'white' : 'var(--color-text-secondary)',
-                    boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.12) inset" : "none"
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active && !parentActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                      e.currentTarget.style.color = 'var(--color-text)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active && !parentActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }
-                  }}
-                >
-                  {item.icon && <span className="text-xl">{item.icon}</span>}
-                  <span className="font-medium flex-1 text-left">{item.label}</span>
-                  <svg
-                    className={`w-5 h-5 transition-transform ${isMenuOpen ? "rotate-90" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              ) : (
-                <Link
-                  href={item.href}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
-                  style={{
-                    backgroundColor: active ? 'var(--color-primary)' : 'transparent',
-                    color: active ? 'white' : 'var(--color-text-secondary)',
-                    boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.12) inset" : "none"
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                      e.currentTarget.style.color = 'var(--color-text)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }
-                  }}
-                >
-                  {item.icon && <span className="text-xl">{item.icon}</span>}
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              )}
-
-              {/* Sous-menu pour les éléments avec children */}
-              {hasChildren && isMenuOpen && (
-                <div className="ml-4 mt-2 space-y-1">
-                  {item.children?.map((child) => {
-                    const childActive = isChildActive(child);
-                    const childHasChildren = child.children && child.children.length > 0;
-                    const isChildMenuOpen = openMenus.has(child.href);
-
-                    return (
-                      <div key={child.href}>
-                        {childHasChildren ? (
-                          <>
-                            <button
-                              onClick={() => toggleMenu(child.href)}
-                              className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-sm transition-colors"
-                              style={{
-                                backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
-                                color: childActive ? 'white' : 'var(--color-text-secondary)',
-                                opacity: childActive ? '1' : '0.7'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!childActive) {
-                                  e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                                  e.currentTarget.style.color = 'var(--color-text)';
-                                  e.currentTarget.style.opacity = '1';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!childActive) {
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                                  e.currentTarget.style.color = 'var(--color-text-secondary)';
-                                  e.currentTarget.style.opacity = '0.7';
-                                }
-                              }}
-                            >
-                              <span>{child.label}</span>
-                              <svg
-                                className={`w-4 h-4 transition-transform ${isChildMenuOpen ? "rotate-90" : ""}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                            </button>
-                            {/* Sous-sous-menu (pour évaluation mensuelle par exemple) */}
-                            {isChildMenuOpen && child.children && (
-                              <div className="ml-4 mt-1 space-y-1">
-                                {child.children.map((grandChild) => {
-                                  const grandChildActive = isChildActive(grandChild);
-                                  return (
-                                    <Link
-                                      key={grandChild.href}
-                                      href={grandChild.href}
-                                      className="block px-4 py-2 rounded-lg text-xs transition-colors"
-                                      style={{
-                                        backgroundColor: grandChildActive ? 'var(--color-primary)' : 'transparent',
-                                        color: grandChildActive ? 'white' : 'var(--color-text-secondary)',
-                                        opacity: grandChildActive ? '1' : '0.6'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        if (!grandChildActive) {
-                                          e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                                          e.currentTarget.style.color = 'var(--color-text)';
-                                          e.currentTarget.style.opacity = '1';
-                                        }
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        if (!grandChildActive) {
-                                          e.currentTarget.style.backgroundColor = 'transparent';
-                                          e.currentTarget.style.color = 'var(--color-text-secondary)';
-                                          e.currentTarget.style.opacity = '0.6';
-                                        }
-                                      }}
-                                    >
-                                      {grandChild.label}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <Link
-                            href={child.href}
-                            className="block px-4 py-2 rounded-lg text-sm transition-colors"
-                            style={{
-                              backgroundColor: childActive ? 'var(--color-primary)' : 'transparent',
-                              color: childActive ? 'white' : 'var(--color-text-secondary)',
-                              opacity: childActive ? '1' : '0.7'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!childActive) {
-                                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-                                e.currentTarget.style.color = 'var(--color-text)';
-                                e.currentTarget.style.opacity = '1';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!childActive) {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.color = 'var(--color-text-secondary)';
-                                e.currentTarget.style.opacity = '0.7';
-                              }
-                            }}
-                          >
-                            {child.label}
-                          </Link>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {displayedItems.map((item) => renderItem(item, 0))}
       </nav>
 
-      {/* Bascule Admin simple / avancé */}
-      {navReady && canAccessAdvanced && (
-        <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
-          {isAdvancedMode ? (
-            <button
-              type="button"
-              onClick={() => {
-                document.cookie = `${ADMIN_MODE_COOKIE}=; path=/; max-age=0`;
-                setIsAdvancedMode(false);
-                router.refresh();
-              }}
-              className="flex w-full items-center gap-2 px-4 py-3 rounded-lg transition-colors"
-              style={{ color: 'var(--color-text-secondary)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-text)';
-                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <span>←</span>
-              <span>Admin simple</span>
-            </button>
-          ) : (
-            <Link
-              href="/admin/avance"
-              className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"
-              style={{ color: 'var(--color-text-secondary)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-text)';
-                e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <span>Admin avancé</span>
-              <span>→</span>
-            </Link>
-          )}
+      {navReady && adminMode === "advanced" && !canAccessAdvanced && (
+        <div className="mt-4 px-3 py-2 rounded-lg text-xs border" style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text-secondary)" }}>
+          Mode avancé désactivé (droits insuffisants), retour au mode simple appliqué.
         </div>
       )}
 
-      {/* Retour au site */}
-      <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
+      <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--color-border)" }}>
         <Link
           href="/"
           className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"
-          style={{ color: 'var(--color-text-secondary)' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--color-text)';
-            e.currentTarget.style.backgroundColor = 'var(--color-card-hover)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
+          style={{ color: "var(--color-text-secondary)" }}
         >
           <span>←</span>
           <span>Retour au site</span>
         </Link>
       </div>
+    </>
+  );
+
+  return (
+    <>
+      <aside
+        className="hidden lg:block admin-sidebar-scroll w-80 max-w-[90vw] border-r h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto p-4"
+        style={{
+          backgroundColor: "var(--color-sidebar-bg)",
+          borderColor: "var(--color-sidebar-border)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#353544 transparent",
+        }}
+      >
+        {sidebarContent}
+      </aside>
+
+      {isMobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />
+          <aside
+            className="relative admin-sidebar-scroll h-full w-[92vw] max-w-sm border-r overflow-y-auto p-4"
+            style={{
+              backgroundColor: "var(--color-sidebar-bg)",
+              borderColor: "var(--color-sidebar-border)",
+              scrollbarWidth: "thin",
+              scrollbarColor: "#353544 transparent",
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Navigation admin
+              </p>
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="h-8 w-8 rounded-lg border inline-flex items-center justify-center"
+                style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text)" }}
+                aria-label="Fermer le menu admin"
+              >
+                ✕
+              </button>
+            </div>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
       <style jsx global>{`
         .admin-sidebar-scroll::-webkit-scrollbar {
           width: 8px;
@@ -455,7 +338,7 @@ export default function AdminSidebar() {
           background: #4a4a60;
         }
       `}</style>
-    </div>
+    </>
   );
 }
 
