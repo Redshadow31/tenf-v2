@@ -34,8 +34,8 @@ export interface OrgChartEntry {
   roleLabel: string;
   statusKey: OrgChartStatusKey;
   statusLabel: string;
-  poleKey: OrgChartPoleKey;
-  poleLabel: string;
+  poleKey?: OrgChartPoleKey | null;
+  poleLabel?: string | null;
   secondaryPoleKeys: OrgChartPoleKey[];
   bioShort: string;
   displayOrder: number;

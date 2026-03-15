@@ -113,6 +113,10 @@ export default function AdminOrganigrammeStaffPage() {
     try {
       setSavingId(entry.id);
       setFeedback("");
+      const isSupport = entry.roleKey === "SOUTIEN_TENF";
+      const normalizedPoleKey = isSupport ? (entry.poleKey || null) : (entry.poleKey || "POLE_ANIMATION_EVENTS");
+      const normalizedPoleLabel = normalizedPoleKey ? poleLabelFromKey(normalizedPoleKey) : null;
+      const normalizedSecondaryPoles = entry.secondaryPoleKeys.filter((pole) => pole !== normalizedPoleKey);
 
       const endpoint = entry.id.startsWith("draft-")
         ? "/api/admin/staff/org-chart"
@@ -128,9 +132,9 @@ export default function AdminOrganigrammeStaffPage() {
           roleLabel: entry.roleLabel,
           statusKey: entry.statusKey,
           statusLabel: entry.statusLabel,
-          poleKey: entry.poleKey,
-          poleLabel: entry.poleLabel,
-          secondaryPoleKeys: entry.secondaryPoleKeys,
+          poleKey: normalizedPoleKey,
+          poleLabel: normalizedPoleLabel,
+          secondaryPoleKeys: normalizedSecondaryPoles,
           bioShort: entry.bioShort,
           displayOrder: entry.displayOrder,
           isVisible: entry.isVisible,
@@ -327,20 +331,23 @@ export default function AdminOrganigrammeStaffPage() {
                     </label>
 
                     <label className="text-sm">
-                      <span style={{ color: "var(--color-text-secondary)" }}>Pole principal</span>
+                      <span style={{ color: "var(--color-text-secondary)" }}>
+                        Pole principal {entry.roleKey === "SOUTIEN_TENF" ? "(optionnel)" : ""}
+                      </span>
                       <select
-                        value={entry.poleKey}
+                        value={entry.poleKey || ""}
                         onChange={(e) => {
-                          const poleKey = e.target.value as OrgChartPoleKey;
+                          const poleKey = (e.target.value || null) as OrgChartPoleKey | null;
                           updateEntry(entry.id, {
                             poleKey,
-                            poleLabel: poleLabelFromKey(poleKey),
-                            secondaryPoleKeys: entry.secondaryPoleKeys.filter((key) => key !== poleKey),
+                            poleLabel: poleKey ? poleLabelFromKey(poleKey) : null,
+                            secondaryPoleKeys: poleKey ? entry.secondaryPoleKeys.filter((key) => key !== poleKey) : entry.secondaryPoleKeys,
                           });
                         }}
                         className="mt-1 w-full rounded-lg border px-2 py-2"
                         style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text)" }}
                       >
+                        {entry.roleKey === "SOUTIEN_TENF" ? <option value="">Aucun pole</option> : null}
                         {ORG_CHART_POLE_OPTIONS.map((option) => (
                           <option key={option.key} value={option.key}>
                             {option.emoji} {option.label}
@@ -369,6 +376,7 @@ export default function AdminOrganigrammeStaffPage() {
                                   else nextSet.delete(option.key);
                                   updateEntry(entry.id, { secondaryPoleKeys: Array.from(nextSet) });
                                 }}
+                                disabled={entry.roleKey === "SOUTIEN_TENF" && !entry.poleKey}
                               />
                               <span className="text-sm">
                                 {option.emoji} {option.label}

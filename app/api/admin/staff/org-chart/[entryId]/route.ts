@@ -28,8 +28,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const body = (await request.json()) as Partial<OrgChartUpsertInput>;
-    if (!body.memberId || !body.roleKey || !body.statusKey || !body.poleKey) {
-      return NextResponse.json({ error: "memberId, roleKey, statusKey et poleKey sont requis" }, { status: 400 });
+    if (!body.memberId || !body.roleKey || !body.statusKey) {
+      return NextResponse.json({ error: "memberId, roleKey et statusKey sont requis" }, { status: 400 });
+    }
+    if (body.roleKey !== "SOUTIEN_TENF" && !body.poleKey) {
+      return NextResponse.json({ error: "poleKey est requis pour ce role" }, { status: 400 });
     }
 
     const entry = await staffOrgChartRepository.upsert({

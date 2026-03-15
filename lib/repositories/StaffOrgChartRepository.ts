@@ -9,8 +9,8 @@ type OrgChartDbRow = {
   role_label: string;
   status_key: string;
   status_label: string;
-  pole_key: string;
-  pole_label: string;
+  pole_key?: string | null;
+  pole_label?: string | null;
   secondary_poles?: unknown;
   bio_short: string;
   display_order: number;
@@ -49,8 +49,8 @@ export interface OrgChartUpsertInput {
   roleLabel?: string;
   statusKey: OrgChartStatusKey;
   statusLabel?: string;
-  poleKey: OrgChartPoleKey;
-  poleLabel?: string;
+  poleKey?: OrgChartPoleKey | null;
+  poleLabel?: string | null;
   secondaryPoleKeys?: OrgChartPoleKey[];
   bioShort?: string;
   displayOrder?: number;
@@ -58,12 +58,12 @@ export interface OrgChartUpsertInput {
   isArchived?: boolean;
 }
 
-function normalizeSecondaryPoles(value: unknown, primaryPole: OrgChartPoleKey): OrgChartPoleKey[] {
+function normalizeSecondaryPoles(value: unknown, primaryPole?: OrgChartPoleKey | null): OrgChartPoleKey[] {
   const source = Array.isArray(value) ? value : [];
   const unique = new Set<OrgChartPoleKey>();
   for (const item of source) {
     const key = String(item || "").trim() as OrgChartPoleKey;
-    if (!key || key === primaryPole) continue;
+    if (!key || (primaryPole && key === primaryPole)) continue;
     if (key.startsWith("POLE_")) unique.add(key);
   }
   return Array.from(unique);
@@ -85,13 +85,14 @@ function mapMemberRef(raw: OrgChartDbRow["members"]): OrgChartMemberRef {
     displayName: String(member?.display_name || fallbackLogin || "Membre"),
     discordId: member?.discord_id || undefined,
     discordUsername: member?.discord_username || undefined,
-    avatarUrl: avatar || (fallbackLogin ? `https://unavatar.io/twitch/${encodeURIComponent(fallbackLogin)}` : undefined),
+    avatarUrl: avatar || undefined,
     role: member?.role || undefined,
     isActive: member?.is_active ?? undefined,
   };
 }
 
 function mapEntry(row: OrgChartDbRow): OrgChartEntry {
+  const poleKey = row.pole_key ? (row.pole_key as OrgChartPoleKey) : null;
   return {
     id: row.id,
     memberId: row.member_id,
@@ -99,9 +100,9 @@ function mapEntry(row: OrgChartDbRow): OrgChartEntry {
     roleLabel: row.role_label,
     statusKey: row.status_key as OrgChartStatusKey,
     statusLabel: row.status_label,
-    poleKey: row.pole_key as OrgChartPoleKey,
-    poleLabel: row.pole_label,
-    secondaryPoleKeys: normalizeSecondaryPoles(row.secondary_poles, row.pole_key as OrgChartPoleKey),
+    poleKey,
+    poleLabel: row.pole_label || null,
+    secondaryPoleKeys: normalizeSecondaryPoles(row.secondary_poles, poleKey),
     bioShort: row.bio_short || "",
     displayOrder: Number.isFinite(row.display_order) ? row.display_order : 0,
     isVisible: row.is_visible !== false,
@@ -182,6 +183,12 @@ export class StaffOrgChartRepository {
   }
 
   async upsert(input: OrgChartUpsertInput): Promise<OrgChartEntry> {
+    const isSupport = input.roleKey === "SOUTIEN_TENF";
+    const normalizedPoleKey = !isSupport && input.poleKey ? input.poleKey : null;
+    const normalizedPoleLabel = normalizedPoleKey
+      ? (input.poleLabel || poleLabelFromKey(normalizedPoleKey)).trim()
+      : null;
+
     const payload = {
       ...(input.id ? { id: input.id } : {}),
       member_id: input.memberId,
@@ -189,9 +196,9 @@ export class StaffOrgChartRepository {
       role_label: (input.roleLabel || roleLabelFromKey(input.roleKey)).trim(),
       status_key: input.statusKey,
       status_label: (input.statusLabel || statusLabelFromKey(input.statusKey)).trim(),
-      pole_key: input.poleKey,
-      pole_label: (input.poleLabel || poleLabelFromKey(input.poleKey)).trim(),
-      secondary_poles: normalizeSecondaryPoles(input.secondaryPoleKeys, input.poleKey),
+      pole_key: normalizedPoleKey,
+      pole_label: normalizedPoleLabel,
+      secondary_poles: normalizeSecondaryPoles(input.secondaryPoleKeys, normalizedPoleKey),
       bio_short: (input.bioShort || "").trim(),
       display_order: Number.isFinite(input.displayOrder) ? Number(input.displayOrder) : 0,
       is_visible: input.isVisible !== false,

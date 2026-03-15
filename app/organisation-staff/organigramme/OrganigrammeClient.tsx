@@ -36,7 +36,11 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       [...entries]
         .filter((entry) => entry.isVisible && !entry.isArchived)
         .filter((entry) => matchesFilter(entry, activeFilter))
-        .filter((entry) => (poleFilter === "all" ? true : entry.poleKey === poleFilter || entry.secondaryPoleKeys.includes(poleFilter))),
+        .filter((entry) =>
+          poleFilter === "all"
+            ? true
+            : (entry.poleKey ? entry.poleKey === poleFilter : false) || entry.secondaryPoleKeys.includes(poleFilter)
+        ),
     [entries, activeFilter, poleFilter]
   );
 
@@ -65,7 +69,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
   const sections: Array<{ key: string; title: string; items: OrgChartEntry[] }> = [
     { key: "founders", title: "Fondateurs", items: grouped.founders },
     { key: "adminCoordinators", title: "Admin coordinateurs", items: grouped.adminCoordinators },
-    { key: "moderators", title: "Moderateurs UPA", items: grouped.moderators },
+    { key: "moderators", title: "Moderateurs TENF", items: grouped.moderators },
     { key: "support", title: "Soutien TENF", items: grouped.support },
   ].filter((section) => section.items.length > 0);
 
@@ -223,12 +227,14 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                     <p className="mt-3 line-clamp-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                       {entry.bioShort || "Membre actif de l'organisation TENF."}
                     </p>
-                    <p
-                      className="mt-3 text-xs font-semibold"
-                      style={{ color: section.key === "support" ? "#86efac" : "var(--color-primary)" }}
-                    >
-                      {entry.poleLabel}
-                    </p>
+                    {entry.poleLabel ? (
+                      <p
+                        className="mt-3 text-xs font-semibold"
+                        style={{ color: section.key === "support" ? "#86efac" : "var(--color-primary)" }}
+                      >
+                        {entry.poleLabel}
+                      </p>
+                    ) : null}
                     {entry.secondaryPoleKeys.length > 0 ? (
                       <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
                         Multi-pole: {entry.secondaryPoleKeys.map((pole) => poleTagFromKey(pole).label).join(" • ")}
@@ -262,9 +268,11 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
               <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                 {selectedEntry.statusLabel}
               </span>
-              <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                {selectedEntry.poleLabel}
-              </span>
+              {selectedEntry.poleLabel ? (
+                <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                  {selectedEntry.poleLabel}
+                </span>
+              ) : null}
               {selectedEntry.secondaryPoleKeys.map((pole) => {
                 const tag = poleTagFromKey(pole);
                 return (

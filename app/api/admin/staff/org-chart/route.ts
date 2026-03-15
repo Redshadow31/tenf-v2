@@ -39,8 +39,11 @@ export async function POST(request: Request) {
     if (!body?.memberId) {
       return NextResponse.json({ error: "memberId requis" }, { status: 400 });
     }
-    if (!body.roleKey || !body.statusKey || !body.poleKey) {
-      return NextResponse.json({ error: "roleKey, statusKey et poleKey sont requis" }, { status: 400 });
+    if (!body.roleKey || !body.statusKey) {
+      return NextResponse.json({ error: "roleKey et statusKey sont requis" }, { status: 400 });
+    }
+    if (body.roleKey !== "SOUTIEN_TENF" && !body.poleKey) {
+      return NextResponse.json({ error: "poleKey est requis pour ce role" }, { status: 400 });
     }
 
     const entry = await staffOrgChartRepository.upsert({
