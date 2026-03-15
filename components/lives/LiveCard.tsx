@@ -25,7 +25,7 @@ export default function LiveCard({ live }: LiveCardProps) {
 
   return (
     <article
-      className="group overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
       style={{
         borderColor: "var(--color-border)",
         backgroundColor: "var(--color-card)",
@@ -63,7 +63,7 @@ export default function LiveCard({ live }: LiveCardProps) {
         ) : null}
       </div>
 
-      <div className="flex h-full flex-col gap-2.5 p-3.5 md:gap-3 md:p-5">
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5 md:gap-3 md:p-5">
         {(live.isSpotlight || live.isBirthdayToday || live.isAffiliateAnniversaryToday) && (
           <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
             {live.isSpotlight && (
