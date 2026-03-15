@@ -144,6 +144,18 @@ export default function MemberEventPresencesPage() {
       .sort((a, b) => b.totalEvents - a.totalEvents || b.attendanceRate - a.attendanceRate);
   }, [selectedMonthEvents]);
 
+  const spotlightEventHistory = useMemo(
+    () =>
+      (data?.attendance?.monthEventsByMonth || [])
+        .flatMap((monthEntry) =>
+          monthEntry.events
+            .filter((event) => isSpotlightCategory(event.category))
+            .map((event) => ({ ...event, monthKey: monthEntry.monthKey }))
+        )
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [data?.attendance?.monthEventsByMonth]
+  );
+
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des presences...</p>;
   if (error || !data) return <EmptyFeatureCard title="Mes presences" description={error || "Donnees indisponibles."} />;
 
@@ -178,18 +190,6 @@ export default function MemberEventPresencesPage() {
       ? Math.round((previousSpotlightMonthEvents.filter((event) => event.attended).length / previousSpotlightMonthEvents.length) * 100)
       : 0;
   const spotlightDelta = spotlightRate - previousSpotlightRate;
-
-  const spotlightEventHistory = useMemo(
-    () =>
-      (data.attendance?.monthEventsByMonth || [])
-        .flatMap((monthEntry) =>
-          monthEntry.events
-            .filter((event) => isSpotlightCategory(event.category))
-            .map((event) => ({ ...event, monthKey: monthEntry.monthKey }))
-        )
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [data.attendance?.monthEventsByMonth]
-  );
 
   let spotlightStreak = 0;
   for (const event of spotlightEventHistory) {

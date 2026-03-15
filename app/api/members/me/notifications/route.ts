@@ -29,8 +29,16 @@ export async function GET() {
       });
     }
 
-    await syncProfileValidationNotification();
-    const { notifications, unreadCount } = await listMemberNotifications(discordId);
+    let notifications: Awaited<ReturnType<typeof listMemberNotifications>>["notifications"] = [];
+    let unreadCount = 0;
+    try {
+      await syncProfileValidationNotification();
+      const payload = await listMemberNotifications(discordId);
+      notifications = payload.notifications;
+      unreadCount = payload.unreadCount;
+    } catch (notificationError) {
+      console.error("[members/me/notifications] fallback to empty list:", notificationError);
+    }
 
     return NextResponse.json({
       hasAdminAccess: true,
@@ -68,7 +76,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
     }
 
-    const { notifications, unreadCount } = await listMemberNotifications(discordId);
+    let notifications: Awaited<ReturnType<typeof listMemberNotifications>>["notifications"] = [];
+    let unreadCount = 0;
+    try {
+      const payload = await listMemberNotifications(discordId);
+      notifications = payload.notifications;
+      unreadCount = payload.unreadCount;
+    } catch (notificationError) {
+      console.error("[members/me/notifications] post fallback to empty list:", notificationError);
+    }
     return NextResponse.json({ success: true, notifications, unreadCount });
   } catch (error) {
     console.error("[members/me/notifications] POST error:", error);
