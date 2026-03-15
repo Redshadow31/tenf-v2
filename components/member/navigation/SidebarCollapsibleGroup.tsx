@@ -13,7 +13,7 @@ type SidebarCollapsibleGroupProps = {
 export default function SidebarCollapsibleGroup({
   title,
   children,
-  defaultOpen = true,
+  defaultOpen = false,
 }: SidebarCollapsibleGroupProps) {
   const [open, setOpen] = useState(defaultOpen);
 
