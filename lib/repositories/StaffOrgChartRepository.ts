@@ -17,16 +17,28 @@ type OrgChartDbRow = {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
-  members?: {
-    id: string;
-    twitch_login: string;
-    display_name: string;
-    discord_id?: string | null;
-    discord_username?: string | null;
-    twitch_status?: { profileImageUrl?: string } | null;
-    role?: string | null;
-    is_active?: boolean | null;
-  } | null;
+  members?:
+    | {
+        id: string;
+        twitch_login: string;
+        display_name: string;
+        discord_id?: string | null;
+        discord_username?: string | null;
+        twitch_status?: { profileImageUrl?: string } | null;
+        role?: string | null;
+        is_active?: boolean | null;
+      }
+    | Array<{
+        id: string;
+        twitch_login: string;
+        display_name: string;
+        discord_id?: string | null;
+        discord_username?: string | null;
+        twitch_status?: { profileImageUrl?: string } | null;
+        role?: string | null;
+        is_active?: boolean | null;
+      }>
+    | null;
 };
 
 export interface OrgChartUpsertInput {
@@ -44,18 +56,25 @@ export interface OrgChartUpsertInput {
   isArchived?: boolean;
 }
 
+function normalizeMember(raw: OrgChartDbRow["members"]) {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw[0] || null;
+  return raw;
+}
+
 function mapMemberRef(raw: OrgChartDbRow["members"]): OrgChartMemberRef {
-  const fallbackLogin = String(raw?.twitch_login || "").toLowerCase();
-  const avatar = raw?.twitch_status?.profileImageUrl;
+  const member = normalizeMember(raw);
+  const fallbackLogin = String(member?.twitch_login || "").toLowerCase();
+  const avatar = member?.twitch_status?.profileImageUrl;
   return {
-    id: String(raw?.id || ""),
+    id: String(member?.id || ""),
     twitchLogin: fallbackLogin,
-    displayName: String(raw?.display_name || fallbackLogin || "Membre"),
-    discordId: raw?.discord_id || undefined,
-    discordUsername: raw?.discord_username || undefined,
+    displayName: String(member?.display_name || fallbackLogin || "Membre"),
+    discordId: member?.discord_id || undefined,
+    discordUsername: member?.discord_username || undefined,
     avatarUrl: avatar || (fallbackLogin ? `https://unavatar.io/twitch/${encodeURIComponent(fallbackLogin)}` : undefined),
-    role: raw?.role || undefined,
-    isActive: raw?.is_active ?? undefined,
+    role: member?.role || undefined,
+    isActive: member?.is_active ?? undefined,
   };
 }
 
@@ -97,7 +116,7 @@ export class StaffOrgChartRepository {
 
     const { data, error } = await query;
     if (error) throw error;
-    return ((data || []) as OrgChartDbRow[]).map(mapEntry);
+    return (data || []).map((row) => mapEntry(row as OrgChartDbRow));
   }
 
   async listPublic(): Promise<OrgChartEntry[]> {
@@ -112,7 +131,7 @@ export class StaffOrgChartRepository {
       .order("updated_at", { ascending: false });
 
     if (error) throw error;
-    return ((data || []) as OrgChartDbRow[]).map(mapEntry);
+    return (data || []).map((row) => mapEntry(row as OrgChartDbRow));
   }
 
   async upsert(input: OrgChartUpsertInput): Promise<OrgChartEntry> {
@@ -161,7 +180,7 @@ export class StaffOrgChartRepository {
       .limit(limit);
 
     if (error) throw error;
-    return ((data || []) as NonNullable<OrgChartDbRow["members"]>[]).map((row) => mapMemberRef(row));
+    return (data || []).map((row) => mapMemberRef(row as OrgChartDbRow["members"]));
   }
 }
 
