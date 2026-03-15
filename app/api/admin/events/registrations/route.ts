@@ -171,47 +171,66 @@ export async function GET(request: NextRequest) {
     events = Array.from(byId.values());
     console.log(`[Admin Events Registrations API] ${events.length} événements trouvés`);
     
-    // Récupérer toutes les inscriptions pour tous les événements en parallèle (évite N+1 queries)
-    const registrationPromises = events.map(event => 
-      eventRepository.getRegistrations(event.id)
-        .then(registrations => {
-          console.log(`[Admin Events Registrations API] Événement ${event.id}: ${registrations.length} inscriptions`);
-          return {
-            eventId: event.id,
-            registrations: registrations.map(reg => {
-              try {
-                return {
-                  id: reg.id,
-                  eventId: reg.eventId,
-                  twitchLogin: reg.twitchLogin,
-                  displayName: reg.displayName,
-                  discordId: reg.discordId,
-                  discordUsername: reg.discordUsername,
-                  notes: reg.notes,
-                  registeredAt: reg.registeredAt instanceof Date 
-                    ? reg.registeredAt.toISOString() 
-                    : (typeof reg.registeredAt === 'string' 
-                        ? reg.registeredAt 
-                        : new Date(reg.registeredAt).toISOString()),
-                };
-              } catch (regError) {
-                console.error(`[Admin Events Registrations API] Erreur mapping inscription ${reg.id}:`, regError);
-                return null;
-              }
-            }).filter((reg: any) => reg !== null)
-          };
-        })
-        .catch(error => {
-          console.error(`[Admin Events Registrations API] Erreur récupération inscriptions pour événement ${event.id}:`, error);
-          return { eventId: event.id, registrations: [] };
-        })
-    );
-    
-    const registrationResults = await Promise.all(registrationPromises);
+    // Récupérer en parallèle inscriptions + agrégat de présence pour chaque événement.
+    // Le "presenceCount" permet au dashboard d'éviter les appels N+1 vers /api/admin/events/presence.
+    const eventDataPromises = events.map(async (event) => {
+      try {
+        const [registrations, presences] = await Promise.all([
+          eventRepository.getRegistrations(event.id),
+          eventRepository.getPresences(event.id),
+        ]);
+
+        console.log(
+          `[Admin Events Registrations API] Événement ${event.id}: ${registrations.length} inscriptions, ${presences.length} présences`
+        );
+
+        const mappedRegistrations = registrations
+          .map((reg) => {
+            try {
+              return {
+                id: reg.id,
+                eventId: reg.eventId,
+                twitchLogin: reg.twitchLogin,
+                displayName: reg.displayName,
+                discordId: reg.discordId,
+                discordUsername: reg.discordUsername,
+                notes: reg.notes,
+                registeredAt:
+                  reg.registeredAt instanceof Date
+                    ? reg.registeredAt.toISOString()
+                    : typeof reg.registeredAt === 'string'
+                      ? reg.registeredAt
+                      : new Date(reg.registeredAt).toISOString(),
+              };
+            } catch (regError) {
+              console.error(`[Admin Events Registrations API] Erreur mapping inscription ${reg.id}:`, regError);
+              return null;
+            }
+          })
+          .filter((reg: any) => reg !== null);
+
+        const presenceCount = (presences || []).filter((presence: any) => presence?.present === true).length;
+
+        return {
+          eventId: event.id,
+          registrations: mappedRegistrations,
+          presenceCount,
+        };
+      } catch (error) {
+        console.error(
+          `[Admin Events Registrations API] Erreur récupération inscriptions/présences pour événement ${event.id}:`,
+          error
+        );
+        return { eventId: event.id, registrations: [], presenceCount: 0 };
+      }
+    });
+
+    const eventDataResults = await Promise.all(eventDataPromises);
     const allRegistrationsMap: Record<string, any[]> = {};
+    const presenceCountMap: Record<string, number> = {};
     let totalRegistrations = 0;
     
-    registrationResults.forEach(({ eventId, registrations }) => {
+    eventDataResults.forEach(({ eventId, registrations, presenceCount }) => {
       const dedupByLogin = new Map<string, any>();
       for (const reg of registrations) {
         const key = normalizeLogin(reg?.twitchLogin);
@@ -223,6 +242,7 @@ export async function GET(request: NextRequest) {
       }
       const deduped = Array.from(dedupByLogin.values());
       allRegistrationsMap[eventId] = deduped;
+      presenceCountMap[eventId] = Number.isFinite(presenceCount) ? presenceCount : 0;
       totalRegistrations += deduped.length;
     });
     
@@ -242,6 +262,8 @@ export async function GET(request: NextRequest) {
         },
         registrations: allRegistrationsMap[event.id] || [],
         registrationCount: (allRegistrationsMap[event.id] || []).length,
+        // Champ additif utilisé par le dashboard pour éviter le N+1 côté client.
+        presenceCount: presenceCountMap[event.id] || 0,
       };
     });
     

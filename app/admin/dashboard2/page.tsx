@@ -14,20 +14,6 @@ import {
   Bar,
 } from "recharts";
 
-interface MemberLite {
-  twitchLogin: string;
-  displayName: string;
-  discordId?: string;
-  twitchId?: string;
-  integrationDate?: string;
-  isActive?: boolean;
-  isVip?: boolean;
-  badges?: string[];
-  onboardingStatus?: "a_faire" | "en_cours" | "termine";
-  nextReviewAt?: string;
-  profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
-}
-
 interface MemberEventLite {
   id: string;
   memberId: string;
@@ -48,6 +34,18 @@ interface RecapEvent {
   };
   registrationCount: number;
   presenceCount: number;
+}
+
+interface EventWithRegistrationsLite {
+  event: {
+    id: string;
+    title: string;
+    date: string;
+    category?: string;
+    isPublished?: boolean;
+  };
+  registrationCount: number;
+  presenceCount?: number;
 }
 
 interface WorkflowStep {
@@ -88,6 +86,18 @@ interface FollowSummaryItem {
   status: "up_to_date" | "obsolete" | "not_validated";
 }
 
+interface DashboardSummary {
+  total: number;
+  missingDiscord: number;
+  missingTwitchId: number;
+  incomplete: number;
+  reviewOverdue: number;
+  reviewDue7d: number;
+  avgCompletion: number;
+  validatedProfiles: number;
+  communityMonthCount: number;
+}
+
 function normalizeCategoryLabel(value: string | undefined): string {
   return (value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -100,18 +110,6 @@ function previousMonthKey(date = new Date()): string {
   return monthKey(new Date(date.getFullYear(), date.getMonth() - 1, 1));
 }
 
-function completionPct(member: MemberLite): number {
-  const checks = [
-    !!member.discordId,
-    !!member.twitchId,
-    !!member.integrationDate,
-    member.onboardingStatus === "termine",
-    member.profileValidationStatus === "valide",
-  ];
-  const ok = checks.filter(Boolean).length;
-  return Math.round((ok / checks.length) * 100);
-}
-
 function monthLabelFromDate(date: Date): string {
   const names = ["Jan", "Fev", "Mar", "Avr", "Mai", "Juin", "Juil", "Aout", "Sep", "Oct", "Nov", "Dec"];
   return `${names[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
@@ -121,7 +119,17 @@ export default function Dashboard2Page() {
   const [loading, setLoading] = useState(true);
   const [loadingVisual, setLoadingVisual] = useState(true);
   const [loadingRecap, setLoadingRecap] = useState(true);
-  const [members, setMembers] = useState<MemberLite[]>([]);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary>({
+    total: 0,
+    missingDiscord: 0,
+    missingTwitchId: 0,
+    incomplete: 0,
+    reviewOverdue: 0,
+    reviewDue7d: 0,
+    avgCompletion: 0,
+    validatedProfiles: 0,
+    communityMonthCount: 0,
+  });
   const [events, setEvents] = useState<MemberEventLite[]>([]);
   const [finalNotesCount, setFinalNotesCount] = useState(0);
   const [followOverdueStaffNames, setFollowOverdueStaffNames] = useState<string[]>([]);
@@ -173,8 +181,8 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadOpsData() {
       try {
-        const [membersRes, eventsRes, notesRes, followSummaryRes, vipMonthRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
-          fetch("/api/admin/members", { cache: "no-store" }),
+        const [summaryRes, eventsRes, notesRes, followSummaryRes, vipMonthRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
+          fetch("/api/admin/dashboard/summary", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
           fetch(`/api/evaluations/synthesis/save?month=${evaluationMonth}`, { cache: "no-store" }),
           fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
@@ -183,9 +191,21 @@ export default function Dashboard2Page() {
           fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
         ]);
 
-        if (membersRes.ok) {
-          const membersData = await membersRes.json();
-          setMembers((membersData.members || []) as MemberLite[]);
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          setDashboardSummary(
+            (summaryData?.data || {
+              total: 0,
+              missingDiscord: 0,
+              missingTwitchId: 0,
+              incomplete: 0,
+              reviewOverdue: 0,
+              reviewDue7d: 0,
+              avgCompletion: 0,
+              validatedProfiles: 0,
+              communityMonthCount: 0,
+            }) as DashboardSummary
+          );
         }
 
         if (eventsRes.ok) {
@@ -241,15 +261,7 @@ export default function Dashboard2Page() {
 
     loadOpsData();
   }, [currentMonth, evaluationMonth]);
-
-  const communityMonthCount = useMemo(() => {
-    return members.filter(
-      (m) =>
-        m.isActive !== false &&
-        Array.isArray(m.badges) &&
-        m.badges.includes("Contributeur TENF du Mois")
-    ).length;
-  }, [members]);
+  const communityMonthCount = dashboardSummary.communityMonthCount;
 
   useEffect(() => {
     async function loadVisualData() {
@@ -318,50 +330,52 @@ export default function Dashboard2Page() {
       }
     }
 
-    loadVisualData();
-  }, [currentMonth]);
+    if (loading) return;
+
+    const timer = window.setTimeout(() => {
+      loadVisualData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [currentMonth, loading]);
 
   useEffect(() => {
-    async function loadEventsRecapData() {
+    async function loadEventsRecapAndUpcomingKpis() {
       try {
-        const registrationsRes = await fetch("/api/admin/events/registrations", { cache: "no-store" });
-        if (!registrationsRes.ok) {
+        const now = new Date();
+        const [eventsRegistrationsRes, integrationsRes] = await Promise.all([
+          fetch("/api/admin/events/registrations", { cache: "no-store" }),
+          fetch("/api/integrations?admin=true", { cache: "no-store" }),
+        ]);
+
+        if (!eventsRegistrationsRes.ok) {
           setRecapEvents([]);
+          setUpcomingKpis((prev) => ({
+            ...prev,
+            nextMeetingRegistrations: 0,
+            nextFormationRegistrations: 0,
+            nextFilmRegistrations: 0,
+            nextJeuxRegistrations: 0,
+            upcomingSpotlights: 0,
+          }));
           return;
         }
 
-        const registrationsData = await registrationsRes.json();
-        const baseEvents = registrationsData.eventsWithRegistrations || [];
-        const now = new Date();
-        const pastEvents = baseEvents.filter((item: any) => new Date(item.event.date) < now);
+        const registrationsData = await eventsRegistrationsRes.json();
+        const baseEvents = (registrationsData.eventsWithRegistrations || []) as EventWithRegistrationsLite[];
+        const pastEvents = baseEvents.filter((item) => new Date(item.event.date) < now);
 
-        const withPresences: RecapEvent[] = await Promise.all(
-          pastEvents.map(async (item: any) => {
-            try {
-              const presenceRes = await fetch(`/api/admin/events/presence?eventId=${item.event.id}`, { cache: "no-store" });
-              if (!presenceRes.ok) {
-                return {
-                  event: item.event,
-                  registrationCount: item.registrationCount || 0,
-                  presenceCount: 0,
-                };
-              }
-              const presenceData = await presenceRes.json();
-              const presenceCount = (presenceData.presences || []).filter((p: any) => p.present).length;
-              return {
-                event: item.event,
-                registrationCount: item.registrationCount || 0,
-                presenceCount,
-              };
-            } catch {
-              return {
-                event: item.event,
-                registrationCount: item.registrationCount || 0,
-                presenceCount: 0,
-              };
-            }
-          })
-        );
+        const withPresences: RecapEvent[] = pastEvents.map((item) => ({
+          event: {
+            id: item.event.id,
+            title: item.event.title,
+            date: item.event.date,
+            category: item.event.category || "Non classé",
+            isPublished: item.event.isPublished ?? false,
+          },
+          registrationCount: Number(item.registrationCount || 0),
+          presenceCount: Number(item.presenceCount || 0),
+        }));
 
         setRecapEvents(withPresences);
 
@@ -373,25 +387,6 @@ export default function Dashboard2Page() {
           ...prev,
           pendingEventValidations: pendingValidations,
         }));
-      } catch (error) {
-        console.error("Erreur chargement recap events:", error);
-      } finally {
-        setLoadingRecap(false);
-      }
-    }
-
-    loadEventsRecapData();
-  }, []);
-
-  useEffect(() => {
-    async function loadUpcomingKpis() {
-      try {
-        const now = new Date();
-
-        const [eventsRegistrationsRes, integrationsRes] = await Promise.all([
-          fetch("/api/admin/events/registrations", { cache: "no-store" }),
-          fetch("/api/integrations?admin=true", { cache: "no-store" }),
-        ]);
 
         let nextMeetingRegistrations = 0;
         let nextFormationRegistrations = 0;
@@ -400,12 +395,7 @@ export default function Dashboard2Page() {
         let upcomingSpotlights = 0;
 
         if (eventsRegistrationsRes.ok) {
-          const eventsData = await eventsRegistrationsRes.json();
-          const items = (eventsData.eventsWithRegistrations || []) as Array<{
-            event: { date: string; category?: string };
-            registrationCount: number;
-          }>;
-          const futureEvents = items
+          const futureEvents = baseEvents
             .filter((item) => new Date(item.event.date) >= now)
             .sort((a, b) => new Date(a.event.date).getTime() - new Date(b.event.date).getTime());
 
@@ -460,44 +450,36 @@ export default function Dashboard2Page() {
           pendingEventValidations: prev.pendingEventValidations,
         }));
       } catch (error) {
-        console.error("Erreur chargement prochains KPIs:", error);
+        console.error("Erreur chargement recap/KPIs événements:", error);
+      } finally {
+        setLoadingRecap(false);
       }
     }
 
-    loadUpcomingKpis();
-  }, []);
+    if (loading) return;
+
+    const timer = window.setTimeout(() => {
+      loadEventsRecapAndUpcomingKpis();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   const kpis = useMemo(() => {
-    const activeMembers = members.filter((m) => m.isActive !== false);
-    const missingDiscord = activeMembers.filter((m) => !m.discordId).length;
-    const missingTwitchId = activeMembers.filter((m) => !m.twitchId).length;
-    const incomplete = activeMembers.filter((m) => completionPct(m) < 80).length;
-    const now = Date.now();
-    const reviewOverdue = activeMembers.filter((m) => m.nextReviewAt && new Date(m.nextReviewAt).getTime() <= now).length;
-    const reviewDue7d = activeMembers.filter((m) => {
-      if (!m.nextReviewAt) return false;
-      const t = new Date(m.nextReviewAt).getTime();
-      return t > now && t <= now + 7 * 24 * 60 * 60 * 1000;
-    }).length;
-    const avgCompletion = activeMembers.length
-      ? Math.round(activeMembers.reduce((sum, m) => sum + completionPct(m), 0) / activeMembers.length)
-      : 0;
-    const validatedProfiles = activeMembers.filter((m) => m.profileValidationStatus === "valide").length;
-
     return {
-      total: activeMembers.length,
-      missingDiscord,
-      missingTwitchId,
-      incomplete,
-      reviewOverdue,
-      reviewDue7d,
-      avgCompletion,
-      validatedProfiles,
+      total: dashboardSummary.total,
+      missingDiscord: dashboardSummary.missingDiscord,
+      missingTwitchId: dashboardSummary.missingTwitchId,
+      incomplete: dashboardSummary.incomplete,
+      reviewOverdue: dashboardSummary.reviewOverdue,
+      reviewDue7d: dashboardSummary.reviewDue7d,
+      avgCompletion: dashboardSummary.avgCompletion,
+      validatedProfiles: dashboardSummary.validatedProfiles,
       staffApplicationsPendingCount,
       staffApplicationsRedFlagCount,
       profileValidationPendingCount,
     };
-  }, [members, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount]);
+  }, [dashboardSummary, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount]);
 
   const filteredRecapEvents = useMemo(() => {
     if (recapMonthFilter === "all") return recapEvents;
