@@ -22,8 +22,8 @@ export default function AdminStaffPage() {
             <li>Archiver / desactiver / supprimer</li>
           </ul>
           <div>
-            <Link href="/organisation-staff" className="underline" style={{ color: "var(--color-primary)" }}>
-              Voir le rendu public (placeholder)
+            <Link href="/admin/gestion-acces/organigramme-staff" className="underline" style={{ color: "var(--color-primary)" }}>
+              Ouvrir la gestion Organigramme staff
             </Link>
           </div>
         </div>

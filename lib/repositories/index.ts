@@ -10,3 +10,4 @@ export type { Evaluation } from './EvaluationRepository';
 export { vipRepository, VipRepository } from './VipRepository';
 export type { VipHistoryEntry } from './VipRepository';
 export { upaEventRepository, UpaEventRepository } from "./UpaEventRepository";
+export { staffOrgChartRepository, StaffOrgChartRepository } from "./StaffOrgChartRepository";

@@ -237,6 +237,7 @@ export const adminNavigation: NavItem[] = [
       { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
       { href: "/admin/gestion-acces/images", label: "Gestion des images profils Twitch" },
       { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+      { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
       { href: "/admin/migration", label: "Migration des données" },
       { href: "/admin/follow/config", label: "Configuration staff follow" },
     ],
@@ -319,6 +320,11 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
       { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
     ],
+  },
+  {
+    href: "/admin/gestion-acces/organigramme-staff",
+    label: "Organigramme staff",
+    icon: "🧭",
   },
   { href: "/admin/search", label: "Recherche membre", icon: "🔎" },
 ];
