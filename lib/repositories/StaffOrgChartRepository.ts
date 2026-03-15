@@ -11,6 +11,7 @@ type OrgChartDbRow = {
   status_label: string;
   pole_key: string;
   pole_label: string;
+  secondary_poles?: unknown;
   bio_short: string;
   display_order: number;
   is_visible: boolean;
@@ -50,10 +51,22 @@ export interface OrgChartUpsertInput {
   statusLabel?: string;
   poleKey: OrgChartPoleKey;
   poleLabel?: string;
+  secondaryPoleKeys?: OrgChartPoleKey[];
   bioShort?: string;
   displayOrder?: number;
   isVisible?: boolean;
   isArchived?: boolean;
+}
+
+function normalizeSecondaryPoles(value: unknown, primaryPole: OrgChartPoleKey): OrgChartPoleKey[] {
+  const source = Array.isArray(value) ? value : [];
+  const unique = new Set<OrgChartPoleKey>();
+  for (const item of source) {
+    const key = String(item || "").trim() as OrgChartPoleKey;
+    if (!key || key === primaryPole) continue;
+    if (key.startsWith("POLE_")) unique.add(key);
+  }
+  return Array.from(unique);
 }
 
 function normalizeMember(raw: OrgChartDbRow["members"]) {
@@ -88,6 +101,7 @@ function mapEntry(row: OrgChartDbRow): OrgChartEntry {
     statusLabel: row.status_label,
     poleKey: row.pole_key as OrgChartPoleKey,
     poleLabel: row.pole_label,
+    secondaryPoleKeys: normalizeSecondaryPoles(row.secondary_poles, row.pole_key as OrgChartPoleKey),
     bioShort: row.bio_short || "",
     displayOrder: Number.isFinite(row.display_order) ? row.display_order : 0,
     isVisible: row.is_visible !== false,
@@ -105,7 +119,7 @@ export class StaffOrgChartRepository {
     let query = supabaseAdmin
       .from(this.table)
       .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
+        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
       )
       .order("display_order", { ascending: true })
       .order("updated_at", { ascending: false });
@@ -123,7 +137,7 @@ export class StaffOrgChartRepository {
     const { data, error } = await supabaseAdmin
       .from(this.table)
       .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
+        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
       )
       .eq("is_visible", true)
       .eq("is_archived", false)
@@ -144,6 +158,7 @@ export class StaffOrgChartRepository {
       status_label: (input.statusLabel || statusLabelFromKey(input.statusKey)).trim(),
       pole_key: input.poleKey,
       pole_label: (input.poleLabel || poleLabelFromKey(input.poleKey)).trim(),
+      secondary_poles: normalizeSecondaryPoles(input.secondaryPoleKeys, input.poleKey),
       bio_short: (input.bioShort || "").trim(),
       display_order: Number.isFinite(input.displayOrder) ? Number(input.displayOrder) : 0,
       is_visible: input.isVisible !== false,
@@ -155,7 +170,7 @@ export class StaffOrgChartRepository {
       .from(this.table)
       .upsert(payload, { onConflict: "member_id" })
       .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
+        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
       )
       .single();
 

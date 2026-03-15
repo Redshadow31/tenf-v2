@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { OrgChartEntry, OrgChartPoleKey } from "@/lib/staff/orgChartTypes";
-import { ORG_CHART_POLE_OPTIONS } from "@/lib/staff/orgChartTypes";
+import { ORG_CHART_POLE_OPTIONS, poleTagFromKey } from "@/lib/staff/orgChartTypes";
 
 type FilterKey = "all" | "direction" | "mod_active" | "mod_training" | "mod_pause" | "support";
 
@@ -36,49 +36,66 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       [...entries]
         .filter((entry) => entry.isVisible && !entry.isArchived)
         .filter((entry) => matchesFilter(entry, activeFilter))
-        .filter((entry) => (poleFilter === "all" ? true : entry.poleKey === poleFilter))
+        .filter((entry) =>
+          poleFilter === "all" ? true : entry.poleKey === poleFilter || entry.secondaryPoleKeys.includes(poleFilter)
+        )
         .sort((a, b) => a.displayOrder - b.displayOrder),
     [entries, activeFilter, poleFilter]
   );
 
   const grouped = useMemo(
     () => ({
-      direction: visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR" || entry.roleKey === "ADMIN_COORDINATEUR"),
-      moderationActive: visibleEntries.filter((entry) => entry.roleKey === "MODERATEUR"),
-      moderationTraining: visibleEntries.filter((entry) => entry.roleKey === "MODERATEUR_EN_FORMATION"),
-      moderationPause: visibleEntries.filter((entry) => entry.roleKey === "MODERATEUR_EN_PAUSE"),
+      founders: visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR"),
+      adminCoordinators: visibleEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR"),
+      moderators: visibleEntries.filter(
+        (entry) =>
+          entry.roleKey === "MODERATEUR" ||
+          entry.roleKey === "MODERATEUR_EN_FORMATION" ||
+          entry.roleKey === "MODERATEUR_EN_PAUSE"
+      ),
       support: visibleEntries.filter((entry) => entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT"),
     }),
     [visibleEntries]
   );
 
   const sections: Array<{ key: string; title: string; items: OrgChartEntry[] }> = [
-    { key: "direction", title: "Direction", items: grouped.direction },
-    { key: "moderationActive", title: "Moderateurs actifs", items: grouped.moderationActive },
-    { key: "moderationTraining", title: "Moderateurs en formation", items: grouped.moderationTraining },
-    { key: "moderationPause", title: "Moderateurs en pause", items: grouped.moderationPause },
+    { key: "founders", title: "Fondateurs", items: grouped.founders },
+    { key: "adminCoordinators", title: "Admin coordinateurs", items: grouped.adminCoordinators },
+    { key: "moderators", title: "Moderateurs UPA", items: grouped.moderators },
     { key: "support", title: "Soutien TENF", items: grouped.support },
   ].filter((section) => section.items.length > 0);
 
   return (
     <main className="min-h-screen py-12" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
         <section
-          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10"
-          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14"
+          style={{
+            borderColor: "var(--color-border)",
+            background:
+              "radial-gradient(120% 130% at 10% 0%, rgba(59,130,246,0.2), rgba(15,23,42,0.15) 40%, rgba(2,6,23,0.75) 100%)",
+          }}
         >
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 35%, transparent), transparent 70%)" }}
+          />
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-primary)" }}>
-            Organisation humaine
+            Structure communautaire TENF
           </p>
-          <h1 className="mt-3 text-3xl font-bold md:text-4xl" style={{ color: "var(--color-text)" }}>
+          <h1 className="mt-3 text-3xl font-bold md:text-5xl" style={{ color: "var(--color-text)" }}>
             Organigramme interactif TENF
           </h1>
           <p className="mt-4 max-w-4xl leading-7" style={{ color: "var(--color-text-secondary)" }}>
             Decouvre la structure humaine de la communaute TENF, ses roles, ses poles et son fonctionnement collectif.
+            Cette vue est alimentee depuis l'administration, a partir des membres existants.
           </p>
         </section>
 
         <section className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+            Navigation rapide
+          </p>
           <div className="flex flex-wrap gap-2">
             {FILTERS.map((filter) => {
               const active = activeFilter === filter.key;
@@ -128,17 +145,29 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
         ) : (
           sections.map((section) => (
             <section key={section.key} className="space-y-4">
-              <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+                Organigramme
+              </p>
+              <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
                 {section.title}
               </h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {section.items.map((entry) => (
                   <button
                     key={entry.id}
                     type="button"
                     onClick={() => setSelectedEntry(entry)}
-                    className="group rounded-2xl border p-5 text-left transition hover:-translate-y-0.5"
-                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                    className="group rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-1"
+                    style={{
+                      borderColor:
+                        section.key === "support"
+                          ? "rgba(34,197,94,0.35)"
+                          : "var(--color-border)",
+                      background:
+                        section.key === "support"
+                          ? "linear-gradient(135deg, rgba(22,163,74,0.14), rgba(15,23,42,0.85) 35%, rgba(2,6,23,0.95) 100%)"
+                          : "var(--color-card)",
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       {entry.member.avatarUrl ? (
@@ -166,19 +195,41 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                      <span
+                        className="rounded-full border px-2 py-1 text-xs"
+                        style={{
+                          borderColor: "var(--color-border)",
+                          color: "var(--color-text-secondary)",
+                          backgroundColor: "rgba(148,163,184,0.08)",
+                        }}
+                      >
                         {entry.roleLabel}
                       </span>
-                      <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                      <span
+                        className="rounded-full border px-2 py-1 text-xs"
+                        style={{
+                          borderColor: "var(--color-border)",
+                          color: "var(--color-text-secondary)",
+                          backgroundColor: "rgba(148,163,184,0.08)",
+                        }}
+                      >
                         {entry.statusLabel}
                       </span>
                     </div>
                     <p className="mt-3 line-clamp-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                       {entry.bioShort || "Membre actif de l'organisation TENF."}
                     </p>
-                    <p className="mt-3 text-xs font-semibold" style={{ color: "var(--color-primary)" }}>
+                    <p
+                      className="mt-3 text-xs font-semibold"
+                      style={{ color: section.key === "support" ? "#86efac" : "var(--color-primary)" }}
+                    >
                       {entry.poleLabel}
                     </p>
+                    {entry.secondaryPoleKeys.length > 0 ? (
+                      <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                        Multi-pole: {entry.secondaryPoleKeys.map((pole) => poleTagFromKey(pole).label).join(" • ")}
+                      </p>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -210,6 +261,14 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
               <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                 {selectedEntry.poleLabel}
               </span>
+              {selectedEntry.secondaryPoleKeys.map((pole) => {
+                const tag = poleTagFromKey(pole);
+                return (
+                  <span key={pole} className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    {tag.emoji} {tag.label}
+                  </span>
+                );
+              })}
             </div>
             <p className="mt-4 leading-7" style={{ color: "var(--color-text-secondary)" }}>
               {selectedEntry.bioShort || "Aucune bio courte renseignee pour ce profil."}

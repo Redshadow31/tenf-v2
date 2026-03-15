@@ -36,6 +36,7 @@ export interface OrgChartEntry {
   statusLabel: string;
   poleKey: OrgChartPoleKey;
   poleLabel: string;
+  secondaryPoleKeys: OrgChartPoleKey[];
   bioShort: string;
   displayOrder: number;
   isVisible: boolean;
@@ -43,6 +44,12 @@ export interface OrgChartEntry {
   createdAt: string;
   updatedAt: string;
   member: OrgChartMemberRef;
+}
+
+export interface OrgChartPoleTag {
+  key: OrgChartPoleKey;
+  label: string;
+  emoji: string;
 }
 
 export const ORG_CHART_ROLE_OPTIONS: Array<{ key: OrgChartRoleKey; label: string }> = [
@@ -80,4 +87,9 @@ export function statusLabelFromKey(statusKey: OrgChartStatusKey): string {
 
 export function poleLabelFromKey(poleKey: OrgChartPoleKey): string {
   return ORG_CHART_POLE_OPTIONS.find((x) => x.key === poleKey)?.label || "Pôle";
+}
+
+export function poleTagFromKey(poleKey: OrgChartPoleKey): OrgChartPoleTag {
+  const found = ORG_CHART_POLE_OPTIONS.find((x) => x.key === poleKey);
+  return found || { key: poleKey, label: poleLabelFromKey(poleKey), emoji: "•" };
 }

@@ -41,6 +41,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       statusLabel: body.statusLabel,
       poleKey: body.poleKey,
       poleLabel: body.poleLabel,
+      secondaryPoleKeys: body.secondaryPoleKeys,
       bioShort: body.bioShort,
       displayOrder: body.displayOrder,
       isVisible: body.isVisible,

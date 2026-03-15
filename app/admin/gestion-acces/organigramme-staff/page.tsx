@@ -27,6 +27,7 @@ function createDraftFromMember(member: OrgChartMemberRef): EditableEntry {
     statusLabel: statusLabelFromKey(statusKey),
     poleKey,
     poleLabel: poleLabelFromKey(poleKey),
+    secondaryPoleKeys: [],
     bioShort: "",
     displayOrder: 0,
     isVisible: true,
@@ -129,6 +130,7 @@ export default function AdminOrganigrammeStaffPage() {
           statusLabel: entry.statusLabel,
           poleKey: entry.poleKey,
           poleLabel: entry.poleLabel,
+          secondaryPoleKeys: entry.secondaryPoleKeys,
           bioShort: entry.bioShort,
           displayOrder: entry.displayOrder,
           isVisible: entry.isVisible,
@@ -330,7 +332,11 @@ export default function AdminOrganigrammeStaffPage() {
                         value={entry.poleKey}
                         onChange={(e) => {
                           const poleKey = e.target.value as OrgChartPoleKey;
-                          updateEntry(entry.id, { poleKey, poleLabel: poleLabelFromKey(poleKey) });
+                          updateEntry(entry.id, {
+                            poleKey,
+                            poleLabel: poleLabelFromKey(poleKey),
+                            secondaryPoleKeys: entry.secondaryPoleKeys.filter((key) => key !== poleKey),
+                          });
                         }}
                         className="mt-1 w-full rounded-lg border px-2 py-2"
                         style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text)" }}
@@ -342,6 +348,36 @@ export default function AdminOrganigrammeStaffPage() {
                         ))}
                       </select>
                     </label>
+
+                    <div className="text-sm md:col-span-3">
+                      <span style={{ color: "var(--color-text-secondary)" }}>Poles secondaires (multi-selection)</span>
+                      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {ORG_CHART_POLE_OPTIONS.filter((option) => option.key !== entry.poleKey).map((option) => {
+                          const checked = entry.secondaryPoleKeys.includes(option.key);
+                          return (
+                            <label
+                              key={option.key}
+                              className="flex items-center gap-2 rounded-lg border px-2 py-2"
+                              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const nextSet = new Set(entry.secondaryPoleKeys);
+                                  if (e.target.checked) nextSet.add(option.key);
+                                  else nextSet.delete(option.key);
+                                  updateEntry(entry.id, { secondaryPoleKeys: Array.from(nextSet) });
+                                }}
+                              />
+                              <span className="text-sm">
+                                {option.emoji} {option.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <label className="text-sm">
                       <span style={{ color: "var(--color-text-secondary)" }}>Ordre</span>
