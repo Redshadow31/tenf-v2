@@ -13,6 +13,44 @@ const monthlyGoals = {
   presences: 6,
 };
 
+const VIP_GOLD = "#d4af37";
+
+const ROLE_ACCENT_BY_KEY: Array<{ key: string; accent: string }> = [
+  { key: "communaute", accent: "#06b6d4" },
+  { key: "developpement", accent: "#b87333" },
+  { key: "affilie", accent: "#9aaedb" },
+  { key: "junior", accent: "#ff3da5" },
+  { key: "nouveau", accent: "#06b6d4" },
+];
+
+function normalizeText(value: string | undefined | null): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const normalized =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : clean;
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function resolveAccent(role: string | undefined, vipActive: boolean): string {
+  if (vipActive) return VIP_GOLD;
+  const normalizedRole = normalizeText(role);
+  return ROLE_ACCENT_BY_KEY.find((entry) => normalizedRole.includes(entry.key))?.accent ?? "#06b6d4";
+}
+
 function formatDate(value: string | null) {
   if (!value) return "Non planifiee";
   return new Date(value).toLocaleDateString("fr-FR");
@@ -72,6 +110,8 @@ export default function MemberDashboardPage() {
   const firstName = displayName.split(" ")[0] || "Membre";
   const profileRemaining = Math.max(0, 100 - data.profile.percent);
   const vipActive = Boolean(data.vip?.activeThisMonth);
+  const accent = resolveAccent(data.member.role, vipActive);
+  const sectionLabel = vipActive ? "Espace VIP" : "Espace Membre";
 
   const keyStats = [
     { title: "Raids ce mois", value: data.stats.raidsThisMonth, subtitle: `Objectif: ${monthlyGoals.raids}`, icon: Rocket },
@@ -108,16 +148,16 @@ export default function MemberDashboardPage() {
       <section
         className="rounded-3xl border p-6 md:p-8"
         style={{
-          borderColor: "rgba(212, 175, 55, 0.24)",
-          background: "radial-gradient(circle at 15% 15%, rgba(212,175,55,0.18), rgba(27,27,33,0.96) 42%)",
+          borderColor: hexToRgba(accent, 0.24),
+          background: `radial-gradient(circle at 15% 15%, ${hexToRgba(accent, 0.18)}, rgba(27,27,33,0.96) 42%)`,
           boxShadow: "0 20px 45px rgba(0, 0, 0, 0.28)",
         }}
       >
         <MemberBreadcrumbs />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-2xl">
-            <p className="text-xs uppercase tracking-[0.18em]" style={{ color: "rgba(230, 201, 128, 0.9)" }}>
-              Espace membre premium
+            <p className="text-xs uppercase tracking-[0.18em]" style={{ color: hexToRgba(accent, 0.9) }}>
+              {sectionLabel}
             </p>
             <h1 className="mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "var(--color-text)" }}>
               {firstName}, voici ton dashboard executive.
@@ -130,9 +170,9 @@ export default function MemberDashboardPage() {
             <span
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.09em]"
               style={{
-                borderColor: vipActive ? "rgba(212,175,55,0.46)" : "rgba(160,160,173,0.4)",
-                backgroundColor: vipActive ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.05)",
-                color: vipActive ? "rgba(244, 219, 151, 0.95)" : "rgba(220,220,225,0.86)",
+                borderColor: hexToRgba(accent, 0.46),
+                backgroundColor: hexToRgba(accent, 0.12),
+                color: hexToRgba(accent, 0.95),
               }}
             >
               <Crown size={14} />
@@ -141,7 +181,7 @@ export default function MemberDashboardPage() {
             <Link
               href="/member/profil/completer"
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
-              style={{ backgroundColor: "rgba(212,175,55,0.95)", color: "#201b12" }}
+              style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
             >
               Optimiser mon profil
               <ArrowUpRight size={14} />
@@ -156,7 +196,7 @@ export default function MemberDashboardPage() {
             key={item.title}
             className="rounded-2xl border p-5 transition-all hover:-translate-y-[1px]"
             style={{
-              borderColor: "rgba(212,175,55,0.2)",
+              borderColor: hexToRgba(accent, 0.2),
               background: "linear-gradient(150deg, rgba(32,32,38,0.95), rgba(22,22,27,0.96))",
             }}
           >
@@ -164,7 +204,7 @@ export default function MemberDashboardPage() {
               <p className="text-xs uppercase tracking-[0.1em]" style={{ color: "rgba(214, 214, 224, 0.75)" }}>
                 {item.title}
               </p>
-              <item.icon size={16} style={{ color: "rgba(236, 204, 120, 0.95)" }} />
+              <item.icon size={16} style={{ color: hexToRgba(accent, 0.95) }} />
             </div>
             <p className="mt-3 text-3xl font-semibold" style={{ color: "var(--color-text)" }}>
               {item.value}
@@ -180,7 +220,7 @@ export default function MemberDashboardPage() {
         <article
           className="rounded-2xl border p-5"
           style={{
-            borderColor: "rgba(212,175,55,0.2)",
+            borderColor: hexToRgba(accent, 0.2),
             background: "linear-gradient(165deg, rgba(28,28,34,0.96), rgba(17,17,21,0.98))",
           }}
         >
@@ -188,7 +228,7 @@ export default function MemberDashboardPage() {
             <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
               Executive snapshot
             </h2>
-            <span className="inline-flex items-center gap-1 text-xs" style={{ color: "rgba(230, 199, 115, 0.88)" }}>
+            <span className="inline-flex items-center gap-1 text-xs" style={{ color: hexToRgba(accent, 0.88) }}>
               <Sparkles size={14} />
               Semaine en cours
             </span>
@@ -209,11 +249,11 @@ export default function MemberDashboardPage() {
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${percent}%`,
-                        background: "linear-gradient(90deg, rgba(212,175,55,0.95), rgba(238,211,138,0.95))",
+                        background: `linear-gradient(90deg, ${hexToRgba(accent, 0.95)}, ${hexToRgba(accent, 0.7)})`,
                       }}
                     />
                   </div>
-                  <Link href={goal.href} className="mt-2 inline-flex items-center gap-1 text-xs hover:opacity-80" style={{ color: "rgba(230, 199, 115, 0.92)" }}>
+                  <Link href={goal.href} className="mt-2 inline-flex items-center gap-1 text-xs hover:opacity-80" style={{ color: hexToRgba(accent, 0.92) }}>
                     Voir le detail
                     <ArrowUpRight size={12} />
                   </Link>
@@ -262,7 +302,7 @@ export default function MemberDashboardPage() {
                       {action.description}
                     </p>
                   </div>
-                  <ArrowUpRight size={14} style={{ color: "rgba(230, 199, 115, 0.92)" }} />
+                  <ArrowUpRight size={14} style={{ color: hexToRgba(accent, 0.92) }} />
                 </div>
               </Link>
             ))}
@@ -286,7 +326,7 @@ export default function MemberDashboardPage() {
                 </div>
               ))}
             </div>
-            <Link href="/member/evenements" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold hover:opacity-80" style={{ color: "rgba(230, 199, 115, 0.92)" }}>
+            <Link href="/member/evenements" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold hover:opacity-80" style={{ color: hexToRgba(accent, 0.92) }}>
               Voir le planning complet
               <ArrowUpRight size={14} />
             </Link>
@@ -296,10 +336,16 @@ export default function MemberDashboardPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border p-5" style={{ borderColor: "rgba(212,175,55,0.22)", background: "linear-gradient(145deg, rgba(37,33,22,0.72), rgba(22,21,18,0.95))" }}>
+      <section
+        className="rounded-2xl border p-5"
+        style={{
+          borderColor: hexToRgba(accent, 0.22),
+          background: `linear-gradient(145deg, ${hexToRgba(accent, 0.2)}, rgba(22,21,18,0.95))`,
+        }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.16em]" style={{ color: "rgba(239, 214, 145, 0.86)" }}>
+            <p className="text-xs uppercase tracking-[0.16em]" style={{ color: hexToRgba(accent, 0.86) }}>
               Concierge member
             </p>
             <h2 className="mt-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
@@ -312,7 +358,7 @@ export default function MemberDashboardPage() {
           <Link
             href="/member/notifications"
             className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
-            style={{ borderColor: "rgba(239, 214, 145, 0.45)", color: "rgba(245, 227, 179, 0.95)" }}
+            style={{ borderColor: hexToRgba(accent, 0.45), color: hexToRgba(accent, 0.95) }}
           >
             Ouvrir mon concierge
             <ArrowUpRight size={14} />
