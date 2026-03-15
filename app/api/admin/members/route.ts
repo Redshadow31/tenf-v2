@@ -587,6 +587,96 @@ export async function PUT(request: NextRequest) {
       console.log(`[Update Member API] Recherche par Twitch login: ${twitchLogin}`);
     }
     
+    // Fallback important:
+    // certains membres existent uniquement dans le stockage legacy (présence/intégration)
+    // et ne sont pas encore matérialisés dans la table Supabase `members`.
+    if (!existingMember) {
+      try {
+        const { loadMemberDataFromStorage, getAllMemberData } = await import("@/lib/memberData");
+        await loadMemberDataFromStorage();
+        const allLegacyMembers = (getAllMemberData() as any[]) || [];
+
+        const normalizedDiscordId = normalizeId(originalDiscordId);
+        const normalizedTwitchId = normalizeId(originalTwitchId);
+        const normalizedOriginalLogin = normalizeLogin(originalTwitchLogin);
+        const normalizedPayloadLogin = normalizeLogin(twitchLogin);
+
+        const legacyMember =
+          allLegacyMembers.find((m) => normalizeId(m?.discordId) === normalizedDiscordId) ||
+          allLegacyMembers.find((m) => normalizeId(m?.twitchId) === normalizedTwitchId) ||
+          allLegacyMembers.find((m) => normalizeLogin(m?.twitchLogin) === normalizedOriginalLogin) ||
+          allLegacyMembers.find((m) => normalizeLogin(m?.twitchLogin) === normalizedPayloadLogin) ||
+          null;
+
+        if (legacyMember) {
+          const legacyLogin =
+            normalizeLogin(legacyMember.twitchLogin) ||
+            normalizedOriginalLogin ||
+            normalizedPayloadLogin;
+
+          if (legacyLogin) {
+            const mappedRole = toCanonicalMemberRole(
+              (legacyMember.role as string | undefined) || (updates.role as string | undefined) || "Affilié"
+            );
+            const mappedBadges = toCanonicalBadges(
+              Array.isArray(legacyMember.badges) ? legacyMember.badges : (updates.badges as string[] | undefined)
+            );
+            try {
+              const createdMember = await memberRepository.create({
+                twitchLogin: legacyLogin,
+                twitchId: legacyMember.twitchId || undefined,
+                twitchUrl: legacyMember.twitchUrl || `https://www.twitch.tv/${legacyLogin}`,
+                discordId: legacyMember.discordId || undefined,
+                discordUsername: legacyMember.discordUsername || undefined,
+                displayName:
+                  legacyMember.displayName ||
+                  legacyMember.siteUsername ||
+                  legacyMember.discordUsername ||
+                  legacyLogin,
+                siteUsername: legacyMember.siteUsername || legacyMember.displayName || legacyLogin,
+                role: mappedRole,
+                isVip: Boolean(legacyMember.isVip),
+                isActive: typeof legacyMember.isActive === "boolean" ? legacyMember.isActive : true,
+                badges: mappedBadges,
+                description: legacyMember.description || undefined,
+                shadowbanLives: Boolean(legacyMember.shadowbanLives),
+                profileValidationStatus: legacyMember.profileValidationStatus || "valide",
+                createdAt: legacyMember.createdAt || new Date(),
+                integrationDate: legacyMember.integrationDate || undefined,
+                onboardingStatus: legacyMember.onboardingStatus || undefined,
+                mentorTwitchLogin: legacyMember.mentorTwitchLogin || undefined,
+                primaryLanguage: legacyMember.primaryLanguage || undefined,
+                timezone: legacyMember.timezone || undefined,
+                countryCode: legacyMember.countryCode || undefined,
+                lastReviewAt: legacyMember.lastReviewAt || undefined,
+                nextReviewAt: legacyMember.nextReviewAt || undefined,
+                roleHistory: legacyMember.roleHistory || undefined,
+                parrain: legacyMember.parrain || undefined,
+                updatedBy: admin.discordId,
+              });
+
+              existingMember = createdMember;
+              console.log(
+                `[Update Member API] ♻️ Membre legacy migré vers Supabase avant update: ${legacyLogin}`
+              );
+            } catch (createFromLegacyError) {
+              // En cas de course ou conflit de contrainte unique, on retente une lecture.
+              console.warn(
+                `[Update Member API] Migration legacy -> Supabase non directe, relecture en fallback: ${legacyLogin}`,
+                createFromLegacyError
+              );
+              existingMember =
+                (legacyMember.discordId
+                  ? await memberRepository.findByDiscordId(legacyMember.discordId)
+                  : null) || (await memberRepository.findByTwitchLogin(legacyLogin));
+            }
+          }
+        }
+      } catch (legacyFallbackError) {
+        console.warn("[Update Member API] Fallback legacy indisponible:", legacyFallbackError);
+      }
+    }
+
     if (!existingMember) {
       console.error(`[Update Member API] ❌ Membre non trouvé avec:`, {
         twitchLogin,
