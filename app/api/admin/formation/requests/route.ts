@@ -37,6 +37,12 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
   return error.code === "42P01" || message.includes("does not exist") || message.includes("could not find the table");
 }
 
+function toSafeIsoDate(value: unknown): string | null {
+  const date = value instanceof Date ? value : new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 export async function GET() {
   try {
     const admin = await requireAdmin();
@@ -44,14 +50,24 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorise" }, { status: 403 });
     }
 
-    const allEvents = await eventRepository.findAll(1500, 0);
+    let allEvents: Awaited<ReturnType<typeof eventRepository.findAll>> = [];
+    try {
+      allEvents = await eventRepository.findAll(1500, 0);
+    } catch {
+      allEvents = [];
+    }
     const formationEvents = allEvents
       .filter((event) => isFormationCategory(event.category))
-      .map((event) => ({
-        id: String(event.id),
-        title: String(event.title || "Formation"),
-        dateIso: event.date instanceof Date ? event.date.toISOString() : new Date(event.date).toISOString(),
-      }));
+      .map((event) => {
+        const dateIso = toSafeIsoDate(event.date);
+        if (!dateIso) return null;
+        return {
+          id: String(event.id),
+          title: String(event.title || "Formation"),
+          dateIso,
+        };
+      })
+      .filter((event): event is { id: string; title: string; dateIso: string } => Boolean(event));
 
     const eventIds = formationEvents.map((event) => event.id);
     const participantCounts = new Map<string, number>();
