@@ -182,7 +182,7 @@ export default function AdminOrganigrammeStaffPage() {
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
             Source de verite: membres existants de la gestion membre. Cette page ajoute uniquement la couche d'affichage public
-            (role, statut, pole, ordre, visibilite).
+            (role, statut, pole(s), visibilite). L'ordre public se fait automatiquement par role puis par nom.
           </p>
         </section>
 
@@ -378,16 +378,6 @@ export default function AdminOrganigrammeStaffPage() {
                         })}
                       </div>
                     </div>
-
-                    <label className="text-sm">
-                      <span style={{ color: "var(--color-text-secondary)" }}>Ordre</span>
-                      <input
-                        value={String(entry.displayOrder)}
-                        onChange={(e) => updateEntry(entry.id, { displayOrder: Number.parseInt(e.target.value || "0", 10) || 0 })}
-                        className="mt-1 w-full rounded-lg border px-2 py-2"
-                        style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text)" }}
-                      />
-                    </label>
 
                     <label className="mt-6 flex items-center gap-2 text-sm" style={{ color: "var(--color-text)" }}>
                       <input

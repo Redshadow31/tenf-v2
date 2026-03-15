@@ -36,24 +36,28 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       [...entries]
         .filter((entry) => entry.isVisible && !entry.isArchived)
         .filter((entry) => matchesFilter(entry, activeFilter))
-        .filter((entry) =>
-          poleFilter === "all" ? true : entry.poleKey === poleFilter || entry.secondaryPoleKeys.includes(poleFilter)
-        )
-        .sort((a, b) => a.displayOrder - b.displayOrder),
+        .filter((entry) => (poleFilter === "all" ? true : entry.poleKey === poleFilter || entry.secondaryPoleKeys.includes(poleFilter))),
     [entries, activeFilter, poleFilter]
   );
 
+  const sortByMemberName = (items: OrgChartEntry[]) =>
+    [...items].sort((a, b) =>
+      (a.member.displayName || a.member.twitchLogin || "").localeCompare(b.member.displayName || b.member.twitchLogin || "", "fr", {
+        sensitivity: "base",
+      })
+    );
+
   const grouped = useMemo(
     () => ({
-      founders: visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR"),
-      adminCoordinators: visibleEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR"),
-      moderators: visibleEntries.filter(
+      founders: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR")),
+      adminCoordinators: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR")),
+      moderators: sortByMemberName(visibleEntries.filter(
         (entry) =>
           entry.roleKey === "MODERATEUR" ||
           entry.roleKey === "MODERATEUR_EN_FORMATION" ||
           entry.roleKey === "MODERATEUR_EN_PAUSE"
-      ),
-      support: visibleEntries.filter((entry) => entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT"),
+      )),
+      support: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT")),
     }),
     [visibleEntries]
   );

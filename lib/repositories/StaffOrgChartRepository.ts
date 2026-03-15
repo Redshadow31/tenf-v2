@@ -114,38 +114,71 @@ function mapEntry(row: OrgChartDbRow): OrgChartEntry {
 
 export class StaffOrgChartRepository {
   private readonly table = "staff_org_chart_entries";
+  private readonly selectWithSecondary =
+    "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)";
+  private readonly selectWithoutSecondary =
+    "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)";
+
+  private isSecondaryPolesMissing(error: unknown): boolean {
+    const message = String((error as { message?: string })?.message || error || "").toLowerCase();
+    return message.includes("secondary_poles") && (message.includes("column") || message.includes("does not exist"));
+  }
 
   async listAll(includeArchived = true): Promise<OrgChartEntry[]> {
-    let query = supabaseAdmin
-      .from(this.table)
-      .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
-      )
-      .order("display_order", { ascending: true })
-      .order("updated_at", { ascending: false });
+    const runQuery = async (selectClause: string) => {
+      let query = supabaseAdmin
+        .from(this.table)
+        .select(selectClause)
+        .order("display_order", { ascending: true })
+        .order("updated_at", { ascending: false });
 
-    if (!includeArchived) {
-      query = query.eq("is_archived", false);
+      if (!includeArchived) {
+        query = query.eq("is_archived", false);
+      }
+      return query;
+    };
+
+    const first = await runQuery(this.selectWithSecondary);
+    if (!first.error) {
+      return (first.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data || []).map((row) => mapEntry(row as OrgChartDbRow));
+    if (!this.isSecondaryPolesMissing(first.error)) {
+      throw first.error;
+    }
+
+    const fallback = await runQuery(this.selectWithoutSecondary);
+    if (fallback.error) throw fallback.error;
+    return (fallback.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
   }
 
   async listPublic(): Promise<OrgChartEntry[]> {
-    const { data, error } = await supabaseAdmin
+    const withSecondary = await supabaseAdmin
       .from(this.table)
-      .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
-      )
+      .select(this.selectWithSecondary)
       .eq("is_visible", true)
       .eq("is_archived", false)
       .order("display_order", { ascending: true })
       .order("updated_at", { ascending: false });
 
-    if (error) throw error;
-    return (data || []).map((row) => mapEntry(row as OrgChartDbRow));
+    if (!withSecondary.error) {
+      return (withSecondary.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
+    }
+
+    if (!this.isSecondaryPolesMissing(withSecondary.error)) {
+      throw withSecondary.error;
+    }
+
+    const fallback = await supabaseAdmin
+      .from(this.table)
+      .select(this.selectWithoutSecondary)
+      .eq("is_visible", true)
+      .eq("is_archived", false)
+      .order("display_order", { ascending: true })
+      .order("updated_at", { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+    return (fallback.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
   }
 
   async upsert(input: OrgChartUpsertInput): Promise<OrgChartEntry> {
@@ -166,16 +199,31 @@ export class StaffOrgChartRepository {
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabaseAdmin
+    const withSecondary = await supabaseAdmin
       .from(this.table)
       .upsert(payload, { onConflict: "member_id" })
-      .select(
-        "id, member_id, role_key, role_label, status_key, status_label, pole_key, pole_label, secondary_poles, bio_short, display_order, is_visible, is_archived, created_at, updated_at, members(id, twitch_login, display_name, discord_id, discord_username, twitch_status, role, is_active)"
-      )
+      .select(this.selectWithSecondary)
       .single();
 
-    if (error) throw error;
-    return mapEntry(data as OrgChartDbRow);
+    if (!withSecondary.error) {
+      return mapEntry(withSecondary.data as unknown as OrgChartDbRow);
+    }
+
+    if (!this.isSecondaryPolesMissing(withSecondary.error)) {
+      throw withSecondary.error;
+    }
+
+    const legacyPayload = { ...payload } as Record<string, unknown>;
+    delete legacyPayload.secondary_poles;
+
+    const fallback = await supabaseAdmin
+      .from(this.table)
+      .upsert(legacyPayload, { onConflict: "member_id" })
+      .select(this.selectWithoutSecondary)
+      .single();
+
+    if (fallback.error) throw fallback.error;
+    return mapEntry(fallback.data as unknown as OrgChartDbRow);
   }
 
   async remove(entryId: string): Promise<void> {
