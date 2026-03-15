@@ -422,6 +422,10 @@ export default function Events2Page() {
     const isPast = new Date(event.date).getTime() < Date.now();
     const hasPublicCta = !!event.ctaUrl;
     const hideRegistration = event.isMaskedForAudience === true;
+    const categoryLabel = event.isMaskedForAudience ? "Event TENF" : event.category;
+    const categoryBadgeClass = event.isMaskedForAudience
+      ? "bg-red-600/30 text-red-200 border-red-500/30"
+      : categoryColor(event.category);
 
     return (
       <div
@@ -429,14 +433,16 @@ export default function Events2Page() {
         className="rounded-xl border border-gray-700 bg-[#1a1a1d] overflow-hidden hover:border-[#9146ff] transition-colors"
       >
         {event.image ? (
-          <img src={event.image} alt={event.title} className="w-full h-44 object-cover" />
+          <div className="w-full h-32 bg-[#0e0e10] flex items-center justify-center">
+            <img src={event.image} alt={event.title} className="w-full h-full object-contain" />
+          </div>
         ) : (
-          <div className="w-full h-44 bg-gradient-to-br from-[#2a2a2d] to-[#141417]" />
+          <div className="w-full h-32 bg-gradient-to-br from-[#2a2a2d] to-[#141417]" />
         )}
 
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={`text-xs px-2 py-1 rounded-full border ${categoryColor(event.category)}`}>{event.category}</span>
+            <span className={`text-xs px-2 py-1 rounded-full border ${categoryBadgeClass}`}>{categoryLabel}</span>
             <span className={`text-xs ${isPast ? "text-gray-400" : "text-green-300"}`}>{isPast ? "Termine" : "A venir"}</span>
           </div>
 
@@ -657,7 +663,7 @@ export default function Events2Page() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-xl border border-gray-700 bg-[#1a1a1d] overflow-hidden animate-pulse">
-                  <div className="h-44 bg-[#2a2a2d]" />
+                  <div className="h-32 bg-[#2a2a2d]" />
                   <div className="p-4 space-y-3">
                     <div className="h-5 w-2/3 bg-[#2a2a2d] rounded" />
                     <div className="h-4 w-1/2 bg-[#2a2a2d] rounded" />
@@ -815,8 +821,14 @@ export default function Events2Page() {
                   ✕
                 </button>
               </div>
-              <span className={`inline-block text-xs px-2 py-1 rounded-full border ${categoryColor(selectedEvent.category)}`}>
-                {selectedEvent.category}
+              <span
+                className={`inline-block text-xs px-2 py-1 rounded-full border ${
+                  selectedEvent.isMaskedForAudience
+                    ? "bg-red-600/30 text-red-200 border-red-500/30"
+                    : categoryColor(selectedEvent.category)
+                }`}
+              >
+                {selectedEvent.isMaskedForAudience ? "Event TENF" : selectedEvent.category}
               </span>
               <EventDateTime startUtc={selectedEvent.date} className="text-sm text-gray-300" />
               <MarkdownDescription
