@@ -74,25 +74,8 @@ export default function MemberProgressionPage() {
   const monthKey = data?.monthKey || "";
   const { goals } = useMemberMonthlyGoals(monthKey);
 
-  if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de ta progression...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Ma progression" description={error || "Donnees indisponibles."} />;
-
-  const formationsThisMonth =
-    data.stats.formationsValidatedThisMonth ??
-    data.formationHistory.filter((item) => item.date.slice(0, 7) === monthKey).length;
-
-  const raidsRatio = clampPercent((data.stats.raidsThisMonth / Math.max(1, goals.raids)) * 100);
-  const eventsRatio = clampPercent((data.stats.eventPresencesThisMonth / Math.max(1, goals.events)) * 100);
-  const formationsRatio = clampPercent((formationsThisMonth / Math.max(1, goals.formations)) * 100);
-  const profileRatio = clampPercent(data.profile.percent);
-  const totalScore = Math.round((raidsRatio + eventsRatio + formationsRatio + profileRatio) / 4);
-  const tier = getTier(totalScore);
-
-  const monthlyHistory = data.attendance?.monthlyHistory || [];
-  const trendData = monthlyHistory.filter((entry) => entry.totalEvents > 0 || entry.attendedEvents > 0).slice(-6);
-  const maxAttendance = Math.max(1, ...trendData.map((entry) => entry.attendedEvents));
-
   const recentMoments = useMemo(() => {
+    if (!data) return [];
     const formations = (data.formationHistory || []).map((item) => ({
       type: "formation" as const,
       id: `formation-${item.id}-${item.date}`,
@@ -112,7 +95,25 @@ export default function MemberProgressionPage() {
     return [...formations, ...presences]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 8);
-  }, [data.eventPresenceHistory, data.formationHistory]);
+  }, [data]);
+
+  if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de ta progression...</p>;
+  if (error || !data) return <EmptyFeatureCard title="Ma progression" description={error || "Donnees indisponibles."} />;
+
+  const formationsThisMonth =
+    data.stats.formationsValidatedThisMonth ??
+    data.formationHistory.filter((item) => item.date.slice(0, 7) === monthKey).length;
+
+  const raidsRatio = clampPercent((data.stats.raidsThisMonth / Math.max(1, goals.raids)) * 100);
+  const eventsRatio = clampPercent((data.stats.eventPresencesThisMonth / Math.max(1, goals.events)) * 100);
+  const formationsRatio = clampPercent((formationsThisMonth / Math.max(1, goals.formations)) * 100);
+  const profileRatio = clampPercent(data.profile.percent);
+  const totalScore = Math.round((raidsRatio + eventsRatio + formationsRatio + profileRatio) / 4);
+  const tier = getTier(totalScore);
+
+  const monthlyHistory = data.attendance?.monthlyHistory || [];
+  const trendData = monthlyHistory.filter((entry) => entry.totalEvents > 0 || entry.attendedEvents > 0).slice(-6);
+  const maxAttendance = Math.max(1, ...trendData.map((entry) => entry.attendedEvents));
 
   return (
     <MemberSurface>
