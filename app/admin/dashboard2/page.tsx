@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   ResponsiveContainer,
@@ -13,6 +13,8 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react";
+import { getDiscordUser } from "@/lib/discord";
 
 interface MemberEventLite {
   id: string;
@@ -115,7 +117,26 @@ function monthLabelFromDate(date: Date): string {
   return `${names[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
 }
 
+const premiumCardStyle: CSSProperties = {
+  borderColor: "rgba(212,175,55,0.2)",
+  background: "linear-gradient(155deg, rgba(30,30,36,0.95), rgba(19,19,24,0.98))",
+  boxShadow: "0 16px 36px rgba(0, 0, 0, 0.22)",
+};
+
+const softCardStyle: CSSProperties = {
+  borderColor: "rgba(255,255,255,0.1)",
+  background: "linear-gradient(160deg, rgba(24,24,30,0.95), rgba(15,15,20,0.96))",
+};
+
+const subtleMutedText: CSSProperties = {
+  color: "rgba(214, 214, 224, 0.75)",
+};
+
+const focusRingClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#e6c773] focus-visible:ring-offset-[#17171d]";
+
 export default function Dashboard2Page() {
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; role: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingVisual, setLoadingVisual] = useState(true);
   const [loadingRecap, setLoadingRecap] = useState(true);
@@ -177,6 +198,28 @@ export default function Dashboard2Page() {
 
   const currentMonth = monthKey();
   const evaluationMonth = previousMonthKey();
+
+  useEffect(() => {
+    async function loadCurrentAdminHeader() {
+      try {
+        const [user, roleRes] = await Promise.all([
+          getDiscordUser(),
+          fetch("/api/user/role", { cache: "no-store" }),
+        ]);
+
+        const roleData = roleRes.ok ? await roleRes.json() : null;
+        const role = typeof roleData?.role === "string" ? roleData.role : null;
+
+        if (user?.username) {
+          setCurrentAdmin({ username: user.username, role });
+        }
+      } catch (error) {
+        console.warn("[dashboard2] Impossible de charger le header admin personalise:", error);
+      }
+    }
+
+    loadCurrentAdminHeader();
+  }, []);
 
   useEffect(() => {
     async function loadOpsData() {
@@ -701,37 +744,87 @@ export default function Dashboard2Page() {
     return "bg-gray-500/20 text-gray-300 border-gray-500/30";
   };
 
+  const adminDisplayName = currentAdmin?.username || "Admin";
+  const adminRoleLabel = currentAdmin?.role || "Administrateur TENF";
+
   if (loading) {
     return (
       <div className="text-white">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#9146ff]"></div>
+        <div
+          className="flex h-64 items-center justify-center rounded-2xl border"
+          style={{
+            borderColor: "rgba(212,175,55,0.24)",
+            background: "linear-gradient(145deg, rgba(20,20,24,0.95), rgba(33,33,40,0.95))",
+          }}
+        >
+          <div className="h-10 w-10 animate-spin rounded-full border-b-2" style={{ borderBottomColor: "rgba(230, 199, 115, 0.95)" }}></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="text-white">
-      <div className="mb-8">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Dashboard Admin v2</h1>
-            <p className="text-gray-400">Vue orientée priorités et actions — {currentMonth}</p>
+    <div className="space-y-6 text-white">
+      <section
+        className="rounded-3xl border p-6 md:p-8"
+        style={{
+          borderColor: "rgba(212,175,55,0.24)",
+          background: "radial-gradient(circle at 16% 12%, rgba(212,175,55,0.2), rgba(27,27,33,0.97) 44%)",
+          boxShadow: "0 20px 45px rgba(0, 0, 0, 0.28)",
+        }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.18em]" style={{ color: "rgba(230, 201, 128, 0.9)" }}>
+              Espace administration premium
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold sm:text-3xl md:text-4xl">Bonjour {adminDisplayName}</h1>
+            <p className="mt-1 text-xs uppercase tracking-[0.11em]" style={{ color: "rgba(222, 209, 170, 0.86)" }}>
+              {adminRoleLabel}
+            </p>
+            <p className="mt-3 text-sm md:text-base" style={{ color: "rgba(236, 236, 239, 0.84)" }}>
+              Vue orientee priorites, actions et qualite des operations pour {currentMonth}.
+            </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="grid gap-2">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.09em]"
+              style={{
+                borderColor: "rgba(212,175,55,0.45)",
+                backgroundColor: "rgba(212,175,55,0.12)",
+                color: "rgba(244, 219, 151, 0.95)",
+              }}
+            >
+              <ShieldCheck size={14} />
+              Pilotage operationnel
+            </span>
+            <Link
+              href="/admin/control-center"
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px] ${focusRingClass}`}
+              style={{ backgroundColor: "rgba(212,175,55,0.95)", color: "#201b12" }}
+            >
+              Ouvrir le control center
+              <ArrowUpRight size={14} />
+            </Link>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
             {quickActions.map((action) => (
               <Link
                 key={action.href}
                 href={action.href}
-                className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#1a1a1d] border border-gray-700 hover:border-[#9146ff] transition-colors"
+                className={`rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.07em] transition hover:-translate-y-[1px] sm:text-xs ${focusRingClass}`}
+                style={{
+                  borderColor: "rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                  color: "rgba(228,228,236,0.9)",
+                }}
               >
                 {action.label}
               </Link>
             ))}
           </div>
-        </div>
-      </div>
+      </section>
 
       {(kpis.reviewOverdue > 0 ||
         kpis.missingDiscord > 0 ||
@@ -739,9 +832,15 @@ export default function Dashboard2Page() {
         kpis.staffApplicationsPendingCount > 0 ||
         kpis.profileValidationPendingCount > 0 ||
         kpis.staffApplicationsRedFlagCount > 0) && (
-        <div className="mb-6 bg-[#1a1a1d] border border-red-500/40 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-red-300 mb-2">Alertes critiques</h2>
-          <div className="flex flex-wrap gap-4 text-sm">
+        <div
+          className="rounded-2xl border p-4"
+          style={{
+            borderColor: "rgba(248,113,113,0.4)",
+            background: "linear-gradient(145deg, rgba(54,26,29,0.75), rgba(26,16,20,0.9))",
+          }}
+        >
+          <h2 className="mb-2 text-lg font-semibold text-red-200">Alertes critiques</h2>
+          <div className="flex flex-wrap gap-4 text-sm text-red-100/95">
             {kpis.reviewOverdue > 0 && <span>{kpis.reviewOverdue} revue(s) en retard</span>}
             {kpis.missingDiscord > 0 && <span>{kpis.missingDiscord} membre(s) sans ID Discord</span>}
             {kpis.missingTwitchId > 0 && <span>{kpis.missingTwitchId} membre(s) sans ID Twitch</span>}
@@ -752,110 +851,120 @@ export default function Dashboard2Page() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
         {priorityCards.map((card) => (
           <Link
             key={card.title}
             href={card.href}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-5 hover:border-[#9146ff] transition-colors"
+            className={`rounded-2xl border p-5 transition-all hover:-translate-y-[1px] ${focusRingClass}`}
+            style={premiumCardStyle}
           >
-            <p className="text-sm text-gray-400 mb-2">{card.title}</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.09em]" style={subtleMutedText}>
+              {card.title}
+            </p>
             <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="text-xs text-gray-500 mt-2">{card.hint}</p>
+            <p className="mt-2 text-xs" style={subtleMutedText}>
+              {card.hint}
+            </p>
           </Link>
         ))}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
         {upcomingCards.map((card) => (
           <Link
             key={card.title}
             href={card.href}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-5 hover:border-[#9146ff] transition-colors"
+            className={`rounded-2xl border p-5 transition-all hover:-translate-y-[1px] ${focusRingClass}`}
+            style={softCardStyle}
           >
-            <p className="text-sm text-gray-400 mb-2">{card.title}</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.09em]" style={subtleMutedText}>
+              {card.title}
+            </p>
             <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="text-xs text-gray-500 mt-2">{card.hint}</p>
+            <p className="mt-2 text-xs" style={subtleMutedText}>
+              {card.hint}
+            </p>
           </Link>
         ))}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3 text-center">Raids envoyés</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsSent}</p>
-          <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
-          <div className="mt-4 border-t border-gray-800 pt-3">
-            <p className="text-xs text-gray-400 mb-2">Top 5 streamers (envoyés)</p>
+          <p className="mt-2 text-center text-xs" style={subtleMutedText}>Mois courant</p>
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs" style={subtleMutedText}>Top 5 streamers (envoyés)</p>
             {raidStats.topRaiders.length === 0 ? (
-              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+              <p className="text-xs" style={subtleMutedText}>Aucune donnée disponible</p>
             ) : (
               <div className="space-y-1.5">
                 {raidStats.topRaiders.slice(0, 5).map((item) => (
                   <div key={`sent-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                    <span className="text-gray-400">{item.count}</span>
+                    <span className="truncate pr-2 text-gray-200">#{item.rank} {item.displayName}</span>
+                    <span style={subtleMutedText}>{item.count}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3 text-center">Raids reçus</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsReceived}</p>
-          <p className="text-xs text-gray-500 text-center mt-2">Mois courant</p>
-          <div className="mt-4 border-t border-gray-800 pt-3">
-            <p className="text-xs text-gray-400 mb-2">Top 5 streamers (reçus)</p>
+          <p className="mt-2 text-center text-xs" style={subtleMutedText}>Mois courant</p>
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs" style={subtleMutedText}>Top 5 streamers (reçus)</p>
             {raidStats.topTargets.length === 0 ? (
-              <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+              <p className="text-xs" style={subtleMutedText}>Aucune donnée disponible</p>
             ) : (
               <div className="space-y-1.5">
                 {raidStats.topTargets.slice(0, 5).map((item) => (
                   <div key={`recv-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                    <span className="text-gray-400">{item.count}</span>
+                    <span className="truncate pr-2 text-gray-200">#{item.rank} {item.displayName}</span>
+                    <span style={subtleMutedText}>{item.count}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3 text-center">Activité Discord</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-[#0e0e10] rounded p-3">
-              <p className="text-[11px] text-gray-400 text-center">Messages</p>
+            <div className="rounded-xl border border-white/10 p-3" style={{ backgroundColor: "rgba(0,0,0,0.18)" }}>
+              <p className="text-[11px] text-center" style={subtleMutedText}>Messages</p>
               <p className="text-2xl font-bold text-white text-center">{discordMonthStats.totalMessages.toLocaleString()}</p>
-              <div className="mt-3 border-t border-gray-800 pt-2">
-                <p className="text-xs text-gray-400 mb-2">Top 5 messages</p>
+              <div className="mt-3 border-t border-white/10 pt-2">
+                <p className="mb-2 text-xs" style={subtleMutedText}>Top 5 messages</p>
                 {discordMonthStats.topMessages.length === 0 ? (
-                  <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+                  <p className="text-xs" style={subtleMutedText}>Aucune donnée disponible</p>
                 ) : (
                   <div className="space-y-1.5">
                     {discordMonthStats.topMessages.slice(0, 5).map((item) => (
                       <div key={`msg-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                        <span className="text-gray-400">{item.messages.toLocaleString()}</span>
+                        <span className="truncate pr-2 text-gray-200">#{item.rank} {item.displayName}</span>
+                        <span style={subtleMutedText}>{item.messages.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-            <div className="bg-[#0e0e10] rounded p-3">
-              <p className="text-[11px] text-gray-400 text-center">Heures vocales</p>
+            <div className="rounded-xl border border-white/10 p-3" style={{ backgroundColor: "rgba(0,0,0,0.18)" }}>
+              <p className="text-[11px] text-center" style={subtleMutedText}>Heures vocales</p>
               <p className="text-2xl font-bold text-white text-center">{discordMonthStats.totalVoiceHours.toFixed(1)}</p>
-              <div className="mt-3 border-t border-gray-800 pt-2">
-                <p className="text-xs text-gray-400 mb-2">Top 5 vocaux</p>
+              <div className="mt-3 border-t border-white/10 pt-2">
+                <p className="mb-2 text-xs" style={subtleMutedText}>Top 5 vocaux</p>
                 {discordMonthStats.topVocals.length === 0 ? (
-                  <p className="text-xs text-gray-500">Aucune donnée disponible</p>
+                  <p className="text-xs" style={subtleMutedText}>Aucune donnée disponible</p>
                 ) : (
                   <div className="space-y-1.5">
                     {discordMonthStats.topVocals.slice(0, 5).map((item) => (
                       <div key={`voc-${item.rank}-${item.displayName}`} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300 truncate pr-2">#{item.rank} {item.displayName}</span>
-                        <span className="text-gray-400">{item.display}</span>
+                        <span className="truncate pr-2 text-gray-200">#{item.rank} {item.displayName}</span>
+                        <span style={subtleMutedText}>{item.display}</span>
                       </div>
                     ))}
                   </div>
@@ -866,8 +975,8 @@ export default function Dashboard2Page() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3">Activité Discord</h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -875,16 +984,14 @@ export default function Dashboard2Page() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
                 <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: "#17171d", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "8px" }} />
                 <Line type="monotone" dataKey="messages" stroke="#5865F2" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="vocals" stroke="#57F287" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3">Croissance Discord</h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -892,15 +999,13 @@ export default function Dashboard2Page() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
                 <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: "#17171d", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "8px" }} />
                 <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3">Progression Spotlight</h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -908,9 +1013,7 @@ export default function Dashboard2Page() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} tickLine={false} />
                 <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#1a1a1d", border: "1px solid #2a2a2d", borderRadius: "8px" }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: "#17171d", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "8px" }} />
                 <Bar dataKey="value" fill="#9146ff" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -919,18 +1022,19 @@ export default function Dashboard2Page() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="xl:col-span-2 rounded-2xl border p-6" style={premiumCardStyle}>
           <h2 className="text-xl font-semibold mb-4">Workflow mensuel</h2>
           <div className="space-y-3">
             {workflow.map((step) => (
               <Link
                 key={step.id}
                 href={step.href}
-                className="flex items-center justify-between p-3 rounded-lg border border-gray-700 hover:border-[#9146ff] transition-colors"
+                className={`flex items-center justify-between rounded-xl border p-3 transition-colors hover:border-[#c9a85b] ${focusRingClass}`}
+                style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}
               >
                 <div>
                   <p className="font-medium">{step.label}</p>
-                  <p className="text-xs text-gray-500">{step.helper}</p>
+                  <p className="text-xs" style={subtleMutedText}>{step.helper}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs border ${statusStyle(step.status)}`}>
                   {step.status === "done" ? "Terminé" : step.status === "in_progress" ? "En cours" : "À faire"}
@@ -940,33 +1044,36 @@ export default function Dashboard2Page() {
           </div>
         </div>
 
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h2 className="text-xl font-semibold mb-4">Santé des données</h2>
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Membres actifs</span>
+              <span style={subtleMutedText}>Membres actifs</span>
               <span className="font-semibold">{kpis.total}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Complétude moyenne</span>
+              <span style={subtleMutedText}>Complétude moyenne</span>
               <span className="font-semibold">{kpis.avgCompletion}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Profils validés</span>
+              <span style={subtleMutedText}>Profils validés</span>
               <span className="font-semibold">{kpis.validatedProfiles}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Revues dues &lt; 7 jours</span>
+              <span style={subtleMutedText}>Revues dues &lt; 7 jours</span>
               <span className="font-semibold">{kpis.reviewDue7d}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Activité récente (24-48h)</h2>
+      <div className="rounded-2xl border p-6" style={softCardStyle}>
+        <h2 className="mb-4 inline-flex items-center gap-2 text-xl font-semibold">
+          <Sparkles size={16} style={{ color: "rgba(230, 199, 115, 0.92)" }} />
+          Activité récente (24-48h)
+        </h2>
         {events.length === 0 ? (
-          <p className="text-sm text-gray-500">Aucune activité récente.</p>
+          <p className="text-sm" style={subtleMutedText}>Aucune activité récente.</p>
         ) : (
           <div className="space-y-2">
             {events.slice(0, 10).map((event) => (
@@ -975,14 +1082,14 @@ export default function Dashboard2Page() {
                 className="flex items-center justify-between text-sm border-b border-gray-800 pb-2"
               >
                 <div className="min-w-0 pr-2">
-                  <p className="text-gray-200 truncate">
+                  <p className="truncate text-gray-200">
                     {event.type} · {event.memberId}
                   </p>
-                  <p className="text-gray-500 text-xs">
+                  <p className="text-xs" style={subtleMutedText}>
                     {event.actor || "system"} · {event.source || "n/a"}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
+                <span className="whitespace-nowrap text-xs" style={subtleMutedText}>
                   {new Date(event.createdAt).toLocaleString("fr-FR")}
                 </span>
               </div>
@@ -991,14 +1098,15 @@ export default function Dashboard2Page() {
         )}
       </div>
 
-      <div className="mt-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+      <div className="rounded-2xl border p-6" style={softCardStyle}>
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
           <h2 className="text-xl font-semibold">Suivi événements (tableaux)</h2>
           <div className="flex items-center gap-2">
             <select
               value={recapMonthFilter}
               onChange={(e) => setRecapMonthFilter(e.target.value)}
-              className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+              className={`rounded-lg border px-3 py-2 text-sm text-white ${focusRingClass}`}
+              style={{ backgroundColor: "rgba(0,0,0,0.22)", borderColor: "rgba(255,255,255,0.12)" }}
             >
               <option value="all">Tous les mois</option>
               {monthOptions.map((m) => (
@@ -1009,7 +1117,12 @@ export default function Dashboard2Page() {
             </select>
             <Link
               href="/admin/events/recap"
-              className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff]"
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold ${focusRingClass}`}
+              style={{
+                backgroundColor: "rgba(0,0,0,0.22)",
+                borderColor: "rgba(212,175,55,0.24)",
+                color: "rgba(238, 211, 138, 0.95)",
+              }}
             >
               Ouvrir recap complet
             </Link>
@@ -1017,17 +1130,17 @@ export default function Dashboard2Page() {
         </div>
 
         {loadingRecap ? (
-          <div className="py-10 text-center text-gray-400">Chargement recap événements...</div>
+          <div className="py-10 text-center" style={subtleMutedText}>Chargement recap événements...</div>
         ) : filteredRecapEvents.length === 0 ? (
-          <div className="py-10 text-center text-gray-400">Aucune donnée événement disponible pour ce filtre.</div>
+          <div className="py-10 text-center" style={subtleMutedText}>Aucune donnée événement disponible pour ce filtre.</div>
         ) : (
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-2">Top événements</h3>
-              <div className="overflow-x-auto rounded-lg border border-gray-700">
+              <div className="overflow-x-auto rounded-xl border border-white/12">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                    <tr className="border-b border-white/12" style={{ backgroundColor: "rgba(0,0,0,0.22)" }}>
                       <th className="text-left py-3 px-4">Événement</th>
                       <th className="text-left py-3 px-4">Catégorie</th>
                       <th className="text-left py-3 px-4">Date</th>
@@ -1045,10 +1158,10 @@ export default function Dashboard2Page() {
                       .sort((a, b) => b.rate - a.rate)
                       .slice(0, 8)
                       .map((item) => (
-                        <tr key={item.event.id} className="border-b border-gray-800">
+                        <tr key={item.event.id} className="border-b border-white/8">
                           <td className="py-3 px-4">{item.event.title}</td>
-                          <td className="py-3 px-4 text-gray-400">{item.event.category}</td>
-                          <td className="py-3 px-4 text-gray-400">{new Date(item.event.date).toLocaleDateString("fr-FR")}</td>
+                          <td className="py-3 px-4" style={subtleMutedText}>{item.event.category}</td>
+                          <td className="py-3 px-4" style={subtleMutedText}>{new Date(item.event.date).toLocaleDateString("fr-FR")}</td>
                           <td className="py-3 px-4 text-right">{item.registrationCount}</td>
                           <td className="py-3 px-4 text-right">{item.presenceCount}</td>
                           <td className="py-3 px-4 text-right">
@@ -1066,10 +1179,10 @@ export default function Dashboard2Page() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Statistiques par catégorie</h3>
-                <div className="overflow-x-auto rounded-lg border border-gray-700">
+                <div className="overflow-x-auto rounded-xl border border-white/12">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                      <tr className="border-b border-white/12" style={{ backgroundColor: "rgba(0,0,0,0.22)" }}>
                         <th className="text-left py-3 px-4">Catégorie</th>
                         <th className="text-right py-3 px-4">Events</th>
                         <th className="text-right py-3 px-4">Inscriptions</th>
@@ -1079,12 +1192,12 @@ export default function Dashboard2Page() {
                     </thead>
                     <tbody>
                       {recapCategoryStats.map((row) => (
-                        <tr key={row.category} className="border-b border-gray-800">
+                        <tr key={row.category} className="border-b border-white/8">
                           <td className="py-3 px-4">{row.category}</td>
                           <td className="py-3 px-4 text-right">{row.count}</td>
                           <td className="py-3 px-4 text-right">{row.registrations}</td>
                           <td className="py-3 px-4 text-right">{row.presences}</td>
-                          <td className="py-3 px-4 text-right text-gray-300">{row.avgPresence.toFixed(1)}</td>
+                          <td className="py-3 px-4 text-right text-gray-200">{row.avgPresence.toFixed(1)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1094,10 +1207,10 @@ export default function Dashboard2Page() {
 
               <div>
                 <h3 className="text-lg font-semibold mb-2">Anomalies de suivi</h3>
-                <div className="overflow-x-auto rounded-lg border border-gray-700">
+                <div className="overflow-x-auto rounded-xl border border-white/12">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-700 bg-[#0e0e10]">
+                      <tr className="border-b border-white/12" style={{ backgroundColor: "rgba(0,0,0,0.22)" }}>
                         <th className="text-left py-3 px-4">Événement</th>
                         <th className="text-right py-3 px-4">Inscrits</th>
                         <th className="text-right py-3 px-4">Présents</th>
@@ -1107,13 +1220,16 @@ export default function Dashboard2Page() {
                     </thead>
                     <tbody>
                       {eventAnomalies.slice(0, 8).map((item) => (
-                        <tr key={item.event.id} className="border-b border-gray-800">
+                        <tr key={item.event.id} className="border-b border-white/8">
                           <td className="py-3 px-4">{item.event.title}</td>
                           <td className="py-3 px-4 text-right">{item.registrationCount}</td>
                           <td className="py-3 px-4 text-right">{item.presenceCount}</td>
                           <td className="py-3 px-4 text-right text-red-300">{item.rate.toFixed(1)}%</td>
                           <td className="py-3 px-4">
-                            <Link href="/admin/events/presence" className="text-[#9146ff] hover:text-[#7c3aed]">
+                            <Link
+                              href="/admin/events/presence"
+                              className={`text-[#e6c773] underline-offset-4 hover:text-[#f0d79b] hover:underline ${focusRingClass}`}
+                            >
                               Corriger
                             </Link>
                           </td>
@@ -1121,7 +1237,7 @@ export default function Dashboard2Page() {
                       ))}
                       {eventAnomalies.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-6 px-4 text-center text-gray-500">
+                          <td colSpan={5} className="py-6 px-4 text-center" style={subtleMutedText}>
                             Aucune anomalie détectée 🎉
                           </td>
                         </tr>
