@@ -3,8 +3,11 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { loadRaidsFaits } from "@/lib/raidStorage";
 
 const POINTS_CUTOFF_ISO_UTC = "2026-03-16T13:40:00.000Z";
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
 
 type RaidHistoryEntry = {
   id: string;
@@ -69,6 +72,23 @@ function getLast12Months(): string[] {
   });
 }
 
+type MemberLookup = {
+  twitchLogin: string;
+  displayName: string;
+};
+
+async function fetchAllMembersForHistory(): Promise<Array<any>> {
+  const allMembers: any[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const chunk = await memberRepository.findAll(PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -96,7 +116,7 @@ export async function GET(request: NextRequest) {
     const normalizedLogin = String(member.twitchLogin).toLowerCase();
     const normalizedTwitchId = member.twitchId ? String(member.twitchId) : null;
 
-    const [manualRes, eventsubRes] = await Promise.all([
+    const [manualRes, eventsubRes, storageManualRaids, allMembers] = await Promise.all([
       supabaseAdmin
         .from("raid_declarations")
         .select("id,target_twitch_login,raid_at,status,staff_comment,note")
@@ -126,6 +146,8 @@ export async function GET(request: NextRequest) {
             .lt("event_at", endIso)
             .order("event_at", { ascending: false })
             .limit(2000),
+      loadRaidsFaits(month),
+      fetchAllMembersForHistory(),
     ]);
 
     if (manualRes.error && !isMissingRelationError(manualRes.error)) {
@@ -134,6 +156,26 @@ export async function GET(request: NextRequest) {
     if (eventsubRes.error && !isMissingRelationError(eventsubRes.error)) {
       return NextResponse.json({ error: "Impossible de charger l'historique raids-sub." }, { status: 500 });
     }
+
+    const discordIdToMember = new Map<string, MemberLookup>();
+    const twitchLoginToMember = new Map<string, MemberLookup>();
+    for (const item of allMembers) {
+      const twitchLogin = String(item?.twitchLogin || "").trim();
+      if (!twitchLogin) continue;
+      const lookup: MemberLookup = {
+        twitchLogin,
+        displayName: String(item?.displayName || item?.siteUsername || twitchLogin),
+      };
+      const discord = String(item?.discordId || "").trim();
+      if (discord) discordIdToMember.set(discord, lookup);
+      twitchLoginToMember.set(twitchLogin.toLowerCase(), lookup);
+    }
+
+    const resolveMember = (value: string | null | undefined): MemberLookup | null => {
+      const raw = String(value || "").trim();
+      if (!raw) return null;
+      return discordIdToMember.get(raw) || twitchLoginToMember.get(raw.toLowerCase()) || null;
+    };
 
     const eventRows = (eventsubRes.data || []) as Array<{
       id: string;
@@ -178,6 +220,43 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const adminStorageEntries: RaidHistoryEntry[] = (storageManualRaids || [])
+      .filter((row: any) => {
+        const raiderRaw = String(row?.raider || "").trim();
+        if (!raiderRaw) return false;
+        const raiderLogin = String(resolveMember(raiderRaw)?.twitchLogin || raiderRaw).toLowerCase();
+        if (raiderLogin !== normalizedLogin) return false;
+
+        const source = String(row?.source || "").toLowerCase();
+        const isManualLike = row?.manual === true || source === "manual" || source === "admin";
+        const isCounted = row?.countFrom !== false;
+        return isManualLike && isCounted;
+      })
+      .map((row: any, index: number) => {
+        const eventAt = String(row?.date || "");
+        const eventMs = new Date(eventAt).getTime();
+        const pointsAwardedByDate = Number.isFinite(eventMs) && eventMs < cutoffMs;
+
+        const targetRaw = String(row?.target || "").trim();
+        const targetResolved = resolveMember(targetRaw);
+        const targetLogin = String(targetResolved?.twitchLogin || targetRaw || "").toLowerCase();
+        const targetLabel = String(targetResolved?.displayName || targetResolved?.twitchLogin || targetRaw || "Cible");
+
+        return {
+          id: `adminraid:${eventAt}:${targetLogin || "unknown"}:${index}`,
+          source: "manual",
+          eventAt,
+          targetLogin,
+          targetLabel,
+          viewers: typeof row?.viewers === "number" ? row.viewers : null,
+          raidStatus: "validated" as const,
+          raidStatusLabel: "Valide",
+          pointsStatus: pointsAwardedByDate ? "awarded" : "pending",
+          pointsStatusLabel: pointsAwardedByDate ? "Points attribues" : "Points en cours d'attribution",
+          note: null,
+        };
+      });
+
     const eventsubEntries: RaidHistoryEntry[] = eventRows
       .filter((row) => {
         const status = String(row.processing_status || "");
@@ -206,7 +285,19 @@ export async function GET(request: NextRequest) {
         };
       });
 
-    const entries = [...manualEntries, ...eventsubEntries].sort(
+    const dedupeKey = (entry: RaidHistoryEntry): string => {
+      const ts = new Date(entry.eventAt).getTime();
+      const minuteBucket = Number.isFinite(ts) ? Math.floor(ts / 60000) : entry.eventAt;
+      return `${entry.targetLogin || entry.targetLabel}|${minuteBucket}`;
+    };
+
+    const unique = new Map<string, RaidHistoryEntry>();
+    for (const entry of [...eventsubEntries, ...manualEntries, ...adminStorageEntries]) {
+      const key = dedupeKey(entry);
+      if (!unique.has(key)) unique.set(key, entry);
+    }
+
+    const entries = Array.from(unique.values()).sort(
       (a, b) => new Date(b.eventAt).getTime() - new Date(a.eventAt).getTime()
     );
 
