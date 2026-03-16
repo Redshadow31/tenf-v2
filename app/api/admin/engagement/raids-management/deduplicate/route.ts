@@ -30,6 +30,9 @@ function resolveMonthKey(month?: string): string {
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    if (!admin) {
+      return NextResponse.json({ error: "Acces refuse." }, { status: 403 });
+    }
     const canManage = await hasAdvancedAdminAccess(admin.discordId);
     if (!canManage) {
       return NextResponse.json({ error: "Acces reserve aux admins avances." }, { status: 403 });
