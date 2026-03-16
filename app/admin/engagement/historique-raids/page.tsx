@@ -422,67 +422,84 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-6">
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Declarations</p>
-            <p className="font-semibold">{totals.declarations}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">En attente</p>
-            <p className="font-semibold text-yellow-300">{totals.pending}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Valides</p>
-            <p className="font-semibold text-emerald-300">{totals.validated}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">A etudier</p>
-            <p className="font-semibold text-sky-300">{totals.toStudy}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Refuses</p>
-            <p className="font-semibold text-red-300">{totals.rejected}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Raids faits</p>
-            <p className="font-semibold text-[#c4b5fd]">{totals.sent}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Raids recus</p>
-            <p className="font-semibold text-[#93c5fd]">{totals.received}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Top raid fait</p>
-            <p className="font-semibold text-[#c4b5fd]">
-              {sentRanking[0] ? `${sentRanking[0].label} (${sentRanking[0].total})` : "Aucun"}
-            </p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Top cible recue</p>
-            <p className="font-semibold text-[#93c5fd]">
-              {receivedRanking[0] ? `${receivedRanking[0].label} (${receivedRanking[0].total})` : "Aucune"}
-            </p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Raideurs uniques</p>
-            <p className="font-semibold text-[#c4b5fd]">{uniqueRaiders}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Cibles uniques</p>
-            <p className="font-semibold text-[#93c5fd]">{uniqueTargets}</p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Croissance raids faits (vs moy. 3 mois)</p>
-            <p className="font-semibold" style={{ color: growthSentPct === null ? "#cbd5e1" : growthSentPct >= 0 ? "#34d399" : "#f87171" }}>
-              {trendLoading ? "..." : growthSentPct === null ? "N/A" : `${growthSentPct >= 0 ? "+" : ""}${growthSentPct.toFixed(1)}%`}
-            </p>
-          </div>
-          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
-            <p className="text-gray-400">Croissance raids recus (vs moy. 3 mois)</p>
-            <p className="font-semibold" style={{ color: growthReceivedPct === null ? "#cbd5e1" : growthReceivedPct >= 0 ? "#34d399" : "#f87171" }}>
-              {trendLoading ? "..." : growthReceivedPct === null ? "N/A" : `${growthReceivedPct >= 0 ? "+" : ""}${growthReceivedPct.toFixed(1)}%`}
-            </p>
-          </div>
+        <div className="mt-4 space-y-3">
+          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Validation</p>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Declarations</p>
+                <p className="font-semibold text-white">{totals.declarations}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">En attente</p>
+                <p className="font-semibold text-yellow-300">{totals.pending}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">A etudier</p>
+                <p className="font-semibold text-sky-300">{totals.toStudy}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Valides</p>
+                <p className="font-semibold text-emerald-300">{totals.validated}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Refuses</p>
+                <p className="font-semibold text-red-300">{totals.rejected}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Volumes</p>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Raids faits</p>
+                <p className="font-semibold text-[#c4b5fd]">{totals.sent}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Raids recus</p>
+                <p className="font-semibold text-[#93c5fd]">{totals.received}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Raideurs uniques</p>
+                <p className="font-semibold text-[#c4b5fd]">{uniqueRaiders}</p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Cibles uniques</p>
+                <p className="font-semibold text-[#93c5fd]">{uniqueTargets}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Leaders et tendances</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Top raid fait</p>
+                <p className="font-semibold text-[#c4b5fd]">
+                  {sentRanking[0] ? `${sentRanking[0].label} (${sentRanking[0].total})` : "Aucun"}
+                </p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Top cible recue</p>
+                <p className="font-semibold text-[#93c5fd]">
+                  {receivedRanking[0] ? `${receivedRanking[0].label} (${receivedRanking[0].total})` : "Aucune"}
+                </p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Croissance raids faits (vs moy. 3 mois)</p>
+                <p className="font-semibold" style={{ color: growthSentPct === null ? "#cbd5e1" : growthSentPct >= 0 ? "#34d399" : "#f87171" }}>
+                  {trendLoading ? "..." : growthSentPct === null ? "N/A" : `${growthSentPct >= 0 ? "+" : ""}${growthSentPct.toFixed(1)}%`}
+                </p>
+              </div>
+              <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
+                <p className="text-gray-400">Croissance raids recus (vs moy. 3 mois)</p>
+                <p className="font-semibold" style={{ color: growthReceivedPct === null ? "#cbd5e1" : growthReceivedPct >= 0 ? "#34d399" : "#f87171" }}>
+                  {trendLoading ? "..." : growthReceivedPct === null ? "N/A" : `${growthReceivedPct >= 0 ? "+" : ""}${growthReceivedPct.toFixed(1)}%`}
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
