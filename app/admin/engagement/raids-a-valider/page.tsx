@@ -19,6 +19,19 @@ type RaidDeclaration = {
   created_at: string;
 };
 
+type MemberLite = {
+  twitchLogin: string;
+  displayName: string;
+  role?: string | null;
+  isActive?: boolean;
+};
+
+type CreateMemberDraft = {
+  twitchLogin: string;
+  displayName: string;
+  twitchUrl: string;
+};
+
 export default function AdminEngagementRaidsAValiderPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "to_study" | "validated" | "rejected">("processing");
   const [search, setSearch] = useState("");
@@ -28,6 +41,16 @@ export default function AdminEngagementRaidsAValiderPage() {
   const [savingId, setSavingId] = useState("");
   const [rows, setRows] = useState<RaidDeclaration[]>([]);
   const [commentById, setCommentById] = useState<Record<string, string>>({});
+  const [members, setMembers] = useState<MemberLite[]>([]);
+  const [targetDraftById, setTargetDraftById] = useState<Record<string, string>>({});
+  const [showCreateMemberModal, setShowCreateMemberModal] = useState(false);
+  const [creatingMember, setCreatingMember] = useState(false);
+  const [createForDeclarationId, setCreateForDeclarationId] = useState<string | null>(null);
+  const [newMemberDraft, setNewMemberDraft] = useState<CreateMemberDraft>({
+    twitchLogin: "",
+    displayName: "",
+    twitchUrl: "",
+  });
 
   async function loadData() {
     try {
@@ -59,6 +82,19 @@ export default function AdminEngagementRaidsAValiderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch("/api/admin/members", { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok) return;
+        setMembers((body.members || []) as MemberLite[]);
+      } catch {
+        // Ne bloque pas la page si la liste membres echoue.
+      }
+    })();
+  }, []);
+
   const stats = useMemo(() => {
     return {
       processing: rows.filter((item) => item.status === "processing").length,
@@ -89,6 +125,109 @@ export default function AdminEngagementRaidsAValiderPage() {
       setError("Erreur reseau pendant la mise a jour.");
     } finally {
       setSavingId("");
+    }
+  }
+
+  function normalizeLogin(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  function isKnownTarget(login: string): boolean {
+    const normalized = normalizeLogin(login);
+    return members.some((member) => normalizeLogin(member.twitchLogin || "") === normalized);
+  }
+
+  async function updateTarget(id: string, targetTwitchLogin: string) {
+    const normalized = normalizeLogin(targetTwitchLogin);
+    if (!normalized) return;
+    setSavingId(id);
+    try {
+      const response = await fetch(`/api/admin/engagement/raids-declarations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetTwitchLogin: normalized,
+          staffComment: commentById[id] || "",
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Mise a jour de la cible impossible.");
+        return;
+      }
+      setRows((previous) => previous.map((item) => (item.id === id ? body.declaration : item)));
+      setTargetDraftById((prev) => ({ ...prev, [id]: normalized }));
+    } catch {
+      setError("Erreur reseau pendant la mise a jour de la cible.");
+    } finally {
+      setSavingId("");
+    }
+  }
+
+  function openCreateMemberModalFromDeclaration(item: RaidDeclaration) {
+    const defaultLogin = normalizeLogin(targetDraftById[item.id] ?? item.target_twitch_login ?? "");
+    setCreateForDeclarationId(item.id);
+    setNewMemberDraft({
+      twitchLogin: defaultLogin,
+      displayName: defaultLogin || "Nouveau membre",
+      twitchUrl: defaultLogin ? `https://www.twitch.tv/${defaultLogin}` : "",
+    });
+    setShowCreateMemberModal(true);
+  }
+
+  async function createMemberFromModal() {
+    if (creatingMember) return;
+    const twitchLogin = normalizeLogin(newMemberDraft.twitchLogin);
+    const displayName = newMemberDraft.displayName.trim() || twitchLogin;
+    const twitchUrl = (newMemberDraft.twitchUrl.trim() || `https://www.twitch.tv/${twitchLogin}`).toLowerCase();
+    if (!twitchLogin || !displayName || !twitchUrl) {
+      setError("Creation membre impossible: champs obligatoires manquants.");
+      return;
+    }
+
+    setCreatingMember(true);
+    try {
+      const response = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          twitchLogin,
+          displayName,
+          twitchUrl,
+          role: "Nouveau",
+          isActive: false,
+          badges: [],
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Creation membre impossible.");
+        return;
+      }
+
+      setMembers((prev) => {
+        const exists = prev.some((member) => normalizeLogin(member.twitchLogin || "") === twitchLogin);
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            twitchLogin,
+            displayName,
+            role: "Nouveau",
+            isActive: false,
+          },
+        ];
+      });
+
+      if (createForDeclarationId) {
+        await updateTarget(createForDeclarationId, twitchLogin);
+      }
+      setShowCreateMemberModal(false);
+      setCreateForDeclarationId(null);
+    } catch {
+      setError("Erreur reseau pendant la creation du membre.");
+    } finally {
+      setCreatingMember(false);
     }
   }
 
@@ -233,6 +372,17 @@ export default function AdminEngagementRaidsAValiderPage() {
             {rows.map((item) => {
               const badge = badgeStyle(item.status);
               const isSaving = savingId === item.id;
+              const targetDraft = targetDraftById[item.id] ?? item.target_twitch_login ?? "";
+              const normalizedDraft = normalizeLogin(targetDraft);
+              const isTargetKnownNow = normalizedDraft.length > 0 && isKnownTarget(normalizedDraft);
+              const memberSuggestions = members
+                .filter((member) => {
+                  const login = normalizeLogin(member.twitchLogin || "");
+                  const label = String(member.displayName || "").toLowerCase();
+                  if (!normalizedDraft) return true;
+                  return login.includes(normalizedDraft) || label.includes(normalizedDraft);
+                })
+                .slice(0, 8);
               return (
                 <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -251,6 +401,53 @@ export default function AdminEngagementRaidsAValiderPage() {
                     {new Date(item.raid_at).toLocaleString("fr-FR")} {item.is_approximate ? "- heure approximative" : ""}
                   </p>
                   {item.note ? <p className="mt-1 text-sm text-gray-300">Note: {item.note}</p> : null}
+
+                  {!isKnownTarget(item.target_twitch_login) ? (
+                    <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                      <p className="mb-2 text-xs font-semibold text-amber-200">
+                        Cible non reconnue dans membres/gestion. Associe un membre existant ou cree un nouveau membre (Nouveau + Inactif).
+                      </p>
+                      <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                        <div>
+                          <input
+                            value={targetDraft}
+                            onChange={(event) =>
+                              setTargetDraftById((prev) => ({ ...prev, [item.id]: event.target.value }))
+                            }
+                            list={`target-suggestions-${item.id}`}
+                            placeholder="Rechercher un membre cible..."
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            style={{ borderColor: "rgba(251,191,36,0.35)", backgroundColor: "#0e0e10", color: "#fff" }}
+                          />
+                          <datalist id={`target-suggestions-${item.id}`}>
+                            {memberSuggestions.map((member) => (
+                              <option key={`${item.id}-${member.twitchLogin}`} value={normalizeLogin(member.twitchLogin || "")}>
+                                {member.displayName}
+                              </option>
+                            ))}
+                          </datalist>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void updateTarget(item.id, targetDraft)}
+                          disabled={isSaving || !isTargetKnownNow}
+                          className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                          style={{ borderColor: "rgba(96,165,250,0.55)", color: "#93c5fd" }}
+                        >
+                          Associer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCreateMemberModalFromDeclaration(item)}
+                          disabled={isSaving}
+                          className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                          style={{ borderColor: "rgba(167,139,250,0.55)", color: "#c4b5fd" }}
+                        >
+                          Creer membre
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                     <input
@@ -305,6 +502,72 @@ export default function AdminEngagementRaidsAValiderPage() {
           </div>
         )}
       </div>
+
+      {showCreateMemberModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowCreateMemberModal(false)}>
+          <div
+            className="w-full max-w-xl rounded-xl border border-gray-700 bg-[#1a1a1d] p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="mb-1 text-xl font-semibold text-white">Creer un membre cible</h3>
+            <p className="mb-4 text-xs text-gray-400">Le membre sera cree en role Nouveau et statut Inactif.</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">Login Twitch</label>
+                <input
+                  value={newMemberDraft.twitchLogin}
+                  onChange={(event) =>
+                    setNewMemberDraft((prev) => ({
+                      ...prev,
+                      twitchLogin: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">Nom affichage</label>
+                <input
+                  value={newMemberDraft.displayName}
+                  onChange={(event) => setNewMemberDraft((prev) => ({ ...prev, displayName: event.target.value }))}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">URL Twitch</label>
+                <input
+                  value={newMemberDraft.twitchUrl}
+                  onChange={(event) => setNewMemberDraft((prev) => ({ ...prev, twitchUrl: event.target.value }))}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateMemberModal(false)}
+                className="rounded-md border px-3 py-2 text-xs font-semibold text-gray-300"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void createMemberFromModal()}
+                disabled={creatingMember}
+                className="rounded-md bg-[#9146ff] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {creatingMember ? "Creation..." : "Creer et associer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

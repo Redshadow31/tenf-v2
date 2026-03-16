@@ -21,9 +21,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
     const body = await request.json();
     const status = String(body?.status || "");
     const staffComment = String(body?.staffComment || "").trim();
+    const targetTwitchLoginRaw = body?.targetTwitchLogin;
+    const targetTwitchLogin =
+      typeof targetTwitchLoginRaw === "string" && targetTwitchLoginRaw.trim().length > 0
+        ? targetTwitchLoginRaw.trim().toLowerCase()
+        : null;
 
-    if (!["processing", "to_study", "validated", "rejected"].includes(status)) {
+    if (status && !["processing", "to_study", "validated", "rejected"].includes(status)) {
       return NextResponse.json({ error: "Statut invalide" }, { status: 400 });
+    }
+    if (!status && !targetTwitchLogin) {
+      return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });
     }
 
     const { data: existing, error: existingError } = await supabaseAdmin
@@ -39,15 +47,22 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
       return NextResponse.json({ error: "Declaration introuvable" }, { status: 404 });
     }
 
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (status) {
+      updatePayload.status = status;
+      updatePayload.staff_comment = staffComment || null;
+      updatePayload.reviewed_at = new Date().toISOString();
+      updatePayload.reviewed_by = admin.discordId || admin.id;
+    }
+    if (targetTwitchLogin) {
+      updatePayload.target_twitch_login = targetTwitchLogin;
+    }
+
     const { data, error } = await supabaseAdmin
       .from("raid_declarations")
-      .update({
-        status,
-        staff_comment: staffComment || null,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: admin.discordId || admin.id,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", declarationId)
       .select(
         "id,member_discord_id,member_twitch_login,member_display_name,target_twitch_login,raid_at,is_approximate,note,status,staff_comment,reviewed_at,reviewed_by,created_at"
