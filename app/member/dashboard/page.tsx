@@ -260,9 +260,9 @@ export default function MemberDashboardPage() {
     raidsRemaining > 0
       ? {
           impact: 140,
-          href: "/member/raids/declarer",
+          href: "/member/raids/historique",
           label: "Faire un raid cette semaine",
-          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}. Les raids sont suivis automatiquement, et la declaration Discord reste recommandee.`,
+          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}. Consulte tes raids pour voir ou tu en es et continue sur ta belle dynamique.`,
         }
       : null,
     vipActive
@@ -330,6 +330,7 @@ export default function MemberDashboardPage() {
     } as const);
 
   const quickCtas = [mainAction, ...prioritizedActions.slice(1, 3)];
+  const isRaidAdviceMainAction = mainAction.label === "Faire un raid cette semaine";
 
   const recentTimeline = [
     ...data.formationHistory.map((item) => ({
@@ -427,18 +428,41 @@ export default function MemberDashboardPage() {
               backdropFilter: "blur(2px)",
             }}
           >
-            <Link
-              href={mainAction.href}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-[1px]"
-              style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
-            >
-              {mainAction.label}
-              <ArrowUpRight size={14} />
-            </Link>
+            {isRaidAdviceMainAction ? (
+              <div
+                className="rounded-full border px-4 py-2.5 text-center text-sm font-semibold"
+                style={{
+                  borderColor: hexToRgba(accent, 0.45),
+                  backgroundColor: hexToRgba(accent, 0.14),
+                  color: hexToRgba(accent, 0.95),
+                }}
+              >
+                Conseil du moment: fais un raid cette semaine
+              </div>
+            ) : (
+              <Link
+                href={mainAction.href}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-[1px]"
+                style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
+              >
+                {mainAction.label}
+                <ArrowUpRight size={14} />
+              </Link>
+            )}
             <p className="mt-2 text-xs text-center" style={{ color: "rgba(229, 229, 235, 0.76)" }}>
               Objectifs mensuels a valider avant le {monthDeadline}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {isRaidAdviceMainAction ? (
+                <Link
+                  href="/member/raids/historique"
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold hover:opacity-85"
+                  style={{ borderColor: hexToRgba(accent, 0.35), color: hexToRgba(accent, 0.95) }}
+                >
+                  Consulter mes raids
+                  <ArrowUpRight size={11} />
+                </Link>
+              ) : null}
               {quickCtas.slice(1, 3).map((cta) => (
                 <Link
                   key={`hero-${cta.label}-${cta.href}`}
