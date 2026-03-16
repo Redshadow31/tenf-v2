@@ -1,7 +1,6 @@
 import { getBaseUrl } from '@/lib/config';
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
-import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
 import {
   deleteEventSubSubscription,
   getEventSubSubscriptions,
@@ -397,28 +396,41 @@ async function createToBroadcasterRaidSubscription(
 }
 
 async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
-  await loadMemberDataFromStorage();
-  let members = getAllMemberData().filter((m) => m.isActive && !!m.twitchLogin);
-  const missingIdLogins = members.filter((m) => !m.twitchId).map((m) => m.twitchLogin);
-  if (missingIdLogins.length > 0) {
-    await resolveAndCacheTwitchIds(missingIdLogins);
-    await loadMemberDataFromStorage();
-    members = getAllMemberData().filter((m) => m.isActive && !!m.twitchLogin);
+  // Source de vérité: Supabase (members) pour coller aux compteurs admin/membres/gestion.
+  const { data, error } = await supabaseAdmin
+    .from('members')
+    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at')
+    .eq('is_active', true)
+    .not('twitch_login', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(5000);
+  if (error) {
+    throw new Error(`[raidEventsubTest] Impossible de charger les membres eligibles depuis Supabase: ${error.message}`);
   }
 
   const graceLimit = Date.now() - GRACE_PERIOD_MINUTES * 60 * 1000;
 
-  return members
-    .filter((m) => !!m.twitchId)
+  return (data || [])
+    .map((row: any) => {
+      const twitchLogin = String(row?.twitch_login || '').trim().toLowerCase();
+      const twitchId = String(row?.twitch_id || '').trim();
+      const status = (row?.twitch_status || {}) as { isLive?: boolean };
+      const updatedAt = String(row?.updated_at || '').trim();
+      return {
+        discordId: row?.discord_id ? String(row.discord_id) : null,
+        twitchLogin,
+        twitchId,
+        wasRecentlyLive:
+          status?.isLive === true ||
+          (status?.isLive === false && !!updatedAt && new Date(updatedAt).getTime() >= graceLimit),
+      } as EligibleMember;
+    })
+    .filter((m) => !!m.twitchLogin && !!m.twitchId)
     .map((m) => ({
-      discordId: m.discordId || null,
-      twitchLogin: m.twitchLogin.toLowerCase(),
-      twitchId: m.twitchId as string,
-      wasRecentlyLive:
-        !!m.twitchStatus?.isLive ||
-        (m.twitchStatus?.isLive === false &&
-          !!m.updatedAt &&
-          new Date(m.updatedAt).getTime() >= graceLimit),
+      discordId: m.discordId,
+      twitchLogin: m.twitchLogin,
+      twitchId: m.twitchId,
+      wasRecentlyLive: m.wasRecentlyLive,
     }));
 }
 
