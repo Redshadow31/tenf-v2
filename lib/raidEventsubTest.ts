@@ -152,9 +152,35 @@ async function markLocalSubscriptionStatus(
     monitoredDiscordId?: string | null;
   }
 ): Promise<void> {
-  const existingId = await getExistingActiveLocalSubscriptionId(runId, monitoredTwitchId);
+  let existingId: string | null = null;
+
+  // Priorite 1: si Twitch nous donne un subscription_id, l'utiliser pour retrouver la ligne.
+  if (payload.twitchSubscriptionId) {
+    const { data: bySubId, error: bySubIdError } = await supabaseAdmin
+      .from('raid_test_subscriptions')
+      .select('id')
+      .eq('twitch_subscription_id', payload.twitchSubscriptionId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (bySubIdError) {
+      throw new Error(
+        `[raidEventsubTest] Impossible de lire la subscription locale par twitch_subscription_id: ${bySubIdError.message}`
+      );
+    }
+    existingId = bySubId?.[0]?.id || null;
+  }
+
+  // Priorite 2: fallback historique par run + monitored_twitch_id.
+  if (!existingId) {
+    existingId = await getExistingActiveLocalSubscriptionId(runId, monitoredTwitchId);
+  }
+
   const timestamp = nowIso();
   const baseUpdate = {
+    run_id: runId,
+    monitored_twitch_id: monitoredTwitchId,
+    monitored_twitch_login: monitoredTwitchLogin,
+    condition_type: CONDITION_TYPE,
     twitch_subscription_id: payload.twitchSubscriptionId ?? null,
     status: payload.status,
     monitored_member_discord_id: payload.monitoredDiscordId ?? null,
