@@ -13,6 +13,14 @@ const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
  */
 export async function POST(request: NextRequest) {
   try {
+    const prodEnabled = String(process.env.RAID_EVENTSUB_PROD_ENABLED ?? 'true').toLowerCase() === 'true';
+    if (!prodEnabled) {
+      return NextResponse.json(
+        { error: 'Mode prod EventSub desactive (RAID_EVENTSUB_PROD_ENABLED=false)' },
+        { status: 409 }
+      );
+    }
+
     const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });

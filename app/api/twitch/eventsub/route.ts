@@ -8,6 +8,18 @@ import { saveTwitchRaid, TwitchRaidEvent } from '@/lib/raidsTwitch';
  */
 export async function POST(request: NextRequest) {
   try {
+    const prodEnabled = String(process.env.RAID_EVENTSUB_PROD_ENABLED ?? 'true').toLowerCase() === 'true';
+    if (!prodEnabled) {
+      return NextResponse.json(
+        {
+          received: false,
+          ignored: true,
+          reason: 'RAID_EVENTSUB_PROD_ENABLED=false',
+        },
+        { status: 200 }
+      );
+    }
+
     const EVENTSUB_SECRET = process.env.TWITCH_EVENTSUB_SECRET;
     
     if (!EVENTSUB_SECRET) {
