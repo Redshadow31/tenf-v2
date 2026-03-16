@@ -397,17 +397,14 @@ async function createToBroadcasterRaidSubscription(
 }
 
 async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
-  // Aligner strictement le périmètre avec la page /lives:
-  // - membres actifs
-  // - profils validés
-  // - lives non shadowban
+  // Périmètre EventSub raids-sub:
+  // - tous les membres actifs (pas seulement les profils validés publics)
+  // Cela permet d'aligner la base suivie avec l'effectif actif global côté admin.
   const { data, error } = await supabaseAdmin
     .from('members')
-    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at,profile_validation_status,shadowban_lives')
+    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at')
     .eq('is_active', true)
-    .eq('profile_validation_status', 'valide')
     .not('twitch_login', 'is', null)
-    .or('shadowban_lives.is.null,shadowban_lives.eq.false')
     .order('updated_at', { ascending: false })
     .limit(5000);
 
