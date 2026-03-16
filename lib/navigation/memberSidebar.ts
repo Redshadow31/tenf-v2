@@ -154,7 +154,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
           { href: "/admin/dashboard", label: "Dashboard Admin", icon: LayoutDashboard, adminOnly: true },
           { href: "/admin/membres/gestion", label: "Gestion membres", icon: Users, adminOnly: true },
           { href: "/admin/profils", label: "Gestion profils site", icon: UserCircle, adminOnly: true },
-          { href: "/admin/raids", label: "Gestion raids", icon: Rocket, adminOnly: true },
+          { href: "/admin/engagement/raids-a-valider", label: "Gestion raids", icon: Rocket, adminOnly: true },
           { href: "/admin/events", label: "Gestion evenements", icon: Calendar, adminOnly: true },
           { href: "/admin/evaluations", label: "Gestion evaluations", icon: Shield, adminOnly: true },
         ],

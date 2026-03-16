@@ -100,6 +100,11 @@ interface DashboardSummary {
   communityMonthCount: number;
 }
 
+interface RaidDeclarationLite {
+  id: string;
+  status: "processing" | "to_study" | "validated" | "rejected";
+}
+
 function normalizeCategoryLabel(value: string | undefined): string {
   return (value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -158,6 +163,7 @@ export default function Dashboard2Page() {
   const [staffApplicationsPendingCount, setStaffApplicationsPendingCount] = useState(0);
   const [staffApplicationsRedFlagCount, setStaffApplicationsRedFlagCount] = useState(0);
   const [profileValidationPendingCount, setProfileValidationPendingCount] = useState(0);
+  const [raidsPendingCount, setRaidsPendingCount] = useState(0);
   const [discordGrowthData, setDiscordGrowthData] = useState<Array<{ month: string; value: number }>>([]);
   const [monthlyActivityData, setMonthlyActivityData] = useState<Array<{ month: string; messages: number; vocals: number }>>([]);
   const [spotlightProgressionData, setSpotlightProgressionData] = useState<Array<{ month: string; value: number }>>([]);
@@ -224,7 +230,16 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadOpsData() {
       try {
-        const [summaryRes, eventsRes, notesRes, followSummaryRes, vipMonthRes, staffApplicationsRes, profileValidationRes] = await Promise.all([
+        const [
+          summaryRes,
+          eventsRes,
+          notesRes,
+          followSummaryRes,
+          vipMonthRes,
+          staffApplicationsRes,
+          profileValidationRes,
+          raidsValidationRes,
+        ] = await Promise.all([
           fetch("/api/admin/dashboard/summary", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
           fetch(`/api/evaluations/synthesis/save?month=${evaluationMonth}`, { cache: "no-store" }),
@@ -232,6 +247,7 @@ export default function Dashboard2Page() {
           fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
           fetch("/api/staff-applications", { cache: "no-store" }),
           fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
+          fetch("/api/admin/engagement/raids-declarations?status=all", { cache: "no-store" }),
         ]);
 
         if (summaryRes.ok) {
@@ -294,6 +310,15 @@ export default function Dashboard2Page() {
         if (profileValidationRes.ok) {
           const profileValidationData = await profileValidationRes.json();
           setProfileValidationPendingCount((profileValidationData.pending || []).length);
+        }
+
+        if (raidsValidationRes.ok) {
+          const raidsValidationData = await raidsValidationRes.json();
+          const declarations = (raidsValidationData.declarations || []) as RaidDeclarationLite[];
+          const pendingCount = declarations.filter(
+            (item) => item.status === "processing" || item.status === "to_study"
+          ).length;
+          setRaidsPendingCount(pendingCount);
         }
       } catch (error) {
         console.error("Erreur chargement dashboard2:", error);
@@ -521,8 +546,9 @@ export default function Dashboard2Page() {
       staffApplicationsPendingCount,
       staffApplicationsRedFlagCount,
       profileValidationPendingCount,
+      raidsPendingCount,
     };
-  }, [dashboardSummary, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount]);
+  }, [dashboardSummary, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount, raidsPendingCount]);
 
   const filteredRecapEvents = useMemo(() => {
     if (recapMonthFilter === "all") return recapEvents;
@@ -646,10 +672,10 @@ export default function Dashboard2Page() {
       color: "text-amber-300",
     },
     {
-      title: "Revues en retard",
-      value: kpis.reviewOverdue,
-      hint: "nextReviewAt dépassée",
-      href: "/admin/membres/gestion",
+      title: "Raids a valider",
+      value: kpis.raidsPendingCount,
+      hint: "Raids en attente sur validation staff",
+      href: "/admin/engagement/raids-a-valider",
       color: "text-red-300",
     },
     {
