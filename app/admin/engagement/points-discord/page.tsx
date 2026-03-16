@@ -10,6 +10,7 @@ type TodoRaidItem = {
   to_broadcaster_user_login: string;
   event_at: string;
   viewers: number;
+  raider_discord_username?: string | null;
 };
 
 type AwardHistoryItem = {
@@ -50,6 +51,7 @@ export default function AdminEngagementPointsDiscordPage() {
   const [history, setHistory] = useState<AwardHistoryItem[]>([]);
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
   const [noteByEventId, setNoteByEventId] = useState<Record<string, string>>({});
+  const [copyFeedback, setCopyFeedback] = useState("");
 
   async function loadData() {
     try {
@@ -111,6 +113,50 @@ export default function AdminEngagementPointsDiscordPage() {
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => new Date(b.awarded_at).getTime() - new Date(a.awarded_at).getTime());
   }, [history]);
+
+  const raidCommands = useMemo(() => {
+    const uniquePseudo = new Map<string, string>();
+    for (const item of sortedTodo) {
+      const raw = String(item.raider_discord_username || "").trim();
+      if (!raw) continue;
+      const mention = raw.startsWith("@") ? raw : `@${raw}`;
+      const key = mention.toLowerCase();
+      if (!uniquePseudo.has(key)) {
+        uniquePseudo.set(key, mention);
+      }
+    }
+    const pseudos = Array.from(uniquePseudo.values());
+    const commands: string[] = [];
+    for (let index = 0; index < pseudos.length; index += 20) {
+      const chunk = pseudos.slice(index, index + 20);
+      commands.push(`/raid ${chunk.join(" ")}`);
+    }
+    return commands;
+  }, [sortedTodo]);
+
+  const missingRaiders = useMemo(() => {
+    const missing = new Set<string>();
+    for (const item of sortedTodo) {
+      if (!item.raider_discord_username) {
+        missing.add(item.from_broadcaster_user_login);
+      }
+    }
+    return Array.from(missing).sort();
+  }, [sortedTodo]);
+
+  async function copyRaidCommands() {
+    const payload = raidCommands.join("\n").trim();
+    if (!payload) {
+      setCopyFeedback("Aucune commande a copier.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      setCopyFeedback(`Copie OK (${raidCommands.length} commande${raidCommands.length > 1 ? "s" : ""}).`);
+    } catch {
+      setCopyFeedback("Copie impossible depuis le navigateur.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
@@ -175,6 +221,37 @@ export default function AdminEngagementPointsDiscordPage() {
             <p className="text-sm text-gray-300">Aucun point de raid en attente.</p>
           ) : (
             <div className="space-y-3">
+              <article className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-cyan-200">
+                    Commandes Discord pour raids a valider (raiders uniquement, 20 pseudos max/commande)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void copyRaidCommands()}
+                    className="rounded-md border border-cyan-400/50 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200"
+                  >
+                    Generer + Copier
+                  </button>
+                </div>
+                {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
+                {raidCommands.length === 0 ? (
+                  <p className="mt-2 text-xs text-gray-300">
+                    Aucun pseudo Discord exploitable trouve sur les raids en attente.
+                  </p>
+                ) : (
+                  <textarea
+                    readOnly
+                    value={raidCommands.join("\n")}
+                    className="mt-3 min-h-[84px] w-full rounded-md border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100"
+                  />
+                )}
+                {missingRaiders.length > 0 ? (
+                  <p className="mt-2 text-xs text-amber-200">
+                    Pseudo Discord manquant pour: {missingRaiders.join(", ")}
+                  </p>
+                ) : null}
+              </article>
               {sortedTodo.map((item) => (
                 <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -187,6 +264,9 @@ export default function AdminEngagementPointsDiscordPage() {
                   </div>
                   <p className="mt-1 text-sm text-gray-400">
                     Raid: {new Date(item.event_at).toLocaleString("fr-FR")} • viewers: {item.viewers}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Pseudo Discord raider: {item.raider_discord_username ? `@${String(item.raider_discord_username).replace(/^@/, "")}` : "introuvable"}
                   </p>
                   <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                     <input

@@ -13,6 +13,11 @@ type RaidTestEventRow = {
   processing_status: string;
 };
 
+type MemberLiteRow = {
+  twitch_login: string;
+  discord_username: string | null;
+};
+
 type RaidPointRow = {
   id: string;
   run_id: string;
@@ -102,7 +107,33 @@ export async function GET(request: NextRequest) {
     const matchedEvents = (eventsRes.data || []) as RaidTestEventRow[];
     const history = (pointsRes.data || []) as RaidPointRow[];
     const awardedEventIds = new Set(history.map((item) => item.raid_test_event_id));
-    const todo = matchedEvents.filter((item) => !awardedEventIds.has(item.id));
+    const todoBase = matchedEvents.filter((item) => !awardedEventIds.has(item.id));
+
+    const uniqueRaiderLogins = Array.from(
+      new Set(todoBase.map((item) => String(item.from_broadcaster_user_login || "").toLowerCase()).filter(Boolean))
+    );
+    let discordByTwitchLogin = new Map<string, string>();
+    if (uniqueRaiderLogins.length > 0) {
+      const membersRes = await supabaseAdmin
+        .from("members")
+        .select("twitch_login,discord_username")
+        .in("twitch_login", uniqueRaiderLogins);
+
+      if (!membersRes.error) {
+        for (const row of (membersRes.data || []) as MemberLiteRow[]) {
+          const login = String(row.twitch_login || "").toLowerCase();
+          const discordUsername = String(row.discord_username || "").trim();
+          if (login && discordUsername) {
+            discordByTwitchLogin.set(login, discordUsername);
+          }
+        }
+      }
+    }
+
+    const todo = todoBase.map((item) => ({
+      ...item,
+      raider_discord_username: discordByTwitchLogin.get(String(item.from_broadcaster_user_login || "").toLowerCase()) || null,
+    }));
 
     return NextResponse.json({
       backendReady: true,
