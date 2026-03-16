@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       let query = supabaseAdmin
         .from('raid_test_events')
         .select(
-          'id,run_id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,viewers,event_at,processing_status,error_reason,match_from_member,match_to_member,created_at'
+          'id,run_id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,viewers,raider_stream_started_at,raider_live_duration_minutes,event_at,processing_status,error_reason,match_from_member,match_to_member,created_at'
         )
         .eq('run_id', runId)
         .order('event_at', { ascending: false })

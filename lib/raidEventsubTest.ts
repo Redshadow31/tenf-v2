@@ -103,6 +103,11 @@ interface SaveRaidTestEventInput {
   rawPayload: unknown;
 }
 
+interface RaiderLiveContext {
+  streamStartedAt: string | null;
+  liveDurationMinutes: number | null;
+}
+
 interface MatchedMember {
   twitchLogin: string;
   twitchId?: string;
@@ -349,6 +354,60 @@ async function fetchLiveTwitchIds(twitchIds: string[]): Promise<Set<string>> {
   }
 
   return result;
+}
+
+async function getRaiderLiveContext(input: {
+  raiderTwitchId: string;
+  eventAt: Date;
+}): Promise<RaiderLiveContext> {
+  const raiderTwitchId = String(input.raiderTwitchId || '').trim();
+  if (!raiderTwitchId) {
+    return { streamStartedAt: null, liveDurationMinutes: null };
+  }
+
+  try {
+    const accessToken = await getTwitchOAuthToken();
+    const clientId = process.env.TWITCH_APP_CLIENT_ID;
+    if (!clientId) {
+      return { streamStartedAt: null, liveDurationMinutes: null };
+    }
+
+    const response = await fetch(
+      `${TWITCH_API_BASE}/streams?user_id=${encodeURIComponent(raiderTwitchId)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Client-Id': clientId,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return { streamStartedAt: null, liveDurationMinutes: null };
+    }
+
+    const body = (await response.json()) as {
+      data?: Array<{ started_at?: string | null }>;
+    };
+    const startedAtRaw = body.data?.[0]?.started_at || null;
+    if (!startedAtRaw) {
+      return { streamStartedAt: null, liveDurationMinutes: null };
+    }
+
+    const startedAtDate = new Date(startedAtRaw);
+    if (Number.isNaN(startedAtDate.getTime())) {
+      return { streamStartedAt: null, liveDurationMinutes: null };
+    }
+
+    const diffMs = input.eventAt.getTime() - startedAtDate.getTime();
+    const liveDurationMinutes = Math.max(0, Math.floor(diffMs / 60_000));
+    return {
+      streamStartedAt: startedAtDate.toISOString(),
+      liveDurationMinutes,
+    };
+  } catch {
+    return { streamStartedAt: null, liveDurationMinutes: null };
+  }
 }
 
 async function createToBroadcasterRaidSubscription(
@@ -734,6 +793,10 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
 
   const eventDate = input.eventsubTimestamp ? new Date(input.eventsubTimestamp) : new Date();
   const validEventDate = Number.isNaN(eventDate.getTime()) ? new Date() : eventDate;
+  const raiderLiveContext = await getRaiderLiveContext({
+    raiderTwitchId: input.event.from_broadcaster_user_id,
+    eventAt: validEventDate,
+  });
   const dedupeKey = buildDedupeKey(
     input.event.from_broadcaster_user_id,
     input.event.to_broadcaster_user_id,
@@ -746,7 +809,7 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
       ? `fromMember=${!!fromMember};toMember=${!!toMember};source=supabase_first`
       : null;
 
-  const { error } = await supabaseAdmin.from('raid_test_events').insert({
+  const insertPayload: Record<string, unknown> = {
     run_id: run.id,
     eventsub_message_id: input.eventsubMessageId,
     dedupe_key: dedupeKey,
@@ -757,6 +820,8 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     to_broadcaster_user_login: input.event.to_broadcaster_user_login,
     to_broadcaster_user_name: input.event.to_broadcaster_user_name,
     viewers: input.event.viewers || 0,
+    raider_stream_started_at: raiderLiveContext.streamStartedAt,
+    raider_live_duration_minutes: raiderLiveContext.liveDurationMinutes,
     event_at: validEventDate.toISOString(),
     received_at: nowIso(),
     match_from_member: !!fromMember,
@@ -765,7 +830,20 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     error_reason: diagnosticReason,
     raw_payload: input.rawPayload,
     created_at: nowIso(),
-  });
+  };
+
+  let { error } = await supabaseAdmin.from('raid_test_events').insert(insertPayload);
+
+  const errorMessage = String((error as any)?.message || '');
+  const missingLiveColumns =
+    !!error &&
+    (errorMessage.includes('raider_stream_started_at') || errorMessage.includes('raider_live_duration_minutes'));
+  if (missingLiveColumns) {
+    delete insertPayload.raider_stream_started_at;
+    delete insertPayload.raider_live_duration_minutes;
+    const retry = await supabaseAdmin.from('raid_test_events').insert(insertPayload);
+    error = retry.error;
+  }
 
   if (error) {
     if (error.code === '23505') {

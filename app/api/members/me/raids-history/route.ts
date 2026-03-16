@@ -64,6 +64,14 @@ function mapEventSubRaidStatus(status: string): { key: "validated" | "pending" |
   return { key: "rejected", label: "Refuse" };
 }
 
+function formatRejectedRaidNote(note: string | null | undefined): string | null {
+  const clean = String(note || "").trim();
+  if (!clean) return "Raid refuse";
+  const lower = clean.toLowerCase();
+  if (lower.startsWith("raid refuse")) return clean;
+  return `Raid refuse: ${clean}`;
+}
+
 function getLast12Months(): string[] {
   const now = new Date();
   return Array.from({ length: 12 }, (_, idx) => {
@@ -281,7 +289,7 @@ export async function GET(request: NextRequest) {
           raidStatusLabel: raidStatus.label,
           pointsStatus: awarded ? "awarded" : "pending",
           pointsStatusLabel: awarded ? "Points attribues" : "Points en cours d'attribution",
-          note: row.error_reason || null,
+          note: raidStatus.key === "rejected" ? formatRejectedRaidNote(row.error_reason) : row.error_reason || null,
         };
       });
 

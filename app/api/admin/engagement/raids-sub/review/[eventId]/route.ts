@@ -26,14 +26,43 @@ export async function PATCH(
     const overrideFromLogin = String(body?.overrideFromLogin || '').trim().toLowerCase();
     const overrideToLogin = String(body?.overrideToLogin || '').trim().toLowerCase();
     const forceMemberMatch = Boolean(body?.forceMemberMatch);
+    const invalidateAfterValidation = Boolean(body?.invalidateAfterValidation);
 
     if (!ALLOWED_STATUS.has(processingStatus)) {
       return NextResponse.json({ error: 'processingStatus invalide' }, { status: 400 });
     }
 
+    const existingRes = await supabaseAdmin
+      .from('raid_test_events')
+      .select('id,processing_status')
+      .eq('id', eventId)
+      .single();
+
+    if (existingRes.error || !existingRes.data?.id) {
+      return NextResponse.json({ error: 'Event introuvable' }, { status: 404 });
+    }
+
+    const currentStatus = String(existingRes.data.processing_status || '').toLowerCase();
+
+    if (invalidateAfterValidation) {
+      if (currentStatus !== 'matched') {
+        return NextResponse.json(
+          { error: "Seuls les raids deja valides (matched) peuvent etre invalides apres coup." },
+          { status: 400 }
+        );
+      }
+      if (staffComment.length < 3) {
+        return NextResponse.json(
+          { error: "Une raison est obligatoire pour invalider un raid apres validation." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const effectiveStatus = invalidateAfterValidation ? 'ignored' : processingStatus;
     const updatePayload: Record<string, unknown> = {
-      processing_status: processingStatus,
-      error_reason: staffComment || null,
+      processing_status: effectiveStatus,
+      error_reason: invalidateAfterValidation ? `Raid refuse apres validation: ${staffComment}` : staffComment || null,
     };
 
     if (overrideFromLogin) {
@@ -74,7 +103,7 @@ export async function PATCH(
       .update(updatePayload)
       .eq('id', eventId)
       .select(
-        'id,run_id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,viewers,event_at,processing_status,error_reason,match_from_member,match_to_member,created_at'
+        'id,run_id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,viewers,raider_stream_started_at,raider_live_duration_minutes,event_at,processing_status,error_reason,match_from_member,match_to_member,created_at'
       )
       .single();
 

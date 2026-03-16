@@ -36,9 +36,20 @@ type ReviewEvent = {
   to_broadcaster_user_login: string | null;
   event_at: string | null;
   viewers?: number | null;
+  raider_live_duration_minutes?: number | null;
   error_reason?: string | null;
   processing_status: "received" | "matched" | "ignored" | "duplicate" | "error";
 };
+
+function formatLiveDuration(minutes: number): string {
+  const safeMinutes = Math.max(0, Math.floor(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const remainingMinutes = safeMinutes % 60;
+  if (hours <= 0) {
+    return `${remainingMinutes} min`;
+  }
+  return `${hours}h${String(remainingMinutes).padStart(2, "0")}`;
+}
 
 export default function AdminRaidsSubPage() {
   const [loading, setLoading] = useState(true);
@@ -114,6 +125,38 @@ export default function AdminRaidsSubPage() {
         }/${body.eligibleMembers || 0}`
       );
       await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur reseau.");
+    } finally {
+      setRunningAction("");
+    }
+  }
+
+  async function invalidateMatchedRaid(item: ReviewEvent) {
+    const reason = window.prompt("Raison obligatoire pour invalider ce raid (visible sur l'espace membre) :", "");
+    const trimmedReason = String(reason || "").trim();
+    if (!trimmedReason) {
+      setError("Invalider un raid apres validation exige une raison.");
+      return;
+    }
+
+    setRunningAction("refresh");
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/engagement/raids-sub/review/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processingStatus: "ignored",
+          invalidateAfterValidation: true,
+          staffComment: trimmedReason,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || "Impossible d invalider ce raid.");
+      }
+      setReviewEvents((previous) => previous.map((row) => (row.id === item.id ? (body.event as ReviewEvent) : row)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur reseau.");
     } finally {
@@ -597,11 +640,28 @@ export default function AdminRaidsSubPage() {
                       <p className="text-sm text-white">
                         {item.from_broadcaster_user_login || "inconnu"} → {item.to_broadcaster_user_login || "inconnu"}
                       </p>
-                      <span className="rounded-full border border-white/20 bg-white/5 px-2 py-1 text-[11px] text-gray-200">{item.processing_status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-white/20 bg-white/5 px-2 py-1 text-[11px] text-gray-200">{item.processing_status}</span>
+                        {item.processing_status === "matched" ? (
+                          <button
+                            type="button"
+                            onClick={() => void invalidateMatchedRaid(item)}
+                            disabled={runningAction !== ""}
+                            className="rounded-md border px-2 py-1 text-[11px] font-semibold text-amber-300 disabled:opacity-50"
+                            style={{ borderColor: "rgba(251,191,36,0.45)", backgroundColor: "rgba(251,191,36,0.08)" }}
+                            title="Invalider apres coup avec raison"
+                          >
+                            Invalider
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-1 text-xs text-gray-400">
                       {item.event_at ? new Date(item.event_at).toLocaleString("fr-FR") : "Date inconnue"}
                       {typeof item.viewers === "number" ? ` • viewers: ${item.viewers}` : ""}
+                      {typeof item.raider_live_duration_minutes === "number"
+                        ? ` • live: ${formatLiveDuration(item.raider_live_duration_minutes)}`
+                        : ""}
                     </p>
                     {item.error_reason ? <p className="mt-1 text-xs text-amber-200">Raison: {item.error_reason}</p> : null}
                   </article>
