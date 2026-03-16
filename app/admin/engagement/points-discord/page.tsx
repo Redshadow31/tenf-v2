@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type TodoRaidItem = {
   id: string;
@@ -32,13 +32,37 @@ type PointsResponse = {
   backendReady: boolean;
   warning?: string;
   runId: string | null;
-  todo: TodoRaidItem[];
-  history: AwardHistoryItem[];
+  month?: string;
+  todo?: TodoRaidItem[];
+  history?: AwardHistoryItem[];
   counters: {
     todo: number;
     history: number;
   };
 };
+
+function toMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getLast12Months(): string[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, idx) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - idx, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!year || !month || month < 1 || month > 12) {
+    return monthKey;
+  }
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
 
 export default function AdminEngagementPointsDiscordPage() {
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
@@ -52,20 +76,39 @@ export default function AdminEngagementPointsDiscordPage() {
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
   const [noteByEventId, setNoteByEventId] = useState<Record<string, string>>({});
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
+  const historyLoadedAtRef = useRef<Record<string, number>>({});
+  const availableMonths = useMemo(() => getLast12Months(), []);
 
-  async function loadData() {
+  async function loadData(options?: { includeTodo?: boolean; includeHistory?: boolean; month?: string }) {
+    const includeTodo = options?.includeTodo ?? true;
+    const includeHistory = options?.includeHistory ?? true;
+    const month = options?.month || selectedMonth;
     try {
       setLoading(true);
       setError("");
-      const response = await fetch("/api/admin/engagement/raids-sub/points", { cache: "no-store" });
+      const params = new URLSearchParams({
+        includeTodo: includeTodo ? "true" : "false",
+        includeHistory: includeHistory ? "true" : "false",
+      });
+      if (includeHistory) {
+        params.set("month", month);
+      }
+      const response = await fetch(`/api/admin/engagement/raids-sub/points?${params.toString()}`, { cache: "no-store" });
       const body = (await response.json()) as PointsResponse & { error?: string };
       if (!response.ok) {
         throw new Error(body.error || "Impossible de charger les points de raid.");
       }
       setWarning(body.warning || "");
       setRunId(body.runId);
-      setTodo(body.todo || []);
-      setHistory(body.history || []);
+      if (includeTodo) {
+        setTodo(body.todo || []);
+      }
+      if (includeHistory) {
+        setHistory(body.history || []);
+        historyLoadedAtRef.current[month] = Date.now();
+      }
       setLastRefreshAt(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur reseau.");
@@ -75,12 +118,21 @@ export default function AdminEngagementPointsDiscordPage() {
   }
 
   useEffect(() => {
-    void loadData();
+    void loadData({ includeTodo: true, includeHistory: true, month: selectedMonth });
     const interval = window.setInterval(() => {
-      void loadData();
+      void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     }, 30_000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [activeTab, selectedMonth]);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    const loadedAt = historyLoadedAtRef.current[selectedMonth] || 0;
+    const ageMs = Date.now() - loadedAt;
+    if (!loadedAt || ageMs > 120_000) {
+      void loadData({ includeTodo: false, includeHistory: true, month: selectedMonth });
+    }
+  }, [activeTab, selectedMonth]);
 
   async function awardPoints(eventId: string) {
     setSavingId(eventId);
@@ -98,7 +150,7 @@ export default function AdminEngagementPointsDiscordPage() {
       if (!response.ok) {
         throw new Error(body.error || "Impossible d attribuer les points.");
       }
-      await loadData();
+      await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur reseau.");
     } finally {
@@ -113,6 +165,18 @@ export default function AdminEngagementPointsDiscordPage() {
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => new Date(b.awarded_at).getTime() - new Date(a.awarded_at).getTime());
   }, [history]);
+
+  const filteredHistory = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    if (!query) return sortedHistory;
+    return sortedHistory.filter((item) => {
+      const raider = String(item.raider_twitch_login || "").toLowerCase();
+      const target = String(item.target_twitch_login || "").toLowerCase();
+      const by = String(item.awarded_by_username || "").toLowerCase();
+      const note = String(item.note || "").toLowerCase();
+      return raider.includes(query) || target.includes(query) || by.includes(query) || note.includes(query);
+    });
+  }, [sortedHistory, historySearch]);
 
   const raidCommands = useMemo(() => {
     const uniquePseudo = new Map<string, string>();
@@ -201,7 +265,7 @@ export default function AdminEngagementPointsDiscordPage() {
           </button>
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
             disabled={loading}
             className="rounded-md border border-white/20 px-3 py-1.5 text-xs font-semibold text-gray-200 disabled:opacity-60"
           >
@@ -289,11 +353,34 @@ export default function AdminEngagementPointsDiscordPage() {
               ))}
             </div>
           )
-        ) : sortedHistory.length === 0 ? (
-          <p className="text-sm text-gray-300">Aucun point attribue pour le moment.</p>
+        ) : (
+          <>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <select
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#0e0e10", color: "#fff" }}
+              >
+                {availableMonths.map((month) => (
+                  <option key={month} value={month}>
+                    {formatMonthLabel(month)}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={historySearch}
+                onChange={(event) => setHistorySearch(event.target.value)}
+                placeholder="Rechercher raider/cible/admin/note..."
+                className="w-full max-w-[460px] rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#0e0e10", color: "#fff" }}
+              />
+            </div>
+            {filteredHistory.length === 0 ? (
+          <p className="text-sm text-gray-300">Aucun point attribue pour ce mois.</p>
         ) : (
           <div className="space-y-3">
-            {sortedHistory.map((item) => (
+            {filteredHistory.map((item) => (
               <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-base font-semibold text-white">
@@ -314,6 +401,8 @@ export default function AdminEngagementPointsDiscordPage() {
               </article>
             ))}
           </div>
+            )}
+          </>
         )}
       </div>
     </div>

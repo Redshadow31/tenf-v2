@@ -33,6 +33,29 @@ type RaidPointRow = {
   awarded_at: string;
 };
 
+function toMonthKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function getCurrentMonthKey(): string {
+  return toMonthKey(new Date());
+}
+
+function monthRange(monthKey: string): { startIso: string; endIso: string } {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!year || !month || month < 1 || month > 12) {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    return { startIso: start.toISOString(), endIso: end.toISOString() };
+  }
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1));
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
 function isMissingRelationError(message: string): boolean {
   const normalized = message.toLowerCase();
   return normalized.includes("does not exist") || normalized.includes("42p01");
@@ -46,32 +69,63 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const runId = searchParams.get("runId") || (await getActiveRaidTestRun())?.id || null;
+    const explicitRunId = String(searchParams.get("runId") || "").trim() || null;
+    const runId = explicitRunId || (await getActiveRaidTestRun())?.id || null;
+    const includeTodo = searchParams.get("includeTodo") !== "false";
+    const includeHistory = searchParams.get("includeHistory") !== "false";
+    const requestedMonth = String(searchParams.get("month") || "").trim();
+    const month = /^\d{4}-\d{2}$/.test(requestedMonth) ? requestedMonth : getCurrentMonthKey();
+    const { startIso, endIso } = monthRange(month);
 
-    if (!runId) {
+    if (!runId && !includeHistory) {
       return NextResponse.json({
         backendReady: true,
         runId: null,
         todo: [],
         history: [],
         counters: { todo: 0, history: 0 },
+        month,
       });
     }
 
-    const [eventsRes, pointsRes] = await Promise.all([
-      supabaseAdmin
-        .from("raid_test_events")
-        .select("id,run_id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status")
-        .eq("run_id", runId)
-        .eq("processing_status", "matched")
-        .order("event_at", { ascending: false })
-        .limit(1000),
-      supabaseAdmin
-        .from("raid_test_points")
-        .select("id,run_id,raid_test_event_id,raider_twitch_login,target_twitch_login,event_at,points,status,note,awarded_by_discord_id,awarded_by_username,awarded_at")
-        .eq("run_id", runId)
-        .order("awarded_at", { ascending: false })
-        .limit(2000),
+    const eventsPromise = includeTodo && !!runId
+      ? supabaseAdmin
+          .from("raid_test_events")
+          .select("id,run_id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status")
+          .eq("run_id", runId)
+          .eq("processing_status", "matched")
+          .order("event_at", { ascending: false })
+          .limit(1000)
+      : Promise.resolve({ data: [] as any[], error: null as any });
+
+    const pointsHistoryPromise = includeHistory
+      ? (() => {
+          let query = supabaseAdmin
+          .from("raid_test_points")
+          .select("id,run_id,raid_test_event_id,raider_twitch_login,target_twitch_login,event_at,points,status,note,awarded_by_discord_id,awarded_by_username,awarded_at")
+          .gte("awarded_at", startIso)
+          .lt("awarded_at", endIso)
+          .order("awarded_at", { ascending: false })
+          .limit(2000);
+          if (explicitRunId) {
+            query = query.eq("run_id", explicitRunId);
+          }
+          return query;
+        })()
+      : Promise.resolve({ data: [] as any[], error: null as any });
+
+    const pointsAwardedIdsPromise = includeTodo && !includeHistory && !!runId
+      ? supabaseAdmin
+          .from("raid_test_points")
+          .select("raid_test_event_id")
+          .eq("run_id", runId)
+          .limit(5000)
+      : Promise.resolve({ data: [] as any[], error: null as any });
+
+    const [eventsRes, pointsHistoryRes, pointsAwardedIdsRes] = await Promise.all([
+      eventsPromise,
+      pointsHistoryPromise,
+      pointsAwardedIdsPromise,
     ]);
 
     if (eventsRes.error) {
@@ -89,8 +143,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Impossible de charger les raids matches" }, { status: 500 });
     }
 
-    if (pointsRes.error) {
-      const message = String(pointsRes.error.message || "");
+    if (pointsHistoryRes.error) {
+      const message = String(pointsHistoryRes.error.message || "");
+      if (isMissingRelationError(message)) {
+        return NextResponse.json({
+          backendReady: false,
+          warning: "Table manquante. Applique la migration 0037_raid_test_points_queue.sql.",
+          runId,
+          todo: [],
+          history: [],
+          counters: { todo: 0, history: 0 },
+        });
+      }
+      return NextResponse.json({ error: "Impossible de charger l'historique des points" }, { status: 500 });
+    }
+
+    if (pointsAwardedIdsRes.error) {
+      const message = String(pointsAwardedIdsRes.error.message || "");
       if (isMissingRelationError(message)) {
         return NextResponse.json({
           backendReady: false,
@@ -105,8 +174,11 @@ export async function GET(request: NextRequest) {
     }
 
     const matchedEvents = (eventsRes.data || []) as RaidTestEventRow[];
-    const history = (pointsRes.data || []) as RaidPointRow[];
-    const awardedEventIds = new Set(history.map((item) => item.raid_test_event_id));
+    const history = (pointsHistoryRes.data || []) as RaidPointRow[];
+    const awardedEventRows = includeHistory
+      ? history.map((item) => ({ raid_test_event_id: item.raid_test_event_id }))
+      : (pointsAwardedIdsRes.data || []);
+    const awardedEventIds = new Set(awardedEventRows.map((item: any) => String(item.raid_test_event_id || "")));
     const todoBase = matchedEvents.filter((item) => !awardedEventIds.has(item.id));
 
     const uniqueRaiderLogins = Array.from(
@@ -140,6 +212,7 @@ export async function GET(request: NextRequest) {
       runId,
       todo,
       history,
+      month,
       counters: { todo: todo.length, history: history.length },
     });
   } catch (error) {
