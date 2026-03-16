@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarClock, CheckCircle2, Clock3, Info, Search, Sparkles, Twitch, UserCircle, XCircle } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, Clock3, Info, Search, Twitch, UserCircle, XCircle } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 
@@ -21,17 +21,11 @@ type DeclaredRaid = {
   approximate: boolean;
 };
 
-const suggestionCatalog: Suggestion[] = [
-  { login: "tabs", label: "Tabs", segment: "Actif", role: "Moderateur" },
-  { login: "jenny31200", label: "Jenny31200", segment: "Actif", role: "Membre" },
-  { login: "nico-73-79", label: "Nico-73-79", segment: "Nouveau membre", role: "Membre" },
-  { login: "mahyo_stream", label: "mahyo_stream", segment: "Communaute", role: "Membre" },
-  { login: "yayatv", label: "YayaTv", segment: "Inactif", role: "Membre" },
-  { login: "lyxoo", label: "Lyxoo", segment: "Historique raids", role: "Staff" },
-  { login: "kiraa_live", label: "Kiraa_live", segment: "Actif", role: "Membre" },
-];
-
-const lowRaidedSuggestions = ["YayaTv", "Nico-73-79", "mahyo_stream"];
+type LowRaidedSuggestion = {
+  login: string;
+  label: string;
+  receivedCount: number;
+};
 
 function getNowAsLocalInput(): string {
   const now = new Date();
@@ -72,36 +66,14 @@ export default function MemberDeclareRaidPage() {
   const [isApproximateTime, setIsApproximateTime] = useState(true);
   const [error, setError] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showSuggestionsPanel, setShowSuggestionsPanel] = useState(true);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [loadingDeclarations, setLoadingDeclarations] = useState(true);
   const [backendSubmissionEnabled, setBackendSubmissionEnabled] = useState(true);
-  const [declaredRaids, setDeclaredRaids] = useState<DeclaredRaid[]>([
-    {
-      id: "seed-1",
-      target: "Tabs",
-      date: "2026-03-02T19:15",
-      note: "Raid apres live Fortnite",
-      status: "validated",
-      approximate: true,
-    },
-    {
-      id: "seed-2",
-      target: "Jenny31200",
-      date: "2026-03-08T22:30",
-      note: "Fin de session communautaire",
-      status: "processing",
-      approximate: true,
-    },
-    {
-      id: "seed-3",
-      target: "mahyo_stream",
-      date: "2026-03-10T18:05",
-      note: "Test collab",
-      status: "rejected",
-      approximate: false,
-    },
-  ]);
+  const [declaredRaids, setDeclaredRaids] = useState<DeclaredRaid[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [lowRaidedSuggestions, setLowRaidedSuggestions] = useState<LowRaidedSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
   const quickNotes = ["Raid apres live Fortnite", "Soutien membre nouveau", "Fin de stream communautaire"];
 
@@ -111,55 +83,81 @@ export default function MemberDeclareRaidPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  async function loadMyDeclarations() {
+    try {
+      setLoadingDeclarations(true);
+      const response = await fetch("/api/members/me/raid-declarations", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) {
+        setBackendSubmissionEnabled(false);
+        return;
+      }
+      setBackendSubmissionEnabled(body.backendReady !== false);
+      if (Array.isArray(body.declarations)) {
+        const mapped = body.declarations.map((row: any) => ({
+          id: String(row.id),
+          target: String(row.target_twitch_login || ""),
+          date: String(row.raid_at || new Date().toISOString()),
+          note: String(row.note || ""),
+          status: String(row.status || "processing") as DeclaredRaid["status"],
+          approximate: Boolean(row.is_approximate),
+        })) as DeclaredRaid[];
+        setDeclaredRaids(mapped);
+      }
+    } catch {
+      setBackendSubmissionEnabled(false);
+    } finally {
+      setLoadingDeclarations(false);
+    }
+  }
+
   useEffect(() => {
     (async () => {
+      await loadMyDeclarations();
       try {
-        setLoadingDeclarations(true);
-        const response = await fetch("/api/members/me/raid-declarations", { cache: "no-store" });
+        const response = await fetch("/api/members/me/raid-suggestions/low-raided", { cache: "no-store" });
         const body = await response.json();
-        if (!response.ok) {
-          setBackendSubmissionEnabled(false);
-          return;
-        }
-        setBackendSubmissionEnabled(body.backendReady !== false);
-        if (Array.isArray(body.declarations)) {
-          const mapped = body.declarations.map((row: any) => ({
-            id: String(row.id),
-            target: String(row.target_twitch_login || ""),
-            date: String(row.raid_at || new Date().toISOString()),
-            note: String(row.note || ""),
-            status: String(row.status || "processing") as DeclaredRaid["status"],
-            approximate: Boolean(row.is_approximate),
-          })) as DeclaredRaid[];
-          if (mapped.length > 0) {
-            setDeclaredRaids(mapped);
-          }
+        if (response.ok && Array.isArray(body.suggestions)) {
+          setLowRaidedSuggestions(body.suggestions as LowRaidedSuggestion[]);
         }
       } catch {
-        setBackendSubmissionEnabled(false);
-      } finally {
-        setLoadingDeclarations(false);
+        setLowRaidedSuggestions([]);
       }
     })();
   }, []);
 
-  const filteredSuggestions = useMemo(() => {
-    const q = form.target.trim().toLowerCase();
-    const base = q
-      ? suggestionCatalog.filter((item) => item.login.toLowerCase().includes(q) || item.label.toLowerCase().includes(q))
-      : suggestionCatalog.slice(0, 6);
-    return base;
-  }, [form.target]);
+  useEffect(() => {
+    const query = form.target.trim();
+    if (!showAutocomplete) return;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true);
+        const response = await fetch(`/api/members/me/raid-suggestions?query=${encodeURIComponent(query)}`, { cache: "no-store" });
+        const body = await response.json();
+        if (response.ok && Array.isArray(body.suggestions)) {
+          setSuggestions(body.suggestions as Suggestion[]);
+        } else {
+          setSuggestions([]);
+        }
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 220);
+    return () => window.clearTimeout(timeout);
+  }, [form.target, showAutocomplete]);
 
   const groupedSuggestions = useMemo(() => {
-    return {
-      Actif: filteredSuggestions.filter((item) => item.segment === "Actif"),
-      "Nouveau membre": filteredSuggestions.filter((item) => item.segment === "Nouveau membre"),
-      Inactif: filteredSuggestions.filter((item) => item.segment === "Inactif"),
-      "Historique raids": filteredSuggestions.filter((item) => item.segment === "Historique raids"),
-      Communaute: filteredSuggestions.filter((item) => item.segment === "Communaute"),
-    };
-  }, [filteredSuggestions]);
+    const groups = new Map<string, Suggestion[]>();
+    for (const item of suggestions) {
+      const key = item.segment || "Communaute";
+      const current = groups.get(key) || [];
+      current.push(item);
+      groups.set(key, current);
+    }
+    return Array.from(groups.entries());
+  }, [suggestions]);
 
   const formPreview = useMemo(() => {
     const date = form.date ? new Date(form.date) : null;
@@ -174,8 +172,8 @@ export default function MemberDeclareRaidPage() {
 
   function applySuggestion(login: string) {
     setForm((prev) => ({ ...prev, target: login }));
+    setShowAutocomplete(false);
     setError("");
-    setToast({ type: "success", message: `Suggestion appliquee: ${login}` });
   }
 
   function applyNow() {
@@ -195,23 +193,8 @@ export default function MemberDeclareRaidPage() {
       return;
     }
 
-    const createLocalFallback = () => {
-      const newRaid: DeclaredRaid = {
-        id: `local-${Date.now()}`,
-        target: form.target.trim(),
-        date: form.date,
-        note: form.note.trim(),
-        status: "processing",
-        approximate: isApproximateTime,
-      };
-      setDeclaredRaids((prev) => [newRaid, ...prev]);
-      setShowConfirmation(true);
-      setToast({ type: "success", message: "Raid enregistre en brouillon staff." });
-      setForm((prev) => ({ ...prev, target: "", note: "" }));
-    };
-
     if (!backendSubmissionEnabled) {
-      createLocalFallback();
+      setError("Le module declarations raids n est pas encore actif.");
       return;
     }
 
@@ -231,7 +214,7 @@ export default function MemberDeclareRaidPage() {
         if (!response.ok) {
           if (response.status === 503) {
             setBackendSubmissionEnabled(false);
-            createLocalFallback();
+            setError("Le module declarations raids n est pas encore actif.");
             return;
           }
           setError(body.error || "Impossible de declarer ce raid.");
@@ -247,10 +230,12 @@ export default function MemberDeclareRaidPage() {
           status: String(row.status || "processing") as DeclaredRaid["status"],
           approximate: Boolean(row.is_approximate),
         };
-        setDeclaredRaids((prev) => [created, ...prev]);
+        setDeclaredRaids((prev) => [created, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setShowConfirmation(true);
         setToast({ type: "success", message: "Raid enregistre et envoye a la moderation." });
         setForm((prev) => ({ ...prev, target: "", note: "" }));
+        setShowAutocomplete(false);
+        await loadMyDeclarations();
       } catch {
         setError("Erreur reseau pendant la declaration.");
         setToast({ type: "error", message: "Erreur reseau pendant la declaration." });
@@ -262,22 +247,9 @@ export default function MemberDeclareRaidPage() {
     <MemberSurface>
       <MemberPageHeader
         title="Declarer un raid"
-        description="Version ultra premium de declaration avec assistance intelligente. Flux staff non branche pour l'instant."
-        badge="Bientot disponible"
+        description="Declaration connectee au suivi staff avec autocompletion membre et statuts en temps reel."
+        badge="En ligne"
       />
-
-      <section
-        className="rounded-2xl border px-4 py-3"
-        style={{
-          borderColor: "rgba(250,204,21,0.35)",
-          background: "linear-gradient(110deg, rgba(250,204,21,0.12), rgba(139,92,246,0.08))",
-        }}
-      >
-        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#f5d66b" }}>
-          <Sparkles size={16} />
-          Bientot disponible: synchronisation staff et traitement auto des validations.
-        </div>
-      </section>
 
       <section
         className="rounded-2xl border p-5 md:p-6 space-y-5"
@@ -297,13 +269,56 @@ export default function MemberDeclareRaidPage() {
               <input
                 value={form.target}
                 onChange={(e) => setForm((prev) => ({ ...prev, target: e.target.value }))}
-                onFocus={() => setShowSuggestionsPanel(true)}
+                onFocus={() => setShowAutocomplete(true)}
                 className="w-full rounded-lg border py-2 pl-9 pr-10"
                 style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "rgba(10,10,14,0.62)", color: "var(--color-text)" }}
                 placeholder="Pseudo Twitch cible"
               />
               <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--color-text-secondary)" }} />
             </div>
+            {showAutocomplete ? (
+              <div className="mt-2 rounded-lg border p-2" style={{ borderColor: "rgba(255,255,255,0.14)", backgroundColor: "rgba(8,8,12,0.82)" }}>
+                {loadingSuggestions ? (
+                  <p className="px-2 py-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    Recherche en cours...
+                  </p>
+                ) : suggestions.length === 0 ? (
+                  <p className="px-2 py-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    Aucun membre trouve. Tu peux saisir un pseudo libre.
+                  </p>
+                ) : (
+                  <div className="max-h-[220px] space-y-2 overflow-y-auto">
+                    {groupedSuggestions.map(([groupName, items]) => (
+                      <div key={groupName}>
+                        <p className="px-2 text-[11px] uppercase tracking-[0.12em]" style={{ color: "#c4b5fd" }}>
+                          {groupName}
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {items.map((item) => (
+                            <button
+                              key={`${groupName}-${item.login}`}
+                              type="button"
+                              onClick={() => applySuggestion(item.login)}
+                              className="flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-sm"
+                              style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--color-text)" }}
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <UserCircle size={13} style={{ color: "#a78bfa" }} />
+                                {item.label}
+                                <span style={{ color: "var(--color-text-secondary)" }}>({item.login})</span>
+                              </span>
+                              <span className="text-xs" style={{ color: item.role === "Moderateur" ? "#f0c96b" : "var(--color-text-secondary)" }}>
+                                {item.role || "Membre"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
             <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
               Le pseudo saisi est accepte meme si le streamer n'est pas membre TENF.
             </p>
@@ -339,80 +354,28 @@ export default function MemberDeclareRaidPage() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>
-              Suggestions intelligentes
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowSuggestionsPanel((prev) => !prev)}
-              className="rounded-md border px-2 py-1 text-xs"
-              style={{ borderColor: "rgba(255,255,255,0.22)", color: "var(--color-text-secondary)" }}
-            >
-              {showSuggestionsPanel ? "Masquer" : "Afficher"}
-            </button>
-          </div>
-          <div className={`grid gap-2 md:grid-cols-2 transition-all duration-300 ${showSuggestionsPanel ? "opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-            {Object.entries(groupedSuggestions).map(([groupName, items]) => (
-              <div key={groupName} className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(8,8,12,0.45)" }}>
-                <p className="mb-2 text-xs uppercase tracking-[0.15em]" style={{ color: "rgba(196,181,253,0.9)" }}>
-                  {groupName}
-                </p>
-                <div className="space-y-1.5">
-                  {items.length === 0 ? (
-                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                      Aucun resultat
-                    </p>
-                  ) : (
-                    items.map((item) => (
-                      <button
-                        key={`${groupName}-${item.login}`}
-                        type="button"
-                        onClick={() => applySuggestion(item.label)}
-                        className="flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm"
-                        style={{ borderColor: "rgba(255,255,255,0.11)", color: "var(--color-text)" }}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <UserCircle size={13} style={{ color: "#a78bfa" }} />
-                          {item.label}
-                        </span>
-                        <span className="text-xs" style={{ color: item.role === "Moderateur" ? "#f0c96b" : "var(--color-text-secondary)" }}>
-                          {item.role || "Membre"}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => applySuggestion(form.target.trim() || "Autre streamer")}
-            className="rounded-lg border px-3 py-2 text-sm font-semibold"
-            style={{ borderColor: "rgba(96,165,250,0.4)", color: "#93c5fd" }}
-          >
-            Autre streamer...
-          </button>
-        </div>
-
         <div className="rounded-xl border p-4 space-y-2" style={{ borderColor: "rgba(52,211,153,0.3)", backgroundColor: "rgba(52,211,153,0.08)" }}>
           <p className="text-sm font-semibold" style={{ color: "#6ee7b7" }}>
             Suggestions TENF - Membres peu raides ce mois-ci
           </p>
           <div className="flex flex-wrap gap-2">
-            {lowRaidedSuggestions.map((name) => (
+            {lowRaidedSuggestions.length === 0 ? (
+              <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                Aucune suggestion disponible pour le moment.
+              </span>
+            ) : (
+              lowRaidedSuggestions.map((item) => (
               <button
-                key={name}
+                key={item.login}
                 type="button"
-                onClick={() => applySuggestion(name)}
+                onClick={() => applySuggestion(item.login)}
                 className="rounded-full border px-3 py-1 text-xs font-semibold"
                 style={{ borderColor: "rgba(52,211,153,0.45)", color: "#a7f3d0" }}
               >
-                {name}
+                {item.label} ({item.receivedCount})
               </button>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -502,7 +465,10 @@ export default function MemberDeclareRaidPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {declaredRaids.map((raid) => {
+            {declaredRaids
+              .slice()
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .map((raid) => {
               const status = formatStatus(raid.status);
               const StatusIcon = status.icon;
               return (

@@ -8,6 +8,12 @@ function normalize(value: string): string {
   return String(value || "").trim().toLowerCase();
 }
 
+function isActiveGestionMember(member: { isActive?: boolean; role?: string }): boolean {
+  // Aligne le bloc "membres peu raides" sur la logique metier de la page admin/membres/gestion:
+  // actif = statut Actif et hors segment "Nouveau".
+  return member.isActive === true && String(member.role || "") !== "Nouveau";
+}
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -40,7 +46,7 @@ export async function GET() {
     }
 
     const candidates = members
-      .filter((member) => member.isActive === true)
+      .filter((member) => isActiveGestionMember(member))
       .map((member) => {
         const login = normalize(member.twitchLogin);
         return {
