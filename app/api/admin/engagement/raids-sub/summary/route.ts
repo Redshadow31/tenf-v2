@@ -3,6 +3,10 @@ import { requireAdmin } from '@/lib/requireAdmin';
 import { getActiveRaidTestRun, getRaidTestWatchlistSnapshot } from '@/lib/raidEventsubTest';
 import { supabaseAdmin } from '@/lib/db/supabase';
 
+const CACHE_TTL_MS = 120_000;
+type SummaryCacheEntry = { at: number; payload: unknown };
+const summaryCache = new Map<string, SummaryCacheEntry>();
+
 export async function GET() {
   try {
     const admin = await requireAdmin();
@@ -14,7 +18,7 @@ export async function GET() {
     const testEnabled = String(process.env.RAID_EVENTSUB_TEST_ENABLED || '').toLowerCase() === 'true';
 
     if (!activeRun) {
-      return NextResponse.json({
+      const payload = {
         testEnabled,
         activeRun: null,
         stats: {
@@ -37,6 +41,20 @@ export async function GET() {
           targetedByPolicy: 0,
           localSubscriptionsActiveOrPending: 0,
           remoteSubscriptionsEnabled: 0,
+        },
+      };
+      return NextResponse.json(payload, {
+        headers: { 'Cache-Control': 'private, max-age=120, stale-while-revalidate=600' },
+      });
+    }
+
+    const cacheKey = `run:${activeRun.id}:test:${testEnabled ? '1' : '0'}`;
+    const cached = summaryCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return NextResponse.json(cached.payload, {
+        headers: {
+          'Cache-Control': 'private, max-age=120, stale-while-revalidate=600',
+          'X-Cache': 'HIT',
         },
       });
     }
@@ -65,7 +83,7 @@ export async function GET() {
     const events = eventsRes.data || [];
     const subs = subsRes.data || [];
 
-    return NextResponse.json({
+    const payload = {
       testEnabled,
       activeRun,
       stats: {
@@ -88,6 +106,13 @@ export async function GET() {
         targetedByPolicy: watchlist.summary.targetedByPolicy,
         localSubscriptionsActiveOrPending: watchlist.summary.localSubscriptionsActiveOrPending,
         remoteSubscriptionsEnabled: watchlist.summary.remoteSubscriptionsEnabled,
+      },
+    };
+    summaryCache.set(cacheKey, { at: Date.now(), payload });
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'private, max-age=120, stale-while-revalidate=600',
+        'X-Cache': 'MISS',
       },
     });
   } catch (error) {

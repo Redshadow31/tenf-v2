@@ -35,15 +35,20 @@ type ReviewEvent = {
   from_broadcaster_user_login: string | null;
   to_broadcaster_user_login: string | null;
   event_at: string | null;
+  viewers?: number | null;
+  error_reason?: string | null;
   processing_status: "received" | "matched" | "ignored" | "duplicate" | "error";
 };
 
 export default function AdminRaidsSubPage() {
   const [loading, setLoading] = useState(true);
   const [runningAction, setRunningAction] = useState<"" | "refresh" | "sync">("");
-  const [activeTab, setActiveTab] = useState<"overview" | "stats">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stats" | "history">("overview");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
   const [statsPage, setStatsPage] = useState(1);
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">("all");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -65,8 +70,8 @@ export default function AdminRaidsSubPage() {
         setError("");
       }
       const [summaryResponse, reviewResponse] = await Promise.all([
-        fetch("/api/admin/engagement/raids-sub/summary", { cache: "no-store" }),
-        fetch("/api/admin/engagement/raids-sub/review?status=all&limit=500", { cache: "no-store" }),
+        fetch("/api/admin/engagement/raids-sub/summary"),
+        fetch("/api/admin/engagement/raids-sub/review?status=all&limit=500"),
       ]);
       const [summaryBody, reviewBody] = await Promise.all([summaryResponse.json(), reviewResponse.json()]);
       if (!summaryResponse.ok) throw new Error(summaryBody.error || "Impossible de charger le suivi raids-sub.");
@@ -129,6 +134,10 @@ export default function AdminRaidsSubPage() {
     setStatsPage(1);
   }, [activeTab, statsSubTab]);
 
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [activeTab, historyStatusFilter, historySearch]);
+
   const nonDuplicateEvents = useMemo(
     () => reviewEvents.filter((event) => event.processing_status !== "duplicate" && event.processing_status !== "error"),
     [reviewEvents]
@@ -162,6 +171,24 @@ export default function AdminRaidsSubPage() {
   const statsPerPage = 12;
   const statsTotalPages = Math.max(1, Math.ceil(activeStatsRows.length / statsPerPage));
   const pagedStatsRows = activeStatsRows.slice((statsPage - 1) * statsPerPage, statsPage * statsPerPage);
+
+  const filteredHistoryRows = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    return reviewEvents
+      .filter((event) => (historyStatusFilter === "all" ? true : event.processing_status === historyStatusFilter))
+      .filter((event) => {
+        if (!query) return true;
+        const from = String(event.from_broadcaster_user_login || "").toLowerCase();
+        const to = String(event.to_broadcaster_user_login || "").toLowerCase();
+        const reason = String(event.error_reason || "").toLowerCase();
+        return from.includes(query) || to.includes(query) || reason.includes(query);
+      })
+      .sort((a, b) => new Date(String(b.event_at || 0)).getTime() - new Date(String(a.event_at || 0)).getTime());
+  }, [reviewEvents, historyStatusFilter, historySearch]);
+
+  const historyPerPage = 12;
+  const historyTotalPages = Math.max(1, Math.ceil(filteredHistoryRows.length / historyPerPage));
+  const pagedHistoryRows = filteredHistoryRows.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
 
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
@@ -303,6 +330,17 @@ export default function AdminRaidsSubPage() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("history")}
+            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+            style={{
+              borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+              color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
+            }}
+          >
+            Historique des raids
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setRunningAction("refresh");
               void loadData().finally(() => setRunningAction(""));
@@ -421,7 +459,7 @@ export default function AdminRaidsSubPage() {
               </Link>
             </div>
           </>
-        ) : (
+        ) : activeTab === "stats" ? (
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-400">Mois:</span>
@@ -513,6 +551,79 @@ export default function AdminRaidsSubPage() {
                       type="button"
                       onClick={() => setStatsPage((prev) => Math.min(statsTotalPages, prev + 1))}
                       disabled={statsPage === statsTotalPages}
+                      className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                      style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {(["all", "received", "matched", "ignored", "duplicate", "error"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setHistoryStatusFilter(status)}
+                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                  style={{
+                    borderColor: historyStatusFilter === status ? "rgba(145,70,255,0.55)" : "rgba(255,255,255,0.18)",
+                    color: historyStatusFilter === status ? "#d8b4fe" : "#cbd5e1",
+                  }}
+                >
+                  {status === "all" ? "Tous" : status}
+                </button>
+              ))}
+              <input
+                value={historySearch}
+                onChange={(event) => setHistorySearch(event.target.value)}
+                placeholder="Rechercher raider/cible/raison..."
+                className="w-full max-w-[360px] rounded-md border px-3 py-1.5 text-xs"
+                style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#101014", color: "#fff" }}
+              />
+            </div>
+
+            {filteredHistoryRows.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucun raid dans l historique avec ces filtres.</p>
+            ) : (
+              <div className="space-y-2">
+                {pagedHistoryRows.map((item) => (
+                  <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-white">
+                        {item.from_broadcaster_user_login || "inconnu"} → {item.to_broadcaster_user_login || "inconnu"}
+                      </p>
+                      <span className="rounded-full border border-white/20 bg-white/5 px-2 py-1 text-[11px] text-gray-200">{item.processing_status}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {item.event_at ? new Date(item.event_at).toLocaleString("fr-FR") : "Date inconnue"}
+                      {typeof item.viewers === "number" ? ` • viewers: ${item.viewers}` : ""}
+                    </p>
+                    {item.error_reason ? <p className="mt-1 text-xs text-amber-200">Raison: {item.error_reason}</p> : null}
+                  </article>
+                ))}
+                {historyTotalPages > 1 ? (
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                      disabled={historyPage === 1}
+                      className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                      style={{ borderColor: "rgba(255,255,255,0.18)" }}
+                    >
+                      Precedent
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      Page {historyPage}/{historyTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryPage((prev) => Math.min(historyTotalPages, prev + 1))}
+                      disabled={historyPage === historyTotalPages}
                       className="rounded-md border px-2 py-1 text-xs disabled:opacity-50"
                       style={{ borderColor: "rgba(255,255,255,0.18)" }}
                     >
