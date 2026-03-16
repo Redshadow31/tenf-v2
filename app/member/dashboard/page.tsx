@@ -110,6 +110,17 @@ function getCardFeedback(current: number, target: number, remaining: number): st
   return "Priorite de depart: avance sur ce point cette semaine.";
 }
 
+type SuggestedAction = {
+  impact: number;
+  href: string;
+  label: string;
+  detail: string;
+};
+
+function isSuggestedAction(value: SuggestedAction | null): value is SuggestedAction {
+  return value !== null;
+}
+
 export default function MemberDashboardPage() {
   const { data, loading, error } = useMemberOverview();
 
@@ -258,13 +269,15 @@ export default function MemberDashboardPage() {
           detail: `${recommendedEvent.title} - ${formatDateTime(recommendedEvent.date)}.`,
         }
       : null,
-  ]
-    .filter(Boolean)
+  ] satisfies Array<SuggestedAction | null>;
+
+  const prioritizedActions = suggestedActions
+    .filter(isSuggestedAction)
     .sort((a, b) => b.impact - a.impact)
-    .slice(0, 3) as Array<{ impact: number; href: string; label: string; detail: string }>;
+    .slice(0, 3);
 
   const mainAction =
-    suggestedActions[0] ||
+    prioritizedActions[0] ||
     ({
       impact: 0,
       href: "/member/evenements",
@@ -272,7 +285,7 @@ export default function MemberDashboardPage() {
       detail: "Ajuste ton planning pour garder ton rythme ce mois-ci.",
     } as const);
 
-  const quickCtas = [mainAction, ...suggestedActions.slice(1, 3)];
+  const quickCtas = [mainAction, ...prioritizedActions.slice(1, 3)];
 
   const recentTimeline = [
     ...data.formationHistory.map((item) => ({
@@ -426,12 +439,12 @@ export default function MemberDashboardPage() {
             </span>
           </div>
           <div className="mt-4 space-y-4">
-            {suggestedActions.length === 0 ? (
+            {prioritizedActions.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 Tu es a jour cette semaine. Garde le rythme.
               </p>
             ) : (
-              suggestedActions.map((action, index) => (
+              prioritizedActions.map((action, index) => (
                 <div key={action.label} className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
