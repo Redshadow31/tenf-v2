@@ -21,6 +21,14 @@ type WatchlistResponse = {
   runId: string | null;
   callbackUrl: string;
   members: WatchlistMember[];
+  dropsWithoutRaid: Array<{
+    discordId: string | null;
+    twitchLogin: string;
+    twitchId: string;
+    endedWithoutRaid: boolean;
+    recentOutgoingRaids: number;
+    lastOutgoingRaidAt: string | null;
+  }>;
   summary: {
     eligibleMembers: number;
     liveNow: number;
@@ -28,6 +36,7 @@ type WatchlistResponse = {
     targetedByPolicy: number;
     localSubscriptionsActiveOrPending: number;
     remoteSubscriptionsEnabled: number;
+    dropsWithoutRaid: number;
   };
 };
 
@@ -95,6 +104,36 @@ export default function AdminRaidsTestWatchlistPage() {
         <Card label="Should monitor" value={data?.summary.targetedByPolicy ?? 0} />
         <Card label="Local subs active/pending" value={data?.summary.localSubscriptionsActiveOrPending ?? 0} />
         <Card label="Remote subs enabled" value={data?.summary.remoteSubscriptionsEnabled ?? 0} />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-900/10 p-4">
+        <h2 className="mb-2 text-lg font-semibold text-rose-200">Baisse - live coupe sans raid</h2>
+        <p className="mb-3 text-xs text-rose-100/80">
+          Membres recemment live puis OFF, sans raid sortant detecte sur la fenetre recente.
+        </p>
+        <div className="mb-3">
+          <Card label="Baisse sans raid" value={data?.summary.dropsWithoutRaid ?? 0} />
+        </div>
+        {loading ? (
+          <p className="text-sm text-gray-300">Chargement...</p>
+        ) : !data?.dropsWithoutRaid?.length ? (
+          <p className="text-sm text-gray-300">Aucun cas detecte dans la fenetre recente.</p>
+        ) : (
+          <div className="space-y-2">
+            {data.dropsWithoutRaid.map((row) => (
+              <article key={row.twitchId} className="rounded-lg border border-rose-400/25 bg-[#121216] p-3">
+                <p className="text-sm font-semibold text-white">{row.twitchLogin}</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  twitchId: {row.twitchId}
+                  {row.discordId ? ` | discordId: ${row.discordId}` : ""}
+                  {row.lastOutgoingRaidAt
+                    ? ` | dernier raid sortant: ${new Date(row.lastOutgoingRaidAt).toLocaleString("fr-FR")}`
+                    : " | dernier raid sortant: aucun"}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">

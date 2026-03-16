@@ -12,6 +12,7 @@ import {
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 const CONDITION_TYPE = 'to_broadcaster';
 const GRACE_PERIOD_MINUTES = 15;
+const DROP_NO_RAID_WINDOW_MINUTES = 30;
 
 type RaidTestRunStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled';
 type RaidTestSubscriptionStatus = 'pending' | 'active' | 'revoked' | 'failed' | 'expired';
@@ -66,6 +67,14 @@ interface WatchlistSnapshot {
   runId: string | null;
   callbackUrl: string;
   members: WatchlistMemberRow[];
+  dropsWithoutRaid: Array<{
+    discordId: string | null;
+    twitchLogin: string;
+    twitchId: string;
+    endedWithoutRaid: boolean;
+    recentOutgoingRaids: number;
+    lastOutgoingRaidAt: string | null;
+  }>;
   summary: {
     eligibleMembers: number;
     liveNow: number;
@@ -73,6 +82,7 @@ interface WatchlistSnapshot {
     targetedByPolicy: number;
     localSubscriptionsActiveOrPending: number;
     remoteSubscriptionsEnabled: number;
+    dropsWithoutRaid: number;
   };
 }
 
@@ -796,11 +806,67 @@ export async function getRaidTestWatchlistSnapshot(): Promise<WatchlistSnapshot>
     ['active', 'pending'].includes(String(sub.status || ''))
   ).length;
 
+  const dropsCandidates = members.filter((member) => member.wasRecentlyLive && !member.isLiveNow);
+  const dropsByTwitchId = new Map<
+    string,
+    { recentOutgoingRaids: number; lastOutgoingRaidAt: string | null }
+  >();
+
+  if (activeRun && dropsCandidates.length > 0) {
+    const minEventAtIso = new Date(Date.now() - DROP_NO_RAID_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const fromIds = dropsCandidates.map((m) => m.twitchId);
+    const { data: dropEvents, error: dropEventsError } = await supabaseAdmin
+      .from('raid_test_events')
+      .select('from_broadcaster_user_id,event_at')
+      .eq('run_id', activeRun.id)
+      .in('from_broadcaster_user_id', fromIds)
+      .gte('event_at', minEventAtIso)
+      .order('event_at', { ascending: false })
+      .limit(5000);
+
+    if (dropEventsError) {
+      throw new Error(
+        `[raidEventsubTest] Impossible de lire les events sortants recents pour la section baisse: ${dropEventsError.message}`
+      );
+    }
+
+    for (const event of dropEvents || []) {
+      const twitchId = String((event as any).from_broadcaster_user_id || '');
+      if (!twitchId) continue;
+      const existing = dropsByTwitchId.get(twitchId);
+      if (!existing) {
+        dropsByTwitchId.set(twitchId, {
+          recentOutgoingRaids: 1,
+          lastOutgoingRaidAt: String((event as any).event_at || '') || null,
+        });
+      } else {
+        existing.recentOutgoingRaids += 1;
+      }
+    }
+  }
+
+  const dropsWithoutRaid = dropsCandidates
+    .map((member) => {
+      const stats = dropsByTwitchId.get(member.twitchId);
+      const recentOutgoingRaids = stats?.recentOutgoingRaids || 0;
+      return {
+        discordId: member.discordId,
+        twitchLogin: member.twitchLogin,
+        twitchId: member.twitchId,
+        endedWithoutRaid: recentOutgoingRaids === 0,
+        recentOutgoingRaids,
+        lastOutgoingRaidAt: stats?.lastOutgoingRaidAt || null,
+      };
+    })
+    .filter((item) => item.endedWithoutRaid)
+    .sort((a, b) => a.twitchLogin.localeCompare(b.twitchLogin));
+
   return {
     enabled,
     runId: activeRun?.id || null,
     callbackUrl,
     members,
+    dropsWithoutRaid,
     summary: {
       eligibleMembers: eligibleMembers.length,
       liveNow: members.filter((m) => m.isLiveNow).length,
@@ -808,6 +874,7 @@ export async function getRaidTestWatchlistSnapshot(): Promise<WatchlistSnapshot>
       targetedByPolicy: members.filter((m) => m.shouldBeTargeted).length,
       localSubscriptionsActiveOrPending,
       remoteSubscriptionsEnabled: remoteByTargetId.size,
+      dropsWithoutRaid: dropsWithoutRaid.length,
     },
   };
 }
