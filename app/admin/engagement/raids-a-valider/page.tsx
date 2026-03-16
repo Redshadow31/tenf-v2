@@ -12,7 +12,7 @@ type RaidDeclaration = {
   raid_at: string;
   is_approximate: boolean;
   note: string;
-  status: "processing" | "validated" | "rejected";
+  status: "processing" | "to_study" | "validated" | "rejected";
   staff_comment?: string | null;
   reviewed_at?: string | null;
   reviewed_by?: string | null;
@@ -20,7 +20,7 @@ type RaidDeclaration = {
 };
 
 export default function AdminEngagementRaidsAValiderPage() {
-  const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "validated" | "rejected">("processing");
+  const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "to_study" | "validated" | "rejected">("processing");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(true);
@@ -62,12 +62,13 @@ export default function AdminEngagementRaidsAValiderPage() {
   const stats = useMemo(() => {
     return {
       processing: rows.filter((item) => item.status === "processing").length,
+      toStudy: rows.filter((item) => item.status === "to_study").length,
       validated: rows.filter((item) => item.status === "validated").length,
       rejected: rows.filter((item) => item.status === "rejected").length,
     };
   }, [rows]);
 
-  async function updateStatus(id: string, status: "processing" | "validated" | "rejected") {
+  async function updateStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
     setSavingId(id);
     try {
       const response = await fetch(`/api/admin/engagement/raids-declarations/${id}`, {
@@ -92,6 +93,14 @@ export default function AdminEngagementRaidsAValiderPage() {
   }
 
   function badgeStyle(status: RaidDeclaration["status"]): { borderColor: string; color: string; backgroundColor: string; label: string } {
+    if (status === "to_study") {
+      return {
+        borderColor: "rgba(96,165,250,0.45)",
+        color: "#93c5fd",
+        backgroundColor: "rgba(96,165,250,0.12)",
+        label: "A etudier",
+      };
+    }
     if (status === "validated") {
       return {
         borderColor: "rgba(52,211,153,0.45)",
@@ -156,6 +165,17 @@ export default function AdminEngagementRaidsAValiderPage() {
             }}
           >
             En cours ({stats.processing})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("to_study")}
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            style={{
+              borderColor: statusFilter === "to_study" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
+              color: statusFilter === "to_study" ? "#93c5fd" : "#cbd5e1",
+            }}
+          >
+            A etudier ({stats.toStudy})
           </button>
           <button
             type="button"
@@ -241,6 +261,15 @@ export default function AdminEngagementRaidsAValiderPage() {
                       style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
                     />
                     <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void updateStatus(item.id, "to_study")}
+                        disabled={isSaving}
+                        className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                        style={{ borderColor: "rgba(96,165,250,0.5)", color: "#93c5fd" }}
+                      >
+                        A etudier
+                      </button>
                       <button
                         type="button"
                         onClick={() => void updateStatus(item.id, "validated")}

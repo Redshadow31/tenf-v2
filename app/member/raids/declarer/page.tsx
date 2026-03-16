@@ -17,7 +17,7 @@ type DeclaredRaid = {
   target: string;
   date: string;
   note: string;
-  status: "validated" | "processing" | "rejected";
+  status: "validated" | "processing" | "to_study" | "rejected";
   approximate: boolean;
 };
 
@@ -34,6 +34,15 @@ function getNowAsLocalInput(): string {
 }
 
 function formatStatus(status: DeclaredRaid["status"]): { label: string; border: string; color: string; bg: string; icon: typeof CheckCircle2 } {
+  if (status === "to_study") {
+    return {
+      label: "A etudier",
+      border: "rgba(96,165,250,0.45)",
+      color: "#93c5fd",
+      bg: "rgba(96,165,250,0.12)",
+      icon: Info,
+    };
+  }
   if (status === "validated") {
     return {
       label: "Valide",

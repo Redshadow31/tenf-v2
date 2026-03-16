@@ -21,7 +21,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
     const status = String(body?.status || "");
     const staffComment = String(body?.staffComment || "").trim();
 
-    if (!["processing", "validated", "rejected"].includes(status)) {
+    if (!["processing", "to_study", "validated", "rejected"].includes(status)) {
       return NextResponse.json({ error: "Statut invalide" }, { status: 400 });
     }
 

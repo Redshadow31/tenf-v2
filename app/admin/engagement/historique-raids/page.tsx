@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 
 type RaidDeclaration = {
   id: string;
@@ -11,7 +12,7 @@ type RaidDeclaration = {
   raid_at: string;
   is_approximate: boolean;
   note: string;
-  status: "processing" | "validated" | "rejected";
+  status: "processing" | "to_study" | "validated" | "rejected";
   staff_comment?: string | null;
 };
 
@@ -42,6 +43,9 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [raidsRecus, setRaidsRecus] = useState<RaidApiItem[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [growthSentPct, setGrowthSentPct] = useState<number | null>(null);
+  const [growthReceivedPct, setGrowthReceivedPct] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -103,6 +107,66 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   }, [selectedMonth]);
 
   useEffect(() => {
+    if (!selectedMonth) return;
+    (async () => {
+      try {
+        setTrendLoading(true);
+        const [yearStr, monthStr] = selectedMonth.split("-");
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+        if (!year || !month) {
+          setGrowthSentPct(null);
+          setGrowthReceivedPct(null);
+          return;
+        }
+
+        const monthKeys = Array.from({ length: 4 }, (_, idx) => {
+          const d = new Date(year, month - 1 - idx, 1);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        });
+
+        const responses = await Promise.all(
+          monthKeys.map((key) =>
+            fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(key)}`, { cache: "no-store" }).then((res) =>
+              res.ok ? res.json() : null
+            )
+          )
+        );
+
+        const totals = responses.map((body) => {
+          const filterManualOnly = (raid: RaidApiItem) => {
+            const source = raid.source || "";
+            if (source === "discord") return false;
+            return source === "manual" || source === "admin" || !source;
+          };
+          const faits = ((body?.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly);
+          const recus = ((body?.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly);
+          return {
+            sent: faits.reduce((sum, raid) => sum + (raid.count || 1), 0),
+            received: recus.length,
+          };
+        });
+
+        const current = totals[0] || { sent: 0, received: 0 };
+        const previous = totals.slice(1, 4);
+        const previousSentAvg = previous.length > 0 ? previous.reduce((sum, item) => sum + item.sent, 0) / previous.length : 0;
+        const previousReceivedAvg = previous.length > 0 ? previous.reduce((sum, item) => sum + item.received, 0) / previous.length : 0;
+
+        const sentPct = previousSentAvg > 0 ? ((current.sent - previousSentAvg) / previousSentAvg) * 100 : null;
+        const receivedPct = previousReceivedAvg > 0 ? ((current.received - previousReceivedAvg) / previousReceivedAvg) * 100 : null;
+
+        setGrowthSentPct(Number.isFinite(sentPct as number) ? sentPct : null);
+        setGrowthReceivedPct(Number.isFinite(receivedPct as number) ? receivedPct : null);
+      } catch {
+        setGrowthSentPct(null);
+        setGrowthReceivedPct(null);
+      } finally {
+        setTrendLoading(false);
+      }
+    })();
+  }, [selectedMonth]);
+
+  useEffect(() => {
     setHistoryPage(1);
     setStatsPage(1);
   }, [selectedMonth, historySearch, statsSubTab, activeTab]);
@@ -141,6 +205,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     () => ({
       declarations: declarations.length,
       pending: declarations.filter((item) => item.status === "processing").length,
+      toStudy: declarations.filter((item) => item.status === "to_study").length,
       validated: declarations.filter((item) => item.status === "validated").length,
       rejected: declarations.filter((item) => item.status === "rejected").length,
       sent: raidsFaits.reduce((sum, raid) => sum + (raid.count || 1), 0),
@@ -148,6 +213,24 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     }),
     [declarations, raidsFaits, raidsRecus]
   );
+
+  const uniqueRaiders = useMemo(() => {
+    const set = new Set<string>();
+    for (const raid of raidsFaits) {
+      const key = String(raid.raiderTwitchLogin || "").toLowerCase();
+      if (key) set.add(key);
+    }
+    return set.size;
+  }, [raidsFaits]);
+
+  const uniqueTargets = useMemo(() => {
+    const set = new Set<string>();
+    for (const raid of raidsRecus) {
+      const key = String(raid.targetTwitchLogin || "").toLowerCase();
+      if (key) set.add(key);
+    }
+    return set.size;
+  }, [raidsRecus]);
 
   const filteredDeclarations = useMemo(() => {
     const q = historySearch.trim().toLowerCase();
@@ -172,7 +255,41 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const statsTotalPages = Math.max(1, Math.ceil(activeStatsRows.length / statsPerPage));
   const pagedStatsRows = activeStatsRows.slice((statsPage - 1) * statsPerPage, statsPage * statsPerPage);
 
+  const dailyChartData = useMemo((): DailyRaidPoint[] => {
+    if (!selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) return [];
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const byDay = new Map<number, DailyRaidPoint>();
+    for (let day = 1; day <= daysInMonth; day++) {
+      byDay.set(day, { day, raidsFaits: 0, raidsRecus: 0 });
+    }
+
+    for (const raid of raidsFaits) {
+      const date = new Date(raid.date);
+      if (date.getFullYear() !== year || date.getMonth() + 1 !== month) continue;
+      const point = byDay.get(date.getDate());
+      if (!point) continue;
+      point.raidsFaits += raid.count || 1;
+    }
+
+    for (const raid of raidsRecus) {
+      const date = new Date(raid.date);
+      if (date.getFullYear() !== year || date.getMonth() + 1 !== month) continue;
+      const point = byDay.get(date.getDate());
+      if (!point) continue;
+      point.raidsRecus += 1;
+    }
+
+    return Array.from(byDay.values());
+  }, [raidsFaits, raidsRecus, selectedMonth]);
+
   function statusBadge(status: RaidDeclaration["status"]): { label: string; border: string; color: string; bg: string } {
+    if (status === "to_study") {
+      return { label: "A etudier", border: "rgba(96,165,250,0.45)", color: "#93c5fd", bg: "rgba(96,165,250,0.12)" };
+    }
     if (status === "validated") {
       return { label: "Valide", border: "rgba(52,211,153,0.45)", color: "#34d399", bg: "rgba(52,211,153,0.12)" };
     }
@@ -261,6 +378,10 @@ export default function AdminEngagementHistoriqueRaidsPage() {
             <p className="font-semibold text-emerald-300">{totals.validated}</p>
           </div>
           <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">A etudier</p>
+            <p className="font-semibold text-sky-300">{totals.toStudy}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
             <p className="text-gray-400">Refuses</p>
             <p className="font-semibold text-red-300">{totals.rejected}</p>
           </div>
@@ -271,6 +392,38 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
             <p className="text-gray-400">Raids recus</p>
             <p className="font-semibold text-[#93c5fd]">{totals.received}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Top raid fait</p>
+            <p className="font-semibold text-[#c4b5fd]">
+              {sentRanking[0] ? `${sentRanking[0].label} (${sentRanking[0].total})` : "Aucun"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Top cible recue</p>
+            <p className="font-semibold text-[#93c5fd]">
+              {receivedRanking[0] ? `${receivedRanking[0].label} (${receivedRanking[0].total})` : "Aucune"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Raideurs uniques</p>
+            <p className="font-semibold text-[#c4b5fd]">{uniqueRaiders}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Cibles uniques</p>
+            <p className="font-semibold text-[#93c5fd]">{uniqueTargets}</p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Croissance raids faits (vs moy. 3 mois)</p>
+            <p className="font-semibold" style={{ color: growthSentPct === null ? "#cbd5e1" : growthSentPct >= 0 ? "#34d399" : "#f87171" }}>
+              {trendLoading ? "..." : growthSentPct === null ? "N/A" : `${growthSentPct >= 0 ? "+" : ""}${growthSentPct.toFixed(1)}%`}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-700 px-3 py-2 text-sm">
+            <p className="text-gray-400">Croissance raids recus (vs moy. 3 mois)</p>
+            <p className="font-semibold" style={{ color: growthReceivedPct === null ? "#cbd5e1" : growthReceivedPct >= 0 ? "#34d399" : "#f87171" }}>
+              {trendLoading ? "..." : growthReceivedPct === null ? "N/A" : `${growthReceivedPct >= 0 ? "+" : ""}${growthReceivedPct.toFixed(1)}%`}
+            </p>
           </div>
         </div>
       </div>
@@ -350,6 +503,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           )
         ) : (
           <div>
+            <RaidDailyChart month={selectedMonth} data={dailyChartData} />
+
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <button
                 type="button"
