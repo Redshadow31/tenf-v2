@@ -337,6 +337,15 @@ export default function AdminRaidsTestPage() {
           </p>
         </Link>
         <Link
+          href="/admin/engagement/raids-test/drops-history"
+          className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-orange-400/60"
+        >
+          <p className="text-lg font-semibold text-orange-300">Historique mensuel baisse</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Stat interne par mois: raid non fait, cible differente, cible inconnue.
+          </p>
+        </Link>
+        <Link
           href="/admin/engagement/raids-test/coverage"
           className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-[#9146ff]/60"
         >

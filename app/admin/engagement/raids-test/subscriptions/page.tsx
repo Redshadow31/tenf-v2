@@ -14,7 +14,39 @@ type SubscriptionRow = {
   updated_at: string;
   revoked_at?: string | null;
   revoke_reason?: string | null;
+  memberName?: string;
+  memberLogin?: string | null;
+  hasKnownMember?: boolean;
+  statusLabel?: string;
+  conditionLabel?: string;
+  reasonKind?: "unknown_target" | "raid_not_done" | "different_target" | "sync_cleanup" | "other" | null;
+  reasonLabel?: string | null;
 };
+
+function getReasonBadgeStyle(reasonKind?: string | null): { className: string; emoji: string } {
+  if (reasonKind === "unknown_target") {
+    return {
+      className: "border-red-500/40 bg-red-900/20 text-red-200",
+      emoji: "⛔",
+    };
+  }
+  if (reasonKind === "raid_not_done") {
+    return {
+      className: "border-amber-500/40 bg-amber-900/20 text-amber-200",
+      emoji: "⚠️",
+    };
+  }
+  if (reasonKind === "different_target") {
+    return {
+      className: "border-orange-500/40 bg-orange-900/20 text-orange-200",
+      emoji: "🎯",
+    };
+  }
+  return {
+    className: "border-sky-500/40 bg-sky-900/20 text-sky-200",
+    emoji: "ℹ️",
+  };
+}
 
 export default function AdminRaidsTestSubscriptionsPage() {
   const [loading, setLoading] = useState(true);
@@ -22,6 +54,13 @@ export default function AdminRaidsTestSubscriptionsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [runId, setRunId] = useState<string | null>(null);
+  const statusFilters = [
+    { key: "all", label: "Tous" },
+    { key: "active", label: "Actives" },
+    { key: "pending", label: "En attente" },
+    { key: "revoked", label: "Révoquées" },
+    { key: "failed", label: "En erreur" },
+  ];
 
   async function loadData() {
     try {
@@ -51,7 +90,7 @@ export default function AdminRaidsTestSubscriptionsPage() {
       <Link href="/admin/engagement/raids-test" className="mb-3 inline-block text-sm text-gray-400 hover:text-white">
         ← Retour au hub test
       </Link>
-      <h1 className="text-3xl font-bold">Subscriptions EventSub test</h1>
+      <h1 className="text-3xl font-bold">Abonnements EventSub test</h1>
       <p className="mt-2 text-sm text-gray-400">Run: {runId ? `${runId.slice(0, 8)}...` : "aucun run actif"}</p>
 
       {error ? (
@@ -59,18 +98,18 @@ export default function AdminRaidsTestSubscriptionsPage() {
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {["all", "active", "pending", "revoked", "failed"].map((status) => (
+        {statusFilters.map((filter) => (
           <button
-            key={status}
+            key={filter.key}
             type="button"
-            onClick={() => setStatusFilter(status)}
+            onClick={() => setStatusFilter(filter.key)}
             className="rounded-md border px-3 py-1.5 text-xs font-semibold"
             style={{
-              borderColor: statusFilter === status ? "rgba(145,70,255,0.65)" : "rgba(255,255,255,0.2)",
-              color: statusFilter === status ? "#c4b5fd" : "#e5e7eb",
+              borderColor: statusFilter === filter.key ? "rgba(145,70,255,0.65)" : "rgba(255,255,255,0.2)",
+              color: statusFilter === filter.key ? "#c4b5fd" : "#e5e7eb",
             }}
           >
-            {status}
+            {filter.label}
           </button>
         ))}
         <button
@@ -86,24 +125,35 @@ export default function AdminRaidsTestSubscriptionsPage() {
         {loading ? (
           <p className="text-sm text-gray-300">Chargement...</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-gray-300">Aucune subscription test trouvee.</p>
+          <p className="text-sm text-gray-300">Aucun abonnement test trouvé.</p>
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (
               <article key={row.id} className="rounded-lg border border-gray-700 bg-[#121216] p-3">
                 <p className="text-sm font-semibold text-white">
-                  {row.monitored_twitch_login} ({row.monitored_twitch_id})
+                  {row.memberName || row.memberLogin || row.monitored_twitch_login}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">
-                  status: {row.status} | condition: {row.condition_type} | twitch_sub:{" "}
+                  pseudo Twitch: {row.memberLogin || row.monitored_twitch_login || "inconnu"} | statut:{" "}
+                  {row.statusLabel || row.status} | condition: {row.conditionLabel || row.condition_type} | id sub Twitch:{" "}
                   {row.twitch_subscription_id ? `${row.twitch_subscription_id.slice(0, 10)}...` : "-"}
                 </p>
                 <p className="text-xs text-gray-500">
-                  created: {new Date(row.created_at).toLocaleString("fr-FR")} | updated:{" "}
-                  {new Date(row.updated_at).toLocaleString("fr-FR")}
-                  {row.revoked_at ? ` | revoked: ${new Date(row.revoked_at).toLocaleString("fr-FR")}` : ""}
+                  fiche membre: {row.hasKnownMember ? "liée" : "inconnue"} | id Twitch: {row.monitored_twitch_id}
                 </p>
-                {row.revoke_reason ? <p className="text-xs text-amber-300">raison: {row.revoke_reason}</p> : null}
+                <p className="text-xs text-gray-500">
+                  créée: {new Date(row.created_at).toLocaleString("fr-FR")} | mise à jour:{" "}
+                  {new Date(row.updated_at).toLocaleString("fr-FR")}
+                  {row.revoked_at ? ` | révoquée: ${new Date(row.revoked_at).toLocaleString("fr-FR")}` : ""}
+                </p>
+                {row.reasonLabel ? (
+                  <p
+                    className={`mt-2 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${getReasonBadgeStyle(row.reasonKind).className}`}
+                  >
+                    <span>{getReasonBadgeStyle(row.reasonKind).emoji}</span>
+                    <span>motif: {row.reasonLabel}</span>
+                  </p>
+                ) : null}
               </article>
             ))}
           </div>
