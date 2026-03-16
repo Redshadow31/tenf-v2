@@ -255,10 +255,25 @@ export default function MemberDeclareRaidPage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="Declarer un raid"
+        title="Signaler un raid"
         description="Declaration connectee au suivi staff avec autocompletion membre et statuts en temps reel."
         badge="En ligne"
       />
+
+      <section
+        className="rounded-xl border p-4"
+        style={{
+          borderColor: "rgba(250,204,21,0.45)",
+          backgroundColor: "rgba(250,204,21,0.1)",
+        }}
+      >
+        <p className="text-sm font-semibold" style={{ color: "#fde68a" }}>
+          Avertissement
+        </p>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          Ne signale un raid que s il n apparait pas deja dans <strong>Mes raids</strong>.
+        </p>
+      </section>
 
       <section
         className="rounded-2xl border p-5 md:p-6 space-y-5"
@@ -449,7 +464,7 @@ export default function MemberDeclareRaidPage() {
             className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
             style={{ backgroundColor: "var(--color-primary)" }}
           >
-            Declarer le raid
+            Signaler le raid
           </button>
           {!backendSubmissionEnabled ? (
             <span className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "rgba(250,204,21,0.4)", color: "#facc15" }}>

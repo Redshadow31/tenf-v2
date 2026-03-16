@@ -74,9 +74,9 @@ export const memberSidebarSections: SidebarNavSection[] = [
       {
         title: "Raids",
         items: [
-          { href: "/member/raids/declarer", label: "Declarer un raid", icon: Rocket },
-          { href: "/member/raids/historique", label: "Historique de mes raids", icon: History },
+          { href: "/member/raids/historique", label: "Mes raids", icon: History },
           { href: "/member/raids/statistiques", label: "Statistiques de raids", icon: Activity },
+          { href: "/member/raids/declarer", label: "Signaler un raid", icon: Rocket },
         ],
       },
       {
