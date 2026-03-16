@@ -320,7 +320,7 @@ export default function MemberDeclareRaidPage() {
               </div>
             ) : null}
             <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Le pseudo saisi est accepte meme si le streamer n'est pas membre TENF.
+              Le pseudo saisi est accepte meme si le streamer n'est pas membre TENF. Un raid vers quelqu'un qui ne fait pas partie de la communaute TENF sera refuse.
             </p>
           </div>
 
