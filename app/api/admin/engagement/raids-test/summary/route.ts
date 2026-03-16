@@ -16,7 +16,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
     }
 
-    const activeRun = await getActiveRaidTestRun();
+    let activeRun: { id: string; label: string; status: string; started_at?: string | null } | null = null;
+    const warnings: string[] = [];
+    try {
+      activeRun = await getActiveRaidTestRun();
+    } catch (error) {
+      warnings.push(
+        `Impossible de lire le run actif: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      );
+    }
     const testEnabled = String(process.env.RAID_EVENTSUB_TEST_ENABLED || '').toLowerCase() === 'true';
 
     const [eventsRes, subsRes, declarationsRes, declarationsSnapshotRes] = await Promise.all([
@@ -51,23 +59,39 @@ export async function GET() {
         : Promise.resolve({ data: [], error: null, count: 0 }),
     ]);
 
-    if (eventsRes.error && !isMissingRelationError(eventsRes.error)) {
-      return NextResponse.json({ error: 'Impossible de lire les evenements test' }, { status: 500 });
+    if (eventsRes.error) {
+      warnings.push(
+        isMissingRelationError(eventsRes.error)
+          ? 'Table raid_test_events manquante (migration 0036 non appliquee).'
+          : `Lecture raid_test_events impossible: ${eventsRes.error.message || 'erreur inconnue'}`
+      );
     }
-    if (subsRes.error && !isMissingRelationError(subsRes.error)) {
-      return NextResponse.json({ error: 'Impossible de lire les subscriptions test' }, { status: 500 });
+    if (subsRes.error) {
+      warnings.push(
+        isMissingRelationError(subsRes.error)
+          ? 'Table raid_test_subscriptions manquante (migration 0036 non appliquee).'
+          : `Lecture raid_test_subscriptions impossible: ${subsRes.error.message || 'erreur inconnue'}`
+      );
     }
-    if (declarationsRes.error && !isMissingRelationError(declarationsRes.error)) {
-      return NextResponse.json({ error: 'Impossible de lire les declarations' }, { status: 500 });
+    if (declarationsRes.error) {
+      warnings.push(
+        isMissingRelationError(declarationsRes.error)
+          ? 'Table raid_declarations manquante (migration 0034 non appliquee).'
+          : `Lecture raid_declarations impossible: ${declarationsRes.error.message || 'erreur inconnue'}`
+      );
     }
-    if (declarationsSnapshotRes.error && !isMissingRelationError(declarationsSnapshotRes.error)) {
-      return NextResponse.json({ error: 'Impossible de lire le snapshot declarations test' }, { status: 500 });
+    if (declarationsSnapshotRes.error) {
+      warnings.push(
+        isMissingRelationError(declarationsSnapshotRes.error)
+          ? 'Table raid_test_declarations manquante (migration 0036 non appliquee).'
+          : `Lecture raid_test_declarations impossible: ${declarationsSnapshotRes.error.message || 'erreur inconnue'}`
+      );
     }
 
-    const events = eventsRes.data || [];
-    const subs = subsRes.data || [];
-    const declarations = declarationsRes.data || [];
-    const declarationsSnapshot = declarationsSnapshotRes.data || [];
+    const events = eventsRes.error ? [] : eventsRes.data || [];
+    const subs = subsRes.error ? [] : subsRes.data || [];
+    const declarations = declarationsRes.error ? [] : declarationsRes.data || [];
+    const declarationsSnapshot = declarationsSnapshotRes.error ? [] : declarationsSnapshotRes.data || [];
 
     const byStatus = {
       matched: events.filter((e: any) => e.processing_status === 'matched').length,
@@ -85,6 +109,7 @@ export async function GET() {
       backendReady: true,
       testEnabled,
       activeRun,
+      warnings,
       stats: {
         eventsTotal: eventsRes.count || events.length,
         subscriptionsTotal: subsRes.count || subs.length,
@@ -98,7 +123,14 @@ export async function GET() {
     });
   } catch (error) {
     console.error('[admin/engagement/raids-test/summary] GET error:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      {
+        backendReady: false,
+        error: 'Erreur serveur',
+        details: error instanceof Error ? error.message : 'Erreur inconnue',
+      },
+      { status: 200 }
+    );
   }
 }
 
