@@ -325,6 +325,26 @@ export default function AdminRaidsSubAValiderPage() {
             {rows.map((item) => {
               const badge = badgeStyle(item.processing_status);
               const isSaving = savingId === item.id;
+              const fromDraft = overrideFromById[item.id] ?? item.from_broadcaster_user_login ?? "";
+              const toDraft = overrideToById[item.id] ?? item.to_broadcaster_user_login ?? "";
+              const fromQuery = normalizeLogin(fromDraft);
+              const toQuery = normalizeLogin(toDraft);
+              const fromSuggestions = members
+                .filter((member) => {
+                  if (!fromQuery) return true;
+                  const login = normalizeLogin(member.twitchLogin || "");
+                  const label = String(member.displayName || "").toLowerCase();
+                  return login.includes(fromQuery) || label.includes(fromQuery);
+                })
+                .slice(0, 30);
+              const toSuggestions = members
+                .filter((member) => {
+                  if (!toQuery) return true;
+                  const login = normalizeLogin(member.twitchLogin || "");
+                  const label = String(member.displayName || "").toLowerCase();
+                  return login.includes(toQuery) || label.includes(toQuery);
+                })
+                .slice(0, 30);
               return (
                 <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -356,7 +376,7 @@ export default function AdminRaidsSubAValiderPage() {
                         <div>
                           <label className="mb-1 block text-xs text-gray-400">Raider (login Twitch)</label>
                           <input
-                            value={overrideFromById[item.id] ?? item.from_broadcaster_user_login ?? ""}
+                            value={fromDraft}
                             onChange={(event) =>
                               setOverrideFromById((prev) => ({ ...prev, [item.id]: event.target.value }))
                             }
@@ -365,7 +385,7 @@ export default function AdminRaidsSubAValiderPage() {
                             style={{ borderColor: "rgba(251,191,36,0.35)", backgroundColor: "#0e0e10", color: "#fff" }}
                           />
                           <datalist id={`from-suggestions-${item.id}`}>
-                            {members.slice(0, 150).map((member) => (
+                            {fromSuggestions.map((member) => (
                               <option key={`from-${item.id}-${member.twitchLogin}`} value={normalizeLogin(member.twitchLogin || "")}>
                                 {member.displayName}
                               </option>
@@ -375,7 +395,7 @@ export default function AdminRaidsSubAValiderPage() {
                         <div>
                           <label className="mb-1 block text-xs text-gray-400">Cible (login Twitch)</label>
                           <input
-                            value={overrideToById[item.id] ?? item.to_broadcaster_user_login ?? ""}
+                            value={toDraft}
                             onChange={(event) =>
                               setOverrideToById((prev) => ({ ...prev, [item.id]: event.target.value }))
                             }
@@ -384,7 +404,7 @@ export default function AdminRaidsSubAValiderPage() {
                             style={{ borderColor: "rgba(251,191,36,0.35)", backgroundColor: "#0e0e10", color: "#fff" }}
                           />
                           <datalist id={`to-suggestions-${item.id}`}>
-                            {members.slice(0, 150).map((member) => (
+                            {toSuggestions.map((member) => (
                               <option key={`to-${item.id}-${member.twitchLogin}`} value={normalizeLogin(member.twitchLogin || "")}>
                                 {member.displayName}
                               </option>
