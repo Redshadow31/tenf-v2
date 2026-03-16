@@ -140,7 +140,7 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/engagement/raids-sub", label: "Raids Sub (EventSub only)" },
           { href: "/admin/engagement/raids-test", label: "Raids EventSub (test)" },
           { href: "/admin/engagement/historique-raids", label: "Historique des raids (fonctionnalité à venir)" },
-          { href: "/admin/engagement/points-discord", label: "Points Discord (fonctionnalité à venir)" },
+          { href: "/admin/engagement/points-discord", label: "Points Discord raids" },
         ],
       },
     ],

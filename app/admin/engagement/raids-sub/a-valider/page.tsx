@@ -334,6 +334,15 @@ export default function AdminRaidsSubAValiderPage() {
         <Link href="/admin/engagement/raids-sub" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
           ← Retour à Raids Sub
         </Link>
+        <div className="mb-3">
+          <Link
+            href="/admin/engagement/points-discord"
+            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-300"
+            style={{ borderColor: "rgba(52,211,153,0.45)" }}
+          >
+            Ouvrir la page points de raid
+          </Link>
+        </div>
         <h1 className="mb-2 text-4xl font-bold">Raids Sub à valider</h1>
         <p className="text-gray-400">Validation staff des events du système EventSub test uniquement.</p>
         <p className="mt-1 text-xs text-gray-500">
