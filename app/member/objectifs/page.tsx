@@ -26,6 +26,28 @@ function getLast12Months(): string[] {
   }).reverse();
 }
 
+function progressPercent(current: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+}
+
+function objectiveMessage(current: number, target: number): string {
+  const remaining = Math.max(0, target - current);
+  const progress = progressPercent(current, target);
+  if (remaining <= 0) return "Objectif valide, excellent travail.";
+  if (remaining === 1) return "Plus qu une action pour valider cet objectif.";
+  if (progress >= 75) return "Tu es proche du palier, continue comme ca.";
+  if (progress >= 40) return "Bonne dynamique, garde le rythme.";
+  return "Priorite du mois: lance cet objectif des maintenant.";
+}
+
+function globalObjectiveMessage(score: number): string {
+  if (score >= 100) return "Tous tes objectifs de ce mois sont atteints. Bravo.";
+  if (score >= 80) return "Derniere ligne droite: tu peux valider ce mois rapidement.";
+  if (score >= 50) return "Tres belle progression. Encore un effort pour finaliser le mois.";
+  return "Le mois est en cours: une action aujourd hui peut tout lancer.";
+}
+
 export default function MemberGoalsPage() {
   const { data, loading } = useMemberOverview();
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -70,6 +92,12 @@ export default function MemberGoalsPage() {
   const formationsFallback =
     data.stats.formationsValidatedThisMonth ?? data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
   const formationsCurrent = formationsFromAttendance > 0 ? formationsFromAttendance : formationsFallback;
+  const eventsProgress = progressPercent(eventsCurrent, goals.events);
+  const spotlightProgress = progressPercent(spotlightCurrent, goals.spotlight);
+  const raidsProgress = progressPercent(raidsForMonth, goals.raids);
+  const formationsProgress = progressPercent(formationsCurrent, goals.formations);
+  const globalScore = Math.round((eventsProgress + spotlightProgress + raidsProgress + formationsProgress) / 4);
+  const globalMessage = globalObjectiveMessage(globalScore);
 
   return (
     <MemberSurface>
@@ -111,6 +139,15 @@ export default function MemberGoalsPage() {
           </button>
         </div>
 
+        <div className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+            Progression globale: {globalScore}%
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            {globalMessage}
+          </p>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -125,6 +162,9 @@ export default function MemberGoalsPage() {
               className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
             />
+            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              {objectiveMessage(eventsCurrent, goals.events)}
+            </p>
           </label>
           <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -139,6 +179,9 @@ export default function MemberGoalsPage() {
               className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
             />
+            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              {objectiveMessage(spotlightCurrent, goals.spotlight)}
+            </p>
           </label>
           <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -153,6 +196,9 @@ export default function MemberGoalsPage() {
               className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
             />
+            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              {objectiveMessage(raidsForMonth, goals.raids)}
+            </p>
           </label>
           <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -167,6 +213,9 @@ export default function MemberGoalsPage() {
               className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
             />
+            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              {objectiveMessage(formationsCurrent, goals.formations)}
+            </p>
           </label>
         </div>
       </section>
