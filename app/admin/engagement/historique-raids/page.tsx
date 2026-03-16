@@ -42,6 +42,16 @@ type RaidDuplicateGroup = {
   targetLabel: string;
 };
 
+type DeclarationDuplicateGroup = {
+  key: string;
+  ids: string[];
+  memberDisplayName: string;
+  memberTwitchLogin: string;
+  targetTwitchLogin: string;
+  raidAt: string;
+  count: number;
+};
+
 export default function AdminEngagementHistoriqueRaidsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
@@ -72,6 +82,10 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [duplicatesList, setDuplicatesList] = useState<RaidDuplicateGroup[]>([]);
   const [deduplicating, setDeduplicating] = useState(false);
   const [deletingRaidKey, setDeletingRaidKey] = useState<string | null>(null);
+  const [showHistoryDuplicatesModal, setShowHistoryDuplicatesModal] = useState(false);
+  const [historyDuplicates, setHistoryDuplicates] = useState<DeclarationDuplicateGroup[]>([]);
+  const [deduplicatingHistory, setDeduplicatingHistory] = useState(false);
+  const [deletingDeclarationId, setDeletingDeclarationId] = useState<string | null>(null);
 
   useEffect(() => {
     const now = new Date();
@@ -621,6 +635,87 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     }
   }
 
+  function checkHistoryDuplicates() {
+    if (!declarations.length) {
+      setHistoryDuplicates([]);
+      setShowHistoryDuplicatesModal(true);
+      return;
+    }
+    const byKey = new Map<string, RaidDeclaration[]>();
+    for (const row of declarations) {
+      const key = `${String(row.member_twitch_login || "").toLowerCase()}|${String(row.target_twitch_login || "").toLowerCase()}|${String(row.raid_at || "")}`;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(row);
+    }
+
+    const groups = Array.from(byKey.entries())
+      .filter(([, rows]) => rows.length > 1)
+      .map(([key, rows]) => {
+        const first = rows[0];
+        return {
+          key,
+          ids: rows.map((r) => r.id),
+          memberDisplayName: first.member_display_name,
+          memberTwitchLogin: first.member_twitch_login,
+          targetTwitchLogin: first.target_twitch_login,
+          raidAt: first.raid_at,
+          count: rows.length,
+        };
+      });
+
+    setHistoryDuplicates(groups);
+    setShowHistoryDuplicatesModal(true);
+  }
+
+  async function runHistoryDeduplicate() {
+    if (deduplicatingHistory) return;
+    if (!confirm(`Supprimer les doublons des declarations pour ${selectedMonth} ?`)) return;
+    setDeduplicatingHistory(true);
+    try {
+      const response = await fetch("/api/admin/engagement/raids-declarations/deduplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: selectedMonth }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        alert(body?.error || "Suppression des doublons impossible.");
+        return;
+      }
+
+      alert(`${body?.message || "Doublons traites."} (${body?.removed ?? 0} supprime(s))`);
+      const toDelete = new Set(historyDuplicates.flatMap((group) => group.ids.slice(1)));
+      setDeclarations((prev) => prev.filter((item) => !toDelete.has(item.id)));
+      setShowHistoryDuplicatesModal(false);
+      setHistoryDuplicates([]);
+    } catch {
+      alert("Erreur reseau pendant la suppression des doublons.");
+    } finally {
+      setDeduplicatingHistory(false);
+    }
+  }
+
+  async function deleteDeclarationRow(declarationId: string) {
+    if (!declarationId || deletingDeclarationId) return;
+    if (!confirm("Supprimer cette declaration ?")) return;
+    setDeletingDeclarationId(declarationId);
+    try {
+      const response = await fetch(`/api/admin/engagement/raids-declarations/${encodeURIComponent(declarationId)}`, {
+        method: "DELETE",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        alert(body?.error || "Suppression impossible.");
+        return;
+      }
+      setDeclarations((prev) => prev.filter((item) => item.id !== declarationId));
+    } catch {
+      alert("Erreur reseau pendant la suppression.");
+    } finally {
+      setDeletingDeclarationId(null);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
       <div className="mb-8">
@@ -784,9 +879,20 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                   className="w-full max-w-[420px] rounded-lg border px-3 py-2 text-sm"
                   style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#101014", color: "#fff" }}
                 />
-                <span className="text-xs text-gray-400">
-                  {filteredDeclarations.length} resultat(s)
-                </span>
+                <div className="flex items-center gap-2">
+                  {canUseAdvancedTools ? (
+                    <button
+                      type="button"
+                      onClick={checkHistoryDuplicates}
+                      className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                      style={{ borderColor: "rgba(251,191,36,0.45)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
+                      title="Detecter les doublons dans les declarations"
+                    >
+                      Gestion doublons
+                    </button>
+                  ) : null}
+                  <span className="text-xs text-gray-400">{filteredDeclarations.length} resultat(s)</span>
+                </div>
               </div>
 
               {pagedDeclarations.map((row) => {
@@ -797,12 +903,26 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                       <p className="font-semibold text-white">
                         {row.member_display_name} ({row.member_twitch_login}) → {row.target_twitch_login}
                       </p>
-                      <span
-                        className="rounded-full border px-2 py-1 text-xs font-semibold"
-                        style={{ borderColor: badge.border, color: badge.color, backgroundColor: badge.bg }}
-                      >
-                        {badge.label}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="rounded-full border px-2 py-1 text-xs font-semibold"
+                          style={{ borderColor: badge.border, color: badge.color, backgroundColor: badge.bg }}
+                        >
+                          {badge.label}
+                        </span>
+                        {canUseAdvancedTools ? (
+                          <button
+                            type="button"
+                            onClick={() => deleteDeclarationRow(row.id)}
+                            disabled={deletingDeclarationId === row.id}
+                            className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
+                            style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
+                            title="Supprimer cette declaration"
+                          >
+                            Supprimer
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-1 text-sm text-gray-400">
                       {new Date(row.raid_at).toLocaleString("fr-FR")} {row.is_approximate ? "- heure approximative" : ""}
@@ -958,6 +1078,74 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           </div>
         )}
       </div>
+
+      {showHistoryDuplicatesModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowHistoryDuplicatesModal(false)}>
+          <div
+            className="w-full max-w-3xl rounded-xl border p-5 md:p-6"
+            style={{
+              borderColor: "rgba(251,191,36,0.35)",
+              background: "radial-gradient(circle at 10% 8%, rgba(251,191,36,0.14), rgba(26,26,29,0.96) 40%)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-2xl font-semibold text-white">Doublons - Historique des raids</h3>
+                <p className="text-xs text-gray-400">Membre + cible + date identiques</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryDuplicatesModal(false)}
+                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {historyDuplicates.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucun doublon detecte dans les declarations de ce mois.</p>
+            ) : (
+              <>
+                <p className="mb-3 text-sm text-gray-300">
+                  {historyDuplicates.length} groupe(s) detecte(s). La plus ancienne entree sera conservee.
+                </p>
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {historyDuplicates.map((dup) => (
+                    <div key={dup.key} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
+                      <p className="text-sm text-white">
+                        {dup.memberDisplayName} <span className="text-gray-500">({dup.memberTwitchLogin})</span> → {dup.targetTwitchLogin}
+                      </p>
+                      <p className="text-xs text-gray-400">{new Date(dup.raidAt).toLocaleString("fr-FR")} - {dup.count} entrees</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistoryDuplicatesModal(false)}
+                    className="rounded-md border px-3 py-1.5 text-xs font-semibold text-gray-300"
+                    style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                  >
+                    Fermer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runHistoryDeduplicate}
+                    disabled={deduplicatingHistory}
+                    className="rounded-md border px-3 py-1.5 text-xs font-semibold text-amber-200 disabled:opacity-50"
+                    style={{ borderColor: "rgba(251,191,36,0.5)", backgroundColor: "rgba(251,191,36,0.14)" }}
+                  >
+                    {deduplicatingHistory ? "Suppression..." : "Supprimer les doublons"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {showDuplicatesModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowDuplicatesModal(false)}>

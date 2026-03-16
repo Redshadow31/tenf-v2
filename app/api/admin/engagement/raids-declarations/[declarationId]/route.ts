@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSectionAccess } from "@/lib/requireAdmin";
+import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,48 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
     return NextResponse.json({ success: true, declaration: data });
   } catch (error) {
     console.error("[api/admin/engagement/raids-declarations/:id] PATCH error:", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: { declarationId: string } }) {
+  try {
+    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    if (!admin) {
+      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+    }
+
+    const canManage = await hasAdvancedAdminAccess(admin.discordId);
+    if (!canManage) {
+      return NextResponse.json({ error: "Acces reserve aux admins avances" }, { status: 403 });
+    }
+
+    const declarationId = String(params.declarationId || "");
+    if (!declarationId) {
+      return NextResponse.json({ error: "Identifiant declaration manquant" }, { status: 400 });
+    }
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("raid_declarations")
+      .select("id")
+      .eq("id", declarationId)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json({ error: "Erreur verification declaration" }, { status: 500 });
+    }
+    if (!existing) {
+      return NextResponse.json({ error: "Declaration introuvable" }, { status: 404 });
+    }
+
+    const { error } = await supabaseAdmin.from("raid_declarations").delete().eq("id", declarationId);
+    if (error) {
+      return NextResponse.json({ error: "Impossible de supprimer la declaration" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[api/admin/engagement/raids-declarations/:id] DELETE error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
