@@ -93,12 +93,25 @@ interface SaveRaidTestEventInput {
   rawPayload: unknown;
 }
 
+interface EnsureActiveRunResult {
+  run: RaidTestRunRow;
+  created: boolean;
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
 
 function isTestEnabled(): boolean {
   return String(process.env.RAID_EVENTSUB_TEST_ENABLED || '').toLowerCase() === 'true';
+}
+
+function isAutoRunEnabled(): boolean {
+  const raw = String(process.env.RAID_EVENTSUB_TEST_AUTO_RUN || '').trim().toLowerCase();
+  if (!raw) {
+    return true;
+  }
+  return raw !== 'false' && raw !== '0' && raw !== 'no';
 }
 
 function getTestEventsubSecret(): string | null {
@@ -405,6 +418,18 @@ export async function stopRaidTestRun(runId: string, status: 'completed' | 'canc
   }
 }
 
+async function ensureActiveRaidTestRun(createdBy: string): Promise<EnsureActiveRunResult | null> {
+  const activeRun = await getActiveRaidTestRun();
+  if (activeRun) {
+    return { run: activeRun, created: false };
+  }
+  if (!isAutoRunEnabled()) {
+    return null;
+  }
+  const run = await startRaidTestRun(`Run auto live ${new Date().toLocaleString('fr-FR')}`, createdBy);
+  return { run, created: true };
+}
+
 export async function syncRaidTestEventSubSubscriptions(): Promise<SyncResult> {
   if (!isTestEnabled()) {
     return {
@@ -424,8 +449,8 @@ export async function syncRaidTestEventSubSubscriptions(): Promise<SyncResult> {
     throw new Error('TWITCH_EVENTSUB_TEST_SECRET (ou TWITCH_EVENTSUB_SECRET) manquant.');
   }
 
-  const activeRun = await getActiveRaidTestRun();
-  if (!activeRun) {
+  const ensuredRun = await ensureActiveRaidTestRun('system:cron');
+  if (!ensuredRun) {
     return {
       enabled: true,
       runId: null,
@@ -434,9 +459,10 @@ export async function syncRaidTestEventSubSubscriptions(): Promise<SyncResult> {
       retained: 0,
       liveMembers: 0,
       eligibleMembers: 0,
-      message: 'Aucun run test en statut running.',
+      message: 'Aucun run test actif et auto-run desactive (RAID_EVENTSUB_TEST_AUTO_RUN=false).',
     };
   }
+  const activeRun = ensuredRun.run;
 
   const eligibleMembers = await getEligibleMembersWithTwitchId();
   const liveSet = await fetchLiveTwitchIds(eligibleMembers.map((m) => m.twitchId));
@@ -544,7 +570,9 @@ export async function syncRaidTestEventSubSubscriptions(): Promise<SyncResult> {
     retained,
     liveMembers: liveSet.size,
     eligibleMembers: eligibleMembers.length,
-    message: 'Sync EventSub test terminee.',
+    message: ensuredRun.created
+      ? 'Sync EventSub test terminee (run auto cree).'
+      : 'Sync EventSub test terminee.',
   };
 }
 
@@ -553,10 +581,11 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
   duplicate: boolean;
   runId: string | null;
 }> {
-  const run = await getActiveRaidTestRun();
-  if (!run) {
+  const ensuredRun = await ensureActiveRaidTestRun('system:eventsub');
+  if (!ensuredRun) {
     return { stored: false, duplicate: false, runId: null };
   }
+  const run = ensuredRun.run;
 
   await loadMemberDataFromStorage();
   const allMembers = getAllMemberData();

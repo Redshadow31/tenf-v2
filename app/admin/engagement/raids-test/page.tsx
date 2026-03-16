@@ -82,6 +82,13 @@ export default function AdminRaidsTestPage() {
     void loadAll();
   }, []);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadAll();
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   async function startRun() {
     setRunningAction("start");
     setError("");
@@ -168,6 +175,7 @@ export default function AdminRaidsTestPage() {
   }
 
   const activeRun = runsData?.activeRun || null;
+  const isAutoRun = !!activeRun && activeRun.label.toLowerCase().includes("run auto live");
 
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
@@ -243,13 +251,21 @@ export default function AdminRaidsTestPage() {
         <p className="mt-3 text-xs text-gray-400">
           Run actif:{" "}
           {activeRun ? (
-            <span className="text-green-300">
-              {activeRun.label} ({activeRun.id.slice(0, 8)}...)
+            <span className="inline-flex items-center gap-2 text-green-300">
+              <span>
+                {activeRun.label} ({activeRun.id.slice(0, 8)}...)
+              </span>
+              {isAutoRun ? (
+                <span className="rounded-md border border-cyan-400/60 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-cyan-300">
+                  AUTO-RUN
+                </span>
+              ) : null}
             </span>
           ) : (
             <span>Aucun run en cours</span>
           )}
         </p>
+        <p className="mt-1 text-xs text-gray-500">Actualisation automatique: 15s (mode live cron).</p>
       </div>
 
       <div className="mb-6 grid gap-3 md:grid-cols-3">
