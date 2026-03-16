@@ -34,7 +34,7 @@ type MemberRow = {
 
 export default function AdminEngagementHistoriqueRaidsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
-  const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("received");
+  const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
@@ -55,6 +55,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [modalError, setModalError] = useState("");
   const [modalSentRaids, setModalSentRaids] = useState<RaidApiItem[]>([]);
   const [modalReceivedRaids, setModalReceivedRaids] = useState<RaidApiItem[]>([]);
+  const [previousDailyChartData, setPreviousDailyChartData] = useState<DailyRaidPoint[]>([]);
+  const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
 
   useEffect(() => {
     const now = new Date();
@@ -178,6 +180,11 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     setHistoryPage(1);
     setStatsPage(1);
   }, [selectedMonth, historySearch, statsSubTab, activeTab]);
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    setSelectedChartDay(null);
+  }, [selectedMonth]);
 
   useEffect(() => {
     if (!selectedStreamer || !modalMonth) return;
@@ -336,6 +343,78 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
     return Array.from(byDay.values());
   }, [raidsFaits, raidsRecus, selectedMonth]);
+
+  useEffect(() => {
+    if (!selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) {
+      setPreviousDailyChartData([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const [yearStr, monthStr] = selectedMonth.split("-");
+        const previousDate = new Date(Number(yearStr), Number(monthStr) - 2, 1);
+        const previousMonth = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, "0")}`;
+        const response = await fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(previousMonth)}`, { cache: "no-store" });
+        if (!response.ok) {
+          setPreviousDailyChartData([]);
+          return;
+        }
+        const body = await response.json();
+        const filterManualOnly = (raid: RaidApiItem) => {
+          const source = raid.source || "";
+          if (source === "discord") return false;
+          return source === "manual" || source === "admin" || !source;
+        };
+        const previousSent = ((body.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly);
+        const previousReceived = ((body.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly);
+
+        const [prevYearStr, prevMonthStr] = previousMonth.split("-");
+        const prevYear = Number(prevYearStr);
+        const prevMonthNum = Number(prevMonthStr);
+        const daysInMonth = new Date(prevYear, prevMonthNum, 0).getDate();
+        const byDay = new Map<number, DailyRaidPoint>();
+        for (let day = 1; day <= daysInMonth; day++) {
+          byDay.set(day, { day, raidsFaits: 0, raidsRecus: 0 });
+        }
+        for (const raid of previousSent) {
+          const date = new Date(raid.date);
+          if (date.getFullYear() !== prevYear || date.getMonth() + 1 !== prevMonthNum) continue;
+          const point = byDay.get(date.getDate());
+          if (point) point.raidsFaits += raid.count || 1;
+        }
+        for (const raid of previousReceived) {
+          const date = new Date(raid.date);
+          if (date.getFullYear() !== prevYear || date.getMonth() + 1 !== prevMonthNum) continue;
+          const point = byDay.get(date.getDate());
+          if (point) point.raidsRecus += 1;
+        }
+        setPreviousDailyChartData(Array.from(byDay.values()));
+      } catch {
+        setPreviousDailyChartData([]);
+      }
+    })();
+  }, [selectedMonth]);
+
+  const selectedDayDetails = useMemo(() => {
+    if (!selectedChartDay || !selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) return null;
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const sent = raidsFaits
+      .filter((raid) => {
+        const date = new Date(raid.date);
+        return date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === selectedChartDay;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const received = raidsRecus
+      .filter((raid) => {
+        const date = new Date(raid.date);
+        return date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === selectedChartDay;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return { sent, received };
+  }, [raidsFaits, raidsRecus, selectedChartDay, selectedMonth]);
 
   function statusBadge(status: RaidDeclaration["status"]): { label: string; border: string; color: string; bg: string } {
     if (status === "to_study") {
@@ -578,7 +657,31 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           )
         ) : (
           <div>
-            <RaidDailyChart month={selectedMonth} data={dailyChartData} />
+            <RaidDailyChart
+              month={selectedMonth}
+              data={dailyChartData}
+              previousData={previousDailyChartData}
+              onDaySelect={setSelectedChartDay}
+            />
+
+            {selectedDayDetails ? (
+              <div className="mb-4 rounded-lg border border-gray-700 bg-[#101014] p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">Detail du jour {selectedChartDay}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChartDay(null)}
+                    className="rounded-md border px-2 py-1 text-xs text-gray-300"
+                    style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                  >
+                    Fermer
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {selectedDayDetails.sent.reduce((sum, raid) => sum + (raid.count || 1), 0)} raid(s) fait(s) et {selectedDayDetails.received.length} raid(s) recu(s)
+                </p>
+              </div>
+            ) : null}
 
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <button
@@ -701,11 +804,11 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
             <div className="mb-4 grid gap-2 md:grid-cols-2">
               <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(167,139,250,0.45)", backgroundColor: "rgba(167,139,250,0.1)" }}>
-                <p className="text-xs text-gray-300">Bloc fait</p>
+                <p className="text-xs text-gray-300">Raids envoyés</p>
                 <p className="text-xl font-semibold text-[#c4b5fd]">{modalSentRaids.reduce((sum, raid) => sum + (raid.count || 1), 0)}</p>
               </div>
               <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(96,165,250,0.45)", backgroundColor: "rgba(96,165,250,0.1)" }}>
-                <p className="text-xs text-gray-300">Bloc recu</p>
+                <p className="text-xs text-gray-300">Raids reçus</p>
                 <p className="text-xl font-semibold text-[#93c5fd]">{modalReceivedRaids.length}</p>
               </div>
             </div>
