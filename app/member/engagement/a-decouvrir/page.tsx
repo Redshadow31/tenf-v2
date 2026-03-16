@@ -105,7 +105,7 @@ export default function MemberEngagementDiscoverPage() {
                 ? item.twitchUrl
                 : `https://www.twitch.tv/${String(item?.twitchLogin || "").toLowerCase()}`,
           }))
-          .filter((member) => Boolean(member.twitchLogin));
+          .filter((member: PublicMember) => Boolean(member.twitchLogin));
         setMembers(mapped);
         const savedAt = Date.now();
         setLastUpdatedAt(savedAt);
