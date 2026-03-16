@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
+import { X } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -47,6 +48,13 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [growthSentPct, setGrowthSentPct] = useState<number | null>(null);
   const [growthReceivedPct, setGrowthReceivedPct] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [selectedStreamer, setSelectedStreamer] = useState<{ login: string; label: string } | null>(null);
+  const [modalMonth, setModalMonth] = useState("");
+  const [modalTab, setModalTab] = useState<"sent" | "received">("sent");
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [modalSentRaids, setModalSentRaids] = useState<RaidApiItem[]>([]);
+  const [modalReceivedRaids, setModalReceivedRaids] = useState<RaidApiItem[]>([]);
 
   useEffect(() => {
     const now = new Date();
@@ -170,6 +178,49 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     setHistoryPage(1);
     setStatsPage(1);
   }, [selectedMonth, historySearch, statsSubTab, activeTab]);
+
+  useEffect(() => {
+    if (!selectedStreamer || !modalMonth) return;
+    (async () => {
+      try {
+        setModalLoading(true);
+        setModalError("");
+        const response = await fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(modalMonth)}`, { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok) {
+          setModalError(body.error || "Impossible de charger les details de raids.");
+          setModalSentRaids([]);
+          setModalReceivedRaids([]);
+          return;
+        }
+
+        const filterManualOnly = (raid: RaidApiItem) => {
+          const source = raid.source || "";
+          if (source === "discord") return false;
+          return source === "manual" || source === "admin" || !source;
+        };
+
+        const login = selectedStreamer.login.toLowerCase();
+        const sent = ((body.raidsFaits || []) as RaidApiItem[])
+          .filter(filterManualOnly)
+          .filter((raid) => String(raid.raiderTwitchLogin || "").toLowerCase() === login)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const received = ((body.raidsRecus || []) as RaidApiItem[])
+          .filter(filterManualOnly)
+          .filter((raid) => String(raid.targetTwitchLogin || "").toLowerCase() === login)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        setModalSentRaids(sent);
+        setModalReceivedRaids(received);
+      } catch {
+        setModalError("Erreur reseau pendant le chargement des details.");
+        setModalSentRaids([]);
+        setModalReceivedRaids([]);
+      } finally {
+        setModalLoading(false);
+      }
+    })();
+  }, [selectedStreamer, modalMonth]);
 
   const getMemberDisplayName = (login?: string): string => {
     const key = String(login || "").toLowerCase();
@@ -297,6 +348,13 @@ export default function AdminEngagementHistoriqueRaidsPage() {
       return { label: "Refuse", border: "rgba(248,113,113,0.45)", color: "#f87171", bg: "rgba(248,113,113,0.12)" };
     }
     return { label: "En attente / en cours de resolution", border: "rgba(250,204,21,0.45)", color: "#facc15", bg: "rgba(250,204,21,0.12)" };
+  }
+
+  function openStreamerModal(login: string, label: string, preferredTab: "sent" | "received") {
+    setSelectedStreamer({ login, label });
+    setModalMonth(selectedMonth);
+    setModalTab(preferredTab);
+    setModalError("");
   }
 
   return (
@@ -539,9 +597,13 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                     key={`${statsSubTab}-${item.login}`}
                     className="flex items-center justify-between rounded-lg border border-gray-700 bg-[#101014] px-3 py-2"
                   >
-                    <p className="text-sm text-white">
+                    <button
+                      type="button"
+                      onClick={() => openStreamerModal(item.login, item.label, statsSubTab === "received" ? "received" : "sent")}
+                      className="text-left text-sm text-white transition-colors hover:text-[#c4b5fd]"
+                    >
                       {(statsPage - 1) * statsPerPage + index + 1}. {item.label} <span className="text-gray-400">({item.login})</span>
-                    </p>
+                    </button>
                     <span className="text-sm font-semibold" style={{ color: statsSubTab === "received" ? "#93c5fd" : "#c4b5fd" }}>
                       {item.total}
                     </span>
@@ -577,6 +639,120 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           </div>
         )}
       </div>
+
+      {selectedStreamer ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedStreamer(null)}>
+          <div
+            className="w-full max-w-4xl rounded-xl border p-5 md:p-6"
+            style={{
+              borderColor: "rgba(139,92,246,0.35)",
+              background: "radial-gradient(circle at 10% 8%, rgba(139,92,246,0.16), rgba(26,26,29,0.96) 38%)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-2xl font-semibold text-white">Les raids de {selectedStreamer.label}</h3>
+                <p className="text-xs text-gray-400">({selectedStreamer.login})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStreamer(null)}
+                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-300">Mois:</span>
+              <select
+                value={modalMonth}
+                onChange={(event) => setModalMonth(event.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
+              >
+                {availableMonths.map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4 grid gap-2 md:grid-cols-2">
+              <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(167,139,250,0.45)", backgroundColor: "rgba(167,139,250,0.1)" }}>
+                <p className="text-xs text-gray-300">Bloc fait</p>
+                <p className="text-xl font-semibold text-[#c4b5fd]">{modalSentRaids.reduce((sum, raid) => sum + (raid.count || 1), 0)}</p>
+              </div>
+              <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(96,165,250,0.45)", backgroundColor: "rgba(96,165,250,0.1)" }}>
+                <p className="text-xs text-gray-300">Bloc recu</p>
+                <p className="text-xl font-semibold text-[#93c5fd]">{modalReceivedRaids.length}</p>
+              </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalTab("sent")}
+                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                style={{
+                  borderColor: modalTab === "sent" ? "rgba(167,139,250,0.55)" : "rgba(255,255,255,0.18)",
+                  color: modalTab === "sent" ? "#c4b5fd" : "#cbd5e1",
+                }}
+              >
+                Fait
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("received")}
+                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                style={{
+                  borderColor: modalTab === "received" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
+                  color: modalTab === "received" ? "#93c5fd" : "#cbd5e1",
+                }}
+              >
+                Recu
+              </button>
+            </div>
+
+            {modalError ? <p className="mb-2 text-sm text-red-300">{modalError}</p> : null}
+            {modalLoading ? (
+              <p className="text-sm text-gray-300">Chargement des details...</p>
+            ) : modalTab === "sent" ? (
+              modalSentRaids.length === 0 ? (
+                <p className="text-sm text-gray-300">Aucun raid fait sur ce mois.</p>
+              ) : (
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {modalSentRaids.map((raid, index) => (
+                    <div key={`sent-${index}-${raid.date}`} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
+                      <p className="text-sm text-white">
+                        Pseudo cible: <span className="text-[#c4b5fd]">{raid.targetDisplayName || raid.targetTwitchLogin || "Inconnu"}</span>
+                      </p>
+                      <p className="text-xs text-gray-400">{new Date(raid.date).toLocaleString("fr-FR")} {raid.count ? `- x${raid.count}` : ""}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : modalReceivedRaids.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucun raid recu sur ce mois.</p>
+            ) : (
+              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                {modalReceivedRaids.map((raid, index) => (
+                  <div key={`received-${index}-${raid.date}`} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
+                    <p className="text-sm text-white">
+                      Pseudo raider: <span className="text-[#93c5fd]">{raid.raiderDisplayName || raid.raiderTwitchLogin || "Inconnu"}</span>
+                    </p>
+                    <p className="text-xs text-gray-400">{new Date(raid.date).toLocaleString("fr-FR")}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
