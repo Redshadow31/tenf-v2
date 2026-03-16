@@ -106,7 +106,7 @@ export default function AdminRaidsTestWatchlistPage() {
         <Card label="Remote subs enabled" value={data?.summary.remoteSubscriptionsEnabled ?? 0} />
       </div>
 
-      <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-900/10 p-4">
+      <div id="baisse-live-sans-raid" className="mt-4 rounded-xl border border-rose-500/30 bg-rose-900/10 p-4">
         <h2 className="mb-2 text-lg font-semibold text-rose-200">Baisse - live coupe sans raid</h2>
         <p className="mb-3 text-xs text-rose-100/80">
           Membres recemment live puis OFF, sans raid sortant detecte sur la fenetre recente.

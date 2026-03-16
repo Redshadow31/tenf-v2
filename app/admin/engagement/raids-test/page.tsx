@@ -295,6 +295,12 @@ export default function AdminRaidsTestPage() {
         >
           Voir détail des ignorés
         </Link>
+        <Link
+          href="/admin/engagement/raids-test/watchlist#baisse-live-sans-raid"
+          className="ml-2 inline-flex items-center rounded-md border border-rose-400/50 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20"
+        >
+          Voir baisse live sans raid
+        </Link>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -319,6 +325,15 @@ export default function AdminRaidsTestPage() {
           <p className="text-lg font-semibold">Watchlist live vs surveille</p>
           <p className="mt-1 text-sm text-gray-400">
             Visualise qui est live et si le systeme le surveille bien avec les subscriptions.
+          </p>
+        </Link>
+        <Link
+          href="/admin/engagement/raids-test/watchlist#baisse-live-sans-raid"
+          className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-rose-400/60"
+        >
+          <p className="text-lg font-semibold text-rose-300">Baisse live sans raid</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Liste les membres qui ont coupe leur live sans raid sortant detecte.
           </p>
         </Link>
         <Link
