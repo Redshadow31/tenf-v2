@@ -87,6 +87,14 @@ export const memberSidebarSections: SidebarNavSection[] = [
           { href: "/member/evenements/presences", label: "Mes presences", icon: Users },
         ],
       },
+      {
+        title: "Engagement",
+        items: [
+          { href: "/member/engagement/score", label: "Mon score d'engagements", icon: Activity },
+          { href: "/member/engagement/a-decouvrir", label: "A decouvrir", icon: Flag },
+          { href: "/member/engagement/amis", label: "Mes Amis", icon: Users },
+        ],
+      },
     ],
   },
   {
