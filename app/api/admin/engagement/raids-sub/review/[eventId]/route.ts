@@ -22,17 +22,37 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}));
     const processingStatus = String(body?.processingStatus || '').toLowerCase();
     const staffComment = String(body?.staffComment || '').trim();
+    const overrideFromLogin = String(body?.overrideFromLogin || '').trim().toLowerCase();
+    const overrideToLogin = String(body?.overrideToLogin || '').trim().toLowerCase();
+    const forceMemberMatch = Boolean(body?.forceMemberMatch);
 
     if (!ALLOWED_STATUS.has(processingStatus)) {
       return NextResponse.json({ error: 'processingStatus invalide' }, { status: 400 });
     }
 
+    const updatePayload: Record<string, unknown> = {
+      processing_status: processingStatus,
+      error_reason: staffComment || null,
+    };
+
+    if (overrideFromLogin) {
+      updatePayload.from_broadcaster_user_login = overrideFromLogin;
+      updatePayload.from_broadcaster_user_name = overrideFromLogin;
+    }
+    if (overrideToLogin) {
+      updatePayload.to_broadcaster_user_login = overrideToLogin;
+      updatePayload.to_broadcaster_user_name = overrideToLogin;
+    }
+
+    if (forceMemberMatch) {
+      updatePayload.match_from_member = true;
+      updatePayload.match_to_member = true;
+      updatePayload.processing_status = 'matched';
+    }
+
     const { data, error } = await supabaseAdmin
       .from('raid_test_events')
-      .update({
-        processing_status: processingStatus,
-        error_reason: staffComment || null,
-      })
+      .update(updatePayload)
       .eq('id', eventId)
       .select(
         'id,run_id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,viewers,event_at,processing_status,error_reason,match_from_member,match_to_member,created_at'

@@ -17,6 +17,19 @@ type RaidSubEvent = {
   match_to_member: boolean;
 };
 
+type MemberLite = {
+  twitchLogin: string;
+  displayName: string;
+  role?: string | null;
+  isActive?: boolean;
+};
+
+type CreateMemberDraft = {
+  twitchLogin: string;
+  displayName: string;
+  twitchUrl: string;
+};
+
 export default function AdminRaidsSubAValiderPage() {
   const [statusFilter, setStatusFilter] =
     useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">("received");
@@ -27,6 +40,17 @@ export default function AdminRaidsSubAValiderPage() {
   const [rows, setRows] = useState<RaidSubEvent[]>([]);
   const [commentById, setCommentById] = useState<Record<string, string>>({});
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
+  const [members, setMembers] = useState<MemberLite[]>([]);
+  const [overrideFromById, setOverrideFromById] = useState<Record<string, string>>({});
+  const [overrideToById, setOverrideToById] = useState<Record<string, string>>({});
+  const [showCreateMemberModal, setShowCreateMemberModal] = useState(false);
+  const [creatingMember, setCreatingMember] = useState(false);
+  const [createFieldForEvent, setCreateFieldForEvent] = useState<{ eventId: string; field: "from" | "to" } | null>(null);
+  const [newMemberDraft, setNewMemberDraft] = useState<CreateMemberDraft>({
+    twitchLogin: "",
+    displayName: "",
+    twitchUrl: "",
+  });
 
   async function loadData() {
     try {
@@ -61,6 +85,19 @@ export default function AdminRaidsSubAValiderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch("/api/admin/members", { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok) return;
+        setMembers((body.members || []) as MemberLite[]);
+      } catch {
+        // Non bloquant pour la page.
+      }
+    })();
+  }, []);
+
   const stats = useMemo(() => {
     return {
       received: rows.filter((item) => item.processing_status === "received").length,
@@ -92,6 +129,107 @@ export default function AdminRaidsSubAValiderPage() {
       setError("Erreur reseau pendant la mise a jour.");
     } finally {
       setSavingId("");
+    }
+  }
+
+  async function forceMatched(id: string) {
+    setSavingId(id);
+    try {
+      const response = await fetch(`/api/admin/engagement/raids-sub/review/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processingStatus: "matched",
+          forceMemberMatch: true,
+          overrideFromLogin: (overrideFromById[id] || "").trim().toLowerCase(),
+          overrideToLogin: (overrideToById[id] || "").trim().toLowerCase(),
+          staffComment: commentById[id] || "",
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Impossible de forcer en matched.");
+        return;
+      }
+      setRows((previous) => previous.map((item) => (item.id === id ? body.event : item)));
+    } catch {
+      setError("Erreur reseau pendant le forçage matched.");
+    } finally {
+      setSavingId("");
+    }
+  }
+
+  function normalizeLogin(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  function openCreateMemberModal(eventId: string, field: "from" | "to", currentValue: string) {
+    const login = normalizeLogin(currentValue || "");
+    setCreateFieldForEvent({ eventId, field });
+    setNewMemberDraft({
+      twitchLogin: login,
+      displayName: login || "Nouveau membre",
+      twitchUrl: login ? `https://www.twitch.tv/${login}` : "",
+    });
+    setShowCreateMemberModal(true);
+  }
+
+  async function createMemberFromModal() {
+    if (!createFieldForEvent || creatingMember) return;
+    const twitchLogin = normalizeLogin(newMemberDraft.twitchLogin);
+    const displayName = newMemberDraft.displayName.trim() || twitchLogin;
+    const twitchUrl = (newMemberDraft.twitchUrl.trim() || `https://www.twitch.tv/${twitchLogin}`).toLowerCase();
+    if (!twitchLogin || !displayName || !twitchUrl) {
+      setError("Creation membre impossible: champs obligatoires manquants.");
+      return;
+    }
+
+    setCreatingMember(true);
+    try {
+      const response = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          twitchLogin,
+          displayName,
+          twitchUrl,
+          role: "Nouveau",
+          isActive: false,
+          badges: [],
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Creation membre impossible.");
+        return;
+      }
+
+      setMembers((prev) => {
+        const exists = prev.some((member) => normalizeLogin(member.twitchLogin || "") === twitchLogin);
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            twitchLogin,
+            displayName,
+            role: "Nouveau",
+            isActive: false,
+          },
+        ];
+      });
+
+      if (createFieldForEvent.field === "from") {
+        setOverrideFromById((prev) => ({ ...prev, [createFieldForEvent.eventId]: twitchLogin }));
+      } else {
+        setOverrideToById((prev) => ({ ...prev, [createFieldForEvent.eventId]: twitchLogin }));
+      }
+
+      setShowCreateMemberModal(false);
+      setCreateFieldForEvent(null);
+    } catch {
+      setError("Erreur reseau pendant la creation du membre.");
+    } finally {
+      setCreatingMember(false);
     }
   }
 
@@ -197,6 +335,83 @@ export default function AdminRaidsSubAValiderPage() {
                   </p>
                   {item.error_reason ? <p className="mt-1 text-sm text-amber-200">Commentaire: {item.error_reason}</p> : null}
 
+                  {(!item.match_from_member || !item.match_to_member) ? (
+                    <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                      <p className="mb-2 text-xs font-semibold text-amber-200">
+                        Event ignore/non match: tu peux sélectionner des membres puis forcer en matched.
+                      </p>
+                      <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                        <div>
+                          <label className="mb-1 block text-xs text-gray-400">Raider (login Twitch)</label>
+                          <input
+                            value={overrideFromById[item.id] ?? item.from_broadcaster_user_login ?? ""}
+                            onChange={(event) =>
+                              setOverrideFromById((prev) => ({ ...prev, [item.id]: event.target.value }))
+                            }
+                            list={`from-suggestions-${item.id}`}
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            style={{ borderColor: "rgba(251,191,36,0.35)", backgroundColor: "#0e0e10", color: "#fff" }}
+                          />
+                          <datalist id={`from-suggestions-${item.id}`}>
+                            {members.slice(0, 150).map((member) => (
+                              <option key={`from-${item.id}-${member.twitchLogin}`} value={normalizeLogin(member.twitchLogin || "")}>
+                                {member.displayName}
+                              </option>
+                            ))}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-gray-400">Cible (login Twitch)</label>
+                          <input
+                            value={overrideToById[item.id] ?? item.to_broadcaster_user_login ?? ""}
+                            onChange={(event) =>
+                              setOverrideToById((prev) => ({ ...prev, [item.id]: event.target.value }))
+                            }
+                            list={`to-suggestions-${item.id}`}
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            style={{ borderColor: "rgba(251,191,36,0.35)", backgroundColor: "#0e0e10", color: "#fff" }}
+                          />
+                          <datalist id={`to-suggestions-${item.id}`}>
+                            {members.slice(0, 150).map((member) => (
+                              <option key={`to-${item.id}-${member.twitchLogin}`} value={normalizeLogin(member.twitchLogin || "")}>
+                                {member.displayName}
+                              </option>
+                            ))}
+                          </datalist>
+                        </div>
+                        <div className="flex flex-col justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openCreateMemberModal(item.id, "from", overrideFromById[item.id] ?? item.from_broadcaster_user_login)}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(167,139,250,0.55)", color: "#c4b5fd" }}
+                          >
+                            Creer membre raider
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openCreateMemberModal(item.id, "to", overrideToById[item.id] ?? item.to_broadcaster_user_login)}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(167,139,250,0.55)", color: "#c4b5fd" }}
+                          >
+                            Creer membre cible
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void forceMatched(item.id)}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(52,211,153,0.55)", color: "#34d399" }}
+                          >
+                            Forcer matched
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                     <input
                       value={commentById[item.id] ?? item.error_reason ?? ""}
@@ -259,6 +474,72 @@ export default function AdminRaidsSubAValiderPage() {
           </div>
         )}
       </div>
+
+      {showCreateMemberModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowCreateMemberModal(false)}>
+          <div
+            className="w-full max-w-xl rounded-xl border border-gray-700 bg-[#1a1a1d] p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="mb-1 text-xl font-semibold text-white">Creer un membre pour forcer le match</h3>
+            <p className="mb-4 text-xs text-gray-400">Le membre sera cree en role Nouveau et statut Inactif.</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">Login Twitch</label>
+                <input
+                  value={newMemberDraft.twitchLogin}
+                  onChange={(event) =>
+                    setNewMemberDraft((prev) => ({
+                      ...prev,
+                      twitchLogin: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">Nom affichage</label>
+                <input
+                  value={newMemberDraft.displayName}
+                  onChange={(event) => setNewMemberDraft((prev) => ({ ...prev, displayName: event.target.value }))}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400">URL Twitch</label>
+                <input
+                  value={newMemberDraft.twitchUrl}
+                  onChange={(event) => setNewMemberDraft((prev) => ({ ...prev, twitchUrl: event.target.value }))}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateMemberModal(false)}
+                className="rounded-md border px-3 py-2 text-xs font-semibold text-gray-300"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void createMemberFromModal()}
+                disabled={creatingMember}
+                className="rounded-md bg-[#9146ff] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {creatingMember ? "Creation..." : "Creer membre"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
