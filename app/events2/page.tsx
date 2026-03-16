@@ -34,9 +34,9 @@ type ProposalItem = {
 };
 
 const statusFilters = [
+  { id: "all", label: "Tous" },
   { id: "upcoming", label: "A venir" },
   { id: "past", label: "Termines" },
-  { id: "all", label: "Tous" },
 ] as const;
 
 function calendarUrlForEvent(event: EventItem): string {
@@ -85,7 +85,7 @@ export default function Events2Page() {
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [selectedStatus, setSelectedStatus] = useState<"upcoming" | "past" | "all">("all");
 
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
