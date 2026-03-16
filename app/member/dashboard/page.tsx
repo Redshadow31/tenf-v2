@@ -6,11 +6,7 @@ import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberBreadcrumbs from "@/components/member/ui/MemberBreadcrumbs";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
-
-const monthlyGoals = {
-  raids: 8,
-  presences: 6,
-};
+import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthlyGoals";
 
 const VIP_GOLD = "#d4af37";
 
@@ -103,11 +99,11 @@ function getEncouragementByProgress(progress: number, segment: "newbie" | "growt
 
 function getCardFeedback(current: number, target: number, remaining: number): string {
   const progress = getProgressPercent(current, target);
-  if (remaining <= 0) return "Objectif atteint, bravo.";
-  if (remaining === 1) return "Plus qu une etape pour valider cet objectif.";
-  if (progress >= 75) return "Tu approches du palier, garde le rythme.";
-  if (progress >= 40) return "Bonne progression, continue regulierement.";
-  return "Priorite de depart: avance sur ce point cette semaine.";
+  if (remaining <= 0) return "Bravo, objectif valide ce mois-ci.";
+  if (remaining === 1) return "Felicitations pour ta progression: plus qu une etape.";
+  if (progress >= 75) return "Tres bien joue: tu approches du palier final.";
+  if (progress >= 40) return "Belle dynamique, continue comme ca.";
+  return "C est le bon moment pour lancer cet objectif cette semaine.";
 }
 
 type SuggestedAction = {
@@ -123,6 +119,7 @@ function isSuggestedAction(value: SuggestedAction | null): value is SuggestedAct
 
 export default function MemberDashboardPage() {
   const { data, loading, error } = useMemberOverview();
+  const { goals: memberGoals } = useMemberMonthlyGoals(data?.monthKey || "");
 
   if (loading) {
     return (
@@ -175,9 +172,11 @@ export default function MemberDashboardPage() {
   const segment = roleSegment(data.member.role, vipActive);
   const monthDeadline = formatMonthDeadline(data.monthKey);
   const profileStatus = profileStatusLabel(data.member.profileValidationStatus);
+  const raidsTarget = memberGoals.raids;
+  const presencesTarget = memberGoals.events;
   const profileRemaining = Math.max(0, 100 - data.profile.percent);
-  const raidsRemaining = Math.max(0, monthlyGoals.raids - data.stats.raidsThisMonth);
-  const presencesRemaining = Math.max(0, monthlyGoals.presences - data.stats.eventPresencesThisMonth);
+  const raidsRemaining = Math.max(0, raidsTarget - data.stats.raidsThisMonth);
+  const presencesRemaining = Math.max(0, presencesTarget - data.stats.eventPresencesThisMonth);
   const formationsThisMonth =
     data.stats.formationsValidatedThisMonth ??
     data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
@@ -186,7 +185,7 @@ export default function MemberDashboardPage() {
     {
       label: "Raids a faire",
       current: data.stats.raidsThisMonth,
-      target: monthlyGoals.raids,
+      target: raidsTarget,
       remaining: raidsRemaining,
       href: "/member/raids/declarer",
       icon: Rocket,
@@ -194,7 +193,7 @@ export default function MemberDashboardPage() {
     {
       label: "Presences a faire",
       current: data.stats.eventPresencesThisMonth,
-      target: monthlyGoals.presences,
+      target: presencesTarget,
       remaining: presencesRemaining,
       href: "/member/evenements",
       icon: Calendar,
@@ -213,20 +212,28 @@ export default function MemberDashboardPage() {
     data.upcomingEvents.find((event) => String(event.category || "").toLowerCase().includes("formation")) || data.upcomingEvents[0];
 
   const suggestedActions = [
+    raidsRemaining > 0
+      ? {
+          impact: 140,
+          href: "/member/raids/declarer",
+          label: "Faire un raid cette semaine",
+          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}. Les raids sont suivis automatiquement, et la declaration Discord reste recommandee.`,
+        }
+      : null,
+    vipActive
+      ? {
+          impact: 130,
+          href: "/member/vip",
+          label: "Consulter ton acces prioritaire",
+          detail: "Ton statut VIP est actif ce mois: profite de ton espace VIP dedie.",
+        }
+      : null,
     !data.profile.completed
       ? {
           impact: 100,
           href: "/member/profil/completer",
           label: "Completer ton profil",
           detail: `Il te reste ${profileRemaining}% pour finaliser ton profil.`,
-        }
-      : null,
-    raidsRemaining > 0
-      ? {
-          impact: 95,
-          href: "/member/raids/declarer",
-          label: "Declarer un raid",
-          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}.`,
         }
       : null,
     presencesRemaining > 0
@@ -251,14 +258,6 @@ export default function MemberDashboardPage() {
           href: "/member/formations",
           label: "Continuer tes formations",
           detail: "Passe un jalon formation cette semaine pour accelerer ta progression.",
-        }
-      : null,
-    segment === "vip"
-      ? {
-          impact: 86,
-          href: "/member/notifications",
-          label: "Consulter ton acces prioritaire",
-          detail: "Utilise ton statut VIP pour prioriser tes actions du mois.",
         }
       : null,
     recommendedEvent
@@ -306,8 +305,8 @@ export default function MemberDashboardPage() {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  const raidsProgress = getProgressPercent(data.stats.raidsThisMonth, monthlyGoals.raids);
-  const presencesProgress = getProgressPercent(data.stats.eventPresencesThisMonth, monthlyGoals.presences);
+  const raidsProgress = getProgressPercent(data.stats.raidsThisMonth, raidsTarget);
+  const presencesProgress = getProgressPercent(data.stats.eventPresencesThisMonth, presencesTarget);
   const profileProgress = Math.max(0, Math.min(100, data.profile.percent));
   const globalProgress = Math.round((raidsProgress + presencesProgress + profileProgress) / 3);
   const encouragement = getEncouragementByProgress(globalProgress, segment);
@@ -346,6 +345,9 @@ export default function MemberDashboardPage() {
             </p>
             <p className="mt-2 text-sm" style={{ color: "rgba(236,236,239,0.78)" }}>
               {encouragement} {weekEncouragement}
+            </p>
+            <p className="mt-2 text-xs" style={{ color: "rgba(229,229,235,0.74)" }}>
+              Objectifs actifs du mois: {raidsTarget} raids, {presencesTarget} presences.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span
@@ -471,6 +473,19 @@ export default function MemberDashboardPage() {
           <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             Suivi du mois
           </h2>
+          <div className="mt-4 rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+              <Flag size={14} style={{ color: hexToRgba(accent, 0.92) }} />
+              Score d engagement: {data.stats.participationThisMonth}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Actions validees ce mois (raids + presences).
+            </p>
+            <Link href="/member/engagement/score" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold hover:opacity-85" style={{ color: hexToRgba(accent, 0.92) }}>
+              Voir le detail du score
+              <ArrowUpRight size={12} />
+            </Link>
+          </div>
           <div className="mt-4 space-y-2">
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
               Il te reste <strong style={{ color: "var(--color-text)" }}>{raidsRemaining} raid(s)</strong> et{" "}

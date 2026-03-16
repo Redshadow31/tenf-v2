@@ -100,8 +100,13 @@ async function loadEventsWithoutCache(): Promise<
 }
 
 function profileCompletion(member: any): { completed: boolean; percent: number } {
+  const hasTwitchLinked =
+    !!member?.twitchLogin &&
+    !String(member.twitchLogin).toLowerCase().startsWith("nouveau_") &&
+    !String(member.twitchLogin).toLowerCase().startsWith("nouveau-");
   const checks = [
     !!member?.displayName,
+    hasTwitchLinked,
     !!member?.discordUsername,
     !!member?.parrain,
     !!member?.description,
