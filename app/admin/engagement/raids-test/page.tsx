@@ -272,6 +272,15 @@ export default function AdminRaidsTestPage() {
         <MiniStat label="Received" value={summaryData?.eventStatus.received ?? 0} color="#e5e7eb" />
       </div>
 
+      <div className="mb-6">
+        <Link
+          href="/admin/engagement/raids-sub/a-valider?status=ignored"
+          className="inline-flex items-center rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20"
+        >
+          Voir détail des ignorés
+        </Link>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Link
           href="/admin/engagement/raids-test/subscriptions"

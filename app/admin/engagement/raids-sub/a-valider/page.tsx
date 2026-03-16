@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type RaidSubEvent = {
   id: string;
@@ -31,8 +32,19 @@ type CreateMemberDraft = {
 };
 
 export default function AdminRaidsSubAValiderPage() {
+  const searchParams = useSearchParams();
+  const statusFromQuery = (searchParams.get("status") || "").toLowerCase();
+  const initialStatus =
+    statusFromQuery === "received" ||
+    statusFromQuery === "matched" ||
+    statusFromQuery === "ignored" ||
+    statusFromQuery === "duplicate" ||
+    statusFromQuery === "error"
+      ? statusFromQuery
+      : "received";
+
   const [statusFilter, setStatusFilter] =
-    useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">("received");
+    useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">(initialStatus);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
