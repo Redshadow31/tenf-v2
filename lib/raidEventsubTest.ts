@@ -103,6 +103,12 @@ interface SaveRaidTestEventInput {
   rawPayload: unknown;
 }
 
+interface MatchedMember {
+  twitchLogin: string;
+  twitchId?: string;
+  isActive?: boolean;
+}
+
 interface EnsureActiveRunResult {
   run: RaidTestRunRow;
   created: boolean;
@@ -140,6 +146,57 @@ function buildDedupeKey(fromId: string, toId: string, at: Date): string {
 
 function normalizeLogin(value: string | null | undefined): string {
   return String(value || '').trim().toLowerCase();
+}
+
+async function findActiveSupabaseMemberByEventIdentity(input: {
+  twitchId: string;
+  twitchLogin: string;
+}): Promise<MatchedMember | null> {
+  const normalizedLogin = normalizeLogin(input.twitchLogin);
+
+  if (input.twitchId) {
+    const { data: byId, error: byIdError } = await supabaseAdmin
+      .from('members')
+      .select('twitch_login,twitch_id,is_active')
+      .eq('is_active', true)
+      .eq('twitch_id', input.twitchId)
+      .limit(1);
+    if (byIdError) {
+      throw new Error(`[raidEventsubTest] Recherche membre Supabase par twitch_id impossible: ${byIdError.message}`);
+    }
+    const member = byId?.[0] as any;
+    if (member?.twitch_login) {
+      return {
+        twitchLogin: String(member.twitch_login),
+        twitchId: member.twitch_id ? String(member.twitch_id) : undefined,
+        isActive: member.is_active === true,
+      };
+    }
+  }
+
+  if (normalizedLogin) {
+    const { data: byLogin, error: byLoginError } = await supabaseAdmin
+      .from('members')
+      .select('twitch_login,twitch_id,is_active')
+      .eq('is_active', true)
+      .eq('twitch_login', normalizedLogin)
+      .limit(1);
+    if (byLoginError) {
+      throw new Error(
+        `[raidEventsubTest] Recherche membre Supabase par twitch_login impossible: ${byLoginError.message}`
+      );
+    }
+    const member = byLogin?.[0] as any;
+    if (member?.twitch_login) {
+      return {
+        twitchLogin: String(member.twitch_login),
+        twitchId: member.twitch_id ? String(member.twitch_id) : undefined,
+        isActive: member.is_active === true,
+      };
+    }
+  }
+
+  return null;
 }
 
 async function getExistingActiveLocalSubscriptionId(
@@ -597,21 +654,52 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
   }
   const run = ensuredRun.run;
 
-  await loadMemberDataFromStorage();
-  const allMembers = getAllMemberData();
+  // Source de vérité: Supabase members (actifs), puis fallback legacy pour compatibilité.
+  let fromMember: MatchedMember | null = await findActiveSupabaseMemberByEventIdentity({
+    twitchId: input.event.from_broadcaster_user_id,
+    twitchLogin: input.event.from_broadcaster_user_login,
+  });
+  let toMember: MatchedMember | null = await findActiveSupabaseMemberByEventIdentity({
+    twitchId: input.event.to_broadcaster_user_id,
+    twitchLogin: input.event.to_broadcaster_user_login,
+  });
 
-  const fromMember = allMembers.find(
-    (m) =>
-      m.isActive &&
-      ((!!m.twitchId && m.twitchId === input.event.from_broadcaster_user_id) ||
-        m.twitchLogin?.toLowerCase() === input.event.from_broadcaster_user_login.toLowerCase())
-  );
-  const toMember = allMembers.find(
-    (m) =>
-      m.isActive &&
-      ((!!m.twitchId && m.twitchId === input.event.to_broadcaster_user_id) ||
-        m.twitchLogin?.toLowerCase() === input.event.to_broadcaster_user_login.toLowerCase())
-  );
+  if (!fromMember || !toMember) {
+    await loadMemberDataFromStorage();
+    const allMembers = getAllMemberData();
+
+    if (!fromMember) {
+      const fallbackFrom = allMembers.find(
+        (m) =>
+          m.isActive &&
+          ((!!m.twitchId && m.twitchId === input.event.from_broadcaster_user_id) ||
+            m.twitchLogin?.toLowerCase() === input.event.from_broadcaster_user_login.toLowerCase())
+      );
+      if (fallbackFrom) {
+        fromMember = {
+          twitchLogin: fallbackFrom.twitchLogin,
+          twitchId: fallbackFrom.twitchId,
+          isActive: fallbackFrom.isActive,
+        };
+      }
+    }
+
+    if (!toMember) {
+      const fallbackTo = allMembers.find(
+        (m) =>
+          m.isActive &&
+          ((!!m.twitchId && m.twitchId === input.event.to_broadcaster_user_id) ||
+            m.twitchLogin?.toLowerCase() === input.event.to_broadcaster_user_login.toLowerCase())
+      );
+      if (fallbackTo) {
+        toMember = {
+          twitchLogin: fallbackTo.twitchLogin,
+          twitchId: fallbackTo.twitchId,
+          isActive: fallbackTo.isActive,
+        };
+      }
+    }
+  }
 
   const eventDate = input.eventsubTimestamp ? new Date(input.eventsubTimestamp) : new Date();
   const validEventDate = Number.isNaN(eventDate.getTime()) ? new Date() : eventDate;
@@ -620,6 +708,12 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     input.event.to_broadcaster_user_id,
     validEventDate
   );
+
+  const processingStatus = fromMember && toMember ? 'matched' : 'ignored';
+  const diagnosticReason =
+    processingStatus === 'ignored'
+      ? `fromMember=${!!fromMember};toMember=${!!toMember};source=supabase_first`
+      : null;
 
   const { error } = await supabaseAdmin.from('raid_test_events').insert({
     run_id: run.id,
@@ -636,7 +730,8 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     received_at: nowIso(),
     match_from_member: !!fromMember,
     match_to_member: !!toMember,
-    processing_status: fromMember && toMember ? 'matched' : 'ignored',
+    processing_status: processingStatus,
+    error_reason: diagnosticReason,
     raw_payload: input.rawPayload,
     created_at: nowIso(),
   });

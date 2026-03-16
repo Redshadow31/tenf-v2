@@ -242,6 +242,12 @@ export default function AdminRaidsSubAValiderPage() {
     return value.trim().toLowerCase();
   }
 
+  function findExactMemberByLogin(login: string): MemberLite | null {
+    const normalized = normalizeLogin(login);
+    if (!normalized) return null;
+    return members.find((member) => normalizeLogin(member.twitchLogin || "") === normalized) || null;
+  }
+
   function openCreateMemberModal(eventId: string, field: "from" | "to", currentValue: string) {
     const login = normalizeLogin(currentValue || "");
     setCreateFieldForEvent({ eventId, field });
@@ -457,6 +463,11 @@ export default function AdminRaidsSubAValiderPage() {
                   return login.includes(toQuery) || label.includes(toQuery);
                 })
                 .slice(0, 30);
+              const selectedFromMember = findExactMemberByLogin(fromDraft);
+              const selectedToMember = findExactMemberByLogin(toDraft);
+              const canForceMatched =
+                (!!selectedFromMember && !!selectedToMember) ||
+                (item.match_from_member && item.match_to_member);
               return (
                 <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -515,6 +526,11 @@ export default function AdminRaidsSubAValiderPage() {
                               </option>
                             ))}
                           </datalist>
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            {selectedFromMember
+                              ? `Rattache: ${selectedFromMember.displayName} (${selectedFromMember.twitchLogin})`
+                              : "Non rattache: choisis un login existant."}
+                          </p>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs text-gray-400">Cible (login Twitch)</label>
@@ -534,6 +550,11 @@ export default function AdminRaidsSubAValiderPage() {
                               </option>
                             ))}
                           </datalist>
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            {selectedToMember
+                              ? `Rattache: ${selectedToMember.displayName} (${selectedToMember.twitchLogin})`
+                              : "Non rattache: choisis un login existant."}
+                          </p>
                         </div>
                         <div className="flex flex-col justify-end gap-2">
                           <button
@@ -557,7 +578,7 @@ export default function AdminRaidsSubAValiderPage() {
                           <button
                             type="button"
                             onClick={() => void forceMatched(item.id)}
-                            disabled={isSaving}
+                            disabled={isSaving || !canForceMatched}
                             className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
                             style={{ borderColor: "rgba(52,211,153,0.55)", color: "#34d399" }}
                           >

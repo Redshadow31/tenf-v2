@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { memberRepository } from '@/lib/repositories';
 
 const ALLOWED_STATUS = new Set(['received', 'matched', 'ignored', 'duplicate', 'error']);
 
@@ -45,6 +46,24 @@ export async function PATCH(
     }
 
     if (forceMemberMatch) {
+      if (overrideFromLogin) {
+        const fromMember = await memberRepository.findByTwitchLogin(overrideFromLogin);
+        if (!fromMember) {
+          return NextResponse.json(
+            { error: `Raider introuvable dans la base membres: ${overrideFromLogin}` },
+            { status: 400 }
+          );
+        }
+      }
+      if (overrideToLogin) {
+        const toMember = await memberRepository.findByTwitchLogin(overrideToLogin);
+        if (!toMember) {
+          return NextResponse.json(
+            { error: `Cible introuvable dans la base membres: ${overrideToLogin}` },
+            { status: 400 }
+          );
+        }
+      }
       updatePayload.match_from_member = true;
       updatePayload.match_to_member = true;
       updatePayload.processing_status = 'matched';
