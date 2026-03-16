@@ -32,6 +32,16 @@ type MemberRow = {
   displayName: string;
 };
 
+type RaidDuplicateGroup = {
+  key: string;
+  raider: string;
+  target: string;
+  date: string;
+  count: number;
+  raiderLabel: string;
+  targetLabel: string;
+};
+
 export default function AdminEngagementHistoriqueRaidsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
@@ -57,10 +67,28 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [modalReceivedRaids, setModalReceivedRaids] = useState<RaidApiItem[]>([]);
   const [previousDailyChartData, setPreviousDailyChartData] = useState<DailyRaidPoint[]>([]);
   const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
+  const [canUseAdvancedTools, setCanUseAdvancedTools] = useState(false);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [duplicatesList, setDuplicatesList] = useState<RaidDuplicateGroup[]>([]);
+  const [deduplicating, setDeduplicating] = useState(false);
+  const [deletingRaidKey, setDeletingRaidKey] = useState<string | null>(null);
 
   useEffect(() => {
     const now = new Date();
     setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch("/api/admin/advanced-access?check=1", { cache: "no-store" });
+        if (!response.ok) return;
+        const body = await response.json();
+        setCanUseAdvancedTools(Boolean(body?.canAccessAdvanced));
+      } catch {
+        setCanUseAdvancedTools(false);
+      }
+    })();
   }, []);
 
   const availableMonths = useMemo(() => {
@@ -436,6 +464,163 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     setModalError("");
   }
 
+  function checkDuplicates() {
+    if (!raidsFaits.length) {
+      setDuplicatesList([]);
+      setShowDuplicatesModal(true);
+      return;
+    }
+    const byKey = new Map<string, RaidApiItem[]>();
+    for (const raid of raidsFaits) {
+      const raider = String(raid.raiderTwitchLogin || "").toLowerCase();
+      const target = String(raid.targetTwitchLogin || "").toLowerCase();
+      const date = String(raid.date || "");
+      if (!raider || !target || !date) continue;
+      const key = `${raider}|${target}|${date}`;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(raid);
+    }
+    const duplicates = Array.from(byKey.entries())
+      .filter(([, rows]) => rows.length > 1)
+      .map(([key, rows]) => {
+        const first = rows[0];
+        const raider = String(first.raiderTwitchLogin || "").toLowerCase();
+        const target = String(first.targetTwitchLogin || "").toLowerCase();
+        return {
+          key,
+          raider,
+          target,
+          date: String(first.date || ""),
+          count: rows.length,
+          raiderLabel: getMemberDisplayName(raider),
+          targetLabel: getMemberDisplayName(target),
+        };
+      });
+    setDuplicatesList(duplicates);
+    setShowDuplicatesModal(true);
+  }
+
+  async function runDeduplicate() {
+    if (!duplicatesList.length || deduplicating) return;
+    if (!confirm(`Supprimer les doublons du mois ${selectedMonth} ?`)) return;
+    setDeduplicating(true);
+    try {
+      const response = await fetch("/api/admin/engagement/raids-management/deduplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: selectedMonth }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        alert(body?.error || "Erreur pendant la suppression des doublons.");
+        return;
+      }
+      alert(`${body?.message || "Doublons traites."}\nEntrees supprimees: ${body?.removed?.total ?? 0}`);
+      setShowDuplicatesModal(false);
+      setDuplicatesList([]);
+      const removedKeys = new Set(duplicatesList.map((item) => item.key));
+      setRaidsFaits((prev) =>
+        prev.filter((raid) => {
+          const raider = String(raid.raiderTwitchLogin || "").toLowerCase();
+          const target = String(raid.targetTwitchLogin || "").toLowerCase();
+          const date = String(raid.date || "");
+          return !removedKeys.has(`${raider}|${target}|${date}`);
+        })
+      );
+    } catch {
+      alert("Erreur reseau pendant la suppression des doublons.");
+    } finally {
+      setDeduplicating(false);
+    }
+  }
+
+  async function deleteRaidLine(input: { raider: string; target: string; date: string; modalTab: "sent" | "received" }) {
+    if (deletingRaidKey) return;
+    if (!confirm("Supprimer ce raid ?")) return;
+    const raidKey = `${input.raider}|${input.target}|${input.date}`;
+    setDeletingRaidKey(raidKey);
+    try {
+      const response = await fetch("/api/admin/engagement/raids-management/delete-raid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: modalMonth || selectedMonth,
+          raider: input.raider,
+          target: input.target,
+          date: input.date,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        alert(body?.error || "Suppression impossible.");
+        return;
+      }
+      setRaidsFaits((prev) =>
+        prev.filter(
+          (raid) =>
+            !(
+              String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+              String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+              String(raid.date || "") === input.date
+            )
+        )
+      );
+      setRaidsRecus((prev) =>
+        prev.filter(
+          (raid) =>
+            !(
+              String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+              String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+              String(raid.date || "") === input.date
+            )
+        )
+      );
+      if (input.modalTab === "sent") {
+        setModalSentRaids((prev) =>
+          prev.filter(
+            (raid) =>
+              !(
+                String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                String(raid.date || "") === input.date
+              )
+          )
+        );
+        setModalReceivedRaids((prev) =>
+          prev.filter(
+            (raid) =>
+              !(
+                String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                String(raid.date || "") === input.date
+              )
+          )
+        );
+      } else {
+        setModalReceivedRaids((prev) =>
+          prev.filter(
+            (raid) =>
+              !(
+                String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                String(raid.date || "") === input.date
+              )
+          )
+        );
+        setModalSentRaids((prev) =>
+          prev.filter(
+            (raid) =>
+              !(
+                String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                String(raid.date || "") === input.date
+              )
+          )
+        );
+      }
+    } catch {
+      alert("Erreur reseau pendant la suppression.");
+    } finally {
+      setDeletingRaidKey(null);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
       <div className="mb-8">
@@ -683,29 +868,43 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               </div>
             ) : null}
 
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStatsSubTab("received")}
-                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
-                style={{
-                  borderColor: statsSubTab === "received" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
-                  color: statsSubTab === "received" ? "#93c5fd" : "#cbd5e1",
-                }}
-              >
-                Raids recus
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatsSubTab("sent")}
-                className="rounded-md border px-3 py-1.5 text-xs font-semibold"
-                style={{
-                  borderColor: statsSubTab === "sent" ? "rgba(167,139,250,0.55)" : "rgba(255,255,255,0.18)",
-                  color: statsSubTab === "sent" ? "#c4b5fd" : "#cbd5e1",
-                }}
-              >
-                Raids faits
-              </button>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStatsSubTab("received")}
+                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                  style={{
+                    borderColor: statsSubTab === "received" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
+                    color: statsSubTab === "received" ? "#93c5fd" : "#cbd5e1",
+                  }}
+                >
+                  Raids recus
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatsSubTab("sent")}
+                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                  style={{
+                    borderColor: statsSubTab === "sent" ? "rgba(167,139,250,0.55)" : "rgba(255,255,255,0.18)",
+                    color: statsSubTab === "sent" ? "#c4b5fd" : "#cbd5e1",
+                  }}
+                >
+                  Raids faits
+                </button>
+              </div>
+
+              {canUseAdvancedTools ? (
+                <button
+                  type="button"
+                  onClick={checkDuplicates}
+                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                  style={{ borderColor: "rgba(251,191,36,0.45)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
+                  title="Detecter et nettoyer les doublons"
+                >
+                  Gestion doublons
+                </button>
+              ) : null}
             </div>
 
             {activeStatsRows.length === 0 ? (
@@ -759,6 +958,74 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           </div>
         )}
       </div>
+
+      {showDuplicatesModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowDuplicatesModal(false)}>
+          <div
+            className="w-full max-w-3xl rounded-xl border p-5 md:p-6"
+            style={{
+              borderColor: "rgba(251,191,36,0.35)",
+              background: "radial-gradient(circle at 10% 8%, rgba(251,191,36,0.14), rgba(26,26,29,0.96) 40%)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-2xl font-semibold text-white">Verification des doublons</h3>
+                <p className="text-xs text-gray-400">Meme raideur, meme cible, meme date/heure</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDuplicatesModal(false)}
+                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {duplicatesList.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucun doublon detecte pour ce mois.</p>
+            ) : (
+              <>
+                <p className="mb-3 text-sm text-gray-300">
+                  {duplicatesList.length} groupe(s) detecte(s). Une seule entree sera conservee par groupe.
+                </p>
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {duplicatesList.map((dup) => (
+                    <div key={dup.key} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
+                      <p className="text-sm text-white">
+                        {dup.raiderLabel} <span className="text-gray-500">({dup.raider})</span> → {dup.targetLabel} <span className="text-gray-500">({dup.target})</span>
+                      </p>
+                      <p className="text-xs text-gray-400">{new Date(dup.date).toLocaleString("fr-FR")} - {dup.count} entrees</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicatesModal(false)}
+                    className="rounded-md border px-3 py-1.5 text-xs font-semibold text-gray-300"
+                    style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                  >
+                    Fermer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runDeduplicate}
+                    disabled={deduplicating}
+                    className="rounded-md border px-3 py-1.5 text-xs font-semibold text-amber-200 disabled:opacity-50"
+                    style={{ borderColor: "rgba(251,191,36,0.5)", backgroundColor: "rgba(251,191,36,0.14)" }}
+                  >
+                    {deduplicating ? "Suppression..." : "Supprimer les doublons"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {selectedStreamer ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedStreamer(null)}>
@@ -848,9 +1115,33 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
                   {modalSentRaids.map((raid, index) => (
                     <div key={`sent-${index}-${raid.date}`} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
-                      <p className="text-sm text-white">
-                        Pseudo cible: <span className="text-[#c4b5fd]">{raid.targetDisplayName || raid.targetTwitchLogin || "Inconnu"}</span>
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm text-white">
+                          Pseudo cible: <span className="text-[#c4b5fd]">{raid.targetDisplayName || raid.targetTwitchLogin || "Inconnu"}</span>
+                        </p>
+                        {canUseAdvancedTools ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteRaidLine({
+                                raider: String(selectedStreamer?.login || "").toLowerCase(),
+                                target: String(raid.targetTwitchLogin || "").toLowerCase(),
+                                date: String(raid.date || ""),
+                                modalTab: "sent",
+                              })
+                            }
+                            disabled={
+                              deletingRaidKey ===
+                              `${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.targetTwitchLogin || "").toLowerCase()}|${String(raid.date || "")}`
+                            }
+                            className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
+                            style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
+                            title="Supprimer ce raid"
+                          >
+                            Supprimer
+                          </button>
+                        ) : null}
+                      </div>
                       <p className="text-xs text-gray-400">{new Date(raid.date).toLocaleString("fr-FR")} {raid.count ? `- x${raid.count}` : ""}</p>
                     </div>
                   ))}
@@ -862,9 +1153,33 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
                 {modalReceivedRaids.map((raid, index) => (
                   <div key={`received-${index}-${raid.date}`} className="rounded-lg border border-gray-700 bg-[#101014] px-3 py-2">
-                    <p className="text-sm text-white">
-                      Pseudo raider: <span className="text-[#93c5fd]">{raid.raiderDisplayName || raid.raiderTwitchLogin || "Inconnu"}</span>
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-white">
+                        Pseudo raider: <span className="text-[#93c5fd]">{raid.raiderDisplayName || raid.raiderTwitchLogin || "Inconnu"}</span>
+                      </p>
+                      {canUseAdvancedTools ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deleteRaidLine({
+                              raider: String(raid.raiderTwitchLogin || "").toLowerCase(),
+                              target: String(selectedStreamer?.login || "").toLowerCase(),
+                              date: String(raid.date || ""),
+                              modalTab: "received",
+                            })
+                          }
+                          disabled={
+                            deletingRaidKey ===
+                            `${String(raid.raiderTwitchLogin || "").toLowerCase()}|${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.date || "")}`
+                          }
+                          className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
+                          style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
+                          title="Supprimer ce raid"
+                        >
+                          Supprimer
+                        </button>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-gray-400">{new Date(raid.date).toLocaleString("fr-FR")}</p>
                   </div>
                 ))}
