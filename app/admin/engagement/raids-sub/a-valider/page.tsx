@@ -31,6 +31,17 @@ type CreateMemberDraft = {
   twitchUrl: string;
 };
 
+const POINTS_DONE_TOKEN = "[points_discord_ok]";
+
+const STATUS_LABELS: Record<"all" | "received" | "matched" | "ignored" | "duplicate" | "error", string> = {
+  all: "Tous",
+  received: "Recus",
+  matched: "Valides",
+  ignored: "Ignores",
+  duplicate: "Doublons",
+  error: "Erreurs",
+};
+
 export default function AdminRaidsSubAValiderPage() {
   const searchParams = useSearchParams();
   const statusFromQuery = (searchParams.get("status") || "").toLowerCase();
@@ -46,6 +57,7 @@ export default function AdminRaidsSubAValiderPage() {
   const [statusFilter, setStatusFilter] =
     useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">(initialStatus);
   const [search, setSearch] = useState("");
+  const [pointsFilter, setPointsFilter] = useState<"all" | "todo">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState("");
@@ -120,6 +132,34 @@ export default function AdminRaidsSubAValiderPage() {
     };
   }, [rows]);
 
+  function getCommentValue(item: RaidSubEvent): string {
+    return commentById[item.id] ?? item.error_reason ?? "";
+  }
+
+  function isPointsDoneFromComment(comment: string): boolean {
+    return comment.toLowerCase().includes(POINTS_DONE_TOKEN);
+  }
+
+  function cleanPointsToken(comment: string): string {
+    return comment.replace(new RegExp(`\\s*${POINTS_DONE_TOKEN}\\s*`, "gi"), " ").replace(/\s+/g, " ").trim();
+  }
+
+  function withPointsToken(comment: string): string {
+    const base = cleanPointsToken(comment);
+    return base ? `${base} ${POINTS_DONE_TOKEN}` : POINTS_DONE_TOKEN;
+  }
+
+  const pointsTodoCount = useMemo(() => {
+    return rows.filter((item) => item.processing_status === "matched" && !isPointsDoneFromComment(getCommentValue(item))).length;
+  }, [rows, commentById]);
+
+  const displayedRows = useMemo(() => {
+    if (pointsFilter === "todo") {
+      return rows.filter((item) => item.processing_status === "matched" && !isPointsDoneFromComment(getCommentValue(item)));
+    }
+    return rows;
+  }, [rows, pointsFilter, commentById]);
+
   async function updateStatus(id: string, processingStatus: RaidSubEvent["processing_status"]) {
     setSavingId(id);
     try {
@@ -139,6 +179,33 @@ export default function AdminRaidsSubAValiderPage() {
       setRows((previous) => previous.map((item) => (item.id === id ? body.event : item)));
     } catch {
       setError("Erreur reseau pendant la mise a jour.");
+    } finally {
+      setSavingId("");
+    }
+  }
+
+  async function markPointsAttributed(item: RaidSubEvent, done: boolean) {
+    setSavingId(item.id);
+    try {
+      const currentComment = getCommentValue(item);
+      const staffComment = done ? withPointsToken(currentComment) : cleanPointsToken(currentComment);
+      const response = await fetch(`/api/admin/engagement/raids-sub/review/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processingStatus: item.processing_status,
+          staffComment,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Mise a jour points Discord impossible.");
+        return;
+      }
+      setRows((previous) => previous.map((row) => (row.id === item.id ? body.event : row)));
+      setCommentById((previous) => ({ ...previous, [item.id]: staffComment }));
+    } catch {
+      setError("Erreur reseau pendant la mise a jour points Discord.");
     } finally {
       setSavingId("");
     }
@@ -275,6 +342,14 @@ export default function AdminRaidsSubAValiderPage() {
         </p>
       </div>
 
+      <div className="mb-4 rounded-xl border border-sky-500/35 bg-sky-900/15 p-4">
+        <p className="text-sm font-semibold text-sky-200">Workflow modo recommande</p>
+        <p className="mt-1 text-xs text-sky-100/90">
+          1) Verifier le raid et cliquer <strong>Valider (matched)</strong>. 2) Attribuer les points sur Discord manuellement.
+          3) Cliquer <strong>Points Discord attribues</strong> pour tracer que c est fait.
+        </p>
+      </div>
+
       <div className="mb-6 rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">
         <div className="flex flex-wrap items-center gap-2">
           {(["all", "received", "matched", "ignored", "duplicate", "error"] as const).map((status) => (
@@ -288,7 +363,19 @@ export default function AdminRaidsSubAValiderPage() {
                 color: statusFilter === status ? "#c4b5fd" : "#cbd5e1",
               }}
             >
-              {status} ({status === "received" ? stats.received : status === "matched" ? stats.matched : status === "ignored" ? stats.ignored : status === "duplicate" ? stats.duplicate : status === "error" ? stats.error : rows.length})
+              {STATUS_LABELS[status]} (
+              {status === "received"
+                ? stats.received
+                : status === "matched"
+                  ? stats.matched
+                  : status === "ignored"
+                    ? stats.ignored
+                    : status === "duplicate"
+                      ? stats.duplicate
+                      : status === "error"
+                        ? stats.error
+                        : rows.length}
+              )
             </button>
           ))}
         </div>
@@ -308,6 +395,18 @@ export default function AdminRaidsSubAValiderPage() {
           >
             Rechercher
           </button>
+          <button
+            type="button"
+            onClick={() => setPointsFilter((prev) => (prev === "todo" ? "all" : "todo"))}
+            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+            style={{
+              borderColor: pointsFilter === "todo" ? "rgba(245,158,11,0.55)" : "rgba(255,255,255,0.2)",
+              color: pointsFilter === "todo" ? "#fbbf24" : "#cbd5e1",
+              backgroundColor: pointsFilter === "todo" ? "rgba(245,158,11,0.12)" : "transparent",
+            }}
+          >
+            {pointsFilter === "todo" ? "Filtre points: A finir" : "Filtrer: A finir points Discord"} ({pointsTodoCount})
+          </button>
         </div>
       </div>
 
@@ -318,13 +417,17 @@ export default function AdminRaidsSubAValiderPage() {
       <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
         {loading ? (
           <p className="text-sm text-gray-300">Chargement des events...</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-gray-300">Aucun event à afficher.</p>
+        ) : displayedRows.length === 0 ? (
+          <p className="text-sm text-gray-300">
+            {pointsFilter === "todo" ? "Aucun raid matched en attente de points Discord." : "Aucun event à afficher."}
+          </p>
         ) : (
           <div className="space-y-3">
-            {rows.map((item) => {
+            {displayedRows.map((item) => {
               const badge = badgeStyle(item.processing_status);
               const isSaving = savingId === item.id;
+              const itemComment = getCommentValue(item);
+              const pointsDone = isPointsDoneFromComment(itemComment);
               const fromDraft = overrideFromById[item.id] ?? item.from_broadcaster_user_login ?? "";
               const toDraft = overrideToById[item.id] ?? item.to_broadcaster_user_login ?? "";
               const fromQuery = normalizeLogin(fromDraft);
@@ -365,6 +468,18 @@ export default function AdminRaidsSubAValiderPage() {
                   <p className="mt-1 text-xs text-gray-500">
                     fromMember: {String(item.match_from_member)} • toMember: {String(item.match_to_member)}
                   </p>
+                  <div className="mt-2">
+                    <span
+                      className="inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold"
+                      style={{
+                        borderColor: pointsDone ? "rgba(52,211,153,0.45)" : "rgba(251,191,36,0.45)",
+                        color: pointsDone ? "#34d399" : "#fbbf24",
+                        backgroundColor: pointsDone ? "rgba(52,211,153,0.12)" : "rgba(251,191,36,0.12)",
+                      }}
+                    >
+                      {pointsDone ? "Points Discord attribues" : "Points Discord NON attribues"}
+                    </span>
+                  </div>
                   {item.error_reason ? <p className="mt-1 text-sm text-amber-200">Commentaire: {item.error_reason}</p> : null}
 
                   {(!item.match_from_member || !item.match_to_member) ? (
@@ -446,7 +561,7 @@ export default function AdminRaidsSubAValiderPage() {
 
                   <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                     <input
-                      value={commentById[item.id] ?? item.error_reason ?? ""}
+                      value={itemComment}
                       onChange={(event) => setCommentById((prev) => ({ ...prev, [item.id]: event.target.value }))}
                       placeholder="Commentaire staff (optionnel)"
                       className="rounded-md border px-3 py-2 text-sm"
@@ -460,7 +575,17 @@ export default function AdminRaidsSubAValiderPage() {
                         className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
                         style={{ borderColor: "rgba(52,211,153,0.5)", color: "#34d399" }}
                       >
-                        Matched
+                        Valider (matched)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void markPointsAttributed(item, true)}
+                        disabled={isSaving || item.processing_status !== "matched"}
+                        className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                        style={{ borderColor: "rgba(16,185,129,0.5)", color: "#10b981" }}
+                        title={item.processing_status !== "matched" ? "Valide d abord le raid en matched" : "Marquer points Discord attribues"}
+                      >
+                        Points Discord attribues
                       </button>
                       <button
                         type="button"
@@ -469,35 +594,51 @@ export default function AdminRaidsSubAValiderPage() {
                         className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
                         style={{ borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
                       >
-                        Ignored
+                        Ignorer
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => void updateStatus(item.id, "duplicate")}
-                        disabled={isSaving}
-                        className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                        style={{ borderColor: "rgba(147,197,253,0.5)", color: "#93c5fd" }}
-                      >
-                        Duplicate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void updateStatus(item.id, "error")}
-                        disabled={isSaving}
-                        className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                        style={{ borderColor: "rgba(248,113,113,0.5)", color: "#f87171" }}
-                      >
-                        Error
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void updateStatus(item.id, "received")}
-                        disabled={isSaving}
-                        className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                        style={{ borderColor: "rgba(229,231,235,0.5)", color: "#e5e7eb" }}
-                      >
-                        Repasser received
-                      </button>
+                      <details className="group">
+                        <summary className="cursor-pointer rounded-md border px-3 py-2 text-xs font-semibold text-gray-300" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
+                          Plus d actions
+                        </summary>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void markPointsAttributed(item, false)}
+                            disabled={isSaving || !pointsDone}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(251,191,36,0.45)", color: "#fbbf24" }}
+                          >
+                            Retirer "points attribues"
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void updateStatus(item.id, "duplicate")}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(147,197,253,0.5)", color: "#93c5fd" }}
+                          >
+                            Marquer doublon
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void updateStatus(item.id, "error")}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(248,113,113,0.5)", color: "#f87171" }}
+                          >
+                            Marquer erreur
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void updateStatus(item.id, "received")}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(229,231,235,0.5)", color: "#e5e7eb" }}
+                          >
+                            Repasser en received
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </div>
                 </article>
