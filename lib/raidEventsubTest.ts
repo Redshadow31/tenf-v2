@@ -1,7 +1,7 @@
 import { getBaseUrl } from '@/lib/config';
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
-import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
+import { getTwitchUserIdsByLogins } from '@/lib/twitchHelpers';
 import {
   deleteEventSubSubscription,
   getEventSubSubscriptions,
@@ -397,29 +397,63 @@ async function createToBroadcasterRaidSubscription(
 }
 
 async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
-  await loadMemberDataFromStorage();
-  let members = getAllMemberData().filter((m) => m.isActive && !!m.twitchLogin);
-  const missingIdLogins = members.filter((m) => !m.twitchId).map((m) => m.twitchLogin);
+  // Aligner strictement le périmètre avec la page /lives:
+  // - membres actifs
+  // - profils validés
+  // - lives non shadowban
+  const { data, error } = await supabaseAdmin
+    .from('members')
+    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at,profile_validation_status,shadowban_lives')
+    .eq('is_active', true)
+    .eq('profile_validation_status', 'valide')
+    .not('twitch_login', 'is', null)
+    .or('shadowban_lives.is.null,shadowban_lives.eq.false')
+    .order('updated_at', { ascending: false })
+    .limit(5000);
+
+  if (error) {
+    throw new Error(`[raidEventsubTest] Impossible de charger les membres eligibles depuis Supabase: ${error.message}`);
+  }
+
+  const rows = (data || []) as Array<{
+    discord_id?: string | null;
+    twitch_login?: string | null;
+    twitch_id?: string | null;
+    twitch_status?: { isLive?: boolean } | null;
+    updated_at?: string | null;
+  }>;
+
+  const missingIdLogins = rows
+    .filter((row) => !row.twitch_id && !!row.twitch_login)
+    .map((row) => String(row.twitch_login).toLowerCase().trim());
+
+  let resolvedMap = new Map<string, string>();
   if (missingIdLogins.length > 0) {
-    await resolveAndCacheTwitchIds(missingIdLogins);
-    await loadMemberDataFromStorage();
-    members = getAllMemberData().filter((m) => m.isActive && !!m.twitchLogin);
+    // Résolution directe via Helix pour éviter les écarts entre legacy et Supabase.
+    resolvedMap = await getTwitchUserIdsByLogins(missingIdLogins);
   }
 
   const graceLimit = Date.now() - GRACE_PERIOD_MINUTES * 60 * 1000;
 
-  return members
-    .filter((m) => !!m.twitchId)
-    .map((m) => ({
-      discordId: m.discordId || null,
-      twitchLogin: m.twitchLogin.toLowerCase(),
-      twitchId: m.twitchId as string,
-      wasRecentlyLive:
-        !!m.twitchStatus?.isLive ||
-        (m.twitchStatus?.isLive === false &&
-          !!m.updatedAt &&
-          new Date(m.updatedAt).getTime() >= graceLimit),
-    }));
+  return rows
+    .map((row) => {
+      const twitchLogin = String(row.twitch_login || '').toLowerCase().trim();
+      if (!twitchLogin) return null;
+      const fallbackResolved = resolvedMap.get(twitchLogin);
+      const twitchId = String(row.twitch_id || fallbackResolved || '').trim();
+      if (!twitchId) return null;
+      const status = (row.twitch_status || {}) as { isLive?: boolean };
+      const updatedAt = String(row.updated_at || '').trim();
+      return {
+        discordId: row.discord_id ? String(row.discord_id) : null,
+        twitchLogin,
+        twitchId,
+        wasRecentlyLive:
+          status?.isLive === true ||
+          (status?.isLive === false && !!updatedAt && new Date(updatedAt).getTime() >= graceLimit),
+      } as EligibleMember;
+    })
+    .filter((member): member is EligibleMember => member !== null);
 }
 
 export async function getActiveRaidTestRun(): Promise<RaidTestRunRow | null> {
