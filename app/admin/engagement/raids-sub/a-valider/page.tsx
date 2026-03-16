@@ -238,6 +238,35 @@ export default function AdminRaidsSubAValiderPage() {
     }
   }
 
+  async function deleteEvent(item: RaidSubEvent) {
+    const confirmed = window.confirm(
+      `Supprimer définitivement cet event ?\n\n${item.from_broadcaster_user_login} -> ${item.to_broadcaster_user_login}\n${new Date(item.event_at).toLocaleString("fr-FR")}`
+    );
+    if (!confirmed) return;
+
+    setSavingId(item.id);
+    try {
+      const response = await fetch(`/api/admin/engagement/raids-sub/review/${item.id}`, {
+        method: "DELETE",
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Suppression impossible.");
+        return;
+      }
+      setRows((previous) => previous.filter((row) => row.id !== item.id));
+      setCommentById((previous) => {
+        const next = { ...previous };
+        delete next[item.id];
+        return next;
+      });
+    } catch {
+      setError("Erreur reseau pendant la suppression.");
+    } finally {
+      setSavingId("");
+    }
+  }
+
   function normalizeLogin(value: string): string {
     return value.trim().toLowerCase();
   }
@@ -666,6 +695,15 @@ export default function AdminRaidsSubAValiderPage() {
                             style={{ borderColor: "rgba(229,231,235,0.5)", color: "#e5e7eb" }}
                           >
                             Repasser en received
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteEvent(item)}
+                            disabled={isSaving}
+                            className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: "rgba(248,113,113,0.55)", color: "#f87171" }}
+                          >
+                            Supprimer event
                           </button>
                         </div>
                       </details>

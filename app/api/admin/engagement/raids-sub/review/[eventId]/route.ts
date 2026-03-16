@@ -89,3 +89,40 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ eventId: string }> }
+) {
+  try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
+    }
+
+    const { eventId } = await context.params;
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId manquant' }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('raid_test_events')
+      .delete()
+      .eq('id', eventId)
+      .select('id')
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: 'Impossible de supprimer l event' }, { status: 500 });
+    }
+
+    if (!data?.id) {
+      return NextResponse.json({ error: 'Event introuvable' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, deletedId: data.id });
+  } catch (error) {
+    console.error('[admin/engagement/raids-sub/review/[eventId]] DELETE error:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
+
