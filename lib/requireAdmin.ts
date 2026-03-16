@@ -41,23 +41,29 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     const username = session.user.username || "Unknown";
     const avatar = session.user.avatar || null;
 
-    // Si le rôle est déjà dans la session (depuis le JWT), l'utiliser
-    let role: AdminRole | null = normalizeAdminRole((session.user.role as string | null | undefined) || null);
+    // Le rôle en session (JWT) peut être stale si un fondateur a modifié les accès
+    // après la connexion de l'utilisateur.
+    const sessionRole = normalizeAdminRole((session.user.role as string | null | undefined) || null);
 
-    // Sinon, vérifier les rôles hardcodés
-    if (!role) {
-      role = getAdminRole(discordId);
-    }
-
-    // Si toujours pas trouvé, vérifier le cache Blobs
+    // Priorité au rôle "source de vérité" (hardcodé/cache), puis fallback session.
+    let role: AdminRole | null = getAdminRole(discordId);
     if (!role) {
       try {
         await loadAdminAccessCache();
         role = getAdminRoleFromCache(discordId);
       } catch (error) {
-        // Si Blobs n'est pas disponible, ignorer
+        // Si Blobs n'est pas disponible, on tentera le fallback session.
         console.warn("[requireAdmin] Cannot load admin access cache:", error);
       }
+    }
+    if (!role) {
+      role = sessionRole;
+    }
+
+    // Un admin avancé doit être reconnu même sans rôle admin explicite.
+    // On mappe vers ADMIN_COORDINATEUR pour rester compatible avec les guards existants.
+    if (!role && await hasAdvancedAdminAccess(discordId)) {
+      role = "ADMIN_COORDINATEUR";
     }
 
     if (!role) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthenticatedAdmin } from "@/lib/requireAdmin";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import {
@@ -11,6 +12,15 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const ADMIN_ROLE_TO_MEMBER_ROLE: Record<string, string> = {
+  FONDATEUR: "Admin",
+  ADMIN_COORDINATEUR: "Admin Coordinateur",
+  MODERATEUR: "Modérateur",
+  MODERATEUR_EN_FORMATION: "Modérateur en formation",
+  MODERATEUR_EN_PAUSE: "Modérateur en pause",
+  SOUTIEN_TENF: "Soutien TENF",
+};
 
 /**
  * GET - Récupère le profil du membre connecté ou par twitchLogin
@@ -89,6 +99,9 @@ export async function GET(request: NextRequest) {
     const memberSince = member.createdAt
       ? new Date(member.createdAt).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
       : null;
+    const authenticatedAdmin = await getAuthenticatedAdmin();
+    const effectiveRole =
+      (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || member.role;
 
     return NextResponse.json({
       member: {
@@ -96,7 +109,7 @@ export async function GET(request: NextRequest) {
         twitchLogin: member.twitchLogin,
         memberId,
         avatar: resolveMemberAvatar(member, fetchedAvatar),
-        role: member.role,
+        role: effectiveRole,
         bio: member.description || member.customBio || "",
         memberSince,
         profileValidationStatus: member.profileValidationStatus || "non_soumis",
@@ -111,7 +124,7 @@ export async function GET(request: NextRequest) {
         twitchAffiliateDate: member.twitchAffiliateDate ? new Date(member.twitchAffiliateDate).toISOString() : null,
         timezone: member.timezone || null,
         tenfSummary: {
-          role: member.role,
+          role: effectiveRole,
           status: member.isActive ? "Actif" : "Inactif",
           integration: {
             integrated: !!member.integrationDate,

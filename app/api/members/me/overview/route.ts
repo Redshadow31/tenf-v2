@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthenticatedAdmin } from "@/lib/requireAdmin";
 import { eventRepository, memberRepository, vipRepository } from "@/lib/repositories";
 import { getMonthKey, loadRaidsFaits } from "@/lib/raidStorage";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const ADMIN_ROLE_TO_MEMBER_ROLE: Record<string, string> = {
+  FONDATEUR: "Admin",
+  ADMIN_COORDINATEUR: "Admin Coordinateur",
+  MODERATEUR: "Modérateur",
+  MODERATEUR_EN_FORMATION: "Modérateur en formation",
+  MODERATEUR_EN_PAUSE: "Modérateur en pause",
+  SOUTIEN_TENF: "Soutien TENF",
+};
 
 function normalize(value?: unknown): string {
   return String(value ?? "").toLowerCase().trim().replace(/^@+/, "");
@@ -114,6 +124,9 @@ export async function GET() {
     if (!member) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
+    const authenticatedAdmin = await getAuthenticatedAdmin();
+    const effectiveRole =
+      (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || member.role;
 
     const identity = new Set<string>(
       [member.twitchLogin, member.discordId, member.discordUsername, member.displayName, member.siteUsername]
@@ -330,7 +343,7 @@ export async function GET() {
       member: {
         twitchLogin: member.twitchLogin,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
-        role: member.role,
+        role: effectiveRole,
         profileValidationStatus: member.profileValidationStatus || "non_soumis",
         integrationDate: member.integrationDate ? member.integrationDate.toISOString() : null,
         parrain: member.parrain || null,

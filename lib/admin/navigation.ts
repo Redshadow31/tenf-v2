@@ -45,6 +45,7 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
           { href: "/admin/membres/validation-profil", label: "Validation des profils" },
+          { href: "/admin/membres/donnee-discord", label: "Donnee Discord" },
           { href: "/admin/membres/synchronisation", label: "Synchronisation des données" },
           { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
           { href: "/admin/membres/erreurs", label: "Incohérences & erreurs" },
