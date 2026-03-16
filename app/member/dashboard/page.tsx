@@ -18,6 +18,13 @@ const ROLE_ACCENT_BY_KEY: Array<{ key: string; accent: string }> = [
   { key: "nouveau", accent: "#06b6d4" },
 ];
 
+// Overrides personnalises pour les 3 profils Discord hardcodes (fondateurs/admins)
+const ADMIN_ACCENT_BY_DISCORD_ID: Record<string, string> = {
+  "1021398088474169414": "#ef4444", // Rouge
+  "333001130705420299": "#d8b4fe", // Violet pastel
+  "535244297214361603": "#4f46e5", // Indigo
+};
+
 function normalizeText(value: string | undefined | null): string {
   return String(value ?? "")
     .normalize("NFD")
@@ -40,7 +47,10 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function resolveAccent(role: string | undefined, vipActive: boolean): string {
+function resolveAccent(role: string | undefined, vipActive: boolean, discordId?: string | null): string {
+  if (discordId && ADMIN_ACCENT_BY_DISCORD_ID[discordId]) {
+    return ADMIN_ACCENT_BY_DISCORD_ID[discordId];
+  }
   if (vipActive) return VIP_GOLD;
   const normalizedRole = normalizeText(role);
   return ROLE_ACCENT_BY_KEY.find((entry) => normalizedRole.includes(entry.key))?.accent ?? "#06b6d4";
@@ -192,7 +202,7 @@ export default function MemberDashboardPage() {
   const displayName = data.member.displayName || data.member.twitchLogin;
   const firstName = displayName.split(" ")[0] || "Membre";
   const vipActive = Boolean(data.vip?.activeThisMonth);
-  const accent = resolveAccent(data.member.role, vipActive);
+  const accent = resolveAccent(data.member.role, vipActive, data.member.discordId);
   const sectionLabel = vipActive ? "Espace membre VIP" : "Espace membre";
   const segment = roleSegment(data.member.role, vipActive);
   const monthDeadline = formatMonthDeadline(data.monthKey);

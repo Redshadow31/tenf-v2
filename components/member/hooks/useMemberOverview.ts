@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 export type MemberOverview = {
   member: {
+    discordId?: string;
     twitchLogin: string;
     displayName: string;
     role?: string;

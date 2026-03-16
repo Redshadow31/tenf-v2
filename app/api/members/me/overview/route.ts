@@ -346,6 +346,7 @@ export async function GET() {
 
     return NextResponse.json({
       member: {
+        discordId: member.discordId || null,
         twitchLogin: member.twitchLogin,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         role: effectiveRole,
