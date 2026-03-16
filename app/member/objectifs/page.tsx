@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, Flag } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import ProgressGoalCard from "@/components/member/ui/ProgressGoalCard";
@@ -106,6 +108,28 @@ export default function MemberGoalsPage() {
         description="Definis tes objectifs mensuels depuis un seul espace: presences, spotlight, raids TENF et formations."
         badge="Objectifs personnalises"
       />
+
+      <section className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+              <Flag size={14} style={{ color: "var(--color-primary)" }} />
+              Encadre engagement
+            </p>
+            <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Consulte ton score d engagement et son detail pour ajuster tes objectifs du mois.
+            </p>
+          </div>
+          <Link
+            href="/member/engagement/score"
+            className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold hover:opacity-85"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          >
+            Ouvrir mon score d engagement
+            <ArrowUpRight size={12} />
+          </Link>
+        </div>
+      </section>
 
       <section className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

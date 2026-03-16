@@ -106,6 +106,31 @@ function getCardFeedback(current: number, target: number, remaining: number): st
   return "C est le bon moment pour lancer cet objectif cette semaine.";
 }
 
+function getImpactTone(impact: number): { label: string; bg: string; border: string; text: string } {
+  if (impact >= 130) {
+    return {
+      label: "Impact critique",
+      bg: "rgba(239, 68, 68, 0.16)",
+      border: "rgba(239, 68, 68, 0.4)",
+      text: "#fca5a5",
+    };
+  }
+  if (impact >= 100) {
+    return {
+      label: "Impact eleve",
+      bg: "rgba(245, 158, 11, 0.16)",
+      border: "rgba(245, 158, 11, 0.4)",
+      text: "#fcd34d",
+    };
+  }
+  return {
+    label: "Impact utile",
+    bg: "rgba(14, 165, 233, 0.16)",
+    border: "rgba(14, 165, 233, 0.4)",
+    text: "#7dd3fc",
+  };
+}
+
 type SuggestedAction = {
   impact: number;
   href: string;
@@ -174,9 +199,11 @@ export default function MemberDashboardPage() {
   const profileStatus = profileStatusLabel(data.member.profileValidationStatus);
   const raidsTarget = memberGoals.raids;
   const presencesTarget = memberGoals.events;
+  const engagementTarget = raidsTarget + presencesTarget;
   const profileRemaining = Math.max(0, 100 - data.profile.percent);
   const raidsRemaining = Math.max(0, raidsTarget - data.stats.raidsThisMonth);
   const presencesRemaining = Math.max(0, presencesTarget - data.stats.eventPresencesThisMonth);
+  const engagementRemaining = Math.max(0, engagementTarget - data.stats.participationThisMonth);
   const formationsThisMonth =
     data.stats.formationsValidatedThisMonth ??
     data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
@@ -205,6 +232,14 @@ export default function MemberDashboardPage() {
       remaining: profileRemaining,
       href: "/member/profil/completer",
       icon: UserCircle2,
+    },
+    {
+      label: "Engagement a booster",
+      current: data.stats.participationThisMonth,
+      target: engagementTarget,
+      remaining: engagementRemaining,
+      href: "/member/engagement/score",
+      icon: Flag,
     },
   ];
 
@@ -332,8 +367,8 @@ export default function MemberDashboardPage() {
         }}
       >
         <MemberBreadcrumbs />
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-          <div className="max-w-2xl">
+        <div className="mt-3 grid gap-5 xl:grid-cols-[1.25fr_0.75fr] xl:items-end">
+          <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.18em]" style={{ color: hexToRgba(accent, 0.9) }}>
               {sectionLabel}
             </p>
@@ -374,23 +409,43 @@ export default function MemberDashboardPage() {
               </span>
             </div>
           </div>
-          <div className="grid gap-2">
+          <div
+            className="rounded-2xl border p-4"
+            style={{
+              borderColor: hexToRgba(accent, 0.26),
+              backgroundColor: "rgba(20,20,24,0.56)",
+              backdropFilter: "blur(2px)",
+            }}
+          >
             <Link
               href={mainAction.href}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-[1px]"
               style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
             >
               {mainAction.label}
               <ArrowUpRight size={14} />
             </Link>
-            <p className="text-xs text-right" style={{ color: "rgba(229, 229, 235, 0.76)" }}>
+            <p className="mt-2 text-xs text-center" style={{ color: "rgba(229, 229, 235, 0.76)" }}>
               Objectifs mensuels a valider avant le {monthDeadline}
             </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {quickCtas.slice(1, 3).map((cta) => (
+                <Link
+                  key={`hero-${cta.label}-${cta.href}`}
+                  href={cta.href}
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold hover:opacity-85"
+                  style={{ borderColor: hexToRgba(accent, 0.35), color: hexToRgba(accent, 0.95) }}
+                >
+                  {cta.label}
+                  <ArrowUpRight size={11} />
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {remainingCards.map((item) => (
           <article
             key={item.label}
@@ -398,6 +453,7 @@ export default function MemberDashboardPage() {
             style={{
               borderColor: hexToRgba(accent, 0.2),
               background: "linear-gradient(150deg, rgba(32,32,38,0.95), rgba(22,22,27,0.96))",
+              boxShadow: "0 10px 24px rgba(0, 0, 0, 0.24)",
             }}
           >
             <div className="flex items-center justify-between gap-3">
@@ -412,6 +468,15 @@ export default function MemberDashboardPage() {
             <p className="mt-1 text-xs" style={{ color: "rgba(214, 214, 224, 0.72)" }}>
               Restant ({item.current}/{item.target})
             </p>
+            <div className="mt-3 h-1.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${getProgressPercent(item.current, item.target)}%`,
+                  background: `linear-gradient(90deg, ${hexToRgba(accent, 0.95)}, ${hexToRgba(accent, 0.62)})`,
+                }}
+              />
+            </div>
             <p className="mt-2 text-xs" style={{ color: "rgba(214, 214, 224, 0.72)" }}>
               {getCardFeedback(item.current, item.target, item.remaining)}
             </p>
@@ -447,13 +512,24 @@ export default function MemberDashboardPage() {
               </p>
             ) : (
               prioritizedActions.map((action, index) => (
-                <div key={action.label} className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                <div
+                  key={action.label}
+                  className="rounded-xl border px-4 py-3 transition-all hover:-translate-y-[1px]"
+                  style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: "rgba(255,255,255,0.015)" }}
+                >
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                       {index + 1}. {action.label}
                     </p>
-                    <span className="text-xs" style={{ color: "rgba(216,216,224,0.8)" }}>
-                      Impact eleve
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                      style={{
+                        backgroundColor: getImpactTone(action.impact).bg,
+                        borderColor: getImpactTone(action.impact).border,
+                        color: getImpactTone(action.impact).text,
+                      }}
+                    >
+                      {getImpactTone(action.impact).label}
                     </span>
                   </div>
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
@@ -469,7 +545,10 @@ export default function MemberDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <article
+          className="rounded-2xl border p-5"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.2)" }}
+        >
           <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             Suivi du mois
           </h2>
@@ -509,8 +588,12 @@ export default function MemberDashboardPage() {
               <Link
                 key={`${cta.label}-${cta.href}`}
                 href={cta.href}
-                className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold hover:opacity-85"
-                style={{ borderColor: hexToRgba(accent, 0.35), color: hexToRgba(accent, 0.95) }}
+                className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-[1px]"
+                style={{
+                  borderColor: hexToRgba(accent, 0.35),
+                  color: hexToRgba(accent, 0.95),
+                  backgroundColor: cta.href === mainAction.href ? hexToRgba(accent, 0.14) : "transparent",
+                }}
               >
                 {cta.label}
                 <ArrowUpRight size={12} />
