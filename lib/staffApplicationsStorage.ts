@@ -147,6 +147,25 @@ export async function loadStaffApplications(): Promise<StaffApplication[]> {
   }
 }
 
+export async function loadStaffApplicationsByApplicant(discordId: string): Promise<StaffApplication[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("staff_applications")
+      .select("*")
+      .eq("applicant_discord_id", discordId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data || []) as StaffApplicationRow[]).map(mapRowToApplication);
+  } catch (error) {
+    console.error("[StaffApplications] Erreur chargement candidat:", error);
+    return [];
+  }
+}
+
 export async function createStaffApplication(input: {
   applicant_discord_id: string;
   applicant_username: string;
@@ -253,6 +272,93 @@ export async function updateStaffApplicationAdmin(input: {
 
   if (updateError || !updatedData) {
     throw updateError || new Error("Mise à jour de la candidature impossible.");
+  }
+
+  return mapRowToApplication(updatedData as StaffApplicationRow);
+}
+
+export async function updateStaffApplicationCandidate(input: {
+  id: string;
+  applicant_discord_id: string;
+  answers: StaffApplicationAnswers;
+  applicant_username?: string;
+  applicant_avatar?: string | null;
+}): Promise<StaffApplication | null> {
+  const { data: currentData, error: currentError } = await supabaseAdmin
+    .from("staff_applications")
+    .select("*")
+    .eq("id", input.id)
+    .eq("applicant_discord_id", input.applicant_discord_id)
+    .single();
+
+  if (currentError || !currentData) return null;
+
+  const current = mapRowToApplication(currentData as StaffApplicationRow);
+  const editableStatuses: StaffApplicationStatus[] = ["nouveau", "a_contacter", "entretien_prevu"];
+  if (!editableStatuses.includes(current.admin_status)) {
+    return null;
+  }
+
+  const updatePayload = {
+    updated_at: new Date().toISOString(),
+    answers: input.answers,
+    applicant_username: input.applicant_username || current.applicant_username,
+    applicant_avatar: input.applicant_avatar ?? current.applicant_avatar ?? null,
+  };
+
+  const { data: updatedData, error: updateError } = await supabaseAdmin
+    .from("staff_applications")
+    .update(updatePayload)
+    .eq("id", input.id)
+    .eq("applicant_discord_id", input.applicant_discord_id)
+    .select("*")
+    .single();
+
+  if (updateError || !updatedData) {
+    throw updateError || new Error("Mise à jour candidat impossible.");
+  }
+
+  return mapRowToApplication(updatedData as StaffApplicationRow);
+}
+
+export async function cancelStaffApplicationCandidate(input: {
+  id: string;
+  applicant_discord_id: string;
+}): Promise<StaffApplication | null> {
+  const { data: currentData, error: currentError } = await supabaseAdmin
+    .from("staff_applications")
+    .select("*")
+    .eq("id", input.id)
+    .eq("applicant_discord_id", input.applicant_discord_id)
+    .single();
+
+  if (currentError || !currentData) return null;
+
+  const current = mapRowToApplication(currentData as StaffApplicationRow);
+  const cancellableStatuses: StaffApplicationStatus[] = ["nouveau", "a_contacter", "entretien_prevu"];
+  if (!cancellableStatuses.includes(current.admin_status)) {
+    return null;
+  }
+
+  const nextNotes = [
+    ...(current.admin_notes || []),
+    "Candidature annulee par le candidat.",
+  ];
+
+  const { data: updatedData, error: updateError } = await supabaseAdmin
+    .from("staff_applications")
+    .update({
+      updated_at: new Date().toISOString(),
+      admin_status: "archive",
+      admin_notes: nextNotes,
+    })
+    .eq("id", input.id)
+    .eq("applicant_discord_id", input.applicant_discord_id)
+    .select("*")
+    .single();
+
+  if (updateError || !updatedData) {
+    throw updateError || new Error("Annulation candidature impossible.");
   }
 
   return mapRowToApplication(updatedData as StaffApplicationRow);
