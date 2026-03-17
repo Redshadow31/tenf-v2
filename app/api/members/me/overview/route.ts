@@ -351,6 +351,7 @@ export async function GET() {
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         role: effectiveRole,
         profileValidationStatus: member.profileValidationStatus || "non_soumis",
+        onboardingStatus: member.onboardingStatus || "a_faire",
         integrationDate: member.integrationDate ? member.integrationDate.toISOString() : null,
         parrain: member.parrain || null,
         bio: member.description || member.customBio || "",

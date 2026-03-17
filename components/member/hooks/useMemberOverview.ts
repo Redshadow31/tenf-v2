@@ -9,6 +9,7 @@ export type MemberOverview = {
     displayName: string;
     role?: string;
     profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide" | string;
+    onboardingStatus?: "a_faire" | "en_cours" | "termine" | string;
     integrationDate: string | null;
     parrain: string | null;
     bio?: string;

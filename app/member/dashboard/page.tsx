@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Calendar, CheckCircle2, Clock3, Crown, Flag, ListTodo, Rocket, Sparkles, UserCircle2 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberBreadcrumbs from "@/components/member/ui/MemberBreadcrumbs";
@@ -162,6 +163,7 @@ type FollowStatusesResponse = {
 };
 
 export default function MemberDashboardPage() {
+  const router = useRouter();
   const { data, loading, error } = useMemberOverview();
   const { goals: memberGoals } = useMemberMonthlyGoals(data?.monthKey || "");
   const [followStats, setFollowStats] = useState<{
@@ -212,6 +214,16 @@ export default function MemberDashboardPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (loading || !data?.member) return;
+    const onboardingStatus = String(data.member.onboardingStatus || "").toLowerCase();
+    const login = String(data.member.twitchLogin || "").toLowerCase();
+    const isPlaceholder = login.startsWith("nouveau_") || login.startsWith("nouveau-");
+    if (onboardingStatus === "a_faire" || isPlaceholder) {
+      router.replace("/member/profil/completer?onboarding=1");
+    }
+  }, [data, loading, router]);
 
   if (loading) {
     return (
