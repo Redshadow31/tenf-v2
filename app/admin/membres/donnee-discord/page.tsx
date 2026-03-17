@@ -82,7 +82,7 @@ export default function AdminMembresDonneeDiscordPage() {
     setError("");
     setInfo("");
     try {
-      const batchSize = 60;
+      const batchSize = 20;
       let nextOffset = 0;
       let hasMore = true;
       let totalSelected = 0;

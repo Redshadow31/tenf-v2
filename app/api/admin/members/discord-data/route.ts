@@ -21,12 +21,12 @@ type VerifyResult = {
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
-const VERIFY_CHUNK_SIZE = 200;
-const DEFAULT_POST_LIMIT = 60;
-const MAX_POST_LIMIT = 100;
-const DISCORD_MAX_RETRIES = 5;
+const DEFAULT_POST_LIMIT = 20;
+const MAX_POST_LIMIT = 30;
+const DISCORD_MAX_RETRIES = 2;
 const DISCORD_MIN_WAIT_MS = 150;
-const DISCORD_MAX_WAIT_MS = 5000;
+const DISCORD_MAX_WAIT_MS = 1200;
+const REQUEST_TIME_BUDGET_MS = 12000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -170,95 +170,104 @@ export async function POST(request: NextRequest) {
     }
 
     const selectedWindow = uniqueSelected.slice(offset, offset + limit);
+    const startedAt = Date.now();
+    let processedInWindow = 0;
     const results: VerifyResult[] = [];
     let updated = 0;
     let same = 0;
     let different = 0;
     let notFound = 0;
     let errors = 0;
-    // Traiter toute la sélection par paquets pour éviter une exécution trop lourde d'un coup.
-    for (let i = 0; i < selectedWindow.length; i += VERIFY_CHUNK_SIZE) {
-      const chunk = selectedWindow.slice(i, i + VERIFY_CHUNK_SIZE);
-      for (const member of chunk) {
-        if (!member.discordId) continue;
-        const stored = String(member.discordUsername || "").trim();
-
-        const fetched = await fetchDiscordUsernameById(member.discordId, DISCORD_BOT_TOKEN);
-        if (!fetched.ok) {
-          const isNotFound = fetched.reason.includes("404");
-          results.push({
-            twitchLogin: member.twitchLogin,
-            displayName: member.displayName || member.twitchLogin,
-            discordId: member.discordId,
-            storedDiscordUsername: stored || null,
-            fetchedDiscordUsername: null,
-            status: isNotFound ? "not_found" : "error",
-            error: fetched.reason,
-          });
-          if (isNotFound) notFound += 1;
-          else errors += 1;
-          continue;
-        }
-
-        const current = fetched.username.trim();
-        if (stored.toLowerCase() === current.toLowerCase()) {
-          results.push({
-            twitchLogin: member.twitchLogin,
-            displayName: member.displayName || member.twitchLogin,
-            discordId: member.discordId,
-            storedDiscordUsername: stored || null,
-            fetchedDiscordUsername: current,
-            status: "same",
-          });
-          same += 1;
-          continue;
-        }
-
-        different += 1;
-        if (updateMismatches) {
-          await memberRepository.update(member.twitchLogin, {
-            discordUsername: current,
-            updatedBy: admin.discordId,
-          });
-          updated += 1;
-          results.push({
-            twitchLogin: member.twitchLogin,
-            displayName: member.displayName || member.twitchLogin,
-            discordId: member.discordId,
-            storedDiscordUsername: stored || null,
-            fetchedDiscordUsername: current,
-            status: "updated",
-          });
-        } else {
-          results.push({
-            twitchLogin: member.twitchLogin,
-            displayName: member.displayName || member.twitchLogin,
-            discordId: member.discordId,
-            storedDiscordUsername: stored || null,
-            fetchedDiscordUsername: current,
-            status: "different",
-          });
-        }
+    for (const member of selectedWindow) {
+      if (Date.now() - startedAt >= REQUEST_TIME_BUDGET_MS) {
+        break;
       }
+
+      if (!member.discordId) continue;
+      const stored = String(member.discordUsername || "").trim();
+
+      const fetched = await fetchDiscordUsernameById(member.discordId, DISCORD_BOT_TOKEN);
+      if (!fetched.ok) {
+        const isNotFound = fetched.reason.includes("404");
+        results.push({
+          twitchLogin: member.twitchLogin,
+          displayName: member.displayName || member.twitchLogin,
+          discordId: member.discordId,
+          storedDiscordUsername: stored || null,
+          fetchedDiscordUsername: null,
+          status: isNotFound ? "not_found" : "error",
+          error: fetched.reason,
+        });
+        if (isNotFound) notFound += 1;
+        else errors += 1;
+        processedInWindow += 1;
+        continue;
+      }
+
+      const current = fetched.username.trim();
+      if (stored.toLowerCase() === current.toLowerCase()) {
+        results.push({
+          twitchLogin: member.twitchLogin,
+          displayName: member.displayName || member.twitchLogin,
+          discordId: member.discordId,
+          storedDiscordUsername: stored || null,
+          fetchedDiscordUsername: current,
+          status: "same",
+        });
+        same += 1;
+        processedInWindow += 1;
+        continue;
+      }
+
+      different += 1;
+      if (updateMismatches) {
+        await memberRepository.update(member.twitchLogin, {
+          discordUsername: current,
+          updatedBy: admin.discordId,
+        });
+        updated += 1;
+        results.push({
+          twitchLogin: member.twitchLogin,
+          displayName: member.displayName || member.twitchLogin,
+          discordId: member.discordId,
+          storedDiscordUsername: stored || null,
+          fetchedDiscordUsername: current,
+          status: "updated",
+        });
+      } else {
+        results.push({
+          twitchLogin: member.twitchLogin,
+          displayName: member.displayName || member.twitchLogin,
+          discordId: member.discordId,
+          storedDiscordUsername: stored || null,
+          fetchedDiscordUsername: current,
+          status: "different",
+        });
+      }
+      processedInWindow += 1;
     }
+
+    const reachedWindowEnd = processedInWindow >= selectedWindow.length;
+    const nextOffset = offset + processedInWindow;
+    const hasMore = !reachedWindowEnd || nextOffset < uniqueSelected.length;
 
     return NextResponse.json({
       success: true,
       message: updateMismatches
         ? `Verification terminee: ${updated} pseudo(s) synchronise(s).`
         : "Verification terminee (mode lecture seule).",
-      processed: selectedWindow.length,
+      processed: processedInWindow,
       same,
       different,
       updated,
       notFound,
       errors,
-      truncated: offset + selectedWindow.length < uniqueSelected.length,
+      truncated: hasMore,
       totalSelected: uniqueSelected.length,
       offset,
       limit,
-      nextOffset: offset + selectedWindow.length,
-      hasMore: offset + selectedWindow.length < uniqueSelected.length,
+      nextOffset,
+      hasMore,
       results,
     });
   } catch (error) {
