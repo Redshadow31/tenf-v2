@@ -32,6 +32,18 @@ type VerifyResponse = {
   results: VerifyResult[];
 };
 
+async function parseApiResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.toLowerCase().includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const raw = await response.text().catch(() => "");
+  const trimmed = raw.trim();
+  const preview = trimmed.slice(0, 180).replace(/\s+/g, " ");
+  throw new Error(preview ? `Reponse API non-JSON: ${preview}` : "Reponse API non-JSON.");
+}
+
 export default function AdminMembresDonneeDiscordPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -46,7 +58,7 @@ export default function AdminMembresDonneeDiscordPage() {
       setLoading(true);
       setError("");
       const response = await fetch("/api/admin/members/discord-data", { cache: "no-store" });
-      const body = await response.json();
+      const body = await parseApiResponse<{ members?: MemberDiscordRow[]; error?: string }>(response);
       if (!response.ok) throw new Error(body.error || "Impossible de charger les donnees Discord.");
       setMembers((body.members || []) as MemberDiscordRow[]);
     } catch (e) {
@@ -70,7 +82,7 @@ export default function AdminMembresDonneeDiscordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ all: true, updateMismatches: true }),
       });
-      const body = (await response.json()) as VerifyResponse & { error?: string };
+      const body = await parseApiResponse<VerifyResponse & { error?: string }>(response);
       if (!response.ok) throw new Error(body.error || "Verification impossible.");
 
       const nextResults: Record<string, VerifyResult> = {};
