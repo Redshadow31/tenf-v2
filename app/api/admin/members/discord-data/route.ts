@@ -24,6 +24,32 @@ const MAX_PAGES = 20;
 const VERIFY_CHUNK_SIZE = 200;
 const DEFAULT_POST_LIMIT = 60;
 const MAX_POST_LIMIT = 100;
+const DISCORD_MAX_RETRIES = 5;
+const DISCORD_MIN_WAIT_MS = 150;
+const DISCORD_MAX_WAIT_MS = 5000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function parseRetryAfterMs(response: Response): Promise<number> {
+  const headerValue = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(headerValue) && headerValue > 0) {
+    return Math.round(headerValue * 1000);
+  }
+
+  const bodyText = await response.text().catch(() => "");
+  try {
+    const body = JSON.parse(bodyText) as { retry_after?: number };
+    if (Number.isFinite(body.retry_after) && Number(body.retry_after) > 0) {
+      return Math.round(Number(body.retry_after) * 1000);
+    }
+  } catch {
+    // Ignorer les JSON invalides, on bascule sur une valeur par défaut.
+  }
+
+  return 400;
+}
 
 async function fetchAllMembersWithDiscordId(): Promise<MemberDiscordRow[]> {
   const all: MemberDiscordRow[] = [];
@@ -46,27 +72,41 @@ async function fetchAllMembersWithDiscordId(): Promise<MemberDiscordRow[]> {
 }
 
 async function fetchDiscordUsernameById(discordId: string, botToken: string): Promise<{ ok: true; username: string } | { ok: false; reason: string }> {
-  const response = await fetch(`https://discord.com/api/v10/users/${discordId}`, {
-    headers: {
-      Authorization: `Bot ${botToken}`,
-    },
-    cache: "no-store",
-  });
+  for (let attempt = 0; attempt <= DISCORD_MAX_RETRIES; attempt += 1) {
+    const response = await fetch(`https://discord.com/api/v10/users/${discordId}`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+      cache: "no-store",
+    });
 
-  if (response.status === 404) {
-    return { ok: false, reason: "Utilisateur Discord introuvable (404)." };
-  }
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    return { ok: false, reason: `Discord API ${response.status}${body ? `: ${body.slice(0, 120)}` : ""}` };
+    if (response.status === 429) {
+      const retryAfterMs = await parseRetryAfterMs(response);
+      if (attempt >= DISCORD_MAX_RETRIES) {
+        return { ok: false, reason: `Discord API 429: rate limit persistant apres ${DISCORD_MAX_RETRIES + 1} tentatives.` };
+      }
+      const waitMs = Math.min(DISCORD_MAX_WAIT_MS, Math.max(DISCORD_MIN_WAIT_MS, retryAfterMs));
+      await sleep(waitMs);
+      continue;
+    }
+
+    if (response.status === 404) {
+      return { ok: false, reason: "Utilisateur Discord introuvable (404)." };
+    }
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return { ok: false, reason: `Discord API ${response.status}${body ? `: ${body.slice(0, 120)}` : ""}` };
+    }
+
+    const data = (await response.json()) as { username?: string; global_name?: string | null };
+    const username = String(data.global_name || data.username || "").trim();
+    if (!username) {
+      return { ok: false, reason: "Pseudo Discord vide." };
+    }
+    return { ok: true, username };
   }
 
-  const data = (await response.json()) as { username?: string; global_name?: string | null };
-  const username = String(data.global_name || data.username || "").trim();
-  if (!username) {
-    return { ok: false, reason: "Pseudo Discord vide." };
-  }
-  return { ok: true, username };
+  return { ok: false, reason: "Erreur inattendue Discord API." };
 }
 
 export async function GET() {
