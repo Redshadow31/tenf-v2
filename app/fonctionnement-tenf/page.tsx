@@ -2470,7 +2470,7 @@ export default function Page() {
                       Commence par te connecter avec ton compte Discord sur le site. Une fois connecté, tu peux créer ou compléter ton espace membre pour finaliser ton profil et faciliter ton intégration dans la communauté.
                     </p>
                     <a
-                      href="/api/auth/discord/login?callbackUrl=/integration"
+                      href="/api/auth/signin/discord?callbackUrl=%2Fmember%2Fdashboard"
                       className="inline-block mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
                       style={{ backgroundColor: 'var(--color-primary)' }}
                     >

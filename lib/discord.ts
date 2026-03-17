@@ -7,6 +7,8 @@ export interface DiscordUser {
   authenticated: boolean;
 }
 
+const DISCORD_LOGIN_CALLBACK_URL = "/member/dashboard";
+
 /**
  * Récupère les informations de l'utilisateur Discord connecté
  */
@@ -74,21 +76,6 @@ export async function logoutDiscord(): Promise<void> {
  * Redirige vers la page de connexion Discord
  */
 export function loginWithDiscord(): void {
-  const pathname = window.location.pathname || "/";
-  const current = new URL(window.location.href);
-
-  // Eviter la boucle vers /auth/login?error=... quand la connexion est lancee depuis la page de login.
-  if (pathname.startsWith("/auth/login")) {
-    window.location.href = "/api/auth/discord/login?callbackUrl=%2F";
-    return;
-  }
-
-  // Retirer les params d'erreur/diagnostic de l'URL de retour.
-  current.searchParams.delete("error");
-  current.searchParams.delete("details");
-  current.searchParams.delete("callbackUrl");
-
-  const callbackUrl = `${pathname}${current.search || ""}` || "/";
-  window.location.href = `/api/auth/discord/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  window.location.href = `/api/auth/signin/discord?callbackUrl=${encodeURIComponent(DISCORD_LOGIN_CALLBACK_URL)}`;
 }
 

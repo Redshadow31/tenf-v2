@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const error = searchParams.get("error");
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = "/member/dashboard";
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
