@@ -21,7 +21,7 @@ type VerifyResult = {
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
-const MAX_VERIFY_BATCH = 200;
+const VERIFY_CHUNK_SIZE = 200;
 
 async function fetchAllMembersWithDiscordId(): Promise<MemberDiscordRow[]> {
   const all: MemberDiscordRow[] = [];
@@ -122,73 +122,75 @@ export async function POST(request: NextRequest) {
       uniqueSelected.push(member);
     }
 
-    const batch = uniqueSelected.slice(0, MAX_VERIFY_BATCH);
     const results: VerifyResult[] = [];
     let updated = 0;
     let same = 0;
     let different = 0;
     let notFound = 0;
     let errors = 0;
+    // Traiter toute la sélection par paquets pour éviter une exécution trop lourde d'un coup.
+    for (let i = 0; i < uniqueSelected.length; i += VERIFY_CHUNK_SIZE) {
+      const chunk = uniqueSelected.slice(i, i + VERIFY_CHUNK_SIZE);
+      for (const member of chunk) {
+        if (!member.discordId) continue;
+        const stored = String(member.discordUsername || "").trim();
 
-    for (const member of batch) {
-      if (!member.discordId) continue;
-      const stored = String(member.discordUsername || "").trim();
+        const fetched = await fetchDiscordUsernameById(member.discordId, DISCORD_BOT_TOKEN);
+        if (!fetched.ok) {
+          const isNotFound = fetched.reason.includes("404");
+          results.push({
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName || member.twitchLogin,
+            discordId: member.discordId,
+            storedDiscordUsername: stored || null,
+            fetchedDiscordUsername: null,
+            status: isNotFound ? "not_found" : "error",
+            error: fetched.reason,
+          });
+          if (isNotFound) notFound += 1;
+          else errors += 1;
+          continue;
+        }
 
-      const fetched = await fetchDiscordUsernameById(member.discordId, DISCORD_BOT_TOKEN);
-      if (!fetched.ok) {
-        const isNotFound = fetched.reason.includes("404");
-        results.push({
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName || member.twitchLogin,
-          discordId: member.discordId,
-          storedDiscordUsername: stored || null,
-          fetchedDiscordUsername: null,
-          status: isNotFound ? "not_found" : "error",
-          error: fetched.reason,
-        });
-        if (isNotFound) notFound += 1;
-        else errors += 1;
-        continue;
-      }
+        const current = fetched.username.trim();
+        if (stored.toLowerCase() === current.toLowerCase()) {
+          results.push({
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName || member.twitchLogin,
+            discordId: member.discordId,
+            storedDiscordUsername: stored || null,
+            fetchedDiscordUsername: current,
+            status: "same",
+          });
+          same += 1;
+          continue;
+        }
 
-      const current = fetched.username.trim();
-      if (stored.toLowerCase() === current.toLowerCase()) {
-        results.push({
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName || member.twitchLogin,
-          discordId: member.discordId,
-          storedDiscordUsername: stored || null,
-          fetchedDiscordUsername: current,
-          status: "same",
-        });
-        same += 1;
-        continue;
-      }
-
-      different += 1;
-      if (updateMismatches) {
-        await memberRepository.update(member.twitchLogin, {
-          discordUsername: current,
-          updatedBy: admin.discordId,
-        });
-        updated += 1;
-        results.push({
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName || member.twitchLogin,
-          discordId: member.discordId,
-          storedDiscordUsername: stored || null,
-          fetchedDiscordUsername: current,
-          status: "updated",
-        });
-      } else {
-        results.push({
-          twitchLogin: member.twitchLogin,
-          displayName: member.displayName || member.twitchLogin,
-          discordId: member.discordId,
-          storedDiscordUsername: stored || null,
-          fetchedDiscordUsername: current,
-          status: "different",
-        });
+        different += 1;
+        if (updateMismatches) {
+          await memberRepository.update(member.twitchLogin, {
+            discordUsername: current,
+            updatedBy: admin.discordId,
+          });
+          updated += 1;
+          results.push({
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName || member.twitchLogin,
+            discordId: member.discordId,
+            storedDiscordUsername: stored || null,
+            fetchedDiscordUsername: current,
+            status: "updated",
+          });
+        } else {
+          results.push({
+            twitchLogin: member.twitchLogin,
+            displayName: member.displayName || member.twitchLogin,
+            discordId: member.discordId,
+            storedDiscordUsername: stored || null,
+            fetchedDiscordUsername: current,
+            status: "different",
+          });
+        }
       }
     }
 
@@ -197,13 +199,13 @@ export async function POST(request: NextRequest) {
       message: updateMismatches
         ? `Verification terminee: ${updated} pseudo(s) synchronise(s).`
         : "Verification terminee (mode lecture seule).",
-      processed: batch.length,
+      processed: uniqueSelected.length,
       same,
       different,
       updated,
       notFound,
       errors,
-      truncated: uniqueSelected.length > batch.length,
+      truncated: false,
       results,
     });
   } catch (error) {
