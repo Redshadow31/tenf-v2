@@ -7,6 +7,6 @@ type PageProps = {
 export default function LegacyMembresMePage({ searchParams }: PageProps) {
   const onboardingParam = searchParams?.onboarding;
   const onboarding = Array.isArray(onboardingParam) ? onboardingParam[0] : onboardingParam;
-  const target = "/member/profil/completer";
+  const target = onboarding === "1" ? "/member/profil/completer?onboarding=1" : "/member/profil/completer";
   redirect(target);
 }

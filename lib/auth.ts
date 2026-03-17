@@ -79,7 +79,9 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        return "/membres/me?onboarding=1";
+        // Evite le passage par la route legacy /membres/me pour l'onboarding.
+        // On redirige directement vers la page moderne de completion profil.
+        return "/member/profil/completer?onboarding=1";
       } catch (unexpectedError) {
         // Filet de sécurité global: aucune erreur de ce callback ne doit bloquer OAuth.
         console.warn("[NextAuth signIn] unexpected error, allow sign-in:", unexpectedError);
