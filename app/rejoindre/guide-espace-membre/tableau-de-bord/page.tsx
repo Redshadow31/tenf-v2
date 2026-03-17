@@ -300,7 +300,7 @@ export default function GuideMemberTableauDeBordPage() {
 
         <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
-            Bloc "Espace membre" > Navigation
+            Bloc "Espace membre" &gt; Navigation
           </h2>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
             Dans ce bloc, chaque bouton mene a une action immediate. Utilise-le comme raccourci de pilotage quotidien.
