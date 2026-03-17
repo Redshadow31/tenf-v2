@@ -6,17 +6,19 @@
 export default function IntegrationWelcomeNote() {
   return (
     <div
-      className="rounded-lg border p-4 space-y-2"
+      className="rounded-xl border p-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
       style={{
         backgroundColor: 'var(--color-card)',
         borderColor: 'var(--color-border)',
       }}
     >
-      <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-        <span className="text-base">💜</span>
+      <div className="mb-3 inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide" style={{ borderColor: 'rgba(145,70,255,0.45)', color: '#c4b5fd' }}>
+        Accueil integration
+      </div>
+      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>
         Bienvenue dans la famille TENF
       </h2>
-      <div className="space-y-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+      <div className="mt-2 space-y-2 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
         <p>
           Cette étape d&apos;intégration est avant tout un moment d&apos;échange et de rencontre.
         </p>

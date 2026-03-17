@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export type AventuraQuickResponse =
@@ -47,12 +48,34 @@ export interface AventuraPageSettings {
   updated_at: string;
 }
 
+export type AventuraQuestionCategory =
+  | "participation"
+  | "logement"
+  | "transport"
+  | "budget"
+  | "autre";
+
+export interface AventuraAdminQuestion {
+  id: string;
+  created_at: string;
+  pseudo: string;
+  contact?: string;
+  category: AventuraQuestionCategory;
+  question: string;
+  is_answered: boolean;
+  admin_answer?: string;
+  is_public: boolean;
+  source: string;
+}
+
 const INTEREST_TABLE = "new_family_aventura_interest";
 const LOCAL_DIR = path.join(process.cwd(), "data", "new-family-aventura");
 const LOCAL_INTEREST_FILE = path.join(LOCAL_DIR, "interest.json");
 const LOCAL_INSPIRATION_FILE = path.join(LOCAL_DIR, "gallery-inspiration.json");
 const LOCAL_SOUVENIRS_FILE = path.join(LOCAL_DIR, "gallery-souvenirs.json");
 const LOCAL_SETTINGS_FILE = path.join(LOCAL_DIR, "settings.json");
+const LOCAL_QUESTIONS_FILE = path.join(LOCAL_DIR, "questions.json");
+const QUESTIONS_TABLE = "new_family_aventura_questions";
 
 const DEFAULT_SETTINGS: AventuraPageSettings = {
   hero_title: "New Family Aventura",
@@ -274,7 +297,8 @@ export async function getAventuraPreferencesBreakdown() {
 }
 
 export async function listAventuraInspirationGallery(): Promise<AventuraGalleryItem[]> {
-  return readLocalJson<AventuraGalleryItem[]>(LOCAL_INSPIRATION_FILE, []);
+  const items = readLocalJson<AventuraGalleryItem[]>(LOCAL_INSPIRATION_FILE, []);
+  return items.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
 export async function listAventuraSouvenirsGallery(): Promise<AventuraGalleryItem[]> {
@@ -290,5 +314,170 @@ export async function saveAventuraSettings(settings: AventuraPageSettings): Prom
     ...settings,
     updated_at: new Date().toISOString(),
   });
+}
+
+export async function addAventuraInspirationItem(input: {
+  title: string;
+  category: string;
+  description?: string;
+  image_url: string;
+  is_published: boolean;
+}): Promise<AventuraGalleryItem> {
+  const item: AventuraGalleryItem = {
+    id: randomUUID(),
+    title: input.title.trim().slice(0, 120),
+    category: input.category.trim().slice(0, 80) || "inspiration",
+    description: toSafeString(input.description, 500),
+    image_url: input.image_url.trim().slice(0, 2000),
+    is_published: !!input.is_published,
+    is_archived: false,
+    created_at: new Date().toISOString(),
+  };
+
+  const current = readLocalJson<AventuraGalleryItem[]>(LOCAL_INSPIRATION_FILE, []);
+  current.unshift(item);
+  writeLocalJson(LOCAL_INSPIRATION_FILE, current.slice(0, 5000));
+  return item;
+}
+
+export async function updateAventuraInspirationItem(
+  id: string,
+  updates: Partial<Pick<AventuraGalleryItem, "title" | "category" | "description" | "image_url" | "is_published" | "is_archived">>,
+): Promise<AventuraGalleryItem | null> {
+  const current = readLocalJson<AventuraGalleryItem[]>(LOCAL_INSPIRATION_FILE, []);
+  const index = current.findIndex((item) => item.id === id);
+  if (index === -1) return null;
+
+  const prev = current[index];
+  const next: AventuraGalleryItem = {
+    ...prev,
+    title: updates.title !== undefined ? updates.title.trim().slice(0, 120) : prev.title,
+    category: updates.category !== undefined ? updates.category.trim().slice(0, 80) || prev.category : prev.category,
+    description: updates.description !== undefined ? toSafeString(updates.description, 500) : prev.description,
+    image_url: updates.image_url !== undefined ? updates.image_url.trim().slice(0, 2000) : prev.image_url,
+    is_published: updates.is_published !== undefined ? !!updates.is_published : prev.is_published,
+    is_archived: updates.is_archived !== undefined ? !!updates.is_archived : prev.is_archived,
+  };
+
+  current[index] = next;
+  writeLocalJson(LOCAL_INSPIRATION_FILE, current);
+  return next;
+}
+
+export async function deleteAventuraInspirationItem(id: string): Promise<boolean> {
+  const current = readLocalJson<AventuraGalleryItem[]>(LOCAL_INSPIRATION_FILE, []);
+  const next = current.filter((item) => item.id !== id);
+  if (next.length === current.length) return false;
+  writeLocalJson(LOCAL_INSPIRATION_FILE, next);
+  return true;
+}
+
+function normalizeQuestionCategory(value: string): AventuraQuestionCategory {
+  const allowed: AventuraQuestionCategory[] = [
+    "participation",
+    "logement",
+    "transport",
+    "budget",
+    "autre",
+  ];
+  if (allowed.includes(value as AventuraQuestionCategory)) return value as AventuraQuestionCategory;
+
+  // Compatibilite avec anciennes categories
+  if (value === "logistique") return "transport";
+  if (value === "hebergement") return "logement";
+  if (value === "inscription") return "participation";
+  if (value === "securite") return "autre";
+
+  return "autre";
+}
+
+export async function addAventuraQuestion(input: {
+  pseudo: string;
+  contact?: string;
+  category: AventuraQuestionCategory;
+  question: string;
+  source: string;
+}): Promise<AventuraAdminQuestion> {
+  const payload: AventuraAdminQuestion = {
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
+    pseudo: input.pseudo.trim().slice(0, 120),
+    contact: toSafeString(input.contact, 220),
+    category: normalizeQuestionCategory(input.category),
+    question: input.question.trim().slice(0, 2500),
+    is_answered: false,
+    admin_answer: undefined,
+    is_public: false,
+    source: input.source.trim().slice(0, 120),
+  };
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(QUESTIONS_TABLE)
+      .insert({
+        pseudo: payload.pseudo,
+        contact: payload.contact || null,
+        category: payload.category,
+        question: payload.question,
+        is_answered: false,
+        admin_answer: null,
+        is_public: false,
+        source: payload.source,
+      })
+      .select("*")
+      .single();
+
+    if (!error && data) {
+      const row = data as any;
+      return {
+        id: row.id,
+        created_at: row.created_at,
+        pseudo: row.pseudo,
+        contact: row.contact || undefined,
+        category: normalizeQuestionCategory(String(row.category || "autre")),
+        question: String(row.question || ""),
+        is_answered: !!row.is_answered,
+        admin_answer: row.admin_answer || undefined,
+        is_public: !!row.is_public,
+        source: row.source || "formulaire",
+      };
+    }
+  } catch (error) {
+    console.warn("[AventuraStorage] Insert question Supabase impossible, fallback local:", error);
+  }
+
+  const current = readLocalJson<AventuraAdminQuestion[]>(LOCAL_QUESTIONS_FILE, []);
+  current.unshift(payload);
+  writeLocalJson(LOCAL_QUESTIONS_FILE, current.slice(0, 5000));
+  return payload;
+}
+
+export async function listAventuraQuestions(): Promise<AventuraAdminQuestion[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(QUESTIONS_TABLE)
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return (data as any[]).map((row) => ({
+        id: row.id,
+        created_at: row.created_at,
+        pseudo: row.pseudo,
+        contact: row.contact || undefined,
+        category: normalizeQuestionCategory(String(row.category || "autre")),
+        question: String(row.question || ""),
+        is_answered: !!row.is_answered,
+        admin_answer: row.admin_answer || undefined,
+        is_public: !!row.is_public,
+        source: row.source || "formulaire",
+      }));
+    }
+  } catch (error) {
+    console.warn("[AventuraStorage] Lecture question Supabase impossible, fallback local:", error);
+  }
+
+  const local = readLocalJson<AventuraAdminQuestion[]>(LOCAL_QUESTIONS_FILE, []);
+  return local.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 

@@ -14,9 +14,9 @@ const pages = [
     href: "/rejoindre/guide-espace-membre",
   },
   {
-    title: "Reunion d'integration",
-    description: "Informations pratiques sur la reunion d'integration TENF.",
-    href: "/rejoindre/reunion-integration",
+    title: "Guide d'integration",
+    description: "Informations pratiques pour comprendre et preparer ton integration TENF.",
+    href: "/rejoindre/guide-integration",
   },
   {
     title: "FAQ / Comment rejoindre",

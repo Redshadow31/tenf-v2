@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAventuraInspirationGallery } from "@/lib/newFamilyAventuraStorage";
+import { addAventuraInspirationItem, listAventuraInspirationGallery } from "@/lib/newFamilyAventuraStorage";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,6 +48,37 @@ export async function GET() {
   } catch (error) {
     console.error("[api/new-family-aventura/inspiration] GET error:", error);
     return NextResponse.json({ items: fallbackItems, usingFallback: true });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
+    const category = typeof body?.category === "string" ? body.category.trim() : "";
+    const image_url = typeof body?.image_url === "string" ? body.image_url.trim() : "";
+    const description = typeof body?.description === "string" ? body.description : undefined;
+    const is_published = !!body?.is_published;
+
+    if (!title || title.length < 2) {
+      return NextResponse.json({ error: "Le titre doit contenir au moins 2 caractères." }, { status: 400 });
+    }
+    if (!image_url || !/^https?:\/\//i.test(image_url)) {
+      return NextResponse.json({ error: "L'URL image doit commencer par http:// ou https://." }, { status: 400 });
+    }
+
+    const item = await addAventuraInspirationItem({
+      title,
+      category: category || "inspiration",
+      description,
+      image_url,
+      is_published,
+    });
+
+    return NextResponse.json({ item }, { status: 201 });
+  } catch (error) {
+    console.error("[api/new-family-aventura/inspiration] POST error:", error);
+    return NextResponse.json({ error: "Impossible d'ajouter l'image pour le moment." }, { status: 500 });
   }
 }
 

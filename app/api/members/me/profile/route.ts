@@ -96,9 +96,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Mettre à jour le statut du membre + fuseau horaire si fourni
+    // A la soumission valide du profil, l'onboarding est considere termine.
     await memberRepository.update(member.twitchLogin, {
       profileValidationStatus: "en_cours_examen",
+      onboardingStatus: "termine",
       timezone: normalizedTimezone || member.timezone,
     });
 

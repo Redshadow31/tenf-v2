@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type QuickResponse = "interested" | "more_info" | "maybe" | "not_for_me";
@@ -76,6 +77,10 @@ export default function NewFamilyAventuraPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [inspiration, setInspiration] = useState<InspirationItem[]>([]);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [quickChoice, setQuickChoice] = useState<QuickResponse>("interested");
   const [form, setForm] = useState({
     pseudo: "",
@@ -85,6 +90,38 @@ export default function NewFamilyAventuraPage() {
     comment: "",
     conditions: [] as string[],
   });
+  const displayedInspiration = useMemo(() => inspiration.slice(0, 6), [inspiration]);
+  const heroPhoto = displayedInspiration[heroSlideIndex] ?? displayedInspiration[0];
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setPrefersReducedMotion(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (heroSlideIndex >= displayedInspiration.length) {
+      setHeroSlideIndex(0);
+    }
+  }, [heroSlideIndex, displayedInspiration.length]);
+
+  useEffect(() => {
+    if (displayedInspiration.length <= 1 || isHeroPaused || prefersReducedMotion) return;
+    const interval = window.setInterval(() => {
+      setHeroSlideIndex((prev) => (prev + 1) % displayedInspiration.length);
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [displayedInspiration.length, isHeroPaused, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (displayedInspiration.length <= 1) return;
+    const next = displayedInspiration[(heroSlideIndex + 1) % displayedInspiration.length];
+    if (!next?.image_url) return;
+    const img = new window.Image();
+    img.src = next.image_url;
+  }, [displayedInspiration, heroSlideIndex]);
 
   useEffect(() => {
     async function loadInspiration() {
@@ -192,65 +229,227 @@ export default function NewFamilyAventuraPage() {
           </div>
         </nav>
 
+        <section className="rounded-2xl border p-4 sm:p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+            Parcours IRL recommande
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <article className="rounded-xl border p-3" style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "var(--color-bg)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Infos pratiques
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                Transport, hebergement, budget et cadre securite.
+              </p>
+              <Link href="/new-family-aventura/infos-pratiques" className="mt-2 inline-flex text-xs underline" style={{ color: "var(--color-primary)" }}>
+                Ouvrir la page
+              </Link>
+            </article>
+            <article className="rounded-xl border p-3" style={{ borderColor: "rgba(56,189,248,0.35)", backgroundColor: "var(--color-bg)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                FAQ IRL
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                Reponses rapides avant de candidater au projet.
+              </p>
+              <Link href="/new-family-aventura/faq" className="mt-2 inline-flex text-xs underline" style={{ color: "var(--color-primary)" }}>
+                Voir la FAQ
+              </Link>
+            </article>
+            <article className="rounded-xl border p-3" style={{ borderColor: "rgba(34,197,94,0.35)", backgroundColor: "var(--color-bg)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Questions aux admins
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                Pose une question et recois une reponse structuree.
+              </p>
+              <Link href="/new-family-aventura/questions" className="mt-2 inline-flex text-xs underline" style={{ color: "var(--color-primary)" }}>
+                Poser une question
+              </Link>
+            </article>
+          </div>
+        </section>
+
         {/* SECTION 1 — HERO */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          <div className="rounded-2xl border p-6 md:p-8 space-y-5" style={{ borderColor: "rgba(145,70,255,0.35)", background: "linear-gradient(135deg, rgba(145,70,255,0.18), rgba(145,70,255,0.06))" }}>
+          <div className="rounded-2xl border p-6 md:p-8 space-y-5 relative overflow-hidden" style={{ borderColor: "rgba(145,70,255,0.35)", background: "linear-gradient(135deg, rgba(145,70,255,0.18), rgba(145,70,255,0.06))" }}>
+            <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: "rgba(236,72,153,0.2)" }} />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: "rgba(56,189,248,0.2)" }} />
             <p className="inline-flex text-xs font-semibold px-2 py-1 rounded-full" style={{ backgroundColor: "rgba(145,70,255,0.22)", color: "#d8b4fe" }}>
-              Projet communautaire TENF
+              Experience IRL communautaire TENF
             </p>
             <h1 className="text-4xl md:text-5xl font-bold" style={{ color: "var(--color-text)" }}>
-              New Family Aventura
+              New Family Aventura 2027 - L'experience IRL de la communaute TENF
             </h1>
             <p className="text-lg" style={{ color: "var(--color-text-secondary)" }}>
-              Le projet de voyage communautaire de la New Family.
+              Rencontre. Partage. Vivez TENF autrement, en vrai.
             </p>
             <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-              Un projet pensé pour permettre aux membres de TENF de se rencontrer, partager des
-              moments ensemble et vivre une expérience communautaire unique, au-delà des écrans et
-              des lives.
+              Pendant quelques jours, la communaute Twitch Entraide New Family sort du virtuel pour se retrouver en reel.
+              Entre parc, moments chill et souvenirs inoubliables, New Family Aventura est bien plus qu'un voyage:
+              c'est une experience humaine.
             </p>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  setQuickChoice("interested");
-                  setIsModalOpen(true);
-                }}
+              <Link
+                href="/new-family-aventura/infos-pratiques"
                 className="px-4 py-2 rounded-lg font-semibold text-white"
                 style={{ backgroundColor: "var(--color-primary)" }}
               >
-                Je suis interessé
-              </button>
-              <button
-                onClick={() => {
-                  setQuickChoice("more_info");
-                  setIsModalOpen(true);
-                }}
+                Je veux participer
+              </Link>
+              <Link
+                href="/new-family-aventura/questions"
                 className="px-4 py-2 rounded-lg border font-semibold"
                 style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
               >
-                Recevoir les infos
+                Poser une question
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 rounded-lg border font-semibold"
+                style={{ borderColor: "rgba(145,70,255,0.45)", color: "#d8b4fe", backgroundColor: "rgba(145,70,255,0.12)" }}
+              >
+                Reponse rapide (30 sec)
               </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {[
+                { label: "Periode", value: "Mai/Juin 2027" },
+                { label: "Format", value: "IRL communaute" },
+                { label: "Budget cible", value: "200-450 EUR" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.16)", backgroundColor: "rgba(15,17,22,0.45)" }}>
+                  <p className="text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
+                    {item.label}
+                  </p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border overflow-hidden relative" style={{ borderColor: "var(--color-border)", minHeight: 320 }}>
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(circle at 20% 20%, rgba(145,70,255,0.32), transparent 45%), radial-gradient(circle at 80% 30%, rgba(56,189,248,0.22), transparent 40%), linear-gradient(135deg, #1a1328, #0f1116)",
-              }}
-            />
+          <div
+            className="rounded-2xl border overflow-hidden relative"
+            style={{ borderColor: "var(--color-border)", minHeight: 320 }}
+            onMouseEnter={() => setIsHeroPaused(true)}
+            onMouseLeave={() => setIsHeroPaused(false)}
+            onFocus={() => setIsHeroPaused(true)}
+            onBlur={() => setIsHeroPaused(false)}
+            onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
+            onTouchEnd={(event) => {
+              if (touchStartX === null || displayedInspiration.length <= 1) {
+                setTouchStartX(null);
+                return;
+              }
+              const endX = event.changedTouches[0]?.clientX ?? touchStartX;
+              const diff = endX - touchStartX;
+              if (Math.abs(diff) < 30) {
+                setTouchStartX(null);
+                return;
+              }
+              if (diff < 0) {
+                setHeroSlideIndex((prev) => (prev + 1) % displayedInspiration.length);
+              } else {
+                setHeroSlideIndex(
+                  (prev) => (prev - 1 + displayedInspiration.length) % displayedInspiration.length,
+                );
+              }
+              setTouchStartX(null);
+            }}
+          >
+            {displayedInspiration.length > 0 ? (
+              displayedInspiration.map((photo, index) => (
+                <div
+                  key={photo.id}
+                  className="absolute inset-0 transition-opacity duration-1000"
+                  style={{
+                    opacity: index === heroSlideIndex ? 1 : 0,
+                    backgroundImage: `linear-gradient(180deg, rgba(10,12,16,0.25), rgba(10,12,16,0.75)), url(${photo.image_url})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+              ))
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at 20% 20%, rgba(145,70,255,0.32), transparent 45%), radial-gradient(circle at 80% 30%, rgba(56,189,248,0.22), transparent 40%), linear-gradient(135deg, #1a1328, #0f1116)",
+                }}
+              />
+            )}
             <div className="absolute inset-0 p-6 flex flex-col justify-end">
               <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
-                Ambiance voyage & communaute
+                {heroPhoto?.title || "Ambiance voyage & communaute"}
               </h3>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Une experience reelle pour prolonger l'esprit TENF.
+                {heroPhoto?.description || "Une experience reelle pour prolonger l'esprit TENF."}
               </p>
-              {/* TODO: remplacer ce visuel placeholder par le visuel officiel New Family Aventura */}
+              <p className="mt-2 text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
+                Cette photo se modifie depuis l&apos;admin / Galerie inspiration.
+              </p>
+              {displayedInspiration.length > 1 ? (
+                <div className="mt-3 flex items-center gap-1.5">
+                  {displayedInspiration.map((photo, index) => (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      onClick={() => setHeroSlideIndex(index)}
+                      aria-label={`Afficher photo ${index + 1}`}
+                      aria-current={index === heroSlideIndex}
+                      className="h-1.5 w-6 rounded-full transition-all"
+                      style={{
+                        backgroundColor:
+                          index === heroSlideIndex ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)",
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
+        </section>
+
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+            <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+              Pourquoi participer
+            </h2>
+            <div className="mt-3 grid gap-2">
+              {[
+                "🤝 Rencontrer la communaute en vrai.",
+                "🔗 Creer des liens forts au-dela de Twitch.",
+                "🎥 Vivre une experience unique entre streamers.",
+                "🎢 Partager des moments fun (PortAventura, soirees...).",
+                "✨ Repartir avec des souvenirs marquants.",
+              ].map((item) => (
+                <p key={item} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.1)", color: "var(--color-text-secondary)" }}>
+                  - {item}
+                </p>
+              ))}
+            </div>
+          </article>
+          <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+            <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+              Timeline projet
+            </h2>
+            <div className="mt-3 grid gap-2">
+              {[
+                "1. Annonce et ouverture des infos.",
+                "2. Pre-inscriptions et organisation.",
+                "3. Validation des participants.",
+                "4. Voyage et experience IRL.",
+              ].map((item) => (
+                <p key={item} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.1)", color: "var(--color-text-secondary)" }}>
+                  - {item}
+                </p>
+              ))}
+            </div>
+          </article>
         </section>
 
         {/* SECTION 2 — CONCEPT */}
@@ -342,33 +541,41 @@ export default function NewFamilyAventuraPage() {
         <section id="galerie" className="space-y-5">
           <SectionTitle title="L'ambiance du projet" />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {inspiration.map((item) => (
+            {inspiration.length === 0 ? (
               <div
-                key={item.id}
-                className="rounded-xl border overflow-hidden"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                className="rounded-xl border p-4 text-sm"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
               >
-                <div
-                  className="h-44 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${item.image_url})` }}
-                />
-                <div className="p-4 space-y-1">
-                  <p className="text-xs uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
-                    {item.category}
-                  </p>
-                  <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
-                    {item.title}
-                  </h3>
-                  {item.description ? (
-                    <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                      {item.description}
-                    </p>
-                  ) : null}
-                </div>
+                Aucune photo disponible pour le moment.
               </div>
-            ))}
+            ) : (
+              inspiration.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border overflow-hidden"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                >
+                  <div
+                    className="h-44 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${item.image_url})` }}
+                  />
+                  <div className="p-4 space-y-1">
+                    <p className="text-xs uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+                      {item.category}
+                    </p>
+                    <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
+                      {item.title}
+                    </h3>
+                    {item.description ? (
+                      <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                        {item.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-          {/* TODO: connecter cette galerie a l'admin New Family Aventura > Galerie inspiration */}
         </section>
 
         {/* SECTION 6 — PARTICIPATION */}
@@ -520,29 +727,23 @@ export default function NewFamilyAventuraPage() {
             Envie de suivre le projet ?
           </h2>
           <p className="text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-            Aidez-nous a savoir si New Family Aventura peut devenir une vraie aventure communautaire.
+            Rejoins l'aventure des maintenant et suis les prochaines etapes du projet IRL.
           </p>
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => {
-                setQuickChoice("interested");
-                setIsModalOpen(true);
-              }}
+            <Link
+              href="/new-family-aventura/infos-pratiques"
               className="px-4 py-2 rounded-lg font-semibold text-white"
               style={{ backgroundColor: "var(--color-primary)" }}
             >
-              Je suis interesse
-            </button>
-            <button
-              onClick={() => {
-                setQuickChoice("more_info");
-                setIsModalOpen(true);
-              }}
+              Je veux participer
+            </Link>
+            <Link
+              href="/new-family-aventura/questions"
               className="px-4 py-2 rounded-lg border font-semibold"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
             >
-              Recevoir les infos
-            </button>
+              Poser une question
+            </Link>
           </div>
         </section>
 
