@@ -822,46 +822,50 @@ export default function Events2Page() {
                 </p>
               )}
 
-              {new Date(selectedEvent.date).getTime() >= Date.now() && (
-                <div className="pt-2 flex flex-col gap-2 sm:flex-row">
+              <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <a
+                  href={calendarUrlForEvent(selectedEvent)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
+                >
+                  Ajouter au calendrier
+                </a>
+                {selectedEvent.ctaUrl && (
                   <a
-                    href={calendarUrlForEvent(selectedEvent)}
+                    href={selectedEvent.ctaUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
                   >
-                    Ajouter au calendrier
+                    {selectedEvent.ctaLabel || "En savoir plus"}
                   </a>
-                  {selectedEvent.ctaUrl && (
-                    <a
-                      href={selectedEvent.ctaUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
+                )}
+                {new Date(selectedEvent.date).getTime() >= Date.now() ? (
+                  !selectedEvent.isMaskedForAudience &&
+                  (registeredEventIds.has(selectedEvent.id) ? (
+                    <button
+                      onClick={() => handleUnregister(selectedEvent.id)}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
                     >
-                      {selectedEvent.ctaLabel || "En savoir plus"}
-                    </a>
-                  )}
-                  {!selectedEvent.isMaskedForAudience &&
-                    (registeredEventIds.has(selectedEvent.id) ? (
-                      <button
-                        onClick={() => handleUnregister(selectedEvent.id)}
-                        disabled={actionLoading}
-                        className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
-                      >
-                        Se desinscrire
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleRegister(selectedEvent.id)}
-                        disabled={actionLoading}
-                        className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
-                      >
-                        S'inscrire
-                      </button>
-                    ))}
-                </div>
-              )}
+                      Se desinscrire
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleRegister(selectedEvent.id)}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
+                    >
+                      S'inscrire
+                    </button>
+                  ))
+                ) : (
+                  <span className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-gray-600 bg-[#111116] px-4 py-2 text-sm text-gray-300">
+                    Evenement termine
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

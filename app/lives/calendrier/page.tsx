@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type PublicPlanning = {
   id: string;
@@ -26,6 +26,30 @@ const TIMELINE_VISIBILITY_WINDOW_MS = 8 * 60 * 60 * 1000;
 
 type QuickRange = (typeof QUICK_RANGES)[number]["key"];
 type ViewMode = "calendar" | "agenda";
+
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getLiveTypeTone(liveType: string): { dot: string; chipStyle: CSSProperties } {
+  const normalized = normalizeText(liveType || "");
+  if (normalized.includes("fortnite") || normalized.includes("gaming") || normalized.includes("jeu")) {
+    return { dot: "#f59e0b", chipStyle: { borderColor: "rgba(245,158,11,0.45)", color: "#fcd34d" } };
+  }
+  if (normalized.includes("just chatting") || normalized.includes("discussion")) {
+    return { dot: "#60a5fa", chipStyle: { borderColor: "rgba(96,165,250,0.45)", color: "#bfdbfe" } };
+  }
+  if (normalized.includes("musique") || normalized.includes("karaoke")) {
+    return { dot: "#f472b6", chipStyle: { borderColor: "rgba(244,114,182,0.45)", color: "#f9a8d4" } };
+  }
+  if (normalized.includes("formation") || normalized.includes("coach")) {
+    return { dot: "#34d399", chipStyle: { borderColor: "rgba(52,211,153,0.45)", color: "#6ee7b7" } };
+  }
+  return { dot: "#a78bfa", chipStyle: { borderColor: "rgba(167,139,250,0.45)", color: "#ddd6fe" } };
+}
 
 function monthKey(date: Date): string {
   const y = date.getFullYear();
@@ -264,6 +288,19 @@ export default function CalendrierLivesPage() {
     () => new Set(allRangeItems.map((item) => item.liveType.trim()).filter(Boolean)).size,
     [allRangeItems]
   );
+
+  const topLiveTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of allRangeItems) {
+      const key = item.liveType?.trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([label, count]) => ({ label, count }));
+  }, [allRangeItems]);
 
   const upcomingLives = useMemo(() => {
     const nowMs = Date.now();
@@ -585,26 +622,68 @@ export default function CalendrierLivesPage() {
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-          className="px-3 py-2 rounded-lg border text-sm transition-colors hover:bg-white/5"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
-        >
-          ← Mois precedent
-        </button>
-        <h2 className="text-xl font-semibold capitalize" style={{ color: "var(--color-text)" }}>
-          {monthCursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
-        </h2>
-        <button
-          type="button"
-          onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-          className="px-3 py-2 rounded-lg border text-sm transition-colors hover:bg-white/5"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
-        >
-          Mois suivant →
-        </button>
+      <div
+        className="rounded-2xl border p-4 md:p-5"
+        style={{
+          borderColor: "rgba(145,70,255,0.35)",
+          background: "linear-gradient(145deg, rgba(145,70,255,0.1), rgba(16,16,22,0.9) 40%, rgba(16,16,22,0.95))",
+          boxShadow: "0 16px 36px rgba(0,0,0,0.28)",
+        }}
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+            className="px-3 py-2 rounded-lg border text-sm transition-colors hover:bg-white/5"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+          >
+            ← Mois precedent
+          </button>
+          <h2 className="text-2xl font-semibold capitalize tracking-tight" style={{ color: "var(--color-text)" }}>
+            {monthCursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+            className="px-3 py-2 rounded-lg border text-sm transition-colors hover:bg-white/5"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+          >
+            Mois suivant →
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "rgba(145,70,255,0.12)" }}>
+            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Lives sur la plage</p>
+            <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{allRangeItems.length}</p>
+          </div>
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "rgba(52,211,153,0.35)", backgroundColor: "rgba(52,211,153,0.12)" }}>
+            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Createurs actifs</p>
+            <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{uniqueCreators}</p>
+          </div>
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "rgba(96,165,250,0.35)", backgroundColor: "rgba(96,165,250,0.12)" }}>
+            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Categories en direct</p>
+            <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{uniqueCategories}</p>
+          </div>
+        </div>
+
+        {topLiveTypes.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {topLiveTypes.map((entry) => {
+              const tone = getLiveTypeTone(entry.label);
+              return (
+                <span
+                  key={`live-type-${entry.label}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]"
+                  style={tone.chipStyle}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tone.dot }} />
+                  {entry.label} • {entry.count}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-xl border p-4 md:p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
@@ -682,7 +761,11 @@ export default function CalendrierLivesPage() {
         ) : (
           <div className="grid grid-cols-7 gap-2">
             {WEEK_DAYS.map((day) => (
-              <div key={day} className="text-center text-xs font-semibold py-2" style={{ color: "var(--color-text-secondary)" }}>
+              <div
+                key={day}
+                className="text-center text-xs font-semibold py-2 rounded-lg border"
+                style={{ color: "var(--color-text-secondary)", borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.02)" }}
+              >
                 {day}
               </div>
             ))}
@@ -690,11 +773,7 @@ export default function CalendrierLivesPage() {
             {monthCells.map((cell) => {
               if (!cell.date) {
                 return (
-                  <div
-                    key={cell.key}
-                    className="min-h-[110px] rounded-lg border"
-                    style={{ borderColor: "var(--color-border)", opacity: 0.25 }}
-                  />
+                  <div key={cell.key} className="min-h-[126px] rounded-xl border" style={{ borderColor: "var(--color-border)", opacity: 0.22 }} />
                 );
               }
 
@@ -718,7 +797,7 @@ export default function CalendrierLivesPage() {
                   key={cell.key}
                   type="button"
                   onClick={() => setSelectedDateKey(key)}
-                  className="group min-h-[124px] rounded-xl border p-2 text-left transition-all duration-300 hover:-translate-y-[1px]"
+                    className="group min-h-[140px] rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-[1px]"
                   style={{
                     borderColor: isSelected ? "rgba(145,70,255,0.65)" : isTopDay ? "rgba(145,70,255,0.45)" : "var(--color-border)",
                     backgroundColor: isSelected ? "rgba(145,70,255,0.14)" : isTopDay ? "rgba(145,70,255,0.08)" : "var(--color-surface)",
@@ -745,15 +824,38 @@ export default function CalendrierLivesPage() {
                   <div className="mb-1 text-[11px] font-medium" style={{ color: dayItems.length > 0 ? "var(--color-text)" : "var(--color-text-secondary)" }}>
                     {dayItems.length} live{dayItems.length > 1 ? "s" : ""}
                   </div>
-                  <div className="line-clamp-2 text-[11px] leading-snug" style={{ color: "var(--color-text-secondary)" }}>
-                    {dayItems.length > 0
-                      ? dayItems
-                          .slice(0, 2)
-                          .map((item) => `${item.time} ${item.displayName}`)
-                          .join(" • ")
-                      : "Aucun live prevu"}
+                  <div className="space-y-1.5">
+                    {dayItems.length > 0 ? (
+                      dayItems.slice(0, 2).map((item) => {
+                        const tone = getLiveTypeTone(item.liveType);
+                        return (
+                          <div
+                            key={`mini-${item.id}`}
+                            className="rounded-md border px-1.5 py-1 text-[10px] leading-tight"
+                            style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tone.dot }} />
+                              <span style={{ color: "var(--color-text-secondary)" }}>{item.time}</span>
+                            </div>
+                            <p className="line-clamp-1 mt-0.5" style={{ color: "var(--color-text)" }}>
+                              {item.displayName}
+                            </p>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-[11px] leading-snug" style={{ color: "var(--color-text-secondary)" }}>
+                        Aucun live prevu
+                      </div>
+                    )}
+                    {dayItems.length > 2 ? (
+                      <div className="text-[10px]" style={{ color: "var(--color-text-secondary)" }}>
+                        +{dayItems.length - 2} autre(s)
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-2.5">
                     <span
                       className="rounded-full border px-2 py-0.5 text-[10px]"
                       style={{
