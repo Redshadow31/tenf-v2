@@ -472,7 +472,7 @@ export default function PostulerPage() {
             Connecte-toi avec Discord pour candidater en moderateur ou en soutien TENF.
           </p>
           <button
-            onClick={loginWithDiscord}
+            onClick={() => loginWithDiscord()}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#5865F2] px-5 py-2.5 font-semibold hover:opacity-90"
           >
             Se connecter avec Discord
