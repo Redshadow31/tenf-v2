@@ -144,6 +144,20 @@ export const authOptions: NextAuthOptions = {
 
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        // Ignore malformed URLs and use the dashboard fallback below.
+      }
+      return `${baseUrl}/member/dashboard`;
+    },
   },
   pages: {
     signIn: "/auth/login",
