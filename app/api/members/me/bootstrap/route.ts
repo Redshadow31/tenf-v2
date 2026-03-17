@@ -17,6 +17,7 @@ type BootstrapBody = {
   twitchChannelUrl?: string;
   parrain?: string;
   countryCode?: string;
+  primaryLanguage?: string;
   notes?: string;
   birthday?: string;
   twitchAffiliateDate?: string;
@@ -48,6 +49,12 @@ function normalizeCountryCode(input?: string): string {
   return value.slice(0, 2);
 }
 
+function normalizeLanguage(input?: string): string {
+  const value = (input || "fr").trim().toLowerCase();
+  if (!value) return "fr";
+  return value.slice(0, 5);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -62,6 +69,7 @@ export async function POST(request: NextRequest) {
     const parrain = (body.parrain || "").trim();
     const timezone = (body.timezone || "Europe/Paris").trim();
     const countryCode = normalizeCountryCode(body.countryCode);
+    const primaryLanguage = normalizeLanguage(body.primaryLanguage);
     const notes = (body.notes || "").trim();
     const twitchChannelUrl = (body.twitchChannelUrl || "").trim();
     const twitchLogin = extractTwitchLogin(twitchChannelUrl);
@@ -77,6 +85,9 @@ export async function POST(request: NextRequest) {
     }
     if (!creatorName) {
       return NextResponse.json({ error: "Le nom du créateur est requis" }, { status: 400 });
+    }
+    if (!parrain) {
+      return NextResponse.json({ error: "Le parrain TENF est requis" }, { status: 400 });
     }
 
     const birthday = normalizeDateInput(body.birthday);
@@ -126,7 +137,7 @@ export async function POST(request: NextRequest) {
         twitchAffiliateDate,
         timezone: timezone || undefined,
         countryCode,
-        primaryLanguage: "fr",
+        primaryLanguage,
         description: notes || undefined,
         profileValidationStatus: "non_soumis",
         onboardingStatus: "a_faire",
@@ -148,7 +159,7 @@ export async function POST(request: NextRequest) {
         twitchAffiliateDate,
         timezone: timezone || undefined,
         countryCode,
-        primaryLanguage: member.primaryLanguage || "fr",
+        primaryLanguage || member.primaryLanguage || "fr",
         description: notes || member.description,
         role: member.role || "Nouveau",
         isActive: false,
