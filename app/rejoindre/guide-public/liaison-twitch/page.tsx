@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Link2, Sparkles } from "lucide-react";
+import { getStepIndex, guideSteps } from "../guideMeta";
 
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace("#", "");
@@ -62,6 +63,11 @@ const twitchUnlockedFeatures = [
 
 export default function GuidePublicLiaisonTwitchPage() {
   const accent = "#f59e0b";
+  const currentHref = "/rejoindre/guide-public/liaison-twitch";
+  const currentIndex = getStepIndex(currentHref);
+  const currentStep = guideSteps[currentIndex];
+  const prevStep = currentIndex > 0 ? guideSteps[currentIndex - 1] : null;
+  const nextStep = currentIndex >= 0 && currentIndex < guideSteps.length - 1 ? guideSteps[currentIndex + 1] : null;
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
@@ -84,6 +90,16 @@ export default function GuidePublicLiaisonTwitchPage() {
           </h1>
           <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
             Guide pour lier ton compte Twitch et activer toutes les fonctionnalites de l'espace membre TENF.
+          </p>
+        </section>
+
+        <section className="mt-5 rounded-2xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Etape <span style={{ color: "var(--color-text)" }}>{currentIndex + 1}</span> / {guideSteps.length} - Temps estime:{" "}
+            <span style={{ color: "var(--color-text)" }}>{currentStep.readTime}</span>
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Resultat attendu: <span style={{ color: "var(--color-text)" }}>{currentStep.expectedResult}</span>
           </p>
         </section>
 
@@ -120,6 +136,34 @@ export default function GuidePublicLiaisonTwitchPage() {
                 </Link>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Cette page t'a aide ?
+            </p>
+            <div className="flex gap-2">
+              <Link href="/member/profil" className="rounded-full border px-3 py-1.5 text-xs sm:text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Oui, je lie mon Twitch
+              </Link>
+              <Link href="/rejoindre/faq" className="rounded-full border px-3 py-1.5 text-xs sm:text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Non, j'ai besoin d'aide
+              </Link>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {prevStep ? (
+              <Link href={prevStep.href} className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Precedent: {prevStep.title}
+              </Link>
+            ) : null}
+            {nextStep ? (
+              <Link href={nextStep.href} className="rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
+                Suivant: {nextStep.title}
+              </Link>
+            ) : null}
           </div>
         </section>
       </div>

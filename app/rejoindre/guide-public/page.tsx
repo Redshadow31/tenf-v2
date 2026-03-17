@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpen, HelpCircle, Link2, Sparkles, UserPlus } from "lucide-react";
+import { ArrowUpRight, BookOpen, Compass, HelpCircle, Link2, Sparkles, UserPlus } from "lucide-react";
+import { guideSteps } from "./guideMeta";
 
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace("#", "");
@@ -52,6 +53,12 @@ const guidePages = [
 ];
 
 export default function GuidePublicPage() {
+  const quickStart = [
+    "Commence par Presentation rapide pour comprendre le fonctionnement global.",
+    "Passe ensuite sur Creer un compte pour activer ton espace TENF.",
+    "Termine par Liaison Twitch pour debloquer les fonctions membre avancees.",
+  ];
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
@@ -83,9 +90,17 @@ export default function GuidePublicPage() {
               Guide Public
             </h1>
             <p className="mt-3 max-w-3xl text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
-              Le guide est maintenant decoupe en plusieurs pages. Choisis ton parcours pour comprendre TENF, creer ton
+              Le guide est structure en plusieurs pages. Choisis ton parcours pour comprendre TENF, creer ton
               espace et activer rapidement les fonctionnalites utiles.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link href="/rejoindre/guide-public/presentation-rapide" className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
+                Commencer le guide <ArrowUpRight size={14} />
+              </Link>
+              <Link href="/auth/login" className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "rgba(255,255,255,0.25)", color: "var(--color-text)" }}>
+                Creer mon espace TENF
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -109,6 +124,23 @@ export default function GuidePublicPage() {
             </article>
           ))}
         </div>
+
+        <section
+          className="mt-6 rounded-2xl border p-5"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.2)" }}
+        >
+          <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+            <Compass size={16} style={{ color: "var(--color-primary)" }} />
+            Parcours recommande pour commencer
+          </p>
+          <div className="mt-3 grid gap-2">
+            {quickStart.map((item) => (
+              <p key={item} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.1)", color: "var(--color-text-secondary)" }}>
+                {item}
+              </p>
+            ))}
+          </div>
+        </section>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {guidePages.map((page) => (
@@ -147,6 +179,20 @@ export default function GuidePublicPage() {
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
                 {page.description}
               </p>
+              <div className="mt-3 space-y-1 text-xs sm:text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                <p>
+                  Temps estime:{" "}
+                  <span style={{ color: "var(--color-text)" }}>
+                    {guideSteps.find((step) => step.href === page.href)?.readTime || "-"}
+                  </span>
+                </p>
+                <p>
+                  Resultat attendu:{" "}
+                  <span style={{ color: "var(--color-text)" }}>
+                    {guideSteps.find((step) => step.href === page.href)?.expectedResult || "-"}
+                  </span>
+                </p>
+              </div>
               <Link
                 href={page.href}
                 className="mt-4 inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition hover:-translate-y-[1px]"

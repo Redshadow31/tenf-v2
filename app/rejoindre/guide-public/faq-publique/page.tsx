@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HelpCircle, Sparkles } from "lucide-react";
+import { getStepIndex, guideSteps } from "../guideMeta";
 
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace("#", "");
@@ -50,6 +51,10 @@ const publicFaq = [
 
 export default function GuidePublicFaqPubliquePage() {
   const accent = "#ec4899";
+  const currentHref = "/rejoindre/guide-public/faq-publique";
+  const currentIndex = getStepIndex(currentHref);
+  const currentStep = guideSteps[currentIndex];
+  const prevStep = currentIndex > 0 ? guideSteps[currentIndex - 1] : null;
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
@@ -72,6 +77,16 @@ export default function GuidePublicFaqPubliquePage() {
           </h1>
           <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
             Reponses aux questions les plus frequentes avant integration.
+          </p>
+        </section>
+
+        <section className="mt-5 rounded-2xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Etape <span style={{ color: "var(--color-text)" }}>{currentIndex + 1}</span> / {guideSteps.length} - Temps estime:{" "}
+            <span style={{ color: "var(--color-text)" }}>{currentStep.readTime}</span>
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Resultat attendu: <span style={{ color: "var(--color-text)" }}>{currentStep.expectedResult}</span>
           </p>
         </section>
 
@@ -103,6 +118,32 @@ export default function GuidePublicFaqPubliquePage() {
               style={{ backgroundColor: "var(--color-primary)" }}
             >
               Creer mon espace maintenant
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Cette page t'a aide ?
+            </p>
+            <div className="flex gap-2">
+              <Link href="/auth/login" className="rounded-full border px-3 py-1.5 text-xs sm:text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Oui, je suis pret
+              </Link>
+              <Link href="/rejoindre/faq" className="rounded-full border px-3 py-1.5 text-xs sm:text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Non, je veux plus d'aide
+              </Link>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {prevStep ? (
+              <Link href={prevStep.href} className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                Precedent: {prevStep.title}
+              </Link>
+            ) : null}
+            <Link href="/rejoindre/guide-public" className="rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
+              Terminer et revenir a l'accueil du guide
             </Link>
           </div>
         </section>
