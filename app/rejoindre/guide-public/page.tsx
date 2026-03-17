@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenText, CircleHelp, Link2, Sparkles, UserPlus } from "lucide-react";
+import { ArrowUpRight, BookOpen, HelpCircle, Link2, Sparkles, UserPlus } from "lucide-react";
 
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace("#", "");
@@ -21,7 +21,7 @@ const guidePages = [
     title: "Presentation rapide",
     href: "/rejoindre/guide-public/presentation-rapide",
     description: "Vue d'ensemble des categories publiques et du menu principal.",
-    icon: BookOpenText,
+    icon: BookOpen,
     badge: "Base",
     accent: "#06b6d4",
   },
@@ -45,7 +45,7 @@ const guidePages = [
     title: "FAQ publique",
     href: "/rejoindre/guide-public/faq-publique",
     description: "Questions/reponses essentielles avant de rejoindre TENF.",
-    icon: CircleHelp,
+    icon: HelpCircle,
     badge: "Support",
     accent: "#ec4899",
   },
