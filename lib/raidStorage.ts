@@ -15,7 +15,7 @@ export interface RaidFait {
   date: string; // ISO timestamp
   count: number; // Nombre de raids (par défaut 1)
   manual: boolean; // true si modifié par un admin
-  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source du raid
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin" | "raids_sub"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
   viewers?: number; // Nombre de viewers (si source Twitch)
   countFrom?: boolean; // Flag de traçabilité : raid fait compté (pour import manuel)
@@ -27,7 +27,7 @@ export interface RaidRecu {
   raider: string; // Discord ID ou Twitch Login
   date: string; // ISO timestamp
   manual: boolean; // true si modifié par un admin
-  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source du raid
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin" | "raids_sub"; // Source du raid
   messageId?: string; // ID du message Discord (si source Discord)
   viewers?: number; // Nombre de viewers (si source Twitch)
   countFrom?: boolean; // Flag de traçabilité : raid fait compté (pour import manuel)
@@ -40,7 +40,7 @@ export interface RaidAlert {
   count: number; // Nombre de raids répétés
   type: "repetition"; // Type d'alerte
   manual: boolean; // true si modifié par un admin
-  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin"; // Source de l'alerte
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin" | "raids_sub"; // Source de l'alerte
 }
 
 // ============================================
@@ -423,7 +423,7 @@ export async function addRaidFait(
   date: string,
   manual: boolean = false,
   messageId?: string,
-  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin",
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin" | "raids_sub",
   viewers?: number
 ): Promise<void> {
   const raids = await loadRaidsFaits(monthKey);
@@ -497,7 +497,7 @@ export async function addRaidRecu(
   date: string,
   manual: boolean = false,
   messageId?: string,
-  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin",
+  source?: "discord" | "twitch-live" | "manual" | "bot" | "admin" | "raids_sub",
   viewers?: number
 ): Promise<void> {
   const raids = await loadRaidsRecus(monthKey);

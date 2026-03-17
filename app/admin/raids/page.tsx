@@ -22,6 +22,21 @@ export interface MonthlyRaids {
   [twitchLogin: string]: RaidStats;
 }
 
+type RaidSourceFilter = "all" | "manual" | "raids_sub";
+
+function normalizeRaidSource(raid: any): "manual" | "raids_sub" | "other" {
+  const source = String(raid?.source || (raid?.manual ? "admin" : "twitch-live")).toLowerCase();
+  if (source === "raids_sub") return "raids_sub";
+  if (source === "manual" || source === "admin" || raid?.manual) return "manual";
+  return "other";
+}
+
+function shouldIncludeRaidBySource(raid: any, sourceFilter: RaidSourceFilter): boolean {
+  const source = normalizeRaidSource(raid);
+  if (sourceFilter === "all") return source === "manual" || source === "raids_sub";
+  return source === sourceFilter;
+}
+
 export default function RaidsPage() {
   const [raids, setRaids] = useState<MonthlyRaids>({});
   const [members, setMembers] = useState<any[]>([]);
@@ -40,6 +55,7 @@ export default function RaidsPage() {
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const [duplicatesList, setDuplicatesList] = useState<Array<{ key: string; raider: string; target: string; date: string; count: number; raiderDisplay?: string; targetDisplay?: string }>>([]);
   const [deduplicating, setDeduplicating] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<RaidSourceFilter>("all");
 
   useEffect(() => {
     async function loadAdmin() {
@@ -68,13 +84,14 @@ export default function RaidsPage() {
     }
     setAvailableMonths(months);
     
-    loadData(currentMonthStr);
+    loadData(currentMonthStr, sourceFilter);
   }, []);
 
-  async function loadData(month?: string) {
+  async function loadData(month?: string, sourceFilterArg?: RaidSourceFilter) {
     try {
       setLoading(true);
       const monthToLoad = month || selectedMonth;
+      const activeSourceFilter = sourceFilterArg || sourceFilter;
       
       // Charger les données depuis la nouvelle API v2
       const dataResponse = await fetch(
@@ -99,15 +116,13 @@ export default function RaidsPage() {
         
         // Inclure les raids saisis manuellement + les raids issus du pipeline raids-sub.
         const filteredRaidsFaits = (data.raidsFaits || []).filter((raid: any) => {
-          const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-          if (source === "discord") return false;
-          return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
+          if (String(raid?.source || "").toLowerCase() === "discord") return false;
+          return shouldIncludeRaidBySource(raid, activeSourceFilter);
         });
         
         const filteredRaidsRecus = (data.raidsRecus || []).filter((raid: any) => {
-          const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-          if (source === "discord") return false;
-          return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
+          if (String(raid?.source || "").toLowerCase() === "discord") return false;
+          return shouldIncludeRaidBySource(raid, activeSourceFilter);
         });
         
         // Grouper les raids faits par membre (après filtrage)
@@ -143,22 +158,47 @@ export default function RaidsPage() {
         
         setRaids(raidsByMember);
         
+        const totalRaidsFaits = filteredRaidsFaits.reduce((sum: number, raid: any) => sum + Number(raid?.count || 1), 0);
+        const totalRaidsRecus = filteredRaidsRecus.length;
+        const activeRaidersSet = new Set(
+          filteredRaidsFaits.map((raid: any) => String(raid?.raiderTwitchLogin || raid?.raider || "").toLowerCase()).filter(Boolean)
+        );
+        const uniqueTargetsSet = new Set(
+          filteredRaidsRecus.map((raid: any) => String(raid?.targetTwitchLogin || raid?.target || "").toLowerCase()).filter(Boolean)
+        );
+
+        const topRaiderByCount = new Map<string, number>();
+        for (const raid of filteredRaidsFaits) {
+          const key = String(raid?.raiderTwitchLogin || raid?.raider || "").toLowerCase();
+          if (!key) continue;
+          const count = Number(raid?.count || 1);
+          topRaiderByCount.set(key, (topRaiderByCount.get(key) || 0) + (Number.isFinite(count) ? count : 1));
+        }
+        const topTargetByCount = new Map<string, number>();
+        for (const raid of filteredRaidsRecus) {
+          const key = String(raid?.targetTwitchLogin || raid?.target || "").toLowerCase();
+          if (!key) continue;
+          topTargetByCount.set(key, (topTargetByCount.get(key) || 0) + 1);
+        }
+
+        const topRaiderEntry = Array.from(topRaiderByCount.entries()).sort((a, b) => b[1] - a[1])[0];
+        const topTargetEntry = Array.from(topTargetByCount.entries()).sort((a, b) => b[1] - a[1])[0];
+        const filteredAlerts = (data.alerts || []).filter((alert: any) => shouldIncludeRaidBySource(alert, activeSourceFilter));
+
         // Mettre à jour les stats
         setComputedStats({
-          totalDone: data.stats?.totalRaidsFaits || 0,
-          totalReceived: data.stats?.totalRaidsRecus || 0,
+          totalDone: totalRaidsFaits,
+          totalReceived: totalRaidsRecus,
           unmatchedCount: 0, // Sera mis à jour plus bas
-          activeRaidersCount: data.stats?.activeRaiders || 0,
-          uniqueTargetsCount: data.stats?.uniqueTargets || 0,
-          topRaider: data.stats?.topRaider ? {
-            name: data.stats.topRaider.twitchLogin,
-            count: data.stats.topRaider.count,
-          } : null,
-          topTarget: data.stats?.topTarget ? {
-            name: data.stats.topTarget.twitchLogin,
-            count: data.stats.topTarget.count,
-          } : null,
-          alerts: (data.alerts || []).map((alert: any) => ({
+          activeRaidersCount: activeRaidersSet.size,
+          uniqueTargetsCount: uniqueTargetsSet.size,
+          topRaider: topRaiderEntry
+            ? { name: topRaiderEntry[0], count: topRaiderEntry[1] }
+            : null,
+          topTarget: topTargetEntry
+            ? { name: topTargetEntry[0], count: topTargetEntry[1] }
+            : null,
+          alerts: filteredAlerts.map((alert: any) => ({
             raider: alert.raiderTwitchLogin || alert.raider,
             target: alert.targetTwitchLogin || alert.target,
             count: alert.count,
@@ -212,8 +252,13 @@ export default function RaidsPage() {
   
   function handleMonthChange(newMonth: string) {
     setSelectedMonth(newMonth);
-    loadData(newMonth);
+    loadData(newMonth, sourceFilter);
   }
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    loadData(selectedMonth, sourceFilter);
+  }, [sourceFilter]);
   
   const getMemberDisplayName = (twitchLogin: string): string => {
     const member = members.find(m => m.twitchLogin.toLowerCase() === twitchLogin.toLowerCase());
@@ -294,13 +339,12 @@ export default function RaidsPage() {
     const [year, monthNum] = selectedMonth.split("-").map((n) => parseInt(n, 10));
     const daysInMonth = new Date(year, monthNum, 0).getDate();
 
-    const filterManualOnly = (raid: any) => {
-      const source = raid.source || (raid.manual ? "admin" : "twitch-live");
-      if (source === "discord") return false;
-      return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
+    const filterBySource = (raid: any) => {
+      if (String(raid?.source || "").toLowerCase() === "discord") return false;
+      return shouldIncludeRaidBySource(raid, sourceFilter);
     };
-    const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterManualOnly);
-    const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterManualOnly);
+    const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterBySource);
+    const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterBySource);
 
     const byDay = new Map<number, { raidsFaits: number; raidsRecus: number }>();
     for (let d = 1; d <= daysInMonth; d++) byDay.set(d, { raidsFaits: 0, raidsRecus: 0 });
@@ -365,6 +409,53 @@ export default function RaidsPage() {
     });
   };
 
+  const memberSourceBreakdown = useMemo(() => {
+    const map = new Map<
+      string,
+      { doneManual: number; doneRaidsSub: number; receivedManual: number; receivedRaidsSub: number }
+    >();
+
+    if (!rawRaidsData) return map;
+
+    const ensure = (login: string) => {
+      const key = String(login || "").toLowerCase();
+      if (!key) return null;
+      if (!map.has(key)) {
+        map.set(key, { doneManual: 0, doneRaidsSub: 0, receivedManual: 0, receivedRaidsSub: 0 });
+      }
+      return map.get(key)!;
+    };
+
+    const normalizeSource = (raid: any): "manual" | "raids_sub" | "other" => {
+      const source = String(raid?.source || (raid?.manual ? "admin" : "twitch-live")).toLowerCase();
+      if (source === "raids_sub") return "raids_sub";
+      if (source === "manual" || source === "admin" || raid?.manual) return "manual";
+      return "other";
+    };
+
+    for (const raid of rawRaidsData?.raidsFaits || []) {
+      if (String(raid?.source || "").toLowerCase() === "discord") continue;
+      const target = ensure(raid?.raiderTwitchLogin || raid?.raider);
+      if (!target) continue;
+      const count = Number(raid?.count || 1);
+      const normalizedCount = Number.isFinite(count) ? count : 1;
+      const source = normalizeSource(raid);
+      if (source === "manual") target.doneManual += normalizedCount;
+      if (source === "raids_sub") target.doneRaidsSub += normalizedCount;
+    }
+
+    for (const raid of rawRaidsData?.raidsRecus || []) {
+      if (String(raid?.source || "").toLowerCase() === "discord") continue;
+      const target = ensure(raid?.targetTwitchLogin || raid?.target);
+      if (!target) continue;
+      const source = normalizeSource(raid);
+      if (source === "manual") target.receivedManual += 1;
+      if (source === "raids_sub") target.receivedRaidsSub += 1;
+    }
+
+    return map;
+  }, [rawRaidsData]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
@@ -410,6 +501,28 @@ export default function RaidsPage() {
                   );
                 })}
               </select>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm">Source :</span>
+                {([
+                  { key: "all", label: "Tous" },
+                  { key: "manual", label: "Manuel" },
+                  { key: "raids_sub", label: "Raids-sub" },
+                ] as const).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setSourceFilter(item.key)}
+                    className="rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
+                    style={{
+                      borderColor: sourceFilter === item.key ? "rgba(145,70,255,0.65)" : "var(--color-border)",
+                      color: sourceFilter === item.key ? "#d8b4fe" : "#cbd5e1",
+                      backgroundColor: sourceFilter === item.key ? "rgba(145,70,255,0.15)" : "transparent",
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -606,6 +719,46 @@ export default function RaidsPage() {
                               </span>
                               <span className="text-gray-600 text-xs">👁️</span>
                             </button>
+                            {(() => {
+                              const sourceStats = memberSourceBreakdown.get(String(twitchLogin || "").toLowerCase());
+                              if (!sourceStats) return null;
+                              const hasAny =
+                                sourceStats.doneManual > 0 ||
+                                sourceStats.doneRaidsSub > 0 ||
+                                sourceStats.receivedManual > 0 ||
+                                sourceStats.receivedRaidsSub > 0;
+                              if (!hasAny) return null;
+                              return (
+                                <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                                  {(sourceStats.doneManual > 0 || sourceStats.receivedManual > 0) ? (
+                                    <span
+                                      className="rounded-full border px-2 py-0.5"
+                                      style={{
+                                        borderColor: "rgba(250,204,21,0.45)",
+                                        color: "#fde68a",
+                                        backgroundColor: "rgba(146,64,14,0.18)",
+                                      }}
+                                      title={`Manuel - faits: ${sourceStats.doneManual}, recus: ${sourceStats.receivedManual}`}
+                                    >
+                                      Manuel {sourceStats.doneManual}/{sourceStats.receivedManual}
+                                    </span>
+                                  ) : null}
+                                  {(sourceStats.doneRaidsSub > 0 || sourceStats.receivedRaidsSub > 0) ? (
+                                    <span
+                                      className="rounded-full border px-2 py-0.5"
+                                      style={{
+                                        borderColor: "rgba(96,165,250,0.45)",
+                                        color: "#bfdbfe",
+                                        backgroundColor: "rgba(30,58,138,0.18)",
+                                      }}
+                                      title={`Raids-sub - faits: ${sourceStats.doneRaidsSub}, recus: ${sourceStats.receivedRaidsSub}`}
+                                    >
+                                      Raids-sub {sourceStats.doneRaidsSub}/{sourceStats.receivedRaidsSub}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="py-4 px-6">
                             <span className="text-white font-semibold">{stats.done}</span>
