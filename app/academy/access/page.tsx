@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { getDiscordUser } from "@/lib/discord";
-import { loginWithDiscord } from "@/lib/discord";
 
 export default function AcademyAccessPage() {
   const [user, setUser] = useState<any>(null);
@@ -78,7 +78,7 @@ export default function AcademyAccessPage() {
   const handleDiscordAccess = () => {
     // L'utilisateur doit être connecté avec Discord pour cette méthode
     if (!user) {
-      loginWithDiscord();
+      void signIn("discord", { callbackUrl: "/academy/access" });
     } else {
       // Vérifier les rôles Discord
       fetch("/api/academy/validate-discord", {

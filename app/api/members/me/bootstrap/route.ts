@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         twitchAffiliateDate,
         timezone: timezone || undefined,
         countryCode,
-        primaryLanguage || member.primaryLanguage || "fr",
+        primaryLanguage: primaryLanguage || member.primaryLanguage || "fr",
         description: notes || member.description,
         role: member.role || "Nouveau",
         isActive: false,

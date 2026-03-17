@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } from "@/lib/discord";
+import { signIn } from "next-auth/react";
+import { getDiscordUser, logoutDiscord, type DiscordUser } from "@/lib/discord";
 import { memberSidebarSections } from "@/lib/navigation/memberSidebar";
 import SidebarSection from "@/components/member/navigation/SidebarSection";
 import SidebarCollapsibleGroup from "@/components/member/navigation/SidebarCollapsibleGroup";
@@ -125,7 +126,9 @@ export default function UserSidebar() {
   }, [hasAdminAccess]);
 
   const handleDiscordLogin = () => {
-    loginWithDiscord();
+    const safeCallbackPath =
+      pathname && pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/";
+    void signIn("discord", { callbackUrl: safeCallbackPath });
   };
 
   const handleLogout = async () => {
