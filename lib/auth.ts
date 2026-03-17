@@ -45,9 +45,9 @@ export const authOptions: NextAuthOptions = {
           const isPlaceholder = login.startsWith("nouveau_") || login.startsWith("nouveau-");
           const onboardingStatus = String(existing.onboardingStatus || "").toLowerCase();
           const needsOnboarding = isPlaceholder || onboardingStatus === "a_faire";
-          if (needsOnboarding) {
-            return "/member/profil/completer?onboarding=1";
-          }
+          // Important: ne pas rediriger depuis signIn callback (sinon session annulée -> boucle OAuth).
+          // Le modal onboarding est piloté ensuite côté page via onboardingStatus.
+          if (needsOnboarding) return true;
           return true;
         }
 
@@ -87,8 +87,9 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        // Nouveau membre: retour onboarding modal forcé.
-        return "/member/profil/completer?onboarding=1";
+        // Nouveau membre: la session doit d'abord être créée.
+        // Le modal sera affiché ensuite via onboardingStatus=a_faire.
+        return true;
       } catch (unexpectedError) {
         // Filet de sécurité global: aucune erreur de ce callback ne doit bloquer OAuth.
         console.warn("[NextAuth signIn] unexpected error, allow sign-in:", unexpectedError);
