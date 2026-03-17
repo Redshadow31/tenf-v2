@@ -219,8 +219,11 @@ export default function MemberDashboardPage() {
     if (loading || !data?.member) return;
     const onboardingStatus = String(data.member.onboardingStatus || "").toLowerCase();
     const login = String(data.member.twitchLogin || "").toLowerCase();
+    const role = String(data.member.role || "").toLowerCase();
+    const profileValidationStatus = String(data.member.profileValidationStatus || "").toLowerCase();
     const isPlaceholder = login.startsWith("nouveau_") || login.startsWith("nouveau-");
-    if (onboardingStatus === "a_faire" || isPlaceholder) {
+    const isNewUnvalidated = role.includes("nouveau") && profileValidationStatus === "non_soumis";
+    if (onboardingStatus === "a_faire" || isPlaceholder || isNewUnvalidated) {
       router.replace("/member/profil/completer?onboarding=1");
     }
   }, [data, loading, router]);

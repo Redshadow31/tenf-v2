@@ -344,6 +344,10 @@ export async function GET() {
       vipSource = "member_flag";
     }
 
+    const normalizedRole = normalize(member.role);
+    const computedOnboardingStatus =
+      member.onboardingStatus || (normalizedRole.includes("nouveau") ? "a_faire" : "termine");
+
     return NextResponse.json({
       member: {
         discordId: member.discordId || null,
@@ -351,7 +355,7 @@ export async function GET() {
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         role: effectiveRole,
         profileValidationStatus: member.profileValidationStatus || "non_soumis",
-        onboardingStatus: member.onboardingStatus || "a_faire",
+        onboardingStatus: computedOnboardingStatus,
         integrationDate: member.integrationDate ? member.integrationDate.toISOString() : null,
         parrain: member.parrain || null,
         bio: member.description || member.customBio || "",
