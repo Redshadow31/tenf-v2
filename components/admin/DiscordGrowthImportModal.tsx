@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 
 interface DiscordGrowthImportModalProps {
   isOpen: boolean;
@@ -35,8 +35,44 @@ export default function DiscordGrowthImportModal({
   const [text, setText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  function parseNumericValue(raw: string): number {
+    const cleaned = raw.replace(/\s+/g, "").replace(",", ".");
+    return Number.parseFloat(cleaned);
+  }
+
+  function parseIntegerValue(raw: string): number {
+    return Math.round(parseNumericValue(raw));
+  }
 
   // Fonction pour parser le TSV
   function parseTSV(content: string): ParseResult {
@@ -70,11 +106,14 @@ export default function DiscordGrowthImportModal({
     const dateMap = new Map<string, ParsedData>(); // Pour déduplication par date
 
     for (const line of dataLines) {
-      // Détecter si c'est tabulation ou espaces multiples
+      // Détecter csv, tsv ou colonnes séparées par espaces
       const hasTab = line.includes("\t");
+      const hasComma = line.includes(",") && !hasTab;
       const columns = hasTab
         ? line.split("\t").map((col) => col.trim())
-        : line.split(/\s+/).filter((col) => col.trim().length > 0);
+        : hasComma
+          ? parseCsvLine(line).map((col) => col.trim())
+          : line.split(/\s+/).filter((col) => col.trim().length > 0);
 
       if (columns.length < 2) continue;
 
@@ -106,7 +145,7 @@ export default function DiscordGrowthImportModal({
       // Parser les membres (entier)
       const membresStr = columns[membresIndex]?.trim();
       if (!membresStr) continue;
-      const membres = parseInt(membresStr, 10);
+      const membres = parseIntegerValue(membresStr);
       if (isNaN(membres)) continue;
 
       // Parser la moyenne 21 jours (optionnel, float)
@@ -114,7 +153,7 @@ export default function DiscordGrowthImportModal({
       if (avg21Index >= 0 && columns[avg21Index]) {
         const avg21Str = columns[avg21Index].trim();
         if (avg21Str && avg21Str !== "null" && avg21Str !== "") {
-          const avg21Val = parseFloat(avg21Str);
+          const avg21Val = parseNumericValue(avg21Str);
           if (!isNaN(avg21Val)) {
             avg21 = avg21Val;
           }
@@ -184,6 +223,20 @@ export default function DiscordGrowthImportModal({
     setParseResult(result);
   };
 
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const content = await file.text();
+      setText(content);
+      setUploadedFileName(file.name);
+      setParseResult(null);
+    } catch (error) {
+      console.error("Erreur lors de la lecture du fichier:", error);
+      alert("Impossible de lire le fichier.");
+    }
+  };
+
   const handleImport = async () => {
     if (!parseResult || !parseResult.success || parseResult.data.length === 0) {
       return;
@@ -206,6 +259,7 @@ export default function DiscordGrowthImportModal({
   const handleClose = () => {
     setText("");
     setParseResult(null);
+    setUploadedFileName(null);
     onClose();
   };
 
@@ -245,8 +299,21 @@ export default function DiscordGrowthImportModal({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Colle ici les données exportées (TSV)
+              Source des données (copier-coller OU fichier)
             </label>
+            <div className="mb-3">
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/plain"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-[#5865F2] file:text-white hover:file:bg-[#4752C4]"
+              />
+              {uploadedFileName && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Fichier chargé: {uploadedFileName}
+                </p>
+              )}
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -264,7 +331,7 @@ export default function DiscordGrowthImportModal({
               <li>• Colonnes attendues : horodatage, membres</li>
               <li>• La colonne "21 jours moy" est optionnelle</li>
               <li>
-                • Séparateur : tabulation ou espaces multiples (détecté
+                • Séparateur : virgule (CSV), tabulation ou espaces multiples (détecté
                 automatiquement)
               </li>
               <li>
