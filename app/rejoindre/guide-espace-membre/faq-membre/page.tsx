@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { HelpCircle, Search } from "lucide-react";
+import { ArrowUpRight, HelpCircle, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getGuideMemberStepIndex, guideMemberSteps } from "../guideMeta";
 
@@ -25,8 +25,10 @@ type MemberFaqItem = {
   category: "Acces" | "Profil" | "Navigation" | "Support";
   question: string;
   answer: string;
-  actionLabel: string;
-  actionHref: string;
+  quickChecks: string[];
+  benefit: string;
+  primaryAction: { label: string; href: string };
+  secondaryAction: { label: string; href: string };
 };
 
 const faqItems: MemberFaqItem[] = [
@@ -35,49 +37,84 @@ const faqItems: MemberFaqItem[] = [
     category: "Acces",
     question: "Je suis connecte mais je ne vois pas le dashboard membre.",
     answer:
-      "Commence par rafraichir la page et verifier ton compte Discord actif. Si le probleme continue, reconnecte-toi puis verifie tes permissions.",
-    actionLabel: "Ouvrir le dashboard",
-    actionHref: "/member/dashboard",
+      "Ce blocage vient souvent d'une session Discord non a jour ou d'une permission qui n'est pas encore rechargee.",
+    quickChecks: [
+      "Rafraichir la page une premiere fois.",
+      "Verifier que tu es sur le bon compte Discord dans le navigateur.",
+      "Te reconnecter puis revenir sur /member/dashboard.",
+    ],
+    benefit: "Tu recuperes rapidement l'acces sans passer par un support technique.",
+    primaryAction: { label: "Ouvrir le dashboard", href: "/member/dashboard" },
+    secondaryAction: { label: "Revenir au profil", href: "/member/profil" },
   },
   {
     id: "faq-profil-incomplet",
     category: "Profil",
     question: "Pourquoi mon profil est signale comme incomplet ?",
     answer:
-      "Certains champs sont necessaires pour activer toutes les fonctions membre. Ouvre la page profil et complete les informations prioritaires.",
-    actionLabel: "Completer mon profil",
-    actionHref: "/member/profil/completer",
+      "Certaines informations sont obligatoires pour activer l'ensemble des fonctionnalites membre et fiabiliser ton suivi.",
+    quickChecks: [
+      "Completer pseudo, bio et liens prioritaires.",
+      "Verifier les reseaux et infos de presentation.",
+      "Relire la checklist de completion avant validation.",
+    ],
+    benefit: "Ton espace devient pleinement actif et plus lisible pour la communaute.",
+    primaryAction: { label: "Completer mon profil", href: "/member/profil/completer" },
+    secondaryAction: { label: "Modifier mon profil", href: "/member/profil/modifier" },
   },
   {
     id: "faq-modules-prio",
     category: "Navigation",
     question: "Par quel module commencer si je manque de temps ?",
     answer:
-      "Priorise le dashboard, puis objectifs et notifications. Ce trio suffit pour garder une routine claire et rester actif.",
-    actionLabel: "Voir mes objectifs",
-    actionHref: "/member/objectifs",
+      "Utilise une logique simple: pilotage d'abord, execution ensuite, verification a la fin.",
+    quickChecks: [
+      "Commencer par Dashboard pour la priorite du jour.",
+      "Passer sur Objectifs pour voir le restant du mois.",
+      "Verifier Notifications pour ne rien oublier.",
+    ],
+    benefit: "Tu restes efficace meme avec peu de temps disponible.",
+    primaryAction: { label: "Voir mes objectifs", href: "/member/objectifs" },
+    secondaryAction: { label: "Ouvrir le dashboard", href: "/member/dashboard" },
   },
   {
     id: "faq-notifs",
     category: "Navigation",
     question: "Je ne recois pas certaines alertes, que faire ?",
     answer:
-      "Verifie d'abord tes parametres de notifications, puis controle les permissions du navigateur et de Discord.",
-    actionLabel: "Gerer les notifications",
-    actionHref: "/member/notifications",
+      "Le probleme vient souvent d'un reglage desactive cote compte ou navigateur.",
+    quickChecks: [
+      "Verifier les preferences dans la page Notifications.",
+      "Verifier les permissions navigateur (notifications autorisees).",
+      "Verifier les reglages Discord si besoin.",
+    ],
+    benefit: "Tu recuperes un suivi fiable et tu ne rates plus les rappels critiques.",
+    primaryAction: { label: "Gerer les notifications", href: "/member/notifications" },
+    secondaryAction: { label: "Ouvrir les parametres", href: "/member/parametres" },
   },
   {
     id: "faq-support",
     category: "Support",
     question: "Quand dois-je contacter le support TENF ?",
     answer:
-      "Si le blocage persiste apres verification des etapes du guide et de la FAQ, contacte le support avec une description claire du probleme.",
-    actionLabel: "Ouvrir la FAQ generale",
-    actionHref: "/rejoindre/faq",
+      "Contacte le support quand les checks de base sont deja faits et que le blocage persiste.",
+    quickChecks: [
+      "Noter la page concernee et le moment du probleme.",
+      "Decrire ce que tu as deja teste.",
+      "Ajouter une capture claire si possible.",
+    ],
+    benefit: "Le support peut t'aider plus vite avec un contexte propre.",
+    primaryAction: { label: "Ouvrir la FAQ generale", href: "/rejoindre/faq" },
+    secondaryAction: { label: "Retour guide membre", href: "/rejoindre/guide-espace-membre" },
   },
 ];
 
 const categories: Array<MemberFaqItem["category"]> = ["Acces", "Profil", "Navigation", "Support"];
+const quickAccess = [
+  { label: "Probleme d'acces dashboard", href: "#faq-acces-dashboard" },
+  { label: "Profil incomplet", href: "#faq-profil-incomplet" },
+  { label: "Alertes absentes", href: "#faq-notifs" },
+];
 
 export default function GuideMemberFaqPage() {
   const accent = "#ec4899";
@@ -144,6 +181,37 @@ export default function GuideMemberFaqPage() {
             ))}
           </div>
 
+          <div className="mt-4 rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+              Acces rapide aux cas les plus frequents
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {quickAccess.map((item) => (
+                <a key={item.href} href={item.href} className="rounded-full border px-3 py-1 text-xs sm:text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}>
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+              <ShieldCheck size={14} style={{ color: "var(--color-primary)" }} />
+              Methode de resolution en 3 niveaux
+            </p>
+            <div className="mt-2 grid gap-2">
+              {[
+                "Niveau 1: verifications rapides (session, refresh, compte actif).",
+                "Niveau 2: verification des reglages (profil, notifications, permissions).",
+                "Niveau 3: support avec contexte clair si le blocage persiste.",
+              ].map((item) => (
+                <p key={item} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.1)", color: "var(--color-text-secondary)" }}>
+                  - {item}
+                </p>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-4 space-y-4">
             {categories.map((category) => {
               const items = filteredFaq.filter((item) => item.category === category);
@@ -155,16 +223,31 @@ export default function GuideMemberFaqPage() {
                   </h2>
                   <div className="mt-2 space-y-2">
                     {items.map((item) => (
-                      <article key={item.id} className="rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+                      <article id={item.id} key={item.id} className="rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                         <h3 className="text-sm font-semibold sm:text-base" style={{ color: "var(--color-text)" }}>
                           {item.question}
                         </h3>
                         <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
                           {item.answer}
                         </p>
-                        <Link href={item.actionHref} className="mt-3 inline-flex rounded-full border px-3 py-1.5 text-xs sm:text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
-                          {item.actionLabel}
-                        </Link>
+                        <div className="mt-2 space-y-1">
+                          {item.quickChecks.map((check) => (
+                            <p key={check} className="text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                              - {check}
+                            </p>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                          <strong style={{ color: "var(--color-text)" }}>Ton avantage:</strong> {item.benefit}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link href={item.primaryAction.href} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs sm:text-sm font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
+                            {item.primaryAction.label} <ArrowUpRight size={12} />
+                          </Link>
+                          <Link href={item.secondaryAction.href} className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs sm:text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+                            {item.secondaryAction.label} <ArrowUpRight size={12} />
+                          </Link>
+                        </div>
                       </article>
                     ))}
                   </div>

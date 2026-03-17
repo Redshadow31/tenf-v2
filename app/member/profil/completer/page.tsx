@@ -291,8 +291,8 @@ export default function MemberProfileCompletePage() {
                 <input value={form.creatorName} onChange={(e) => setForm((prev) => ({ ...prev, creatorName: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-300">Parrain TENF *</label>
-                <input value={form.parrain} onChange={(e) => setForm((prev) => ({ ...prev, parrain: e.target.value }))} placeholder="Pseudo Twitch du membre ou reseau social" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+                <label className="mb-1 block text-sm text-gray-300">Parrain TENF * (pseudo ou nom du reseau social via lequel tu as decouvert TENF)</label>
+                <input value={form.parrain} onChange={(e) => setForm((prev) => ({ ...prev, parrain: e.target.value }))} placeholder="Ex: pseudo Twitch ou nom du reseau social" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-300">Fuseau horaire *</label>
@@ -338,9 +338,18 @@ export default function MemberProfileCompletePage() {
             </div>
 
             <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <input value={publicProfileForm.instagram} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))} placeholder="Instagram (optionnel)" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
-              <input value={publicProfileForm.tiktok} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))} placeholder="TikTok (optionnel)" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
-              <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="X / Twitter (optionnel)" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+              <div>
+                <label className="mb-1 block text-sm text-gray-300">Instagram (optionnel)</label>
+                <input value={publicProfileForm.instagram} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))} placeholder="pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-gray-300">TikTok (optionnel)</label>
+                <input value={publicProfileForm.tiktok} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, tiktok: e.target.value }))} placeholder="@pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-gray-300">X / Twitter (optionnel)</label>
+                <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+              </div>
             </div>
             <p className="mt-2 text-xs text-gray-400">Ces liens sont optionnels, mais utiles pour completer ton profil public.</p>
 

@@ -60,6 +60,69 @@ const guidePages = [
   },
 ];
 
+const memberTabsDetails = [
+  {
+    title: "Dashboard",
+    href: "/member/dashboard",
+    youFind: "Priorites de la semaine, progression mensuelle, actions conseillees.",
+    benefit: "Tu sais quoi faire tout de suite sans perdre du temps a chercher.",
+  },
+  {
+    title: "Profil",
+    href: "/member/profil",
+    youFind: "Etat de ton profil, checklist de completion, liens de mise a jour.",
+    benefit: "Un profil complet augmente ta clarte et ta visibilite dans la communaute.",
+  },
+  {
+    title: "Activite",
+    href: "/member/activite",
+    youFind: "Historique de tes actions et participation recente.",
+    benefit: "Tu peux suivre ta regularite et corriger rapidement les semaines creuses.",
+  },
+  {
+    title: "Progression",
+    href: "/member/progression",
+    youFind: "Niveau global, progression par axes, jalons atteints.",
+    benefit: "Tu visualises tes resultats concrets et tes prochains paliers.",
+  },
+  {
+    title: "Raids",
+    href: "/member/raids/historique",
+    youFind: "Declarations, historique et statistiques de raids.",
+    benefit: "Tu validates plus facilement tes objectifs mensuels d'entraide.",
+  },
+  {
+    title: "Evenements",
+    href: "/member/evenements",
+    youFind: "Calendrier, inscriptions et suivi des presences.",
+    benefit: "Tu restes actif dans la communaute et tu ameliore ta visibilite.",
+  },
+  {
+    title: "Formations",
+    href: "/member/formations",
+    youFind: "Parcours, formations disponibles et formations validees.",
+    benefit: "Tu progresses plus vite avec un plan d'apprentissage structure.",
+  },
+  {
+    title: "Objectifs",
+    href: "/member/objectifs",
+    youFind: "Objectifs du mois et suivi de leur avancement.",
+    benefit: "Tu gardes un cap clair et tu evites la dispersion.",
+  },
+  {
+    title: "Engagement",
+    href: "/member/engagement/score",
+    youFind: "Score d'implication, details et recommandations.",
+    benefit: "Tu identifies les actions qui ont le plus d'impact sur ta progression.",
+  },
+  {
+    title: "Notifications",
+    href: "/member/notifications",
+    youFind: "Alertes utiles, rappels et informations importantes.",
+    benefit: "Tu ne rates pas les etapes importantes ni les opportunites.",
+  },
+];
+
 export default function GuideEspaceMembrePage() {
   const quickStart = [
     "Commence par Premiere connexion pour verifier ton compte et ton profil.",
@@ -211,6 +274,38 @@ export default function GuideEspaceMembrePage() {
             </article>
           ))}
         </div>
+
+        <section
+          className="mt-6 rounded-2xl border p-5"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.2)" }}
+        >
+          <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
+            Ce que tu retrouves dans chaque onglet membre
+          </h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Pour chaque onglet, voici l'essentiel a retenir: ce que tu y trouves et l'avantage direct pour toi.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {memberTabsDetails.map((tab) => (
+              <article key={tab.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                    {tab.title}
+                  </p>
+                  <Link href={tab.href} className="text-xs underline" style={{ color: "var(--color-primary)" }}>
+                    Ouvrir
+                  </Link>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                  <strong style={{ color: "var(--color-text)" }}>Tu y retrouves:</strong> {tab.youFind}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                  <strong style={{ color: "var(--color-text)" }}>Ton avantage:</strong> {tab.benefit}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <Link href="/rejoindre" className="mt-8 inline-flex underline" style={{ color: "var(--color-primary)" }}>
           Retour a Rejoindre TENF

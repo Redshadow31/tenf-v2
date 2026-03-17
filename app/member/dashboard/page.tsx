@@ -274,6 +274,8 @@ export default function MemberDashboardPage() {
   const displayName = data.member.displayName || data.member.twitchLogin;
   const firstName = displayName.split(" ")[0] || "Membre";
   const vipActive = Boolean(data.vip?.activeThisMonth);
+  const onboardingStatus = String(data.member.onboardingStatus || "").toLowerCase();
+  const isNewProfile = String(data.member.role || "").toLowerCase().includes("nouveau") || onboardingStatus === "a_faire" || onboardingStatus === "en_cours";
   const accent = resolveAccent(data.member.role, vipActive, data.member.discordId);
   const sectionLabel = vipActive ? "Espace membre VIP" : "Espace membre";
   const segment = roleSegment(data.member.role, vipActive);
@@ -492,6 +494,30 @@ export default function MemberDashboardPage() {
                 {profileStatus}
               </span>
             </div>
+            {isNewProfile ? (
+              <div
+                className="mt-4 rounded-2xl border p-4"
+                style={{
+                  borderColor: hexToRgba(accent, 0.3),
+                  backgroundColor: "rgba(9, 17, 25, 0.58)",
+                }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                  Bienvenue dans la communaute TENF.
+                </p>
+                <p className="mt-1 text-sm" style={{ color: "rgba(236,236,239,0.82)" }}>
+                  Pour bien demarrer, inscris-toi a une reunion d integration.
+                </p>
+                <a
+                  href="https://tenf-community.com/integration"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
+                  style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
+                >
+                  S inscrire a une reunion d integration
+                  <ArrowUpRight size={14} />
+                </a>
+              </div>
+            ) : null}
           </div>
           <div
             className="rounded-2xl border p-4"
