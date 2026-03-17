@@ -97,17 +97,17 @@ export default function RaidsPage() {
         // Stocker les données brutes pour le filtrage
         setRawRaidsData(data);
         
-        // Mode manuel uniquement : ignorer complètement les raids Twitch/EventSub
+        // Inclure les raids saisis manuellement + les raids issus du pipeline raids-sub.
         const filteredRaidsFaits = (data.raidsFaits || []).filter((raid: any) => {
           const source = raid.source || (raid.manual ? "admin" : "twitch-live");
           if (source === "discord") return false;
-          return source === "manual" || source === "admin" || raid.manual;
+          return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
         });
         
         const filteredRaidsRecus = (data.raidsRecus || []).filter((raid: any) => {
           const source = raid.source || (raid.manual ? "admin" : "twitch-live");
           if (source === "discord") return false;
-          return source === "manual" || source === "admin" || raid.manual;
+          return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
         });
         
         // Grouper les raids faits par membre (après filtrage)
@@ -297,7 +297,7 @@ export default function RaidsPage() {
     const filterManualOnly = (raid: any) => {
       const source = raid.source || (raid.manual ? "admin" : "twitch-live");
       if (source === "discord") return false;
-      return source === "manual" || source === "admin" || raid.manual;
+      return source === "manual" || source === "admin" || source === "raids_sub" || raid.manual;
     };
     const filteredFaits = (rawRaidsData.raidsFaits || []).filter(filterManualOnly);
     const filteredRecus = (rawRaidsData.raidsRecus || []).filter(filterManualOnly);
@@ -379,13 +379,13 @@ export default function RaidsPage() {
   return (
     <>
       <div className="text-white">
-      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids (manuel)</h1>
+      <h1 className="text-4xl font-bold text-white mb-8">Suivi des Raids (manuel + raids-sub)</h1>
 
       {/* En-tête avec sélecteur de mois et boutons */}
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div className="flex-1">
             <h2 className="text-2xl font-bold text-white mb-2">
-              Raids TENF - mode manuel
+              Raids TENF - manuel + raids-sub
             </h2>
             <div className="flex items-center gap-4">
               <label className="text-gray-400 text-sm">

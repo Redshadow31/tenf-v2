@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Calendar, CheckCircle2, Clock3, Crown, Flag, ListTodo, Rocket, Sparkles, UserCircle2 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
@@ -152,9 +153,65 @@ function isSuggestedAction(value: SuggestedAction | null): value is SuggestedAct
   return value !== null;
 }
 
+type FollowState = "followed" | "not_followed" | "unknown";
+type FollowStatusesResponse = {
+  authenticated?: boolean;
+  linked?: boolean;
+  reason?: string;
+  statuses?: Record<string, { state?: FollowState }>;
+};
+
 export default function MemberDashboardPage() {
   const { data, loading, error } = useMemberOverview();
   const { goals: memberGoals } = useMemberMonthlyGoals(data?.monthKey || "");
+  const [followStats, setFollowStats] = useState<{
+    loading: boolean;
+    authenticated: boolean;
+    linked: boolean;
+    total: number;
+    followed: number;
+    score: number;
+  }>({
+    loading: true,
+    authenticated: false,
+    linked: false,
+    total: 0,
+    followed: 0,
+    score: 0,
+  });
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/members/follow-status", { cache: "no-store" });
+        const body = (await response.json()) as FollowStatusesResponse;
+        if (!active) return;
+
+        const statuses = body?.statuses || {};
+        const values = Object.values(statuses).map((entry) => entry?.state || "unknown");
+        const total = values.length;
+        const followed = values.filter((state) => state === "followed").length;
+        const score = total > 0 ? Math.round((followed / total) * 100) : 0;
+
+        setFollowStats({
+          loading: false,
+          authenticated: body?.authenticated === true,
+          linked: body?.linked === true,
+          total,
+          followed,
+          score,
+        });
+      } catch {
+        if (!active) return;
+        setFollowStats((prev) => ({ ...prev, loading: false }));
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -209,11 +266,12 @@ export default function MemberDashboardPage() {
   const profileStatus = profileStatusLabel(data.member.profileValidationStatus);
   const raidsTarget = memberGoals.raids;
   const presencesTarget = memberGoals.events;
-  const engagementTarget = raidsTarget + presencesTarget;
+  const engagementTarget = 100;
+  const engagementCurrent = followStats.score;
   const profileRemaining = Math.max(0, 100 - data.profile.percent);
   const raidsRemaining = Math.max(0, raidsTarget - data.stats.raidsThisMonth);
   const presencesRemaining = Math.max(0, presencesTarget - data.stats.eventPresencesThisMonth);
-  const engagementRemaining = Math.max(0, engagementTarget - data.stats.participationThisMonth);
+  const engagementRemaining = Math.max(0, engagementTarget - engagementCurrent);
   const formationsThisMonth =
     data.stats.formationsValidatedThisMonth ??
     data.formationHistory.filter((item) => item.date.slice(0, 7) === data.monthKey).length;
@@ -245,7 +303,7 @@ export default function MemberDashboardPage() {
     },
     {
       label: "Engagement a booster",
-      current: data.stats.participationThisMonth,
+      current: engagementCurrent,
       target: engagementTarget,
       remaining: engagementRemaining,
       href: "/member/engagement/score",
@@ -512,7 +570,15 @@ export default function MemberDashboardPage() {
               />
             </div>
             <p className="mt-2 text-xs" style={{ color: "rgba(214, 214, 224, 0.72)" }}>
-              {getCardFeedback(item.current, item.target, item.remaining)}
+              {item.label === "Engagement a booster"
+                ? followStats.loading
+                  ? "Chargement du score follow..."
+                  : !followStats.authenticated
+                    ? "Connexion requise pour calculer le score follow."
+                    : !followStats.linked
+                      ? "Lie ton compte Twitch pour activer le score follow."
+                      : `Score follow: ${followStats.followed}/${followStats.total} membre(s) actif(s) suivi(s).`
+                : getCardFeedback(item.current, item.target, item.remaining)}
             </p>
             <Link href={item.href} className="mt-3 inline-flex items-center gap-1 text-xs hover:opacity-85" style={{ color: hexToRgba(accent, 0.9) }}>
               Passer a l action
