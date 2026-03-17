@@ -1,4 +1,20 @@
 import Link from "next/link";
+import { Link2, Sparkles } from "lucide-react";
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const normalized =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : clean;
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 const twitchLinkSteps = [
   {
@@ -45,11 +61,25 @@ const twitchUnlockedFeatures = [
 ];
 
 export default function GuidePublicLiaisonTwitchPage() {
+  const accent = "#f59e0b";
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+        <section
+          className="relative overflow-hidden rounded-3xl border p-6 sm:p-8"
+          style={{
+            borderColor: hexToRgba(accent, 0.35),
+            background: `linear-gradient(135deg, color-mix(in srgb, ${hexToRgba(accent, 0.35)} 55%, var(--color-card)) 0%, var(--color-card) 70%)`,
+            boxShadow: "0 18px 36px rgba(0,0,0,0.22)",
+          }}
+        >
+          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full blur-3xl" style={{ backgroundColor: hexToRgba(accent, 0.22) }} />
+          <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em]" style={{ borderColor: hexToRgba(accent, 0.45), color: "var(--color-text)" }}>
+            <Sparkles size={14} /> Activation
+          </p>
+          <h1 className="mt-4 flex items-center gap-2 text-3xl font-bold sm:text-4xl" style={{ color: "var(--color-text)" }}>
+            <Link2 size={26} style={{ color: hexToRgba(accent, 0.96) }} />
             Liaison Twitch
           </h1>
           <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
@@ -57,7 +87,7 @@ export default function GuidePublicLiaisonTwitchPage() {
           </p>
         </section>
 
-        <section className="mt-4 rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: hexToRgba(accent, 0.25), backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.18)" }}>
           <div className="space-y-2">
             {twitchLinkSteps.map((step) => (
               <article key={step.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
@@ -72,8 +102,8 @@ export default function GuidePublicLiaisonTwitchPage() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+        <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: hexToRgba(accent, 0.25), backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.18)" }}>
+          <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
             Fonctionnalites debloquees apres liaison
           </h2>
           <div className="mt-3 space-y-2">
