@@ -125,7 +125,11 @@ export default function UserSidebar() {
   }, [hasAdminAccess]);
 
   const handleDiscordLogin = () => {
-    loginWithDiscord();
+    const currentPath =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search || ""}`
+        : pathname || "/member/profil/completer";
+    loginWithDiscord(currentPath);
   };
 
   const handleLogout = async () => {

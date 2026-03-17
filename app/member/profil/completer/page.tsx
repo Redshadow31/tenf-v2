@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AtSign, CheckCircle2, Circle, FileText, Instagram, Music2, UserCircle2, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
@@ -54,6 +55,8 @@ const TAB_ORDER: ProfileTab[] = ["identite", "public"];
 
 export default function MemberProfileCompletePage() {
   const searchParams = useSearchParams();
+  const { status } = useSession();
+  const loginTriggeredRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileAlreadyCreated, setProfileAlreadyCreated] = useState(false);
@@ -87,6 +90,16 @@ export default function MemberProfileCompletePage() {
   });
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      if (!loginTriggeredRef.current) {
+        loginTriggeredRef.current = true;
+        signIn("discord", { callbackUrl: "/member/profil/completer?onboarding=1" });
+      }
+      setLoading(true);
+      return;
+    }
+
     let active = true;
     (async () => {
       try {
@@ -146,7 +159,7 @@ export default function MemberProfileCompletePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [searchParams, status]);
 
   const descriptionWithGames = useMemo(
     () =>
