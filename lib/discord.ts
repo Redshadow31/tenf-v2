@@ -76,6 +76,10 @@ export async function logoutDiscord(): Promise<void> {
  * Redirige vers la page de connexion Discord
  */
 export function loginWithDiscord(): void {
-  window.location.href = `/api/auth/signin/discord?callbackUrl=${encodeURIComponent(DISCORD_LOGIN_CALLBACK_URL)}`;
+  const params = new URLSearchParams({
+    callbackUrl: DISCORD_LOGIN_CALLBACK_URL,
+    autostart: "1",
+  });
+  window.location.href = `/auth/login?${params.toString()}`;
 }
 

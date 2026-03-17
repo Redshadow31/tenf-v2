@@ -37,6 +37,7 @@ type MemberResponse = {
     timezone?: string | null;
     countryCode?: string | null;
     primaryLanguage?: string | null;
+    onboardingStatus?: "a_faire" | "en_cours" | "termine" | string;
   };
   pending?: {
     description?: string;
@@ -101,7 +102,11 @@ export default function MemberProfileCompletePage() {
         const isPlaceholder =
           data.member.twitchLogin.startsWith("nouveau_") || data.member.twitchLogin.startsWith("nouveau-");
         setProfileAlreadyCreated(!isPlaceholder);
-        setShowWelcomeModal(isPlaceholder || searchParams.get("onboarding") === "1");
+        const onboardingStatus = String(data.member.onboardingStatus || "").toLowerCase();
+        const shouldShowFromState = onboardingStatus === "a_faire";
+        setShowWelcomeModal(
+          isPlaceholder || shouldShowFromState || searchParams.get("onboarding") === "1"
+        );
         setForm((prev) => ({
           ...prev,
           discordId: data.member.discordId || prev.discordId,
@@ -186,6 +191,17 @@ export default function MemberProfileCompletePage() {
         return false;
       }
 
+      const res = await fetch("/api/members/me/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert(body.error || "Erreur lors de la creation du profil");
+        return false;
+      }
+
       const profileRes = await fetch("/api/members/me/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,16 +221,6 @@ export default function MemberProfileCompletePage() {
         return false;
       }
 
-      const res = await fetch("/api/members/me/bootstrap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        alert(body.error || "Erreur lors de la creation du profil");
-        return false;
-      }
       setCreateProfileSuccess(true);
       return true;
     } catch {

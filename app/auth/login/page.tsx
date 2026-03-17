@@ -9,7 +9,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const error = searchParams.get("error");
-  const callbackUrl = "/member/dashboard";
+  const callbackUrlParam = searchParams.get("callbackUrl");
+  const callbackUrl =
+    callbackUrlParam && callbackUrlParam.startsWith("/") && !callbackUrlParam.startsWith("//")
+      ? callbackUrlParam
+      : "/member/dashboard";
+  const shouldAutoStart = searchParams.get("autostart") === "1";
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -18,6 +23,14 @@ export default function LoginPage() {
       router.push(callbackUrl);
     }
   }, [status, session, callbackUrl, router]);
+
+  useEffect(() => {
+    if (status !== "unauthenticated") return;
+    if (!shouldAutoStart) return;
+    if (error) return;
+    setIsLoading(true);
+    signIn("discord", { callbackUrl });
+  }, [status, shouldAutoStart, error, callbackUrl]);
 
   // Afficher un loader pendant la vérification de la session
   if (status === "loading") {
@@ -47,7 +60,8 @@ export default function LoginPage() {
               {error === "token_exchange_failed" && "Échec de l'échange de token"}
               {error === "user_fetch_failed" && "Impossible de récupérer les informations utilisateur"}
               {error === "oauth_error" && "Erreur lors de la connexion Discord"}
-              {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error"].includes(error) && `Erreur: ${error}`}
+              {error === "discord" && "Erreur lors de la connexion Discord"}
+              {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error", "discord"].includes(error) && `Erreur: ${error}`}
             </p>
             {searchParams.get("details") && (
               <p className="text-red-300 text-xs mt-2 font-mono break-all">

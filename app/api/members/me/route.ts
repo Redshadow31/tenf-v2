@@ -38,36 +38,55 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (session?.user?.discordId) {
       member = await memberRepository.findByDiscordId(session.user.discordId);
-      if (!member) {
-        const discordId = String(session.user.discordId).trim();
-        const discordUsername = String(session.user.username || session.user.name || "").trim();
-        const placeholderLogin = `nouveau_${discordId.toLowerCase()}`;
-        member = await memberRepository.create({
-          twitchLogin: placeholderLogin,
-          twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
-          displayName: discordUsername || `Nouveau membre ${discordId.slice(-4)}`,
-          siteUsername: discordUsername || undefined,
-          discordId,
-          discordUsername: discordUsername || undefined,
-          role: "Nouveau",
-          isActive: false,
-          isVip: false,
-          badges: [],
-          profileValidationStatus: "non_soumis",
-          onboardingStatus: "a_faire",
-          timezone: "Europe/Paris",
-          countryCode: "FR",
-          primaryLanguage: "fr",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          updatedBy: discordId,
-        });
-      }
     }
 
     // Sinon par twitchLogin si fourni
     if (!member && twitchLoginParam) {
       member = await memberRepository.findByTwitchLogin(twitchLoginParam);
+    }
+
+    if (!member && session?.user?.discordId) {
+      const discordId = String(session.user.discordId).trim();
+      const discordUsername = String(session.user.username || session.user.name || "").trim();
+
+      return NextResponse.json({
+        member: {
+          displayName: discordUsername || `Nouveau membre ${discordId.slice(-4)}`,
+          twitchLogin: "",
+          discordId,
+          memberId: `NEW-${discordId.slice(-6).toUpperCase()}`,
+          avatar: null,
+          role: "Nouveau",
+          bio: "",
+          memberSince: null,
+          profileValidationStatus: "non_soumis",
+          onboardingStatus: "a_faire",
+          socials: {
+            twitch: "",
+            discord: discordUsername,
+            instagram: "",
+            tiktok: "",
+            twitter: "",
+          },
+          birthday: null,
+          twitchAffiliateDate: null,
+          timezone: "Europe/Paris",
+          countryCode: "FR",
+          primaryLanguage: "fr",
+          tenfSummary: {
+            role: "Nouveau",
+            status: "Inactif",
+            integration: {
+              integrated: false,
+              date: null,
+            },
+            parrain: null,
+          },
+          createdAt: undefined,
+          integrationDate: undefined,
+        },
+        pending: null,
+      });
     }
 
     if (!member) {
@@ -114,6 +133,7 @@ export async function GET(request: NextRequest) {
         bio: member.description || member.customBio || "",
         memberSince,
         profileValidationStatus: member.profileValidationStatus || "non_soumis",
+        onboardingStatus: member.onboardingStatus || "a_faire",
         socials: {
           twitch: member.twitchLogin ? `https://www.twitch.tv/${member.twitchLogin}` : "",
           discord: member.discordUsername || "",

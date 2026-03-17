@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         primaryLanguage,
         description: notes || undefined,
         profileValidationStatus: "non_soumis",
-        onboardingStatus: "a_faire",
+        onboardingStatus: "en_cours",
         createdAt: new Date(),
         updatedAt: new Date(),
         updatedBy: discordId,
@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
         description: notes || member.description,
         role: member.role || "Nouveau",
         isActive: false,
+        onboardingStatus: "en_cours",
         updatedAt: new Date(),
         updatedBy: discordId,
       };

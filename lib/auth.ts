@@ -40,47 +40,18 @@ export const authOptions: NextAuthOptions = {
           console.warn("[NextAuth signIn] findByDiscordId failed, allow sign-in:", error);
           return true;
         }
-        if (existing) return true;
-
-        const placeholderLogin = `nouveau_${discordId}`;
-        const displayName = username.trim() || `Discord ${discordId}`;
-
-        try {
-          await memberRepository.create({
-            twitchLogin: placeholderLogin,
-            twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
-            displayName,
-            discordId,
-            discordUsername: username,
-            role: "Nouveau",
-            isVip: false,
-            isActive: false,
-            badges: [],
-            profileValidationStatus: "non_soumis",
-            onboardingStatus: "a_faire",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            updatedBy: discordId,
-          });
-        } catch (error) {
-          // Tolérance aux courses: si la fiche a été créée en parallèle, on continue.
-          try {
-            const lateExisting = await memberRepository.findByDiscordId(discordId);
-            if (!lateExisting) {
-              // Fail-open: la connexion Discord ne doit pas échouer à cause de la création auto.
-              // La fiche membre pourra être créée/synchronisée plus tard par les flux admin.
-              console.warn("[NextAuth signIn] auto-create member failed, allow sign-in:", error);
-              return true;
-            }
-          } catch (lookupError) {
-            // Si la vérification échoue aussi, on autorise quand même la connexion.
-            console.warn("[NextAuth signIn] late lookup failed, allow sign-in:", lookupError);
-            return true;
+        if (existing) {
+          const login = String(existing.twitchLogin || "").toLowerCase();
+          const isPlaceholder = login.startsWith("nouveau_") || login.startsWith("nouveau-");
+          const onboardingStatus = String(existing.onboardingStatus || "").toLowerCase();
+          const needsOnboarding = isPlaceholder || onboardingStatus === "a_faire";
+          if (needsOnboarding) {
+            return "/member/profil/completer?onboarding=1";
           }
+          return true;
         }
-
-        // Evite le passage par la route legacy /membres/me pour l'onboarding.
-        // On redirige directement vers la page moderne de completion profil.
+        // Aucun membre connu pour ce Discord ID:
+        // on envoie vers le modal de creation, sans creation auto en base.
         return "/member/profil/completer?onboarding=1";
       } catch (unexpectedError) {
         // Filet de sécurité global: aucune erreur de ce callback ne doit bloquer OAuth.
