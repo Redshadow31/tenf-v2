@@ -193,20 +193,40 @@ export default function GuidePublicCreerUnComptePage() {
               </button>
             </div>
 
-            <div className="mt-3 rounded-xl border p-4 sm:p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                Finalisation apres creation (espace membre)
+            <div className="mt-3 rounded-xl border p-4 sm:p-5" style={{ borderColor: "rgba(16,185,129,0.35)", backgroundColor: "#11161a" }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: "#6ee7b7" }}>
+                Communaute TENF
               </p>
-              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Juste apres creation, complete ton profil pour activer toutes les fonctions :
+              <p className="mt-1 text-base font-semibold text-white">
+                Bienvenue dans la creation de ton Espace TENF
               </p>
-              <div className="mt-2 space-y-2 text-sm">
-                <div className="rounded-md border px-3 py-2" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  Champ a renseigner : Pseudo Twitch / URL Twitch
+              <p className="mt-1 text-xs text-gray-300">
+                Apercu du vrai modal affiche apres la premiere connexion Discord.
+              </p>
+
+              <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                <div className="rounded-md border px-3 py-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Pseudo Twitch / URL Twitch : <span className="text-white">obligatoire</span>
                 </div>
-                <div className="rounded-md border px-3 py-2" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  Champ conseille : Date d'affiliation Twitch (si disponible)
+                <div className="rounded-md border px-3 py-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Pseudo Discord + ID Discord : <span className="text-white">auto-remplis</span>
                 </div>
+                <div className="rounded-md border px-3 py-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Parrain TENF : <span className="text-white">obligatoire</span>
+                </div>
+                <div className="rounded-md border px-3 py-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Fuseau horaire, pays, langue : <span className="text-white">requis (FR par defaut)</span>
+                </div>
+                <div className="rounded-md border px-3 py-2 md:col-span-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Date d'anniversaire + date d'affiliation Twitch : <span className="text-white">optionnel</span> (Procedure affiliation : Tableau de bord createur {"->"} Parametres {"->"} Chaine {"->"} Evenements de streaming)
+                </div>
+                <div className="rounded-md border px-3 py-2 md:col-span-2" style={{ borderColor: "#374151", color: "#e5e7eb" }}>
+                  Liens reseaux + descriptif de chaine : <span className="text-white">optionnel</span> (completable plus tard)
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-md border px-3 py-2 text-xs" style={{ borderColor: "rgba(16,185,129,0.45)", color: "#d1fae5", backgroundColor: "rgba(16,185,129,0.12)" }}>
+                Message de confirmation apres validation: "Profil bien recu, et surtout : bienvenue officiellement dans la New Family TENF."
               </div>
             </div>
           </div>
