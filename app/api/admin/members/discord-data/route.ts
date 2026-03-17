@@ -22,6 +22,8 @@ type VerifyResult = {
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
 const VERIFY_CHUNK_SIZE = 200;
+const DEFAULT_POST_LIMIT = 60;
+const MAX_POST_LIMIT = 100;
 
 async function fetchAllMembersWithDiscordId(): Promise<MemberDiscordRow[]> {
   const all: MemberDiscordRow[] = [];
@@ -104,6 +106,11 @@ export async function POST(request: NextRequest) {
     const twitchLoginsInput = Array.isArray(body?.twitchLogins) ? body.twitchLogins : [];
     const updateMismatches = body?.updateMismatches !== false;
     const runOnAll = Boolean(body?.all);
+    const offsetRaw = Number(body?.offset);
+    const limitRaw = Number(body?.limit);
+    const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
+    const limitCandidate = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : DEFAULT_POST_LIMIT;
+    const limit = Math.min(MAX_POST_LIMIT, limitCandidate);
 
     const members = await fetchAllMembersWithDiscordId();
     const byLogin = new Map(members.map((m) => [m.twitchLogin.toLowerCase(), m]));
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
       uniqueSelected.push(member);
     }
 
+    const selectedWindow = uniqueSelected.slice(offset, offset + limit);
     const results: VerifyResult[] = [];
     let updated = 0;
     let same = 0;
@@ -129,8 +137,8 @@ export async function POST(request: NextRequest) {
     let notFound = 0;
     let errors = 0;
     // Traiter toute la sélection par paquets pour éviter une exécution trop lourde d'un coup.
-    for (let i = 0; i < uniqueSelected.length; i += VERIFY_CHUNK_SIZE) {
-      const chunk = uniqueSelected.slice(i, i + VERIFY_CHUNK_SIZE);
+    for (let i = 0; i < selectedWindow.length; i += VERIFY_CHUNK_SIZE) {
+      const chunk = selectedWindow.slice(i, i + VERIFY_CHUNK_SIZE);
       for (const member of chunk) {
         if (!member.discordId) continue;
         const stored = String(member.discordUsername || "").trim();
@@ -199,13 +207,18 @@ export async function POST(request: NextRequest) {
       message: updateMismatches
         ? `Verification terminee: ${updated} pseudo(s) synchronise(s).`
         : "Verification terminee (mode lecture seule).",
-      processed: uniqueSelected.length,
+      processed: selectedWindow.length,
       same,
       different,
       updated,
       notFound,
       errors,
-      truncated: false,
+      truncated: offset + selectedWindow.length < uniqueSelected.length,
+      totalSelected: uniqueSelected.length,
+      offset,
+      limit,
+      nextOffset: offset + selectedWindow.length,
+      hasMore: offset + selectedWindow.length < uniqueSelected.length,
       results,
     });
   } catch (error) {

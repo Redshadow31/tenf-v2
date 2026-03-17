@@ -29,6 +29,11 @@ type VerifyResponse = {
   notFound: number;
   errors: number;
   truncated?: boolean;
+  totalSelected?: number;
+  offset?: number;
+  limit?: number;
+  nextOffset?: number;
+  hasMore?: boolean;
   results: VerifyResult[];
 };
 
@@ -77,23 +82,51 @@ export default function AdminMembresDonneeDiscordPage() {
     setError("");
     setInfo("");
     try {
-      const response = await fetch("/api/admin/members/discord-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: true, updateMismatches: true }),
-      });
-      const body = await parseApiResponse<VerifyResponse & { error?: string }>(response);
-      if (!response.ok) throw new Error(body.error || "Verification impossible.");
-
+      const batchSize = 60;
+      let nextOffset = 0;
+      let hasMore = true;
+      let totalSelected = 0;
+      let totalProcessed = 0;
+      let totalSame = 0;
+      let totalDifferent = 0;
+      let totalUpdated = 0;
+      let totalNotFound = 0;
+      let totalErrors = 0;
       const nextResults: Record<string, VerifyResult> = {};
-      for (const row of body.results || []) {
-        nextResults[row.twitchLogin.toLowerCase()] = row;
+
+      while (hasMore) {
+        const response = await fetch("/api/admin/members/discord-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ all: true, updateMismatches: true, offset: nextOffset, limit: batchSize }),
+        });
+        const body = await parseApiResponse<VerifyResponse & { error?: string }>(response);
+        if (!response.ok) throw new Error(body.error || "Verification impossible.");
+
+        for (const row of body.results || []) {
+          nextResults[row.twitchLogin.toLowerCase()] = row;
+        }
+
+        totalProcessed += Number(body.processed || 0);
+        totalSame += Number(body.same || 0);
+        totalDifferent += Number(body.different || 0);
+        totalUpdated += Number(body.updated || 0);
+        totalNotFound += Number(body.notFound || 0);
+        totalErrors += Number(body.errors || 0);
+        totalSelected = Number(body.totalSelected || totalSelected || 0);
+
+        setInfo(
+          `Verification en cours... ${Math.min(totalProcessed, totalSelected || totalProcessed)}/${totalSelected || "?"} • ` +
+            `identiques: ${totalSame}, differents: ${totalDifferent}, synchronises: ${totalUpdated}, introuvables: ${totalNotFound}, erreurs: ${totalErrors}.`
+        );
+
+        hasMore = Boolean(body.hasMore);
+        nextOffset = Number(body.nextOffset || totalProcessed);
       }
+
       setResultsByLogin(nextResults);
       setInfo(
-        `${body.message || "Verification terminee."} Traites: ${body.processed}, identiques: ${body.same}, differents: ${
-          body.different
-        }, synchronises: ${body.updated}, introuvables: ${body.notFound}, erreurs: ${body.errors}${body.truncated ? " (batch limite)" : ""}.`
+        `Verification terminee. Traites: ${totalProcessed}/${totalSelected || totalProcessed}, identiques: ${totalSame}, differents: ${totalDifferent}, synchronises: ${totalUpdated}, introuvables: ${totalNotFound}, erreurs: ${totalErrors}.`
       );
       await loadMembers();
     } catch (e) {
