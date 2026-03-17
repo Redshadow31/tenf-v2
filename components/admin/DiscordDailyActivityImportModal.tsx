@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 
 interface DiscordDailyActivityImportModalProps {
   isOpen: boolean;
@@ -30,8 +30,40 @@ export default function DiscordDailyActivityImportModal({
   const [text, setText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  function parseNumericValue(raw: string): number {
+    const cleaned = raw.replace(/\s+/g, "").replace(",", ".");
+    return Number.parseFloat(cleaned);
+  }
 
   function parseTSV(content: string): ParseResult {
     const lines = content
@@ -57,11 +89,14 @@ export default function DiscordDailyActivityImportModal({
     const dateMap = new Map<string, number>(); // Pour déduplication par date
 
     for (const line of lines) {
-      // Détecter si c'est tabulation ou espaces multiples
+      // Détecter csv, tsv ou colonnes séparées par espaces
       const hasTab = line.includes("\t");
+      const hasComma = line.includes(",") && !hasTab;
       const columns = hasTab
         ? line.split("\t").map((col) => col.trim())
-        : line.split(/\s+/).filter((col) => col.trim().length > 0);
+        : hasComma
+          ? parseCsvLine(line).map((col) => col.trim())
+          : line.split(/\s+/).filter((col) => col.trim().length > 0);
 
       if (columns.length < 2) continue;
 
@@ -83,7 +118,7 @@ export default function DiscordDailyActivityImportModal({
       const dateFormatted = date.toISOString().split("T")[0];
 
       // Parser la valeur (nombre ou décimal)
-      const value = parseFloat(valueStr);
+      const value = parseNumericValue(valueStr);
       if (isNaN(value)) continue;
 
       // Déduplication : garder la dernière occurrence par date
@@ -141,6 +176,20 @@ export default function DiscordDailyActivityImportModal({
     setParseResult(result);
   };
 
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const content = await file.text();
+      setText(content);
+      setUploadedFileName(file.name);
+      setParseResult(null);
+    } catch (error) {
+      console.error("Erreur lors de la lecture du fichier:", error);
+      alert("Impossible de lire le fichier.");
+    }
+  };
+
   const handleImport = async () => {
     if (!parseResult || !parseResult.success) {
       return;
@@ -163,6 +212,7 @@ export default function DiscordDailyActivityImportModal({
   const handleClose = () => {
     setText("");
     setParseResult(null);
+    setUploadedFileName(null);
     onClose();
   };
 
@@ -202,8 +252,21 @@ export default function DiscordDailyActivityImportModal({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Colle ici les données exportées (TSV)
+              Source des données (copier-coller OU fichier)
             </label>
+            <div className="mb-3">
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/plain"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-[#5865F2] file:text-white hover:file:bg-[#4752C4]"
+              />
+              {uploadedFileName && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Fichier chargé: {uploadedFileName}
+                </p>
+              )}
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -221,7 +284,7 @@ export default function DiscordDailyActivityImportModal({
             </h3>
             <ul className="text-xs text-gray-400 space-y-1">
               <li>• Colonnes : Date ISO (timestamp), {type === 'messages' ? 'Nombre de messages' : 'Heures décimales'}</li>
-              <li>• Séparateur : tabulation ou espaces multiples</li>
+              <li>• Séparateur : virgule (CSV), tabulation, ou espaces multiples</li>
               <li>• Format date : ISO timestamp (ex: 2024-09-01T00:00:00.000Z)</li>
               <li>• Format valeur : {type === 'messages' ? 'Nombre entier' : 'Nombre décimal (ex: 16.57)'}</li>
             </ul>
