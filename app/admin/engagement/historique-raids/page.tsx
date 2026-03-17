@@ -52,6 +52,21 @@ type DeclarationDuplicateGroup = {
   count: number;
 };
 
+type RaidSourceFilter = "all" | "manual" | "raids_sub";
+
+function normalizeRaidSource(raid: RaidApiItem): "manual" | "raids_sub" | "other" {
+  const source = String(raid?.source || "").toLowerCase();
+  if (source === "raids_sub") return "raids_sub";
+  if (source === "manual" || source === "admin" || !source) return "manual";
+  return "other";
+}
+
+function shouldIncludeRaidBySource(raid: RaidApiItem, sourceFilter: RaidSourceFilter): boolean {
+  const source = normalizeRaidSource(raid);
+  if (sourceFilter === "all") return source === "manual" || source === "raids_sub";
+  return source === sourceFilter;
+}
+
 export default function AdminEngagementHistoriqueRaidsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
@@ -86,6 +101,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [historyDuplicates, setHistoryDuplicates] = useState<DeclarationDuplicateGroup[]>([]);
   const [deduplicatingHistory, setDeduplicatingHistory] = useState(false);
   const [deletingDeclarationId, setDeletingDeclarationId] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<RaidSourceFilter>("all");
 
   useEffect(() => {
     const now = new Date();
@@ -107,7 +123,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
   const availableMonths = useMemo(() => {
     const now = new Date();
-    return Array.from({ length: 12 }, (_, idx) => {
+    return Array.from({ length: 60 }, (_, idx) => {
       const date = new Date(now.getFullYear(), now.getMonth() - idx, 1);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     });
@@ -140,15 +156,14 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           return;
         }
 
-        const filterManualOnly = (raid: RaidApiItem) => {
-          const source = raid.source || "";
-          if (source === "discord") return false;
-          return source === "manual" || source === "admin" || !source;
+        const filterBySource = (raid: RaidApiItem) => {
+          if (String(raid?.source || "").toLowerCase() === "discord") return false;
+          return shouldIncludeRaidBySource(raid, sourceFilter);
         };
 
         setDeclarations((declarationsBody.declarations || []) as RaidDeclaration[]);
-        setRaidsFaits(((raidsBody.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly));
-        setRaidsRecus(((raidsBody.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly));
+        setRaidsFaits(((raidsBody.raidsFaits || []) as RaidApiItem[]).filter(filterBySource));
+        setRaidsRecus(((raidsBody.raidsRecus || []) as RaidApiItem[]).filter(filterBySource));
         setMembers((membersBody.members || []) as MemberRow[]);
       } catch {
         setError("Erreur reseau pendant le chargement.");
@@ -156,7 +171,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         setLoading(false);
       }
     })();
-  }, [selectedMonth]);
+  }, [selectedMonth, sourceFilter]);
 
   useEffect(() => {
     if (!selectedMonth) return;
@@ -186,13 +201,12 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         );
 
         const totals = responses.map((body) => {
-          const filterManualOnly = (raid: RaidApiItem) => {
-            const source = raid.source || "";
-            if (source === "discord") return false;
-            return source === "manual" || source === "admin" || !source;
+          const filterBySource = (raid: RaidApiItem) => {
+            if (String(raid?.source || "").toLowerCase() === "discord") return false;
+            return shouldIncludeRaidBySource(raid, sourceFilter);
           };
-          const faits = ((body?.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly);
-          const recus = ((body?.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly);
+          const faits = ((body?.raidsFaits || []) as RaidApiItem[]).filter(filterBySource);
+          const recus = ((body?.raidsRecus || []) as RaidApiItem[]).filter(filterBySource);
           return {
             sent: faits.reduce((sum, raid) => sum + (raid.count || 1), 0),
             received: recus.length,
@@ -216,7 +230,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         setTrendLoading(false);
       }
     })();
-  }, [selectedMonth]);
+  }, [selectedMonth, sourceFilter]);
 
   useEffect(() => {
     setHistoryPage(1);
@@ -243,19 +257,18 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           return;
         }
 
-        const filterManualOnly = (raid: RaidApiItem) => {
-          const source = raid.source || "";
-          if (source === "discord") return false;
-          return source === "manual" || source === "admin" || !source;
+        const filterBySource = (raid: RaidApiItem) => {
+          if (String(raid?.source || "").toLowerCase() === "discord") return false;
+          return shouldIncludeRaidBySource(raid, sourceFilter);
         };
 
         const login = selectedStreamer.login.toLowerCase();
         const sent = ((body.raidsFaits || []) as RaidApiItem[])
-          .filter(filterManualOnly)
+          .filter(filterBySource)
           .filter((raid) => String(raid.raiderTwitchLogin || "").toLowerCase() === login)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const received = ((body.raidsRecus || []) as RaidApiItem[])
-          .filter(filterManualOnly)
+          .filter(filterBySource)
           .filter((raid) => String(raid.targetTwitchLogin || "").toLowerCase() === login)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -269,7 +282,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         setModalLoading(false);
       }
     })();
-  }, [selectedStreamer, modalMonth]);
+  }, [selectedStreamer, modalMonth, sourceFilter]);
 
   const getMemberDisplayName = (login?: string): string => {
     const key = String(login || "").toLowerCase();
@@ -403,13 +416,12 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           return;
         }
         const body = await response.json();
-        const filterManualOnly = (raid: RaidApiItem) => {
-          const source = raid.source || "";
-          if (source === "discord") return false;
-          return source === "manual" || source === "admin" || !source;
+        const filterBySource = (raid: RaidApiItem) => {
+          if (String(raid?.source || "").toLowerCase() === "discord") return false;
+          return shouldIncludeRaidBySource(raid, sourceFilter);
         };
-        const previousSent = ((body.raidsFaits || []) as RaidApiItem[]).filter(filterManualOnly);
-        const previousReceived = ((body.raidsRecus || []) as RaidApiItem[]).filter(filterManualOnly);
+        const previousSent = ((body.raidsFaits || []) as RaidApiItem[]).filter(filterBySource);
+        const previousReceived = ((body.raidsRecus || []) as RaidApiItem[]).filter(filterBySource);
 
         const [prevYearStr, prevMonthStr] = previousMonth.split("-");
         const prevYear = Number(prevYearStr);
@@ -436,7 +448,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         setPreviousDailyChartData([]);
       }
     })();
-  }, [selectedMonth]);
+  }, [selectedMonth, sourceFilter]);
 
   const selectedDayDetails = useMemo(() => {
     if (!selectedChartDay || !selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) return null;
@@ -756,6 +768,33 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               </option>
             ))}
           </select>
+          <div className="flex items-center gap-1 rounded-full border px-1 py-1" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+            {([
+              { key: "all", label: "Tous" },
+              { key: "manual", label: "Manuel" },
+              { key: "raids_sub", label: "Raids-sub" },
+            ] as const).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setSourceFilter(item.key)}
+                className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{
+                  color: sourceFilter === item.key ? "#ffffff" : "#cbd5e1",
+                  backgroundColor:
+                    sourceFilter === item.key
+                      ? item.key === "manual"
+                        ? "rgba(251,191,36,0.35)"
+                        : item.key === "raids_sub"
+                          ? "rgba(96,165,250,0.35)"
+                          : "rgba(145,70,255,0.35)"
+                      : "transparent",
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
           <button
             type="button"
@@ -858,6 +897,34 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 </p>
               </div>
             </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs uppercase tracking-[0.12em] text-gray-400">Graphique quotidien</p>
+              <p className="text-xs text-gray-500">
+                Source active: {sourceFilter === "all" ? "manuel + raids-sub" : sourceFilter === "manual" ? "manuel" : "raids-sub"}
+              </p>
+            </div>
+            <RaidDailyChart month={selectedMonth} data={dailyChartData} previousData={previousDailyChartData} onDaySelect={setSelectedChartDay} />
+            {selectedDayDetails ? (
+              <div className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">Detail du jour {selectedChartDay}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChartDay(null)}
+                    className="rounded-md border px-2 py-1 text-xs text-gray-300"
+                    style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                  >
+                    Fermer
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {selectedDayDetails.sent.reduce((sum, raid) => sum + (raid.count || 1), 0)} raid(s) fait(s) et {selectedDayDetails.received.length} raid(s) recu(s)
+                </p>
+              </div>
+            ) : null}
           </section>
         </div>
       </div>
@@ -962,32 +1029,6 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           )
         ) : (
           <div>
-            <RaidDailyChart
-              month={selectedMonth}
-              data={dailyChartData}
-              previousData={previousDailyChartData}
-              onDaySelect={setSelectedChartDay}
-            />
-
-            {selectedDayDetails ? (
-              <div className="mb-4 rounded-lg border border-gray-700 bg-[#101014] p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-white">Detail du jour {selectedChartDay}</p>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedChartDay(null)}
-                    className="rounded-md border px-2 py-1 text-xs text-gray-300"
-                    style={{ borderColor: "rgba(255,255,255,0.2)" }}
-                  >
-                    Fermer
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400">
-                  {selectedDayDetails.sent.reduce((sum, raid) => sum + (raid.count || 1), 0)} raid(s) fait(s) et {selectedDayDetails.received.length} raid(s) recu(s)
-                </p>
-              </div>
-            ) : null}
-
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <button
