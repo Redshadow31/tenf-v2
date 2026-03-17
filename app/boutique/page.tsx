@@ -322,7 +322,7 @@ export default function BoutiquePage() {
 
   return (
     <main
-      className="p-6 min-h-screen"
+      className="min-h-screen p-4 sm:p-6"
       style={{
         background:
           "radial-gradient(circle at 20% 0%, rgba(139,92,246,0.22) 0%, rgba(10,10,13,0.95) 40%, rgba(6,6,8,1) 100%)",
@@ -347,7 +347,7 @@ export default function BoutiquePage() {
               <p className="inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide border" style={{ color: "#f2e8ff", borderColor: "rgba(139,92,246,0.6)" }}>
                 BOUTIQUE TENF
               </p>
-              <h1 className="text-4xl md:text-6xl font-bold" style={{ color: "#f7f5ff" }}>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold" style={{ color: "#f7f5ff" }}>
                 Soutenir la communaute et porter les couleurs de New Family.
               </h1>
             </div>
@@ -355,14 +355,14 @@ export default function BoutiquePage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => scrollToSection("collections")}
-                className="px-5 py-3 rounded-lg font-semibold text-white transition-transform hover:scale-[1.03]"
+                className="w-full sm:w-auto px-5 py-3 rounded-lg font-semibold text-white transition-transform min-h-[44px]"
                 style={{ backgroundColor: "#8B5CF6" }}
               >
                 🛍 Decouvrir les collections
               </button>
               <button
                 onClick={() => setPopularMode("newest")}
-                className="px-5 py-3 rounded-lg font-semibold border transition-transform hover:scale-[1.03]"
+                className="w-full sm:w-auto px-5 py-3 rounded-lg font-semibold border transition-transform min-h-[44px]"
                 style={{ borderColor: "rgba(139,92,246,0.65)", color: "#e7d9ff" }}
               >
                 🎁 Voir les nouveautes
@@ -371,7 +371,7 @@ export default function BoutiquePage() {
                 href={DONATION_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-3 rounded-lg font-semibold border transition-transform hover:scale-[1.03]"
+                className="w-full sm:w-auto px-5 py-3 rounded-lg font-semibold border transition-transform min-h-[44px] text-center"
                 style={{ borderColor: "rgba(220,38,38,0.7)", color: "#ffd7e0", backgroundColor: "rgba(220,38,38,0.14)" }}
               >
                 💜 Soutenir TENF (don)
@@ -493,7 +493,7 @@ export default function BoutiquePage() {
           <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
             ⭐ Les favoris de la communaute
           </h2>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
             <SortButton label="Plus vus" active={popularMode === "mostViewed"} onClick={() => setPopularMode("mostViewed")} />
             <SortButton label="Plus cliques" active={popularMode === "mostClicked"} onClick={() => setPopularMode("mostClicked")} />
             <SortButton label="Plus recents" active={popularMode === "newest"} onClick={() => setPopularMode("newest")} />
@@ -600,10 +600,10 @@ export default function BoutiquePage() {
             <h3 className="text-xl font-bold" style={{ color: "#ffffff" }}>
               Decouvrir
             </h3>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-3 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === null ? "text-white" : ""}`}
+                className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-colors min-h-[42px] ${selectedCategory === null ? "text-white" : ""}`}
                 style={{
                   backgroundColor: selectedCategory === null ? "#8B5CF6" : "rgba(24,24,35,0.95)",
                   color: selectedCategory === null ? "white" : "#ccc2e4",
@@ -615,7 +615,7 @@ export default function BoutiquePage() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${selectedCategory === category.id ? "text-white" : ""}`}
+                  className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 min-h-[42px] ${selectedCategory === category.id ? "text-white" : ""}`}
                   style={{
                     backgroundColor: selectedCategory === category.id ? category.color : "rgba(24,24,35,0.95)",
                     color: selectedCategory === category.id ? "white" : "#ccc2e4",
@@ -723,6 +723,22 @@ export default function BoutiquePage() {
             transform: translateY(0px);
           }
         }
+
+        @media (max-width: 768px) {
+          .reveal-card,
+          .hero-float-card {
+            animation: none;
+          }
+
+          .hover-scale-soft {
+            transition: none;
+          }
+
+          .hover-scale-soft:hover {
+            transform: none;
+            box-shadow: none;
+          }
+        }
       `}</style>
     </main>
   );
@@ -740,7 +756,7 @@ function SortButton({
   return (
     <button
       onClick={onClick}
-      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+      className="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition-all min-h-[42px]"
       style={{
         backgroundColor: active ? "#8B5CF6" : "rgba(25,25,34,0.95)",
         color: active ? "white" : "#cbc3df",
@@ -797,7 +813,7 @@ function ProductCard({ product, onClick, onTrackClick, emphasis }: ProductCardPr
 
   return (
     <article
-      className="group rounded-xl overflow-hidden transition-all cursor-pointer hover:-translate-y-1"
+      className="group cursor-pointer overflow-hidden rounded-xl transition-all md:hover:-translate-y-1"
       style={{
         backgroundColor: "rgba(18,18,26,0.98)",
         border: `1px solid ${categoryColor}`,
@@ -816,7 +832,7 @@ function ProductCard({ product, onClick, onTrackClick, emphasis }: ProductCardPr
           <img
             src={mainImage}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            className="h-full w-full object-cover transition-transform duration-300 md:group-hover:scale-110"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ color: "#aaa0be" }}>
@@ -854,7 +870,7 @@ function ProductCard({ product, onClick, onTrackClick, emphasis }: ProductCardPr
             href={product.buyUrl || "#"}
             target={product.buyUrl ? "_blank" : undefined}
             rel={product.buyUrl ? "noopener noreferrer" : undefined}
-            className="px-3 py-2 rounded-lg text-xs font-semibold text-white text-center min-w-[120px]"
+            className="min-h-[40px] min-w-[120px] rounded-lg px-3 py-2 text-center text-xs font-semibold text-white"
             style={{ backgroundColor: "#8B5CF6" }}
             onClick={(e) => {
               e.stopPropagation();

@@ -687,7 +687,7 @@ export default function Page() {
     <div className="space-y-8 pb-10">
       {/* HERO découverte TENF */}
       <section
-        className="relative overflow-hidden rounded-2xl border p-6 md:p-8 lg:p-10"
+        className="relative overflow-hidden rounded-2xl border p-4 sm:p-6 md:p-8 lg:p-10"
         style={{
           borderColor: "rgba(145,70,255,0.35)",
           background:
@@ -704,7 +704,7 @@ export default function Page() {
           style={{ background: "rgba(236,72,153,0.22)" }}
         />
         <div className="relative grid items-stretch gap-6 lg:grid-cols-[1.35fr_0.9fr]">
-          <div className="relative rounded-2xl border p-5 md:p-6" style={{ borderColor: "rgba(145,70,255,0.25)", backgroundColor: "rgba(255,255,255,0.02)" }}>
+          <div className="relative rounded-2xl border p-4 sm:p-5 md:p-6" style={{ borderColor: "rgba(145,70,255,0.25)", backgroundColor: "rgba(255,255,255,0.02)" }}>
             <div
               className="pointer-events-none absolute -bottom-8 left-14 h-24 w-24 rounded-full blur-2xl"
               style={{ backgroundColor: "rgba(145,70,255,0.26)" }}
@@ -713,7 +713,7 @@ export default function Page() {
               <span className="inline-flex rounded-full border px-3 py-1 text-xs font-medium" style={{ borderColor: "rgba(145,70,255,0.45)", color: "var(--color-text-secondary)" }}>
                 Découverte communautaire
               </span>
-              <h1 className="text-3xl font-black tracking-tight md:text-5xl" style={{ color: "var(--color-text)" }}>
+              <h1 className="text-2xl font-black tracking-tight sm:text-3xl md:text-5xl" style={{ color: "var(--color-text)" }}>
                 Découvrir les créateurs{" "}
                 <span style={{ color: "#c8a5ff" }}>TENF</span>
               </h1>
@@ -726,7 +726,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => openRandomMember()}
-                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
+                  className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all min-h-[44px]"
                   style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 12px 26px rgba(145,70,255,0.34)" }}
                 >
                   🎲 Découvrir un créateur
@@ -734,7 +734,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                  className="w-full sm:w-auto rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors min-h-[44px]"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 >
                   🔴 Voir les créateurs en live
@@ -826,12 +826,12 @@ export default function Page() {
                     <p className="line-clamp-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>{stream.title || "Live TENF"}</p>
                   </div>
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                     <a
                       href={`https://www.twitch.tv/${member.twitchLogin}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-white transition-all group-hover:translate-x-[1px]"
+                      className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-white"
                       style={{ backgroundColor: "var(--color-primary)" }}
                     >
                       🚪 Ouvrir la porte
@@ -839,7 +839,7 @@ export default function Page() {
                     <button
                       type="button"
                       onClick={() => handleMemberClick(member)}
-                      className="rounded-xl border px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/5"
+                      className="w-full sm:w-auto rounded-xl border px-3 py-2 text-sm font-semibold transition-colors"
                       style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                     >
                       Voir profil
@@ -1124,7 +1124,7 @@ export default function Page() {
             }}
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
           {FILTERS.map((filter) => {
             const disabled = filter.key === "discover" && !showFollowStatuses;
             const tooltip = disabled
@@ -1137,7 +1137,7 @@ export default function Page() {
               onClick={() => !disabled && setActiveFilter(filter.key)}
               disabled={disabled}
               title={tooltip}
-              className="rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:-translate-y-[1px]"
+              className="shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all min-h-[42px]"
               style={{
                 backgroundColor: activeFilter === filter.key && !disabled ? "rgba(145,70,255,0.15)" : "var(--color-card)",
                 borderColor: activeFilter === filter.key ? "rgba(145,70,255,0.6)" : "var(--color-border)",
@@ -1159,7 +1159,7 @@ export default function Page() {
 
       {/* Grille des membres */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Communauté TENF</h2>
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
             {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""}
@@ -1230,12 +1230,12 @@ export default function Page() {
                       ) : null}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       <a
                         href={`https://www.twitch.tv/${member.twitchLogin}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold text-white transition-all group-hover:translate-x-[1px]"
+                        className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold text-white"
                         style={{ backgroundColor: "var(--color-primary)" }}
                       >
                         🚪 Ouvrir la porte
@@ -1243,7 +1243,7 @@ export default function Page() {
                       <button
                         type="button"
                         onClick={() => handleMemberClick(member)}
-                        className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
+                        className="w-full sm:w-auto rounded-lg border px-3 py-2 text-xs font-semibold transition-colors"
                         style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                       >
                         Voir profil
@@ -1259,7 +1259,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
-                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors min-h-[44px]"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 >
                   Voir plus

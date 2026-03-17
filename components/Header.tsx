@@ -108,6 +108,17 @@ export default function Header() {
   }, [pathname]);
 
   useEffect(() => {
+    if (!mobileMenuOpen) return;
+    if (!window.matchMedia("(max-width: 1279px)").matches) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!headerRef.current) return;
       if (!headerRef.current.contains(event.target as Node)) {
@@ -307,7 +318,7 @@ export default function Header() {
           className="xl:hidden absolute top-full left-0 right-0 border-t shadow-xl"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
         >
-          <nav className="px-4 py-3 flex flex-col gap-2 max-h-[75vh] overflow-y-auto">
+          <nav className="px-4 py-3 flex flex-col gap-2 max-h-[75dvh] overflow-y-auto overscroll-contain">
             {directLinks.map((link) => (
               <Link
                 key={link.href}

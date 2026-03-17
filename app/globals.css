@@ -879,3 +879,63 @@ a:hover {
     transition: none !important;
   }
 }
+
+/* ============================================
+   Mobile-first performance guardrails
+   ============================================ */
+@media (max-width: 768px) {
+  .marquee-text,
+  .vip-card::before,
+  .vip-badge,
+  .home-vip-badge,
+  .role-badge--animated,
+  .role-badge--shimmer::after {
+    animation: none !important;
+  }
+
+  .home-live-thumbnail,
+  .home-vip-avatar,
+  .vip-avatar,
+  .home-cta-button,
+  .home-cta-button-secondary,
+  .home-stat-card,
+  .home-live-card,
+  .home-vip-card,
+  .home-feature-card,
+  .home-boutique-card,
+  .spotlight-card,
+  .conseil-card,
+  .integration-card,
+  .reglement-card,
+  .systeme-points-card,
+  .systeme-points-intro,
+  .systeme-points-tip,
+  .systeme-points-reminder,
+  .systeme-points-spirit {
+    transition: none !important;
+  }
+
+  .home-cta-button:hover,
+  .home-cta-button-secondary:hover,
+  .home-stat-card:hover,
+  .home-live-card:hover,
+  .home-vip-card:hover,
+  .home-feature-card:hover,
+  .home-boutique-card:hover,
+  .spotlight-card:hover,
+  .conseil-card:hover,
+  .integration-card:hover,
+  .reglement-card:hover,
+  .systeme-points-card:hover,
+  .systeme-points-intro:hover,
+  .systeme-points-tip:hover,
+  .systeme-points-reminder:hover,
+  .systeme-points-spirit:hover,
+  .vip-card:hover,
+  .vip-card:hover .vip-avatar,
+  .home-live-card:hover .home-live-thumbnail,
+  .home-vip-card:hover .home-vip-avatar {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}

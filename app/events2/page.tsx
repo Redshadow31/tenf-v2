@@ -262,6 +262,17 @@ export default function Events2Page() {
     return currentMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   }, [currentMonth]);
 
+  const monthEvents = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    return filteredEvents
+      .filter((event) => {
+        const eventDate = new Date(event.date);
+        return eventDate.getFullYear() === year && eventDate.getMonth() === month;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [currentMonth, filteredEvents]);
+
   function getEventsForDate(date: Date | null): EventItem[] {
     if (!date) return [];
     return filteredEvents.filter((event) => {
@@ -450,10 +461,10 @@ export default function Events2Page() {
           <EventDateTime startUtc={event.date} className="text-sm text-gray-400" />
           <p className="text-sm text-gray-300 line-clamp-3 whitespace-pre-wrap">{event.description || "Aucune description."}</p>
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row">
             <button
               onClick={() => openEventModal(event)}
-              className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff]"
+              className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff]"
             >
               Voir details
             </button>
@@ -461,7 +472,7 @@ export default function Events2Page() {
               href={calendarUrlForEvent(event)}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#9146ff] hover:bg-[#7c3aed] text-white"
+              className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#9146ff] hover:bg-[#7c3aed] text-white text-center"
             >
               Ajouter au calendrier
             </a>
@@ -470,7 +481,7 @@ export default function Events2Page() {
                 href={event.ctaUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white"
+                className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white text-center"
               >
                 {event.ctaLabel || "En savoir plus"}
               </a>
@@ -479,7 +490,7 @@ export default function Events2Page() {
               <button
                 onClick={() => (isRegistered ? handleUnregister(event.id) : handleRegister(event.id))}
                 disabled={actionLoading}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold ${
+                className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold ${
                   isRegistered ? "bg-red-600/80 hover:bg-red-600 text-white" : "bg-[#9146ff] hover:bg-[#7c3aed] text-white"
                 }`}
               >
@@ -509,10 +520,10 @@ export default function Events2Page() {
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-3 flex gap-2 w-fit">
+      <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-3 flex gap-2 w-full md:w-fit">
         <button
           onClick={() => setActiveTab("calendar")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+          className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold min-h-[42px] ${
             activeTab === "calendar" ? "bg-[#9146ff] text-white" : "bg-[#0e0e10] text-gray-300 border border-gray-700"
           }`}
         >
@@ -520,7 +531,7 @@ export default function Events2Page() {
         </button>
         <button
           onClick={() => setActiveTab("propose")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+          className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold min-h-[42px] ${
             activeTab === "propose" ? "bg-[#9146ff] text-white" : "bg-[#0e0e10] text-gray-300 border border-gray-700"
           }`}
         >
@@ -537,12 +548,12 @@ export default function Events2Page() {
       {activeTab === "calendar" ? (
         <>
           <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-4 space-y-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.id}
                   onClick={() => setSelectedStatus(filter.id)}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-semibold border min-h-[42px] ${
                     selectedStatus === filter.id
                       ? "bg-[#9146ff] border-[#9146ff] text-white"
                       : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
@@ -553,10 +564,10 @@ export default function Events2Page() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
               <button
                 onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-2 rounded-lg text-sm border ${
+                className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm border min-h-[42px] ${
                   selectedCategory === "all" ? "bg-[#2f1f52] border-[#9146ff] text-white" : "bg-[#0e0e10] border-gray-700 text-gray-300"
                 }`}
               >
@@ -566,7 +577,7 @@ export default function Events2Page() {
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-3 py-2 rounded-lg text-sm border ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm border min-h-[42px] ${
                     selectedCategory === category ? "bg-[#2f1f52] border-[#9146ff] text-white" : "bg-[#0e0e10] border-gray-700 text-gray-300"
                   }`}
                 >
@@ -608,7 +619,7 @@ export default function Events2Page() {
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 text-xs md:text-sm text-gray-400">
+            <div className="hidden md:grid grid-cols-7 gap-2 text-xs md:text-sm text-gray-400">
               {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
                 <div key={day} className="text-center py-1">
                   {day}
@@ -616,7 +627,24 @@ export default function Events2Page() {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="md:hidden space-y-2">
+              {monthEvents.length > 0 ? (
+                monthEvents.map((event) => (
+                  <button
+                    key={`mobile-month-${event.id}`}
+                    onClick={() => openEventModal(event)}
+                    className="w-full rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-left"
+                  >
+                    <p className="text-sm font-semibold text-white line-clamp-1">{event.title}</p>
+                    <EventDateTime startUtc={event.date} className="text-xs text-gray-400" />
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400">Aucun événement sur ce mois.</p>
+              )}
+            </div>
+
+            <div className="hidden md:grid grid-cols-7 gap-2">
               {calendarDays.map((date, idx) => {
                 const dayEvents = getEventsForDate(date);
                 const isToday =
@@ -853,12 +881,12 @@ export default function Events2Page() {
               )}
 
               {new Date(selectedEvent.date).getTime() >= Date.now() && (
-                <div className="pt-2 flex gap-2">
+                <div className="pt-2 flex flex-col gap-2 sm:flex-row">
                   <a
                     href={calendarUrlForEvent(selectedEvent)}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold"
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
                   >
                     Ajouter au calendrier
                   </a>
@@ -867,7 +895,7 @@ export default function Events2Page() {
                       href={selectedEvent.ctaUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold"
+                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
                     >
                       {selectedEvent.ctaLabel || "En savoir plus"}
                     </a>
@@ -877,7 +905,7 @@ export default function Events2Page() {
                       <button
                         onClick={() => handleUnregister(selectedEvent.id)}
                         disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                        className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
                       >
                         Se desinscrire
                       </button>
@@ -885,7 +913,7 @@ export default function Events2Page() {
                       <button
                         onClick={() => handleRegister(selectedEvent.id)}
                         disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
+                        className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
                       >
                         S'inscrire
                       </button>
