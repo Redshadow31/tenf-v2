@@ -50,8 +50,44 @@ export const authOptions: NextAuthOptions = {
           }
           return true;
         }
-        // Aucun membre connu pour ce Discord ID:
-        // on envoie vers le modal de creation, sans creation auto en base.
+
+        const placeholderLogin = `nouveau_${discordId.toLowerCase()}`;
+        const displayName = username.trim() || `Discord ${discordId}`;
+
+        try {
+          await memberRepository.create({
+            twitchLogin: placeholderLogin,
+            twitchUrl: `https://www.twitch.tv/${placeholderLogin}`,
+            displayName,
+            siteUsername: displayName,
+            discordId,
+            discordUsername: username,
+            role: "Nouveau",
+            isVip: false,
+            isActive: false,
+            badges: [],
+            profileValidationStatus: "non_soumis",
+            onboardingStatus: "a_faire",
+            timezone: "Europe/Paris",
+            countryCode: "FR",
+            primaryLanguage: "fr",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            updatedBy: discordId,
+          });
+        } catch (error) {
+          // Tolérance aux courses: si la fiche est créée en parallèle, on continue.
+          try {
+            const lateExisting = await memberRepository.findByDiscordId(discordId);
+            if (!lateExisting) {
+              console.warn("[NextAuth signIn] auto-create draft failed, allow sign-in:", error);
+            }
+          } catch (lookupError) {
+            console.warn("[NextAuth signIn] late lookup failed, allow sign-in:", lookupError);
+          }
+        }
+
+        // Nouveau membre: retour onboarding modal forcé.
         return "/member/profil/completer?onboarding=1";
       } catch (unexpectedError) {
         // Filet de sécurité global: aucune erreur de ce callback ne doit bloquer OAuth.
