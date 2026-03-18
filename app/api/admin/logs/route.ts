@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireAdmin, requireRole } from '@/lib/requireAdmin';
 import { logger, LogCategory, LogLevel } from '@/lib/logging/logger';
+import { logAction } from '@/lib/admin/logger';
 
 /**
  * GET - Récupère les logs avec filtres
@@ -53,16 +54,39 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireRole("FONDATEUR");
     
     if (!admin) {
       return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
+        { error: "Réservé aux fondateurs" },
+        { status: 403 }
       );
     }
 
+    let reason: string | undefined;
+    try {
+      const body = await request.json();
+      if (typeof body?.reason === "string" && body.reason.trim().length > 0) {
+        reason = body.reason.trim().slice(0, 500);
+      }
+    } catch {
+      // Corps optionnel : garder compatible avec les appels DELETE existants.
+    }
+
+    const statsBefore = await logger.getStats();
     await logger.clear();
+
+    await logAction({
+      action: "admin.logs.clear",
+      resourceType: "system_logs",
+      resourceId: "global",
+      previousValue: { total: statsBefore.total },
+      newValue: { total: 0 },
+      metadata: {
+        sourcePage: "/admin/log-center",
+        reason,
+      },
+    });
     
     return NextResponse.json({ success: true, message: "Logs vidés" });
   } catch (error) {

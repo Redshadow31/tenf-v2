@@ -44,6 +44,16 @@ type FollowStatusEntry = {
   state?: FollowState;
 };
 
+type RaidMetrics = {
+  raidsDone: number;
+  raidsReceived: number;
+  uniqueTargets: number;
+  uniqueRaidersReceived: number;
+  raidedNewMember: boolean;
+};
+
+const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 export default function LivesPage() {
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<PublicEventItem[]>([]);
@@ -53,6 +63,9 @@ export default function LivesPage() {
   const [error, setError] = useState<string | null>(null);
   const [randomHint, setRandomHint] = useState<string | null>(null);
   const [spotlightLogin, setSpotlightLogin] = useState<string | null>(null);
+  const [topRaiderLogin, setTopRaiderLogin] = useState<string | null>(null);
+  const [topRaiderCount, setTopRaiderCount] = useState<number>(0);
+  const [raidMetricsByLogin, setRaidMetricsByLogin] = useState<Record<string, RaidMetrics>>({});
   const [sessionShuffleSeed] = useState(() => `${Date.now()}-${Math.random()}`);
   const [followStatuses, setFollowStatuses] = useState<Record<string, FollowState>>({});
   const [showFollowStatuses, setShowFollowStatuses] = useState(false);
@@ -165,18 +178,28 @@ export default function LivesPage() {
         setLiveMembers(mappedLives);
 
         try {
-          const [homeResponse, allMembersResponse, eventsResponse, spotlightResponse] = await Promise.all([
+          const [homeResponse, allMembersResponse, eventsResponse, spotlightResponse, raidsResponse] =
+            await Promise.all([
             fetchWithTimeout("/api/home", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/members/get-members", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/events", { cache: "no-store" }, 10000),
             fetchWithTimeout("/api/spotlight/live", { cache: "no-store" }, 10000),
-          ]);
+            fetchWithTimeout("/api/discord/raids/data-v2", { cache: "no-store" }, 10000),
+            ]);
 
           const homeBody = homeResponse.ok
             ? await homeResponse.json()
             : { stats: { totalMembers: null } };
           const allMembersBody = allMembersResponse.ok ? await allMembersResponse.json() : { members: [], total: 0 };
           const allMembersList = Array.isArray(allMembersBody.members) ? allMembersBody.members : [];
+          const integrationDateByLogin = new Map<string, string>();
+          allMembersList.forEach((member: any) => {
+            const login = String(member?.twitchLogin || "").toLowerCase();
+            if (!login) return;
+            if (typeof member?.integrationDate === "string" && member.integrationDate) {
+              integrationDateByLogin.set(login, member.integrationDate);
+            }
+          });
           const membersTotal =
             Number.isFinite(homeBody?.stats?.totalMembers) && homeBody?.stats?.totalMembers >= 0
               ? homeBody.stats.totalMembers
@@ -211,6 +234,94 @@ export default function LivesPage() {
               ? spotlightBody.spotlight.streamerTwitchLogin.toLowerCase()
               : null;
           setSpotlightLogin(liveSpotlightLogin);
+
+          const raidsBody = raidsResponse.ok ? await raidsResponse.json() : { stats: { topRaider: null } };
+          const liveTopRaiderLogin =
+            typeof raidsBody?.stats?.topRaider?.twitchLogin === "string"
+              ? raidsBody.stats.topRaider.twitchLogin.toLowerCase()
+              : null;
+          const liveTopRaiderCount =
+            Number.isFinite(raidsBody?.stats?.topRaider?.count) && raidsBody.stats.topRaider.count > 0
+              ? raidsBody.stats.topRaider.count
+              : 0;
+          setTopRaiderLogin(liveTopRaiderLogin);
+          setTopRaiderCount(liveTopRaiderCount);
+
+          const raidsFaits = Array.isArray(raidsBody?.raidsFaits) ? raidsBody.raidsFaits : [];
+          const raidsRecus = Array.isArray(raidsBody?.raidsRecus) ? raidsBody.raidsRecus : [];
+          const metricsMap = new Map<
+            string,
+            {
+              raidsDone: number;
+              raidsReceived: number;
+              uniqueTargets: Set<string>;
+              uniqueRaidersReceived: Set<string>;
+              raidedNewMember: boolean;
+            }
+          >();
+
+          const getOrCreateMetrics = (login: string) => {
+            const normalized = login.toLowerCase();
+            const existing = metricsMap.get(normalized);
+            if (existing) return existing;
+            const created = {
+              raidsDone: 0,
+              raidsReceived: 0,
+              uniqueTargets: new Set<string>(),
+              uniqueRaidersReceived: new Set<string>(),
+              raidedNewMember: false,
+            };
+            metricsMap.set(normalized, created);
+            return created;
+          };
+
+          raidsFaits.forEach((raid: any) => {
+            const raiderLogin = String(raid?.raiderTwitchLogin || raid?.raider || "").toLowerCase();
+            const targetLogin = String(raid?.targetTwitchLogin || raid?.target || "").toLowerCase();
+            if (!raiderLogin || !targetLogin) return;
+
+            const metrics = getOrCreateMetrics(raiderLogin);
+            const count = Number.isFinite(raid?.count) && raid.count > 0 ? raid.count : 1;
+            metrics.raidsDone += count;
+            metrics.uniqueTargets.add(targetLogin);
+
+            if (!metrics.raidedNewMember) {
+              const targetIntegrationDate = integrationDateByLogin.get(targetLogin);
+              const targetIntegrationTs = targetIntegrationDate ? safeToDateMs(targetIntegrationDate) : 0;
+              const raidTs = safeToDateMs(String(raid?.date || ""));
+              if (
+                targetIntegrationTs > 0 &&
+                raidTs >= targetIntegrationTs &&
+                raidTs - targetIntegrationTs <= NEW_MEMBER_WINDOW_MS
+              ) {
+                metrics.raidedNewMember = true;
+              }
+            }
+          });
+
+          raidsRecus.forEach((raid: any) => {
+            const targetLogin = String(raid?.targetTwitchLogin || raid?.target || "").toLowerCase();
+            const raiderLogin = String(raid?.raiderTwitchLogin || raid?.raider || "").toLowerCase();
+            if (!targetLogin) return;
+
+            const metrics = getOrCreateMetrics(targetLogin);
+            metrics.raidsReceived += 1;
+            if (raiderLogin) {
+              metrics.uniqueRaidersReceived.add(raiderLogin);
+            }
+          });
+
+          const serializedMetrics: Record<string, RaidMetrics> = {};
+          metricsMap.forEach((value, login) => {
+            serializedMetrics[login] = {
+              raidsDone: value.raidsDone,
+              raidsReceived: value.raidsReceived,
+              uniqueTargets: value.uniqueTargets.size,
+              uniqueRaidersReceived: value.uniqueRaidersReceived.size,
+              raidedNewMember: value.raidedNewMember,
+            };
+          });
+          setRaidMetricsByLogin(serializedMetrics);
         } catch (contextError) {
           console.warn("[Lives Page] Contexte indisponible:", contextError);
         }
@@ -258,9 +369,29 @@ export default function LivesPage() {
 
     const withPriority = result.map((live) => {
       const normalizedLogin = live.twitchLogin.toLowerCase();
+      const metrics = raidMetricsByLogin[normalizedLogin];
+      const raidsDone = metrics?.raidsDone || 0;
+      const raidsReceived = metrics?.raidsReceived || 0;
+      const uniqueTargets = metrics?.uniqueTargets || 0;
+      const uniqueRaidersReceived = metrics?.uniqueRaidersReceived || 0;
+      const hasRaidActivity = raidsDone + raidsReceived > 0;
       return {
         ...live,
         isSpotlight: !!spotlightLogin && normalizedLogin === spotlightLogin,
+        isTopRaider: !!topRaiderLogin && normalizedLogin === topRaiderLogin,
+        topRaidsCount:
+          !!topRaiderLogin && normalizedLogin === topRaiderLogin && topRaiderCount > 0
+            ? topRaiderCount
+            : undefined,
+        raidsDoneThisMonth: raidsDone,
+        raidsReceivedThisMonth: raidsReceived,
+        uniqueRaidTargetsThisMonth: uniqueTargets,
+        uniqueRaidersReceivedThisMonth: uniqueRaidersReceived,
+        isSolidarityRaider: uniqueTargets >= 5,
+        isCommunityBooster: raidsDone > 15,
+        isDiscoverer: metrics?.raidedNewMember === true,
+        isWarmlySupported: uniqueRaidersReceived >= 10,
+        isBalancedSupport: hasRaidActivity && Math.abs(raidsDone - raidsReceived) <= 3,
         followState: showFollowStatuses
           ? followStatuses[normalizedLogin] || "unknown"
           : undefined,
@@ -283,6 +414,9 @@ export default function LivesPage() {
     selectedGame,
     selectedRole,
     spotlightLogin,
+    topRaiderLogin,
+    topRaiderCount,
+    raidMetricsByLogin,
     sessionShuffleSeed,
     followStatuses,
     showFollowStatuses,

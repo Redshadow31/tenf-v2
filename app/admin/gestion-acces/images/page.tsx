@@ -128,11 +128,12 @@ export default function AdminImagesManagementPage() {
       <AdminHeader
         title="Gestion des images profils Twitch"
         navLinks={[
-          { href: "/admin/gestion-acces", label: "Accès Dashboard" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres / configuration" },
+          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/images", label: "Gestion des images", active: true },
-          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+          { href: "/admin/gestion-acces/images", label: "Images profils Twitch", active: true },
+          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
         ]}
       />
 

@@ -4,11 +4,11 @@ import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { BookOpen, ArrowRight, ClipboardList } from "lucide-react";
 
-export default function FormationHubPage() {
+export default function FormationDashboardPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
-        title="📚 Formation TENF - Hub"
+        title="📚 Formation TENF - Dashboard"
         navLinks={[
           { href: "/admin/dashboard", label: "Tableau de bord" },
           { href: "/admin/formation", label: "Formation TENF", active: true },
@@ -18,7 +18,7 @@ export default function FormationHubPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-            Formation TENF
+            Formation TENF - Dashboard de pilotage
           </h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
             Centre de ressources et de formation pour les membres TENF

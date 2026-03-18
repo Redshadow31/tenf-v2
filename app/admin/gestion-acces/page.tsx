@@ -264,12 +264,13 @@ export default function GestionAccesPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
-        title="Gestion des Accès Admin"
+        title="Comptes administrateurs"
         navLinks={[
-          { href: "/admin/gestion-acces", label: "Accès Dashboard", active: true },
-          { href: "/admin/gestion-acces/dashboard", label: "Gestion du Dashboard" },
+          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs", active: true },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
         ]}
       />
 

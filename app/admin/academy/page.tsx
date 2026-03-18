@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-export default function AcademyAdminHubPage() {
+export default function AcademyAdminDashboardPage() {
   const sections = [
     {
       href: "/admin/academy/access",
@@ -30,8 +30,8 @@ export default function AcademyAdminHubPage() {
   return (
     <div className="text-white">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">🎓 TENF Academy</h1>
-        <p className="text-gray-400">Gestion complète de TENF Academy</p>
+        <h1 className="text-4xl font-bold text-white mb-2">🎓 TENF Academy - Dashboard</h1>
+        <p className="text-gray-400">Pilotage des accès, promos et participants Academy.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

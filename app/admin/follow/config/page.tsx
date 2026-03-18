@@ -156,7 +156,7 @@ export default function FollowStaffConfigPage() {
       <AdminHeader
         title="Configuration staff - Suivi des follows"
         navLinks={[
-          { href: "/admin/follow", label: "Hub Suivi Follow" },
+          { href: "/admin/follow", label: "Dashboard Suivi Follow" },
           { href: "/admin/follow/config", label: "Configuration staff", active: true },
         ]}
       />

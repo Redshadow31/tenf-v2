@@ -16,6 +16,12 @@ export default function LoginPage() {
       : "/member/dashboard";
   const shouldAutoStart = searchParams.get("autostart") === "1";
   const [isLoading, setIsLoading] = useState(false);
+  const [devDiscordId, setDevDiscordId] = useState("333001130705420299");
+  const [devUsername, setDevUsername] = useState("Dev Local");
+  const [devRole, setDevRole] = useState("FONDATEUR");
+  const devAuthEnabled =
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH !== "false";
 
   useEffect(() => {
     // Si déjà authentifié via NextAuth, rediriger
@@ -124,6 +130,55 @@ export default function LoginPage() {
           >
             Retour à l'accueil
           </button>
+
+          {devAuthEnabled && (
+            <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                Mode développement local
+              </p>
+              <div className="space-y-2">
+                <input
+                  value={devDiscordId}
+                  onChange={(e) => setDevDiscordId(e.target.value)}
+                  placeholder="Discord ID"
+                  className="w-full rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
+                />
+                <input
+                  value={devUsername}
+                  onChange={(e) => setDevUsername(e.target.value)}
+                  placeholder="Pseudo"
+                  className="w-full rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
+                />
+                <select
+                  value={devRole}
+                  onChange={(e) => setDevRole(e.target.value)}
+                  className="w-full rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
+                >
+                  <option value="FONDATEUR">Fondateur</option>
+                  <option value="ADMIN_COORDINATEUR">Admin Coordinateur</option>
+                  <option value="MODERATEUR">Modérateur</option>
+                  <option value="MODERATEUR_EN_FORMATION">Modérateur en formation</option>
+                  <option value="MODERATEUR_EN_PAUSE">Modérateur en pause</option>
+                  <option value="SOUTIEN_TENF">Soutien TENF</option>
+                </select>
+                <button
+                  onClick={() => {
+                    setIsLoading(true);
+                    void signIn("dev-bypass", {
+                      callbackUrl,
+                      discordId: devDiscordId,
+                      username: devUsername,
+                      role: devRole,
+                    });
+                  }}
+                  disabled={isLoading || !devDiscordId.trim()}
+                  className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+                >
+                  Connexion locale (bypass)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

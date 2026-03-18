@@ -5,14 +5,76 @@ import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
 import { resetAdvancedAccessCache } from '@/lib/advancedAccess';
+import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
 const ACCESS_STORE = 'tenf-admin-access';
 const ADVANCED_ACCESS_KEY = 'admin-advanced-access-list';
+const MAX_ACCESS_DURATION_DAYS = 90;
+const LEGACY_GRACE_DAYS = 30;
 
 interface AdvancedAccessEntry {
   discordId: string;
   addedAt: string;
   addedBy: string;
+  justification: string;
+  expiresAt: string;
+}
+
+function sanitizeReason(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 500) : undefined;
+}
+
+function parseDateValue(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeEntry(raw: any): AdvancedAccessEntry | null {
+  if (!raw || typeof raw !== "object" || typeof raw.discordId !== "string") {
+    return null;
+  }
+
+  const now = Date.now();
+  const addedAtDate = parseDateValue(raw.addedAt) || new Date(now);
+  const expiresAtDate =
+    parseDateValue(raw.expiresAt) ||
+    new Date(now + LEGACY_GRACE_DAYS * 24 * 60 * 60 * 1000);
+
+  return {
+    discordId: raw.discordId.trim(),
+    addedAt: addedAtDate.toISOString(),
+    addedBy: typeof raw.addedBy === "string" && raw.addedBy.trim().length > 0 ? raw.addedBy : "system",
+    justification:
+      sanitizeReason(raw.justification) ||
+      "Acces migre depuis une ancienne entree (justification absente).",
+    expiresAt: expiresAtDate.toISOString(),
+  };
+}
+
+function isEntryActive(entry: AdvancedAccessEntry): boolean {
+  const expiresAt = new Date(entry.expiresAt).getTime();
+  if (Number.isNaN(expiresAt)) return false;
+  return expiresAt > Date.now();
+}
+
+async function loadAdvancedAccessList(): Promise<AdvancedAccessEntry[]> {
+  const store = getBlobStore(ACCESS_STORE);
+  const stored = await store.get(ADVANCED_ACCESS_KEY);
+  const parsed = stored ? JSON.parse(stored) : [];
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .map(normalizeEntry)
+    .filter((entry): entry is AdvancedAccessEntry => !!entry && entry.discordId.length > 0);
+}
+
+async function saveAdvancedAccessList(list: AdvancedAccessEntry[]): Promise<void> {
+  const store = getBlobStore(ACCESS_STORE);
+  await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
+  resetAdvancedAccessCache();
 }
 
 /**
@@ -37,19 +99,15 @@ export async function GET(request: NextRequest) {
     // Charger la liste depuis Blobs
     let advancedList: AdvancedAccessEntry[] = [];
     try {
-      const store = getBlobStore(ACCESS_STORE);
-      const stored = await store.get(ADVANCED_ACCESS_KEY);
-      if (stored) {
-        advancedList = JSON.parse(stored);
-      }
+      advancedList = await loadAdvancedAccessList();
     } catch (error) {
       console.error('[Advanced Access] Erreur chargement depuis Blobs:', error);
     }
 
     // Mode check : retourner uniquement si l'utilisateur a accès
     if (checkOnly) {
-      const canAccess = isFounder(admin.discordId) || 
-        advancedList.some((e) => e.discordId === admin.discordId);
+      // Verrouillage sécurité: accès admin avancé réservé aux fondateurs.
+      const canAccess = isFounder(admin.discordId);
       return NextResponse.json({ canAccessAdvanced: canAccess });
     }
 
@@ -125,6 +183,7 @@ export async function GET(request: NextRequest) {
           username: info.username,
           avatar: info.avatar,
           addedByUsername,
+          isExpired: !isEntryActive(e),
         };
       })
     );
@@ -151,10 +210,44 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { discordId } = body;
+    const justification = sanitizeReason(body?.justification);
+    const expiresAtRaw = typeof body?.expiresAt === "string" ? body.expiresAt : "";
+    const expiresAtDate = parseDateValue(expiresAtRaw);
 
     if (!discordId || typeof discordId !== 'string') {
       return NextResponse.json(
         { error: "discordId est requis" },
+        { status: 400 }
+      );
+    }
+
+    if (!justification) {
+      return NextResponse.json(
+        { error: "La justification est obligatoire" },
+        { status: 400 }
+      );
+    }
+
+    if (!expiresAtDate) {
+      return NextResponse.json(
+        { error: "Une date d'expiration valide est obligatoire" },
+        { status: 400 }
+      );
+    }
+
+    const now = Date.now();
+    const expiresAtMs = expiresAtDate.getTime();
+    if (expiresAtMs <= now) {
+      return NextResponse.json(
+        { error: "La date d'expiration doit etre dans le futur" },
+        { status: 400 }
+      );
+    }
+
+    const maxDurationMs = MAX_ACCESS_DURATION_DAYS * 24 * 60 * 60 * 1000;
+    if (expiresAtMs - now > maxDurationMs) {
+      return NextResponse.json(
+        { error: `L'acces avance ne peut pas depasser ${MAX_ACCESS_DURATION_DAYS} jours` },
         { status: 400 }
       );
     }
@@ -167,38 +260,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const store = getBlobStore(ACCESS_STORE);
-    let list: AdvancedAccessEntry[] = [];
-    try {
-      const stored = await store.get(ADVANCED_ACCESS_KEY);
-      if (stored) list = JSON.parse(stored);
-    } catch (e) {
-      console.error('[Advanced Access] Erreur chargement:', e);
-    }
+    let list = await loadAdvancedAccessList();
+    const existing = list.find((e) => e.discordId === discordId);
 
-    if (list.some((e) => e.discordId === discordId)) {
+    if (existing && isEntryActive(existing)) {
       return NextResponse.json(
         { error: "Cette personne a déjà accès" },
         { status: 409 }
       );
     }
 
-    list.push({
-      discordId,
+    // Si l'entrée existe mais a expiré, on la remplace proprement.
+    list = list.filter((e) => e.discordId !== discordId);
+
+    const newEntry: AdvancedAccessEntry = {
+      discordId: discordId.trim(),
       addedAt: new Date().toISOString(),
       addedBy: admin.discordId,
-    });
+      justification,
+      expiresAt: expiresAtDate.toISOString(),
+    };
+    list.push(newEntry);
 
-    await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
-    resetAdvancedAccessCache();
-
-    const { logAction } = await import("@/lib/admin/logger");
+    await saveAdvancedAccessList(list);
+    const { previousValue, newValue } = prepareAuditValues(existing, newEntry);
     await logAction({
       action: "admin.advanced_access.add",
       resourceType: "admin_advanced_access",
       resourceId: discordId,
-      newValue: {},
-      metadata: { sourcePage: "/admin/gestion-acces/admin-avance" },
+      previousValue,
+      newValue,
+      metadata: {
+        sourcePage: "/admin/gestion-acces/admin-avance",
+        reason: justification,
+      },
     });
 
     return NextResponse.json({ success: true, message: "Accès ajouté" });
@@ -223,6 +318,15 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const discordId = searchParams.get('discordId');
+    let reason = sanitizeReason(searchParams.get("reason"));
+    if (!reason) {
+      try {
+        const body = await request.json();
+        reason = sanitizeReason(body?.reason);
+      } catch {
+        // Pas de body -> on garde la valeur actuelle
+      }
+    }
 
     if (!discordId) {
       return NextResponse.json(
@@ -238,16 +342,22 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const store = getBlobStore(ACCESS_STORE);
+    if (!reason) {
+      return NextResponse.json(
+        { error: "Le motif de retrait est obligatoire" },
+        { status: 400 }
+      );
+    }
+
     let list: AdvancedAccessEntry[] = [];
     try {
-      const stored = await store.get(ADVANCED_ACCESS_KEY);
-      if (stored) list = JSON.parse(stored);
+      list = await loadAdvancedAccessList();
     } catch (e) {
       console.error('[Advanced Access] Erreur chargement:', e);
       return NextResponse.json({ error: 'Erreur chargement' }, { status: 500 });
     }
 
+    const removedEntry = list.find((e) => e.discordId === discordId);
     const before = list.length;
     list = list.filter((e) => e.discordId !== discordId);
 
@@ -258,16 +368,17 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
-    resetAdvancedAccessCache();
-
-    const { logAction } = await import("@/lib/admin/logger");
+    await saveAdvancedAccessList(list);
+    const { previousValue } = prepareAuditValues(removedEntry, undefined);
     await logAction({
       action: "admin.advanced_access.remove",
       resourceType: "admin_advanced_access",
       resourceId: discordId,
-      previousValue: {},
-      metadata: { sourcePage: "/admin/gestion-acces/admin-avance" },
+      previousValue,
+      metadata: {
+        sourcePage: "/admin/gestion-acces/admin-avance",
+        reason,
+      },
     });
 
     return NextResponse.json({ success: true, message: "Accès retiré" });

@@ -32,6 +32,56 @@ export interface MemberEngagement {
   memberSince?: string;
 }
 
+function splitCsvLikeLine(line: string, delimiter: "," | ";"): string[] {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = i + 1 < line.length ? line[i + 1] : "";
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i++;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (!inQuotes && char === delimiter) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function splitEngagementLine(line: string): string[] {
+  if (line.includes("\t")) {
+    return line.split("\t").map((part) => part.trim()).filter(Boolean);
+  }
+
+  if (line.includes(";")) {
+    const parts = splitCsvLikeLine(line, ";").filter(Boolean);
+    if (parts.length >= 2) return parts;
+  }
+
+  if (line.includes(",")) {
+    const parts = splitCsvLikeLine(line, ",").filter(Boolean);
+    if (parts.length >= 2) return parts;
+  }
+
+  return line.split(/\s{2,}/).map((part) => part.trim()).filter(Boolean);
+}
+
 // Seuils pour les notes (paramétrables)
 export const ENGAGEMENT_SEUILS = {
   messages: {
@@ -115,8 +165,8 @@ export function parseDiscordEngagementTSV(
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Séparer par tab ou multiples espaces
-    const parts = line.split(/\t|\s{2,}/).filter(p => p.trim());
+    // Supporte TSV, CSV (virgule/point-virgule) et fallback espaces multiples
+    const parts = splitEngagementLine(line);
     
     if (parts.length < 2) {
       errors.push({ line: i + 1, reason: "Format invalide (moins de 2 colonnes)" });

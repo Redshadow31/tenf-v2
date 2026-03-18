@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/db/supabase';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
+import { loadEventSeriesMap, upsertEventSeriesMeta } from "@/lib/eventSeriesStorage";
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
@@ -183,12 +184,24 @@ export async function GET(request: NextRequest) {
       })
       .filter((event): event is NonNullable<typeof event> => event !== null);
 
+    const seriesMap = await loadEventSeriesMap();
+    const withSeriesEvents = formattedEvents.map((event) => {
+      const meta = seriesMap[event.id];
+      if (!meta) return event;
+      return {
+        ...event,
+        seriesId: meta.seriesId,
+        seriesName: meta.seriesName,
+        sourceEventId: meta.sourceEventId,
+      };
+    });
+
     const publicFilmAnnouncement =
       !isAdmin && !canViewFullFilmEvents ? await loadFilmPublicAnnouncement() : null;
 
     const audienceEvents =
       !isAdmin && !canViewFullFilmEvents
-        ? formattedEvents.map((event) => {
+        ? withSeriesEvents.map((event) => {
             if (!isMovieNightCategory(String(event.category || ""))) return event;
             return {
               ...event,
@@ -201,7 +214,7 @@ export async function GET(request: NextRequest) {
               isMaskedForAudience: true,
             };
           })
-        : formattedEvents;
+        : withSeriesEvents;
     
     // Trier par date (plus récent en premier)
     audienceEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -251,7 +264,21 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, image, date, startAtUtc, startAtParisLocal, category, location, invitedMembers, isPublished } = body;
+    const {
+      title,
+      description,
+      image,
+      date,
+      startAtUtc,
+      startAtParisLocal,
+      category,
+      location,
+      invitedMembers,
+      isPublished,
+      seriesId,
+      seriesName,
+      sourceEventId,
+    } = body;
     
     if (!title || (!date && !startAtUtc && !startAtParisLocal) || !category) {
       return NextResponse.json(
@@ -311,8 +338,25 @@ export async function POST(request: NextRequest) {
       newValue,
       metadata: { sourcePage: "/admin/events" },
     });
+
+    if (typeof seriesId === "string" && typeof seriesName === "string") {
+      await upsertEventSeriesMeta({
+        eventId: newEvent.id,
+        seriesId,
+        seriesName,
+        sourceEventId: typeof sourceEventId === "string" ? sourceEventId : undefined,
+      });
+    }
     
-    return NextResponse.json({ event: formattedEvent, success: true });
+    return NextResponse.json({
+      event: {
+        ...formattedEvent,
+        seriesId: typeof seriesId === "string" ? seriesId : undefined,
+        seriesName: typeof seriesName === "string" ? seriesName : undefined,
+        sourceEventId: typeof sourceEventId === "string" ? sourceEventId : undefined,
+      },
+      success: true,
+    });
   } catch (error) {
     const duration = Date.now() - startTime;
     logApi.error('/api/events', error instanceof Error ? error : new Error(String(error)));

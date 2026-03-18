@@ -38,6 +38,8 @@ type MemberModalProps = {
   isAdmin?: boolean;
 };
 
+type ModalTab = "profil" | "soutien" | "activite" | "planning" | "reseaux";
+
 export default function MemberModal({
   member,
   isOpen,
@@ -73,6 +75,7 @@ export default function MemberModal({
   const [loadingDiscordStats, setLoadingDiscordStats] = useState(false);
   const [streamPlannings, setStreamPlannings] = useState<StreamPlanningCalendarItem[]>([]);
   const [loadingStreamPlannings, setLoadingStreamPlannings] = useState(false);
+  const [activeTab, setActiveTab] = useState<ModalTab>("profil");
 
   useEffect(() => {
     if (isOpen) {
@@ -152,32 +155,29 @@ export default function MemberModal({
     loadMemberPlanning();
   }, [isOpen, member.twitchLogin]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab("profil");
+  }, [isOpen, member.twitchLogin]);
+
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.82)", backdropFilter: "blur(2px)" }}
       onClick={onClose}
     >
       <div
-        className="card relative max-h-[90vh] w-full max-w-2xl overflow-y-auto border p-8 lg:max-w-4xl xl:max-w-5xl"
-        style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+        className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border"
+        style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Bouton fermer */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-2 transition-colors"
-          style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--color-text)';
-            e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-            e.currentTarget.style.backgroundColor = 'var(--color-surface)';
-          }}
+          className="absolute right-4 top-4 z-20 rounded-lg border p-2 transition-colors"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+          aria-label="Fermer la modale"
         >
           <svg
             className="h-6 w-6"
@@ -194,226 +194,272 @@ export default function MemberModal({
           </svg>
         </button>
 
-        {/* Contenu du modal */}
-        <div className="flex flex-col items-center space-y-6 text-center">
-          {/* Avatar avec badge VIP */}
-          <div className="relative">
-            <img
-              src={member.avatar}
-              alt={member.name}
-              className="h-32 w-32 rounded-full object-cover border-4"
-              style={{ borderColor: 'var(--color-border)' }}
-            />
-            {member.isVip && (
-              <div className="absolute -bottom-2 -right-2 rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-                {member.vipBadge || "VIP"}
-              </div>
-            )}
-          </div>
-
-          {/* Nom et badge rôle */}
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>{member.name}</h2>
-            <span
-              className={getRoleBadgeClassName(member.role)}
-            >
-              {getRoleBadgeLabel(member.role)}
-            </span>
-            
-            {/* Badges personnalisés */}
-            {member.badges && member.badges.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center mt-3">
-                {member.badges.map((badge) => (
-                  <span
-                    key={badge}
-                    className={getRoleBadgeClassName(badge)}
-                  >
+        <div
+          className="border-b px-6 py-5"
+          style={{
+            borderColor: "rgba(145, 70, 255, 0.30)",
+            background:
+              "linear-gradient(135deg, rgba(145, 70, 255, 0.18), rgba(59, 130, 246, 0.08) 55%, rgba(14, 165, 233, 0.08))",
+          }}
+        >
+          <div className="flex items-start gap-4 pr-12">
+            <div className="relative shrink-0">
+              <img
+                src={member.avatar}
+                alt={member.name}
+                className="h-20 w-20 rounded-2xl border object-cover"
+                style={{ borderColor: "rgba(145, 70, 255, 0.50)" }}
+              />
+              {member.isVip ? (
+                <div
+                  className="absolute -bottom-2 -right-2 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  {member.vipBadge || "VIP"}
+                </div>
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-bold" style={{ color: "var(--color-text)" }}>
+                {member.name}
+              </h2>
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                @{member.twitchLogin}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                <span className={getRoleBadgeClassName(member.role)}>{getRoleBadgeLabel(member.role)}</span>
+                {member.badges?.map((badge) => (
+                  <span key={badge} className={getRoleBadgeClassName(badge)}>
                     {getRoleBadgeLabel(badge)}
                   </span>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Description Twitch - aligné à gauche, retours à la ligne préservés */}
-          <div className="w-full space-y-2 text-left">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Description</h3>
-            <DiscordMarkdownPreview
-              content={member.description || ""}
-              emptyFallback="Aucune description disponible pour le moment."
-            />
-            {isAdmin && (
-              <button className="mt-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors border" style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-medium)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-light)'; }}>
-                Modifier la description
-              </button>
-            )}
-          </div>
-
-          {/* Bloc soutien */}
-          <div className="w-full space-y-3">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>💜 Soutenir ce créateur</h3>
-            {followStatusConfig && (
-              <div className="flex justify-center">
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${followStatusConfig.className}`}>
-                  {followStatusConfig.icon} {followStatusConfig.label}
-                </span>
-              </div>
-            )}
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Link
-                href={`https://www.twitch.tv/${member.twitchLogin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                🚪 Ouvrir la porte
-              </Link>
-              <Link
-                href={`https://www.twitch.tv/${member.twitchLogin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-              >
-                ⭐ Suivre sur Twitch
-              </Link>
-              <Link
-                href="/lives/calendrier"
-                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-              >
-                📅 Voir le planning
-              </Link>
             </div>
           </div>
+        </div>
 
-          {/* Bloc infos */}
-          <div className="w-full space-y-3 text-left">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Infos stream</h3>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                🎮 {member.mainGame || "Communaute"}
-              </span>
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
-              </span>
-              {member.streamTags && member.streamTags.length > 0
-                ? member.streamTags.slice(0, 3).map((tag) => (
+        <div className="border-b px-6 py-3" style={{ borderColor: "var(--color-border)" }}>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "profil", label: "Profil" },
+              { id: "soutien", label: "Soutien" },
+              { id: "activite", label: "Activite" },
+              { id: "planning", label: "Planning" },
+              { id: "reseaux", label: "Reseaux" },
+            ].map((tab) => {
+              const selected = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as ModalTab)}
+                  className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+                  style={{
+                    borderColor: selected ? "rgba(145, 70, 255, 0.60)" : "var(--color-border)",
+                    backgroundColor: selected ? "rgba(145, 70, 255, 0.18)" : "var(--color-surface)",
+                    color: selected ? "var(--color-text)" : "var(--color-text-secondary)",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "58vh" }}>
+          {activeTab === "profil" ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                <h3 className="text-base font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+                  Description
+                </h3>
+                <DiscordMarkdownPreview
+                  content={member.description || ""}
+                  emptyFallback="Aucune description disponible pour le moment."
+                />
+              </div>
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                <h3 className="text-base font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+                  Infos stream
+                </h3>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    🎮 {member.mainGame || "Communaute"}
+                  </span>
+                  <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    {member.isAffiliated ? "⭐ Affilie" : "🌱 Developpement"}
+                  </span>
+                  {member.streamTags?.slice(0, 4).map((tag) => (
                     <span
                       key={tag}
                       className="rounded-full border px-2.5 py-1"
-                      style={{ borderColor: 'rgba(145,70,255,0.45)', color: 'var(--color-text)' }}
+                      style={{ borderColor: "rgba(145,70,255,0.45)", color: "var(--color-text)" }}
                     >
                       #{tag}
                     </span>
-                  ))
-                : null}
-            </div>
-          </div>
-
-          {/* Bloc activité */}
-          <div className="w-full space-y-3 text-left">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Activité</h3>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                {member.isActiveThisWeek ? "🔥 Actif cette semaine" : "🌙 Activité plus calme"}
-              </div>
-              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                {member.planningStatus === "shared"
-                  ? "📅 Stream régulier"
-                  : member.planningStatus === "partial"
-                    ? "📅 Planning partiel"
-                    : "📅 Planning non renseigné"}
-              </div>
-              <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                💜 Soutien communautaire recommandé
-              </div>
-            </div>
-          </div>
-
-          {/* Statistiques Discord du mois */}
-          {member.discordId && (
-            <div className="w-full space-y-3">
-              <h3 className="text-lg font-semibold text-white">
-                Activité Discord (ce mois-ci)
-              </h3>
-              {loadingDiscordStats ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#5865F2]"></div>
+                  ))}
                 </div>
-              ) : discordStats ? (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Messages</div>
-                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
-                      {discordStats.messages.toLocaleString()}
-                    </div>
+              </div>
+              {isAdmin ? (
+                <button
+                  className="rounded-lg border px-4 py-2 text-sm font-medium"
+                  style={{ borderColor: "var(--color-primary)", color: "var(--color-primary)" }}
+                >
+                  Modifier la description
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeTab === "soutien" ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border p-4 text-center" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
+                  💜 Soutenir ce createur
+                </h3>
+                {followStatusConfig ? (
+                  <div className="mt-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${followStatusConfig.className}`}>
+                      {followStatusConfig.icon} {followStatusConfig.label}
+                    </span>
                   </div>
-                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Temps vocal</div>
-                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
-                      {Math.round(discordStats.voiceMinutes / 60)}h
-                    </div>
+                ) : null}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <Link
+                    href={`https://www.twitch.tv/${member.twitchLogin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                  >
+                    🚪 Ouvrir la porte
+                  </Link>
+                  <Link
+                    href={`https://www.twitch.tv/${member.twitchLogin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  >
+                    ⭐ Suivre sur Twitch
+                  </Link>
+                  <Link
+                    href="/lives/calendrier"
+                    className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  >
+                    📅 Voir le planning global
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "activite" ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                <h3 className="text-base font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+                  Activite generale
+                </h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    {member.isActiveThisWeek ? "🔥 Actif cette semaine" : "🌙 Activite plus calme"}
                   </div>
-                  <div className="rounded-lg p-4 text-center border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Rang</div>
-                    <div className="text-xl font-bold" style={{ color: '#5865F2' }}>
-                      #{discordStats.rank}
-                    </div>
+                  <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    {member.planningStatus === "shared"
+                      ? "📅 Stream regulier"
+                      : member.planningStatus === "partial"
+                        ? "📅 Planning partiel"
+                        : "📅 Planning non renseigne"}
                   </div>
+                  <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                    💜 Soutien communautaire recommande
+                  </div>
+                </div>
+              </div>
+
+              {member.discordId ? (
+                <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+                  <h3 className="text-base font-semibold mb-2" style={{ color: "var(--color-text)" }}>
+                    Activite Discord (ce mois-ci)
+                  </h3>
+                  {loadingDiscordStats ? (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#5865F2]" />
+                    </div>
+                  ) : discordStats ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-lg p-3 text-center border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                        <div className="text-xs mb-1" style={{ color: "var(--color-text-secondary)" }}>Messages</div>
+                        <div className="text-xl font-bold" style={{ color: "#5865F2" }}>
+                          {discordStats.messages.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="rounded-lg p-3 text-center border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                        <div className="text-xs mb-1" style={{ color: "var(--color-text-secondary)" }}>Temps vocal</div>
+                        <div className="text-xl font-bold" style={{ color: "#5865F2" }}>
+                          {Math.round(discordStats.voiceMinutes / 60)}h
+                        </div>
+                      </div>
+                      <div className="rounded-lg p-3 text-center border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                        <div className="text-xs mb-1" style={{ color: "var(--color-text-secondary)" }}>Rang</div>
+                        <div className="text-xl font-bold" style={{ color: "#5865F2" }}>
+                          #{discordStats.rank}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm py-3" style={{ color: "var(--color-text-secondary)" }}>
+                      Aucune donnee disponible pour ce mois.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeTab === "planning" ? (
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
+                Planning des streams
+              </h3>
+              {loadingStreamPlannings ? (
+                <div className="py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  Chargement du planning...
                 </div>
               ) : (
-                <div className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>
-                  Aucune donnée disponible pour ce mois
-                </div>
+                <StreamPlanningCalendar
+                  plannings={streamPlannings}
+                  emptyMessage="Aucun planning stream public pour le moment."
+                />
               )}
             </div>
-          )}
+          ) : null}
 
-          {/* Planning streams du membre */}
-          <div className="w-full space-y-3 text-left">
-            <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-              Planning des streams
-            </h3>
-            {loadingStreamPlannings ? (
-              <div className="py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Chargement du planning...
+          {activeTab === "reseaux" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
+                  Reseaux du createur
+                </h3>
+                {isAdmin ? (
+                  <button
+                    className="rounded-lg border px-3 py-1 text-xs font-medium"
+                    style={{ borderColor: "var(--color-primary)", color: "var(--color-primary)" }}
+                  >
+                    + Ajouter
+                  </button>
+                ) : null}
               </div>
-            ) : (
-              <StreamPlanningCalendar
-                plannings={streamPlannings}
-                emptyMessage="Aucun planning stream public pour le moment."
-              />
-            )}
-          </div>
-
-          {/* Autres réseaux sociaux */}
-          <div className="w-full space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
-                Autres réseaux
-              </h3>
-              {isAdmin && (
-                <button className="rounded-lg px-3 py-1 text-xs font-medium transition-colors border" style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-medium)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent-light)'; }}>
-                  + Ajouter
-                </button>
-            )}
-            </div>
-            <div className="flex flex-wrap gap-3 justify-center">
+              <div className="flex flex-wrap gap-3">
               {member.socials?.discord && (
                 <Link
                   href={member.socials.discord}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: '#5865F2' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4752C4';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#5865F2';
-                  }}
+                  style={{ backgroundColor: "#5865F2" }}
                 >
                   Discord
                 </Link>
@@ -434,13 +480,7 @@ export default function MemberModal({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: '#1DA1F2' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1a8cd8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1DA1F2';
-                  }}
+                  style={{ backgroundColor: "#1DA1F2" }}
                 >
                   Twitter
                 </Link>
@@ -451,13 +491,7 @@ export default function MemberModal({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: '#000000' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333333';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#000000';
-                  }}
+                  style={{ backgroundColor: "#000000" }}
                 >
                   TikTok
                 </Link>
@@ -468,27 +502,35 @@ export default function MemberModal({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: '#FF0000' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#cc0000';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FF0000';
-                  }}
+                  style={{ backgroundColor: "#FF0000" }}
                 >
                   YouTube
                 </Link>
               )}
-              {(!member.socials?.discord &&
-                !member.socials?.instagram &&
-                !member.socials?.twitter &&
-                !member.socials?.tiktok &&
-                !member.socials?.youtube) && (
-                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  Aucun réseau social ajouté
+              {!member.socials?.discord &&
+              !member.socials?.instagram &&
+              !member.socials?.twitter &&
+              !member.socials?.tiktok &&
+              !member.socials?.youtube ? (
+                <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  Aucun reseau social ajoute
                 </p>
-              )}
+              ) : null}
             </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-t px-6 py-3" style={{ borderColor: "var(--color-border)" }}>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border px-4 py-2 text-sm font-semibold"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              Fermer
+            </button>
           </div>
         </div>
       </div>

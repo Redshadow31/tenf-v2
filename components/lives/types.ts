@@ -26,6 +26,17 @@ export interface LiveMember {
   isSpotlight?: boolean;
   isBirthdayToday?: boolean;
   isAffiliateAnniversaryToday?: boolean;
+  isTopRaider?: boolean;
+  topRaidsCount?: number;
+  raidsDoneThisMonth?: number;
+  raidsReceivedThisMonth?: number;
+  uniqueRaidTargetsThisMonth?: number;
+  uniqueRaidersReceivedThisMonth?: number;
+  isSolidarityRaider?: boolean;
+  isCommunityBooster?: boolean;
+  isDiscoverer?: boolean;
+  isWarmlySupported?: boolean;
+  isBalancedSupport?: boolean;
   followState?: "followed" | "not_followed" | "unknown";
   integrationDate?: string;
 }

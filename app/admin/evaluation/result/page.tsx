@@ -156,7 +156,7 @@ export default function EvaluationResultPage() {
     <div className="min-h-screen bg-[#0e0e10] text-white p-8">
       <div className="mb-8">
         <Link href="/admin/evaluation" className="text-gray-400 hover:text-white transition-colors mb-4 inline-block">
-          ← Retour au Hub Évaluation
+          ← Retour au Dashboard Évaluation
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Résultats validés</h1>
         <p className="text-gray-400">Snapshots enregistrés depuis la Synthèse mensuelle</p>

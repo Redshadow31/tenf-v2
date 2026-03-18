@@ -23,6 +23,9 @@
 [functions."raids-test-sync"]
   schedule = "*/2 * * * *"
 
+[functions."dashboard-summary-precompute"]
+  schedule = "*/5 * * * *"
+
 # Headers de cache pour les assets statiques
 [[headers]]
   for = "/_next/static/*"

@@ -310,12 +310,13 @@ export default function PermissionsPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
-        title="Gestion des Permissions Dashboard"
+        title="Permissions par section"
         navLinks={[
-          { href: "/admin/gestion-acces", label: "Accès Dashboard" },
-          { href: "/admin/gestion-acces/dashboard", label: "Gestion du Dashboard" },
+          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section", active: true },
-          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
         ]}
       />
 

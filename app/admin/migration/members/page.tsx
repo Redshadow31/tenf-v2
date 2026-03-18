@@ -32,6 +32,19 @@ interface SyncCheckResult {
 interface MigrationResult {
   success: boolean;
   message: string;
+  report?: {
+    dryRun?: boolean;
+    totals?: {
+      actionsCreate?: number;
+      actionsUpdate?: number;
+      actionsSkip?: number;
+      dedupCollapsed?: number;
+      conflicts?: number;
+      appliedArchived?: number;
+      excludedByArchive?: number;
+      errors?: number;
+    };
+  };
   summary?: {
     totalInBlobs: number;
     migrated: number;
@@ -58,6 +71,7 @@ interface CleanupPreview {
 
 export default function MembersMigrationPage() {
   const [loading, setLoading] = useState(false);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
   const [checkingSync, setCheckingSync] = useState(false);
   const [syncData, setSyncData] = useState<SyncCheckResult | null>(null);
   const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
@@ -67,6 +81,10 @@ export default function MembersMigrationPage() {
   const [cleanupPreview, setCleanupPreview] = useState<CleanupPreview | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+  const [includeCreates, setIncludeCreates] = useState(true);
+  const [includeUpdates, setIncludeUpdates] = useState(true);
+  const [archiveSkippedCreates, setArchiveSkippedCreates] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
 
   const checkSync = async () => {
     setCheckingSync(true);
@@ -100,7 +118,7 @@ export default function MembersMigrationPage() {
     }
   };
 
-  const runMigration = async () => {
+  const runMigration = async (dryRun = false) => {
     if (!syncData) {
       setError('Veuillez d\'abord vérifier la synchronisation');
       return;
@@ -111,12 +129,40 @@ export default function MembersMigrationPage() {
       return;
     }
 
-    setLoading(true);
+    if (dryRun) {
+      setDryRunLoading(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     setMigrationResult(null);
 
     try {
-      // Envoyer par batch de 20 pour éviter les timeouts 504 Netlify
+      if (dryRun) {
+        const response = await fetch('/api/admin/migration/migrate-members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source,
+            selectedLogins: Array.from(selectedLogins),
+            dryRun: true,
+            includeCreates,
+            includeUpdates,
+            archiveSkippedCreates,
+            archiveReason,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setMigrationResult(data);
+        return;
+      }
+
+      // Envoyer par batch de 20 pour éviter les timeouts 504 Netlify en mode réel
       const BATCH_SIZE = 20;
       const allLogins = Array.from(selectedLogins);
       let totalMigrated = 0;
@@ -147,6 +193,11 @@ export default function MembersMigrationPage() {
           body: JSON.stringify({
             source,
             selectedLogins: batch,
+            dryRun: false,
+            includeCreates,
+            includeUpdates,
+            archiveSkippedCreates,
+            archiveReason,
           }),
         });
 
@@ -182,7 +233,11 @@ export default function MembersMigrationPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
-      setLoading(false);
+      if (dryRun) {
+        setDryRunLoading(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -384,6 +439,50 @@ export default function MembersMigrationPage() {
                   </div>
                 </div>
 
+                <div className="mb-4 rounded-lg border border-gray-700 p-4 bg-[#121215]">
+                  <h3 className="text-sm font-semibold text-gray-200 mb-3">Stratégie de migration</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeCreates}
+                        onChange={(e) => setIncludeCreates(e.target.checked)}
+                        className="w-4 h-4 text-[#9146ff]"
+                      />
+                      <span>Inclure les créations de membres</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeUpdates}
+                        onChange={(e) => setIncludeUpdates(e.target.checked)}
+                        className="w-4 h-4 text-[#9146ff]"
+                      />
+                      <span>Inclure les mises à jour de membres existants</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={archiveSkippedCreates}
+                        onChange={(e) => setArchiveSkippedCreates(e.target.checked)}
+                        className="w-4 h-4 text-[#9146ff]"
+                        disabled={includeCreates}
+                      />
+                      <span>
+                        Archiver automatiquement les créations refusées (empêche leur retour futur)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={archiveReason}
+                      onChange={(e) => setArchiveReason(e.target.value)}
+                      placeholder="Motif d'archivage (ex: membre supprimé volontairement)"
+                      className="md:col-span-2 bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
+                      disabled={!archiveSkippedCreates || includeCreates}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {getMissingMembers().map((member) => {
                     const isSelected = selectedLogins.has(member.twitchLogin.toLowerCase());
@@ -432,13 +531,22 @@ export default function MembersMigrationPage() {
 
                 {/* Bouton migration */}
                 <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={runMigration}
-                    disabled={loading || selectedLogins.size === 0}
-                    className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {loading ? `Migration en cours... (par batch de 20)` : `Migrer ${selectedLogins.size} membre(s)`}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => runMigration(true)}
+                      disabled={dryRunLoading || loading || selectedLogins.size === 0}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {dryRunLoading ? "Dry-run..." : `Prévisualiser ${selectedLogins.size} membre(s)`}
+                    </button>
+                    <button
+                      onClick={() => runMigration(false)}
+                      disabled={loading || dryRunLoading || selectedLogins.size === 0}
+                      className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {loading ? `Migration en cours... (par batch de 20)` : `Migrer ${selectedLogins.size} membre(s)`}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -474,6 +582,48 @@ export default function MembersMigrationPage() {
                 <div>
                   <p className="text-sm text-gray-400">Erreurs</p>
                   <p className="text-2xl font-bold text-red-400">{migrationResult.summary.errors}</p>
+                </div>
+              </div>
+            )}
+
+            {migrationResult.report?.totals && (
+              <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400">Actions create</p>
+                  <p className="text-xl font-bold text-green-300">{migrationResult.report.totals.actionsCreate ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Actions update</p>
+                  <p className="text-xl font-bold text-blue-300">{migrationResult.report.totals.actionsUpdate ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Actions skip</p>
+                  <p className="text-xl font-bold text-yellow-300">{migrationResult.report.totals.actionsSkip ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Doublons compressés</p>
+                  <p className="text-xl font-bold text-purple-300">{migrationResult.report.totals.dedupCollapsed ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Conflits détectés</p>
+                  <p className="text-xl font-bold text-orange-300">{migrationResult.report.totals.conflicts ?? 0}</p>
+                </div>
+              </div>
+            )}
+
+            {migrationResult.report?.totals && (
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400">Exclus car déjà archivés</p>
+                  <p className="text-xl font-bold text-gray-200">{migrationResult.report.totals.excludedByArchive ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Archivés pendant l'exécution</p>
+                  <p className="text-xl font-bold text-amber-300">{migrationResult.report.totals.appliedArchived ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Mode</p>
+                  <p className="text-xl font-bold text-cyan-300">{migrationResult.report.dryRun ? "Dry-run" : "Exécution réelle"}</p>
                 </div>
               </div>
             )}

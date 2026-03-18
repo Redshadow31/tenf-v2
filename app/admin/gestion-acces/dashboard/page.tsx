@@ -252,12 +252,13 @@ export default function DashboardManagementPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
       <AdminHeader
-        title="Gestion du Dashboard"
+        title="Paramètres dashboard"
         navLinks={[
-          { href: "/admin/gestion-acces", label: "Accès Dashboard" },
-          { href: "/admin/gestion-acces/dashboard", label: "Gestion du Dashboard", active: true },
+          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard", active: true },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
         ]}
       />
 

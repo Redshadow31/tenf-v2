@@ -40,7 +40,8 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   "Modérateur en activité réduite": { label: "Modérateur en activité réduite", variant: "staff-reduced", family: "staff" },
   "Modérateur en pause": { label: "Modérateur en pause", variant: "staff-paused", family: "staff" },
   "Contributeur TENF du Mois": { label: "Contributeur TENF du Mois", variant: "contributor", family: "special" },
-  "VIP Élite": { label: "VIP Élite", variant: "vip", family: "special" },
+  "VIP Élite": { label: "VIP", variant: "vip", family: "special" },
+  VIP: { label: "VIP", variant: "vip", family: "special" },
 };
 
 const LEGACY_ROLE_ALIASES: Record<string, string> = {

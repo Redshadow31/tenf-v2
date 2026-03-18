@@ -4,6 +4,7 @@ import { requireSectionAccess } from '@/lib/requireAdmin';
 import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalInput } from '@/lib/timezone';
+import { deleteEventSeriesMeta, getEventSeriesMeta, upsertEventSeriesMeta } from '@/lib/eventSeriesStorage';
 
 /**
  * GET - Récupère un événement spécifique
@@ -38,6 +39,7 @@ export async function GET(
       );
     }
 
+    const seriesMeta = await getEventSeriesMeta(eventId);
     const formattedEvent = {
       ...event,
       date: event.date instanceof Date ? event.date.toISOString() : event.date,
@@ -46,6 +48,9 @@ export async function GET(
       startAtParisLocal: utcIsoToParisDateTimeLocalInput(event.date instanceof Date ? event.date.toISOString() : event.date),
       createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
       updatedAt: event.updatedAt ? (event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt) : undefined,
+      seriesId: seriesMeta?.seriesId,
+      seriesName: seriesMeta?.seriesName,
+      sourceEventId: seriesMeta?.sourceEventId,
     };
     return NextResponse.json({ event: formattedEvent });
   } catch (error) {
@@ -100,6 +105,16 @@ export async function PUT(
 
     const updatedEvent = await eventRepository.update(eventId, updates as Parameters<typeof eventRepository.update>[1]);
 
+    if (typeof body.seriesId === 'string' && typeof body.seriesName === 'string') {
+      await upsertEventSeriesMeta({
+        eventId,
+        seriesId: body.seriesId,
+        seriesName: body.seriesName,
+        sourceEventId: typeof body.sourceEventId === 'string' ? body.sourceEventId : undefined,
+      });
+    }
+
+    const seriesMeta = await getEventSeriesMeta(eventId);
     const formattedEvent = {
       ...updatedEvent,
       date: updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date,
@@ -108,6 +123,9 @@ export async function PUT(
       startAtParisLocal: utcIsoToParisDateTimeLocalInput(updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date),
       createdAt: updatedEvent.createdAt instanceof Date ? updatedEvent.createdAt.toISOString() : updatedEvent.createdAt,
       updatedAt: updatedEvent.updatedAt ? (updatedEvent.updatedAt instanceof Date ? updatedEvent.updatedAt.toISOString() : updatedEvent.updatedAt) : undefined,
+      seriesId: seriesMeta?.seriesId,
+      seriesName: seriesMeta?.seriesName,
+      sourceEventId: seriesMeta?.sourceEventId,
     };
 
     const { previousValue, newValue } = prepareAuditValues(existingEvent, formattedEvent);
@@ -154,6 +172,7 @@ export async function DELETE(
     }
 
     await eventRepository.delete(eventId);
+    await deleteEventSeriesMeta(eventId);
 
     const previousValue = prepareAuditValues(existingEvent, undefined).previousValue;
     await logAction({

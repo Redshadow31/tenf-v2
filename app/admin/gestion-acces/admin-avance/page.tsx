@@ -8,9 +8,22 @@ interface AdvancedAccessEntry {
   discordId: string;
   addedAt: string;
   addedBy: string;
+  justification?: string;
+  expiresAt?: string;
+  isExpired?: boolean;
   username?: string;
   avatar?: string | null;
   addedByUsername?: string;
+}
+
+function getDefaultExpiryDateTimeLocal(daysAhead = 30): string {
+  const date = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function AdminAvancePage() {
@@ -21,6 +34,8 @@ export default function AdminAvancePage() {
   const [isFounder, setIsFounder] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newDiscordId, setNewDiscordId] = useState("");
+  const [newJustification, setNewJustification] = useState("");
+  const [newExpiresAt, setNewExpiresAt] = useState<string>(() => getDefaultExpiryDateTimeLocal(30));
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
   const [searchingDiscord, setSearchingDiscord] = useState(false);
@@ -106,17 +121,31 @@ export default function AdminAvancePage() {
       setError("L'ID Discord est requis");
       return;
     }
+    if (!newJustification.trim()) {
+      setError("La justification est obligatoire");
+      return;
+    }
+    if (!newExpiresAt) {
+      setError("La date d'expiration est obligatoire");
+      return;
+    }
     try {
       setError(null);
       const res = await fetch("/api/admin/advanced-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ discordId: newDiscordId.trim() }),
+        body: JSON.stringify({
+          discordId: newDiscordId.trim(),
+          justification: newJustification.trim(),
+          expiresAt: new Date(newExpiresAt).toISOString(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur ajout");
       await loadList();
       setNewDiscordId("");
+      setNewJustification("");
+      setNewExpiresAt(getDefaultExpiryDateTimeLocal(30));
       setIsAdding(false);
       setSuccess("Accès ajouté");
       setTimeout(() => setSuccess(null), 3000);
@@ -127,11 +156,16 @@ export default function AdminAvancePage() {
   }
 
   async function handleRemove(discordId: string) {
+    const reason = prompt("Motif du retrait (obligatoire) :");
+    if (!reason || !reason.trim()) {
+      setError("Le motif de retrait est obligatoire");
+      return;
+    }
     if (!confirm("Retirer l'accès admin avancé de cette personne ?")) return;
     try {
       setError(null);
       const res = await fetch(
-        `/api/admin/advanced-access?discordId=${encodeURIComponent(discordId)}`,
+        `/api/admin/advanced-access?discordId=${encodeURIComponent(discordId)}&reason=${encodeURIComponent(reason.trim())}`,
         { method: "DELETE" }
       );
       const data = await res.json();
@@ -161,10 +195,11 @@ export default function AdminAvancePage() {
       <AdminHeader
         title="Accès admin avancé"
         navLinks={[
-          { href: "/admin/gestion-acces", label: "Accès Dashboard" },
-          { href: "/admin/gestion-acces/dashboard", label: "Gestion du Dashboard" },
+          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé", active: true },
+          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)", active: true },
         ]}
       />
 
@@ -273,6 +308,32 @@ export default function AdminAvancePage() {
                   style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 />
               </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                  Justification (obligatoire)
+                </label>
+                <textarea
+                  value={newJustification}
+                  onChange={(e) => setNewJustification(e.target.value)}
+                  placeholder="Pourquoi cet accès avancé est nécessaire ?"
+                  className="w-full rounded-lg border px-4 py-2"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                  Expire le (obligatoire)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newExpiresAt}
+                  onChange={(e) => setNewExpiresAt(e.target.value)}
+                  className="w-full rounded-lg border px-4 py-2"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                />
+              </div>
               <button
                 onClick={handleAdd}
                 className="w-full rounded-lg px-4 py-2 font-medium text-white"
@@ -308,7 +369,9 @@ export default function AdminAvancePage() {
                 <thead>
                   <tr className="border-b" style={{ borderColor: "var(--color-border)" }}>
                     <th className="px-6 py-3 text-left text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Utilisateur</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Justification</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Ajouté le</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Expiration</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Ajouté par</th>
                     <th className="px-6 py-3 text-right text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>Actions</th>
                   </tr>
@@ -336,7 +399,14 @@ export default function AdminAvancePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                        {entry.justification || "—"}
+                      </td>
+                      <td className="px-6 py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                         {entry.addedAt ? new Date(entry.addedAt).toLocaleDateString("fr-FR") : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-sm" style={{ color: entry.isExpired ? "#ef4444" : "var(--color-text-secondary)" }}>
+                        {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString("fr-FR") : "—"}
+                        {entry.isExpired ? " (expiré)" : ""}
                       </td>
                       <td className="px-6 py-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                         {entry.addedByUsername || entry.addedBy || "—"}

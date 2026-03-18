@@ -996,7 +996,7 @@ export default function EvaluationDPage() {
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
           >
-            ← Retour au Hub Évaluation
+            ← Retour au Dashboard Évaluation
           </Link>
           <Link
             href="/admin/migration/evaluations"

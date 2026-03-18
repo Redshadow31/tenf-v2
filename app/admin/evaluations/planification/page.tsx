@@ -320,10 +320,10 @@ export default function PlanificationPage() {
     <div className="text-white">
       <div className="mb-8">
         <Link
-          href="/admin/integration"
+          href="/admin/onboarding"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
-          ← Retour à l'intégration
+          ← Retour à l'onboarding
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">
           Planification des Intégrations

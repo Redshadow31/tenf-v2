@@ -506,7 +506,7 @@ export default function TwitchRulesPage() {
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour au Hub Formation
+            Retour au Dashboard Formation
           </Link>
           <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
             TENF Academy : Comprendre Twitch et ses règles

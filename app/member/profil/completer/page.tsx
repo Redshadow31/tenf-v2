@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AtSign, CheckCircle2, Circle, FileText, Instagram, Music2, UserCircle2, X } from "lucide-react";
+import { AtSign, CheckCircle2, Circle, Clock3, FileText, Globe2, Instagram, Music2, UserCircle2, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
@@ -184,6 +184,16 @@ export default function MemberProfileCompletePage() {
   const canSubmit = requiredIdentityReady;
   const completionPercent = (requiredIdentityReady ? 70 : 0) + (hasPublicDescription ? 30 : 0);
   const activeTabIndex = TAB_ORDER.indexOf(activeTab);
+  const identityChecks = [
+    { label: "Pseudo Discord", done: form.discordUsername.trim().length > 0 },
+    { label: "Nom createur", done: form.creatorName.trim().length > 0 },
+    { label: "Lien Twitch", done: form.twitchChannelUrl.trim().length > 0 },
+    { label: "Parrain TENF", done: form.parrain.trim().length > 0 },
+    { label: "Fuseau horaire", done: form.timezone.trim().length > 0 },
+    { label: "Pays", done: form.countryCode.trim().length > 0 },
+    { label: "Langue", done: form.primaryLanguage.trim().length > 0 },
+  ];
+  const identityDoneCount = identityChecks.filter((item) => item.done).length;
 
   function goToNextTab() {
     const next = TAB_ORDER[activeTabIndex + 1];
@@ -407,11 +417,65 @@ export default function MemberProfileCompletePage() {
         </div>
       ) : null}
       <TwitchLinkCard />
+      <section
+        className="rounded-2xl border p-4 md:p-5"
+        style={{
+          borderColor: "rgba(145, 70, 255, 0.30)",
+          background:
+            "radial-gradient(circle at 8% 0%, rgba(145, 70, 255, 0.14), transparent 38%), radial-gradient(circle at 92% 0%, rgba(14, 165, 233, 0.10), transparent 30%), linear-gradient(180deg, rgba(17, 24, 39, 0.30), rgba(17, 24, 39, 0.08))",
+        }}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
+              Onboarding profil
+            </p>
+            <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+              Termine les infos essentielles pour activer ton espace
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              Tu peux soumettre meme si la bio publique est vide, puis enrichir plus tard.
+            </p>
+          </div>
+          <div className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+            Progression actuelle: <strong>{completionPercent}%</strong>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+            <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              <UserCircle2 size={14} />
+              Identite
+            </div>
+            <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              {identityDoneCount}/{identityChecks.length} champs obligatoires
+            </p>
+          </div>
+          <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+            <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              <FileText size={14} />
+              Fiche publique
+            </div>
+            <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              {hasPublicDescription ? "Description ajoutee" : "Description optionnelle"}
+            </p>
+          </div>
+          <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+            <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              <Clock3 size={14} />
+              Validation staff
+            </div>
+            <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              Soumission unique, validation ensuite
+            </p>
+          </div>
+        </div>
+      </section>
       <MemberInfoCard title="Parcours de completion">
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Remplis les 2 onglets puis envoie une seule soumission. Les changements restent en attente de validation staff.
+          Remplis les 2 onglets dans l ordre, puis envoie une seule soumission. Les changements restent en attente de validation staff.
         </p>
-        <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+        <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "rgba(145, 70, 255, 0.35)", backgroundColor: "var(--color-surface)" }}>
           <div className="mb-2 flex items-center justify-between text-sm">
             <span style={{ color: "var(--color-text)" }}>Progression du profil</span>
             <span style={{ color: "var(--color-text-secondary)" }}>{completionPercent}%</span>
@@ -424,7 +488,7 @@ export default function MemberProfileCompletePage() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
+          <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
               Etape 1
             </p>
@@ -434,8 +498,11 @@ export default function MemberProfileCompletePage() {
             <p className="mt-1 text-xs" style={{ color: requiredIdentityReady ? "#22c55e" : "var(--color-text-secondary)" }}>
               {requiredIdentityReady ? "Champs obligatoires completes." : "Completer les champs obligatoires (*)."}
             </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              {identityDoneCount}/{identityChecks.length} requis valides
+            </p>
           </div>
-          <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
+          <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
               Etape 2
             </p>
@@ -454,8 +521,8 @@ export default function MemberProfileCompletePage() {
             onClick={() => setActiveTab("identite")}
             className="rounded-xl border px-3 py-3 text-left text-sm transition-colors"
             style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: activeTab === "identite" ? "rgba(145, 70, 255, 0.14)" : "transparent",
+              borderColor: activeTab === "identite" ? "rgba(145, 70, 255, 0.55)" : "var(--color-border)",
+              backgroundColor: activeTab === "identite" ? "rgba(145, 70, 255, 0.14)" : "var(--color-surface)",
               color: "var(--color-text)",
             }}
           >
@@ -466,14 +533,17 @@ export default function MemberProfileCompletePage() {
               </span>
               {requiredIdentityReady ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
             </span>
+            <span className="mt-1 block text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Coordonnees, lien Twitch, parrainage, localisation.
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("public")}
             className="rounded-xl border px-3 py-3 text-left text-sm transition-colors"
             style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: activeTab === "public" ? "rgba(145, 70, 255, 0.14)" : "transparent",
+              borderColor: activeTab === "public" ? "rgba(145, 70, 255, 0.55)" : "var(--color-border)",
+              backgroundColor: activeTab === "public" ? "rgba(145, 70, 255, 0.14)" : "var(--color-surface)",
               color: "var(--color-text)",
             }}
           >
@@ -484,12 +554,23 @@ export default function MemberProfileCompletePage() {
               </span>
               {hasPublicDescription ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
             </span>
+            <span className="mt-1 block text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Description, jeux proposes, et reseaux visibles.
+            </span>
           </button>
         </div>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
           {activeTab === "identite" ? (
             <section className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                  Identite TENF
+                </p>
+                <span className="text-xs rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+                  {identityDoneCount}/{identityChecks.length} obligatoires
+                </span>
+              </div>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 Renseigne les informations d identification et d activation membre.
               </p>
@@ -549,7 +630,7 @@ export default function MemberProfileCompletePage() {
                   type="button"
                   onClick={() => setActiveTab("public")}
                   className="rounded-lg border px-4 py-2 text-sm"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  style={{ borderColor: "rgba(145, 70, 255, 0.50)", color: "var(--color-text)" }}
                 >
                   Continuer vers la fiche publique
                 </button>
@@ -565,6 +646,14 @@ export default function MemberProfileCompletePage() {
             </section>
           ) : (
             <section className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                  Fiche publique
+                </p>
+                <span className="text-xs rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: hasPublicDescription ? "#22c55e" : "var(--color-text-secondary)" }}>
+                  {hasPublicDescription ? "Description ajoutee" : "Description optionnelle"}
+                </span>
+              </div>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 Ces informations alimentent ta fiche publique streamer.
               </p>
@@ -668,10 +757,20 @@ export default function MemberProfileCompletePage() {
               </p>
             ) : null}
           </div>
-
-          <button type="submit" disabled={creatingProfile || !canSubmit} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
-            {creatingProfile ? "Envoi..." : "Envoyer mon profil a valider"}
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3" style={{ borderColor: "rgba(145, 70, 255, 0.30)", backgroundColor: "var(--color-surface)" }}>
+            <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              <Globe2 size={14} />
+              La soumission envoie les infos pour validation staff.
+            </div>
+            <button
+              type="submit"
+              disabled={creatingProfile || !canSubmit}
+              className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+              style={{ borderColor: "rgba(145, 70, 255, 0.60)", color: "var(--color-text)" }}
+            >
+              {creatingProfile ? "Envoi..." : "Envoyer mon profil a valider"}
+            </button>
+          </div>
         </form>
       </MemberInfoCard>
     </MemberSurface>

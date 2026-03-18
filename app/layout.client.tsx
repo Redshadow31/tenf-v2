@@ -15,15 +15,54 @@ type ClientLayoutProps = {
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const isMemberArea = pathname?.startsWith("/member");
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const isMemberArea = pathname?.startsWith("/member") || pathname?.startsWith("/membres");
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 1279px)").matches;
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1023px)");
-    const updateViewport = () => setIsMobileViewport(media.matches);
-    updateViewport();
-    media.addEventListener("change", updateViewport);
-    return () => media.removeEventListener("change", updateViewport);
+    const mediaQuery = window.matchMedia("(max-width: 1279px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobileViewport(event.matches);
+      if (!event.matches) {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    setIsMobileViewport(mediaQuery.matches);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+    if (!isMobileViewport) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileSidebarOpen, isMobileViewport]);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
   // Pour les routes admin, laisser le layout admin gérer l'affichage
@@ -38,18 +77,37 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     );
   }
 
-  const shouldRenderSidebar = !isMobileViewport || Boolean(isMemberArea);
+  const shouldRenderDesktopSidebar = !isMobileViewport;
+  const shouldRenderMobileSidebarTrigger = isMobileViewport && Boolean(isMemberArea);
+  const shouldRenderMobileSidebar = isMobileViewport && isMobileSidebarOpen;
 
   return (
     <SessionProvider>
       <ThemeProvider>
         <ConnectionTracker />
         <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-          <Header />
+          <Header onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined} />
           <div className="flex">
-            {shouldRenderSidebar ? <UserSidebar /> : null}
+            {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
             <main className="flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
           </div>
+          {shouldRenderMobileSidebar ? (
+            <div className="fixed inset-0 z-[70] xl:hidden" role="dialog" aria-modal="true" aria-label="Panneau membre">
+              <button
+                type="button"
+                className="absolute inset-0 h-full w-full"
+                style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                aria-label="Fermer le panneau membre"
+              />
+              <UserSidebar
+                className="relative z-10 h-full max-w-[85vw] overflow-y-auto shadow-2xl"
+                onNavigate={() => setIsMobileSidebarOpen(false)}
+                onRequestClose={() => setIsMobileSidebarOpen(false)}
+                showMobileCloseButton={true}
+              />
+            </div>
+          ) : null}
         </div>
       </ThemeProvider>
     </SessionProvider>

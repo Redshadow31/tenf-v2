@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import MemberModal from "@/components/MemberModal";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -174,6 +175,7 @@ function hashString(input: string): number {
 }
 
 export default function Page() {
+  const searchParams = useSearchParams();
   const liveSectionRef = useRef<HTMLDivElement | null>(null);
   const sessionShuffleSeedRef = useRef<number>(Math.floor(Math.random() * 1_000_000_000));
 
@@ -198,6 +200,7 @@ export default function Page() {
   const [discordTotalMembersCount, setDiscordTotalMembersCount] = useState<number | null>(null);
   const [activeCreatorsCount, setActiveCreatorsCount] = useState<number | null>(null);
   const [loadingCommunityStats, setLoadingCommunityStats] = useState(true);
+  const [queryModalHandled, setQueryModalHandled] = useState(false);
 
   const showFollowStatuses = followStatusesState.authenticated && followStatusesState.linked;
 
@@ -682,6 +685,26 @@ export default function Page() {
     });
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    if (queryModalHandled) return;
+    if (activeMembers.length === 0) return;
+
+    const requestedLogin = normalizeText(searchParams.get("member"));
+    if (!requestedLogin) {
+      setQueryModalHandled(true);
+      return;
+    }
+
+    const target = activeMembers.find((member) => normalizeText(member.twitchLogin) === requestedLogin);
+    if (!target) {
+      setQueryModalHandled(true);
+      return;
+    }
+
+    handleMemberClick(target);
+    setQueryModalHandled(true);
+  }, [activeMembers, queryModalHandled, searchParams]);
 
   return (
     <div className="space-y-8 pb-10">

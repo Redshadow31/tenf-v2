@@ -23,7 +23,7 @@ const MAX_LIVE_TYPE_LENGTH = 80;
 const MAX_TITLE_LENGTH = 120;
 
 function isNetlify(): boolean {
-  return typeof getStore === "function" || !!process.env.NETLIFY || !!process.env.NETLIFY_DEV;
+  return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV;
 }
 
 function sortByDateTimeAsc(a: MemberStreamPlanning, b: MemberStreamPlanning): number {

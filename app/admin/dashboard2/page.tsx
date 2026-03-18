@@ -15,6 +15,8 @@ import {
 } from "recharts";
 import { ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
+import AdminToastStack, { type AdminToastItem, type AdminToastType } from "@/components/admin/ui/AdminToastStack";
+import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 
 interface MemberEventLite {
   id: string;
@@ -56,6 +58,26 @@ interface WorkflowStep {
   href: string;
   status: "todo" | "in_progress" | "done";
   helper: string;
+}
+
+interface OpsQueueItem {
+  id: string;
+  title: string;
+  href: string;
+  count: number;
+  priority: "P1" | "P2" | "P3";
+  slaHours: number;
+  owner?: string;
+}
+
+interface DashboardSavedView {
+  id: string;
+  label: string;
+  roleScope: string;
+  filters: {
+    priorities: Array<OpsQueueItem["priority"]>;
+    onlyWithCount: boolean;
+  };
 }
 
 interface StaffApplicationLite {
@@ -140,6 +162,52 @@ const subtleMutedText: CSSProperties = {
 const focusRingClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#e6c773] focus-visible:ring-offset-[#17171d]";
 
+const DASHBOARD_VIEW_STORAGE_KEY = "tenf:admin:dashboard2:saved-views";
+const OPS_OWNER_STORAGE_KEY = "tenf:admin:dashboard2:ops-owners";
+
+function createToast(type: AdminToastType, title: string, description?: string): AdminToastItem {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    title,
+    description,
+  };
+}
+
+function defaultViewForRole(role: string | null): DashboardSavedView {
+  const normalized = (role || "").toUpperCase();
+  if (normalized.includes("MODERATEUR")) {
+    return {
+      id: "moderation",
+      label: "Modération",
+      roleScope: normalized || "ALL",
+      filters: { priorities: ["P1", "P2"], onlyWithCount: true },
+    };
+  }
+  if (normalized.includes("SOUTIEN")) {
+    return {
+      id: "support",
+      label: "Support",
+      roleScope: normalized || "ALL",
+      filters: { priorities: ["P2", "P3"], onlyWithCount: true },
+    };
+  }
+  if (normalized.includes("ADMIN")) {
+    return {
+      id: "operations",
+      label: "Opérations",
+      roleScope: normalized || "ALL",
+      filters: { priorities: ["P1", "P2", "P3"], onlyWithCount: true },
+    };
+  }
+  return {
+    id: "default",
+    label: "Vue globale",
+    roleScope: normalized || "ALL",
+    filters: { priorities: ["P1", "P2", "P3"], onlyWithCount: true },
+  };
+}
+
 export default function Dashboard2Page() {
   const [currentAdmin, setCurrentAdmin] = useState<{ username: string; role: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -201,9 +269,54 @@ export default function Dashboard2Page() {
     upcomingSpotlights: 0,
     pendingEventValidations: 0,
   });
+  const [opsOwners, setOpsOwners] = useState<Record<string, string>>({});
+  const [toasts, setToasts] = useState<AdminToastItem[]>([]);
+  const [savedViews, setSavedViews] = useState<DashboardSavedView[]>([]);
+  const [selectedViewId, setSelectedViewId] = useState<string>("default");
+  const [newViewLabel, setNewViewLabel] = useState("");
+  const [recapSearch, setRecapSearch] = useState("");
+  const [recapPage, setRecapPage] = useState(1);
+  const [recapPageSize, setRecapPageSize] = useState(8);
 
   const currentMonth = monthKey();
   const evaluationMonth = previousMonthKey();
+
+  const pushToast = (type: AdminToastType, title: string, description?: string) => {
+    const toast = createToast(type, title, description);
+    setToasts((prev) => [...prev, toast]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== toast.id));
+    }, 3500);
+  };
+
+  useEffect(() => {
+    try {
+      const rawOwners = window.localStorage.getItem(OPS_OWNER_STORAGE_KEY);
+      if (rawOwners) {
+        const parsed = JSON.parse(rawOwners) as Record<string, string>;
+        if (parsed && typeof parsed === "object") {
+          setOpsOwners(parsed);
+        }
+      }
+      const rawViews = window.localStorage.getItem(DASHBOARD_VIEW_STORAGE_KEY);
+      if (rawViews) {
+        const parsed = JSON.parse(rawViews) as DashboardSavedView[];
+        if (Array.isArray(parsed)) {
+          setSavedViews(parsed);
+        }
+      }
+    } catch {
+      // Ignore invalid localStorage payloads.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(OPS_OWNER_STORAGE_KEY, JSON.stringify(opsOwners));
+    } catch {
+      // Ignore storage errors.
+    }
+  }, [opsOwners]);
 
   useEffect(() => {
     async function loadCurrentAdminHeader() {
@@ -228,319 +341,106 @@ export default function Dashboard2Page() {
   }, []);
 
   useEffect(() => {
-    async function loadOpsData() {
-      try {
-        const [
-          summaryRes,
-          eventsRes,
-          notesRes,
-          followSummaryRes,
-          vipMonthRes,
-          staffApplicationsRes,
-          profileValidationRes,
-          raidsValidationRes,
-          pointsQueueRes,
-          raidsSubSummaryRes,
-        ] = await Promise.all([
-          fetch("/api/admin/dashboard/summary", { cache: "no-store" }),
-          fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
-          fetch(`/api/evaluations/synthesis/save?month=${evaluationMonth}`, { cache: "no-store" }),
-          fetch(`/api/follow/summary/${currentMonth}`, { cache: "no-store" }),
-          fetch(`/api/vip-month/save?month=${currentMonth}`, { cache: "no-store" }),
-          fetch("/api/staff-applications", { cache: "no-store" }),
-          fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
-          fetch("/api/admin/engagement/raids-declarations?status=all", { cache: "no-store" }),
-          fetch("/api/admin/engagement/raids-sub/points?includeTodo=true&includeHistory=false", { cache: "no-store" }),
-          fetch("/api/admin/engagement/raids-sub/summary", { cache: "no-store" }),
-        ]);
-
-        if (summaryRes.ok) {
-          const summaryData = await summaryRes.json();
-          setDashboardSummary(
-            (summaryData?.data || {
-              total: 0,
-              missingDiscord: 0,
-              missingTwitchId: 0,
-              incomplete: 0,
-              reviewOverdue: 0,
-              reviewDue7d: 0,
-              avgCompletion: 0,
-              validatedProfiles: 0,
-              communityMonthCount: 0,
-            }) as DashboardSummary
-          );
-        }
-
-        if (eventsRes.ok) {
-          const eventsData = await eventsRes.json();
-          setEvents((eventsData.events || []) as MemberEventLite[]);
-        }
-
-        if (notesRes.ok) {
-          const notesData = await notesRes.json();
-          const finalNotes = notesData.finalNotes || {};
-          setFinalNotesCount(Object.keys(finalNotes).length);
-        }
-
-        if (followSummaryRes.ok) {
-          const followSummaryData = await followSummaryRes.json();
-          const summary = (followSummaryData.summary || []) as FollowSummaryItem[];
-          const overdueNames = summary
-            .filter((item) => item.status === "obsolete")
-            .map((item) => item.staffName);
-          setFollowOverdueStaffNames(overdueNames);
-        }
-
-        if (vipMonthRes.ok) {
-          const vipMonthData = await vipMonthRes.json();
-          const vipLogins = Array.isArray(vipMonthData?.vipLogins) ? vipMonthData.vipLogins : [];
-          setVipMonthCount(vipLogins.length);
-        }
-
-        if (staffApplicationsRes.ok) {
-          const applicationsData = await staffApplicationsRes.json();
-          const applications = (applicationsData.applications || []) as StaffApplicationLite[];
-          const pendingStatuses = new Set<StaffApplicationLite["admin_status"]>([
-            "nouveau",
-            "a_contacter",
-            "entretien_prevu",
-          ]);
-          setStaffApplicationsPendingCount(
-            applications.filter((app) => pendingStatuses.has(app.admin_status)).length
-          );
-          setStaffApplicationsRedFlagCount(applications.filter((app) => app.has_red_flag).length);
-        }
-
-        if (profileValidationRes.ok) {
-          const profileValidationData = await profileValidationRes.json();
-          setProfileValidationPendingCount((profileValidationData.pending || []).length);
-        }
-
-        if (raidsValidationRes.ok) {
-          const raidsValidationData = await raidsValidationRes.json();
-          const declarations = (raidsValidationData.declarations || []) as RaidDeclarationLite[];
-          const pendingCount = declarations.filter(
-            (item) => item.status === "processing" || item.status === "to_study"
-          ).length;
-          setRaidsPendingCount(pendingCount);
-        }
-
-        if (pointsQueueRes.ok) {
-          const pointsQueueData = await pointsQueueRes.json();
-          setDiscordPointsPendingCount(Number(pointsQueueData?.counters?.todo || 0));
-        }
-
-        if (raidsSubSummaryRes.ok) {
-          const raidsSubSummaryData = await raidsSubSummaryRes.json();
-          setRaidsIgnoredToProcessCount(Number(raidsSubSummaryData?.eventStatus?.ignored || 0));
-        }
-      } catch (error) {
-        console.error("Erreur chargement dashboard2:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadOpsData();
-  }, [currentMonth, evaluationMonth]);
-  const communityMonthCount = dashboardSummary.communityMonthCount;
+    const role = currentAdmin?.role || null;
+    const fallback = defaultViewForRole(role);
+    const existing =
+      savedViews.find((view) => view.id === selectedViewId) ||
+      savedViews.find((view) => view.roleScope === (role || "ALL"));
+    setSelectedViewId(existing?.id || fallback.id);
+  }, [currentAdmin?.role, savedViews, selectedViewId]);
 
   useEffect(() => {
-    async function loadVisualData() {
+    async function loadDashboardAggregate() {
       try {
-        const [dashboardRes, spotlightRes, raidsRes, discordMonthRes] = await Promise.all([
-          fetch("/api/dashboard/data", { cache: "no-store" }),
-          fetch("/api/spotlight/progression", { cache: "no-store" }),
-          fetch(`/api/discord/raids/data-v2?month=${currentMonth}`, { cache: "no-store" }),
-          fetch(`/api/admin/discord-activity/data?month=${currentMonth}`, { cache: "no-store" }),
-        ]);
+        const response = await fetch(
+          `/api/admin/dashboard/aggregate?month=${encodeURIComponent(currentMonth)}&evaluationMonth=${encodeURIComponent(
+            evaluationMonth
+          )}`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
-        if (dashboardRes.ok) {
-          const dashboardData = await dashboardRes.json();
-          const growth = dashboardData?.data?.discordGrowth || [];
-          const daily = dashboardData?.data?.discordDailyActivity || [];
-          setDiscordGrowthData(growth);
+        const payload = await response.json();
+        const data = payload?.data;
 
-          const byMonth = new Map<string, { date: Date; messages: number; vocals: number }>();
-          for (const day of daily) {
-            const d = new Date(day.date);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-            const current = byMonth.get(key) || { date: new Date(d.getFullYear(), d.getMonth(), 1), messages: 0, vocals: 0 };
-            current.messages += Number(day.messages || 0);
-            current.vocals += Number(day.vocals || 0);
-            byMonth.set(key, current);
+        if (!data) {
+          throw new Error("Payload agrégé invalide");
+        }
+
+        setDashboardSummary(
+          (data.summary || {
+            total: 0,
+            missingDiscord: 0,
+            missingTwitchId: 0,
+            incomplete: 0,
+            reviewOverdue: 0,
+            reviewDue7d: 0,
+            avgCompletion: 0,
+            validatedProfiles: 0,
+            communityMonthCount: 0,
+          }) as DashboardSummary
+        );
+
+        setEvents((data.ops?.events || []) as MemberEventLite[]);
+        setFinalNotesCount(Number(data.ops?.finalNotesCount || 0));
+        setFollowOverdueStaffNames((data.ops?.followOverdueStaffNames || []) as string[]);
+        setVipMonthCount(Number(data.ops?.vipMonthCount || 0));
+        setStaffApplicationsPendingCount(Number(data.ops?.staffApplicationsPendingCount || 0));
+        setStaffApplicationsRedFlagCount(Number(data.ops?.staffApplicationsRedFlagCount || 0));
+        setProfileValidationPendingCount(Number(data.ops?.profileValidationPendingCount || 0));
+        setRaidsPendingCount(Number(data.ops?.raidsPendingCount || 0));
+        setDiscordPointsPendingCount(Number(data.ops?.discordPointsPendingCount || 0));
+        setRaidsIgnoredToProcessCount(Number(data.ops?.raidsIgnoredToProcessCount || 0));
+
+        setDiscordGrowthData((data.visual?.discordGrowthData || []) as Array<{ month: string; value: number }>);
+        setMonthlyActivityData(
+          (data.visual?.monthlyActivityData || []) as Array<{ month: string; messages: number; vocals: number }>
+        );
+        setSpotlightProgressionData(
+          (data.visual?.spotlightProgressionData || []) as Array<{ month: string; value: number }>
+        );
+        setRaidStats(
+          data.visual?.raidStats || {
+            totalRaidsReceived: 0,
+            totalRaidsSent: 0,
+            topRaiders: [],
+            topTargets: [],
           }
-          const aggregated = Array.from(byMonth.values())
-            .sort((a, b) => a.date.getTime() - b.date.getTime())
-            .slice(-12)
-            .map((it) => ({
-              month: monthLabelFromDate(it.date),
-              messages: it.messages,
-              vocals: Math.round(it.vocals * 10) / 10,
-            }));
-          setMonthlyActivityData(aggregated);
-        }
+        );
+        setDiscordMonthStats(
+          data.visual?.discordMonthStats || {
+            totalMessages: 0,
+            totalVoiceHours: 0,
+            topMessages: [],
+            topVocals: [],
+          }
+        );
 
-        if (spotlightRes.ok) {
-          const spotlightData = await spotlightRes.json();
-          setSpotlightProgressionData(spotlightData?.data || []);
-        }
-
-        if (raidsRes.ok) {
-          const raidsData = await raidsRes.json();
-          setRaidStats({
-            totalRaidsReceived: raidsData?.stats?.totalRaidsRecus || 0,
-            totalRaidsSent: raidsData?.stats?.totalRaidsFaits || 0,
-            topRaiders: raidsData?.stats?.topRaiders || [],
-            topTargets: raidsData?.stats?.topTargets || [],
-          });
-        }
-
-        if (discordMonthRes.ok) {
-          const discordMonthData = await discordMonthRes.json();
-          setDiscordMonthStats({
-            totalMessages: discordMonthData?.data?.totalMessages || 0,
-            totalVoiceHours: discordMonthData?.data?.totalVoiceHours || 0,
-            topMessages: discordMonthData?.data?.topMessages || [],
-            topVocals: discordMonthData?.data?.topVocals || [],
-          });
-        }
-      } catch (error) {
-        console.error("Erreur chargement visual data:", error);
-      } finally {
-        setLoadingVisual(false);
-      }
-    }
-
-    if (loading) return;
-
-    const timer = window.setTimeout(() => {
-      loadVisualData();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [currentMonth, loading]);
-
-  useEffect(() => {
-    async function loadEventsRecapAndUpcomingKpis() {
-      try {
-        const now = new Date();
-        const [eventsRegistrationsRes, integrationsRes] = await Promise.all([
-          fetch("/api/admin/events/registrations", { cache: "no-store" }),
-          fetch("/api/integrations?admin=true", { cache: "no-store" }),
-        ]);
-
-        if (!eventsRegistrationsRes.ok) {
-          setRecapEvents([]);
-          setUpcomingKpis((prev) => ({
-            ...prev,
+        setRecapEvents((data.recap?.recapEvents || []) as RecapEvent[]);
+        setUpcomingKpis(
+          data.recap?.upcomingKpis || {
             nextMeetingRegistrations: 0,
             nextEventRegistrations: 0,
             nextEventLabel: "",
             upcomingSpotlights: 0,
-          }));
-          return;
-        }
-
-        const registrationsData = await eventsRegistrationsRes.json();
-        const baseEvents = (registrationsData.eventsWithRegistrations || []) as EventWithRegistrationsLite[];
-        const pastEvents = baseEvents.filter((item) => new Date(item.event.date) < now);
-
-        const withPresences: RecapEvent[] = pastEvents.map((item) => ({
-          event: {
-            id: item.event.id,
-            title: item.event.title,
-            date: item.event.date,
-            category: item.event.category || "Non classé",
-            isPublished: item.event.isPublished ?? false,
-          },
-          registrationCount: Number(item.registrationCount || 0),
-          presenceCount: Number(item.presenceCount || 0),
-        }));
-
-        setRecapEvents(withPresences);
-
-        // Événements passés avec inscrits mais sans présence validée
-        const pendingValidations = withPresences.filter(
-          (item) => item.registrationCount > 0 && item.presenceCount === 0
-        ).length;
-        setUpcomingKpis((prev) => ({
-          ...prev,
-          pendingEventValidations: pendingValidations,
-        }));
-
-        let nextMeetingRegistrations = 0;
-        let nextEventRegistrations = 0;
-        let nextEventLabel = "";
-        let upcomingSpotlights = 0;
-
-        if (eventsRegistrationsRes.ok) {
-          const futureEvents = baseEvents
-            .filter((item) => new Date(item.event.date) >= now)
-            .sort((a, b) => new Date(a.event.date).getTime() - new Date(b.event.date).getTime());
-
-          const findNextRegistrationCount = (matcher: (category: string) => boolean): number => {
-            const found = futureEvents.find((item) => matcher(normalizeCategoryLabel(item.event.category)));
-            return found?.registrationCount || 0;
-          };
-
-          const nextMeetingFromEvents = findNextRegistrationCount(
-            (category) => category.includes("integration") || category.includes("reunion")
-          );
-          nextMeetingRegistrations = nextMeetingFromEvents;
-          const nextEvent = futureEvents[0];
-          nextEventRegistrations = Number(nextEvent?.registrationCount || 0);
-          nextEventLabel = String(nextEvent?.event?.title || "");
-          upcomingSpotlights = futureEvents.filter((item) =>
-            normalizeCategoryLabel(item.event.category).includes("spotlight")
-          ).length;
-        }
-
-        // Fallback legacy pour la réunion d'intégration (sans doublonner avec la source events)
-        if (nextMeetingRegistrations === 0 && integrationsRes.ok) {
-          const integrationsData = await integrationsRes.json();
-          const integrations = (integrationsData.integrations || []) as Array<{
-            id: string;
-            date: string;
-            isPublished?: boolean;
-          }>;
-          const nextMeeting = integrations
-            .filter((integration) => integration.isPublished !== false && new Date(integration.date) >= now)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
-
-          if (nextMeeting?.id) {
-            const regsRes = await fetch(`/api/admin/integrations/${nextMeeting.id}/registrations`, {
-              cache: "no-store",
-            });
-            if (regsRes.ok) {
-              const regsData = await regsRes.json();
-              nextMeetingRegistrations = (regsData.registrations || []).length;
-            }
+            pendingEventValidations: 0,
           }
-        }
-
-        setUpcomingKpis((prev) => ({
-          nextMeetingRegistrations,
-          nextEventRegistrations,
-          nextEventLabel,
-          upcomingSpotlights,
-          pendingEventValidations: prev.pendingEventValidations,
-        }));
+        );
       } catch (error) {
-        console.error("Erreur chargement recap/KPIs événements:", error);
+        console.error("Erreur chargement dashboard agrégé:", error);
       } finally {
+        setLoading(false);
+        setLoadingVisual(false);
         setLoadingRecap(false);
       }
     }
 
-    if (loading) return;
-
-    const timer = window.setTimeout(() => {
-      loadEventsRecapAndUpcomingKpis();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [loading]);
+    loadDashboardAggregate();
+    return undefined;
+  }, [currentMonth, evaluationMonth]);
+  const communityMonthCount = dashboardSummary.communityMonthCount;
 
   const kpis = useMemo(() => {
     return {
@@ -569,10 +469,145 @@ export default function Dashboard2Page() {
     raidsIgnoredToProcessCount,
   ]);
 
+  const activeView = useMemo(() => {
+    const role = currentAdmin?.role || null;
+    return (
+      savedViews.find((view) => view.id === selectedViewId) ||
+      defaultViewForRole(role)
+    );
+  }, [currentAdmin?.role, savedViews, selectedViewId]);
+
+  const opsQueue = useMemo<OpsQueueItem[]>(() => {
+    const queue: OpsQueueItem[] = [
+      {
+        id: "raids_pending",
+        title: "Raids à valider",
+        href: "/admin/engagement/raids-a-valider",
+        count: kpis.raidsPendingCount,
+        priority: "P1",
+        slaHours: 12,
+      },
+      {
+        id: "profile_validation",
+        title: "Validations profil",
+        href: "/admin/membres/validation-profil",
+        count: kpis.profileValidationPendingCount,
+        priority: "P1",
+        slaHours: 24,
+      },
+      {
+        id: "staff_applications",
+        title: "Postulations staff",
+        href: "/admin/membres/postulations",
+        count: kpis.staffApplicationsPendingCount,
+        priority: "P1",
+        slaHours: 24,
+      },
+      {
+        id: "members_incomplete",
+        title: "Fiches membres incomplètes",
+        href: "/admin/membres/incomplets",
+        count: kpis.incomplete,
+        priority: "P2",
+        slaHours: 72,
+      },
+      {
+        id: "points_pending",
+        title: "Points Discord en attente",
+        href: "/admin/engagement/points-discord",
+        count: kpis.discordPointsPendingCount,
+        priority: "P2",
+        slaHours: 48,
+      },
+      {
+        id: "events_pending_validation",
+        title: "Événements sans présence validée",
+        href: "/admin/events/presence",
+        count: upcomingKpis.pendingEventValidations,
+        priority: "P3",
+        slaHours: 96,
+      },
+    ];
+
+    return queue
+      .map((item) => ({ ...item, owner: opsOwners[item.id] }))
+      .sort((a, b) => {
+        const p = { P1: 1, P2: 2, P3: 3 } as const;
+        if (p[a.priority] !== p[b.priority]) return p[a.priority] - p[b.priority];
+        return b.count - a.count;
+      });
+  }, [kpis, upcomingKpis.pendingEventValidations, opsOwners]);
+
+  const filteredOpsQueue = useMemo(() => {
+    const allowed = new Set(activeView.filters.priorities);
+    return opsQueue.filter((item) => {
+      if (!allowed.has(item.priority)) return false;
+      if (activeView.filters.onlyWithCount && item.count <= 0) return false;
+      return true;
+    });
+  }, [activeView.filters, opsQueue]);
+
+  const assignOwner = (itemId: string) => {
+    const defaultOwner = currentAdmin?.username || "non assigné";
+    setOpsOwners((prev) => ({ ...prev, [itemId]: defaultOwner }));
+    pushToast("success", "Owner mis à jour", `Assigné à ${defaultOwner}`);
+  };
+
+  const saveCurrentView = () => {
+    const label = newViewLabel.trim();
+    if (!label) {
+      pushToast("warning", "Nom de vue requis", "Ajoute un libellé avant d'enregistrer.");
+      return;
+    }
+    const roleScope = currentAdmin?.role || "ALL";
+    const customView: DashboardSavedView = {
+      id: `custom-${Date.now()}`,
+      label,
+      roleScope,
+      filters: activeView.filters,
+    };
+    const nextViews = [...savedViews, customView];
+    setSavedViews(nextViews);
+    setSelectedViewId(customView.id);
+    setNewViewLabel("");
+    try {
+      window.localStorage.setItem(DASHBOARD_VIEW_STORAGE_KEY, JSON.stringify(nextViews));
+    } catch {
+      // Ignore localStorage failures.
+    }
+    pushToast("success", "Vue enregistrée", `Vue "${label}" sauvegardée.`);
+  };
+
   const filteredRecapEvents = useMemo(() => {
-    if (recapMonthFilter === "all") return recapEvents;
-    return recapEvents.filter((item) => item.event.date.startsWith(recapMonthFilter));
-  }, [recapEvents, recapMonthFilter]);
+    const q = recapSearch.trim().toLowerCase();
+    const byMonth =
+      recapMonthFilter === "all"
+        ? recapEvents
+        : recapEvents.filter((item) => item.event.date.startsWith(recapMonthFilter));
+    if (!q) return byMonth;
+    return byMonth.filter((item) => {
+      const title = item.event.title.toLowerCase();
+      const category = item.event.category.toLowerCase();
+      return title.includes(q) || category.includes(q);
+    });
+  }, [recapEvents, recapMonthFilter, recapSearch]);
+
+  const sortedRecapEvents = useMemo(() => {
+    return [...filteredRecapEvents]
+      .map((item) => ({
+        ...item,
+        rate:
+          item.registrationCount > 0
+            ? Math.round((item.presenceCount / item.registrationCount) * 1000) / 10
+            : 0,
+      }))
+      .sort((a, b) => b.rate - a.rate);
+  }, [filteredRecapEvents]);
+
+  const paginatedRecapEvents = useMemo(() => {
+    const start = (recapPage - 1) * recapPageSize;
+    return sortedRecapEvents.slice(start, start + recapPageSize);
+  }, [sortedRecapEvents, recapPage, recapPageSize]);
 
   const recapCategoryStats = useMemo(() => {
     const byCategory = new Map<string, { count: number; registrations: number; presences: number }>();
@@ -610,6 +645,10 @@ export default function Dashboard2Page() {
     }
     return Array.from(set).sort((a, b) => (a < b ? 1 : -1));
   }, [recapEvents]);
+
+  useEffect(() => {
+    setRecapPage(1);
+  }, [recapMonthFilter, recapSearch, recapPageSize]);
 
   const workflow: WorkflowStep[] = useMemo(() => {
     const overduePreview =
@@ -691,7 +730,7 @@ export default function Dashboard2Page() {
       color: "text-amber-300",
     },
     {
-      title: "Raids a valider",
+      title: "Raids à valider",
       value: kpis.raidsPendingCount,
       hint: "Raids en attente sur validation staff",
       href: "/admin/engagement/raids-a-valider",
@@ -726,16 +765,16 @@ export default function Dashboard2Page() {
       color: "text-indigo-300",
     },
     {
-      title: "Points a valider",
+      title: "Points à valider",
       value: kpis.discordPointsPendingCount,
       hint: "Commandes raids-sub en attente",
       href: "/admin/engagement/points-discord",
       color: "text-fuchsia-300",
     },
     {
-      title: "Raids ignores a traiter",
+      title: "Raids ignorés à traiter",
       value: kpis.raidsIgnoredToProcessCount,
-      hint: "Raids-sub ignores a revoir",
+      hint: "Raids-sub ignorés à revoir",
       href: "/admin/engagement/raids-sub/a-valider?status=ignored",
       color: "text-rose-300",
     },
@@ -746,7 +785,7 @@ export default function Dashboard2Page() {
       title: "Inscrits prochaine réunion",
       value: upcomingKpis.nextMeetingRegistrations,
       hint: "Depuis Évaluations > Inscriptions",
-      href: "/admin/integration/inscription",
+      href: "/admin/onboarding/inscriptions",
       color: "text-blue-300",
     },
     {
@@ -812,6 +851,10 @@ export default function Dashboard2Page() {
 
   return (
     <div className="space-y-6 text-white">
+      <AdminToastStack
+        toasts={toasts}
+        onClose={(id) => setToasts((prev) => prev.filter((toast) => toast.id !== id))}
+      />
       <section
         className="rounded-3xl border p-6 md:p-8"
         style={{
@@ -898,42 +941,152 @@ export default function Dashboard2Page() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-        {priorityCards.map((card) => (
-          <Link
-            key={card.title}
-            href={card.href}
-            className={`rounded-2xl border p-5 transition-all hover:-translate-y-[1px] ${focusRingClass}`}
-            style={premiumCardStyle}
-          >
-            <p className="mb-2 text-xs uppercase tracking-[0.09em]" style={subtleMutedText}>
-              {card.title}
+      <section className="rounded-2xl border p-5" style={premiumCardStyle}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">À traiter maintenant</h2>
+            <p className="text-xs text-gray-300/80">
+              Vue pilotage avec priorité, SLA et owner.
             </p>
-            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="mt-2 text-xs" style={subtleMutedText}>
-              {card.hint}
-            </p>
-          </Link>
-        ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedViewId}
+              onChange={(e) => setSelectedViewId(e.target.value)}
+              className={`rounded-lg border px-3 py-2 text-sm text-white ${focusRingClass}`}
+              style={{ backgroundColor: "rgba(0,0,0,0.22)", borderColor: "rgba(255,255,255,0.12)" }}
+            >
+              {[defaultViewForRole(currentAdmin?.role || null), ...savedViews].map((view) => (
+                <option key={view.id} value={view.id}>
+                  {view.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={newViewLabel}
+              onChange={(e) => setNewViewLabel(e.target.value)}
+              placeholder="Nom de vue"
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-gray-500"
+            />
+            <button
+              type="button"
+              onClick={saveCurrentView}
+              className="rounded-lg border border-[#e6c773]/40 px-3 py-2 text-sm font-semibold text-[#edd38d] hover:bg-[#e6c773]/10"
+            >
+              Sauver la vue
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {filteredOpsQueue.length === 0 ? (
+            <div className="rounded-xl border border-white/10 p-4 text-sm text-gray-300">
+              Rien d'urgent selon cette vue.
+            </div>
+          ) : (
+            filteredOpsQueue.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-white/10 bg-black/25 p-4"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">{item.title}</p>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      item.priority === "P1"
+                        ? "bg-red-500/20 text-red-200"
+                        : item.priority === "P2"
+                        ? "bg-amber-500/20 text-amber-200"
+                        : "bg-sky-500/20 text-sky-200"
+                    }`}
+                  >
+                    {item.priority}
+                  </span>
+                </div>
+                <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-gray-300">
+                  <span>Volume: {item.count}</span>
+                  <span>SLA: {item.slaHours}h</span>
+                  <span>Owner: {item.owner || "non assigné"}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={item.href}
+                    className={`rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 ${focusRingClass}`}
+                  >
+                    Ouvrir
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => assignOwner(item.id)}
+                    className="rounded-lg border border-[#e6c773]/30 px-3 py-1.5 text-xs font-semibold text-[#edd38d] hover:bg-[#e6c773]/10"
+                  >
+                    Assigner à moi
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-        {upcomingCards.map((card) => (
-          <Link
-            key={card.title}
-            href={card.href}
-            className={`rounded-2xl border p-5 transition-all hover:-translate-y-[1px] ${focusRingClass}`}
-            style={softCardStyle}
-          >
-            <p className="mb-2 text-xs uppercase tracking-[0.09em]" style={subtleMutedText}>
-              {card.title}
-            </p>
-            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="mt-2 text-xs" style={subtleMutedText}>
-              {card.hint}
-            </p>
-          </Link>
-        ))}
+      <section className="rounded-2xl border p-4 md:p-5" style={softCardStyle}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Alertes immédiates</h3>
+            <p className="text-xs text-gray-400">Priorités opérationnelles à traiter maintenant</p>
+          </div>
+          <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
+            Temps réel
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {priorityCards.map((card) => (
+            <Link
+              key={card.title}
+              href={card.href}
+              className={`group flex min-h-[136px] flex-col justify-between rounded-2xl border p-4 transition-all hover:-translate-y-[1px] hover:border-[#e6c773]/45 ${focusRingClass}`}
+              style={premiumCardStyle}
+            >
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
+                  {card.title}
+                </p>
+                <p className={`text-3xl font-bold leading-none ${card.color}`}>{card.value}</p>
+              </div>
+              <p className="mt-3 text-xs text-gray-400 group-hover:text-gray-300">{card.hint}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border p-4 md:p-5" style={softCardStyle}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Prévisions & agenda</h3>
+            <p className="text-xs text-gray-400">Ce qui arrive prochainement côté membres et événements</p>
+          </div>
+          <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
+            Horizon court terme
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {upcomingCards.map((card) => (
+            <Link
+              key={card.title}
+              href={card.href}
+              className={`group flex min-h-[136px] flex-col justify-between rounded-2xl border p-4 transition-all hover:-translate-y-[1px] hover:border-[#e6c773]/35 ${focusRingClass}`}
+              style={softCardStyle}
+            >
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
+                  {card.title}
+                </p>
+                <p className={`text-3xl font-bold leading-none ${card.color}`}>{card.value}</p>
+              </div>
+              <p className="mt-3 text-xs text-gray-400 group-hover:text-gray-300">{card.hint}</p>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -1182,8 +1335,18 @@ export default function Dashboard2Page() {
           <div className="py-10 text-center" style={subtleMutedText}>Aucune donnée événement disponible pour ce filtre.</div>
         ) : (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Top événements</h3>
+            <AdminTableShell
+              title="Top événements"
+              subtitle="Table standardisée: filtres + pagination"
+              searchValue={recapSearch}
+              onSearchChange={setRecapSearch}
+              page={recapPage}
+              pageSize={recapPageSize}
+              total={sortedRecapEvents.length}
+              onPageChange={setRecapPage}
+              onPageSizeChange={setRecapPageSize}
+              searchPlaceholder="Filtrer par titre/catégorie..."
+            >
               <div className="overflow-x-auto rounded-xl border border-white/12">
                 <table className="w-full text-sm">
                   <thead>
@@ -1197,14 +1360,7 @@ export default function Dashboard2Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...filteredRecapEvents]
-                      .map((item) => ({
-                        ...item,
-                        rate: item.registrationCount > 0 ? Math.round((item.presenceCount / item.registrationCount) * 1000) / 10 : 0,
-                      }))
-                      .sort((a, b) => b.rate - a.rate)
-                      .slice(0, 8)
-                      .map((item) => (
+                    {paginatedRecapEvents.map((item) => (
                         <tr key={item.event.id} className="border-b border-white/8">
                           <td className="py-3 px-4">{item.event.title}</td>
                           <td className="py-3 px-4" style={subtleMutedText}>{item.event.category}</td>
@@ -1218,10 +1374,17 @@ export default function Dashboard2Page() {
                           </td>
                         </tr>
                       ))}
+                    {paginatedRecapEvents.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-6 px-4 text-center" style={subtleMutedText}>
+                          Aucune ligne sur cette page.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </AdminTableShell>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <div>

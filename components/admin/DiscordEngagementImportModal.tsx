@@ -158,7 +158,7 @@ export default function DiscordEngagementImportModal({
               Les lignes non matchées peuvent être <strong>associées à un membre</strong> ou <strong>ignorées</strong> avant validation.
             </p>
             <p className="text-blue-300 text-xs mt-2">
-              Format attendu : RANG (tab) PSEUDO (tab) DISCORD_ID (tab) VALEUR
+              Format attendu : RANG, PSEUDO, DISCORD_ID (optionnel), VALEUR - séparateur TAB / "," / ";"
               {title.includes("vocaux") && " (en heures décimales)"}
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function DiscordEngagementImportModal({
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full h-48 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] font-mono text-sm"
-              placeholder="1&#9;frostyquinn94&#9;477791879866351623&#9;1683&#10;2&#9;facebcd&#9;1297107200623513645&#9;1477"
+              placeholder='1,frostyquinn94,477791879866351623,1683&#10;2;facebcd;1297107200623513645;1477'
             />
           </div>
 

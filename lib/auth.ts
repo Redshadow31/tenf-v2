@@ -1,22 +1,63 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { getAdminRole, normalizeAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 import { memberRepository } from "./repositories";
+
+const discordClientId = process.env.DISCORD_CLIENT_ID;
+const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
+const hasDiscordOAuthConfig = Boolean(discordClientId && discordClientSecret);
+const devAuthEnabled =
+  process.env.NODE_ENV !== "production" &&
+  (process.env.ENABLE_DEV_AUTH !== "false");
 
 export const authOptions: NextAuthOptions = {
   // Active les logs détaillés si NEXTAUTH_DEBUG=true (utile pour diagnostiquer OAuthCallback).
   debug: process.env.NEXTAUTH_DEBUG === "true",
   providers: [
-    DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID!,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: "identify guilds guilds.members.read",
-        },
-      },
-    }),
+    ...(hasDiscordOAuthConfig
+      ? [
+          DiscordProvider({
+            clientId: discordClientId!,
+            clientSecret: discordClientSecret!,
+            authorization: {
+              params: {
+                scope: "identify guilds guilds.members.read",
+              },
+            },
+          }),
+        ]
+      : []),
+    ...(devAuthEnabled
+      ? [
+          CredentialsProvider({
+            id: "dev-bypass",
+            name: "Dev Bypass",
+            credentials: {
+              discordId: { label: "Discord ID", type: "text" },
+              username: { label: "Pseudo", type: "text" },
+              role: { label: "Role", type: "text" },
+            },
+            async authorize(credentials) {
+              if (!devAuthEnabled) return null;
+              const discordId = String(credentials?.discordId || "").trim();
+              const username = String(credentials?.username || "Dev Local").trim();
+              const requestedRole = normalizeAdminRole(String(credentials?.role || "").trim());
+              if (!discordId) return null;
+              const role = requestedRole || "ADMIN_COORDINATEUR";
+              return {
+                id: discordId,
+                name: username,
+                discordId,
+                username,
+                avatar: null,
+                role,
+              } as any;
+            },
+          }),
+        ]
+      : []),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   session: {
@@ -125,6 +166,18 @@ export const authOptions: NextAuthOptions = {
         }
 
         token.role = normalizeAdminRole(role) || null;
+      }
+
+      // Connexion locale de développement via provider credentials "dev-bypass".
+      if (account?.provider === "dev-bypass" && user) {
+        const devUser = user as any;
+        const discordId = String(devUser.discordId || devUser.id || "").trim();
+        if (discordId) {
+          token.discordId = discordId;
+          token.username = String(devUser.username || devUser.name || "Dev Local");
+          token.avatar = (devUser.avatar || null) as string | null;
+          token.role = normalizeAdminRole(devUser.role) || "ADMIN_COORDINATEUR";
+        }
       }
 
       // À chaque requête, on peut mettre à jour le rôle depuis le cache si nécessaire

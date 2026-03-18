@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
+import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
+import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 
 type StaffApplication = {
   id: string;
@@ -91,6 +93,33 @@ export default function PostulationsStaffPage() {
   const [noteInput, setNoteInput] = useState("");
   const [assignedToInput, setAssignedToInput] = useState("");
   const [lastContactedInput, setLastContactedInput] = useState("");
+  const [toasts, setToasts] = useState<AdminToastItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [savedViews, setSavedViews] = useState<Array<{
+    id: string;
+    name: string;
+    search: string;
+    roleFilter: "all" | "moderateur" | "soutien" | "les_deux";
+    statusFilter: "all" | StaffApplication["admin_status"];
+  }>>([]);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [newSavedViewName, setNewSavedViewName] = useState("");
+
+  const SAVED_VIEWS_KEY = "tenf-admin-postulations-saved-views";
+
+  function pushToast(type: "success" | "warning" | "info", title: string, description?: string) {
+    const toast: AdminToastItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type,
+      title,
+      description,
+    };
+    setToasts((prev) => [...prev, toast]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== toast.id));
+    }, 3500);
+  }
 
   useEffect(() => {
     async function loadAdmin() {
@@ -128,6 +157,21 @@ export default function PostulationsStaffPage() {
     if (!currentAdmin) return;
     void loadApplications();
   }, [currentAdmin?.id]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_VIEWS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSavedViews(parsed);
+    } catch {
+      // Ignore malformed localStorage values.
+    }
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, statusFilter, dateFilter]);
 
   async function loadApplications() {
     try {
@@ -178,10 +222,53 @@ export default function PostulationsStaffPage() {
       }
       await loadApplications();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Erreur inconnue");
+      pushToast("warning", "Mise à jour impossible", error instanceof Error ? error.message : "Erreur inconnue");
     } finally {
       setSavingId(null);
     }
+  }
+
+  function saveViewsToStorage(nextViews: typeof savedViews) {
+    setSavedViews(nextViews);
+    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(nextViews));
+  }
+
+  function saveCurrentView() {
+    if (!newSavedViewName.trim()) {
+      pushToast("warning", "Nom requis", "Ajoute un nom avant d'enregistrer la vue.");
+      return;
+    }
+    const next = [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: newSavedViewName.trim(),
+        search,
+        roleFilter,
+        statusFilter,
+      },
+      ...savedViews,
+    ].slice(0, 20);
+    saveViewsToStorage(next);
+    setSelectedSavedViewId(next[0].id);
+    setNewSavedViewName("");
+    pushToast("success", "Vue sauvegardée");
+  }
+
+  function applySavedView(viewId: string) {
+    setSelectedSavedViewId(viewId);
+    const found = savedViews.find((v) => v.id === viewId);
+    if (!found) return;
+    setSearch(found.search);
+    setRoleFilter(found.roleFilter);
+    setStatusFilter(found.statusFilter);
+    pushToast("info", "Vue appliquée", found.name);
+  }
+
+  function deleteSavedView(viewId: string) {
+    const next = savedViews.filter((v) => v.id !== viewId);
+    saveViewsToStorage(next);
+    if (selectedSavedViewId === viewId) setSelectedSavedViewId("");
+    pushToast("info", "Vue supprimée");
   }
 
   function formatRole(role: StaffApplication["answers"]["role_postule"]): string {
@@ -233,6 +320,11 @@ export default function PostulationsStaffPage() {
     }
     return true;
   });
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   const selected = filtered.find((item) => item.id === selectedId) || filtered[0] || null;
 
@@ -313,18 +405,16 @@ export default function PostulationsStaffPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white p-8">
+      <AdminToastStack
+        toasts={toasts}
+        onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
+      />
       <Link href="/admin/membres/gestion" className="text-gray-400 hover:text-white inline-block mb-4">
         ← Retour gestion membres
       </Link>
       <h1 className="text-3xl font-bold mb-6">Postulations Modérateur / Soutien TENF</h1>
 
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Recherche pseudo..."
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-white"
-        />
+      <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
@@ -362,13 +452,57 @@ export default function PostulationsStaffPage() {
         </button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <select
+          value={selectedSavedViewId}
+          onChange={(e) => applySavedView(e.target.value)}
+          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+        >
+          <option value="">Vues sauvegardées</option>
+          {savedViews.map((view) => (
+            <option key={view.id} value={view.id}>
+              {view.name}
+            </option>
+          ))}
+        </select>
+        <input
+          value={newSavedViewName}
+          onChange={(e) => setNewSavedViewName(e.target.value)}
+          placeholder="Nom de vue"
+          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+        />
+        <button onClick={saveCurrentView} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg text-sm font-semibold">
+          Sauver vue
+        </button>
+        {selectedSavedViewId && (
+          <button
+            onClick={() => deleteSavedView(selectedSavedViewId)}
+            className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-2 rounded-lg text-sm font-semibold"
+          >
+            Suppr vue
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
           {filtered.length === 0 ? (
             <div className="p-6 text-gray-400">Aucune postulation pour ces filtres.</div>
           ) : (
-            <div className="divide-y divide-gray-700">
-              {filtered.map((application) => (
+            <AdminTableShell
+              title="Liste des postulations"
+              subtitle="Table standardisée avec pagination"
+              searchValue={search}
+              onSearchChange={setSearch}
+              page={currentPage}
+              pageSize={pageSize}
+              total={filtered.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => setPageSize(size)}
+              searchPlaceholder="Filtrer pseudo..."
+            >
+              <div className="divide-y divide-gray-700">
+              {paginated.map((application) => (
                 <button
                   key={application.id}
                   onClick={() => setSelectedId(application.id)}
@@ -387,7 +521,8 @@ export default function PostulationsStaffPage() {
                   </div>
                 </button>
               ))}
-            </div>
+              </div>
+            </AdminTableShell>
           )}
         </div>
 

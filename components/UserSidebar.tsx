@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -15,16 +15,19 @@ function SidebarLink({
   active,
   icon: Icon,
   showUnreadDot = false,
+  onNavigate,
 }: {
   href: string;
   label: string;
   active: boolean;
   icon?: LucideIcon;
   showUnreadDot?: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className="block rounded-lg px-4 py-2.5 text-sm font-medium transition-colors border"
       style={{
         backgroundColor: active ? "rgba(145, 70, 255, 0.18)" : "var(--color-card)",
@@ -47,7 +50,19 @@ function SidebarLink({
   );
 }
 
-export default function UserSidebar() {
+type UserSidebarProps = {
+  className?: string;
+  onNavigate?: () => void;
+  onRequestClose?: () => void;
+  showMobileCloseButton?: boolean;
+};
+
+export default function UserSidebar({
+  className,
+  onNavigate,
+  onRequestClose,
+  showMobileCloseButton = false,
+}: UserSidebarProps) {
   const pathname = usePathname();
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,17 +145,37 @@ export default function UserSidebar() {
         ? `${window.location.pathname}${window.location.search || ""}`
         : pathname || "/member/profil/completer";
     loginWithDiscord(currentPath);
+    onNavigate?.();
   };
 
   const handleLogout = async () => {
     await logoutDiscord();
     setDiscordUser(null);
+    onNavigate?.();
     window.location.href = "/";
   };
 
+  const asideClassName = useMemo(
+    () => `w-72 border-r p-6 ${className ?? ""}`.trim(),
+    [className],
+  );
+
   if (loading) {
     return (
-      <aside className="w-72 border-r p-6" style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
+      <aside className={asideClassName} style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
+        <div className="mb-3 flex items-center justify-between">
+          {showMobileCloseButton ? (
+            <button
+              type="button"
+              onClick={onRequestClose}
+              className="rounded-md px-2 py-1 text-xs transition-colors"
+              style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+              aria-label="Fermer le panneau membre"
+            >
+              Fermer
+            </button>
+          ) : null}
+        </div>
         <div className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Chargement...</div>
       </aside>
     );
@@ -148,8 +183,21 @@ export default function UserSidebar() {
 
   if (!discordUser) {
     return (
-      <aside className="w-72 border-r p-6" style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
+      <aside className={asideClassName} style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
         <div className="space-y-4">
+          {showMobileCloseButton ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onRequestClose}
+                className="rounded-md px-2 py-1 text-xs transition-colors"
+                style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+                aria-label="Fermer le panneau membre"
+              >
+                Fermer
+              </button>
+            </div>
+          ) : null}
           <h3 className="font-semibold mb-4" style={{ color: "var(--color-text)" }}>Connexion</h3>
           <button
             onClick={handleDiscordLogin}
@@ -163,8 +211,21 @@ export default function UserSidebar() {
   }
 
   return (
-    <aside className="w-72 border-r p-6" style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
+    <aside className={asideClassName} style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}>
       <div className="space-y-5">
+        {showMobileCloseButton ? (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onRequestClose}
+              className="rounded-md px-2 py-1 text-xs transition-colors"
+              style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+              aria-label="Fermer le panneau membre"
+            >
+              Fermer
+            </button>
+          </div>
+        ) : null}
         {/* Profil utilisateur */}
         <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           {discordUser.avatar && (
@@ -226,6 +287,7 @@ export default function UserSidebar() {
                             active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
                             icon={item.icon}
                             showUnreadDot={item.href === "/member/notifications" && unreadNotifications > 0}
+                            onNavigate={onNavigate}
                           />
                         ))}
                       </SidebarCollapsibleGroup>

@@ -96,7 +96,11 @@ function SocialIcon({ icon }: { icon: string }) {
   }
 }
 
-export default function Header() {
+type HeaderProps = {
+  onOpenMemberSidebar?: () => void;
+};
+
+export default function Header({ onOpenMemberSidebar }: HeaderProps) {
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
@@ -288,6 +292,18 @@ export default function Header() {
           </div>
 
           <ThemeToggle />
+
+          {onOpenMemberSidebar ? (
+            <button
+              type="button"
+              onClick={onOpenMemberSidebar}
+              className="xl:hidden inline-flex items-center rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors"
+              style={{ color: "var(--color-text)", borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+              aria-label="Ouvrir le panneau membre"
+            >
+              Compte
+            </button>
+          ) : null}
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

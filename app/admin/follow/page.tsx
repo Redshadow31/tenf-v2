@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
+import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
+import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 
 interface SummaryItem {
   staffSlug: string;
@@ -29,6 +31,34 @@ export default function FollowHubPage() {
   const [dataSourceMonth, setDataSourceMonth] = useState<string | null>(null);
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const [summary, setSummary] = useState<SummaryItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | SummaryItem["status"]>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [toasts, setToasts] = useState<AdminToastItem[]>([]);
+  const [savedViews, setSavedViews] = useState<Array<{
+    id: string;
+    name: string;
+    monthKey: string;
+    search: string;
+    statusFilter: "all" | SummaryItem["status"];
+  }>>([]);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [newSavedViewName, setNewSavedViewName] = useState("");
+  const SAVED_VIEWS_KEY = "tenf-admin-follow-saved-views";
+
+  function pushToast(type: "success" | "warning" | "info", title: string, description?: string) {
+    const toast: AdminToastItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type,
+      title,
+      description,
+    };
+    setToasts((prev) => [...prev, toast]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== toast.id));
+    }, 3500);
+  }
 
   useEffect(() => {
     initializeMonth();
@@ -36,10 +66,25 @@ export default function FollowHubPage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_VIEWS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSavedViews(parsed);
+    } catch {
+      // Ignore malformed storage payload.
+    }
+  }, []);
+
+  useEffect(() => {
     if (monthKey && hasAccess) {
       loadSummary();
     }
   }, [monthKey, hasAccess]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, pageSize, monthKey]);
 
   function initializeMonth() {
     const now = new Date();
@@ -61,6 +106,7 @@ export default function FollowHubPage() {
     } catch (error) {
       console.error("Erreur vérification accès:", error);
       setHasAccess(false);
+      pushToast("warning", "Vérification d'accès échouée");
     } finally {
       setLoading(false);
     }
@@ -80,13 +126,75 @@ export default function FollowHubPage() {
         setDataSourceMonth(data.dataSourceMonth || null);
       } else {
         console.error("Erreur chargement résumé:", response.statusText);
+        pushToast("warning", "Chargement impossible", response.statusText);
       }
     } catch (error) {
       console.error("Erreur chargement résumé:", error);
+      pushToast("warning", "Erreur chargement résumé");
     } finally {
       setLoading(false);
     }
   }
+
+  function saveViewsToStorage(nextViews: typeof savedViews) {
+    setSavedViews(nextViews);
+    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(nextViews));
+  }
+
+  function saveCurrentView() {
+    if (!newSavedViewName.trim()) {
+      pushToast("warning", "Nom requis", "Ajoute un nom avant d'enregistrer.");
+      return;
+    }
+    const next = [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: newSavedViewName.trim(),
+        monthKey,
+        search,
+        statusFilter,
+      },
+      ...savedViews,
+    ].slice(0, 20);
+    saveViewsToStorage(next);
+    setSelectedSavedViewId(next[0].id);
+    setNewSavedViewName("");
+    pushToast("success", "Vue sauvegardée");
+  }
+
+  function applySavedView(viewId: string) {
+    setSelectedSavedViewId(viewId);
+    const view = savedViews.find((v) => v.id === viewId);
+    if (!view) return;
+    setMonthKey(view.monthKey);
+    setSearch(view.search);
+    setStatusFilter(view.statusFilter);
+    pushToast("info", "Vue appliquée", view.name);
+  }
+
+  function deleteSavedView(viewId: string) {
+    const next = savedViews.filter((v) => v.id !== viewId);
+    saveViewsToStorage(next);
+    if (selectedSavedViewId === viewId) setSelectedSavedViewId("");
+    pushToast("info", "Vue supprimée");
+  }
+
+  const filteredSummary = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return summary.filter((item) => {
+      if (statusFilter !== "all" && item.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        item.staffName.toLowerCase().includes(q) ||
+        item.staffSlug.toLowerCase().includes(q)
+      );
+    });
+  }, [summary, search, statusFilter]);
+
+  const paginatedSummary = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSummary.slice(start, start + pageSize);
+  }, [filteredSummary, currentPage, pageSize]);
 
   function getMonthOptions(): string[] {
     const options: string[] = [];
@@ -136,6 +244,10 @@ export default function FollowHubPage() {
 
   return (
     <div className="text-white">
+      <AdminToastStack
+        toasts={toasts}
+        onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
+      />
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-white mb-2">Suivi des Follow</h1>
         <p className="text-gray-400 mb-4">
@@ -160,6 +272,32 @@ export default function FollowHubPage() {
             <span className="text-amber-400 text-sm">
               Données affichées : {formatMonthKey(dataSourceMonth)} (aucune donnée pour {formatMonthKey(monthKey)})
             </span>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={selectedSavedViewId}
+            onChange={(e) => applySavedView(e.target.value)}
+            className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+          >
+            <option value="">Vues sauvegardées</option>
+            {savedViews.map((view) => (
+              <option key={view.id} value={view.id}>{view.name}</option>
+            ))}
+          </select>
+          <input
+            value={newSavedViewName}
+            onChange={(e) => setNewSavedViewName(e.target.value)}
+            placeholder="Nom de vue"
+            className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+          />
+          <button onClick={saveCurrentView} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg text-sm font-semibold">
+            Sauver vue
+          </button>
+          {selectedSavedViewId && (
+            <button onClick={() => deleteSavedView(selectedSavedViewId)} className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-2 rounded-lg text-sm font-semibold">
+              Suppr vue
+            </button>
           )}
         </div>
       </div>
@@ -203,9 +341,30 @@ export default function FollowHubPage() {
 
       {/* Tableau récapitulatif */}
       <div className="bg-[#1a1a1d] border border-neutral-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">
-          Récapitulatif par membre du staff
-        </h2>
+        <AdminTableShell
+          title="Récapitulatif par membre du staff"
+          subtitle="Table standardisée avec filtres/pagination"
+          searchValue={search}
+          onSearchChange={setSearch}
+          page={currentPage}
+          pageSize={pageSize}
+          total={filteredSummary.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          searchPlaceholder="Filtrer staff..."
+        >
+        <div className="mb-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | SummaryItem["status"])}
+            className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+          >
+            <option value="all">Tous statuts</option>
+            <option value="up_to_date">À jour</option>
+            <option value="obsolete">Obsolète</option>
+            <option value="not_validated">Non validé</option>
+          </select>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -231,8 +390,8 @@ export default function FollowHubPage() {
               </tr>
             </thead>
             <tbody>
-              {summary.length > 0 ? (
-                summary.map((item) => (
+              {paginatedSummary.length > 0 ? (
+                paginatedSummary.map((item) => (
                   <tr
                     key={item.staffSlug}
                     className="border-b border-gray-700 hover:bg-[#0e0e10] transition-colors"
@@ -304,13 +463,14 @@ export default function FollowHubPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-gray-400">
-                    Aucune donnée disponible pour ce mois
+                    Aucune donnée disponible pour ce filtre
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        </AdminTableShell>
       </div>
     </div>
   );

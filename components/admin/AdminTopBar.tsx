@@ -76,7 +76,7 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
           ☰
         </button>
 
-        <Link href="/admin/dashboard" className="flex items-center gap-3 shrink-0">
+        <Link href="/admin/pilotage" className="flex items-center gap-3 shrink-0">
           <Image
             src="/logo.png"
             alt="TENF"
@@ -134,8 +134,19 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
                 Mode avancé
               </Link>
             ))}
-          <div className="px-3 py-2 rounded-lg border text-xs sm:text-sm" style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text)" }}>
-            Bonjour, <span className="font-semibold">{username}</span>
+          <div
+            className="px-3 py-2 rounded-lg border"
+            style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text)" }}
+          >
+            <p className="text-xs sm:text-sm">
+              Bonjour, <span className="font-semibold">{username}</span>
+            </p>
+            {(pathname.startsWith("/admin/dashboard") || pathname.startsWith("/admin/pilotage")) && (
+              <p className="mt-1 max-w-[320px] text-[11px] leading-relaxed text-gray-300">
+                Merci pour ton aide précieuse, <span className="font-semibold">{username}</span>. Au nom des fondateurs{" "}
+                <span className="font-semibold text-[#e6c773]">Clara, Nexou et Red</span>.
+              </p>
+            )}
           </div>
         </div>
       </div>

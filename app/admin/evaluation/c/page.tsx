@@ -371,7 +371,7 @@ export default function EvaluationCPage() {
           href="/admin/evaluation"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
-          ← Retour au Hub Évaluation
+          ← Retour au Dashboard Évaluation
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">C. Follow</h1>
         <p className="text-gray-400">Retour de follow</p>

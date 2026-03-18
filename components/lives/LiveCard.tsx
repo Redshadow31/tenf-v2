@@ -22,6 +22,12 @@ export default function LiveCard({ live }: LiveCardProps) {
     Date.now() - integrationTs <= 7 * 24 * 60 * 60 * 1000;
   const isVipMember = live.isVip === true;
   const isDiscoverCta = live.followState === "not_followed";
+  const hasMutualSupportBadge =
+    live.isSolidarityRaider ||
+    live.isCommunityBooster ||
+    live.isDiscoverer ||
+    live.isWarmlySupported ||
+    live.isBalancedSupport;
 
   return (
     <article
@@ -61,6 +67,12 @@ export default function LiveCard({ live }: LiveCardProps) {
             ) : null}
           </div>
         ) : null}
+        {live.isTopRaider ? (
+          <div className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-300/60 bg-fuchsia-500/25 px-2.5 py-1 text-xs font-extrabold tracking-[0.02em] text-fuchsia-100 shadow-[0_0_16px_rgba(217,70,239,0.35)]">
+            <span aria-hidden="true">🚀</span>
+            Top Raider{live.topRaidsCount ? ` · ${live.topRaidsCount}` : ""}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 p-3.5 md:gap-3 md:p-5">
@@ -83,6 +95,35 @@ export default function LiveCard({ live }: LiveCardProps) {
             )}
           </div>
         )}
+        {hasMutualSupportBadge ? (
+          <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
+            {live.isSolidarityRaider ? (
+              <span className="rounded-full border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-200">
+                🤝 Raid solidaire {live.uniqueRaidTargetsThisMonth ? `(${live.uniqueRaidTargetsThisMonth})` : ""}
+              </span>
+            ) : null}
+            {live.isCommunityBooster ? (
+              <span className="rounded-full border border-indigo-300/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-200">
+                💪 Booster commu {live.raidsDoneThisMonth ? `(${live.raidsDoneThisMonth})` : ""}
+              </span>
+            ) : null}
+            {live.isDiscoverer ? (
+              <span className="rounded-full border border-lime-300/50 bg-lime-500/20 px-2.5 py-1 font-semibold text-lime-200">
+                🌱 Decouvreur
+              </span>
+            ) : null}
+            {live.isWarmlySupported ? (
+              <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-200">
+                💜 Accueil chaleureux {live.uniqueRaidersReceivedThisMonth ? `(${live.uniqueRaidersReceivedThisMonth})` : ""}
+              </span>
+            ) : null}
+            {live.isBalancedSupport ? (
+              <span className="rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 font-semibold text-cyan-200">
+                ⚖️ Equilibre entraide
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex items-start gap-3">
           <img

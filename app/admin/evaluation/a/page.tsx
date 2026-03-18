@@ -77,7 +77,7 @@ export default function EvaluationAPage() {
           href="/admin/evaluation"
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
-          ← Retour au Hub Évaluation
+          ← Retour au Dashboard Évaluation
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">A. Présence Active</h1>
         <p className="text-gray-400">Spotlights et Raids</p>

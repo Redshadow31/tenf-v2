@@ -76,6 +76,9 @@ const getCategoryConfig = (categoryValue: string): CategoryConfig => {
 };
 
 export default function PlanificationPage() {
+  const [creationMode, setCreationMode] = useState<"new" | "linked">("new");
+  const [linkedSourceEventId, setLinkedSourceEventId] = useState("");
+  const [seriesLabel, setSeriesLabel] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -194,6 +197,9 @@ export default function PlanificationPage() {
       imageUrl: event.image || null,
     });
     setImagePreview(event.image || null);
+    setCreationMode("new");
+    setLinkedSourceEventId(event.sourceEventId || "");
+    setSeriesLabel(event.seriesName || "");
     if (matchedManagedLink) {
       setLocationMode("discord");
       setDiscordLocationId(matchedManagedLink.id);
@@ -224,10 +230,32 @@ export default function PlanificationPage() {
       imageUrl: null,
     });
     setImagePreview(null);
+    setCreationMode("new");
+    setLinkedSourceEventId("");
+    setSeriesLabel("");
     setLocationMode("none");
     setExternalLocationUrl("");
     setDiscordLocationId("");
   };
+
+  useEffect(() => {
+    if (isEditMode || creationMode !== "linked" || !linkedSourceEventId) return;
+    const sourceEvent = events.find((event) => event.id === linkedSourceEventId);
+    if (!sourceEvent) return;
+
+    const dateTimeLocal = utcIsoToParisDateTimeLocalInput(sourceEvent.startAtUtc || sourceEvent.date);
+    setFormData((prev) => ({
+      ...prev,
+      title: sourceEvent.title || prev.title,
+      description: sourceEvent.description || prev.description,
+      category: sourceEvent.category || prev.category,
+      location: sourceEvent.location || prev.location,
+      imageUrl: sourceEvent.image || prev.imageUrl,
+      date: prev.date || dateTimeLocal,
+    }));
+    setImagePreview(sourceEvent.image || null);
+    setSeriesLabel(sourceEvent.seriesName || sourceEvent.title || "");
+  }, [linkedSourceEventId, creationMode, isEditMode, events]);
 
   const handleDelete = async (eventId: string) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
@@ -330,6 +358,18 @@ export default function PlanificationPage() {
         location: resolvedLocation,
         isPublished: formData.isPublished,
         image: finalImageUrl || undefined,
+        seriesId:
+          !isEditMode && creationMode === "linked" && linkedSourceEventId
+            ? (events.find((event) => event.id === linkedSourceEventId)?.seriesId || linkedSourceEventId)
+            : undefined,
+        seriesName:
+          !isEditMode && creationMode === "linked" && linkedSourceEventId
+            ? (seriesLabel.trim() || events.find((event) => event.id === linkedSourceEventId)?.seriesName || events.find((event) => event.id === linkedSourceEventId)?.title || "")
+            : undefined,
+        sourceEventId:
+          !isEditMode && creationMode === "linked" && linkedSourceEventId
+            ? linkedSourceEventId
+            : undefined,
       };
 
       let response;
@@ -423,6 +463,75 @@ export default function PlanificationPage() {
             )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!isEditMode && (
+              <div className="rounded-lg border border-[#9146ff]/30 bg-[#9146ff]/10 p-3 space-y-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-[#d7beff] font-semibold">
+                  Mode de création
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreationMode("new");
+                      setLinkedSourceEventId("");
+                      setSeriesLabel("");
+                    }}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      creationMode === "new"
+                        ? "border-[#9146ff] bg-[#9146ff] text-white"
+                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#9146ff]"
+                    }`}
+                  >
+                    Créer un nouvel événement
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreationMode("linked")}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      creationMode === "linked"
+                        ? "border-[#9146ff] bg-[#9146ff] text-white"
+                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#9146ff]"
+                    }`}
+                  >
+                    Créer depuis un événement existant
+                  </button>
+                </div>
+
+                {creationMode === "linked" && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-300">
+                      Événement de référence
+                    </label>
+                    <select
+                      value={linkedSourceEventId}
+                      onChange={(e) => setLinkedSourceEventId(e.target.value)}
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    >
+                      <option value="">Choisir un événement existant...</option>
+                      {events.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title} ({formatEventDateTimeInTimezone(event.startAtUtc || event.date, PARIS_TIMEZONE).fullLabel})
+                        </option>
+                      ))}
+                    </select>
+                    <label className="block text-sm font-semibold text-gray-300 mt-2">
+                      Nom de série (regroupement)
+                    </label>
+                    <input
+                      type="text"
+                      value={seriesLabel}
+                      onChange={(e) => setSeriesLabel(e.target.value)}
+                      placeholder="Ex: Formation Discord Débutant"
+                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    />
+                    <p className="text-xs text-gray-400">
+                      Cette série permettra de regrouper les occurrences d&apos;un même type d&apos;événement.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Upload d'image */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
@@ -785,6 +894,11 @@ ou
                             </span>
                           );
                         })()}
+                        {event.seriesName && (
+                          <span className="text-xs px-2 py-1 rounded border bg-cyan-500/15 text-cyan-200 border-cyan-400/30">
+                            Série: {event.seriesName}
+                          </span>
+                        )}
                         {event.isPublished && (
                           <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30">
                             Publié
