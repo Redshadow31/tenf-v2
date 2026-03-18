@@ -51,21 +51,25 @@ function getTimelineStatusLabel(status: string): string {
 
 const fallbackFaq = [
   {
+    id: "fallback-1",
     question: "Qui peut participer en tant que streamer ?",
     answer:
       "Tout createur de contenu peut rejoindre la mobilisation, quel que soit son niveau d'audience.",
   },
   {
+    id: "fallback-2",
     question: "Dois-je streamer tous les jours ?",
     answer:
       "Non. La participation est flexible: meme un seul live peut contribuer a la cause.",
   },
   {
+    id: "fallback-3",
     question: "Comment rejoindre la moderation ?",
     answer:
       "Des formulaires distincts existent pour la moderation Twitch et Discord.",
   },
   {
+    id: "fallback-4",
     question: "Ou retrouver toutes les informations officielles ?",
     answer:
       "Sur le site UPA Event et sur la page complete de l'evenement dans TENF.",
@@ -410,8 +414,8 @@ export default async function PartenairesPage() {
           <section className={`${panelClass} p-5`}>
             <h2 className="text-xl font-semibold">FAQ rapide</h2>
             <div className="mt-4 space-y-3">
-              {(activeFaq.length > 0 ? activeFaq : fallbackFaq).map((faq, index) => (
-                <article key={"id" in faq ? faq.id : `fallback-${index}`} className={`${cardClass} p-4`}>
+              {(activeFaq.length > 0 ? activeFaq : fallbackFaq).map((faq) => (
+                <article key={faq.id} className={`${cardClass} p-4`}>
                   <h3 className="text-sm font-semibold text-white">{faq.question}</h3>
                   <p className="mt-2 text-sm text-gray-300">{faq.answer}</p>
                 </article>
