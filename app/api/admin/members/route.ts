@@ -5,6 +5,7 @@ import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
 import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
+import { invalidateAdminDashboardCache } from "@/lib/admin/dashboardSummary";
 import {
   buildTwitchAvatarMap,
   extractUniqueTwitchLogins,
@@ -69,6 +70,20 @@ function extractErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function sanitizeAuditReason(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 500) : undefined;
+}
+
+function hasValueChanged(previousValue: unknown, nextValue: unknown): boolean {
+  if (nextValue === undefined) return false;
+  if (previousValue instanceof Date && nextValue instanceof Date) {
+    return previousValue.getTime() !== nextValue.getTime();
+  }
+  return previousValue !== nextValue;
+}
+
 async function fetchAllSupabaseMembers(): Promise<any[]> {
   const allMembers: any[] = [];
 
@@ -106,11 +121,23 @@ function mergeMemberRecord(current: any, incoming: any): any {
   return merged;
 }
 
-function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: any[]): any[] {
+type MergeStats = {
+  legacyCount: number;
+  supabaseCount: number;
+  mergedCount: number;
+  collisionsResolved: number;
+  sourceOfTruth: "supabase";
+};
+
+function mergeMembersWithoutDuplicates(
+  legacyMembers: any[],
+  supabaseMembers: any[]
+): { members: any[]; stats: MergeStats } {
   const mergedByKey = new Map<string, any>();
   const keyByDiscordId = new Map<string, string>();
   const keyByTwitchId = new Map<string, string>();
   const keyByLogin = new Map<string, string>();
+  let collisionsResolved = 0;
 
   const upsert = (member: any) => {
     const discordId = normalizeId(member?.discordId);
@@ -131,6 +158,9 @@ function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: an
     }
 
     const current = mergedByKey.get(key) || {};
+    if (Object.keys(current).length > 0) {
+      collisionsResolved += 1;
+    }
     // Évite d'écraser des identifiants valides (ex: discordId) par des valeurs vides.
     const merged = mergeMemberRecord(current, member);
     mergedByKey.set(key, merged);
@@ -144,7 +174,17 @@ function mergeMembersWithoutDuplicates(legacyMembers: any[], supabaseMembers: an
   legacyMembers.forEach(upsert);
   supabaseMembers.forEach(upsert);
 
-  return Array.from(mergedByKey.values());
+  const members = Array.from(mergedByKey.values());
+  return {
+    members,
+    stats: {
+      legacyCount: legacyMembers.length,
+      supabaseCount: supabaseMembers.length,
+      mergedCount: members.length,
+      collisionsResolved,
+      sourceOfTruth: "supabase",
+    },
+  };
 }
 
 /**
@@ -275,7 +315,8 @@ export async function GET(request: NextRequest) {
       legacyMembersPromise,
     ]);
     const sanitizedLegacyMembers = legacyMembers.filter((member) => !isDiscordPlaceholderLogin(member?.twitchLogin));
-    const members = mergeMembersWithoutDuplicates(sanitizedLegacyMembers, supabaseMembers);
+    const mergedResult = mergeMembersWithoutDuplicates(sanitizedLegacyMembers, supabaseMembers);
+    const members = mergedResult.members;
 
     // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
     // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
@@ -304,7 +345,10 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const response = NextResponse.json({ members: membersWithAvatars });
+    const response = NextResponse.json({
+      members: membersWithAvatars,
+      mergeInfo: mergedResult.stats,
+    });
     
     // Désactiver le cache côté client
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -312,7 +356,10 @@ export async function GET(request: NextRequest) {
     response.headers.set('Expires', '0');
     
     const duration = Date.now() - startTime;
-    logApi.route('GET', '/api/admin/members', 200, duration, admin.id, { count: members.length });
+    logApi.route('GET', '/api/admin/members', 200, duration, admin.id, {
+      count: members.length,
+      mergeInfo: mergedResult.stats,
+    });
     
     return response;
   } catch (error) {
@@ -331,19 +378,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   try {
-    const admin = await requireAdmin();
+    const admin = await requirePermission("write");
     
     if (!admin) {
       logApi.route('POST', '/api/admin/members', 401);
       return NextResponse.json(
-        { error: "Non authentifié" },
+        { error: "Non authentifié ou permissions insuffisantes" },
         { status: 401 }
       );
     }
 
-    // Permission write déjà vérifiée par requirePermission dans requireAdmin
-
     const body = await request.json();
+    const auditReason = sanitizeAuditReason(body?.auditReason);
     const {
       twitchLogin,
       displayName,
@@ -404,6 +450,8 @@ export async function POST(request: NextRequest) {
     }
     
     const targetRole = normalizedRole || "Affilié";
+    const targetIsActive =
+      targetRole === "Communauté" ? false : (isActive !== undefined ? isActive : true);
     const basePayload = {
       twitchLogin,
       twitchId,
@@ -412,7 +460,7 @@ export async function POST(request: NextRequest) {
       discordId,
       discordUsername,
       isVip: isVip || false,
-      isActive: isActive !== undefined ? isActive : true,
+      isActive: targetIsActive,
       badges: normalizedBadges || [],
       description,
       customBio,
@@ -481,8 +529,12 @@ export async function POST(request: NextRequest) {
       resourceId: twitchLogin,
       previousValue,
       newValue,
-      metadata: { sourcePage: "/admin/membres/gestion" },
+      metadata: {
+        sourcePage: "/admin/membres/gestion",
+        reason: auditReason,
+      },
     });
+    await invalidateAdminDashboardCache();
 
     return NextResponse.json({
       member: {
@@ -566,6 +618,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    const auditReason = sanitizeAuditReason(body?.auditReason);
     const { 
       twitchLogin, 
       memberId, // Identifiant stable (discordId) 
@@ -802,6 +855,46 @@ export async function PUT(request: NextRequest) {
     if (updates.shadowbanLives !== undefined) {
       updates.shadowbanLives = Boolean(updates.shadowbanLives);
     }
+
+    const currentCanonicalRole = toCanonicalMemberRole(existingMember.role || "Affilié");
+    const requestedRole =
+      typeof updates.role === "string" ? toCanonicalMemberRole(updates.role) : undefined;
+    const targetRoleAfterUpdate = requestedRole ?? currentCanonicalRole;
+
+    // Garde-fou métier: le rôle "Communauté" reste toujours inactif.
+    // Réactivation autorisée uniquement après un changement de rôle vers autre chose.
+    if (targetRoleAfterUpdate === "Communauté") {
+      if (updates.isActive === true) {
+        return NextResponse.json(
+          {
+            error:
+              "Impossible d'activer un membre avec le rôle Communauté. Changez d'abord le rôle pour permettre la réactivation.",
+          },
+          { status: 400 }
+        );
+      }
+      updates.isActive = false;
+    }
+
+    const sensitiveFieldsChanged: string[] = [];
+    if (hasValueChanged(existingMember.role, updates.role)) sensitiveFieldsChanged.push("role");
+    if (hasValueChanged(existingMember.isActive, updates.isActive)) sensitiveFieldsChanged.push("isActive");
+    if (hasValueChanged(existingMember.isVip, updates.isVip)) sensitiveFieldsChanged.push("isVip");
+    if (hasValueChanged(existingMember.shadowbanLives, updates.shadowbanLives)) sensitiveFieldsChanged.push("shadowbanLives");
+    if (hasValueChanged(existingMember.twitchLogin, updates.twitchLogin)) sensitiveFieldsChanged.push("twitchLogin");
+    if (hasValueChanged(existingMember.twitchId, updates.twitchId)) sensitiveFieldsChanged.push("twitchId");
+    if (hasValueChanged(existingMember.discordId, updates.discordId)) sensitiveFieldsChanged.push("discordId");
+    if (hasValueChanged(existingMember.discordUsername, updates.discordUsername)) sensitiveFieldsChanged.push("discordUsername");
+
+    const effectiveReason = auditReason || sanitizeAuditReason((updates as any).roleChangeReason);
+    if (sensitiveFieldsChanged.length > 0 && !effectiveReason) {
+      return NextResponse.json(
+        {
+          error: `Motif obligatoire pour cette modification sensible (${sensitiveFieldsChanged.join(", ")}).`,
+        },
+        { status: 400 }
+      );
+    }
     
     // Si le rôle est modifié manuellement, marquer comme défini manuellement
     // La gestion de roleHistory est faite automatiquement dans updateMemberData
@@ -967,9 +1060,12 @@ export async function PUT(request: NextRequest) {
       newValue,
       metadata: {
         fieldsChanged,
+        sensitiveFieldsChanged,
         sourcePage: "/admin/membres/gestion",
+        reason: effectiveReason,
       },
     });
+    await invalidateAdminDashboardCache();
 
     return NextResponse.json({
       member: {
@@ -1025,10 +1121,18 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const twitchLogin = searchParams.get("twitchLogin");
+    const auditReason = sanitizeAuditReason(searchParams.get("reason"));
 
     if (!twitchLogin) {
       return NextResponse.json(
         { error: "twitchLogin est requis" },
+        { status: 400 }
+      );
+    }
+
+    if (!auditReason) {
+      return NextResponse.json(
+        { error: "Le motif de suppression est obligatoire" },
         { status: 400 }
       );
     }
@@ -1096,8 +1200,12 @@ export async function DELETE(request: NextRequest) {
       resourceType: "member",
       resourceId: twitchLogin,
       previousValue,
-      metadata: { sourcePage: "/admin/membres/gestion" },
+      metadata: {
+        sourcePage: "/admin/membres/gestion",
+        reason: auditReason,
+      },
     });
+    await invalidateAdminDashboardCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {

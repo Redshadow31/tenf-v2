@@ -141,6 +141,11 @@ export async function POST(request: NextRequest) {
             newRole = role;
           }
 
+          // Garde-fou métier: un membre au rôle Communauté reste inactif.
+          if (newRole === "Communauté") {
+            newIsActive = false;
+          }
+
           const updateData: any = {
             isActive: newIsActive,
             role: newRole,

@@ -135,8 +135,9 @@ export async function POST(request: NextRequest) {
         twitter: pending.twitter || undefined,
         birthday: parseDateFromDb(pending.birthday),
         twitchAffiliateDate: parseDateFromDb(pending.twitch_affiliate_date),
-        // Un profil valide doit repasser actif pour reapparaitre dans les vues membres.
-        isActive: true,
+        // Nouvelle logique métier:
+        // profil validé => membre conservé inactif en attente de validation "passage Communauté".
+        isActive: false,
         profileValidationStatus: "valide",
         updatedBy: admin.discordId,
       });

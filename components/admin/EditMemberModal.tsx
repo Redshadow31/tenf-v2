@@ -169,6 +169,13 @@ export default function EditMemberModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose, showRoleHistory]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (formData.role !== "Communauté") return;
+    if (formData.statut === "Inactif") return;
+    setFormData((prev) => ({ ...prev, statut: "Inactif" }));
+  }, [formData.role, formData.statut, isOpen]);
+
   const loadAvailableMembers = async () => {
     try {
       const response = await fetch("/api/members/public", {
@@ -356,6 +363,8 @@ export default function EditMemberModal({
   };
 
   const modifiedTabCount = tabOrder.filter((tab) => tabDirtyState[tab]).length;
+  const hasUnsavedChanges = modifiedTabCount > 0;
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
   const focusTab = (tab: EditTab) => {
     const node = tabButtonRefs.current[tab];
@@ -385,16 +394,28 @@ export default function EditMemberModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (Object.keys(validationErrors).length > 0) {
+    if (hasValidationErrors) {
       alert("Impossible d'enregistrer : corrigez les erreurs du formulaire.");
       return;
     }
     // Si le rôle a changé, ajouter roleChangeReason aux données
-    const dataToSave = { ...formData, role: toCanonicalMemberRole(formData.role) };
+    const normalizedRole = toCanonicalMemberRole(formData.role);
+    const dataToSave = {
+      ...formData,
+      role: normalizedRole,
+      statut: normalizedRole === "Communauté" ? ("Inactif" as const) : formData.statut,
+    };
     if (formData.role !== originalRole) {
       (dataToSave as any).roleChangeReason = roleChangeReason || undefined;
     }
     onSave(dataToSave);
+  };
+
+  const resetFormToInitial = () => {
+    setFormData({ ...member, role: toCanonicalMemberRole(member.role) });
+    setRoleChangeReason("");
+    setBadgeInput("");
+    setValidationErrors({});
   };
 
   const getStatusBadgeColor = (statut: "Actif" | "Inactif") => {
@@ -406,22 +427,23 @@ export default function EditMemberModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
     >
       <div
-        className="bg-[#1a1a1d] border border-gray-700 rounded-lg max-w-5xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-[#1a1a1d] border border-gray-700 rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header fixe */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0 bg-gradient-to-r from-[#171822] to-[#141418]">
           <div className="flex items-center gap-4">
             <img
               src={formData.avatar}
               alt={formData.nom}
-              className="w-16 h-16 rounded-full object-cover"
+              className="w-16 h-16 rounded-full object-cover border border-gray-700"
             />
             <div>
               <h2 className="text-2xl font-bold text-white">{formData.nom}</h2>
-              <p className="text-sm text-gray-400">ID: {formData.id}</p>
+              <p className="text-sm text-gray-400">ID: {formData.id} • @ {formData.twitch || "inconnu"}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -439,6 +461,8 @@ export default function EditMemberModal({
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors ml-2"
+              type="button"
+              aria-label="Fermer le modal"
             >
               <svg
                 className="w-6 h-6"
@@ -463,7 +487,7 @@ export default function EditMemberModal({
               Navigation clavier onglets: fleches gauche/droite, Home, End.
             </p>
             <span className="text-xs text-gray-400">
-              {modifiedTabCount > 0 ? `${modifiedTabCount} onglet(s) modifié(s)` : "Aucune modification"}
+              {hasUnsavedChanges ? `${modifiedTabCount} onglet(s) modifié(s)` : "Aucune modification"}
             </span>
           </div>
           <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections du formulaire membre">
@@ -483,8 +507,8 @@ export default function EditMemberModal({
                 onKeyDown={(event) => handleTabKeyDown(event, tab)}
                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors border ${
                   activeTab === tab
-                    ? "bg-purple-600 text-white"
-                    : "bg-[#0e0e10] text-gray-300 border-gray-700 hover:text-white"
+                    ? "bg-purple-600/90 text-white border-purple-400/40"
+                    : "bg-[#0e0e10] text-gray-300 border-gray-700 hover:text-white hover:bg-[#1a1d26]"
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
@@ -686,7 +710,14 @@ export default function EditMemberModal({
                       )}
                       <select
                         value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value as MemberRole })}
+                        onChange={(e) => {
+                          const nextRole = e.target.value as MemberRole;
+                          setFormData((prev) => ({
+                            ...prev,
+                            role: nextRole,
+                            statut: nextRole === "Communauté" ? "Inactif" : prev.statut,
+                          }));
+                        }}
                         className={`w-full bg-[#0e0e10] border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500 ${
                           formData.role === "Communauté" ? 'border-orange-500/50' : 'border-gray-700'
                         }`}
@@ -725,6 +756,11 @@ export default function EditMemberModal({
                       <label className="block text-sm font-semibold text-gray-300 mb-2">
                         Statut
                       </label>
+                      {formData.role === "Communauté" && (
+                        <p className="text-xs text-orange-300 mb-2">
+                          Le rôle Communauté impose le statut Inactif. Pour réactiver ce membre, change d&apos;abord le rôle.
+                        </p>
+                      )}
                       <select
                         value={formData.statut}
                         onChange={(e) =>
@@ -732,7 +768,9 @@ export default function EditMemberModal({
                         }
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
                       >
-                        <option value="Actif">Actif</option>
+                        <option value="Actif" disabled={formData.role === "Communauté"}>
+                          Actif
+                        </option>
                         <option value="Inactif">Inactif</option>
                       </select>
                     </div>
@@ -1103,7 +1141,25 @@ export default function EditMemberModal({
         </div>
 
         {/* Footer fixe */}
-        <div className="flex gap-3 p-6 border-t border-gray-700 flex-shrink-0">
+        <div className="p-6 border-t border-gray-700 flex-shrink-0 bg-[#141418]">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-400">
+              {hasValidationErrors
+                ? `${Object.keys(validationErrors).length} erreur(s) à corriger`
+                : hasUnsavedChanges
+                ? "Modifications prêtes à être enregistrées"
+                : "Aucune modification en attente"}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={resetFormToInitial}
+              disabled={!hasUnsavedChanges}
+              className="bg-[#0e0e10] hover:bg-[#1a1d26] border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+            >
+              Réinitialiser
+            </button>
           <button
             type="button"
             onClick={onClose}
@@ -1114,11 +1170,12 @@ export default function EditMemberModal({
           <button
             type="submit"
             form="edit-member-form"
-            disabled={Object.keys(validationErrors).length > 0}
+            disabled={hasValidationErrors || !hasUnsavedChanges}
             className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg transition-colors"
           >
-            Enregistrer
+            {hasUnsavedChanges ? "Enregistrer les modifications" : "Aucune modification"}
           </button>
+          </div>
         </div>
 
         {/* Modal Historique des rôles */}

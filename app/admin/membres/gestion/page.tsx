@@ -11,6 +11,7 @@ import BulkImportModal from "@/components/admin/BulkImportModal";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
+import AdminToastStack from "@/components/admin/ui/AdminToastStack";
 // logAction est maintenant appelé via l'API /api/admin/log
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
@@ -138,6 +139,7 @@ export default function GestionMembresPage() {
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
   const [showMemberHistory, setShowMemberHistory] = useState(false);
   const [showVerifyTwitchNamesModal, setShowVerifyTwitchNamesModal] = useState(false);
+  const [syncingDiscordNames, setSyncingDiscordNames] = useState(false);
   const [selectedMemberLogins, setSelectedMemberLogins] = useState<string[]>([]);
   const [bulkRole, setBulkRole] = useState<MemberRole | "">("");
   const [bulkStatus, setBulkStatus] = useState<"" | "Actif" | "Inactif">("");
@@ -973,12 +975,17 @@ export default function GestionMembresPage() {
       (member.statut === "Actif" || isStaffRole(member.role)) &&
       member.role !== "Nouveau"
   );
-  const inactiveMembers = filteredMembers.filter(
+  const inactiveCommunityMembers = filteredMembers.filter(
+    (member) => member.statut === "Inactif" && member.role === "Communauté"
+  );
+  const inactiveOtherMembers = filteredMembers.filter(
     (member) =>
       member.statut === "Inactif" &&
       !isStaffRole(member.role) &&
-      member.role !== "Nouveau"
+      member.role !== "Nouveau" &&
+      member.role !== "Communauté"
   );
+  const communityFollowupMembers = [...inactiveCommunityMembers, ...inactiveOtherMembers];
   const isSearching = searchQuery.trim().length > 0;
   // En mode recherche, afficher tous les statuts pour éviter de "perdre" un membre selon l'onglet actif.
   const displayedMembers = isSearching
@@ -986,7 +993,7 @@ export default function GestionMembresPage() {
     : statusTab === "actifs"
     ? activeMembers
     : statusTab === "inactifs"
-    ? inactiveMembers
+    ? communityFollowupMembers
     : newMembers;
   const totalPages = Math.max(1, Math.ceil(displayedMembers.length / pageSize));
   const clampedCurrentPage = Math.min(currentPage, totalPages);
@@ -1000,8 +1007,8 @@ export default function GestionMembresPage() {
         ? 19
         : 18
       : currentAdmin?.isFounder
-      ? 12
-      : 11;
+      ? 8
+      : 7;
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1024,11 +1031,16 @@ export default function GestionMembresPage() {
     return { overdue, dueSoon };
   })();
   const totalActiveMembers = members.filter((m) => m.statut === "Actif" && m.role !== "Nouveau").length;
-  const totalInactiveMembers = members.filter((m) => m.statut === "Inactif" && m.role !== "Nouveau").length;
+  const totalInactiveMembers = communityFollowupMembers.length;
   const totalNewMembers = members.filter((m) => m.role === "Nouveau").length;
   const totalIncompleteMembers = members.filter((m) => getMemberCompleteness(m).percent < 80).length;
   const totalWithoutTwitchId = members.filter((m) => !m.twitchId).length;
-  const activeTabLabel = statusTab === "actifs" ? "Actifs" : statusTab === "inactifs" ? "Inactifs" : "Nouveaux";
+  const activeTabLabel =
+    statusTab === "actifs"
+      ? "Actifs"
+      : statusTab === "inactifs"
+      ? "Suivi communauté"
+      : "Nouveaux";
   const availableRoles = Array.from(new Set(members.map((member) => member.role))).sort((a, b) =>
     a.localeCompare(b, "fr", { sensitivity: "base" })
   );
@@ -1077,6 +1089,17 @@ export default function GestionMembresPage() {
       return;
     }
 
+    const includesSensitiveBulkChanges = Boolean(bulkRole || bulkStatus);
+    let bulkAuditReason: string | undefined;
+    if (includesSensitiveBulkChanges) {
+      const reason = prompt("Motif obligatoire pour les changements sensibles en masse (rôle/statut) :");
+      if (!reason || !reason.trim()) {
+        alert("Motif obligatoire pour cette action.");
+        return;
+      }
+      bulkAuditReason = reason.trim();
+    }
+
     setBulkLoading(true);
     let success = 0;
     const errors: string[] = [];
@@ -1093,6 +1116,7 @@ export default function GestionMembresPage() {
         if (bulkStatus) payload.isActive = bulkStatus === "Actif";
         if (bulkOnboarding) payload.onboardingStatus = bulkOnboarding;
         if (bulkNextReviewDate) payload.nextReviewAt = new Date(bulkNextReviewDate).toISOString();
+        if (bulkAuditReason) payload.auditReason = bulkAuditReason;
 
         const response = await fetch("/api/admin/members", {
           method: "PUT",
@@ -1172,7 +1196,19 @@ export default function GestionMembresPage() {
     if (!member || !member.twitch) return;
 
     const oldStatus = member.statut;
+    if (oldStatus === "Inactif" && member.role === "Communauté") {
+      alert(
+        "Ce membre est verrouillé en Inactif car il est au rôle Communauté. " +
+          "Changez d'abord le rôle pour pouvoir le réactiver."
+      );
+      return;
+    }
     const newStatus = oldStatus === "Actif" ? "Inactif" : "Actif";
+    const reason = prompt("Motif obligatoire pour le changement de statut :");
+    if (!reason || !reason.trim()) {
+      alert("Motif obligatoire pour cette modification.");
+      return;
+    }
     if (
       !confirm(
         `Confirmer le changement de statut ?\n\nMembre: ${member.nom}\nTwitch: ${member.twitch}\nStatut actuel: ${oldStatus}\nNouveau statut: ${newStatus}`
@@ -1194,6 +1230,7 @@ export default function GestionMembresPage() {
           body: JSON.stringify({
             twitchLogin: member.twitch,
             isActive: newStatus === "Actif",
+            auditReason: reason.trim(),
           }),
         });
 
@@ -1224,6 +1261,125 @@ export default function GestionMembresPage() {
     } catch (error) {
       console.error("Erreur lors de la modification du statut:", error);
       pushNotice("error", `Erreur statut: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
+  const canValidateCommunityPassage = (member: Member) =>
+    member.statut === "Inactif" &&
+    member.role !== "Communauté" &&
+    member.profileValidationStatus === "valide";
+
+  const handleValidateCommunityPassage = async (memberToUpdate: Member) => {
+    if (!currentAdmin) {
+      alert("Vous devez être connecté pour effectuer cette action");
+      return;
+    }
+
+    if (!currentAdmin.canWrite) {
+      alert("Permissions insuffisantes: vous n'avez pas le droit de modifier les membres.");
+      return;
+    }
+
+    if (safeModeEnabled && !currentAdmin.isFounder) {
+      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+      return;
+    }
+
+    const member = members.find((m) => areSameMember(m, memberToUpdate)) ?? memberToUpdate;
+    if (!member || !member.twitch) return;
+
+    if (!canValidateCommunityPassage(member)) {
+      alert("Ce membre n'est pas éligible au passage Communauté.");
+      return;
+    }
+
+    const reason = prompt("Motif obligatoire pour valider le passage en Communauté :");
+    if (!reason || !reason.trim()) {
+      alert("Motif obligatoire pour cette modification.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Confirmer le passage en Communauté ?\n\nMembre: ${member.nom}\nTwitch: ${member.twitch}\n` +
+          `Nouveau rôle: Communauté\nNouveau statut: Inactif (forcé)`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/members", {
+        method: "PUT",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
+        body: JSON.stringify({
+          twitchLogin: member.twitch,
+          role: "Communauté",
+          isActive: false,
+          roleChangeReason: "Validation passage Communauté depuis l'onglet Inactifs",
+          auditReason: reason.trim(),
+          originalDiscordId: member.discordId,
+          originalTwitchId: member.twitchId,
+          originalTwitchLogin: member.twitch,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la validation du passage en Communauté");
+      }
+
+      await loadMembers();
+      pushNotice("success", `Passage Communauté validé pour ${member.nom} (reste Inactif).`);
+    } catch (error) {
+      console.error("Erreur validation passage Communauté:", error);
+      pushNotice(
+        "error",
+        `Erreur passage Communauté: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+      );
+    }
+  };
+
+  const handleVerifyDiscordNames = async () => {
+    if (!currentAdmin?.isFounder) {
+      pushNotice("error", "Action réservée aux fondateurs.");
+      return;
+    }
+    if (syncingDiscordNames) return;
+
+    setSyncingDiscordNames(true);
+    try {
+      const response = await fetch("/api/admin/members/sync-discord-usernames", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Erreur lors de la vérification des noms Discord");
+      }
+
+      const synced = Number(data?.synced || 0);
+      const notFound = Number(data?.notFound || 0);
+      const details = [`${synced} pseudo(s) mis à jour`];
+      if (notFound > 0) {
+        details.push(`${notFound} membre(s) non trouvé(s) côté Discord`);
+      }
+      pushNotice("success", `Vérification Discord terminée: ${details.join(" • ")}`);
+      await loadMembers();
+    } catch (error) {
+      pushNotice(
+        "error",
+        `Erreur vérification Discord: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+      );
+    } finally {
+      setSyncingDiscordNames(false);
     }
   };
 
@@ -1312,7 +1468,30 @@ export default function GestionMembresPage() {
       roleHistory: updatedMember.roleHistory || oldMember.roleHistory,
     };
 
+    if (mergedMember.role === "Communauté" && mergedMember.statut !== "Inactif") {
+      mergedMember.statut = "Inactif";
+    }
+
     try {
+      const hasSensitiveChanges =
+        oldMember.role !== mergedMember.role ||
+        oldMember.statut !== mergedMember.statut ||
+        (oldMember.isVip || false) !== (mergedMember.isVip || false) ||
+        oldMember.twitch !== mergedMember.twitch ||
+        (oldMember.twitchId || "") !== (mergedMember.twitchId || "") ||
+        (oldMember.discordId || "") !== (mergedMember.discordId || "") ||
+        (oldMember.discord || "") !== (mergedMember.discord || "");
+
+      let editAuditReason: string | undefined;
+      if (hasSensitiveChanges) {
+        const reason = prompt("Motif obligatoire pour les changements sensibles (rôle/statut/VIP/identifiants) :");
+        if (!reason || !reason.trim()) {
+          alert("Motif obligatoire pour cette modification.");
+          return;
+        }
+        editAuditReason = reason.trim();
+      }
+
       // Mettre à jour via l'API
       const response = await fetch("/api/admin/members", {
         method: "PUT",
@@ -1347,6 +1526,7 @@ export default function GestionMembresPage() {
             nextReviewAt: mergedMember.nextReviewAt,
             parrain: mergedMember.parrain,
             roleChangeReason: updatedMember.roleChangeReason,
+            auditReason: editAuditReason,
             // Identifiants stables pour identifier le membre (important si le pseudo change)
             originalDiscordId: oldMember.discordId, // ID Discord original (stable)
             originalTwitchId: oldMember.twitchId, // ID Twitch original (stable)
@@ -1488,6 +1668,12 @@ export default function GestionMembresPage() {
       return;
     }
 
+    const reason = prompt("Motif obligatoire de suppression :");
+    if (!reason || !reason.trim()) {
+      pushNotice("error", "Le motif de suppression est obligatoire.");
+      return;
+    }
+
     if (
       !confirm(
         `Suppression définitive du membre\n\nNom: ${member.nom}\nTwitch: ${member.twitch}\nDiscord: ${member.discord || "N/A"}\n\nCette action est irréversible.`
@@ -1497,7 +1683,7 @@ export default function GestionMembresPage() {
     }
 
     try {
-        const response = await fetch(`/api/admin/members?twitchLogin=${encodeURIComponent(member.twitch)}`, {
+        const response = await fetch(`/api/admin/members?twitchLogin=${encodeURIComponent(member.twitch)}&reason=${encodeURIComponent(reason.trim())}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -1674,11 +1860,19 @@ export default function GestionMembresPage() {
     }
   };
   const rowActionButtonBase = "px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1";
+  const rowActionButtonBaseCompact = "px-2 py-1 rounded text-[11px] font-semibold transition-colors flex items-center gap-1 whitespace-nowrap";
   const rowActionInfo = `${rowActionButtonBase} bg-blue-600/20 text-blue-300 hover:bg-blue-600/30`;
   const rowActionPrimary = `${rowActionButtonBase} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30`;
   const rowActionEdit = `${rowActionButtonBase} bg-[#9146ff] text-white hover:bg-[#5a32b4]`;
   const rowActionDanger = `${rowActionButtonBase} bg-red-600/20 text-red-300 hover:bg-red-600/30`;
   const rowActionSuccess = `${rowActionButtonBase} bg-green-600/20 text-green-300 hover:bg-green-600/30`;
+  const rowActionWarning = `${rowActionButtonBase} bg-amber-600/20 text-amber-300 hover:bg-amber-600/30`;
+  const rowActionInfoCompact = `${rowActionButtonBaseCompact} bg-blue-600/20 text-blue-300 hover:bg-blue-600/30`;
+  const rowActionPrimaryCompact = `${rowActionButtonBaseCompact} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30`;
+  const rowActionEditCompact = `${rowActionButtonBaseCompact} bg-[#9146ff] text-white hover:bg-[#5a32b4]`;
+  const rowActionDangerCompact = `${rowActionButtonBaseCompact} bg-red-600/20 text-red-300 hover:bg-red-600/30`;
+  const rowActionSuccessCompact = `${rowActionButtonBaseCompact} bg-green-600/20 text-green-300 hover:bg-green-600/30`;
+  const rowActionWarningCompact = `${rowActionButtonBaseCompact} bg-amber-600/20 text-amber-300 hover:bg-amber-600/30`;
 
   if (loading) {
     return (
@@ -1693,156 +1887,200 @@ export default function GestionMembresPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white">
-      <div className="p-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-white">Gestion des Membres</h1>
-            <p className="mt-2 text-sm text-gray-400">
-              {members.length} membre{members.length > 1 ? "s" : ""} • {activeMembers.length} actifs • {inactiveMembers.length} inactifs • {newMembers.length} nouveaux
-            </p>
+      <AdminToastStack
+        toasts={
+          actionNotice
+            ? [
+                {
+                  id: "gestion-members-notice",
+                  type: actionNotice.type === "error" ? "warning" : actionNotice.type,
+                  title: actionNotice.message,
+                },
+              ]
+            : []
+        }
+        onClose={() => setActionNotice(null)}
+      />
+      <div className="p-4 md:p-6 xl:p-8">
+        <section
+          className="mb-6 rounded-2xl border p-5 md:p-6"
+          style={{
+            borderColor: "rgba(145,70,255,0.32)",
+            background:
+              "radial-gradient(circle at 8% 0%, rgba(145,70,255,0.18), transparent 38%), radial-gradient(circle at 92% 0%, rgba(14,165,233,0.10), transparent 30%), linear-gradient(180deg, rgba(17,24,39,0.45), rgba(17,24,39,0.12))",
+          }}
+        >
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.12em] text-gray-400">Admin panel</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">Gestion des Membres</h1>
+              <p className="mt-2 text-sm text-gray-300">
+                Vue centralisée des profils, statuts, onboarding, raids et qualité des fiches.
+              </p>
+            </div>
           </div>
-        </div>
-        {actionNotice && (
-          <div
-            className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-              actionNotice.type === "success"
-                ? "border-green-500/40 bg-green-500/10 text-green-200"
-                : actionNotice.type === "error"
-                ? "border-red-500/40 bg-red-500/10 text-red-200"
-                : "border-blue-500/40 bg-blue-500/10 text-blue-200"
-            }`}
-          >
-            {actionNotice.message}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+            <div className="rounded-xl border border-gray-700 bg-[#14151a] px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-gray-400">Total</p>
+              <p className="mt-1 text-xl font-semibold text-white">{members.length}</p>
+            </div>
+            <div className="rounded-xl border border-green-500/25 bg-green-500/10 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-green-200">Actifs</p>
+              <p className="mt-1 text-xl font-semibold text-green-300">{activeMembers.length}</p>
+            </div>
+            <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-red-200">Suivi communauté</p>
+              <p className="mt-1 text-xl font-semibold text-red-300">{totalInactiveMembers}</p>
+            </div>
+            <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-purple-200">Nouveaux</p>
+              <p className="mt-1 text-xl font-semibold text-purple-300">{newMembers.length}</p>
+            </div>
+            <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/10 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-yellow-200">Incomplets</p>
+              <p className="mt-1 text-xl font-semibold text-yellow-300">{totalIncompleteMembers}</p>
+            </div>
+            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-cyan-200">Sans ID Twitch</p>
+              <p className="mt-1 text-xl font-semibold text-cyan-300">{totalWithoutTwitchId}</p>
+            </div>
           </div>
-        )}
+        </section>
 
         {/* Barre de recherche et actions */}
-        <div className="mb-6 sticky top-3 z-20 bg-[#0f1014]/95 backdrop-blur border border-gray-800 rounded-xl p-4 flex items-center gap-4 flex-wrap">
-          <input
-            type="text"
-            placeholder="Rechercher un membre..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 max-w-md bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-          />
-          <select
-            value={presetFilter}
-            onChange={(e) => setPresetFilter(e.target.value as PresetFilter)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-            title="Filtre métier rapide"
-          >
-            <option value="all">Tous</option>
-            <option value="nouveaux">Nouveaux (&lt; 30 jours)</option>
-            <option value="incomplets">Incomplets</option>
-            <option value="sans_twitch_id">Sans ID Twitch</option>
-            <option value="sans_integration">Sans intégration</option>
-            <option value="vip">VIP</option>
-            <option value="inactifs">Inactifs</option>
-            <option value="revue_due">Revue due</option>
-          </select>
-          <button
-            type="button"
-            onClick={() => setShowAdvancedFilters((prev) => !prev)}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
-              showAdvancedFilters
-                ? "bg-purple-600/20 border-purple-500/40 text-purple-200"
-                : "bg-[#1a1a1d] border-gray-700 text-gray-300 hover:text-white"
-            }`}
-            title="Afficher/Masquer les filtres avancés"
-          >
-            Filtres avancés
-          </button>
-          {showAdvancedFilters && (
-            <>
+        <div className="mb-6 sticky top-3 z-20 rounded-2xl border border-gray-800 bg-[#0f1014]/95 p-4 backdrop-blur">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                placeholder="Rechercher un membre (pseudo, role, bio, jeu...)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 min-w-[240px] bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+              />
               <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value as "all" | MemberRole)}
+                value={presetFilter}
+                onChange={(e) => setPresetFilter(e.target.value as PresetFilter)}
                 className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                title="Filtrer par rôle"
+                title="Filtre métier rapide"
               >
-                <option value="all">Tous les rôles</option>
-                {availableRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {getRoleBadgeLabel(role)}
+                <option value="all">Tous</option>
+                <option value="nouveaux">Nouveaux (&lt; 30 jours)</option>
+                <option value="incomplets">Incomplets</option>
+                <option value="sans_twitch_id">Sans ID Twitch</option>
+                <option value="sans_integration">Sans intégration</option>
+                <option value="vip">VIP</option>
+                <option value="inactifs">Inactifs</option>
+                <option value="revue_due">Revue due</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((prev) => !prev)}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  showAdvancedFilters
+                    ? "bg-purple-600/20 border-purple-500/40 text-purple-200"
+                    : "bg-[#1a1a1d] border-gray-700 text-gray-300 hover:text-white"
+                }`}
+                title="Afficher/Masquer les filtres avancés"
+              >
+                Filtres avancés
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedSavedViewId}
+                onChange={(e) => applySavedView(e.target.value)}
+                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                title="Vues enregistrées"
+              >
+                <option value="">Vues enregistrées</option>
+                {savedViews.map((view) => (
+                  <option key={view.id} value={view.id}>
+                    {view.name}
                   </option>
                 ))}
               </select>
-              <select
-                value={memberStatusFilter}
-                onChange={(e) => setMemberStatusFilter(e.target.value as "all" | MemberStatus)}
-                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                title="Filtrer par statut membre"
+              <button
+                onClick={saveCurrentView}
+                className="bg-indigo-500/12 hover:bg-indigo-500/20 border border-indigo-400/35 text-indigo-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                title="Enregistrer la vue actuelle"
               >
-                <option value="all">Tous statuts</option>
-                <option value="Actif">Actif</option>
-                <option value="Inactif">Inactif</option>
-              </select>
-              <input
-                type="date"
-                value={joinedAfterFilter}
-                onChange={(e) => setJoinedAfterFilter(e.target.value)}
-                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                title="Membre depuis - date minimum"
-              />
-              <input
-                type="date"
-                value={joinedBeforeFilter}
-                onChange={(e) => setJoinedBeforeFilter(e.target.value)}
-                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                title="Membre depuis - date maximum"
-              />
-            </>
-          )}
-          <select
-            value={selectedSavedViewId}
-            onChange={(e) => applySavedView(e.target.value)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-            title="Vues enregistrées"
-          >
-            <option value="">Vues enregistrées</option>
-            {savedViews.map((view) => (
-              <option key={view.id} value={view.id}>
-                {view.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={saveCurrentView}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
-            title="Enregistrer la vue actuelle"
-          >
-            Sauver vue
-          </button>
-          <button
-            onClick={() => {
-              setSearchQuery("");
-              setPresetFilter("all");
-              setRoleFilter("all");
-              setMemberStatusFilter("all");
-              setJoinedAfterFilter("");
-              setJoinedBeforeFilter("");
-              setSelectedSavedViewId("");
-              pushNotice("info", "Filtres réinitialisés");
-            }}
-            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
-            title="Réinitialiser recherche et filtres"
-          >
-            Reset filtres
-          </button>
-          {selectedSavedViewId && (
-            <button
-              onClick={() => deleteSavedView(selectedSavedViewId)}
-              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
-              title="Supprimer la vue sélectionnée"
-            >
-              Suppr vue
-            </button>
-          )}
-          
-          <div className="flex gap-2">
+                Sauver vue
+              </button>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setPresetFilter("all");
+                  setRoleFilter("all");
+                  setMemberStatusFilter("all");
+                  setJoinedAfterFilter("");
+                  setJoinedBeforeFilter("");
+                  setSelectedSavedViewId("");
+                  pushNotice("info", "Filtres réinitialisés");
+                }}
+                className="bg-[#151821] hover:bg-[#1b2030] border border-gray-700 text-gray-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                title="Réinitialiser recherche et filtres"
+              >
+                Reset filtres
+              </button>
+              {selectedSavedViewId && (
+                <button
+                  onClick={() => deleteSavedView(selectedSavedViewId)}
+                  className="bg-red-500/12 hover:bg-red-500/20 border border-red-400/35 text-red-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                  title="Supprimer la vue sélectionnée"
+                >
+                  Suppr vue
+                </button>
+              )}
+            </div>
+
+            {showAdvancedFilters && (
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value as "all" | MemberRole)}
+                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  title="Filtrer par rôle"
+                >
+                  <option value="all">Tous les rôles</option>
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {getRoleBadgeLabel(role)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={memberStatusFilter}
+                  onChange={(e) => setMemberStatusFilter(e.target.value as "all" | MemberStatus)}
+                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  title="Filtrer par statut membre"
+                >
+                  <option value="all">Tous statuts</option>
+                  <option value="Actif">Actif</option>
+                  <option value="Inactif">Inactif</option>
+                </select>
+                <input
+                  type="date"
+                  value={joinedAfterFilter}
+                  onChange={(e) => setJoinedAfterFilter(e.target.value)}
+                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  title="Membre depuis - date minimum"
+                />
+                <input
+                  type="date"
+                  value={joinedBeforeFilter}
+                  onChange={(e) => setJoinedBeforeFilter(e.target.value)}
+                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  title="Membre depuis - date maximum"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
             <Link
               href="/admin/membres/postulations"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+              className="bg-indigo-500/12 hover:bg-indigo-500/20 border border-indigo-400/35 text-indigo-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
             >
               <Users className="w-4 h-4" />
               Postulations staff
@@ -1851,36 +2089,52 @@ export default function GestionMembresPage() {
               <>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="bg-violet-500/14 hover:bg-violet-500/24 border border-violet-400/40 text-violet-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter une chaîne
                 </button>
                 <button
                   onClick={() => setIsBulkImportOpen(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="bg-emerald-500/14 hover:bg-emerald-500/24 border border-emerald-400/35 text-emerald-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
                   <Upload className="w-4 h-4" />
                   Import en masse
                 </button>
               </>
             )}
-            <button
-              onClick={() => setViewMode(viewMode === "simple" ? "complet" : "simple")}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+            <div
+              className="inline-flex items-center rounded-lg border border-gray-700 bg-[#151821] p-1"
+              role="group"
+              aria-label="Choix du mode de vue"
             >
-              {viewMode === "simple" ? (
-                <>
-                  <LayoutGrid className="w-4 h-4" />
-                  Vue complète
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4" />
-                  Vue simple
-                </>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("simple")}
+                className={`min-w-[118px] px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  viewMode === "simple"
+                    ? "bg-sky-500/16 border border-sky-400/30 text-sky-200"
+                    : "border border-transparent text-gray-300 hover:bg-[#1b2030]"
+                }`}
+                aria-pressed={viewMode === "simple"}
+              >
+                <Eye className="w-4 h-4" />
+                Vue simple
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("complet")}
+                className={`min-w-[118px] px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  viewMode === "complet"
+                    ? "bg-violet-500/16 border border-violet-400/35 text-violet-200"
+                    : "border border-transparent text-gray-300 hover:bg-[#1b2030]"
+                }`}
+                aria-pressed={viewMode === "complet"}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Vue complète
+              </button>
+            </div>
 
             {/* Bouton d'export des modifications manuelles (pour les fondateurs) */}
             {currentAdmin?.isFounder && (
@@ -1919,7 +2173,7 @@ export default function GestionMembresPage() {
                     alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                className="bg-emerald-500/14 hover:bg-emerald-500/24 border border-emerald-400/35 text-emerald-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 title="Exporter les modifications manuelles dans un fichier JSON"
               >
                 <Download className="w-4 h-4" />
@@ -1931,11 +2185,23 @@ export default function GestionMembresPage() {
             {currentAdmin?.isFounder && (
               <button
                 onClick={() => setShowVerifyTwitchNamesModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                className="bg-sky-500/14 hover:bg-sky-500/24 border border-sky-400/35 text-sky-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 title="Vérifier les noms de chaînes Twitch via leur ID pour détecter les changements de pseudo"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Vérifier noms Twitch
+              </button>
+            )}
+
+            {currentAdmin?.isFounder && (
+              <button
+                onClick={handleVerifyDiscordNames}
+                disabled={syncingDiscordNames}
+                className="bg-blue-500/14 hover:bg-blue-500/24 border border-blue-400/35 text-blue-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Vérifier et synchroniser les noms Discord via les IDs Discord"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncingDiscordNames ? "animate-spin" : ""}`} />
+                {syncingDiscordNames ? "Vérification Discord..." : "Vérifier noms Discord"}
               </button>
             )}
 
@@ -1945,7 +2211,7 @@ export default function GestionMembresPage() {
                   onClick={() => {
                     window.location.href = "/admin/fusion-doublons";
                   }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="bg-amber-500/14 hover:bg-amber-500/24 border border-amber-400/35 text-amber-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   Gérer les doublons
@@ -1996,7 +2262,7 @@ export default function GestionMembresPage() {
                       alert(`Erreur: ${deleteData.error || "Erreur inconnue"}`);
                     }
                   }}
-                  className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="bg-orange-500/14 hover:bg-orange-500/24 border border-orange-400/35 text-orange-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                   title="Supprimer les membres avec twitchLogin discord_XXXX (doublons du bot)"
                 >
                   <XCircle className="w-4 h-4" />
@@ -2030,7 +2296,7 @@ export default function GestionMembresPage() {
                       alert(`Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="bg-emerald-500/14 hover:bg-emerald-500/24 border border-emerald-400/35 text-emerald-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   Sauvegarder données
@@ -2038,8 +2304,9 @@ export default function GestionMembresPage() {
               </>
             )}
           </div>
+          </div>
         </div>
-        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+        <div className="mb-6 rounded-xl border border-gray-800 bg-[#111218] px-3 py-3 flex flex-wrap items-center gap-2 text-xs text-gray-300">
           <span className="rounded-full border border-gray-700 bg-[#1a1a1d] px-3 py-1">
             {displayedMembers.length} résultat{displayedMembers.length > 1 ? "s" : ""} ({activeTabLabel})
           </span>
@@ -2073,34 +2340,6 @@ export default function GestionMembresPage() {
               Jusqu&apos;au: {joinedBeforeFilter}
             </span>
           )}
-        </div>
-
-        {/* Encadré de statistiques des membres */}
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
-          <div className="rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-400">Total</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{members.length}</p>
-          </div>
-          <div className="rounded-xl border border-green-500/25 bg-green-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-green-200">Actifs</p>
-            <p className="mt-2 text-2xl font-semibold text-green-300">{totalActiveMembers}</p>
-          </div>
-          <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-red-200">Inactifs</p>
-            <p className="mt-2 text-2xl font-semibold text-red-300">{totalInactiveMembers}</p>
-          </div>
-          <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-purple-200">Nouveaux</p>
-            <p className="mt-2 text-2xl font-semibold text-purple-300">{totalNewMembers}</p>
-          </div>
-          <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-yellow-200">Incomplets</p>
-            <p className="mt-2 text-2xl font-semibold text-yellow-300">{totalIncompleteMembers}</p>
-          </div>
-          <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-cyan-200">Sans ID Twitch</p>
-            <p className="mt-2 text-2xl font-semibold text-cyan-300">{totalWithoutTwitchId}</p>
-          </div>
         </div>
 
         {(reviewAlerts.overdue > 0 || reviewAlerts.dueSoon > 0) && (
@@ -2188,14 +2427,14 @@ export default function GestionMembresPage() {
           </div>
         )}
 
-        {/* Onglets Actifs/Inactifs/Nouveaux */}
-        <div className="mb-4 flex items-center gap-2">
+        {/* Onglets Actifs/Suivi communauté/Nouveaux */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-[#111218] p-2">
           <button
             type="button"
             onClick={() => setStatusTab("actifs")}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               statusTab === "actifs"
-                ? "bg-green-600 text-white"
+                ? "bg-green-600/90 text-white border border-green-400/40"
                 : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
             }`}
           >
@@ -2206,18 +2445,18 @@ export default function GestionMembresPage() {
             onClick={() => setStatusTab("inactifs")}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               statusTab === "inactifs"
-                ? "bg-red-600 text-white"
+                ? "bg-red-600/90 text-white border border-red-400/40"
                 : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
             }`}
           >
-            Inactifs ({inactiveMembers.length})
+            Suivi communauté ({communityFollowupMembers.length})
           </button>
           <button
             type="button"
             onClick={() => setStatusTab("nouveaux")}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               statusTab === "nouveaux"
-                ? "bg-purple-600 text-white"
+                ? "bg-purple-600/90 text-white border border-purple-400/40"
                 : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
             }`}
           >
@@ -2226,7 +2465,7 @@ export default function GestionMembresPage() {
         </div>
 
         {/* Tableau des membres */}
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-[#1a1a1d] border border-gray-700 rounded-xl overflow-hidden shadow-[0_14px_28px_rgba(0,0,0,0.22)]">
           <div className="border-b border-gray-700/70 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#16171b]">
             <p className="text-sm text-gray-300">
               Affichage <span className="font-semibold text-white">{startItem}</span>-<span className="font-semibold text-white">{endItem}</span> sur{" "}
@@ -2247,7 +2486,13 @@ export default function GestionMembresPage() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table
+              className={
+                viewMode === "complet"
+                  ? "w-full min-w-[1540px]"
+                  : "w-full"
+              }
+            >
               <thead className="sticky top-0 z-10 bg-[#1a1a1d]">
                 <tr className="border-b border-gray-700">
                   {currentAdmin?.isFounder && (
@@ -2274,10 +2519,14 @@ export default function GestionMembresPage() {
                   <SortableHeader column="createdAt" label="MEMBRE DEPUIS" />
                   <SortableHeader column="integrationDate" label="INTÉGRATION" />
                   <SortableHeader column="completude" label="COMPLÉTUDE" />
-                  <SortableHeader column="parrain" label="PARRAIN" />
-                  <SortableHeader column="lastLive" label="DERNIER LIVE" />
-                  <SortableHeader column="raidsDone" label="Raids TENF faits" />
-                  <SortableHeader column="raidsReceived" label="Raids reçus" />
+                  {viewMode === "complet" && (
+                    <>
+                      <SortableHeader column="parrain" label="PARRAIN" />
+                      <SortableHeader column="lastLive" label="DERNIER LIVE" />
+                      <SortableHeader column="raidsDone" label="Raids TENF faits" />
+                      <SortableHeader column="raidsReceived" label="Raids reçus" />
+                    </>
+                  )}
                   {viewMode === "complet" && (
                     <>
                       <SortableHeader column="isVip" label="VIP" />
@@ -2471,22 +2720,26 @@ export default function GestionMembresPage() {
                         );
                       })()}
                     </td>
-                    <td className="py-4 px-6 text-gray-300 text-sm">
-                      {member.parrain || "—"}
-                    </td>
-                    <td className="py-4 px-6 text-gray-300 text-sm">
-                      {formatLastLiveDate(member.lastLiveDate)}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-white font-semibold">
-                        {member.raidsDone || 0}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-white font-semibold">
-                        {member.raidsReceived || 0}
-                      </span>
-                    </td>
+                    {viewMode === "complet" && (
+                      <>
+                        <td className="py-4 px-6 text-gray-300 text-sm">
+                          {member.parrain || "—"}
+                        </td>
+                        <td className="py-4 px-6 text-gray-300 text-sm">
+                          {formatLastLiveDate(member.lastLiveDate)}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-white font-semibold">
+                            {member.raidsDone || 0}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-white font-semibold">
+                            {member.raidsReceived || 0}
+                          </span>
+                        </td>
+                      </>
+                    )}
                     {viewMode === "complet" && (
                       <>
                         <td className="py-4 px-6">
@@ -2516,50 +2769,84 @@ export default function GestionMembresPage() {
                       </>
                     )}
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
+                      {(() => {
+                        const isCommunityLocked = member.statut === "Inactif" && member.role === "Communauté";
+                        const canValidateCommunity = canValidateCommunityPassage(member);
+                        const isCompactView = viewMode !== "complet";
+                        const actionInfoClass = isCompactView ? rowActionInfoCompact : rowActionInfo;
+                        const actionPrimaryClass = isCompactView ? rowActionPrimaryCompact : rowActionPrimary;
+                        const actionDangerClass = isCompactView ? rowActionDangerCompact : rowActionDanger;
+                        const actionSuccessClass = isCompactView ? rowActionSuccessCompact : rowActionSuccess;
+                        const actionWarningClass = isCompactView ? rowActionWarningCompact : rowActionWarning;
+                        const actionEditClass = isCompactView ? rowActionEditCompact : rowActionEdit;
+                        return (
+                      <div className={`gap-2 ${isCompactView ? "flex items-center whitespace-nowrap" : "flex items-center"}`}>
                         <button
                           onClick={() => {
                             setSelectedMember(member);
                             setShowMemberHistory(true);
                           }}
-                          className={rowActionInfo}
+                          className={actionInfoClass}
                           title="Voir l'historique"
                         >
                           <History className="w-3 h-3" />
-                          Historique
+                          {isCompactView ? "Hist." : "Historique"}
                         </button>
                         <Link
                           href={`/admin/membres/fiche/${encodeURIComponent(
                             member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
                           )}`}
-                          className={rowActionPrimary}
+                          className={actionPrimaryClass}
                           title="Voir la fiche membre"
                         >
-                          👁️ Fiche
+                          {isCompactView ? "Fiche" : "👁️ Fiche"}
                         </Link>
                         <button
                           onClick={() => handleToggleStatus(member)}
-                          className={member.statut === "Actif" ? rowActionDanger : rowActionSuccess}
+                          className={`${member.statut === "Actif" ? actionDangerClass : actionSuccessClass} ${
+                            isCommunityLocked ? "opacity-60 cursor-not-allowed" : ""
+                          }`}
+                          disabled={isCommunityLocked}
+                          title={
+                            isCommunityLocked
+                              ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
+                              : undefined
+                          }
                         >
-                          {member.statut === "Actif" ? "Désactiver" : "Activer"}
+                          {member.statut === "Actif"
+                            ? (isCompactView ? "OFF" : "Désactiver")
+                            : isCommunityLocked
+                            ? (isCompactView ? "ON 🔒" : "Activer (rôle verrouillé)")
+                            : (isCompactView ? "ON" : "Activer")}
                         </button>
+                        {canValidateCommunity && currentAdmin?.canWrite && (
+                          <button
+                            onClick={() => handleValidateCommunityPassage(member)}
+                            className={actionWarningClass}
+                            title="Valider le passage en rôle Communauté (reste Inactif)"
+                          >
+                            {isCompactView ? "Valider" : "Valider communauté"}
+                          </button>
+                        )}
                         {currentAdmin?.canWrite && (
                           <>
                             <button
                               onClick={() => handleEdit(member)}
-                              className={rowActionEdit}
+                              className={actionEditClass}
                             >
-                              Modifier
+                              {isCompactView ? "Edit" : "Modifier"}
                             </button>
                             <button
                               onClick={() => handleDelete(member)}
-                              className={rowActionDanger}
+                              className={actionDangerClass}
                             >
-                              Supprimer
+                              {isCompactView ? "Suppr." : "Supprimer"}
                             </button>
                           </>
                         )}
                       </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -2571,7 +2858,13 @@ export default function GestionMembresPage() {
                     >
                       {isSearching
                         ? "Aucun membre ne correspond à cette recherche."
-                        : `Aucun membre ${statusTab === "actifs" ? "actif" : statusTab === "inactifs" ? "inactif" : "nouveau"} avec les filtres actuels.`}
+                        : `Aucun membre ${
+                            statusTab === "actifs"
+                              ? "actif"
+                              : statusTab === "inactifs"
+                              ? "du suivi communauté"
+                              : "nouveau"
+                          } avec les filtres actuels.`}
                     </td>
                   </tr>
                 )}
