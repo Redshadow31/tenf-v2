@@ -1,12 +1,119 @@
 import { Redis } from '@upstash/redis';
 
 let redisClient: Redis | null = null;
+let redisDisabledUntilMs = 0;
+let lastRedisDisableReason: string | null = null;
+
+type MemoryCacheEntry = {
+  serialized: string;
+  expiresAtMs: number;
+};
+
+const memoryCache = new Map<string, MemoryCacheEntry>();
+const memoryNamespaceIndex = new Map<string, Set<string>>();
+const MEMORY_CACHE_MAX_ENTRIES = 5000;
+const DEFAULT_REDIS_COOLDOWN_SECONDS = 60 * 60; // 1h
+
+function nowMs(): number {
+  return Date.now();
+}
+
+function parseEnvInt(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isRedisForcedDisabled(): boolean {
+  const value = (process.env.DISABLE_UPSTASH_REDIS || '').toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+}
+
+function getRedisCooldownMs(): number {
+  const seconds = parseEnvInt(
+    process.env.UPSTASH_REDIS_COOLDOWN_SECONDS,
+    DEFAULT_REDIS_COOLDOWN_SECONDS
+  );
+  return seconds * 1000;
+}
+
+function disableRedisTemporarily(reason: string): void {
+  const until = nowMs() + getRedisCooldownMs();
+  redisDisabledUntilMs = Math.max(redisDisabledUntilMs, until);
+  if (lastRedisDisableReason !== reason) {
+    lastRedisDisableReason = reason;
+    console.warn(
+      `[Cache] Redis temporairement désactivé (${reason}) jusqu'à ${new Date(redisDisabledUntilMs).toISOString()}`
+    );
+  }
+}
+
+function isRedisTemporarilyDisabled(): boolean {
+  return nowMs() < redisDisabledUntilMs;
+}
+
+function cleanupExpiredMemoryEntries(): void {
+  const now = nowMs();
+  for (const [key, entry] of memoryCache.entries()) {
+    if (entry.expiresAtMs <= now) {
+      memoryCache.delete(key);
+    }
+  }
+}
+
+function ensureMemoryCapacity(): void {
+  if (memoryCache.size < MEMORY_CACHE_MAX_ENTRIES) return;
+  // Supprime les plus anciennes entrées (insertion order de Map).
+  const keys = memoryCache.keys();
+  for (let i = 0; i < 250; i++) {
+    const next = keys.next();
+    if (next.done) break;
+    memoryCache.delete(next.value);
+  }
+}
+
+function memorySetSerialized(key: string, serialized: string, ttlSeconds: number): void {
+  cleanupExpiredMemoryEntries();
+  ensureMemoryCapacity();
+  const ttlMs = Math.max(1, ttlSeconds) * 1000;
+  memoryCache.set(key, { serialized, expiresAtMs: nowMs() + ttlMs });
+}
+
+function memoryGetSerialized(key: string): string | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAtMs <= nowMs()) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.serialized;
+}
+
+function memoryDelete(key: string): void {
+  memoryCache.delete(key);
+}
+
+function parseCachedValue<T>(serialized: string): T {
+  try {
+    return JSON.parse(serialized) as T;
+  } catch {
+    return serialized as T;
+  }
+}
 
 /**
  * Obtient le client Redis (singleton)
  * @throws {Error} Si les variables d'environnement ne sont pas configurées
  */
 export function getRedisClient(): Redis | null {
+  if (isRedisForcedDisabled()) {
+    return null;
+  }
+
+  if (isRedisTemporarilyDisabled()) {
+    return null;
+  }
+
   // Si Redis n'est pas configuré, retourner null (cache désactivé)
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -27,6 +134,7 @@ export function getRedisClient(): Redis | null {
       });
     } catch (error) {
       console.error('[Cache] Erreur initialisation Redis:', error);
+      disableRedisTemporarily('initialisation');
       return null;
     }
   }
@@ -40,6 +148,11 @@ export function getRedisClient(): Redis | null {
  * @returns La valeur en cache ou null si non trouvée ou erreur
  */
 export async function cacheGet<T>(key: string): Promise<T | null> {
+  const inMemory = memoryGetSerialized(key);
+  if (inMemory !== null) {
+    return parseCachedValue<T>(inMemory);
+  }
+
   const redis = getRedisClient();
   if (!redis) return null;
 
@@ -49,16 +162,16 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
     
     // Si la donnée est une string JSON, la parser
     if (typeof data === 'string') {
-      try {
-        return JSON.parse(data) as T;
-      } catch {
-        return data as T;
-      }
+      // L1 cache mémoire pour limiter les appels Redis tant que le process vit.
+      memorySetSerialized(key, data, 60);
+      return parseCachedValue<T>(data);
     }
     
+    memorySetSerialized(key, JSON.stringify(data), 60);
     return data as T;
   } catch (error) {
     console.error(`[Cache] Erreur get pour la clé "${key}":`, error);
+    disableRedisTemporarily('erreur GET');
     return null;
   }
 }
@@ -74,15 +187,18 @@ export async function cacheSet<T>(
   value: T,
   ttlSeconds: number = 300
 ): Promise<void> {
+  // Toujours maintenir le fallback mémoire, même si Redis est indisponible.
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+  memorySetSerialized(key, serialized, ttlSeconds);
+
   const redis = getRedisClient();
   if (!redis) return;
 
   try {
-    // Sérialiser en JSON si ce n'est pas déjà une string
-    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
     await redis.setex(key, ttlSeconds, serialized);
   } catch (error) {
     console.error(`[Cache] Erreur set pour la clé "${key}":`, error);
+    disableRedisTemporarily('erreur SET');
   }
 }
 
@@ -91,6 +207,7 @@ export async function cacheSet<T>(
  * @param key Clé à supprimer
  */
 export async function cacheDelete(key: string): Promise<void> {
+  memoryDelete(key);
   const redis = getRedisClient();
   if (!redis) return;
 
@@ -98,6 +215,7 @@ export async function cacheDelete(key: string): Promise<void> {
     await redis.del(key);
   } catch (error) {
     console.error(`[Cache] Erreur delete pour la clé "${key}":`, error);
+    disableRedisTemporarily('erreur DEL');
   }
 }
 
@@ -132,6 +250,14 @@ export async function cacheInvalidate(pattern: string): Promise<void> {
  * @param namespace Namespace à invalider (ex: "members")
  */
 export async function cacheInvalidateNamespace(namespace: string): Promise<void> {
+  const memoryKeys = memoryNamespaceIndex.get(namespace);
+  if (memoryKeys && memoryKeys.size > 0) {
+    for (const key of memoryKeys) {
+      memoryDelete(key);
+    }
+    memoryNamespaceIndex.delete(namespace);
+  }
+
   const redis = getRedisClient();
   if (!redis) return;
 
@@ -148,6 +274,7 @@ export async function cacheInvalidateNamespace(namespace: string): Promise<void>
     }
   } catch (error) {
     console.error(`[Cache] Erreur invalidateNamespace pour "${namespace}":`, error);
+    disableRedisTemporarily('erreur invalidate namespace');
   }
 }
 
@@ -157,6 +284,13 @@ export async function cacheInvalidateNamespace(namespace: string): Promise<void>
  * @param key Clé à tracker
  */
 async function trackKeyInNamespace(namespace: string, key: string): Promise<void> {
+  let memorySet = memoryNamespaceIndex.get(namespace);
+  if (!memorySet) {
+    memorySet = new Set<string>();
+    memoryNamespaceIndex.set(namespace, memorySet);
+  }
+  memorySet.add(key);
+
   const redis = getRedisClient();
   if (!redis) return;
 
@@ -167,6 +301,7 @@ async function trackKeyInNamespace(namespace: string, key: string): Promise<void
     await redis.expire(setKey, 86400);
   } catch (error) {
     // Ignorer les erreurs de tracking
+    disableRedisTemporarily('erreur tracking namespace');
   }
 }
 
