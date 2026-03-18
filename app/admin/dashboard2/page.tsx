@@ -164,6 +164,8 @@ export default function Dashboard2Page() {
   const [staffApplicationsRedFlagCount, setStaffApplicationsRedFlagCount] = useState(0);
   const [profileValidationPendingCount, setProfileValidationPendingCount] = useState(0);
   const [raidsPendingCount, setRaidsPendingCount] = useState(0);
+  const [discordPointsPendingCount, setDiscordPointsPendingCount] = useState(0);
+  const [raidsIgnoredToProcessCount, setRaidsIgnoredToProcessCount] = useState(0);
   const [discordGrowthData, setDiscordGrowthData] = useState<Array<{ month: string; value: number }>>([]);
   const [monthlyActivityData, setMonthlyActivityData] = useState<Array<{ month: string; messages: number; vocals: number }>>([]);
   const [spotlightProgressionData, setSpotlightProgressionData] = useState<Array<{ month: string; value: number }>>([]);
@@ -188,16 +190,14 @@ export default function Dashboard2Page() {
   const [recapMonthFilter, setRecapMonthFilter] = useState<"all" | string>("all");
   const [upcomingKpis, setUpcomingKpis] = useState<{
     nextMeetingRegistrations: number;
-    nextFormationRegistrations: number;
-    nextFilmRegistrations: number;
-    nextJeuxRegistrations: number;
+    nextEventRegistrations: number;
+    nextEventLabel: string;
     upcomingSpotlights: number;
     pendingEventValidations: number;
   }>({
     nextMeetingRegistrations: 0,
-    nextFormationRegistrations: 0,
-    nextFilmRegistrations: 0,
-    nextJeuxRegistrations: 0,
+    nextEventRegistrations: 0,
+    nextEventLabel: "",
     upcomingSpotlights: 0,
     pendingEventValidations: 0,
   });
@@ -239,6 +239,8 @@ export default function Dashboard2Page() {
           staffApplicationsRes,
           profileValidationRes,
           raidsValidationRes,
+          pointsQueueRes,
+          raidsSubSummaryRes,
         ] = await Promise.all([
           fetch("/api/admin/dashboard/summary", { cache: "no-store" }),
           fetch("/api/admin/members/events?limit=20", { cache: "no-store" }),
@@ -248,6 +250,8 @@ export default function Dashboard2Page() {
           fetch("/api/staff-applications", { cache: "no-store" }),
           fetch("/api/admin/members/profile-validation", { cache: "no-store" }),
           fetch("/api/admin/engagement/raids-declarations?status=all", { cache: "no-store" }),
+          fetch("/api/admin/engagement/raids-sub/points?includeTodo=true&includeHistory=false", { cache: "no-store" }),
+          fetch("/api/admin/engagement/raids-sub/summary", { cache: "no-store" }),
         ]);
 
         if (summaryRes.ok) {
@@ -319,6 +323,16 @@ export default function Dashboard2Page() {
             (item) => item.status === "processing" || item.status === "to_study"
           ).length;
           setRaidsPendingCount(pendingCount);
+        }
+
+        if (pointsQueueRes.ok) {
+          const pointsQueueData = await pointsQueueRes.json();
+          setDiscordPointsPendingCount(Number(pointsQueueData?.counters?.todo || 0));
+        }
+
+        if (raidsSubSummaryRes.ok) {
+          const raidsSubSummaryData = await raidsSubSummaryRes.json();
+          setRaidsIgnoredToProcessCount(Number(raidsSubSummaryData?.eventStatus?.ignored || 0));
         }
       } catch (error) {
         console.error("Erreur chargement dashboard2:", error);
@@ -421,9 +435,8 @@ export default function Dashboard2Page() {
           setUpcomingKpis((prev) => ({
             ...prev,
             nextMeetingRegistrations: 0,
-            nextFormationRegistrations: 0,
-            nextFilmRegistrations: 0,
-            nextJeuxRegistrations: 0,
+            nextEventRegistrations: 0,
+            nextEventLabel: "",
             upcomingSpotlights: 0,
           }));
           return;
@@ -457,9 +470,8 @@ export default function Dashboard2Page() {
         }));
 
         let nextMeetingRegistrations = 0;
-        let nextFormationRegistrations = 0;
-        let nextFilmRegistrations = 0;
-        let nextJeuxRegistrations = 0;
+        let nextEventRegistrations = 0;
+        let nextEventLabel = "";
         let upcomingSpotlights = 0;
 
         if (eventsRegistrationsRes.ok) {
@@ -476,11 +488,9 @@ export default function Dashboard2Page() {
             (category) => category.includes("integration") || category.includes("reunion")
           );
           nextMeetingRegistrations = nextMeetingFromEvents;
-          nextFormationRegistrations = findNextRegistrationCount((category) => category.includes("formation"));
-          nextFilmRegistrations = findNextRegistrationCount((category) => category.includes("film"));
-          nextJeuxRegistrations = findNextRegistrationCount(
-            (category) => category.includes("jeux") || category.includes("jeu")
-          );
+          const nextEvent = futureEvents[0];
+          nextEventRegistrations = Number(nextEvent?.registrationCount || 0);
+          nextEventLabel = String(nextEvent?.event?.title || "");
           upcomingSpotlights = futureEvents.filter((item) =>
             normalizeCategoryLabel(item.event.category).includes("spotlight")
           ).length;
@@ -511,9 +521,8 @@ export default function Dashboard2Page() {
 
         setUpcomingKpis((prev) => ({
           nextMeetingRegistrations,
-          nextFormationRegistrations,
-          nextFilmRegistrations,
-          nextJeuxRegistrations,
+          nextEventRegistrations,
+          nextEventLabel,
           upcomingSpotlights,
           pendingEventValidations: prev.pendingEventValidations,
         }));
@@ -547,8 +556,18 @@ export default function Dashboard2Page() {
       staffApplicationsRedFlagCount,
       profileValidationPendingCount,
       raidsPendingCount,
+      discordPointsPendingCount,
+      raidsIgnoredToProcessCount,
     };
-  }, [dashboardSummary, staffApplicationsPendingCount, staffApplicationsRedFlagCount, profileValidationPendingCount, raidsPendingCount]);
+  }, [
+    dashboardSummary,
+    staffApplicationsPendingCount,
+    staffApplicationsRedFlagCount,
+    profileValidationPendingCount,
+    raidsPendingCount,
+    discordPointsPendingCount,
+    raidsIgnoredToProcessCount,
+  ]);
 
   const filteredRecapEvents = useMemo(() => {
     if (recapMonthFilter === "all") return recapEvents;
@@ -706,6 +725,20 @@ export default function Dashboard2Page() {
       href: "/admin/membres/postulations",
       color: "text-indigo-300",
     },
+    {
+      title: "Points a valider",
+      value: kpis.discordPointsPendingCount,
+      hint: "Commandes raids-sub en attente",
+      href: "/admin/engagement/points-discord",
+      color: "text-fuchsia-300",
+    },
+    {
+      title: "Raids ignores a traiter",
+      value: kpis.raidsIgnoredToProcessCount,
+      hint: "Raids-sub ignores a revoir",
+      href: "/admin/engagement/raids-sub/a-valider?status=ignored",
+      color: "text-rose-300",
+    },
   ];
 
   const upcomingCards = [
@@ -717,25 +750,13 @@ export default function Dashboard2Page() {
       color: "text-blue-300",
     },
     {
-      title: "Inscrits prochaine formation",
-      value: upcomingKpis.nextFormationRegistrations,
-      hint: "Depuis Événements > Présence",
+      title: "Inscrits prochain event",
+      value: upcomingKpis.nextEventRegistrations,
+      hint: upcomingKpis.nextEventLabel
+        ? `Prochain event: ${upcomingKpis.nextEventLabel}`
+        : "Aucun event futur publie",
       href: "/admin/events/presence",
       color: "text-emerald-300",
-    },
-    {
-      title: "Inscrits prochain film",
-      value: upcomingKpis.nextFilmRegistrations,
-      hint: "Depuis Événements > Présence",
-      href: "/admin/events/presence",
-      color: "text-pink-300",
-    },
-    {
-      title: "Inscrits prochain jeux",
-      value: upcomingKpis.nextJeuxRegistrations,
-      hint: "Depuis Événements > Présence",
-      href: "/admin/events/presence",
-      color: "text-amber-300",
     },
     {
       title: "Futurs Spotlights à venir",
