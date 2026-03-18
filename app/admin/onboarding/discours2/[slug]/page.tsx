@@ -1,6 +1,12 @@
 import IntegrationDiscoursPartPage from "../../../evaluations/discours2/[slug]/page";
 
-export default function OnboardingDiscoursPartPage() {
-  return <IntegrationDiscoursPartPage />;
+type OnboardingPartPageProps = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
+
+export default function OnboardingDiscoursPartPage({ params }: OnboardingPartPageProps) {
+  return <IntegrationDiscoursPartPage params={params} />;
 }
 

@@ -5,7 +5,7 @@
 import { getStore } from '@netlify/blobs';
 import fs from 'fs';
 import path from 'path';
-import type { MemberBonus } from './evaluationBonusHelpers';
+import { TIMEZONE_BONUS_POINTS, type MemberBonus } from './evaluationBonusHelpers';
 
 // ============================================
 // TYPES
@@ -112,6 +112,7 @@ export async function updateMemberBonus(
   data.bonuses[twitchLogin.toLowerCase()] = {
     twitchLogin: twitchLogin.toLowerCase(),
     timezoneBonusEnabled,
+    timezoneBonusPoints: TIMEZONE_BONUS_POINTS,
     moderationBonus: validModerationBonus,
     updatedAt: new Date().toISOString(),
     updatedBy,

@@ -3,6 +3,7 @@
 export interface MemberBonus {
   twitchLogin: string;
   timezoneBonusEnabled: boolean; // Bonus décalage horaire activé
+  timezoneBonusPoints?: number; // Valeur explicite du bonus timezone (optionnelle)
   moderationBonus: number; // Bonus modération (0-5)
   updatedAt: string; // ISO timestamp
   updatedBy: string; // Discord ID
@@ -22,7 +23,10 @@ export function calculateBonusTotal(bonus: MemberBonus | null): { timezoneBonus:
     return { timezoneBonus: 0, moderationBonus: 0, total: 0 };
   }
   
-  const timezoneBonus = bonus.timezoneBonusEnabled ? TIMEZONE_BONUS_POINTS : 0;
+  const timezonePoints = Number.isFinite(Number(bonus.timezoneBonusPoints))
+    ? Number(bonus.timezoneBonusPoints)
+    : TIMEZONE_BONUS_POINTS;
+  const timezoneBonus = bonus.timezoneBonusEnabled ? timezonePoints : 0;
   const moderationBonus = bonus.moderationBonus || 0;
   const total = timezoneBonus + moderationBonus;
   
