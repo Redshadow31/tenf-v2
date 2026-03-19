@@ -498,66 +498,86 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     .from(SNAPSHOTS_TABLE)
     .select("id, generated_at, source_data_retrieved_at, total_active_tenf_channels, tracked_members_count")
     .order("generated_at", { ascending: false })
-    .limit(2);
+    .limit(30);
 
   if (snapshotError) throw snapshotError;
   const latestSnapshot = snapshots?.[0] as SnapshotMeta | undefined;
   const previousSnapshot = snapshots?.[1] as SnapshotMeta | undefined;
   if (!latestSnapshot?.id) return null;
 
-  const { data: latestRows, error: rowsError } = await supabaseAdmin
+  const snapshotIds = (snapshots || []).map((snapshot: any) => String(snapshot.id)).filter(Boolean);
+  const { data: snapshotRows, error: rowsError } = await supabaseAdmin
     .from(SNAPSHOT_MEMBERS_TABLE)
     .select("*")
-    .eq("snapshot_id", latestSnapshot.id)
+    .in("snapshot_id", snapshotIds)
     .order("follow_rate", { ascending: false, nullsFirst: false });
 
   if (rowsError) throw rowsError;
 
-  let previousRows: any[] = [];
-  if (previousSnapshot?.id) {
-    const { data, error } = await supabaseAdmin
-      .from(SNAPSHOT_MEMBERS_TABLE)
-      .select("*")
-      .eq("snapshot_id", previousSnapshot.id)
-      .order("follow_rate", { ascending: false, nullsFirst: false });
-    if (error) throw error;
-    previousRows = data || [];
+  const snapshotMetaById = new Map<string, SnapshotMeta>();
+  for (const snapshot of snapshots || []) {
+    snapshotMetaById.set(String((snapshot as any).id), snapshot as SnapshotMeta);
   }
 
-  const latestByLogin = new Map<string, any>();
-  const previousByLogin = new Map<string, any>();
-  for (const row of latestRows || []) {
-    const key = String(row.member_twitch_login || "").toLowerCase();
-    if (key) latestByLogin.set(key, row);
+  const rowsBySnapshotId = new Map<string, any[]>();
+  for (const row of snapshotRows || []) {
+    const snapshotId = String(row.snapshot_id || "");
+    if (!snapshotId) continue;
+    const list = rowsBySnapshotId.get(snapshotId) || [];
+    list.push(row);
+    rowsBySnapshotId.set(snapshotId, list);
   }
-  for (const row of previousRows || []) {
-    const key = String(row.member_twitch_login || "").toLowerCase();
-    if (key) previousByLogin.set(key, row);
+
+  const historyByLogin = new Map<string, Array<{ row: any; snapshot: SnapshotMeta }>>();
+  for (const snapshot of snapshots || []) {
+    const snapshotId = String((snapshot as any).id);
+    const rowsForSnapshot = rowsBySnapshotId.get(snapshotId) || [];
+    for (const row of rowsForSnapshot) {
+      const login = String(row.member_twitch_login || "").toLowerCase();
+      if (!login) continue;
+      const history = historyByLogin.get(login) || [];
+      history.push({ row, snapshot: snapshot as SnapshotMeta });
+      historyByLogin.set(login, history);
+    }
   }
+
+  const toRate = (value: any): number | null => {
+    if (typeof value === "number") return Number(value);
+    if (value !== null && value !== undefined) return Number(value);
+    return null;
+  };
+
+  const hasUsableCalculatedValue = (row: any): boolean =>
+    row?.state === "ok" &&
+    row?.follow_rate !== null &&
+    row?.follow_rate !== undefined &&
+    row?.followed_count !== null &&
+    row?.followed_count !== undefined;
 
   const mergedRows: FollowEngagementOverviewRow[] = [];
-  const allLogins = new Set<string>([
-    ...Array.from(latestByLogin.keys()),
-    ...Array.from(previousByLogin.keys()),
-  ]);
-  for (const login of allLogins) {
-    const latest = latestByLogin.get(login);
-    const previous = previousByLogin.get(login);
-    const source = latest || previous;
-    if (!source) continue;
+  for (const [login, history] of historyByLogin.entries()) {
+    const latestEntry = history[0] || null;
+    if (!latestEntry) continue;
 
-    const currentRate =
-      typeof source.follow_rate === "number"
-        ? Number(source.follow_rate)
-        : source.follow_rate !== null && source.follow_rate !== undefined
-          ? Number(source.follow_rate)
-          : null;
-    const previousRate =
-      previous && (typeof previous.follow_rate === "number"
-        ? Number(previous.follow_rate)
-        : previous.follow_rate !== null && previous.follow_rate !== undefined
-          ? Number(previous.follow_rate)
-          : null);
+    // Regle demandee: si le snapshot courant est "not_linked",
+    // reprendre la derniere valeur calculee valide disponible.
+    const latestCalculatedEntry =
+      history.find((entry) => hasUsableCalculatedValue(entry.row)) || null;
+    const shouldFallbackToLatestCalculated =
+      latestEntry.row?.state === "not_linked" && Boolean(latestCalculatedEntry);
+    const shouldFallbackForUnusableLatest =
+      !hasUsableCalculatedValue(latestEntry.row) && Boolean(latestCalculatedEntry);
+
+    const sourceEntry =
+      shouldFallbackToLatestCalculated || shouldFallbackForUnusableLatest
+        ? (latestCalculatedEntry as { row: any; snapshot: SnapshotMeta })
+        : latestEntry;
+
+    const source = sourceEntry.row;
+    const sourceSnapshot = sourceEntry.snapshot;
+    const previousRate = toRate(history[1]?.row?.follow_rate);
+    const currentRate = toRate(source.follow_rate);
+    const isStaleFromHistory = String(sourceSnapshot.id) !== String(latestSnapshot.id);
 
     mergedRows.push({
       discordId: source.discord_id || null,
@@ -571,9 +591,9 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
       lastCalculatedAt: source.last_checked_at || null,
       state: source.state as FollowCalculationState,
       reason: source.reason || null,
-      snapshotId: latest ? String(latestSnapshot.id) : String(previousSnapshot?.id || ""),
-      snapshotGeneratedAt: latest ? String(latestSnapshot.generated_at) : String(previousSnapshot?.generated_at || ""),
-      isStaleFromPreviousSnapshot: !latest,
+      snapshotId: String(sourceSnapshot.id),
+      snapshotGeneratedAt: String(sourceSnapshot.generated_at),
+      isStaleFromPreviousSnapshot: isStaleFromHistory,
       previousFollowRate: previousRate ?? null,
       deltaFollowRate:
         currentRate !== null && previousRate !== null ? Number((currentRate - previousRate).toFixed(1)) : null,
