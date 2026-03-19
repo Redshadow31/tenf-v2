@@ -24,6 +24,20 @@ type BootstrapBody = {
   timezone?: string;
 };
 
+function isPlaceholderMember(member: { role?: string; twitchLogin?: string } | null | undefined): boolean {
+  if (!member) return false;
+  const login = String(member.twitchLogin || "").toLowerCase();
+  return String(member.role || "") === "Nouveau" && (login.startsWith("nouveau_") || login.startsWith("nouveau-"));
+}
+
+function pickIfMissing<T>(targetValue: T | undefined, sourceValue: T | undefined): T | undefined {
+  const hasTarget =
+    targetValue !== undefined &&
+    targetValue !== null &&
+    String(targetValue).trim() !== "";
+  return hasTarget ? targetValue : sourceValue;
+}
+
 function normalizeDateInput(value?: string): Date | undefined {
   const raw = (value || "").trim();
   if (!raw) return undefined;
@@ -111,6 +125,39 @@ export async function POST(request: NextRequest) {
     }
 
     let member = existingByDiscord;
+
+    const shouldAttachDiscordToExistingTwitch =
+      !!existingByDiscord &&
+      !!existingByTwitch &&
+      existingByDiscord.twitchLogin !== existingByTwitch.twitchLogin &&
+      isPlaceholderMember(existingByDiscord) &&
+      !isPlaceholderMember(existingByTwitch);
+
+    if (shouldAttachDiscordToExistingTwitch && existingByDiscord && existingByTwitch) {
+      // Un brouillon "nouveau_*" a été auto-créé pour ce Discord.
+      // On fusionne d'abord les infos utiles, puis on rattache le Discord à la vraie fiche Twitch.
+      await memberRepository.update(existingByDiscord.twitchLogin, {
+        discordId: null as any,
+        updatedAt: new Date(),
+        updatedBy: discordId,
+      });
+      member = await memberRepository.update(existingByTwitch.twitchLogin, {
+        discordId,
+        discordUsername,
+        displayName: pickIfMissing(existingByTwitch.displayName, existingByDiscord.displayName),
+        siteUsername: pickIfMissing(existingByTwitch.siteUsername, existingByDiscord.siteUsername),
+        parrain: pickIfMissing(existingByTwitch.parrain, existingByDiscord.parrain),
+        birthday: pickIfMissing(existingByTwitch.birthday, existingByDiscord.birthday),
+        twitchAffiliateDate: pickIfMissing(existingByTwitch.twitchAffiliateDate, existingByDiscord.twitchAffiliateDate),
+        timezone: pickIfMissing(existingByTwitch.timezone, existingByDiscord.timezone),
+        countryCode: pickIfMissing(existingByTwitch.countryCode, existingByDiscord.countryCode),
+        primaryLanguage: pickIfMissing(existingByTwitch.primaryLanguage, existingByDiscord.primaryLanguage),
+        description: pickIfMissing(existingByTwitch.description, existingByDiscord.description),
+        updatedAt: new Date(),
+        updatedBy: discordId,
+      });
+    }
+
     if (!member && existingByTwitch) {
       member = await memberRepository.update(existingByTwitch.twitchLogin, {
         discordId,

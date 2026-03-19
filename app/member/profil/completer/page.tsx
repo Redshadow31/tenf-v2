@@ -265,8 +265,8 @@ export default function MemberProfileCompletePage() {
   return (
     <MemberSurface>
       {showWelcomeModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className="relative w-full max-w-3xl rounded-2xl border border-emerald-400/30 bg-[#11161a] p-5 shadow-2xl md:p-7">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/65 p-3 pt-4 sm:items-center sm:p-4">
+          <div className="relative w-full max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-emerald-400/30 bg-[#11161a] p-4 pb-0 shadow-2xl md:max-h-[calc(100dvh-2rem)] md:p-7 md:pb-0">
             <button
               type="button"
               onClick={() => setShowWelcomeModal(false)}
@@ -375,7 +375,7 @@ export default function MemberProfileCompletePage() {
               <p className="mt-1 text-xs text-gray-400">Tu pourras revenir dessus plus tard sans bloquer ta creation d espace.</p>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="sticky bottom-0 mt-5 flex flex-wrap gap-2 border-t border-white/10 bg-[#11161a]/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-[#11161a]/80">
               <button
                 type="button"
                 onClick={async () => {
