@@ -416,11 +416,66 @@ export async function getDailyMemberLoginLogs(params: {
   const { data, error } = await query.order("created_at", { ascending: false }).limit(20000);
   if (error) throw new Error(`[getDailyMemberLoginLogs] ${error.message}`);
 
+  const memberUserIds = Array.from(
+    new Set(
+      (data || [])
+        .filter((row) => row.connection_type === "discord" && row.user_id)
+        .map((row) => String(row.user_id))
+    )
+  );
+
+  const currentlyOnlineByUserId = new Set<string>();
+  const twitchLinkedByUserId = new Set<string>();
+
+  if (memberUserIds.length > 0) {
+    const { data: activeSessions, error: activeSessionsError } = await supabaseAdmin
+      .from("connection_sessions")
+      .select("user_id,last_seen_at,is_active,connection_type")
+      .eq("connection_type", "discord")
+      .in("user_id", memberUserIds)
+      .eq("is_active", true)
+      .limit(5000);
+
+    if (!activeSessionsError) {
+      for (const session of activeSessions || []) {
+        const userId = String(session.user_id || "");
+        const lastSeenAt = String(session.last_seen_at || "");
+        if (!userId || !lastSeenAt) continue;
+        if (isSessionRecentlyActive(lastSeenAt, REALTIME_WINDOW_MINUTES)) {
+          currentlyOnlineByUserId.add(userId);
+        }
+      }
+    }
+
+    const { data: linkedRows, error: linkedRowsError } = await supabaseAdmin
+      .from("linked_twitch_accounts")
+      .select("discord_id")
+      .in("discord_id", memberUserIds)
+      .limit(5000);
+
+    if (!linkedRowsError) {
+      for (const row of linkedRows || []) {
+        const discordId = String((row as { discord_id?: string | null }).discord_id || "");
+        if (discordId) twitchLinkedByUserId.add(discordId);
+      }
+    }
+  }
+
   const byDay = new Map<
     string,
     {
       totalConnections: number;
-      entries: Map<string, { label: string; count: number; type: "member" | "unknown_visitor" }>;
+      entries: Map<
+        string,
+        {
+          label: string;
+          count: number;
+          type: "member" | "unknown_visitor";
+          userId: string | null;
+          currentlyOnline: boolean;
+          twitchLinked: boolean;
+        }
+      >;
     }
   >();
 
@@ -432,11 +487,20 @@ export async function getDailyMemberLoginLogs(params: {
     const isUnknownVisitor = row.connection_type !== "discord";
     const label = isUnknownVisitor ? "Visiteur inconnu" : row.username?.trim() || row.user_id || "Membre inconnu";
     const type: "member" | "unknown_visitor" = isUnknownVisitor ? "unknown_visitor" : "member";
-    const existing = day.entries.get(label);
+    const memberUserId = !isUnknownVisitor && row.user_id ? String(row.user_id) : null;
+    const entryKey = type === "member" ? `member:${memberUserId || label.toLowerCase()}` : `unknown:${label}`;
+    const existing = day.entries.get(entryKey);
     if (existing) {
       existing.count += 1;
     } else {
-      day.entries.set(label, { label, count: 1, type });
+      day.entries.set(entryKey, {
+        label,
+        count: 1,
+        type,
+        userId: memberUserId,
+        currentlyOnline: memberUserId ? currentlyOnlineByUserId.has(memberUserId) : false,
+        twitchLinked: memberUserId ? twitchLinkedByUserId.has(memberUserId) : false,
+      });
     }
 
     byDay.set(dayKey, day);

@@ -32,6 +32,14 @@ type MemberRow = {
   displayName: string;
 };
 
+type StatsRow = {
+  login: string;
+  label: string;
+  sent: number;
+  received: number;
+  total: number;
+};
+
 type RaidDuplicateGroup = {
   key: string;
   raider: string;
@@ -56,8 +64,10 @@ type RaidSourceFilter = "all" | "manual" | "raids_sub";
 
 function normalizeRaidSource(raid: RaidApiItem): "manual" | "raids_sub" | "other" {
   const source = String(raid?.source || "").toLowerCase();
-  if (source === "raids_sub") return "raids_sub";
-  if (source === "manual" || source === "admin" || !source) return "manual";
+  if (source === "raids_sub" || source === "eventsub" || source === "event_sub" || source === "twitch_eventsub" || source === "eventsub_test_v2") {
+    return "raids_sub";
+  }
+  if (source === "manual" || source === "admin" || source === "twitch-live" || source === "bot" || !source) return "manual";
   return "other";
 }
 
@@ -69,7 +79,8 @@ function shouldIncludeRaidBySource(raid: RaidApiItem, sourceFilter: RaidSourceFi
 
 export default function AdminEngagementHistoriqueRaidsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
-  const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
+  const [statsSubTab, setStatsSubTab] = useState<"received" | "sent" | "all">("sent");
+  const [statsSearch, setStatsSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
@@ -102,6 +113,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [deduplicatingHistory, setDeduplicatingHistory] = useState(false);
   const [deletingDeclarationId, setDeletingDeclarationId] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<RaidSourceFilter>("all");
+  const [monthSortOrder, setMonthSortOrder] = useState<"desc" | "asc">("desc");
 
   useEffect(() => {
     const now = new Date();
@@ -123,11 +135,12 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
   const availableMonths = useMemo(() => {
     const now = new Date();
-    return Array.from({ length: 60 }, (_, idx) => {
+    const base = Array.from({ length: 60 }, (_, idx) => {
       const date = new Date(now.getFullYear(), now.getMonth() - idx, 1);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     });
-  }, []);
+    return monthSortOrder === "asc" ? base.slice().reverse() : base;
+  }, [monthSortOrder]);
 
   useEffect(() => {
     if (!selectedMonth) return;
@@ -235,7 +248,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   useEffect(() => {
     setHistoryPage(1);
     setStatsPage(1);
-  }, [selectedMonth, historySearch, statsSubTab, activeTab]);
+  }, [selectedMonth, historySearch, statsSubTab, statsSearch, activeTab]);
 
   useEffect(() => {
     if (!selectedMonth) return;
@@ -290,29 +303,66 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     return row?.displayName || login || "Inconnu";
   };
 
-  const sentRanking = useMemo(() => {
+  const sentByLogin = useMemo(() => {
     const map = new Map<string, number>();
     for (const raid of raidsFaits) {
       const login = String(raid.raiderTwitchLogin || "").toLowerCase();
       if (!login) continue;
       map.set(login, (map.get(login) || 0) + (raid.count || 1));
     }
-    return Array.from(map.entries())
-      .map(([login, total]) => ({ login, label: getMemberDisplayName(login), total }))
-      .sort((a, b) => b.total - a.total);
+    return map;
   }, [raidsFaits, members]);
 
-  const receivedRanking = useMemo(() => {
+  const receivedByLogin = useMemo(() => {
     const map = new Map<string, number>();
     for (const raid of raidsRecus) {
       const login = String(raid.targetTwitchLogin || "").toLowerCase();
       if (!login) continue;
       map.set(login, (map.get(login) || 0) + 1);
     }
-    return Array.from(map.entries())
-      .map(([login, total]) => ({ login, label: getMemberDisplayName(login), total }))
-      .sort((a, b) => b.total - a.total);
+    return map;
   }, [raidsRecus, members]);
+
+  const sentRanking = useMemo((): StatsRow[] => {
+    return Array.from(sentByLogin.entries())
+      .map(([login, sent]) => ({
+        login,
+        label: getMemberDisplayName(login),
+        sent,
+        received: receivedByLogin.get(login) || 0,
+        total: sent,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [sentByLogin, receivedByLogin, members]);
+
+  const receivedRanking = useMemo((): StatsRow[] => {
+    return Array.from(receivedByLogin.entries())
+      .map(([login, received]) => ({
+        login,
+        label: getMemberDisplayName(login),
+        sent: sentByLogin.get(login) || 0,
+        received,
+        total: received,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [receivedByLogin, sentByLogin, members]);
+
+  const allRanking = useMemo((): StatsRow[] => {
+    const allLogins = new Set<string>([...sentByLogin.keys(), ...receivedByLogin.keys()]);
+    return Array.from(allLogins)
+      .map((login) => {
+        const sent = sentByLogin.get(login) || 0;
+        const received = receivedByLogin.get(login) || 0;
+        return {
+          login,
+          label: getMemberDisplayName(login),
+          sent,
+          received,
+          total: sent + received,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+  }, [sentByLogin, receivedByLogin, members]);
 
   const totals = useMemo(
     () => ({
@@ -363,7 +413,12 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const historyTotalPages = Math.max(1, Math.ceil(filteredDeclarations.length / historyPerPage));
   const pagedDeclarations = filteredDeclarations.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
 
-  const activeStatsRows = statsSubTab === "received" ? receivedRanking : sentRanking;
+  const activeStatsRows = useMemo(() => {
+    const base = statsSubTab === "received" ? receivedRanking : statsSubTab === "sent" ? sentRanking : allRanking;
+    const query = statsSearch.trim().toLowerCase();
+    if (!query) return base;
+    return base.filter((row) => `${row.label} ${row.login}`.toLowerCase().includes(query));
+  }, [statsSubTab, receivedRanking, sentRanking, allRanking, statsSearch]);
   const statsPerPage = 12;
   const statsTotalPages = Math.max(1, Math.ceil(activeStatsRows.length / statsPerPage));
   const pagedStatsRows = activeStatsRows.slice((statsPage - 1) * statsPerPage, statsPage * statsPerPage);
@@ -768,6 +823,16 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               </option>
             ))}
           </select>
+          <span className="ml-2 text-sm text-gray-400">Tri mois:</span>
+          <select
+            value={monthSortOrder}
+            onChange={(event) => setMonthSortOrder(event.target.value as "desc" | "asc")}
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
+          >
+            <option value="desc">Plus recent → plus ancien</option>
+            <option value="asc">Plus ancien → plus recent</option>
+          </select>
           <div className="flex items-center gap-1 rounded-full border px-1 py-1" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
             {([
               { key: "all", label: "Tous" },
@@ -1053,6 +1118,17 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 >
                   Raids faits
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setStatsSubTab("all")}
+                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                  style={{
+                    borderColor: statsSubTab === "all" ? "rgba(34,197,94,0.55)" : "rgba(255,255,255,0.18)",
+                    color: statsSubTab === "all" ? "#86efac" : "#cbd5e1",
+                  }}
+                >
+                  Tous
+                </button>
               </div>
 
               {canUseAdvancedTools ? (
@@ -1068,8 +1144,19 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               ) : null}
             </div>
 
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <input
+                value={statsSearch}
+                onChange={(event) => setStatsSearch(event.target.value)}
+                placeholder="Rechercher un membre (pseudo Twitch / nom)..."
+                className="w-full max-w-[420px] rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#101014", color: "#fff" }}
+              />
+              <span className="text-xs text-gray-400">{activeStatsRows.length} resultat(s)</span>
+            </div>
+
             {activeStatsRows.length === 0 ? (
-              <p className="text-sm text-gray-300">Aucune donnee disponible sur ce mois.</p>
+              <p className="text-sm text-gray-300">Aucune donnee disponible pour cette recherche.</p>
             ) : (
               <div className="space-y-2">
                 {pagedStatsRows.map((item, index) => (
@@ -1079,12 +1166,24 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => openStreamerModal(item.login, item.label, statsSubTab === "received" ? "received" : "sent")}
+                      onClick={() =>
+                        openStreamerModal(
+                          item.login,
+                          item.label,
+                          statsSubTab === "received" ? "received" : statsSubTab === "sent" ? "sent" : item.sent >= item.received ? "sent" : "received"
+                        )
+                      }
                       className="text-left text-sm text-white transition-colors hover:text-[#c4b5fd]"
                     >
                       {(statsPage - 1) * statsPerPage + index + 1}. {item.label} <span className="text-gray-400">({item.login})</span>
+                      {statsSubTab === "all" ? (
+                        <span className="ml-2 text-xs text-gray-400">- faits: {item.sent} / recus: {item.received}</span>
+                      ) : null}
                     </button>
-                    <span className="text-sm font-semibold" style={{ color: statsSubTab === "received" ? "#93c5fd" : "#c4b5fd" }}>
+                    <span
+                      className="text-sm font-semibold"
+                      style={{ color: statsSubTab === "received" ? "#93c5fd" : statsSubTab === "sent" ? "#c4b5fd" : "#86efac" }}
+                    >
                       {item.total}
                     </span>
                   </div>

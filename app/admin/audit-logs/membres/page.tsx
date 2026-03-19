@@ -10,6 +10,9 @@ interface DailyEntry {
   label: string;
   count: number;
   type: "member" | "unknown_visitor";
+  userId?: string | null;
+  currentlyOnline?: boolean;
+  twitchLinked?: boolean;
 }
 
 interface DailyGroup {
@@ -189,6 +192,8 @@ export default function AuditLogsMembersPage() {
                     <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
                       <th className="px-4 py-3">Nom</th>
                       <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3">Actuellement en ligne</th>
+                      <th className="px-4 py-3">Twitch lie</th>
                       <th className="px-4 py-3">Connexions</th>
                     </tr>
                   </thead>
@@ -203,6 +208,28 @@ export default function AuditLogsMembersPage() {
                             <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">
                               Visiteur inconnu
                             </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {entry.type === "member" ? (
+                            entry.currentlyOnline ? (
+                              <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">Oui</span>
+                            ) : (
+                              <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
+                            )
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {entry.type === "member" ? (
+                            entry.twitchLinked ? (
+                              <span className="rounded bg-violet-500/20 px-2 py-1 text-xs text-violet-200">Oui</span>
+                            ) : (
+                              <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
+                            )
+                          ) : (
+                            <span className="text-gray-500">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3 font-semibold">{entry.count}</td>
