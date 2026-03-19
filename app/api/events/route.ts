@@ -138,8 +138,8 @@ export async function GET(request: NextRequest) {
     let events: any[] = [];
     try {
       events = isAdmin
-        ? await eventRepository.findAll()
-        : await eventRepository.findPublished();
+        ? await eventRepository.findAll(1000, 0)
+        : await eventRepository.findPublished(1000, 0);
     } catch (repoError) {
       logApi.error('/api/events.repo_fallback', repoError instanceof Error ? repoError : new Error(String(repoError)));
       const directRows = await loadEventsDirectFallback(isAdmin);
