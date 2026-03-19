@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireAdvancedAdminAccess } from "@/lib/requireAdmin";
 import { requireUser } from "@/lib/requireUser";
 import {
   createStaffApplication,
@@ -244,7 +244,7 @@ function parseAnswers(payload: any): { ok: true; answers: StaffApplicationAnswer
 
 export async function GET() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdvancedAdminAccess();
     if (!admin) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdvancedAdminAccess();
     if (!admin) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }

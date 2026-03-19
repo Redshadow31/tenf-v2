@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle, FileText, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Loader2, Trash2 } from "lucide-react";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 
@@ -80,7 +80,14 @@ export default function ValidationProfilPage() {
     }
   }
 
-  async function handleAction(id: string, action: "approve" | "reject") {
+  async function handleAction(id: string, action: "approve" | "reject" | "force_delete") {
+    if (action === "force_delete") {
+      const confirmed = window.confirm(
+        "Confirmer la suppression forcée de cette demande ?\n\nCette action supprime définitivement l'entrée de validation."
+      );
+      if (!confirmed) return;
+    }
+
     setActioning(id);
     try {
       const res = await fetch("/api/admin/members/profile-validation", {
@@ -91,7 +98,14 @@ export default function ValidationProfilPage() {
       const data = await res.json();
       if (res.ok) {
         setPending((prev) => prev.filter((p) => p.id !== id));
-        pushToast("success", action === "approve" ? "Demande validée" : "Demande rejetée");
+        pushToast(
+          "success",
+          action === "approve"
+            ? "Demande validée"
+            : action === "reject"
+              ? "Demande rejetée"
+              : "Demande supprimée"
+        );
       } else {
         pushToast("warning", "Action impossible", data.error || "Erreur");
       }
@@ -253,6 +267,15 @@ export default function ValidationProfilPage() {
                     >
                       <XCircle className="w-4 h-4" />
                       Rejeter
+                    </button>
+                    <button
+                      onClick={() => handleAction(item.id, "force_delete")}
+                      disabled={actioning === item.id}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+                      title="Supprime définitivement cette demande, sans modifier le profil membre"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Forcer suppression
                     </button>
                   </div>
                 </div>

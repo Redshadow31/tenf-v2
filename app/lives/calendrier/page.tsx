@@ -51,6 +51,63 @@ function getLiveTypeTone(liveType: string): { dot: string; chipStyle: CSSPropert
   return { dot: "#a78bfa", chipStyle: { borderColor: "rgba(167,139,250,0.45)", color: "#ddd6fe" } };
 }
 
+function getCalendarEventTheme(liveType: string): {
+  background: string;
+  border: string;
+  text: string;
+  glow: string;
+} {
+  const normalized = normalizeText(liveType || "");
+
+  if (normalized.includes("irl") || normalized.includes("faq")) {
+    return {
+      background: "linear-gradient(135deg, rgba(16, 185, 129, 0.28), rgba(45, 212, 191, 0.10))",
+      border: "rgba(110, 231, 183, 0.58)",
+      text: "#d1fae5",
+      glow: "0 8px 22px rgba(16, 185, 129, 0.18)",
+    };
+  }
+  if (normalized.includes("league") || normalized.includes("lol")) {
+    return {
+      background: "linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(59, 130, 246, 0.12))",
+      border: "rgba(125, 211, 252, 0.56)",
+      text: "#e0f2fe",
+      glow: "0 8px 22px rgba(56, 189, 248, 0.2)",
+    };
+  }
+  if (normalized.includes("vod") || normalized.includes("review") || normalized.includes("analyse")) {
+    return {
+      background: "linear-gradient(135deg, rgba(245, 158, 11, 0.26), rgba(234, 88, 12, 0.10))",
+      border: "rgba(253, 186, 116, 0.56)",
+      text: "#ffedd5",
+      glow: "0 8px 20px rgba(245, 158, 11, 0.18)",
+    };
+  }
+  if (normalized.includes("just chatting") || normalized.includes("chat")) {
+    return {
+      background: "linear-gradient(135deg, rgba(168, 85, 247, 0.30), rgba(99, 102, 241, 0.12))",
+      border: "rgba(196, 181, 253, 0.58)",
+      text: "#ede9fe",
+      glow: "0 8px 24px rgba(168, 85, 247, 0.2)",
+    };
+  }
+  if (normalized.includes("communaute") || normalized.includes("community")) {
+    return {
+      background: "linear-gradient(135deg, rgba(14, 165, 233, 0.28), rgba(168, 85, 247, 0.10))",
+      border: "rgba(147, 197, 253, 0.56)",
+      text: "#e0f2fe",
+      glow: "0 8px 22px rgba(14, 165, 233, 0.18)",
+    };
+  }
+
+  return {
+    background: "linear-gradient(135deg, rgba(145, 70, 255, 0.26), rgba(59, 130, 246, 0.10))",
+    border: "rgba(167, 139, 250, 0.56)",
+    text: "#ede9fe",
+    glow: "0 8px 24px rgba(145, 70, 255, 0.2)",
+  };
+}
+
 function monthKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -781,23 +838,14 @@ export default function CalendrierLivesPage() {
               const dayItems = itemsByDate.get(key) || [];
               const isSelected = selectedDateKey === key;
               const isToday = key === todayKey;
-              const isWeekend = cell.date.getDay() === 0 || cell.date.getDay() === 6;
               const isTopDay = key === topDate?.key;
-              const densityClass =
-                dayItems.length >= 4
-                  ? "Forte activite"
-                  : dayItems.length >= 2
-                    ? "Jour actif"
-                    : dayItems.length === 1
-                      ? "1 live"
-                      : "Calme";
 
               return (
                 <button
                   key={cell.key}
                   type="button"
                   onClick={() => setSelectedDateKey(key)}
-                    className="group min-h-[140px] rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-[1px]"
+                  className="group min-h-[140px] rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-[1px]"
                   style={{
                     borderColor: isSelected ? "rgba(145,70,255,0.65)" : isTopDay ? "rgba(145,70,255,0.45)" : "var(--color-border)",
                     backgroundColor: isSelected ? "rgba(145,70,255,0.14)" : isTopDay ? "rgba(145,70,255,0.08)" : "var(--color-surface)",
@@ -808,64 +856,43 @@ export default function CalendrierLivesPage() {
                     <div className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
                       {cell.date.getDate()}
                     </div>
-                    <div className="flex items-center gap-1">
-                      {isToday ? (
-                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
-                          Aujourd'hui
-                        </span>
-                      ) : null}
-                      {isWeekend ? (
-                        <span className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                          WE
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="mb-1 text-[11px] font-medium" style={{ color: dayItems.length > 0 ? "var(--color-text)" : "var(--color-text-secondary)" }}>
-                    {dayItems.length} live{dayItems.length > 1 ? "s" : ""}
+                    {isToday ? (
+                      <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
+                        Aujourd'hui
+                      </span>
+                    ) : null}
                   </div>
                   <div className="space-y-1.5">
                     {dayItems.length > 0 ? (
                       dayItems.slice(0, 2).map((item) => {
-                        const tone = getLiveTypeTone(item.liveType);
+                        const theme = getCalendarEventTheme(item.liveType);
                         return (
                           <div
                             key={`mini-${item.id}`}
                             className="rounded-md border px-1.5 py-1 text-[10px] leading-tight"
-                            style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}
+                            style={{
+                              borderColor: theme.border,
+                              background: theme.background,
+                              color: theme.text,
+                              boxShadow: theme.glow,
+                            }}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tone.dot }} />
-                              <span style={{ color: "var(--color-text-secondary)" }}>{item.time}</span>
-                            </div>
-                            <p className="line-clamp-1 mt-0.5" style={{ color: "var(--color-text)" }}>
-                              {item.displayName}
+                            <p className="font-semibold">{item.time}</p>
+                            <p className="line-clamp-1 mt-0.5">{item.liveType}</p>
+                            <p className="line-clamp-1 opacity-90">
+                              {item.title || item.displayName}
                             </p>
                           </div>
                         );
                       })
                     ) : (
-                      <div className="text-[11px] leading-snug" style={{ color: "var(--color-text-secondary)" }}>
-                        Aucun live prevu
-                      </div>
+                      <div className="min-h-[58px]" />
                     )}
                     {dayItems.length > 2 ? (
                       <div className="text-[10px]" style={{ color: "var(--color-text-secondary)" }}>
                         +{dayItems.length - 2} autre(s)
                       </div>
                     ) : null}
-                  </div>
-                  <div className="mt-2.5">
-                    <span
-                      className="rounded-full border px-2 py-0.5 text-[10px]"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: dayItems.length > 1 ? "var(--color-text)" : "var(--color-text-secondary)",
-                        backgroundColor: dayItems.length > 2 ? "rgba(145,70,255,0.14)" : "transparent",
-                      }}
-                    >
-                      {densityClass}
-                    </span>
                   </div>
                 </button>
               );

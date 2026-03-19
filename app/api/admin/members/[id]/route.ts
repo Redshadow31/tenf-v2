@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
-import { getAllMemberData, loadMemberDataFromStorage, findMemberByIdentifier } from "@/lib/memberData";
+import { getAllMemberData, loadMemberDataFromStorage, findMemberByIdentifier, getArchivedMemberEntries } from "@/lib/memberData";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
 
 /**
@@ -49,6 +49,31 @@ export async function GET(
       member = allMembers.find(
         (m) => m.displayName?.toLowerCase() === decodedId.toLowerCase()
       );
+    }
+
+    // Fallback archives (profil supprimé mais conservé dans l'onglet Archivé)
+    if (!member) {
+      const archives = await getArchivedMemberEntries();
+      const decodedLower = decodedId.toLowerCase();
+      const archive = archives.find((entry) => {
+        const snap = entry.snapshot;
+        return (
+          (snap.twitchLogin || "").toLowerCase() === decodedLower ||
+          (snap.discordId || "").toLowerCase() === decodedLower ||
+          (snap.twitchId || "").toLowerCase() === decodedLower ||
+          (snap.displayName || "").toLowerCase() === decodedLower
+        );
+      });
+
+      if (archive) {
+        member = {
+          ...archive.snapshot,
+          archived: true,
+          archivedAt: archive.deletedAt,
+          archivedBy: archive.deletedBy,
+          archiveReason: archive.deleteReason,
+        } as any;
+      }
     }
 
     if (!member) {

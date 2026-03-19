@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { loginWithDiscord } from "@/lib/discord";
+import { Compass, Heart, Users } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 
@@ -16,6 +17,38 @@ type FollowStatusesResponse = {
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SCORE_CACHE_KEY = "member.engagement.score.v1";
+
+const TENF_ENGAGEMENT_VALUES = [
+  {
+    title: "Soutien bienveillant",
+    description: "Le follow est un signal de soutien durable pour aider chaque membre a progresser.",
+    icon: Heart,
+  },
+  {
+    title: "Ouverture communautaire",
+    description: "On decouvre des univers differents et on donne de la visibilite a toute la communaute.",
+    icon: Users,
+  },
+  {
+    title: "Progression collective",
+    description: "Chaque follow renforce le reseau TENF et cree des opportunites de collaboration.",
+    icon: Compass,
+  },
+];
+
+const ENGAGEMENT_GUIDELINES = [
+  "Suivre regulierement les membres actifs pour maintenir un soutien concret.",
+  "Decouvrir les profils moins visibles et encourager leur progression.",
+  "Valoriser la constance: un follow utile dans le temps vaut plus qu un effet ponctuel.",
+  "Transformer ton score en impact humain, pas en simple statistique.",
+];
+
+const COMMUNITY_GUIDELINES = [
+  "Partager les chaines tenf avec respect et sans pression.",
+  "Favoriser des interactions positives quand tu passes sur un live membre.",
+  "Celebrer les progres de chacun, meme les petites etapes.",
+  "Construire une dynamique de soutien mutuel dans la duree.",
+];
 
 type ScoreCachePayload = {
   savedAt: number;
@@ -124,8 +157,8 @@ export default function MemberEngagementScorePage() {
     return (
       <MemberSurface>
         <MemberPageHeader
-          title="Mon score d'engagements"
-          description="Analyse en cours de tes follows Twitch sur les membres TENF actifs."
+          title="Mon empreinte engagement TENF"
+          description="Analyse en cours de tes follows Twitch et de ton soutien communautaire."
           badge="Engagement"
         />
         <section
@@ -146,8 +179,8 @@ export default function MemberEngagementScorePage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="Mon score d'engagements"
-        description="Mesure de tes follows sur les membres TENF actifs et valides."
+        title="Mon empreinte engagement TENF"
+        description="Mesure de ton soutien sur les membres TENF actifs, avec une lecture claire et actionnable."
         badge="Engagement"
       />
 
@@ -237,6 +270,90 @@ export default function MemberEngagementScorePage() {
             <StatCard label="Membres actifs non suivis" value={analytics.notFollowed} tone="warn" />
             <StatCard label="Statuts inconnus" value={analytics.unknown} tone="neutral" />
             <StatCard label="Objectif plein score" value={analytics.perfect ? "Atteint" : "En cours"} tone={analytics.perfect ? "good" : "neutral"} />
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-3">
+            {TENF_ENGAGEMENT_VALUES.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article
+                  key={item.title}
+                  className="rounded-xl border p-4"
+                  style={{
+                    borderColor: "rgba(167,139,250,0.28)",
+                    background: "linear-gradient(160deg, rgba(31,41,55,0.65), rgba(22,24,34,0.92))",
+                  }}
+                >
+                  <div className="mb-2 inline-flex rounded-lg border p-2" style={{ borderColor: "rgba(196,181,253,0.4)", color: "#c4b5fd" }}>
+                    <Icon size={16} />
+                  </div>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                    {item.title}
+                  </h3>
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    {item.description}
+                  </p>
+                </article>
+              );
+            })}
+          </section>
+
+          <section
+            className="rounded-xl border p-4"
+            style={{
+              borderColor: "rgba(59,130,246,0.32)",
+              background: "linear-gradient(120deg, rgba(30,41,59,0.62), rgba(20,27,38,0.94))",
+            }}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <Heart size={16} style={{ color: "#93c5fd" }} />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Intention engagement TENF
+              </h3>
+            </div>
+            <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Une ligne de conduite pour garder un engagement ouvert, bienveillant et utile a long terme.
+            </p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {ENGAGEMENT_GUIDELINES.map((tip) => (
+                <div
+                  key={tip}
+                  className="rounded-lg border px-3 py-2 text-xs"
+                  style={{ borderColor: "rgba(147,197,253,0.3)", backgroundColor: "rgba(15,23,42,0.46)", color: "var(--color-text)" }}
+                >
+                  {tip}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className="rounded-xl border p-4"
+            style={{
+              borderColor: "rgba(52,211,153,0.32)",
+              background: "linear-gradient(120deg, rgba(18,45,39,0.58), rgba(17,31,35,0.94))",
+            }}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <Users size={16} style={{ color: "#6ee7b7" }} />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Intention communaute TENF
+              </h3>
+            </div>
+            <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Des reperes simples pour transformer ton score en vrai impact communautaire.
+            </p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {COMMUNITY_GUIDELINES.map((tip) => (
+                <div
+                  key={tip}
+                  className="rounded-lg border px-3 py-2 text-xs"
+                  style={{ borderColor: "rgba(110,231,183,0.3)", backgroundColor: "rgba(16,38,34,0.46)", color: "var(--color-text)" }}
+                >
+                  {tip}
+                </div>
+              ))}
+            </div>
           </section>
 
           <section

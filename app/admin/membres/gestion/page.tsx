@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History } from "lucide-react";
+import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History, ArchiveRestore, Trash2 } from "lucide-react";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
 import BulkImportModal from "@/components/admin/BulkImportModal";
+import VerifyListModalV2 from "@/components/admin/VerifyListModalV2";
 import MergeMemberModal from "@/components/admin/MergeMemberModal";
 import MemberHistoryModal from "@/components/admin/MemberHistoryModal";
 import VerifyTwitchNamesModal from "@/components/admin/VerifyTwitchNamesModal";
@@ -87,6 +88,10 @@ interface Member {
   }>;
   parrain?: string; // Pseudo/nom du membre parrain
   profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
+  isArchived?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 
@@ -98,6 +103,7 @@ export default function GestionMembresPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isVerifyListOpen, setIsVerifyListOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{
     id: string;
@@ -146,7 +152,8 @@ export default function GestionMembresPage() {
   const [bulkOnboarding, setBulkOnboarding] = useState<"" | "a_faire" | "en_cours" | "termine">("");
   const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs" | "nouveaux">("actifs");
+  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs" | "nouveaux" | "archives">("actifs");
+  const [archivedMembers, setArchivedMembers] = useState<Member[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -512,11 +519,49 @@ export default function GestionMembresPage() {
     };
   }
 
+  function mapArchiveEntryToUi(entry: any, index: number): Member {
+    const snapshot = entry?.snapshot || {};
+    const base = mapAdminMemberToUi(snapshot, index);
+    return {
+      ...base,
+      id: index + 1,
+      statut: "Inactif",
+      isArchived: true,
+      deletedAt: entry?.deletedAt
+        ? typeof entry.deletedAt === "string"
+          ? entry.deletedAt
+          : new Date(entry.deletedAt).toISOString()
+        : undefined,
+      deletedBy: entry?.deletedBy,
+      deleteReason: entry?.deleteReason,
+    };
+  }
+
+  async function loadArchivedMembers() {
+    try {
+      const response = await fetch("/api/admin/members/archives", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!response.ok) {
+        setArchivedMembers([]);
+        return;
+      }
+      const data = await response.json();
+      const archives = Array.isArray(data?.archives) ? data.archives : [];
+      setArchivedMembers(archives.map((entry: any, index: number) => mapArchiveEntryToUi(entry, index)));
+    } catch (error) {
+      console.warn("Impossible de charger les archives membres:", error);
+      setArchivedMembers([]);
+    }
+  }
+
   // Charger les membres depuis la base de données centralisée
   async function loadMembers() {
     try {
       setLoading(true);
       setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
+      const archivesPromise = loadArchivedMembers().catch(() => undefined);
       const raidsStatsPromise = fetchRaidsStats().catch(() => ({}));
 
       // Toujours essayer de charger depuis l'API centralisée (l'API vérifie les permissions)
@@ -547,6 +592,7 @@ export default function GestionMembresPage() {
             if (!raidsStats || Object.keys(raidsStats).length === 0) return;
             setMembers((prev) => applyRaidsStatsToMembers(prev, raidsStats));
           });
+          await archivesPromise;
           return;
         } else if (centralResponse.status === 403) {
           // Accès refusé : rediriger vers unauthorized
@@ -560,9 +606,11 @@ export default function GestionMembresPage() {
       
       // Fallback: essayer de charger depuis Discord si l'API centralisée n'est pas disponible
       await loadDiscordMembers();
+      await archivesPromise;
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
       setMembers([]);
+      setArchivedMembers([]);
       setLoading(false);
     }
   }
@@ -987,8 +1035,34 @@ export default function GestionMembresPage() {
   );
   const communityFollowupMembers = [...inactiveCommunityMembers, ...inactiveOtherMembers];
   const isSearching = searchQuery.trim().length > 0;
-  // En mode recherche, afficher tous les statuts pour éviter de "perdre" un membre selon l'onglet actif.
-  const displayedMembers = isSearching
+  let filteredArchivedMembers = archivedMembers;
+  if (searchQuery.trim().length > 0) {
+    const normalizedQuery = normalize(searchQuery);
+    filteredArchivedMembers = archivedMembers.filter((member) => {
+      const searchable = [
+        member.nom,
+        member.twitch,
+        member.discord,
+        member.discordId,
+        member.siteUsername,
+        member.deleteReason,
+      ]
+        .map((value) => normalize(value))
+        .join(" ");
+      return searchable.includes(normalizedQuery);
+    });
+  }
+  if (roleFilter !== "all") {
+    filteredArchivedMembers = filteredArchivedMembers.filter((member) => member.role === roleFilter);
+  }
+  if (memberStatusFilter !== "all") {
+    filteredArchivedMembers = filteredArchivedMembers.filter((member) => member.statut === memberStatusFilter);
+  }
+
+  // En mode recherche sur les onglets membres, afficher tous les statuts pour éviter de "perdre" un membre selon l'onglet actif.
+  const displayedMembers = statusTab === "archives"
+    ? filteredArchivedMembers
+    : isSearching
     ? filteredMembers
     : statusTab === "actifs"
     ? activeMembers
@@ -1033,6 +1107,7 @@ export default function GestionMembresPage() {
   const totalActiveMembers = members.filter((m) => m.statut === "Actif" && m.role !== "Nouveau").length;
   const totalInactiveMembers = communityFollowupMembers.length;
   const totalNewMembers = members.filter((m) => m.role === "Nouveau").length;
+  const totalArchivedMembers = archivedMembers.length;
   const totalIncompleteMembers = members.filter((m) => getMemberCompleteness(m).percent < 80).length;
   const totalWithoutTwitchId = members.filter((m) => !m.twitchId).length;
   const activeTabLabel =
@@ -1040,7 +1115,9 @@ export default function GestionMembresPage() {
       ? "Actifs"
       : statusTab === "inactifs"
       ? "Suivi communauté"
-      : "Nouveaux";
+      : statusTab === "nouveaux"
+      ? "Nouveaux"
+      : "Archivé";
   const availableRoles = Array.from(new Set(members.map((member) => member.role))).sort((a, b) =>
     a.localeCompare(b, "fr", { sensitivity: "base" })
   );
@@ -1676,7 +1753,7 @@ export default function GestionMembresPage() {
 
     if (
       !confirm(
-        `Suppression définitive du membre\n\nNom: ${member.nom}\nTwitch: ${member.twitch}\nDiscord: ${member.discord || "N/A"}\n\nCette action est irréversible.`
+        `Archiver le membre\n\nNom: ${member.nom}\nTwitch: ${member.twitch}\nDiscord: ${member.discord || "N/A"}\n\nLe profil sera déplacé dans l'onglet Archivé.`
       )
     ) {
       return;
@@ -1714,13 +1791,96 @@ export default function GestionMembresPage() {
         console.error("Erreur lors du logging:", err);
       }
 
-      pushNotice("success", `Membre supprimé: ${member.nom}`);
+      pushNotice("success", `Membre archivé: ${member.nom}`);
       // Recharger les membres depuis la base de données
       await loadMembers();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
       pushNotice("error", `Erreur suppression: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
     }
+  };
+
+  const handleRestoreArchived = async (member: Member) => {
+    if (!currentAdmin?.canWrite) {
+      pushNotice("error", "Permissions insuffisantes.");
+      return;
+    }
+
+    if (!confirm(`Désarchiver ${member.nom} ?\n\nLe profil repasse en rôle Communauté (Inactif).`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/members/archives", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        body: JSON.stringify({ action: "restore", twitchLogin: member.twitch }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Désarchivage impossible");
+      }
+      pushNotice("success", `Membre désarchivé: ${member.nom}`);
+      await loadMembers();
+      setStatusTab("inactifs");
+    } catch (error) {
+      pushNotice("error", `Erreur désarchivage: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
+  const handlePurgeArchived = async (member: Member) => {
+    if (!currentAdmin?.isFounder) {
+      pushNotice("error", "Seuls les fondateurs peuvent supprimer définitivement.");
+      return;
+    }
+    if (
+      !confirm(
+        `Suppression définitive TOTALE\n\nNom: ${member.nom}\nTwitch: ${member.twitch}\n\nCette action efface les données restantes de l'archive.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/members/archives", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        body: JSON.stringify({ action: "purge", twitchLogin: member.twitch }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Suppression définitive impossible");
+      }
+      pushNotice("success", `Archive supprimée définitivement: ${member.nom}`);
+      await loadArchivedMembers();
+    } catch (error) {
+      pushNotice("error", `Erreur suppression définitive: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
+  const handleViewArchivedData = (member: Member) => {
+    const payload = {
+      nom: member.nom,
+      twitch: member.twitch,
+      discord: member.discord,
+      discordId: member.discordId,
+      role: member.role,
+      statut: member.statut,
+      siteUsername: member.siteUsername,
+      dateSuppression: member.deletedAt,
+      supprimePar: member.deletedBy,
+      motifSuppression: member.deleteReason,
+      profil: {
+        description: member.description,
+        customBio: member.customBio,
+        badges: member.badges || [],
+        integrationDate: member.integrationDate,
+        createdAt: member.createdAt,
+      },
+    };
+    alert(JSON.stringify(payload, null, 2));
   };
 
   const handleBulkImport = async (members: Array<{ nom: string; discord: string; twitch: string; discordId?: string }>) => {
@@ -2101,6 +2261,14 @@ export default function GestionMembresPage() {
                   <Upload className="w-4 h-4" />
                   Import en masse
                 </button>
+                <button
+                  onClick={() => setIsVerifyListOpen(true)}
+                  className="bg-sky-500/14 hover:bg-sky-500/24 border border-sky-400/35 text-sky-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                  title="Vérifier une liste sans modifier la base"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Verif liste
+                </button>
               </>
             )}
             <div
@@ -2462,6 +2630,17 @@ export default function GestionMembresPage() {
           >
             Nouveaux ({newMembers.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setStatusTab("archives")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              statusTab === "archives"
+                ? "bg-slate-600/90 text-white border border-slate-400/40"
+                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+            }`}
+          >
+            Archivé ({totalArchivedMembers})
+          </button>
         </div>
 
         {/* Tableau des membres */}
@@ -2516,7 +2695,7 @@ export default function GestionMembresPage() {
                   )}
                   <SortableHeader column="role" label="RÔLE" />
                   <SortableHeader column="statut" label="STATUT" />
-                  <SortableHeader column="createdAt" label="MEMBRE DEPUIS" />
+                  <SortableHeader column="createdAt" label={statusTab === "archives" ? "DATE SUPPR." : "MEMBRE DEPUIS"} />
                   <SortableHeader column="integrationDate" label="INTÉGRATION" />
                   <SortableHeader column="completude" label="COMPLÉTUDE" />
                   {viewMode === "complet" && (
@@ -2683,7 +2862,11 @@ export default function GestionMembresPage() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-gray-300 text-sm">
-                      {formatMemberSince(member.createdAt)}
+                      {member.isArchived
+                        ? member.deletedAt
+                          ? new Date(member.deletedAt).toLocaleDateString("fr-FR")
+                          : "—"
+                        : formatMemberSince(member.createdAt)}
                     </td>
                     <td className="py-4 px-6">
                       {member.integrationDate ? (
@@ -2801,47 +2984,81 @@ export default function GestionMembresPage() {
                         >
                           {isCompactView ? "Fiche" : "👁️ Fiche"}
                         </Link>
-                        <button
-                          onClick={() => handleToggleStatus(member)}
-                          className={`${member.statut === "Actif" ? actionDangerClass : actionSuccessClass} ${
-                            isCommunityLocked ? "opacity-60 cursor-not-allowed" : ""
-                          }`}
-                          disabled={isCommunityLocked}
-                          title={
-                            isCommunityLocked
-                              ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
-                              : undefined
-                          }
-                        >
-                          {member.statut === "Actif"
-                            ? (isCompactView ? "OFF" : "Désactiver")
-                            : isCommunityLocked
-                            ? (isCompactView ? "ON 🔒" : "Activer (rôle verrouillé)")
-                            : (isCompactView ? "ON" : "Activer")}
-                        </button>
-                        {canValidateCommunity && currentAdmin?.canWrite && (
-                          <button
-                            onClick={() => handleValidateCommunityPassage(member)}
-                            className={actionWarningClass}
-                            title="Valider le passage en rôle Communauté (reste Inactif)"
-                          >
-                            {isCompactView ? "Valider" : "Valider communauté"}
-                          </button>
-                        )}
-                        {currentAdmin?.canWrite && (
+                        {member.isArchived ? (
                           <>
                             <button
-                              onClick={() => handleEdit(member)}
-                              className={actionEditClass}
+                              onClick={() => handleViewArchivedData(member)}
+                              className={actionInfoClass}
+                              title="Voir les données archivées"
                             >
-                              {isCompactView ? "Edit" : "Modifier"}
+                              {isCompactView ? "Data" : "Voir données"}
                             </button>
+                            {currentAdmin?.canWrite && (
+                              <button
+                                onClick={() => handleRestoreArchived(member)}
+                                className={actionSuccessClass}
+                                title="Désarchiver vers Communauté inactif"
+                              >
+                                <ArchiveRestore className="w-3 h-3" />
+                                {isCompactView ? "On" : "Désarchiver"}
+                              </button>
+                            )}
+                            {currentAdmin?.isFounder && (
+                              <button
+                                onClick={() => handlePurgeArchived(member)}
+                                className={actionDangerClass}
+                                title="Suppression définitive totale"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                {isCompactView ? "Del" : "Supp. définitive"}
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
                             <button
-                              onClick={() => handleDelete(member)}
-                              className={actionDangerClass}
+                              onClick={() => handleToggleStatus(member)}
+                              className={`${member.statut === "Actif" ? actionDangerClass : actionSuccessClass} ${
+                                isCommunityLocked ? "opacity-60 cursor-not-allowed" : ""
+                              }`}
+                              disabled={isCommunityLocked}
+                              title={
+                                isCommunityLocked
+                                  ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
+                                  : undefined
+                              }
                             >
-                              {isCompactView ? "Suppr." : "Supprimer"}
+                              {member.statut === "Actif"
+                                ? (isCompactView ? "OFF" : "Désactiver")
+                                : isCommunityLocked
+                                ? (isCompactView ? "ON 🔒" : "Activer (rôle verrouillé)")
+                                : (isCompactView ? "ON" : "Activer")}
                             </button>
+                            {canValidateCommunity && currentAdmin?.canWrite && (
+                              <button
+                                onClick={() => handleValidateCommunityPassage(member)}
+                                className={actionWarningClass}
+                                title="Valider le passage en rôle Communauté (reste Inactif)"
+                              >
+                                {isCompactView ? "Valider" : "Valider communauté"}
+                              </button>
+                            )}
+                            {currentAdmin?.canWrite && (
+                              <>
+                                <button
+                                  onClick={() => handleEdit(member)}
+                                  className={actionEditClass}
+                                >
+                                  {isCompactView ? "Edit" : "Modifier"}
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(member)}
+                                  className={actionDangerClass}
+                                >
+                                  {isCompactView ? "Suppr." : "Supprimer"}
+                                </button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -2863,7 +3080,9 @@ export default function GestionMembresPage() {
                               ? "actif"
                               : statusTab === "inactifs"
                               ? "du suivi communauté"
-                              : "nouveau"
+                              : statusTab === "nouveaux"
+                              ? "nouveau"
+                              : "archivé"
                           } avec les filtres actuels.`}
                     </td>
                   </tr>
@@ -2910,6 +3129,10 @@ export default function GestionMembresPage() {
               isOpen={isBulkImportOpen}
               onClose={() => setIsBulkImportOpen(false)}
               onImport={handleBulkImport}
+            />
+            <VerifyListModalV2
+              isOpen={isVerifyListOpen}
+              onClose={() => setIsVerifyListOpen(false)}
             />
           </>
         )}

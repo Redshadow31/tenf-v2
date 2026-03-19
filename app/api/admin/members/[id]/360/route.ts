@@ -3,7 +3,8 @@ import { requirePermission } from "@/lib/requireAdmin";
 import { 
   findMemberByIdentifier, 
   loadMemberDataFromStorage,
-  getAllMemberData 
+  getAllMemberData,
+  getArchivedMemberEntries,
 } from "@/lib/memberData";
 import { getAllAuditLogs } from "@/lib/adminAudit";
 import { loadIntegrations, loadRegistrations } from "@/lib/integrationStorage";
@@ -138,6 +139,23 @@ export async function GET(
           m.displayName?.toLowerCase() === decodedId.toLowerCase() ||
           m.siteUsername?.toLowerCase() === decodedId.toLowerCase()
       ) || null;
+    }
+
+    if (!member) {
+      const archived = await getArchivedMemberEntries();
+      const idLower = decodedId.toLowerCase();
+      const archivedEntry = archived.find((entry) =>
+        memberMatches(entry.snapshot, idLower)
+      );
+      if (archivedEntry) {
+        member = {
+          ...archivedEntry.snapshot,
+          archived: true,
+          archivedAt: archivedEntry.deletedAt,
+          archivedBy: archivedEntry.deletedBy,
+          archiveReason: archivedEntry.deleteReason,
+        } as any;
+      }
     }
 
     if (!member) {

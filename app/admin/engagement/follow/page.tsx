@@ -163,12 +163,12 @@ export default function AdminEngagementFollowPage() {
           cache: "no-store",
         });
         if (!response.ok) {
-          window.location.href = "/unauthorized";
+          window.location.href = "/unauthorized?reason=advanced-admin";
           return;
         }
         setHasAccess(true);
       } catch (_error) {
-        window.location.href = "/unauthorized";
+        window.location.href = "/unauthorized?reason=advanced-admin";
       } finally {
         setCheckingAccess(false);
       }

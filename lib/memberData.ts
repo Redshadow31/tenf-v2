@@ -128,6 +128,14 @@ export interface MemberData {
   parrain?: string; // Pseudo/nom du membre parrain
 }
 
+export interface ArchivedMemberEntry {
+  twitchLogin: string;
+  deletedAt: Date;
+  deletedBy?: string;
+  deleteReason?: string;
+  snapshot: MemberData;
+}
+
 // Stockage en mémoire (fusionné des deux sources)
 let memberDataStore: Record<string, MemberData> = {};
 
@@ -1190,17 +1198,23 @@ export async function createMemberData(
  * - Crée une entrée de suppression dans adminData pour empêcher la resynchronisation
  * - Recharge les données fusionnées
  */
-export async function deleteMemberData(twitchLogin: string, deletedBy?: string): Promise<boolean> {
+export async function deleteMemberData(
+  twitchLogin: string,
+  deletedBy?: string,
+  deleteReason?: string,
+  snapshotOverride?: Partial<MemberData>
+): Promise<boolean> {
   const login = twitchLogin.toLowerCase();
   
   // Charger les données fusionnées pour vérifier si le membre existe
   await loadMemberDataFromStorage();
   const existing = memberDataStore[login];
   
-  if (!existing) {
+  if (!existing && !snapshotOverride) {
     // Membre n'existe pas du tout
     return false;
   }
+  const archiveSource = existing || (snapshotOverride as MemberData);
   
   // Charger les données admin et bot séparément
   const adminData = await loadAdminDataFromStorage();
@@ -1219,13 +1233,16 @@ export async function deleteMemberData(twitchLogin: string, deletedBy?: string):
   // Créer une entrée de suppression dans adminData pour empêcher la resynchronisation
   // Cette entrée sera utilisée pour exclure le membre de la fusion et empêcher la resynchronisation Discord
   adminData[`__deleted_${login}`] = {
+    ...archiveSource,
     twitchLogin: login,
-    twitchUrl: existing.twitchUrl || `https://www.twitch.tv/${login}`,
-    displayName: existing.displayName || login,
-    role: existing.role || "Affilié",
-    isVip: false,
-    isActive: false,
+    twitchUrl: archiveSource.twitchUrl || `https://www.twitch.tv/${login}`,
+    displayName: archiveSource.displayName || archiveSource.siteUsername || login,
+    role: archiveSource.role || "Affilié",
     deleted: true, // Flag spécial pour indiquer que c'est une suppression
+    deletedAt: new Date(),
+    deletedBy: deletedBy || "admin",
+    deleteReason: deleteReason || undefined,
+    archivedSnapshot: archiveSource,
     updatedAt: new Date(),
     updatedBy: deletedBy || "admin",
   } as any;
@@ -1244,6 +1261,123 @@ export async function deleteMemberData(twitchLogin: string, deletedBy?: string):
     console.warn(`[Delete Member] Le membre ${login} est toujours présent dans memberDataStore après suppression`);
   }
   
+  return true;
+}
+
+/**
+ * Récupère les membres archivés (entrées __deleted_*)
+ */
+export async function getArchivedMemberEntries(): Promise<ArchivedMemberEntry[]> {
+  const adminData = await loadAdminDataFromStorage();
+  const archives: ArchivedMemberEntry[] = [];
+
+  for (const [key, value] of Object.entries(adminData as Record<string, any>)) {
+    if (!key.startsWith("__deleted_")) continue;
+
+    const loginFromKey = key.replace("__deleted_", "").toLowerCase();
+    const raw = value as any;
+    const rawSnapshot = raw?.archivedSnapshot || raw;
+    if (!rawSnapshot || typeof rawSnapshot !== "object") continue;
+
+    const snapshot: MemberData = {
+      ...(rawSnapshot as MemberData),
+      twitchLogin: String(rawSnapshot.twitchLogin || loginFromKey).toLowerCase(),
+      twitchUrl:
+        String(rawSnapshot.twitchUrl || "").trim() ||
+        `https://www.twitch.tv/${String(rawSnapshot.twitchLogin || loginFromKey).toLowerCase()}`,
+      displayName: String(rawSnapshot.displayName || rawSnapshot.siteUsername || rawSnapshot.twitchLogin || loginFromKey),
+      role: (rawSnapshot.role || "Affilié") as MemberRole,
+      isVip: rawSnapshot.isVip === true,
+      isActive: rawSnapshot.isActive === true,
+      createdAt: rawSnapshot.createdAt ? new Date(rawSnapshot.createdAt) : undefined,
+      updatedAt: rawSnapshot.updatedAt ? new Date(rawSnapshot.updatedAt) : undefined,
+      integrationDate: rawSnapshot.integrationDate ? new Date(rawSnapshot.integrationDate) : undefined,
+      birthday: rawSnapshot.birthday ? new Date(rawSnapshot.birthday) : undefined,
+      twitchAffiliateDate: rawSnapshot.twitchAffiliateDate ? new Date(rawSnapshot.twitchAffiliateDate) : undefined,
+      lastReviewAt: rawSnapshot.lastReviewAt ? new Date(rawSnapshot.lastReviewAt) : undefined,
+      nextReviewAt: rawSnapshot.nextReviewAt ? new Date(rawSnapshot.nextReviewAt) : undefined,
+    };
+
+    const deletedAt = raw?.deletedAt ? new Date(raw.deletedAt) : raw?.updatedAt ? new Date(raw.updatedAt) : new Date();
+    archives.push({
+      twitchLogin: snapshot.twitchLogin,
+      deletedAt,
+      deletedBy: typeof raw?.deletedBy === "string" ? raw.deletedBy : undefined,
+      deleteReason: typeof raw?.deleteReason === "string" ? raw.deleteReason : undefined,
+      snapshot,
+    });
+  }
+
+  archives.sort((a, b) => b.deletedAt.getTime() - a.deletedAt.getTime());
+  return archives;
+}
+
+/**
+ * Désarchive un membre et le réinjecte dans les données admin en Communauté inactive.
+ */
+export async function restoreArchivedMemberEntry(twitchLogin: string, restoredBy: string): Promise<MemberData | null> {
+  const login = twitchLogin.toLowerCase().trim();
+  if (!login) return null;
+
+  const adminData = await loadAdminDataFromStorage();
+  const archiveKey = `__deleted_${login}`;
+  const archiveRecord = (adminData as any)[archiveKey];
+  if (!archiveRecord) return null;
+
+  const snapshotRaw = archiveRecord?.archivedSnapshot || archiveRecord;
+  if (!snapshotRaw) return null;
+
+  const restoredMember: MemberData = {
+    ...(snapshotRaw as MemberData),
+    twitchLogin: String(snapshotRaw.twitchLogin || login).toLowerCase(),
+    twitchUrl:
+      String(snapshotRaw.twitchUrl || "").trim() ||
+      `https://www.twitch.tv/${String(snapshotRaw.twitchLogin || login).toLowerCase()}`,
+    displayName: String(snapshotRaw.displayName || snapshotRaw.siteUsername || snapshotRaw.twitchLogin || login),
+    role: "Communauté",
+    isActive: false,
+    updatedBy: restoredBy,
+    updatedAt: new Date(),
+  };
+
+  delete (adminData as any)[archiveKey];
+  (adminData as any)[login] = restoredMember;
+  await saveAdminData(adminData as Record<string, MemberData>);
+  await loadMemberDataFromStorage();
+
+  return restoredMember;
+}
+
+/**
+ * Suppression définitive d'une archive (aucune donnée conservée).
+ */
+export async function purgeArchivedMemberEntry(twitchLogin: string): Promise<boolean> {
+  const login = twitchLogin.toLowerCase().trim();
+  if (!login) return false;
+
+  const adminData = await loadAdminDataFromStorage();
+  const botData = await loadBotDataFromStorage();
+  const archiveKey = `__deleted_${login}`;
+
+  let changed = false;
+  if ((adminData as any)[archiveKey]) {
+    delete (adminData as any)[archiveKey];
+    changed = true;
+  }
+  if ((adminData as any)[login]) {
+    delete (adminData as any)[login];
+    changed = true;
+  }
+  if ((botData as any)[login]) {
+    delete (botData as any)[login];
+    changed = true;
+  }
+
+  if (!changed) return false;
+
+  await saveAdminData(adminData as Record<string, MemberData>);
+  await saveBotData(botData as Record<string, MemberData>);
+  await loadMemberDataFromStorage();
   return true;
 }
 

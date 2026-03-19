@@ -92,8 +92,8 @@ export async function GET() {
 }
 
 /**
- * POST - Approuve ou rejette une demande
- * Body: { id, action: 'approve' | 'reject' }
+ * POST - Approuve, rejette ou supprime une demande
+ * Body: { id, action: 'approve' | 'reject' | 'force_delete' }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -105,19 +105,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id, action } = body;
 
-    if (!id || !["approve", "reject"].includes(action)) {
+    if (!id || !["approve", "reject", "force_delete"].includes(action)) {
       return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
     }
 
-    const { data: pending, error: fetchError } = await supabaseAdmin
+    const pendingQuery = supabaseAdmin
       .from("member_profile_pending")
       .select("*")
-      .eq("id", id)
-      .eq("status", "pending")
-      .single();
+      .eq("id", id);
+
+    const { data: pending, error: fetchError } =
+      action === "force_delete"
+        ? await pendingQuery.single()
+        : await pendingQuery.eq("status", "pending").single();
 
     if (fetchError || !pending) {
       return NextResponse.json({ error: "Demande non trouvée ou déjà traitée" }, { status: 404 });
+    }
+
+    if (action === "force_delete") {
+      const { error: deleteError } = await supabaseAdmin
+        .from("member_profile_pending")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      try {
+        await syncProfileValidationNotification();
+      } catch (notificationError) {
+        console.error("[profile-validation] notification sync error (POST force_delete):", notificationError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Demande supprimée définitivement",
+      });
     }
 
     if (action === "approve") {

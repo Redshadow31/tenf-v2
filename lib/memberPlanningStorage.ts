@@ -22,8 +22,27 @@ const MAX_PLANNINGS_PER_USER = 200;
 const MAX_LIVE_TYPE_LENGTH = 80;
 const MAX_TITLE_LENGTH = 120;
 
-function isNetlify(): boolean {
-  return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV;
+function shouldPreferBlobStore(): boolean {
+  if (process.env.MEMBER_PLANNING_STORE === "file") return false;
+  if (process.env.MEMBER_PLANNING_STORE === "blob") return true;
+  return (
+    !!process.env.NETLIFY ||
+    !!process.env.NETLIFY_DEV ||
+    !!process.env.NETLIFY_SITE_ID ||
+    !!process.env.CONTEXT ||
+    !!process.env.DEPLOY_PRIME_URL
+  );
+}
+
+function isLikelyBlobEnvError(error: unknown): boolean {
+  const message = String(error || "").toLowerCase();
+  return (
+    message.includes("netlify") ||
+    message.includes("blob") ||
+    message.includes("site id") ||
+    message.includes("token") ||
+    message.includes("unauthorized")
+  );
 }
 
 function sortByDateTimeAsc(a: MemberStreamPlanning, b: MemberStreamPlanning): number {
@@ -74,7 +93,45 @@ function sanitizePlanning(raw: MemberStreamPlanning): MemberStreamPlanning | nul
   };
 }
 
-function cleanupPlannings(plannings: MemberStreamPlanning[]): {
+function recoverRuntimePlanning(raw: unknown): MemberStreamPlanning | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Record<string, unknown>;
+
+  const id = String(candidate.id || "").trim() || `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const userId = String(candidate.userId || candidate.discordId || candidate.memberId || candidate.memberDiscordId || "").trim();
+  const twitchLogin = String(
+    candidate.twitchLogin || candidate.login || candidate.twitch || candidate.twitch_username || candidate.username || ""
+  )
+    .trim()
+    .toLowerCase();
+  const date = String(candidate.date || "").trim();
+  const time = String(candidate.time || candidate.horaire || candidate.hour || "").trim();
+  const liveType = trimAndLimit(
+    String(candidate.liveType || candidate.typeLive || candidate.streamType || candidate.game || candidate.category || "").trim(),
+    MAX_LIVE_TYPE_LENGTH
+  );
+  const title = trimAndLimit(String(candidate.title || candidate.name || candidate.streamTitle || "").trim(), MAX_TITLE_LENGTH);
+  const createdAt = String(candidate.createdAt || candidate.updatedAt || new Date().toISOString());
+  const updatedAt = String(candidate.updatedAt || "").trim() || undefined;
+
+  if (!userId || !twitchLogin || !date || !time || !liveType) return null;
+  if (!isValidDate(date) || !isValidTime(time)) return null;
+  if (Number.isNaN(toDateTimeMs(date, time))) return null;
+
+  return {
+    id,
+    userId,
+    twitchLogin,
+    date,
+    time,
+    liveType,
+    title,
+    createdAt,
+    updatedAt,
+  };
+}
+
+function cleanupPlannings(plannings: unknown[]): {
   cleaned: MemberStreamPlanning[];
   changed: boolean;
 } {
@@ -86,10 +143,16 @@ function cleanupPlannings(plannings: MemberStreamPlanning[]): {
   let changed = false;
 
   for (const raw of plannings) {
-    const sanitized = sanitizePlanning(raw);
+    const sanitized = sanitizePlanning(raw as MemberStreamPlanning) || recoverRuntimePlanning(raw);
     if (!sanitized) {
       changed = true;
       continue;
+    }
+
+    const strictSanitized = sanitizePlanning(raw as MemberStreamPlanning);
+    if (!strictSanitized) {
+      // Cas legacy converti : on persistera au nouveau format.
+      changed = true;
     }
 
     const streamAtMs = toDateTimeMs(sanitized.date, sanitized.time);
@@ -140,38 +203,57 @@ function cleanupPlannings(plannings: MemberStreamPlanning[]): {
 }
 
 async function readRawMemberStreamPlannings(): Promise<MemberStreamPlanning[]> {
-  try {
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      const data = await store.get(STORE_KEY, { type: "json" });
-      return (data as MemberStreamPlanning[]) || [];
-    }
-
+  const readFromFile = (): MemberStreamPlanning[] => {
     const dataDir = path.join(process.cwd(), "data", "members");
     const filePath = path.join(dataDir, STORE_KEY);
     if (!fs.existsSync(filePath)) return [];
     return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  };
+
+  try {
+    if (shouldPreferBlobStore()) {
+      const store = getStore(STORE_NAME);
+      const data = await store.get(STORE_KEY, { type: "json" });
+      return (data as MemberStreamPlanning[]) || [];
+    }
+    return readFromFile();
   } catch (error) {
+    if (shouldPreferBlobStore() && isLikelyBlobEnvError(error)) {
+      try {
+        console.warn("[MemberPlanningStorage] Blob indisponible, fallback fichier local:", error);
+        return readFromFile();
+      } catch (fallbackError) {
+        console.error("[MemberPlanningStorage] Erreur fallback fichier local:", fallbackError);
+      }
+    }
     console.error("[MemberPlanningStorage] Erreur chargement:", error);
     return [];
   }
 }
 
 async function writeRawMemberStreamPlannings(plannings: MemberStreamPlanning[]): Promise<void> {
-  try {
-    if (isNetlify()) {
-      const store = getStore(STORE_NAME);
-      await store.set(STORE_KEY, JSON.stringify(plannings, null, 2));
-      return;
-    }
-
+  const writeToFile = (): void => {
     const dataDir = path.join(process.cwd(), "data", "members");
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     const filePath = path.join(dataDir, STORE_KEY);
     fs.writeFileSync(filePath, JSON.stringify(plannings, null, 2), "utf-8");
+  };
+
+  try {
+    if (shouldPreferBlobStore()) {
+      const store = getStore(STORE_NAME);
+      await store.set(STORE_KEY, JSON.stringify(plannings, null, 2));
+      return;
+    }
+    writeToFile();
   } catch (error) {
+    if (shouldPreferBlobStore() && isLikelyBlobEnvError(error)) {
+      console.warn("[MemberPlanningStorage] Ecriture Blob indisponible, fallback fichier local:", error);
+      writeToFile();
+      return;
+    }
     console.error("[MemberPlanningStorage] Erreur sauvegarde:", error);
     throw error;
   }
@@ -181,6 +263,20 @@ export async function loadMemberStreamPlannings(): Promise<MemberStreamPlanning[
   const raw = await readRawMemberStreamPlannings();
   const { cleaned, changed } = cleanupPlannings(raw);
   if (changed) {
+    if (raw.length > 0 && cleaned.length === 0) {
+      // Evite d'écraser tout le store si un changement de format rend les entrées illisibles.
+      const recovered = raw.map((entry) => recoverRuntimePlanning(entry)).filter(Boolean) as MemberStreamPlanning[];
+      console.warn(
+        "[MemberPlanningStorage] Nettoyage ignoré: 0 entrée valide sur",
+        raw.length,
+        "entrées brutes."
+      );
+      if (recovered.length > 0) {
+        recovered.sort(sortByDateTimeAsc);
+        await writeRawMemberStreamPlannings(recovered);
+      }
+      return recovered;
+    }
     await writeRawMemberStreamPlannings(cleaned);
   }
   return cleaned;

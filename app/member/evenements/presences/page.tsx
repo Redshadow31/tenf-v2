@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Award, CalendarDays, ChevronRight, Flame, Star, Target, TrendingUp } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
-import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
 import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthlyGoals";
 
@@ -146,13 +145,29 @@ export default function MemberEventPresencesPage() {
   );
 
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des presences...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Mes presences" description={error || "Donnees indisponibles."} />;
+  if (error || !data) {
+    return (
+      <MemberSurface>
+        <MemberPageHeader title="Mes presences" description="Suivi mensuel de tes participations aux evenements." />
+        <section
+          className="rounded-xl border p-4"
+          style={{ borderColor: "rgba(248,113,113,0.4)", backgroundColor: "rgba(127,29,29,0.25)" }}
+        >
+          <p className="text-sm text-red-200">{error || "Impossible de charger tes donnees de presence pour le moment."}</p>
+        </section>
+      </MemberSurface>
+    );
+  }
 
   if (!selectedAttendance) {
     return (
       <MemberSurface>
         <MemberPageHeader title="Mes presences" description="Suivi mensuel de tes participations aux evenements." />
-        <EmptyFeatureCard title="Pas encore de donnees" description="Ton espace de suivi se remplira des que des evenements seront disponibles." />
+        <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            Ton espace de suivi se remplira des que des evenements seront disponibles.
+          </p>
+        </section>
       </MemberSurface>
     );
   }

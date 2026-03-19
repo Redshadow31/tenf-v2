@@ -23,6 +23,7 @@
     "test:routes-spotlight-events-follow": "tsx migration/test-routes-evaluation-spotlight-events-follow.ts",
     "test:timezone-events": "tsx scripts/test-event-timezone.ts",
     "test:connections": "tsx scripts/test-connections.ts",
+    "migration:member-plannings-legacy": "tsx scripts/migrate-member-plannings-legacy.ts",
     "migration:migrate-events": "tsx migration/migrate-events-blobs-to-supabase.ts",
     "test:logs-admin": "tsx --test tests/login-logs/**/*.test.ts",
     "test:e2e:logs-admin": "playwright test tests/e2e/admin-login-logs.spec.ts"

@@ -4,7 +4,7 @@ import { isFounder } from '@/lib/adminRoles';
 import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
-import { resetAdvancedAccessCache } from '@/lib/advancedAccess';
+import { hasAdvancedAdminAccess, resetAdvancedAccessCache } from '@/lib/advancedAccess';
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
 const ACCESS_STORE = 'tenf-admin-access';
@@ -106,8 +106,7 @@ export async function GET(request: NextRequest) {
 
     // Mode check : retourner uniquement si l'utilisateur a accès
     if (checkOnly) {
-      // Verrouillage sécurité: accès admin avancé réservé aux fondateurs.
-      const canAccess = isFounder(admin.discordId);
+      const canAccess = await hasAdvancedAdminAccess(admin.discordId);
       return NextResponse.json({ canAccessAdvanced: canAccess });
     }
 

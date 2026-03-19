@@ -57,9 +57,9 @@ async function loadAdvancedAccessIds(force = false): Promise<Set<string>> {
 
 export async function hasAdvancedAdminAccess(discordId?: string | null): Promise<boolean> {
   if (!discordId) return false;
-  // Verrouillage sécurité: mode admin avancé réservé strictement aux fondateurs.
-  // La liste temporaire reste stockée pour audit/historique, mais n'octroie plus l'accès.
-  return isFounder(discordId);
+  if (isFounder(discordId)) return true;
+  const ids = await loadAdvancedAccessIds();
+  return ids.has(discordId);
 }
 
 export function resetAdvancedAccessCache(): void {

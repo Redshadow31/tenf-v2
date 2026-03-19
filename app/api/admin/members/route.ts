@@ -1178,7 +1178,12 @@ export async function DELETE(request: NextRequest) {
     if (memberFromBlobs || member) {
       try {
         const { deleteMemberData } = await import('@/lib/memberData');
-        const deletedFromBlobs = await deleteMemberData(twitchLogin, admin.discordId);
+        const deletedFromBlobs = await deleteMemberData(
+          twitchLogin,
+          admin.discordId,
+          auditReason,
+          memberToDelete || undefined
+        );
         if (deletedFromBlobs) {
           console.log(`[Delete Member] ✅ Membre supprimé des Blobs: ${twitchLogin}`);
         }

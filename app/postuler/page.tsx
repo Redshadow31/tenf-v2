@@ -17,6 +17,12 @@ type StaffApplication = {
   applicant_username: string;
   answers: Record<string, any>;
   admin_status: AdminStatus;
+  member_final_decision?: {
+    at: string;
+    author: string;
+    outcome: "soutien_tenf" | "moderateur_formation" | "candidature_refusee";
+    memberMessage: string;
+  } | null;
 };
 
 type FormState = {
@@ -158,6 +164,12 @@ function roleLabel(role: RolePostule): string {
   if (role === "moderateur") return "Moderateur";
   if (role === "soutien") return "Soutien TENF";
   return "Moderateur + Soutien";
+}
+
+function finalDecisionLabel(value: "soutien_tenf" | "moderateur_formation" | "candidature_refusee"): string {
+  if (value === "soutien_tenf") return "Soutien TENF";
+  if (value === "moderateur_formation") return "Moderateur en formation";
+  return "Candidature refusee";
 }
 
 function toFormFromAnswers(answers: Record<string, any>, username: string): FormState {
@@ -539,6 +551,7 @@ export default function PostulerPage() {
                 {applications.map((item) => {
                   const editable = EDITABLE_STATUSES.includes(item.admin_status);
                   const role = roleLabel((item.answers?.role_postule || "moderateur") as RolePostule);
+                  const finalDecision = item.member_final_decision || null;
                   return (
                     <article key={item.id} className="rounded-xl border border-white/10 bg-[#11131c] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -574,6 +587,20 @@ export default function PostulerPage() {
                           )}
                         </div>
                       </div>
+                      {finalDecision ? (
+                        <div className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 p-3">
+                          <p className="text-xs uppercase tracking-[0.08em] text-amber-200">Decision finale staff</p>
+                          <p className="mt-1 text-sm font-semibold text-amber-100">
+                            {finalDecisionLabel(finalDecision.outcome)}
+                          </p>
+                          <p className="mt-1 text-sm text-amber-50 whitespace-pre-wrap">
+                            {finalDecision.memberMessage}
+                          </p>
+                          <p className="mt-1 text-xs text-amber-200/80">
+                            {new Date(finalDecision.at).toLocaleString("fr-FR")} · {finalDecision.author}
+                          </p>
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}

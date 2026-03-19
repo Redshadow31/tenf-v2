@@ -334,7 +334,7 @@ export class EventRepository {
     logDatabase.query('SELECT', EVENTS_TABLE, duration, { limit, offset, count: data?.length || 0 });
 
     const hydratedRows = await this.hydrateMissingImages(data || []);
-    const events = hydratedRows.map(this.mapToEvent);
+    const events = hydratedRows.map((row) => this.mapToEvent(row));
     
     // Mettre en cache avec namespace
     await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_ALL);
@@ -398,7 +398,7 @@ export class EventRepository {
     });
 
     const hydratedRows = await this.hydrateMissingImages(data || []);
-    const events = hydratedRows.map(this.mapToEvent);
+    const events = hydratedRows.map((row) => this.mapToEvent(row));
     
     // Mettre en cache avec namespace
     await cacheSetWithNamespace('events', cacheKeyStr, events, CACHE_TTL.EVENTS_PUBLISHED);
@@ -420,7 +420,7 @@ export class EventRepository {
       ascending: true,
     });
 
-    return (data || []).map(this.mapToEvent);
+    return (data || []).map((row) => this.mapToEvent(row));
   }
 
   /**

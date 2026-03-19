@@ -28,6 +28,7 @@ export default function LiveCard({ live }: LiveCardProps) {
     live.isDiscoverer ||
     live.isWarmlySupported ||
     live.isBalancedSupport;
+  const titleLabel = live.title?.trim() || "Titre indisponible";
 
   return (
     <article
@@ -95,35 +96,37 @@ export default function LiveCard({ live }: LiveCardProps) {
             )}
           </div>
         )}
-        {hasMutualSupportBadge ? (
-          <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
-            {live.isSolidarityRaider ? (
-              <span className="rounded-full border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-200">
-                🤝 Raid solidaire {live.uniqueRaidTargetsThisMonth ? `(${live.uniqueRaidTargetsThisMonth})` : ""}
-              </span>
-            ) : null}
-            {live.isCommunityBooster ? (
-              <span className="rounded-full border border-indigo-300/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-200">
-                💪 Booster commu {live.raidsDoneThisMonth ? `(${live.raidsDoneThisMonth})` : ""}
-              </span>
-            ) : null}
-            {live.isDiscoverer ? (
-              <span className="rounded-full border border-lime-300/50 bg-lime-500/20 px-2.5 py-1 font-semibold text-lime-200">
-                🌱 Decouvreur
-              </span>
-            ) : null}
-            {live.isWarmlySupported ? (
-              <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-200">
-                💜 Accueil chaleureux {live.uniqueRaidersReceivedThisMonth ? `(${live.uniqueRaidersReceivedThisMonth})` : ""}
-              </span>
-            ) : null}
-            {live.isBalancedSupport ? (
-              <span className="rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 font-semibold text-cyan-200">
-                ⚖️ Equilibre entraide
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="flex min-h-[3.5rem] flex-wrap content-start gap-1.5 text-[11px] md:min-h-[3.75rem] md:gap-2 md:text-xs">
+          {hasMutualSupportBadge ? (
+            <>
+              {live.isSolidarityRaider ? (
+                <span className="rounded-full border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-200">
+                  🤝 Raid solidaire {live.uniqueRaidTargetsThisMonth ? `(${live.uniqueRaidTargetsThisMonth})` : ""}
+                </span>
+              ) : null}
+              {live.isCommunityBooster ? (
+                <span className="rounded-full border border-indigo-300/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-200">
+                  💪 Booster commu {live.raidsDoneThisMonth ? `(${live.raidsDoneThisMonth})` : ""}
+                </span>
+              ) : null}
+              {live.isDiscoverer ? (
+                <span className="rounded-full border border-lime-300/50 bg-lime-500/20 px-2.5 py-1 font-semibold text-lime-200">
+                  🌱 Decouvreur
+                </span>
+              ) : null}
+              {live.isWarmlySupported ? (
+                <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-200">
+                  💜 Accueil chaleureux {live.uniqueRaidersReceivedThisMonth ? `(${live.uniqueRaidersReceivedThisMonth})` : ""}
+                </span>
+              ) : null}
+              {live.isBalancedSupport ? (
+                <span className="rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 font-semibold text-cyan-200">
+                  ⚖️ Equilibre entraide
+                </span>
+              ) : null}
+            </>
+          ) : null}
+        </div>
 
         <div className="flex items-start gap-3">
           <img
@@ -137,19 +140,23 @@ export default function LiveCard({ live }: LiveCardProps) {
             }}
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.95rem] font-semibold md:text-[1.05rem]" style={{ color: "var(--color-text)" }}>
+            <p className="truncate text-[0.95rem] font-semibold leading-tight md:text-[1.05rem]" style={{ color: "var(--color-text)" }}>
               {live.displayName}
             </p>
-            <p className="truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              @{live.twitchLogin}
+            <p className="mt-0.5 truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              @{String(live.twitchLogin || "").toLowerCase()}
             </p>
-            <p className="mt-1 hidden truncate text-xs md:block" style={{ color: "var(--color-text-secondary)" }}>
-              {live.title || "Titre indisponible"}
+            <p
+              className="mt-1 line-clamp-2 min-h-[2.4rem] text-xs leading-[1.2rem]"
+              style={{ color: "var(--color-text-secondary)" }}
+              title={titleLabel}
+            >
+              {titleLabel}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 text-[11px] md:gap-2 md:text-xs">
+        <div className="flex min-h-[2rem] flex-wrap content-start gap-1.5 text-[11px] md:gap-2 md:text-xs">
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
             {live.game || "Jeu non renseigne"}
           </span>
@@ -159,7 +166,7 @@ export default function LiveCard({ live }: LiveCardProps) {
             {getRoleBadgeLabel(live.role)}
           </span>
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-            Duree: {formatLiveDuration(live.startedAt)}
+            Duree : {formatLiveDuration(live.startedAt)}
           </span>
         </div>
 

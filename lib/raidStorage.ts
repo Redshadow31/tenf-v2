@@ -73,9 +73,9 @@ export function getCurrentMonthKey(): string {
  * Vérifie si on est sur Netlify
  */
 function isNetlify(): boolean {
-  return typeof getStore === 'function' || 
-         !!process.env.NETLIFY || 
-         !!process.env.NETLIFY_DEV;
+  const netlify = String(process.env.NETLIFY || "").toLowerCase();
+  const netlifyDev = String(process.env.NETLIFY_DEV || "").toLowerCase();
+  return netlify === "true" || netlify === "1" || netlifyDev === "true" || netlifyDev === "1";
 }
 
 /**
