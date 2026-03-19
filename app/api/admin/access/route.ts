@@ -13,6 +13,36 @@ interface AdminAccess {
   addedAt: string;
   addedBy: string;
   username?: string; // Optionnel, mis à jour depuis Discord
+  adminAlias?: string; // Pseudo interne visible dans l'espace admin
+}
+
+interface StoredAdminAccessEntry {
+  discordId: string;
+  role: string;
+  addedAt: string;
+  addedBy: string;
+  username?: string;
+  adminAlias?: string;
+}
+
+function sanitizeAdminAlias(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized) return undefined;
+  return normalized.slice(0, 40);
+}
+
+function parseStoredAccessEntries(parsed: StoredAdminAccessEntry[]): AdminAccess[] {
+  return parsed.reduce<AdminAccess[]>((acc, entry) => {
+    const normalizedRole = normalizeAdminRole(entry.role);
+    if (!normalizedRole) return acc;
+    acc.push({
+      ...entry,
+      role: normalizedRole,
+      adminAlias: sanitizeAdminAlias(entry.adminAlias),
+    });
+    return acc;
+  }, []);
 }
 
 /**
@@ -36,14 +66,8 @@ export async function GET() {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
-        storedAccessList = parsed
-          .map((entry) => {
-            const normalizedRole = normalizeAdminRole(entry.role);
-            if (!normalizedRole) return null;
-            return { ...entry, role: normalizedRole };
-          })
-          .filter((entry): entry is AdminAccess => entry !== null);
+        const parsed = JSON.parse(stored) as StoredAdminAccessEntry[];
+        storedAccessList = parseStoredAccessEntries(parsed);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
@@ -224,6 +248,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { discordId, role } = body;
+    const adminAlias = sanitizeAdminAlias(body?.adminAlias);
     const normalizedRole = normalizeAdminRole(role);
 
     if (!discordId || !normalizedRole) {
@@ -257,14 +282,8 @@ export async function POST(request: NextRequest) {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
-        storedAccessList = parsed
-          .map((entry) => {
-            const roleValue = normalizeAdminRole(entry.role);
-            if (!roleValue) return null;
-            return { ...entry, role: roleValue };
-          })
-          .filter((entry): entry is AdminAccess => entry !== null);
+        const parsed = JSON.parse(stored) as StoredAdminAccessEntry[];
+        storedAccessList = parseStoredAccessEntries(parsed);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);
@@ -287,6 +306,7 @@ export async function POST(request: NextRequest) {
         role: normalizedRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
+        adminAlias,
       };
     } else {
       // Ajouter un nouvel accès
@@ -295,6 +315,7 @@ export async function POST(request: NextRequest) {
         role: normalizedRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
+        adminAlias,
       });
     }
 
@@ -310,7 +331,7 @@ export async function POST(request: NextRequest) {
       action: existingIndex >= 0 ? "admin.access.update" : "admin.access.create",
       resourceType: "admin_access",
       resourceId: discordId,
-      newValue: { role: normalizedRole },
+      newValue: { role: normalizedRole, adminAlias: adminAlias || null },
       metadata: { sourcePage: "/admin/gestion-acces" },
     });
 
@@ -376,14 +397,8 @@ export async function DELETE(request: NextRequest) {
     try {
       const stored = await store.get(ACCESS_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as Array<{ discordId: string; role: string; addedAt: string; addedBy: string; username?: string }>;
-        storedAccessList = parsed
-          .map((entry) => {
-            const roleValue = normalizeAdminRole(entry.role);
-            if (!roleValue) return null;
-            return { ...entry, role: roleValue };
-          })
-          .filter((entry): entry is AdminAccess => entry !== null);
+        const parsed = JSON.parse(stored) as StoredAdminAccessEntry[];
+        storedAccessList = parseStoredAccessEntries(parsed);
       }
     } catch (error) {
       console.error('Error loading admin access from Blobs:', error);

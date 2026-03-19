@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+      const shouldStayInactive = ensuredMember.role === "Communauté";
       await memberRepository.update(pending.twitch_login, {
         description: pending.description || undefined,
         instagram: pending.instagram || undefined,
@@ -160,9 +161,9 @@ export async function POST(request: NextRequest) {
         twitter: pending.twitter || undefined,
         birthday: parseDateFromDb(pending.birthday),
         twitchAffiliateDate: parseDateFromDb(pending.twitch_affiliate_date),
-        // Nouvelle logique métier:
-        // profil validé => membre conservé inactif en attente de validation "passage Communauté".
-        isActive: false,
+        // Après validation profil, le membre devient actif automatiquement.
+        // Exception métier: rôle Communauté => reste inactif.
+        isActive: shouldStayInactive ? false : true,
         profileValidationStatus: "valide",
         updatedBy: admin.discordId,
       });

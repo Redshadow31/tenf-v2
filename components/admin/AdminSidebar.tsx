@@ -189,21 +189,21 @@ export default function AdminSidebar({
     const itemStyle = active
       ? {
           background:
-            "linear-gradient(135deg, rgba(230,199,115,0.26) 0%, rgba(145,70,255,0.24) 100%)",
-          borderColor: "rgba(230,199,115,0.42)",
-          color: "#ffffff",
-          boxShadow: "0 8px 22px rgba(0,0,0,0.25)",
+            "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(37,99,235,0.16) 100%)",
+          borderColor: "rgba(167,139,250,0.45)",
+          color: "#eef2ff",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
         }
       : parentActive
         ? {
-            backgroundColor: "rgba(255,255,255,0.04)",
-            borderColor: "rgba(230,199,115,0.25)",
-            color: "var(--color-text)",
+            backgroundColor: "rgba(255,255,255,0.045)",
+            borderColor: "rgba(167,139,250,0.3)",
+            color: "rgba(226,232,240,0.95)",
           }
         : {
             backgroundColor: "transparent",
-            borderColor: "rgba(255,255,255,0.06)",
-            color: "var(--color-text-secondary)",
+            borderColor: "rgba(148,163,184,0.2)",
+            color: "rgba(203,213,225,0.85)",
           };
 
     const showV2ValidationBadge = item.href === EVALUATION_V2_ITEM_HREF && evaluationV2Validated !== null;
@@ -231,8 +231,8 @@ export default function AdminSidebar({
     const rootGroupStyle =
       isRoot && hasChildren
         ? {
-            borderColor: parentActive ? "rgba(230,199,115,0.24)" : "rgba(255,255,255,0.08)",
-            backgroundColor: parentActive ? "rgba(230,199,115,0.06)" : "rgba(255,255,255,0.02)",
+            borderColor: parentActive ? "rgba(167,139,250,0.26)" : "rgba(148,163,184,0.2)",
+            backgroundColor: parentActive ? "rgba(124,58,237,0.08)" : "rgba(255,255,255,0.02)",
           }
         : undefined;
 
@@ -270,7 +270,7 @@ export default function AdminSidebar({
             <span
               className={`inline-flex h-5 w-5 items-center justify-center rounded-md border transition-all ${isMenuOpen ? "rotate-90" : ""}`}
               style={{
-                borderColor: active ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)",
+                borderColor: active ? "rgba(255,255,255,0.34)" : "rgba(148,163,184,0.3)",
                 backgroundColor: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.04)",
               }}
             >
@@ -281,7 +281,7 @@ export default function AdminSidebar({
             <div
               className="space-y-2 animate-[fadeIn_120ms_ease]"
               style={{
-                borderLeft: "1px solid rgba(230,199,115,0.22)",
+                borderLeft: "1px solid rgba(167,139,250,0.24)",
                 marginLeft: depth === 0 ? "0.5rem" : "0.25rem",
                 paddingLeft: "0.75rem",
               }}
@@ -327,14 +327,14 @@ export default function AdminSidebar({
       <div
         className="mb-5 rounded-2xl border p-4"
         style={{
-          borderColor: "rgba(230,199,115,0.26)",
+          borderColor: "rgba(148,163,184,0.24)",
           background:
-            "radial-gradient(circle at top left, rgba(230,199,115,0.16), rgba(20,20,27,0.95) 45%)",
+            "radial-gradient(circle at top left, rgba(124,58,237,0.24), rgba(19,20,30,0.96) 46%)",
         }}
       >
         <p
           className="text-[10px] tracking-[0.2em] font-semibold uppercase"
-          style={{ color: "#e6c773" }}
+          style={{ color: "rgba(196,181,253,0.9)" }}
         >
           Navigation active
         </p>
@@ -359,8 +359,8 @@ export default function AdminSidebar({
           href="/"
           className="group flex items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors"
           style={{
-            color: "var(--color-text-secondary)",
-            borderColor: "rgba(255,255,255,0.08)",
+            color: "rgba(203,213,225,0.85)",
+            borderColor: "rgba(148,163,184,0.22)",
             backgroundColor: "rgba(255,255,255,0.02)",
           }}
         >
@@ -377,8 +377,8 @@ export default function AdminSidebar({
         className="hidden lg:block admin-sidebar-scroll w-72 max-w-[88vw] border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto p-4"
         style={{
           background:
-            "linear-gradient(180deg, rgba(22,22,30,0.98) 0%, rgba(15,15,22,0.98) 100%)",
-          borderColor: "rgba(255,255,255,0.08)",
+            "radial-gradient(circle at 8% -10%, rgba(124,58,237,0.2), rgba(18,19,29,0.98) 34%), linear-gradient(180deg, rgba(21,22,33,0.98) 0%, rgba(14,15,24,0.98) 100%)",
+          borderColor: "rgba(148,163,184,0.2)",
           scrollbarWidth: "thin",
           scrollbarColor: "#4b425b transparent",
         }}
@@ -393,8 +393,8 @@ export default function AdminSidebar({
             className="relative admin-sidebar-scroll h-full w-[92vw] max-w-sm border-r overflow-y-auto p-4"
             style={{
               background:
-                "linear-gradient(180deg, rgba(22,22,30,0.99) 0%, rgba(15,15,22,0.99) 100%)",
-              borderColor: "rgba(255,255,255,0.08)",
+                "radial-gradient(circle at 8% -10%, rgba(124,58,237,0.22), rgba(18,19,29,0.99) 34%), linear-gradient(180deg, rgba(21,22,33,0.99) 0%, rgba(14,15,24,0.99) 100%)",
+              borderColor: "rgba(148,163,184,0.2)",
               scrollbarWidth: "thin",
               scrollbarColor: "#4b425b transparent",
             }}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BarChart3, Users, Calendar, TrendingUp, UserCheck } from "lucide-react";
 
 interface EventPresence {
@@ -97,6 +98,7 @@ function normalizeEventItem(item: any) {
 }
 
 export default function RecapPage() {
+  const pathname = usePathname();
   const [data, setData] = useState<RecapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("all");
@@ -345,6 +347,9 @@ export default function RecapPage() {
   const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+  const eventsBasePath = pathname.startsWith("/admin/communaute/evenements")
+    ? "/admin/communaute/evenements"
+    : "/admin/events";
 
   if (loading) {
     return (
@@ -362,7 +367,7 @@ export default function RecapPage() {
     <div className="text-white">
       <div className="mb-8">
         <Link
-          href="/admin/events"
+          href={eventsBasePath}
           className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
         >
           ← Retour aux événements

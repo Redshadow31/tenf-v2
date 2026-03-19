@@ -30,6 +30,15 @@ export interface TopClip {
   thumbnail: string;
 }
 
+export interface MeetingScheduleItem {
+  id: string;
+  label: string;
+  datetime: string; // ISO date-time
+  type: "reunion_staff" | "reunion_admin" | "autre";
+  enabled?: boolean;
+  notes?: string;
+}
+
 export interface DashboardData {
   twitchActivity: MonthlyDataPoint[]; // Graphique activité Twitch
   discordGrowth: MonthlyDataPoint[]; // Graphique croissance Discord
@@ -39,6 +48,7 @@ export interface DashboardData {
   raidsSent: MonthlyDataPoint[]; // Raids envoyés
   vocalRanking: RankingMember[]; // Classement vocal Discord
   textRanking: RankingMember[]; // Classement texte Discord
+  meetingSchedule: MeetingScheduleItem[]; // Planification des réunions d'équipe/admin
   lastUpdated: string; // ISO timestamp
   updatedBy?: string; // Discord ID de l'admin qui a mis à jour
 }
@@ -105,6 +115,7 @@ const defaultDashboardData: DashboardData = {
     { id: 3, name: "NeXou", avatar: "https://placehold.co/40x40?text=N", value: 1763, progression: "-4" },
     { id: 4, name: "Red", avatar: "https://placehold.co/40x40?text=R", value: 1238, progression: "+1" },
   ],
+  meetingSchedule: [],
   lastUpdated: new Date().toISOString(),
 };
 

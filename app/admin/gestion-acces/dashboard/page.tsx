@@ -32,9 +32,27 @@ interface DashboardData {
   raidsSent: MonthlyDataPoint[];
   vocalRanking: RankingMember[];
   textRanking: RankingMember[];
+  meetingSchedule: MeetingScheduleItem[];
   lastUpdated?: string;
   updatedBy?: string;
 }
+
+interface MeetingScheduleItem {
+  id: string;
+  label: string;
+  datetime: string;
+  type: "reunion_staff" | "reunion_admin" | "autre";
+  enabled?: boolean;
+  notes?: string;
+}
+
+type AdminRole =
+  | "FONDATEUR"
+  | "ADMIN_COORDINATEUR"
+  | "MODERATEUR"
+  | "MODERATEUR_EN_FORMATION"
+  | "MODERATEUR_EN_PAUSE"
+  | "SOUTIEN_TENF";
 
 interface WorkflowMemberLite {
   discordId?: string;
@@ -80,6 +98,11 @@ export default function DashboardManagementPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isFounder, setIsFounder] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('twitch');
+  const [newMeetingLabel, setNewMeetingLabel] = useState("");
+  const [newMeetingDatetime, setNewMeetingDatetime] = useState("");
+  const [newMeetingType, setNewMeetingType] = useState<MeetingScheduleItem["type"]>("reunion_staff");
+  const [newMeetingNotes, setNewMeetingNotes] = useState("");
+  const [applyingValidationRules, setApplyingValidationRules] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     twitchActivity: [],
     discordGrowth: [],
@@ -89,6 +112,7 @@ export default function DashboardManagementPage() {
     raidsSent: [],
     vocalRanking: [],
     textRanking: [],
+    meetingSchedule: [],
   });
 
   // Vérifier si l'utilisateur est fondateur
@@ -237,6 +261,120 @@ export default function DashboardManagementPage() {
     }));
   }
 
+  function addMeetingScheduleItem() {
+    const label = newMeetingLabel.trim();
+    const datetime = newMeetingDatetime.trim();
+    if (!label || !datetime) {
+      setError("Le libellé et la date/heure de réunion sont obligatoires.");
+      return;
+    }
+
+    const newItem: MeetingScheduleItem = {
+      id: `meeting-${Date.now()}`,
+      label,
+      datetime: new Date(datetime).toISOString(),
+      type: newMeetingType,
+      enabled: true,
+      notes: newMeetingNotes.trim() || undefined,
+    };
+
+    setDashboardData((prev) => ({
+      ...prev,
+      meetingSchedule: [...(prev.meetingSchedule || []), newItem].sort(
+        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+      ),
+    }));
+    setNewMeetingLabel("");
+    setNewMeetingDatetime("");
+    setNewMeetingType("reunion_staff");
+    setNewMeetingNotes("");
+  }
+
+  function updateMeetingScheduleItem(index: number, patch: Partial<MeetingScheduleItem>) {
+    setDashboardData((prev) => ({
+      ...prev,
+      meetingSchedule: (prev.meetingSchedule || [])
+        .map((item, i) => (i === index ? { ...item, ...patch } : item))
+        .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()),
+    }));
+  }
+
+  function removeMeetingScheduleItem(index: number) {
+    setDashboardData((prev) => ({
+      ...prev,
+      meetingSchedule: (prev.meetingSchedule || []).filter((_, i) => i !== index),
+    }));
+  }
+
+  async function applyValidationAccessRules() {
+    try {
+      setApplyingValidationRules(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch("/api/admin/permissions", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Impossible de charger les permissions actuelles.");
+      }
+
+      const payload = await response.json();
+      const permissions = payload?.permissions || { sections: {} };
+      const sections = { ...(permissions.sections || {}) } as Record<string, any>;
+      const now = new Date().toISOString();
+
+      const upsertSection = (href: string, label: string, roles: AdminRole[]) => {
+        sections[href] = {
+          href,
+          label,
+          roles,
+          supportDiscordIds: sections[href]?.supportDiscordIds || [],
+        };
+      };
+
+      // Validation staff: réservé aux profils admin avancés (approximation via roles élevés).
+      upsertSection("/admin/membres/postulations", "Postulations staff", ["FONDATEUR", "ADMIN_COORDINATEUR"]);
+
+      // Validation profils: tous les rôles admin.
+      upsertSection("/admin/membres/validation-profil", "Validation des profils", []);
+
+      // Validation points: tous sauf modérateur/modérateur en formation (et soutien).
+      upsertSection("/admin/engagement/points-discord", "Points Discord raids", [
+        "FONDATEUR",
+        "ADMIN_COORDINATEUR",
+        "MODERATEUR_EN_PAUSE",
+      ]);
+      upsertSection("/admin/communaute/engagement/points-discord", "Points Discord raids", [
+        "FONDATEUR",
+        "ADMIN_COORDINATEUR",
+        "MODERATEUR_EN_PAUSE",
+      ]);
+
+      const saveResponse = await fetch("/api/admin/permissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          permissions: {
+            sections,
+            lastUpdated: now,
+          },
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const saveError = await saveResponse.json().catch(() => ({}));
+        throw new Error(saveError?.error || "Impossible d'appliquer les règles de validation.");
+      }
+
+      setSuccess("Règles de validation par rôle appliquées avec succès.");
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (err: any) {
+      console.error("Error applying validation rules:", err);
+      setError(err?.message || "Erreur lors de l'application des règles de validation.");
+    } finally {
+      setApplyingValidationRules(false);
+    }
+  }
+
 
   if (loading && !isFounder) {
     return (
@@ -315,6 +453,145 @@ export default function DashboardManagementPage() {
             <Save className="w-5 h-5" />
             {saving ? "Sauvegarde..." : "Sauvegarder tout"}
           </button>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <section className="rounded-lg border p-4" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Pilotage des réunions</h3>
+                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  Configure les prochaines dates pour l'accueil dashboard.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {(dashboardData.meetingSchedule || []).length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Aucune réunion planifiée.</p>
+              ) : (
+                (dashboardData.meetingSchedule || []).map((item, index) => (
+                  <div key={item.id || index} className="rounded border p-3" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                      <input
+                        type="text"
+                        value={item.label}
+                        onChange={(e) => updateMeetingScheduleItem(index, { label: e.target.value })}
+                        className="px-3 py-2 rounded border text-sm md:col-span-2"
+                        style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                        placeholder="Libellé réunion"
+                      />
+                      <input
+                        type="datetime-local"
+                        value={item.datetime ? new Date(item.datetime).toISOString().slice(0, 16) : ""}
+                        onChange={(e) => updateMeetingScheduleItem(index, { datetime: new Date(e.target.value).toISOString() })}
+                        className="px-3 py-2 rounded border text-sm"
+                        style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      />
+                      <select
+                        value={item.type}
+                        onChange={(e) => updateMeetingScheduleItem(index, { type: e.target.value as MeetingScheduleItem["type"] })}
+                        className="px-3 py-2 rounded border text-sm"
+                        style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      >
+                        <option value="reunion_staff">Réunion staff</option>
+                        <option value="reunion_admin">Réunion admin</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={item.notes || ""}
+                        onChange={(e) => updateMeetingScheduleItem(index, { notes: e.target.value })}
+                        className="flex-1 px-3 py-2 rounded border text-sm"
+                        style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                        placeholder="Notes (optionnel)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMeetingScheduleItem(index)}
+                        className="px-3 py-2 rounded text-sm text-white"
+                        style={{ backgroundColor: '#dc2626' }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <input
+                type="text"
+                value={newMeetingLabel}
+                onChange={(e) => setNewMeetingLabel(e.target.value)}
+                placeholder="Ex: Réunion staff hebdo"
+                className="px-3 py-2 rounded border text-sm md:col-span-2"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              />
+              <input
+                type="datetime-local"
+                value={newMeetingDatetime}
+                onChange={(e) => setNewMeetingDatetime(e.target.value)}
+                className="px-3 py-2 rounded border text-sm"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              />
+              <select
+                value={newMeetingType}
+                onChange={(e) => setNewMeetingType(e.target.value as MeetingScheduleItem["type"])}
+                className="px-3 py-2 rounded border text-sm"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                <option value="reunion_staff">Réunion staff</option>
+                <option value="reunion_admin">Réunion admin</option>
+                <option value="autre">Autre</option>
+              </select>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="text"
+                value={newMeetingNotes}
+                onChange={(e) => setNewMeetingNotes(e.target.value)}
+                placeholder="Notes réunion (optionnel)"
+                className="flex-1 px-3 py-2 rounded border text-sm"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              />
+              <button
+                type="button"
+                onClick={addMeetingScheduleItem}
+                className="px-4 py-2 rounded text-sm text-white flex items-center gap-2"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                <Plus className="w-4 h-4" />
+                Ajouter date
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-lg border p-4" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+              Règles de validation par rôle
+            </h3>
+            <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Applique automatiquement les règles demandées pour les modules clés.
+            </p>
+            <ul className="mb-4 space-y-2 text-sm" style={{ color: 'var(--color-text)' }}>
+              <li>• Validation staff: Admin avancé (Fondateur + Admin Coordinateur)</li>
+              <li>• Validation profils: tous les rôles admin</li>
+              <li>• Validation points: tous sauf Modérateur / Modérateur en formation / Soutien TENF</li>
+            </ul>
+            <button
+              type="button"
+              onClick={applyValidationAccessRules}
+              disabled={applyingValidationRules}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              {applyingValidationRules ? "Application..." : "Appliquer ces règles"}
+            </button>
+          </section>
         </div>
 
         <MonthlyWorkflowSection />

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { periodToDateRange } from "@/lib/ui/loginLogsUi";
 
 type Period = "today" | "7d" | "30d";
+type SortColumn = "label" | "type" | "currentlyOnline" | "twitchLinked" | "count";
+type SortDirection = "asc" | "desc";
 
 interface DailyEntry {
   label: string;
@@ -37,6 +39,9 @@ interface CountryMapItem {
 export default function AuditLogsMembersPage() {
   const [period, setPeriod] = useState<Period>("7d");
   const [country, setCountry] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [sortColumn, setSortColumn] = useState<SortColumn>("count");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DailyMembersResponse | null>(null);
@@ -92,6 +97,59 @@ export default function AuditLogsMembersPage() {
     };
   }, [data]);
 
+  function normalizeText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function handleSort(column: SortColumn) {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(column === "label" ? "asc" : "desc");
+  }
+
+  function getSortedAndFilteredEntries(entries: DailyEntry[]): DailyEntry[] {
+    const normalizedQuery = normalizeText(memberSearch.trim());
+    const filtered = normalizedQuery
+      ? entries.filter((entry) => normalizeText(entry.label).includes(normalizedQuery))
+      : entries;
+
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortColumn === "label") {
+        comparison = a.label.localeCompare(b.label, "fr", { sensitivity: "base" });
+      } else if (sortColumn === "type") {
+        const av = a.type === "member" ? 0 : 1;
+        const bv = b.type === "member" ? 0 : 1;
+        comparison = av - bv;
+      } else if (sortColumn === "currentlyOnline") {
+        const av = a.currentlyOnline ? 1 : 0;
+        const bv = b.currentlyOnline ? 1 : 0;
+        comparison = av - bv;
+      } else if (sortColumn === "twitchLinked") {
+        const av = a.twitchLinked ? 1 : 0;
+        const bv = b.twitchLinked ? 1 : 0;
+        comparison = av - bv;
+      } else {
+        comparison = a.count - b.count;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }
+
+  function renderSortIndicator(column: SortColumn): string {
+    if (sortColumn !== column) return "↕";
+    return sortDirection === "asc" ? "↑" : "↓";
+  }
+
   return (
     <div className="space-y-6 text-white">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -106,7 +164,7 @@ export default function AuditLogsMembersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#2a2a2d] bg-[#1a1a1d] p-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#2a2a2d] bg-[#1a1a1d] p-4 md:grid-cols-4">
         <select
           value={period}
           onChange={(event) => setPeriod(event.target.value as Period)}
@@ -130,10 +188,20 @@ export default function AuditLogsMembersPage() {
           ))}
         </select>
 
+        <input
+          value={memberSearch}
+          onChange={(event) => setMemberSearch(event.target.value)}
+          placeholder="Recherche pseudo membre..."
+          className="rounded-lg border border-[#303038] bg-[#111114] px-3 py-2 text-sm text-white placeholder:text-gray-500"
+        />
+
         <button
           onClick={() => {
             setPeriod("7d");
             setCountry("");
+            setMemberSearch("");
+            setSortColumn("count");
+            setSortDirection("desc");
           }}
           className="rounded-lg border border-[#303038] bg-[#111114] px-3 py-2 text-sm text-gray-200 transition-colors hover:border-[#9146ff]"
         >
@@ -190,51 +258,87 @@ export default function AuditLogsMembersPage() {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-                      <th className="px-4 py-3">Nom</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Actuellement en ligne</th>
-                      <th className="px-4 py-3">Twitch lie</th>
-                      <th className="px-4 py-3">Connexions</th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => handleSort("label")} className="inline-flex items-center gap-1 hover:text-white">
+                          Nom <span>{renderSortIndicator("label")}</span>
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => handleSort("type")} className="inline-flex items-center gap-1 hover:text-white">
+                          Type <span>{renderSortIndicator("type")}</span>
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("currentlyOnline")}
+                          className="inline-flex items-center gap-1 hover:text-white"
+                        >
+                          Actuellement en ligne <span>{renderSortIndicator("currentlyOnline")}</span>
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("twitchLinked")}
+                          className="inline-flex items-center gap-1 hover:text-white"
+                        >
+                          Twitch lie <span>{renderSortIndicator("twitchLinked")}</span>
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => handleSort("count")} className="inline-flex items-center gap-1 hover:text-white">
+                          Connexions <span>{renderSortIndicator("count")}</span>
+                        </button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {day.entries.map((entry) => (
-                      <tr key={`${day.date}-${entry.label}`} className="border-t border-[#26262c] text-gray-200">
-                        <td className="px-4 py-3">{entry.label}</td>
-                        <td className="px-4 py-3">
-                          {entry.type === "member" ? (
-                            <span className="rounded bg-indigo-500/20 px-2 py-1 text-xs text-indigo-200">Membre</span>
-                          ) : (
-                            <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">
-                              Visiteur inconnu
-                            </span>
-                          )}
+                    {getSortedAndFilteredEntries(day.entries).length === 0 ? (
+                      <tr className="border-t border-[#26262c] text-gray-400">
+                        <td className="px-4 py-3" colSpan={5}>
+                          Aucun membre ne correspond a la recherche sur cette date.
                         </td>
-                        <td className="px-4 py-3">
-                          {entry.type === "member" ? (
-                            entry.currentlyOnline ? (
-                              <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">Oui</span>
-                            ) : (
-                              <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
-                            )
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {entry.type === "member" ? (
-                            entry.twitchLinked ? (
-                              <span className="rounded bg-violet-500/20 px-2 py-1 text-xs text-violet-200">Oui</span>
-                            ) : (
-                              <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
-                            )
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-semibold">{entry.count}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      getSortedAndFilteredEntries(day.entries).map((entry) => (
+                        <tr key={`${day.date}-${entry.label}`} className="border-t border-[#26262c] text-gray-200">
+                          <td className="px-4 py-3">{entry.label}</td>
+                          <td className="px-4 py-3">
+                            {entry.type === "member" ? (
+                              <span className="rounded bg-indigo-500/20 px-2 py-1 text-xs text-indigo-200">Membre</span>
+                            ) : (
+                              <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">
+                                Visiteur inconnu
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {entry.type === "member" ? (
+                              entry.currentlyOnline ? (
+                                <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">Oui</span>
+                              ) : (
+                                <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
+                              )
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {entry.type === "member" ? (
+                              entry.twitchLinked ? (
+                                <span className="rounded bg-violet-500/20 px-2 py-1 text-xs text-violet-200">Oui</span>
+                              ) : (
+                                <span className="rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-200">Non</span>
+                              )
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-semibold">{entry.count}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

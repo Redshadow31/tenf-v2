@@ -3,8 +3,35 @@ import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage } from "@/lib/memberData";
 import { getTwitchUsers, type TwitchUser } from "@/lib/twitch";
 import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from "@/lib/memberAvatar";
+import { memberRepository } from "@/lib/repositories";
 
 export const dynamic = 'force-dynamic';
+
+const SUPABASE_PAGE_SIZE = 1000;
+const SUPABASE_MAX_PAGES = 20;
+
+function normalizeId(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeLogin(value?: string | null): string | undefined {
+  const normalized = normalizeId(value);
+  return normalized ? normalized.toLowerCase() : undefined;
+}
+
+async function fetchAllSupabaseMembers(): Promise<any[]> {
+  const allMembers: any[] = [];
+  for (let page = 0; page < SUPABASE_MAX_PAGES; page++) {
+    const offset = page * SUPABASE_PAGE_SIZE;
+    const chunk = await memberRepository.findAll(SUPABASE_PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return allMembers;
+}
 
 /**
  * GET - Recherche de membres (lecture seule)
@@ -36,11 +63,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Charger les données depuis le stockage persistant
+    // Charger les données depuis le stockage persistant (legacy)
     await loadMemberDataFromStorage();
     
-    // Récupérer tous les membres
-    const allMembers = getAllMemberData();
+    // Recherche globale: fusionner legacy + Supabase pour éviter les trous de recherche.
+    const legacyMembers = getAllMemberData();
+    const supabaseMembers = await fetchAllSupabaseMembers();
+
+    const mergedByKey = new Map<string, any>();
+    const keyByDiscordId = new Map<string, string>();
+    const keyByTwitchId = new Map<string, string>();
+    const keyByLogin = new Map<string, string>();
+
+    const upsert = (member: any, inGestion: boolean) => {
+      const discordId = normalizeId(member?.discordId);
+      const twitchId = normalizeId(member?.twitchId);
+      const twitchLogin = normalizeLogin(member?.twitchLogin);
+      let key =
+        (discordId && keyByDiscordId.get(discordId)) ||
+        (twitchId && keyByTwitchId.get(twitchId)) ||
+        (twitchLogin && keyByLogin.get(twitchLogin));
+      if (!key) {
+        key =
+          (discordId && `discord:${discordId}`) ||
+          (twitchId && `twitch:${twitchId}`) ||
+          (twitchLogin && `login:${twitchLogin}`) ||
+          `fallback:${mergedByKey.size + 1}`;
+      }
+
+      const current = mergedByKey.get(key) || {};
+      mergedByKey.set(key, {
+        ...current,
+        ...member,
+        // Un membre présent dans Supabase est considéré "intégré gestion".
+        inGestion: Boolean(current.inGestion) || inGestion,
+      });
+
+      if (discordId) keyByDiscordId.set(discordId, key);
+      if (twitchId) keyByTwitchId.set(twitchId, key);
+      if (twitchLogin) keyByLogin.set(twitchLogin, key);
+    };
+
+    legacyMembers.forEach((member) => upsert(member, false));
+    supabaseMembers.forEach((member) => upsert(member, true));
+    const allMembers = Array.from(mergedByKey.values());
 
     // Normaliser la requête pour recherche case-insensitive
     const normalizedQuery = query.toLowerCase().trim();
@@ -97,6 +163,7 @@ export async function GET(request: NextRequest) {
         badges: member.badges || [],
         description: member.description,
         avatar,
+        inGestion: member.inGestion === true,
       };
     });
 

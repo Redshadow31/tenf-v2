@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type TodoRaidItem = {
   id: string;
@@ -64,7 +65,22 @@ function formatMonthLabel(monthKey: string): string {
   return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 }
 
+const panelClass =
+  "rounded-2xl border border-[#2f344a] bg-[linear-gradient(150deg,rgba(79,70,229,0.12),rgba(14,18,28,0.95)_42%,rgba(30,41,59,0.9))] shadow-[0_18px_46px_rgba(2,6,23,0.5)]";
+const controlClass =
+  "rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20";
+const secondaryButtonClass =
+  "rounded-xl border border-white/20 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-gray-100 transition-colors hover:bg-white/[0.12] disabled:opacity-60 disabled:cursor-not-allowed";
+const primaryButtonClass =
+  "rounded-xl border border-white/25 bg-[linear-gradient(145deg,rgba(99,102,241,0.32),rgba(79,70,229,0.2))] px-3 py-2 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_24px_rgba(15,23,42,0.35)] transition-colors hover:bg-[linear-gradient(145deg,rgba(129,140,248,0.4),rgba(99,102,241,0.27))] disabled:opacity-60 disabled:cursor-not-allowed";
+const tabBaseClass =
+  "rounded-xl border px-3 py-2 text-xs font-semibold transition-all";
+const tabActiveTodoClass = `${tabBaseClass} border-amber-400/55 bg-amber-500/12 text-amber-100 shadow-[0_8px_18px_rgba(245,158,11,0.2)]`;
+const tabActiveHistoryClass = `${tabBaseClass} border-emerald-400/55 bg-emerald-500/12 text-emerald-100 shadow-[0_8px_18px_rgba(16,185,129,0.18)]`;
+const tabInactiveClass = `${tabBaseClass} border-white/15 bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08]`;
+
 export default function AdminEngagementPointsDiscordPage() {
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
@@ -80,6 +96,9 @@ export default function AdminEngagementPointsDiscordPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
   const historyLoadedAtRef = useRef<Record<string, number>>({});
   const availableMonths = useMemo(() => getLast12Months(), []);
+  const backHref = pathname.startsWith("/admin/communaute")
+    ? "/admin/communaute/engagement/historique-raids"
+    : "/admin/raids";
 
   async function loadData(options?: { includeTodo?: boolean; includeHistory?: boolean; month?: string }) {
     const includeTodo = options?.includeTodo ?? true;
@@ -208,6 +227,20 @@ export default function AdminEngagementPointsDiscordPage() {
     return Array.from(missing).sort();
   }, [sortedTodo]);
 
+  const todoPointsTotal = useMemo(() => sortedTodo.length * 500, [sortedTodo.length]);
+  const historyPointsTotal = useMemo(
+    () => filteredHistory.reduce((sum, item) => sum + Number(item.points || 0), 0),
+    [filteredHistory]
+  );
+  const uniqueTodoRaiders = useMemo(() => {
+    return new Set(sortedTodo.map((item) => String(item.from_broadcaster_user_login || "").toLowerCase())).size;
+  }, [sortedTodo]);
+  const completionRate = useMemo(() => {
+    const total = sortedTodo.length + history.length;
+    if (total === 0) return 100;
+    return Math.round((history.length / total) * 100);
+  }, [sortedTodo.length, history.length]);
+
   async function copyRaidCommands() {
     const payload = raidCommands.join("\n").trim();
     if (!payload) {
@@ -223,145 +256,80 @@ export default function AdminEngagementPointsDiscordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
-      <div className="mb-8">
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
+    <div className="min-h-screen space-y-6 bg-[#0b0f1a] p-4 text-white md:p-6 xl:p-8">
+      <div className={`${panelClass} p-6`}>
+        <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
           ← Retour à Engagement
         </Link>
-        <h1 className="mb-2 text-4xl font-bold">Points de raid Discord</h1>
-        <p className="text-gray-400">
-          Validation des points (+500) apres verification des raids EventSub.
-        </p>
-        <p className="mt-1 text-xs text-gray-500">
-          Auto-refresh: 30s
-          {lastRefreshAt ? ` • derniere mise a jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
-          {runId ? ` • run actif ${runId.slice(0, 8)}...` : " • aucun run actif"}
-        </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+              Points de raid Discord
+            </h1>
+            <p className="text-sm text-slate-300">Validation des points (+500) après vérification des raids EventSub.</p>
+            <p className="mt-2 text-xs text-slate-400">
+              Auto-refresh: 30s
+              {lastRefreshAt ? ` • dernière mise à jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
+              {runId ? ` • run actif ${runId.slice(0, 8)}...` : " • aucun run actif"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-200">
+              {completionRate}% traité
+            </span>
+            <span className="rounded-full border border-sky-400/35 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-sky-200">
+              {history.length} validations
+            </span>
+            <button
+              type="button"
+              onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
+              disabled={loading}
+              className={secondaryButtonClass}
+            >
+              Rafraîchir
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="mb-6 rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raids à traiter</p>
+          <p className="text-2xl font-bold text-amber-300">{sortedTodo.length}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points potentiels</p>
+          <p className="text-2xl font-bold text-indigo-200">{todoPointsTotal}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raiders uniques</p>
+          <p className="text-2xl font-bold text-cyan-200">{uniqueTodoRaiders}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points attribués (filtre)</p>
+          <p className="text-2xl font-bold text-emerald-300">{historyPointsTotal}</p>
+        </div>
+      </div>
+
+      <div className={`${panelClass} p-4`}>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveTab("todo")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
-            style={{
-              borderColor: activeTab === "todo" ? "rgba(250,204,21,0.55)" : "rgba(255,255,255,0.18)",
-              color: activeTab === "todo" ? "#fde68a" : "#cbd5e1",
-            }}
+            className={activeTab === "todo" ? tabActiveTodoClass : tabInactiveClass}
           >
-            A faire ({todo.length})
+            À faire ({todo.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("history")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
-            style={{
-              borderColor: activeTab === "history" ? "rgba(52,211,153,0.55)" : "rgba(255,255,255,0.18)",
-              color: activeTab === "history" ? "#6ee7b7" : "#cbd5e1",
-            }}
+            className={activeTab === "history" ? tabActiveHistoryClass : tabInactiveClass}
           >
             Historique ({history.length})
           </button>
-          <button
-            type="button"
-            onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
-            disabled={loading}
-            className="rounded-md border border-white/20 px-3 py-1.5 text-xs font-semibold text-gray-200 disabled:opacity-60"
-          >
-            Rafraichir
-          </button>
-        </div>
-      </div>
-
-      {warning ? <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200">{warning}</div> : null}
-      {error ? <div className="mb-4 rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div> : null}
-
-      <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
-        {loading ? (
-          <p className="text-sm text-gray-300">Chargement des donnees...</p>
-        ) : activeTab === "todo" ? (
-          sortedTodo.length === 0 ? (
-            <p className="text-sm text-gray-300">Aucun point de raid en attente.</p>
-          ) : (
-            <div className="space-y-3">
-              <article className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-cyan-200">
-                    Commandes Discord pour raids a valider (raiders uniquement, 20 pseudos max/commande)
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void copyRaidCommands()}
-                    className="rounded-md border border-cyan-400/50 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200"
-                  >
-                    Generer + Copier
-                  </button>
-                </div>
-                {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
-                {raidCommands.length === 0 ? (
-                  <p className="mt-2 text-xs text-gray-300">
-                    Aucun pseudo Discord exploitable trouve sur les raids en attente.
-                  </p>
-                ) : (
-                  <textarea
-                    readOnly
-                    value={raidCommands.join("\n")}
-                    className="mt-3 min-h-[84px] w-full rounded-md border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100"
-                  />
-                )}
-                {missingRaiders.length > 0 ? (
-                  <p className="mt-2 text-xs text-amber-200">
-                    Pseudo Discord manquant pour: {missingRaiders.join(", ")}
-                  </p>
-                ) : null}
-              </article>
-              {sortedTodo.map((item) => (
-                <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-base font-semibold text-white">
-                      Raider: {item.from_broadcaster_user_login} → Cible: {item.to_broadcaster_user_login}
-                    </p>
-                    <span className="inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-500/10 px-2 py-1 text-xs font-semibold text-yellow-300">
-                      +500 a attribuer
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Raid: {new Date(item.event_at).toLocaleString("fr-FR")} • viewers: {item.viewers}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Pseudo Discord raider: {item.raider_discord_username ? `@${String(item.raider_discord_username).replace(/^@/, "")}` : "introuvable"}
-                  </p>
-                  <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                    <input
-                      value={noteByEventId[item.id] || ""}
-                      onChange={(event) => setNoteByEventId((prev) => ({ ...prev, [item.id]: event.target.value }))}
-                      placeholder="Note optionnelle (ex: points envoyes via bot manuellement)"
-                      className="rounded-md border px-3 py-2 text-sm"
-                      style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void awardPoints(item.id)}
-                      disabled={savingId === item.id}
-                      className="rounded-md border border-emerald-400/50 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 disabled:opacity-60"
-                    >
-                      {savingId === item.id ? "Validation..." : "Valider points +500"}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )
-        ) : (
-          <>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <select
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-                className="rounded-lg border px-3 py-2 text-sm"
-                style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#0e0e10", color: "#fff" }}
-              >
+          {activeTab === "history" ? (
+            <>
+              <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className={controlClass}>
                 {availableMonths.map((month) => (
                   <option key={month} value={month}>
                     {formatMonthLabel(month)}
@@ -371,23 +339,104 @@ export default function AdminEngagementPointsDiscordPage() {
               <input
                 value={historySearch}
                 onChange={(event) => setHistorySearch(event.target.value)}
-                placeholder="Rechercher raider/cible/admin/note..."
-                className="w-full max-w-[460px] rounded-lg border px-3 py-2 text-sm"
-                style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#0e0e10", color: "#fff" }}
+                placeholder="Rechercher raider / cible / admin / note..."
+                className={`${controlClass} w-full max-w-[420px]`}
               />
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {warning ? (
+        <div className="rounded-xl border border-yellow-500/40 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200">{warning}</div>
+      ) : null}
+      {error ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div>
+      ) : null}
+
+      <div className={`${panelClass} p-6`}>
+        {loading ? (
+          <p className="text-sm text-gray-300">Chargement des donnees...</p>
+        ) : activeTab === "todo" ? (
+          sortedTodo.length === 0 ? (
+            <p className="text-sm text-gray-300">Aucun point de raid en attente.</p>
+          ) : (
+            <div className="space-y-4">
+              <article className="rounded-xl border border-cyan-400/35 bg-cyan-500/10 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-cyan-100">
+                    Commandes Discord pour raids à valider (raiders uniquement, 20 pseudos max/commande)
+                  </p>
+                  <button type="button" onClick={() => void copyRaidCommands()} className={secondaryButtonClass}>
+                    Générer + Copier
+                  </button>
+                </div>
+                {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
+                {raidCommands.length === 0 ? (
+                  <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable trouvé sur les raids en attente.</p>
+                ) : (
+                  <textarea
+                    readOnly
+                    value={raidCommands.join("\n")}
+                    className="mt-3 min-h-[84px] w-full rounded-xl border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100"
+                  />
+                )}
+                {missingRaiders.length > 0 ? (
+                  <p className="mt-2 text-xs text-amber-200">Pseudo Discord manquant pour: {missingRaiders.join(", ")}</p>
+                ) : null}
+              </article>
+              {missingRaiders.length > 0 ? (
+                <article className="rounded-xl border border-amber-400/35 bg-amber-500/10 p-4">
+                  <p className="text-sm font-semibold text-amber-100">Raids sans pseudo Discord relié</p>
+                  <p className="mt-1 text-xs text-amber-200">
+                    Ces comptes doivent être rapprochés côté membres pour faciliter l’attribution automatique.
+                  </p>
+                </article>
+              ) : null}
+              {sortedTodo.map((item) => (
+                <article key={item.id} className="rounded-xl border border-[#343a52] bg-[#111725]/85 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-base font-semibold text-white">
+                      Raider: {item.from_broadcaster_user_login} → Cible: {item.to_broadcaster_user_login}
+                    </p>
+                    <span className="inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-500/10 px-2 py-1 text-xs font-semibold text-yellow-300">
+                      +500 à attribuer
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Raid: {new Date(item.event_at).toLocaleString("fr-FR")} • viewers: {item.viewers}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Pseudo Discord raider:{" "}
+                    {item.raider_discord_username ? `@${String(item.raider_discord_username).replace(/^@/, "")}` : "introuvable"}
+                  </p>
+                  <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                    <input
+                      value={noteByEventId[item.id] || ""}
+                      onChange={(event) => setNoteByEventId((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                      placeholder="Note optionnelle (ex: points envoyés via bot manuellement)"
+                      className={controlClass}
+                    />
+                    <button type="button" onClick={() => void awardPoints(item.id)} disabled={savingId === item.id} className={primaryButtonClass}>
+                      {savingId === item.id ? "Validation..." : "Valider points +500"}
+                    </button>
+                  </div>
+                </article>
+              ))}
             </div>
-            {filteredHistory.length === 0 ? (
-          <p className="text-sm text-gray-300">Aucun point attribue pour ce mois.</p>
+          )
+        ) : filteredHistory.length === 0 ? (
+          <p className="text-sm text-gray-300">Aucun point attribué pour ce mois.</p>
         ) : (
           <div className="space-y-3">
             {filteredHistory.map((item) => (
-              <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
+              <article key={item.id} className="rounded-xl border border-[#2f3d3a] bg-[#111b19]/80 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-base font-semibold text-white">
                     {item.raider_twitch_login} → {item.target_twitch_login}
                   </p>
                   <span className="inline-flex items-center rounded-full border border-emerald-400/45 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
-                    {item.status === "awarded" ? "Points attribues" : item.status}
+                    {item.status === "awarded" ? "Points attribués" : item.status}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-400">
@@ -401,8 +450,6 @@ export default function AdminEngagementPointsDiscordPage() {
               </article>
             ))}
           </div>
-            )}
-          </>
         )}
       </div>
     </div>

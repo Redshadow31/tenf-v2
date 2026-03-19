@@ -56,6 +56,8 @@ type AggregatedPayload = {
       }>;
       upcomingKpis: {
         nextMeetingRegistrations: number;
+        nextMeetingDateIso: string;
+        nextMeetingLabel: string;
         nextEventRegistrations: number;
         nextEventLabel: string;
         upcomingSpotlights: number;
@@ -162,6 +164,7 @@ export async function GET(request: NextRequest) {
       pointsQueueData,
       raidsSubSummaryData,
       dashboardPublicData,
+      adminDashboardData,
       spotlightData,
       raidsData,
       discordMonthData,
@@ -178,6 +181,7 @@ export async function GET(request: NextRequest) {
       fetchJson<any>(ctx, "/api/admin/engagement/raids-sub/points?includeTodo=true&includeHistory=false"),
       fetchJson<any>(ctx, "/api/admin/engagement/raids-sub/summary"),
       fetchJson<any>(ctx, "/api/dashboard/data"),
+      fetchJson<any>(ctx, "/api/admin/dashboard/data"),
       fetchJson<any>(ctx, "/api/spotlight/progression"),
       fetchJson<any>(ctx, `/api/discord/raids/data-v2?month=${encodeURIComponent(currentMonth)}`),
       fetchJson<any>(ctx, `/api/admin/discord-activity/data?month=${encodeURIComponent(currentMonth)}`),
@@ -270,6 +274,8 @@ export async function GET(request: NextRequest) {
     let nextMeetingRegistrations = findNextRegistrationCount(
       (category) => category.includes("integration") || category.includes("reunion")
     );
+    let nextMeetingDateIso = "";
+    let nextMeetingLabel = "";
     const nextEvent = futureEvents[0];
     const nextEventRegistrations = Number(nextEvent?.registrationCount || 0);
     const nextEventLabel = String(nextEvent?.event?.title || "");
@@ -296,6 +302,26 @@ export async function GET(request: NextRequest) {
           nextMeetingRegistrations = (regsData.registrations || []).length;
         }
       }
+    }
+
+    const plannedMeetings = Array.isArray(adminDashboardData?.data?.meetingSchedule)
+      ? adminDashboardData.data.meetingSchedule
+      : [];
+    const nextPlannedMeeting = plannedMeetings
+      .filter((item: any) => item?.enabled !== false && item?.datetime)
+      .map((item: any) => ({
+        datetime: String(item.datetime),
+        label: String(item.label || "Réunion"),
+      }))
+      .filter((item: { datetime: string; label: string }) => new Date(item.datetime).getTime() >= now.getTime())
+      .sort((a: { datetime: string }, b: { datetime: string }) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
+
+    if (nextPlannedMeeting) {
+      nextMeetingDateIso = nextPlannedMeeting.datetime;
+      nextMeetingLabel = nextPlannedMeeting.label;
+    } else if (nextEvent?.event?.date) {
+      nextMeetingDateIso = String(nextEvent.event.date);
+      nextMeetingLabel = "Réunion planifiée";
     }
 
     const payload: AggregatedPayload = {
@@ -335,6 +361,8 @@ export async function GET(request: NextRequest) {
           recapEvents,
           upcomingKpis: {
             nextMeetingRegistrations,
+            nextMeetingDateIso,
+            nextMeetingLabel,
             nextEventRegistrations,
             nextEventLabel,
             upcomingSpotlights,

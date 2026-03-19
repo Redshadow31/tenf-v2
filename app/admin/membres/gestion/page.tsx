@@ -1428,6 +1428,73 @@ export default function GestionMembresPage() {
     }
   };
 
+  const handleQuickAssignRole = async (memberToUpdate: Member, targetRole: "Affilié" | "Développement") => {
+    if (!currentAdmin) {
+      alert("Vous devez être connecté pour effectuer cette action");
+      return;
+    }
+
+    if (!currentAdmin.canWrite) {
+      alert("Permissions insuffisantes: vous n'avez pas le droit de modifier les membres.");
+      return;
+    }
+
+    if (safeModeEnabled && !currentAdmin.isFounder) {
+      alert("Action bloquée : Safe Mode activé. Seuls les fondateurs peuvent modifier les données.");
+      return;
+    }
+
+    const member = members.find((m) => areSameMember(m, memberToUpdate)) ?? memberToUpdate;
+    if (!member || !member.twitch) return;
+
+    const reason = prompt(`Motif obligatoire pour attribuer le rôle ${targetRole} et activer le membre :`);
+    if (!reason || !reason.trim()) {
+      alert("Motif obligatoire pour cette modification.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Confirmer l'attribution rapide ?\n\nMembre: ${member.nom}\nTwitch: ${member.twitch}\nNouveau rôle: ${targetRole}\nNouveau statut: Actif`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/members", {
+        method: "PUT",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
+        body: JSON.stringify({
+          twitchLogin: member.twitch,
+          role: targetRole,
+          isActive: true,
+          integrationDate: new Date().toISOString(),
+          roleChangeReason: `Attribution rapide ${targetRole} depuis l'onglet Nouveaux`,
+          auditReason: reason.trim(),
+          originalDiscordId: member.discordId,
+          originalTwitchId: member.twitchId,
+          originalTwitchLogin: member.twitch,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.error || "Erreur lors de l'attribution rapide du rôle");
+      }
+
+      await loadMembers();
+      pushNotice("success", `${member.nom} est maintenant ${targetRole} (Actif).`);
+    } catch (error) {
+      console.error("Erreur attribution rapide:", error);
+      pushNotice("error", `Erreur attribution ${targetRole}: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
+    }
+  };
+
   const handleVerifyDiscordNames = async () => {
     if (!currentAdmin?.isFounder) {
       pushNotice("error", "Action réservée aux fondateurs.");
@@ -3041,7 +3108,7 @@ export default function GestionMembresPage() {
                                 ? (isCompactView ? "ON 🔒" : "Activer (rôle verrouillé)")
                                 : (isCompactView ? "ON" : "Activer")}
                             </button>
-                            {canValidateCommunity && currentAdmin?.canWrite && (
+                            {statusTab !== "nouveaux" && canValidateCommunity && currentAdmin?.canWrite && (
                               <button
                                 onClick={() => handleValidateCommunityPassage(member)}
                                 className={actionWarningClass}
@@ -3049,6 +3116,24 @@ export default function GestionMembresPage() {
                               >
                                 {isCompactView ? "Valider" : "Valider communauté"}
                               </button>
+                            )}
+                            {statusTab === "nouveaux" && currentAdmin?.canWrite && (
+                              <>
+                                <button
+                                  onClick={() => handleQuickAssignRole(member, "Affilié")}
+                                  className={actionSuccessClass}
+                                  title="Attribuer le rôle Affilié et activer le membre"
+                                >
+                                  {isCompactView ? "Affilié" : "Raccourci Affilié"}
+                                </button>
+                                <button
+                                  onClick={() => handleQuickAssignRole(member, "Développement")}
+                                  className={actionPrimaryClass}
+                                  title="Attribuer le rôle Développement et activer le membre"
+                                >
+                                  {isCompactView ? "Dév." : "Raccourci Développement"}
+                                </button>
+                              </>
                             )}
                             {currentAdmin?.canWrite && (
                               <>

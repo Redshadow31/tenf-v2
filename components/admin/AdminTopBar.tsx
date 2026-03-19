@@ -13,6 +13,26 @@ type AdminTopBarProps = {
   onOpenMobileMenu?: () => void;
 };
 
+const HUB_PRIORITY_ORDER = [
+  "/admin/pilotage",
+  "/admin/membres",
+  "/admin/onboarding",
+  "/admin/communaute",
+  "/admin/evaluation",
+  "/admin/academy",
+  "/admin/upa-event",
+  "/admin/new-family-aventura",
+  "/admin/interviews",
+  "/admin/boutique",
+  "/admin/gestion-acces/accueil",
+  "/admin/search",
+] as const;
+
+function getHubPriority(href: string): number {
+  const idx = HUB_PRIORITY_ORDER.findIndex((candidate) => href === candidate || href.startsWith(`${candidate}/`));
+  return idx === -1 ? HUB_PRIORITY_ORDER.length + 1 : idx;
+}
+
 function getAdminModeCookie(): AdminMode {
   if (typeof document === "undefined") return "simple";
   const match = document.cookie.match(new RegExp(`(?:^|; )${ADMIN_MODE_COOKIE}=([^;]*)`));
@@ -35,8 +55,9 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
     let mounted = true;
     async function loadContext() {
       try {
-        const [advancedRes, user] = await Promise.all([
+        const [advancedRes, aliasRes, user] = await Promise.all([
           fetch("/api/admin/advanced-access?check=1", { cache: "no-store" }),
+          fetch("/api/admin/access/self", { cache: "no-store" }),
           getDiscordUser(),
         ]);
         if (!mounted) return;
@@ -46,6 +67,11 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
         }
         if (user?.username) {
           setUsername(user.username);
+        }
+        if (aliasRes.ok) {
+          const aliasData = await aliasRes.json();
+          const alias = typeof aliasData?.adminAlias === "string" ? aliasData.adminAlias.trim() : "";
+          if (alias) setUsername(alias);
         }
       } catch {
         // no-op: keep defaults
@@ -59,13 +85,30 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
 
   const navItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
   const activeHub = useMemo(() => findActiveHub(navItems, pathname), [navItems, pathname]);
+  const orderedNavItems = useMemo(() => {
+    return navItems.slice().sort((a, b) => {
+      const rankA = getHubPriority(a.href);
+      const rankB = getHubPriority(b.href);
+      if (rankA !== rankB) return rankA - rankB;
+      return a.label.localeCompare(b.label, "fr-FR");
+    });
+  }, [navItems]);
+  const navRows = useMemo(() => {
+    if (!orderedNavItems.length) return [] as typeof orderedNavItems[];
+    const maxItemsPerRow = 6;
+    const rows: typeof orderedNavItems[] = [];
+    for (let i = 0; i < orderedNavItems.length; i += maxItemsPerRow) {
+      rows.push(orderedNavItems.slice(i, i + maxItemsPerRow));
+    }
+    return rows;
+  }, [orderedNavItems]);
 
   return (
     <header
       className="sticky top-0 z-40 border-b backdrop-blur supports-[backdrop-filter]:bg-[#0f111a]/90"
       style={{ borderColor: "var(--color-sidebar-border)", backgroundColor: "var(--color-bg)" }}
     >
-      <div className="h-20 px-4 md:px-6 flex items-center gap-4">
+      <div className="px-4 py-3.5 md:px-6 flex items-center gap-4">
         <button
           type="button"
           onClick={onOpenMobileMenu}
@@ -76,41 +119,79 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
           ☰
         </button>
 
-        <Link href="/admin/pilotage" className="flex items-center gap-3 shrink-0">
+        <Link
+          href="/admin/pilotage"
+          className="flex items-center gap-3.5 shrink-0 rounded-2xl border px-3.5 py-2.5"
+          style={{
+            borderColor: "rgba(148,163,184,0.2)",
+            background:
+              "radial-gradient(circle at 20% -25%, rgba(124,58,237,0.2), rgba(15,17,26,0.97) 45%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008))",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(0,0,0,0.22)",
+          }}
+        >
           <Image
             src="/logo.png"
             alt="TENF"
-            width={42}
-            height={42}
-            className="h-10 w-10 object-contain"
+            width={56}
+            height={56}
+            className="h-12 w-12 object-contain md:h-14 md:w-14"
             priority
           />
-          <span className="hidden sm:inline text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            Espace Admin
-          </span>
+          <div className="hidden sm:block leading-tight">
+            <p className="text-base md:text-lg font-semibold tracking-[0.01em]" style={{ color: "var(--color-text)" }}>
+              Espace Admin
+            </p>
+            <p className="text-[11px] md:text-xs tracking-[0.08em] uppercase" style={{ color: "rgba(148,163,184,0.85)" }}>
+              TENF Control Center
+            </p>
+          </div>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
-          {navItems.map((hub) => {
-            const isActive = activeHub?.href === hub.href;
-            return (
-              <Link
-                key={hub.href}
-                href={hub.href}
-                className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border"
-                style={{
-                  backgroundColor: isActive ? "var(--color-primary)" : "transparent",
-                  borderColor: isActive ? "var(--color-primary)" : "var(--color-sidebar-border)",
-                  color: isActive ? "white" : "var(--color-text-secondary)",
-                }}
-              >
-                {hub.label}
-              </Link>
-            );
-          })}
+        <nav
+          className="hidden lg:flex flex-1 flex-col items-center justify-center gap-2.5 rounded-2xl border px-4 py-3"
+          style={{
+            borderColor: "rgba(148,163,184,0.2)",
+            background:
+              "radial-gradient(circle at 20% -20%, rgba(124,58,237,0.22), rgba(15,17,26,0.96) 36%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005))",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 28px rgba(0,0,0,0.25)",
+          }}
+        >
+          <p
+            className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.22em]"
+            style={{ color: "rgba(148,163,184,0.8)" }}
+          >
+            Navigation principale
+          </p>
+          {navRows.map((row, rowIndex) => (
+            <div key={`admin-nav-row-${rowIndex}`} className="flex flex-wrap items-center justify-center gap-2">
+              {row.map((hub) => {
+                const isActive = activeHub?.href === hub.href;
+                return (
+                  <Link
+                    key={hub.href}
+                    href={hub.href}
+                    className="inline-flex items-center rounded-lg border px-3 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(0,0,0,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
+                    style={{
+                      background: isActive
+                        ? "linear-gradient(135deg, rgba(124,58,237,0.22), rgba(37,99,235,0.16))"
+                        : "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015))",
+                      borderColor: isActive ? "rgba(167,139,250,0.46)" : "rgba(148,163,184,0.26)",
+                      color: isActive ? "#eef2ff" : "rgba(226,232,240,0.95)",
+                      boxShadow: isActive
+                        ? "inset 0 1px 0 rgba(255,255,255,0.12)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.08)",
+                      textShadow: "none",
+                    }}
+                  >
+                    {hub.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3 self-center rounded-2xl border px-2.5 py-2" style={{ borderColor: "rgba(148,163,184,0.2)", background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008))", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
           {canAccessAdvanced &&
             (adminMode === "advanced" ? (
               <button
@@ -120,23 +201,38 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
                   setAdminMode("simple");
                   router.refresh();
                 }}
-                className="hidden md:inline-flex px-3 py-2 rounded-lg text-xs font-semibold border transition-colors"
-                style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text-secondary)" }}
+                className="hidden md:inline-flex px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all duration-200 hover:-translate-y-[1px]"
+                style={{
+                  borderColor: "rgba(148,163,184,0.26)",
+                  color: "rgba(226,232,240,0.95)",
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015))",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+                }}
               >
                 Mode simple
               </button>
             ) : (
               <Link
                 href="/admin/avance"
-                className="hidden md:inline-flex px-3 py-2 rounded-lg text-xs font-semibold border transition-colors"
-                style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text-secondary)" }}
+                className="hidden md:inline-flex px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all duration-200 hover:-translate-y-[1px]"
+                style={{
+                  borderColor: "rgba(148,163,184,0.26)",
+                  color: "rgba(226,232,240,0.95)",
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015))",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+                }}
               >
                 Mode avancé
               </Link>
             ))}
           <div
-            className="px-3 py-2 rounded-lg border"
-            style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text)" }}
+            className="px-3 py-2 rounded-xl border"
+            style={{
+              borderColor: "rgba(148,163,184,0.26)",
+              color: "var(--color-text)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008))",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
           >
             <p className="text-xs sm:text-sm">
               Bonjour, <span className="font-semibold">{username}</span>

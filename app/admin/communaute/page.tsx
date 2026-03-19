@@ -1,6 +1,6 @@
-import CommunityDashboardPage from "../events/page";
+import { redirect } from "next/navigation";
 
 export default function CommunauteDashboardPage() {
-  return <CommunityDashboardPage />;
+  redirect("/admin/communaute/evenements");
 }
 

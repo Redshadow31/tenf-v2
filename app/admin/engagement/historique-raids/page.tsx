@@ -809,80 +809,85 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           background: "radial-gradient(circle at 10% 8%, rgba(139,92,246,0.14), rgba(26,26,29,0.95) 42%)",
         }}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-400">Mois:</span>
-          <select
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            className="rounded-lg border px-3 py-2 text-sm"
-            style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
-          >
-            {availableMonths.map((month) => (
-              <option key={month} value={month}>
-                {month}
-              </option>
-            ))}
-          </select>
-          <span className="ml-2 text-sm text-gray-400">Tri mois:</span>
-          <select
-            value={monthSortOrder}
-            onChange={(event) => setMonthSortOrder(event.target.value as "desc" | "asc")}
-            className="rounded-lg border px-3 py-2 text-sm"
-            style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
-          >
-            <option value="desc">Plus recent → plus ancien</option>
-            <option value="asc">Plus ancien → plus recent</option>
-          </select>
-          <div className="flex items-center gap-1 rounded-full border px-1 py-1" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-            {([
-              { key: "all", label: "Tous" },
-              { key: "manual", label: "Manuel" },
-              { key: "raids_sub", label: "Raids-sub" },
-            ] as const).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setSourceFilter(item.key)}
-                className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                style={{
-                  color: sourceFilter === item.key ? "#ffffff" : "#cbd5e1",
-                  backgroundColor:
-                    sourceFilter === item.key
-                      ? item.key === "manual"
-                        ? "rgba(251,191,36,0.35)"
-                        : item.key === "raids_sub"
-                          ? "rgba(96,165,250,0.35)"
-                          : "rgba(145,70,255,0.35)"
-                      : "transparent",
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="text-sm text-gray-400">Mois:</span>
+            <select
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
+            >
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-400">Tri mois:</span>
+            <select
+              value={monthSortOrder}
+              onChange={(event) => setMonthSortOrder(event.target.value as "desc" | "asc")}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
+            >
+              <option value="desc">Plus recent → plus ancien</option>
+              <option value="asc">Plus ancien → plus recent</option>
+            </select>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className="rounded-lg border px-3 py-2 text-sm font-semibold"
-            style={{
-              borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
-              color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
-            }}
-          >
-            Historique des raids
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("stats")}
-            className="rounded-lg border px-3 py-2 text-sm font-semibold"
-            style={{
-              borderColor: activeTab === "stats" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
-              color: activeTab === "stats" ? "#d8b4fe" : "#cbd5e1",
-            }}
-          >
-            Stats de raids
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border px-1 py-1" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+              {([
+                { key: "all", label: "Tous" },
+                { key: "manual", label: "Manuel" },
+                { key: "raids_sub", label: "Raids-sub" },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setSourceFilter(item.key)}
+                  className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                  style={{
+                    color: sourceFilter === item.key ? "#ffffff" : "#cbd5e1",
+                    backgroundColor:
+                      sourceFilter === item.key
+                        ? item.key === "manual"
+                          ? "rgba(251,191,36,0.35)"
+                          : item.key === "raids_sub"
+                            ? "rgba(96,165,250,0.35)"
+                            : "rgba(145,70,255,0.35)"
+                        : "transparent",
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className="rounded-lg border px-3 py-2 text-sm font-semibold"
+              style={{
+                borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+                color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
+              }}
+            >
+              Historique des raids
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("stats")}
+              className="rounded-lg border px-3 py-2 text-sm font-semibold"
+              style={{
+                borderColor: activeTab === "stats" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+                color: activeTab === "stats" ? "#d8b4fe" : "#cbd5e1",
+              }}
+            >
+              Stats de raids
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 space-y-3">
@@ -1094,8 +1099,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           )
         ) : (
           <div>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => setStatsSubTab("received")}
@@ -1132,15 +1137,17 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               </div>
 
               {canUseAdvancedTools ? (
-                <button
-                  type="button"
-                  onClick={checkDuplicates}
-                  className="rounded-md border px-3 py-1.5 text-xs font-semibold"
-                  style={{ borderColor: "rgba(251,191,36,0.45)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
-                  title="Detecter et nettoyer les doublons"
-                >
-                  Gestion doublons
-                </button>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={checkDuplicates}
+                    className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+                    style={{ borderColor: "rgba(251,191,36,0.45)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
+                    title="Detecter et nettoyer les doublons"
+                  >
+                    Gestion doublons
+                  </button>
+                </div>
               ) : null}
             </div>
 

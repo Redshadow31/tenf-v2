@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { Search, User, ExternalLink } from "lucide-react";
+import { Search, User, ExternalLink, Link2 } from "lucide-react";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -21,6 +21,7 @@ interface MemberSearchResult {
   badges?: string[];
   description?: string;
   avatar?: string;
+  inGestion?: boolean;
 }
 
 export default function AdminSearchPage() {
@@ -28,6 +29,7 @@ export default function AdminSearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<MemberSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [integratingId, setIntegratingId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   // Debounce de la recherche
@@ -54,7 +56,10 @@ export default function AdminSearchPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/search/members?q=${encodeURIComponent(query)}&limit=20`);
+      const response = await fetch(
+        `/api/admin/search/members?q=${encodeURIComponent(query)}&limit=20&includeInactive=true&includeCommunity=true`,
+        { cache: "no-store" }
+      );
       
       if (!response.ok) {
         throw new Error("Erreur lors de la recherche");
@@ -80,6 +85,40 @@ export default function AdminSearchPage() {
 
   function getMemberIdentifier(member: MemberSearchResult): string {
     return member.twitchLogin || member.discordId || member.displayName;
+  }
+
+  async function handleForceIntegration(member: MemberSearchResult) {
+    const identity = getMemberIdentifier(member);
+    if (!member.twitchLogin || integratingId === identity) return;
+
+    try {
+      setIntegratingId(identity);
+      const response = await fetch("/api/admin/search/members/force-integration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          twitchLogin: member.twitchLogin,
+          displayName: member.displayName,
+          discordId: member.discordId,
+          discordUsername: member.discordUsername,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        alert(data?.error || "Impossible de forcer l'intégration.");
+        return;
+      }
+
+      setResults((prev) =>
+        prev.map((row) => (getMemberIdentifier(row) === identity ? { ...row, inGestion: true } : row))
+      );
+      alert(data?.message || "Intégration forcée terminée.");
+      router.push(`/admin/membres/gestion?twitch=${encodeURIComponent(member.twitchLogin)}`);
+    } catch {
+      alert("Erreur réseau pendant l'intégration forcée.");
+    } finally {
+      setIntegratingId(null);
+    }
   }
 
   return (
@@ -139,6 +178,9 @@ export default function AdminSearchPage() {
                 <div className="mb-4">
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     {results.length} résultat{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                    Recherche globale activée: legacy + Supabase, incluant inactifs et communauté.
                   </p>
                 </div>
 
@@ -233,26 +275,49 @@ export default function AdminSearchPage() {
 
                         {/* Bouton action */}
                         <div className="flex-shrink-0">
-                          <button
-                            className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                            style={{
-                              backgroundColor: 'var(--color-primary)',
-                              color: 'white',
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMemberClick(member);
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.9';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                            }}
-                          >
-                            <User className="w-4 h-4" />
-                            Voir fiche 360°
-                          </button>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                              style={{
+                                backgroundColor: 'var(--color-primary)',
+                                color: 'white',
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMemberClick(member);
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '0.9';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              <User className="w-4 h-4" />
+                              Voir fiche 360°
+                            </button>
+                            <button
+                              className="px-4 py-2 rounded-lg border text-sm transition-colors flex items-center gap-2 disabled:opacity-60"
+                              style={{
+                                borderColor: member.inGestion ? "rgba(34,197,94,0.45)" : "var(--color-border)",
+                                backgroundColor: member.inGestion ? "rgba(34,197,94,0.14)" : "var(--color-surface)",
+                                color: member.inGestion ? "#86efac" : "var(--color-text)",
+                              }}
+                              disabled={!member.twitchLogin || Boolean(member.inGestion) || integratingId === getMemberIdentifier(member)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleForceIntegration(member);
+                              }}
+                              title={!member.twitchLogin ? "Pseudo Twitch requis pour forcer l'intégration" : undefined}
+                            >
+                              <Link2 className="w-4 h-4" />
+                              {member.inGestion
+                                ? "Déjà dans gestion"
+                                : integratingId === getMemberIdentifier(member)
+                                  ? "Intégration..."
+                                  : "Forcer intégration gestion"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

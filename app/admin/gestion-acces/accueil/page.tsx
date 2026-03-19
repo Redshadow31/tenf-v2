@@ -154,16 +154,22 @@ export default function AdministrationAccueilPage() {
 
     async function loadContext() {
       try {
-        const [user, roleRes, advancedRes] = await Promise.all([
+        const [user, roleRes, advancedRes, aliasRes] = await Promise.all([
           getDiscordUser(),
           fetch("/api/user/role", { cache: "no-store" }),
           fetch("/api/admin/advanced-access?check=1", { cache: "no-store" }),
+          fetch("/api/admin/access/self", { cache: "no-store" }),
         ]);
 
         if (!mounted) return;
 
         if (user?.username) {
           setUsername(user.username);
+        }
+        if (aliasRes.ok) {
+          const aliasData = await aliasRes.json();
+          const alias = typeof aliasData?.adminAlias === "string" ? aliasData.adminAlias.trim() : "";
+          if (alias) setUsername(alias);
         }
 
         if (roleRes.ok) {

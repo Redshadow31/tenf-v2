@@ -5,6 +5,76 @@ import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown } from "lucide-react";
 
+const panelClass =
+  "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
+const controlClass =
+  "bg-[#0f0f16] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20";
+const actionPrimaryClass =
+  "border border-white/25 bg-[linear-gradient(145deg,rgba(99,102,241,0.28),rgba(79,70,229,0.18))] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_24px_rgba(15,23,42,0.35)] hover:bg-[linear-gradient(145deg,rgba(129,140,248,0.35),rgba(99,102,241,0.24))] text-white font-semibold px-4 py-2.5 rounded-xl transition-colors";
+const actionSecondaryClass =
+  "border border-white/20 bg-white/[0.06] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-white/[0.12] text-white font-semibold px-4 py-2.5 rounded-xl transition-colors";
+const tabBaseClass =
+  "rounded-lg px-4 py-2 text-sm font-semibold transition-colors border border-transparent";
+const tabActiveClass =
+  "bg-[linear-gradient(145deg,rgba(99,102,241,0.24),rgba(79,70,229,0.18))] border-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]";
+const tabInactiveClass = "text-gray-300 hover:text-white hover:bg-white/[0.06]";
+
+function normalizeCategoryKey(value?: string): string {
+  return (value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function getCategoryTone(category?: string): {
+  badgeClass: string;
+  cardBorder: string;
+  cardGlow: string;
+} {
+  const key = normalizeCategoryKey(category);
+  if (key.includes("spotlight")) {
+    return {
+      badgeClass: "bg-indigo-500/15 text-indigo-200 border-indigo-400/30",
+      cardBorder: "rgba(129,140,248,0.34)",
+      cardGlow: "rgba(99,102,241,0.13)",
+    };
+  }
+  if (key.includes("film")) {
+    return {
+      badgeClass: "bg-blue-500/15 text-blue-200 border-blue-400/30",
+      cardBorder: "rgba(96,165,250,0.34)",
+      cardGlow: "rgba(59,130,246,0.11)",
+    };
+  }
+  if (key.includes("formation")) {
+    return {
+      badgeClass: "bg-emerald-500/15 text-emerald-200 border-emerald-400/30",
+      cardBorder: "rgba(52,211,153,0.34)",
+      cardGlow: "rgba(16,185,129,0.1)",
+    };
+  }
+  if (key.includes("jeux")) {
+    return {
+      badgeClass: "bg-amber-500/15 text-amber-200 border-amber-400/30",
+      cardBorder: "rgba(251,191,36,0.32)",
+      cardGlow: "rgba(245,158,11,0.1)",
+    };
+  }
+  if (key.includes("apero")) {
+    return {
+      badgeClass: "bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-400/30",
+      cardBorder: "rgba(232,121,249,0.32)",
+      cardGlow: "rgba(217,70,239,0.1)",
+    };
+  }
+  return {
+    badgeClass: "bg-slate-500/15 text-slate-200 border-slate-400/30",
+    cardBorder: "rgba(148,163,184,0.28)",
+    cardGlow: "rgba(148,163,184,0.08)",
+  };
+}
+
 interface Event {
   id: string;
   title: string;
@@ -56,6 +126,11 @@ function safeTimestamp(value?: string): number {
   if (!value) return 0;
   const ts = new Date(value).getTime();
   return Number.isNaN(ts) ? 0 : ts;
+}
+
+function normalizeNoteValue(note?: string): string | undefined {
+  const trimmed = (note || "").trim();
+  return trimmed.length ? trimmed : undefined;
 }
 
 function dedupeRegistrations(registrations: EventRegistration[]): EventRegistration[] {
@@ -119,6 +194,19 @@ function getNormalizedEventData(event: Pick<Event, "registrations" | "presences"
   return { registrations, presences };
 }
 
+function buildPresenceStateSignature(presences: EventPresence[]): string {
+  const normalized = dedupePresences(presences || [])
+    .map((presence) => ({
+      twitchLogin: normalizeLogin(presence.twitchLogin),
+      present: !!presence.present,
+      note: normalizeNoteValue(presence.note) || "",
+      isRegistered: !!presence.isRegistered,
+      addedManually: !!presence.addedManually,
+    }))
+    .sort((a, b) => a.twitchLogin.localeCompare(b.twitchLogin));
+  return JSON.stringify(normalized);
+}
+
 function computeEventPresenceStats(event: Pick<Event, "registrations" | "presences">) {
   const { registrations, presences } = getNormalizedEventData(event);
 
@@ -159,6 +247,7 @@ export default function EventPresencePage() {
   const [editingNote, setEditingNote] = useState<{ eventId: string; twitchLogin: string; note: string } | null>(null);
   const [sortBy, setSortBy] = useState<"date" | "presences" | "inscriptions" | "absents" | "category">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [eventsViewTab, setEventsViewTab] = useState<"upcoming" | "past" | "all">("upcoming");
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -631,12 +720,100 @@ export default function EventPresencePage() {
     }
   }
 
+  async function handleCommitPresenceChanges(previousEvent: Event, nextEvent: Event) {
+    const eventId = previousEvent.id;
+    const previousPresences = getNormalizedEventData(previousEvent).presences;
+    const nextPresences = getNormalizedEventData(nextEvent).presences;
+
+    const previousMap = new Map(previousPresences.map((p) => [normalizeLogin(p.twitchLogin), p]));
+    const nextMap = new Map(nextPresences.map((p) => [normalizeLogin(p.twitchLogin), p]));
+
+    const deletions = previousPresences.filter((presence) => !nextMap.has(normalizeLogin(presence.twitchLogin)));
+    const upserts = nextPresences.filter((presence) => {
+      const key = normalizeLogin(presence.twitchLogin);
+      const previous = previousMap.get(key);
+      if (!previous) return true;
+      const prevNote = normalizeNoteValue(previous.note);
+      const nextNote = normalizeNoteValue(presence.note);
+      return previous.present !== presence.present || prevNote !== nextNote;
+    });
+
+    if (deletions.length === 0 && upserts.length === 0) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      for (const presence of deletions) {
+        const response = await fetch(
+          `/api/admin/events/presence?eventId=${encodeURIComponent(eventId)}&twitchLogin=${encodeURIComponent(
+            presence.twitchLogin
+          )}`,
+          { method: "DELETE" }
+        );
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || `Suppression impossible pour ${presence.twitchLogin}`);
+        }
+      }
+
+      for (const presence of upserts) {
+        const response = await fetch("/api/admin/events/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            member: {
+              twitchLogin: presence.twitchLogin,
+              displayName: presence.displayName || presence.twitchLogin,
+              discordId: presence.discordId,
+              discordUsername: presence.discordUsername,
+            },
+            present: !!presence.present,
+            note: normalizeNoteValue(presence.note),
+          }),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || `Mise a jour impossible pour ${presence.twitchLogin}`);
+        }
+      }
+
+      await loadData();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const dashboardStats = useMemo(() => {
+    const now = new Date();
+    const upcoming = events.filter((event) => new Date(event.date) >= now).length;
+    const past = events.length - upcoming;
+    const totals = events.reduce(
+      (acc, event) => {
+        const stats = computeEventPresenceStats(event);
+        acc.registrations += stats.totalRegistrations;
+        acc.present += stats.presentTotal;
+        acc.absent += stats.absentRegistered;
+        return acc;
+      },
+      { registrations: 0, present: 0, absent: 0 }
+    );
+    return {
+      totalEvents: events.length,
+      upcoming,
+      past,
+      ...totals,
+    };
+  }, [events]);
+
   if (loading && !events.length) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des données...</p>
+      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center p-8">
+        <div className={`text-center p-8 ${panelClass}`}>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4f46e5] mx-auto mb-4"></div>
+          <p className="text-gray-300">Chargement des données de participation...</p>
         </div>
       </div>
     );
@@ -645,7 +822,7 @@ export default function EventPresencePage() {
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white p-8">
-        <div className="bg-[#1a1a1d] border border-red-500 rounded-lg p-8">
+        <div className="bg-[#1a1a1d] border border-red-500/60 rounded-xl p-8">
           <h1 className="text-2xl font-bold text-red-400 mb-4">Accès refusé</h1>
           <p className="text-gray-400">Vous n'avez pas les permissions nécessaires.</p>
         </div>
@@ -654,22 +831,24 @@ export default function EventPresencePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-8">
-      <div className="mb-8">
+    <div className="min-h-screen bg-[#0e0e10] text-white p-8 space-y-6">
+      <div className={`mb-1 p-6 ${panelClass}`}>
         <Link
           href="/admin/events"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
+          className="text-gray-300 hover:text-white transition-colors mb-4 inline-block"
         >
           ← Retour au hub Événements
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Gestion des Présences</h1>
-            <p className="text-gray-400">Gérer les présences aux événements par mois</p>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-transparent">
+              Gestion des Participations
+            </h1>
+            <p className="text-gray-300">Pilote les présences, absences et ajouts manuels sur tous les événements du mois.</p>
           </div>
           <button
             onClick={() => setIsCreateEventModalOpen(true)}
-            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            className={`${actionPrimaryClass} flex items-center gap-2`}
           >
             <Plus className="w-5 h-5" />
             Ajouter un événement passé
@@ -678,13 +857,13 @@ export default function EventPresencePage() {
       </div>
 
       {/* Sélecteur de mois et tri */}
-      <div className="mb-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+      <div className={`mb-1 p-4 ${panelClass} flex flex-col md:flex-row items-start md:items-center gap-4`}>
         <div className="flex items-center gap-4">
           <label className="text-sm font-semibold text-gray-300">Mois :</label>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+            className={controlClass}
           >
             {getMonthOptions().map(option => (
               <option key={option} value={option}>
@@ -699,7 +878,7 @@ export default function EventPresencePage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+            className={controlClass}
           >
             <option value="date">Date</option>
             <option value="presences">Présents</option>
@@ -710,7 +889,7 @@ export default function EventPresencePage() {
           
           <button
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white hover:bg-[#252529] transition-colors flex items-center gap-2"
+            className={`${actionSecondaryClass} flex items-center gap-2`}
             title={sortOrder === "asc" ? "Tri croissant" : "Tri décroissant"}
           >
             <ArrowUpDown className="w-4 h-4" />
@@ -719,10 +898,75 @@ export default function EventPresencePage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">Événements</p>
+          <p className="text-2xl font-bold">{dashboardStats.totalEvents}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">À venir</p>
+          <p className="text-2xl font-bold text-emerald-300">{dashboardStats.upcoming}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">Passés</p>
+          <p className="text-2xl font-bold text-slate-300">{dashboardStats.past}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">Inscriptions</p>
+          <p className="text-2xl font-bold">{dashboardStats.registrations}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">Présences</p>
+          <p className="text-2xl font-bold text-emerald-300">{dashboardStats.present}</p>
+        </div>
+        <div className={`${panelClass} p-4`}>
+          <p className="text-xs text-gray-400">Absences</p>
+          <p className="text-2xl font-bold text-rose-300">{dashboardStats.absent}</p>
+        </div>
+      </div>
+
+      <div className={`p-2 ${panelClass}`}>
+        <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
+          <button
+            type="button"
+            onClick={() => setEventsViewTab("upcoming")}
+            className={`${tabBaseClass} ${
+              eventsViewTab === "upcoming"
+                ? tabActiveClass
+                : tabInactiveClass
+            }`}
+          >
+            À venir
+          </button>
+          <button
+            type="button"
+            onClick={() => setEventsViewTab("past")}
+            className={`${tabBaseClass} ${
+              eventsViewTab === "past"
+                ? tabActiveClass
+                : tabInactiveClass
+            }`}
+          >
+            Passés
+          </button>
+          <button
+            type="button"
+            onClick={() => setEventsViewTab("all")}
+            className={`${tabBaseClass} ${
+              eventsViewTab === "all"
+                ? tabActiveClass
+                : tabInactiveClass
+            }`}
+          >
+            Tous
+          </button>
+        </div>
+      </div>
+
       {/* Liste des événements du mois */}
       <div className="space-y-6">
         {events.length === 0 ? (
-          <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
+          <div className={`${panelClass} p-8 text-center`}>
             <p className="text-gray-400">Aucun événement pour ce mois</p>
           </div>
         ) : (() => {
@@ -768,11 +1012,15 @@ export default function EventPresencePage() {
           const pastEvents = sortEvents(
             events.filter(event => new Date(event.date) < now)
           );
+          const showUpcoming = eventsViewTab === "upcoming" || eventsViewTab === "all";
+          const showPast = eventsViewTab === "past" || eventsViewTab === "all";
+          const hasVisibleEvents =
+            (showUpcoming && upcomingEvents.length > 0) || (showPast && pastEvents.length > 0);
 
           return (
             <>
               {/* Section Événements à venir */}
-              {upcomingEvents.length > 0 && (
+              {showUpcoming && upcomingEvents.length > 0 && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                     <Calendar className="w-6 h-6 text-green-400" />
@@ -782,10 +1030,15 @@ export default function EventPresencePage() {
                     {upcomingEvents.map((event) => (
             (() => {
               const stats = computeEventPresenceStats(event);
+              const tone = getCategoryTone(event.category);
               return (
             <div
               key={event.id}
-              className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
+              className={`${panelClass} p-6`}
+              style={{
+                borderColor: tone.cardBorder,
+                background: `radial-gradient(circle at 100% 0%, ${tone.cardGlow}, rgba(0,0,0,0) 44%), linear-gradient(160deg, rgba(24,24,30,0.96), rgba(15,15,20,0.98))`,
+              }}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -796,7 +1049,7 @@ export default function EventPresencePage() {
                       <span>{formatEventDate(event.date)}</span>
                     </div>
                     {event.category && (
-                      <span className="px-2 py-1 bg-gray-700 rounded text-xs">{event.category}</span>
+                      <span className={`rounded-lg border px-2 py-1 text-xs ${tone.badgeClass}`}>{event.category}</span>
                     )}
                     {event.location && (
                       <span className="text-gray-500">📍 {event.location}</span>
@@ -810,14 +1063,14 @@ export default function EventPresencePage() {
                       setIsEventModalOpen(true);
                       setSearchQuery("");
                     }}
-                    className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                    className={`${actionPrimaryClass} text-sm`}
                   >
                     Gérer les présences
                   </button>
                   <button
                     onClick={() => handleDeleteEvent(event)}
                     disabled={deletingEventId === event.id}
-                    className="bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-1"
+                    className="border border-rose-400/35 bg-[linear-gradient(145deg,rgba(225,29,72,0.2),rgba(136,19,55,0.12))] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-[linear-gradient(145deg,rgba(244,63,94,0.24),rgba(159,18,57,0.16))] disabled:opacity-50 text-rose-100 font-semibold px-4 py-2 rounded-xl transition-colors text-sm flex items-center gap-1"
                     title="Supprimer l'événement (annulé)"
                   >
                     {deletingEventId === event.id ? (
@@ -862,7 +1115,7 @@ export default function EventPresencePage() {
               )}
 
               {/* Section Événements passés */}
-              {pastEvents.length > 0 && (
+              {showPast && pastEvents.length > 0 && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                     <Calendar className="w-6 h-6 text-gray-400" />
@@ -872,10 +1125,15 @@ export default function EventPresencePage() {
                     {pastEvents.map((event) => (
                       (() => {
                         const stats = computeEventPresenceStats(event);
+                        const tone = getCategoryTone(event.category);
                         return (
                       <div
                         key={event.id}
-                        className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6"
+                        className={`${panelClass} p-6`}
+                        style={{
+                          borderColor: tone.cardBorder,
+                          background: `radial-gradient(circle at 100% 0%, ${tone.cardGlow}, rgba(0,0,0,0) 44%), linear-gradient(160deg, rgba(24,24,30,0.96), rgba(15,15,20,0.98))`,
+                        }}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -886,7 +1144,7 @@ export default function EventPresencePage() {
                                 <span>{formatEventDate(event.date)}</span>
                               </div>
                               {event.category && (
-                                <span className="px-2 py-1 bg-gray-700 rounded text-xs">{event.category}</span>
+                                <span className={`rounded-lg border px-2 py-1 text-xs ${tone.badgeClass}`}>{event.category}</span>
                               )}
                               {event.location && (
                                 <span className="text-gray-500">📍 {event.location}</span>
@@ -900,14 +1158,14 @@ export default function EventPresencePage() {
                                 setIsEventModalOpen(true);
                                 setSearchQuery("");
                               }}
-                              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                              className={`${actionPrimaryClass} text-sm`}
                             >
                               Gérer les présences
                             </button>
                             <button
                               onClick={() => handleDeleteEvent(event)}
                               disabled={deletingEventId === event.id}
-                              className="bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-1"
+                              className="border border-rose-400/35 bg-[linear-gradient(145deg,rgba(225,29,72,0.2),rgba(136,19,55,0.12))] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-[linear-gradient(145deg,rgba(244,63,94,0.24),rgba(159,18,57,0.16))] disabled:opacity-50 text-rose-100 font-semibold px-4 py-2 rounded-xl transition-colors text-sm flex items-center gap-1"
                               title="Supprimer l'événement (annulé)"
                             >
                               {deletingEventId === event.id ? (
@@ -952,9 +1210,11 @@ export default function EventPresencePage() {
               )}
 
               {/* Message si aucune section n'a d'événements */}
-              {upcomingEvents.length === 0 && pastEvents.length === 0 && (
-                <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
-                  <p className="text-gray-400">Aucun événement pour ce mois</p>
+              {!hasVisibleEvents && (
+                <div className={`${panelClass} p-8 text-center`}>
+                  <p className="text-gray-400">
+                    Aucun événement dans cet onglet pour ce mois.
+                  </p>
                 </div>
               )}
             </>
@@ -973,9 +1233,7 @@ export default function EventPresencePage() {
             setSearchQuery("");
             setEditingNote(null);
           }}
-          onTogglePresence={handleTogglePresence}
-          onSaveNote={handleSaveNote}
-          onRemovePresence={handleRemovePresence}
+          onCommitChanges={handleCommitPresenceChanges}
           saving={saving}
         />
       )}
@@ -999,29 +1257,32 @@ function EventPresenceModal({
   event,
   allMembers,
   onClose,
-  onTogglePresence,
-  onSaveNote,
-  onRemovePresence,
+  onCommitChanges,
   saving,
 }: {
   event: Event;
   allMembers: Member[];
   onClose: () => void;
-  onTogglePresence: (eventId: string, member: Member, isRegistered: boolean) => Promise<void>;
-  onSaveNote: (eventId: string, twitchLogin: string, note: string) => Promise<void>;
-  onRemovePresence: (eventId: string, twitchLogin: string) => Promise<void>;
+  onCommitChanges: (previousEvent: Event, nextEvent: Event) => Promise<void>;
   saving: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingNote, setEditingNote] = useState<{ twitchLogin: string; note: string } | null>(null);
+  const [modalTab, setModalTab] = useState<"participants" | "stats">("participants");
   // État local pour l'événement qui se synchronise avec les props
   const [localEvent, setLocalEvent] = useState<Event>(event);
+  const [sourceEvent, setSourceEvent] = useState<Event>(event);
 
   // Synchroniser l'événement local avec les props quand elles changent
   useEffect(() => {
     setLocalEvent(event);
+    setSourceEvent(event);
+    setModalTab("participants");
+    setEditingNote(null);
+    setSearchQuery("");
+    setShowAddMember(false);
   }, [event]);
 
   // Debounce de la recherche (300ms)
@@ -1092,6 +1353,104 @@ function EventPresenceModal({
   );
   const { registrations, presences } = getNormalizedEventData(localEvent);
   const stats = computeEventPresenceStats(localEvent);
+  const modalTone = getCategoryTone(localEvent.category);
+  const hasPendingChanges = useMemo(() => {
+    return (
+      buildPresenceStateSignature(sourceEvent.presences || []) !==
+      buildPresenceStateSignature(localEvent.presences || [])
+    );
+  }, [localEvent.presences, sourceEvent.presences]);
+
+  function upsertLocalPresence(member: Member, isRegistered: boolean, updater?: (row: EventPresence) => EventPresence) {
+    setLocalEvent((prev) => {
+      const rows = [...(prev.presences || [])];
+      const key = normalizeLogin(member.twitchLogin);
+      const index = rows.findIndex((presence) => normalizeLogin(presence.twitchLogin) === key);
+      const nowIso = new Date().toISOString();
+      const base: EventPresence =
+        index >= 0
+          ? rows[index]
+          : {
+              id: `draft-${Date.now()}-${member.twitchLogin}`,
+              twitchLogin: member.twitchLogin,
+              displayName: member.displayName || member.twitchLogin,
+              discordId: member.discordId,
+              discordUsername: member.discordUsername,
+              isRegistered,
+              present: true,
+              addedManually: !isRegistered,
+              createdAt: nowIso,
+            };
+      const nextRow = updater ? updater(base) : base;
+      if (index >= 0) {
+        rows[index] = nextRow;
+      } else {
+        rows.push(nextRow);
+      }
+      return { ...prev, presences: rows };
+    });
+  }
+
+  function handleLocalTogglePresence(member: Member, isRegistered: boolean) {
+    upsertLocalPresence(member, isRegistered, (row) => ({
+      ...row,
+      present: !row.present,
+      isRegistered,
+      addedManually: !isRegistered,
+    }));
+  }
+
+  function handleLocalSaveNote(member: Member, isRegistered: boolean, note: string) {
+    upsertLocalPresence(member, isRegistered, (row) => ({
+      ...row,
+      note: normalizeNoteValue(note),
+      isRegistered,
+      addedManually: !isRegistered,
+    }));
+    setEditingNote(null);
+  }
+
+  function handleLocalRemovePresence(twitchLogin: string) {
+    setLocalEvent((prev) => ({
+      ...prev,
+      presences: (prev.presences || []).filter(
+        (presence) => normalizeLogin(presence.twitchLogin) !== normalizeLogin(twitchLogin)
+      ),
+    }));
+    setEditingNote((current) =>
+      current && normalizeLogin(current.twitchLogin) === normalizeLogin(twitchLogin) ? null : current
+    );
+  }
+
+  async function handleSaveAndClose() {
+    try {
+      await onCommitChanges(sourceEvent, localEvent);
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur pendant la sauvegarde";
+      alert(`❌ ${message}`);
+    }
+  }
+
+  async function handleRequestClose() {
+    if (!hasPendingChanges || saving) {
+      onClose();
+      return;
+    }
+
+    const shouldSave = window.confirm(
+      "Des modifications ne sont pas enregistrées.\n\nOK = Enregistrer et quitter\nAnnuler = Voir les autres options"
+    );
+    if (shouldSave) {
+      await handleSaveAndClose();
+      return;
+    }
+
+    const shouldDiscard = window.confirm("Quitter sans enregistrer les modifications ?");
+    if (shouldDiscard) {
+      onClose();
+    }
+  }
 
   // Créer une liste combinée : présences + inscrits non présents
   const allParticipants = new Map<string, {
@@ -1131,19 +1490,26 @@ function EventPresenceModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-[2px] p-4">
       <div
-        className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+        className={`${panelClass} p-6 max-w-6xl w-full max-h-[92vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">{localEvent.title}</h2>
-            <p className="text-gray-400 text-sm">{formatEventDateForModal(localEvent.date)}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-gray-400 text-sm">{formatEventDateForModal(localEvent.date)}</p>
+              {localEvent.category ? (
+                <span className={`rounded-lg border px-2 py-0.5 text-xs ${modalTone.badgeClass}`}>
+                  {localEvent.category}
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            onClick={handleRequestClose}
+            className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 hover:text-white hover:border-white/25 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -1163,20 +1529,20 @@ function EventPresenceModal({
                 }}
                 onFocus={() => setShowAddMember(searchQuery.trim().length > 0)}
                 placeholder="Rechercher un membre à ajouter..."
-                className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
+                className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20"
               />
               {showAddMember && filteredMembers.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-[#0e0e10] border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-[#0e0e10] border border-white/15 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                   {filteredMembers.map((member) => (
                     <button
                       key={member.twitchLogin}
                       type="button"
                       onClick={() => {
-                        onTogglePresence(localEvent.id, member, false);
+                        handleLocalTogglePresence(member, false);
                         setSearchQuery("");
                         setShowAddMember(false);
                       }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-800 transition-colors border-b border-gray-700 last:border-b-0"
+                      className="w-full text-left px-4 py-3 hover:bg-white/[0.07] transition-colors border-b border-white/10 last:border-b-0"
                     >
                       <div className="font-semibold text-white">{member.displayName}</div>
                       <div className="text-gray-400 text-sm">
@@ -1190,12 +1556,38 @@ function EventPresenceModal({
           </div>
         </div>
 
+        <div className="mb-5 inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
+          <button
+            type="button"
+            onClick={() => setModalTab("participants")}
+            className={`${tabBaseClass} ${
+              modalTab === "participants"
+                ? tabActiveClass
+                : tabInactiveClass
+            }`}
+          >
+            Participants
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalTab("stats")}
+            className={`${tabBaseClass} ${
+              modalTab === "stats"
+                ? tabActiveClass
+                : tabInactiveClass
+            }`}
+          >
+            Statistiques
+          </button>
+        </div>
+
         {/* Tableau des participants */}
-        <div className="bg-[#0e0e10] border border-gray-700 rounded-lg overflow-hidden">
+        {modalTab === "participants" ? (
+        <div className="bg-[#0e0e10] border border-white/10 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr className="border-b border-gray-700">
+              <thead className="bg-white/[0.04]">
+                <tr className="border-b border-white/10">
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Membre</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-gray-300">Inscrit</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-gray-300">Présent</th>
@@ -1216,7 +1608,7 @@ function EventPresenceModal({
                     .map(({ member, isRegistered, presence }) => (
                       <tr
                         key={member.twitchLogin}
-                        className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors"
+                        className="border-b border-white/10 hover:bg-white/[0.04] transition-colors"
                       >
                         <td className="py-3 px-4">
                           <div>
@@ -1237,12 +1629,12 @@ function EventPresenceModal({
                         </td>
                         <td className="py-3 px-4 text-center">
                           <button
-                            onClick={() => onTogglePresence(localEvent.id, member, isRegistered)}
+                            onClick={() => handleLocalTogglePresence(member, isRegistered)}
                             disabled={saving}
                             className={`inline-flex items-center justify-center w-8 h-8 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               presence?.present
-                                ? 'bg-green-600 hover:bg-green-700 text-white'
-                                : 'bg-gray-700 hover:bg-gray-600 text-gray-400'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                             }`}
                           >
                             {presence?.present ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
@@ -1255,23 +1647,23 @@ function EventPresenceModal({
                                 <textarea
                                   value={editingNote.note}
                                   onChange={(e) => setEditingNote({ ...editingNote, note: e.target.value })}
-                                  className="flex-1 bg-[#0e0e10] border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                                  className="flex-1 bg-[#0f0f16] border border-gray-600 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20 resize-none"
                                   rows={2}
                                   placeholder="Ajouter une note..."
                                 />
                                 <button
                                   onClick={() => {
-                                    onSaveNote(localEvent.id, member.twitchLogin, editingNote.note);
+                                    handleLocalSaveNote(member, isRegistered, editingNote.note);
                                   }}
                                   disabled={saving}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   {saving ? '...' : '✓'}
                                 </button>
                                 <button
                                   onClick={() => setEditingNote(null)}
                                   disabled={saving}
-                                  className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded-lg text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   ✕
                                 </button>
@@ -1287,7 +1679,7 @@ function EventPresenceModal({
                                 </div>
                                 <button
                                   onClick={() => setEditingNote({ twitchLogin: member.twitchLogin, note: presence?.note || '' })}
-                                  className="text-[#9146ff] hover:text-[#7c3aed] transition-colors"
+                                  className="rounded-md p-1 text-[#93a0ff] hover:text-white hover:bg-white/[0.08] transition-colors"
                                   title="Modifier la note"
                                 >
                                   <Edit2 className="w-4 h-4" />
@@ -1299,9 +1691,9 @@ function EventPresenceModal({
                         <td className="py-3 px-4 text-center">
                           {presence && (
                             <button
-                              onClick={() => onRemovePresence(localEvent.id, member.twitchLogin)}
+                              onClick={() => handleLocalRemovePresence(member.twitchLogin)}
                               disabled={saving}
-                              className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="rounded-md p-1 text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Supprimer la présence"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1315,50 +1707,69 @@ function EventPresenceModal({
             </table>
           </div>
         </div>
+        ) : (
+          <div className={`${panelClass} p-5`}>
+            <h3 className="mb-4 text-lg font-semibold text-white">Synthèse de l'événement</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
+                <p className="text-gray-400 text-sm mb-1">Total Inscrits</p>
+                <p className="text-white font-bold text-xl">{stats.totalRegistrations}</p>
+              </div>
+              <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
+                <p className="text-gray-400 text-sm mb-1">Présents</p>
+                <p className="text-emerald-300 font-bold text-xl">{stats.presentTotal}</p>
+              </div>
+              <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
+                <p className="text-gray-400 text-sm mb-1">Absents</p>
+                <p className="text-rose-300 font-bold text-xl">{stats.absentRegistered}</p>
+              </div>
+              <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
+                <p className="text-gray-400 text-sm mb-1">Ajoutés manuellement</p>
+                <p className="text-amber-300 font-bold text-xl">{stats.manualPresent}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Statistiques */}
-        <div className="mt-6 grid grid-cols-4 gap-4">
-          <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+        {/* Statistiques rapides (onglet participants) */}
+        {modalTab === "participants" ? (
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
             <p className="text-gray-400 text-sm mb-1">Total Inscrits</p>
             <p className="text-white font-bold text-xl">{stats.totalRegistrations}</p>
           </div>
-          <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+          <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
             <p className="text-gray-400 text-sm mb-1">Présents</p>
             <p className="text-green-400 font-bold text-xl">
               {stats.presentTotal}
             </p>
           </div>
-          <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+          <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
             <p className="text-gray-400 text-sm mb-1">Absents</p>
             <p className="text-red-400 font-bold text-xl">{stats.absentRegistered}</p>
           </div>
-          <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+          <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">
             <p className="text-gray-400 text-sm mb-1">Ajoutés manuellement</p>
             <p className="text-yellow-400 font-bold text-xl">
               {stats.manualPresent}
             </p>
           </div>
         </div>
+        ) : null}
 
         {/* Bouton de sauvegarde/validation */}
         <div className="mt-6 flex justify-end gap-3">
           <button
-            onClick={onClose}
+            onClick={handleRequestClose}
             disabled={saving}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`${actionSecondaryClass} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            Fermer
+            {hasPendingChanges ? "Fermer (modifs non enregistrées)" : "Fermer"}
           </button>
           <button
-            onClick={async () => {
-              // Les modifications sont déjà sauvegardées automatiquement
-              // Ce bouton sert de confirmation visuelle et ferme le modal
-              // On peut aussi ajouter un message de confirmation
-              alert("✅ Toutes les présences ont été sauvegardées avec succès !");
-              onClose();
-            }}
-            disabled={saving}
-            className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            onClick={handleSaveAndClose}
+            disabled={saving || !hasPendingChanges}
+            className={`${actionPrimaryClass} disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
           >
             {saving ? (
               <>
@@ -1368,7 +1779,7 @@ function EventPresenceModal({
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                Valider et fermer
+                {hasPendingChanges ? "Valider et fermer" : "Aucune modification"}
               </>
             )}
           </button>
@@ -1443,16 +1854,16 @@ function CreateEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-[2px] p-4">
       <div
-        className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full"
+        className={`${panelClass} p-6 max-w-2xl w-full`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
           <h2 className="text-2xl font-bold text-white">Créer un événement passé</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 hover:text-white hover:border-white/25 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -1468,7 +1879,7 @@ function CreateEventModal({
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
-              className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+              className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20"
             />
           </div>
 
@@ -1482,7 +1893,7 @@ function CreateEventModal({
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 required
-                className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20"
               />
             </div>
 
@@ -1494,7 +1905,7 @@ function CreateEventModal({
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 required
-                className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20"
               >
                 {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -1511,7 +1922,7 @@ function CreateEventModal({
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+              className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20"
             />
           </div>
 
@@ -1523,7 +1934,7 @@ function CreateEventModal({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full bg-[#0e0e10] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+              className="w-full bg-[#0f0f16] border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20 resize-none"
             />
           </div>
 
@@ -1532,14 +1943,14 @@ function CreateEventModal({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`${actionSecondaryClass} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className={`${actionPrimaryClass} disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
             >
               {saving ? 'Création...' : (
                 <>

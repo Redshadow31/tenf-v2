@@ -17,6 +17,15 @@ import {
   type EventLocationLink,
 } from "@/lib/eventLocation";
 
+const panelClass =
+  "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
+const inputClass =
+  "w-full bg-[#0d0d14] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b88bff] focus:ring-2 focus:ring-[#9146ff]/25";
+const subtleButtonClass =
+  "rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-gray-200 transition-colors hover:bg-white/[0.08] hover:border-[#b88bff]/60";
+const primaryButtonClass =
+  "rounded-xl bg-gradient-to-r from-[#9146ff] to-[#7c3aed] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:from-[#a364ff] hover:to-[#8c45ff] disabled:opacity-60";
+
 interface CategoryConfig {
   value: string;
   label: string;
@@ -94,6 +103,8 @@ export default function PlanificationPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageDimensionError, setImageDimensionError] = useState<string | null>(null);
+  const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [locationMode, setLocationMode] = useState<"none" | "external" | "discord">("none");
@@ -106,6 +117,23 @@ export default function PlanificationPage() {
     loadEvents();
     loadManagedLocationLinks();
   }, []);
+
+  const readImageDimensions = (file: File): Promise<{ width: number; height: number }> =>
+    new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+        URL.revokeObjectURL(objectUrl);
+        resolve({ width, height });
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Image invalide"));
+      };
+      image.src = objectUrl;
+    });
 
   const loadEvents = async () => {
     try {
@@ -147,6 +175,8 @@ export default function PlanificationPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImageDimensionError(null);
+    setImageInfo(null);
 
     // Vérifier le type de fichier
     if (!file.type.startsWith('image/')) {
@@ -157,6 +187,20 @@ export default function PlanificationPage() {
     // Vérifier la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('❌ L\'image ne doit pas dépasser 5MB');
+      return;
+    }
+
+    try {
+      const dimensions = await readImageDimensions(file);
+      setImageInfo(dimensions);
+      if (dimensions.width !== 800 || dimensions.height !== 200) {
+        setImageDimensionError(
+          `Format requis: 800×200 px. Image actuelle: ${dimensions.width}×${dimensions.height} px.`
+        );
+        return;
+      }
+    } catch {
+      alert("❌ Impossible de lire les dimensions de l'image");
       return;
     }
 
@@ -173,6 +217,8 @@ export default function PlanificationPage() {
   const handleRemoveImage = () => {
     setFormData({ ...formData, image: null, imageUrl: null });
     setImagePreview(null);
+    setImageDimensionError(null);
+    setImageInfo(null);
   };
 
   const handleStartEdit = (event: any) => {
@@ -197,6 +243,7 @@ export default function PlanificationPage() {
       imageUrl: event.image || null,
     });
     setImagePreview(event.image || null);
+    setImageDimensionError(null);
     setCreationMode("new");
     setLinkedSourceEventId(event.sourceEventId || "");
     setSeriesLabel(event.seriesName || "");
@@ -230,6 +277,8 @@ export default function PlanificationPage() {
       imageUrl: null,
     });
     setImagePreview(null);
+    setImageDimensionError(null);
+    setImageInfo(null);
     setCreationMode("new");
     setLinkedSourceEventId("");
     setSeriesLabel("");
@@ -254,6 +303,7 @@ export default function PlanificationPage() {
       date: prev.date || dateTimeLocal,
     }));
     setImagePreview(sourceEvent.image || null);
+    setImageDimensionError(null);
     setSeriesLabel(sourceEvent.seriesName || sourceEvent.title || "");
   }, [linkedSourceEventId, creationMode, isEditMode, events]);
 
@@ -406,28 +456,30 @@ export default function PlanificationPage() {
   };
 
   return (
-    <div className="text-white">
-      <div className="mb-8">
+    <div className="text-white space-y-6">
+      <div className={`mb-2 p-6 ${panelClass}`}>
         <Link
           href="/admin/events"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
+          className="text-gray-300 hover:text-white transition-colors mb-4 inline-block"
         >
           ← Retour aux événements
         </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-[#e6d5ff] to-[#b88bff] bg-clip-text text-transparent">
           Planification des Événements
         </h1>
-        <p className="text-gray-400">
-          Créez et gérez les événements de la communauté
+        <p className="text-gray-300">
+          Espace de pilotage: création, publication, visuels, et suivi opérationnel des événements communauté.
         </p>
       </div>
 
-      <div className="mb-6 inline-flex rounded-lg border border-gray-700 bg-[#1a1a1d] p-1">
+      <div className="mb-1 inline-flex rounded-xl border border-white/10 bg-black/20 p-1.5">
         <button
           type="button"
           onClick={() => setActivePlanningTab("events")}
-          className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
-            activePlanningTab === "events" ? "bg-[#9146ff] text-white" : "text-gray-300 hover:text-white"
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            activePlanningTab === "events"
+              ? "bg-gradient-to-r from-[#9146ff] to-[#7c3aed] text-white"
+              : "text-gray-300 hover:text-white hover:bg-white/[0.06]"
           }`}
         >
           Événements
@@ -435,8 +487,10 @@ export default function PlanificationPage() {
         <button
           type="button"
           onClick={() => setActivePlanningTab("public-film-announcement")}
-          className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
-            activePlanningTab === "public-film-announcement" ? "bg-[#9146ff] text-white" : "text-gray-300 hover:text-white"
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            activePlanningTab === "public-film-announcement"
+              ? "bg-gradient-to-r from-[#9146ff] to-[#7c3aed] text-white"
+              : "text-gray-300 hover:text-white hover:bg-white/[0.06]"
           }`}
         >
           Annonce publique Soirée Film
@@ -448,7 +502,7 @@ export default function PlanificationPage() {
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulaire */}
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className={`${panelClass} p-6`}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">
               {isEditMode ? "Modifier l'événement" : "Créer un événement"}
@@ -476,10 +530,10 @@ export default function PlanificationPage() {
                       setLinkedSourceEventId("");
                       setSeriesLabel("");
                     }}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                       creationMode === "new"
-                        ? "border-[#9146ff] bg-[#9146ff] text-white"
-                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#9146ff]"
+                        ? "border-[#9146ff] bg-gradient-to-r from-[#9146ff] to-[#7c3aed] text-white"
+                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#b88bff]"
                     }`}
                   >
                     Créer un nouvel événement
@@ -487,10 +541,10 @@ export default function PlanificationPage() {
                   <button
                     type="button"
                     onClick={() => setCreationMode("linked")}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                       creationMode === "linked"
-                        ? "border-[#9146ff] bg-[#9146ff] text-white"
-                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#9146ff]"
+                        ? "border-[#9146ff] bg-gradient-to-r from-[#9146ff] to-[#7c3aed] text-white"
+                        : "border-gray-700 bg-[#0e0e10] text-gray-300 hover:border-[#b88bff]"
                     }`}
                   >
                     Créer depuis un événement existant
@@ -505,7 +559,7 @@ export default function PlanificationPage() {
                     <select
                       value={linkedSourceEventId}
                       onChange={(e) => setLinkedSourceEventId(e.target.value)}
-                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                    className={inputClass}
                     >
                       <option value="">Choisir un événement existant...</option>
                       {events.map((event) => (
@@ -522,7 +576,7 @@ export default function PlanificationPage() {
                       value={seriesLabel}
                       onChange={(e) => setSeriesLabel(e.target.value)}
                       placeholder="Ex: Formation Discord Débutant"
-                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className={inputClass}
                     />
                     <p className="text-xs text-gray-400">
                       Cette série permettra de regrouper les occurrences d&apos;un même type d&apos;événement.
@@ -538,7 +592,7 @@ export default function PlanificationPage() {
                 Image de l'événement
               </label>
               {!imagePreview && !formData.imageUrl ? (
-                <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-[#9146ff] transition-colors">
+                <div className="rounded-xl border-2 border-dashed border-gray-700 p-5 text-center hover:border-[#b88bff] transition-colors bg-black/20">
                   <input
                     type="file"
                     accept="image/*"
@@ -551,11 +605,11 @@ export default function PlanificationPage() {
                     className="cursor-pointer block"
                   >
                     <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-400 mb-2">
+                    <p className="text-sm text-gray-300 mb-2">
                       Cliquez pour importer une image (webp, jpg, png)
                     </p>
-                    <span className="text-xs text-gray-500">
-                      Dimensions: 800x200px • Taille max: 5MB
+                    <span className="text-xs text-[#d7beff] font-semibold">
+                      Format strict: 800×200 px (ratio 4:1) • Taille max: 5MB
                     </span>
                   </label>
                 </div>
@@ -564,7 +618,7 @@ export default function PlanificationPage() {
                   <img
                     src={imagePreview || formData.imageUrl || ''}
                     alt="Aperçu"
-                    className="w-full h-48 object-cover rounded-lg border border-gray-700"
+                    className="w-full aspect-[4/1] object-cover rounded-xl border border-gray-700"
                   />
                   <button
                     type="button"
@@ -573,6 +627,9 @@ export default function PlanificationPage() {
                   >
                     <X className="w-4 h-4" />
                   </button>
+                  <div className="absolute left-2 top-2 rounded-md bg-black/60 px-2 py-1 text-[11px] text-gray-200">
+                    800×200 requis
+                  </div>
                   {formData.image && !formData.imageUrl && (
                     <div className="mt-2">
                       <p className="text-xs text-gray-400 mb-2">
@@ -582,6 +639,14 @@ export default function PlanificationPage() {
                   )}
                 </div>
               )}
+              {imageInfo ? (
+                <p className="mt-2 text-xs text-gray-400">
+                  Image détectée: {imageInfo.width}×{imageInfo.height}px
+                </p>
+              ) : null}
+              {imageDimensionError ? (
+                <p className="mt-2 text-xs text-rose-300">{imageDimensionError}</p>
+              ) : null}
             </div>
 
             <div>
@@ -594,7 +659,7 @@ export default function PlanificationPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                className={inputClass}
                 required
               />
             </div>
@@ -609,7 +674,7 @@ export default function PlanificationPage() {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 rows={4}
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                className={`${inputClass} resize-none`}
                 placeholder="Vous pouvez utiliser du Markdown : **gras**, *italique*, listes - ..."
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -693,7 +758,7 @@ ou
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                className={inputClass}
                 required
               >
                 {categories.map((cat) => (
@@ -725,7 +790,7 @@ ou
                 onChange={(e) =>
                   setFormData({ ...formData, date: e.target.value })
                 }
-                className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                className={inputClass}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -742,10 +807,10 @@ ou
                   <button
                     type="button"
                     onClick={() => setLocationMode("none")}
-                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    className={`px-3 py-2 rounded-xl text-sm border transition-colors ${
                       locationMode === "none"
-                        ? "bg-[#9146ff] border-[#9146ff] text-white"
-                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                        ? "bg-gradient-to-r from-[#9146ff] to-[#7c3aed] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#b88bff]"
                     }`}
                   >
                     Aucun
@@ -753,10 +818,10 @@ ou
                   <button
                     type="button"
                     onClick={() => setLocationMode("external")}
-                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    className={`px-3 py-2 rounded-xl text-sm border transition-colors ${
                       locationMode === "external"
-                        ? "bg-[#9146ff] border-[#9146ff] text-white"
-                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                        ? "bg-gradient-to-r from-[#9146ff] to-[#7c3aed] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#b88bff]"
                     }`}
                   >
                     Lien externe
@@ -764,10 +829,10 @@ ou
                   <button
                     type="button"
                     onClick={() => setLocationMode("discord")}
-                    className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    className={`px-3 py-2 rounded-xl text-sm border transition-colors ${
                       locationMode === "discord"
-                        ? "bg-[#9146ff] border-[#9146ff] text-white"
-                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#9146ff]"
+                        ? "bg-gradient-to-r from-[#9146ff] to-[#7c3aed] border-[#9146ff] text-white"
+                        : "bg-[#0e0e10] border-gray-700 text-gray-300 hover:border-[#b88bff]"
                     }`}
                   >
                     Salon vocal Discord
@@ -781,7 +846,7 @@ ou
                       value={externalLocationUrl}
                       onChange={(e) => setExternalLocationUrl(e.target.value)}
                       placeholder="https://www.twitch.tv/antho62221"
-                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className={inputClass}
                     />
                     {(() => {
                       const preview = buildEventLocationDisplay(externalLocationUrl, managedLocationLinks);
@@ -800,7 +865,7 @@ ou
                     <select
                       value={discordLocationId}
                       onChange={(e) => setDiscordLocationId(e.target.value)}
-                      className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className={inputClass}
                     >
                       <option value="">Choisir un vocal</option>
                       {managedLocationLinks
@@ -839,8 +904,8 @@ ou
 
             <button
               type="submit"
-              disabled={saving}
-              className="w-full bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+              disabled={saving || uploadingImage || !!imageDimensionError}
+              className={`w-full ${primaryButtonClass}`}
             >
               {saving ? (isEditMode ? "Modification..." : "Création...") : (isEditMode ? "Enregistrer les modifications" : "Créer l'événement")}
             </button>
@@ -848,7 +913,7 @@ ou
         </div>
 
         {/* Liste des événements */}
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className={`${panelClass} p-6`}>
           <h2 className="text-xl font-semibold text-white mb-6">
             Événements créés
           </h2>
@@ -865,7 +930,7 @@ ou
               {events.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4"
+                  className="bg-[#0e0e10] border border-gray-700 rounded-xl p-4"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -910,7 +975,7 @@ ou
                           <img
                             src={event.image}
                             alt={event.title}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-700"
+                            className="w-full aspect-[4/1] object-cover rounded-lg border border-gray-700"
                           />
                         </div>
                       )}
@@ -918,14 +983,14 @@ ou
                     <div className="flex flex-col gap-2 ml-4">
                       <button
                         onClick={() => handleStartEdit(event)}
-                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        className={subtleButtonClass}
                         title="Modifier"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(event.id)}
-                        className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 transition-colors hover:bg-rose-500/20"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />

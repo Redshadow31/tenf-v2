@@ -51,6 +51,11 @@ function getIdentityAliases(rawValue?: unknown): string[] {
   return Array.from(aliases);
 }
 
+function isUuidLike(value?: string): boolean {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function safeTimestamp(value?: string | null): number {
   if (!value) return 0;
   const ts = new Date(value).getTime();
@@ -375,13 +380,30 @@ export async function GET() {
 
       const chunkRows = await Promise.all(
         chunks.map(async (ids) => {
-          const { data } = await supabaseAdmin
-            .from("event_presences")
-            .select("event_id,present,validated_at,created_at,twitch_login,discord_id")
-            .in("event_id", ids)
-            .eq("present", true)
-            .limit(5000);
-          return data || [];
+          const baseQuery = () =>
+            supabaseAdmin
+              .from("event_presences")
+              .select("event_id,present,validated_at,created_at,twitch_login,discord_id")
+              .eq("present", true)
+              .limit(5000);
+
+          const uuidIds = ids.filter((id) => isUuidLike(id));
+          const legacyIds = ids.filter((id) => !isUuidLike(id));
+          const rows: any[] = [];
+
+          if (uuidIds.length > 0) {
+            const { data } = await baseQuery().in("event_id", uuidIds);
+            if (data?.length) rows.push(...data);
+          }
+
+          if (legacyIds.length > 0) {
+            const { data, error } = await baseQuery().in("event_id", legacyIds);
+            if (!error && data?.length) {
+              rows.push(...data);
+            }
+          }
+
+          return rows;
         })
       );
 

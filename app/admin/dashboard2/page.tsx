@@ -144,15 +144,39 @@ function monthLabelFromDate(date: Date): string {
   return `${names[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
 }
 
+function formatMeetingDateTime(value?: string): string {
+  if (!value) return "Non planifiée";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Non planifiée";
+  return date.toLocaleString("fr-FR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatLongFrenchDate(value: Date): string {
+  return value.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 const premiumCardStyle: CSSProperties = {
-  borderColor: "rgba(212,175,55,0.2)",
-  background: "linear-gradient(155deg, rgba(30,30,36,0.95), rgba(19,19,24,0.98))",
+  borderColor: "rgba(148,163,184,0.22)",
+  background:
+    "radial-gradient(circle at 20% -40%, rgba(124,58,237,0.2), rgba(20,21,30,0.96) 46%), linear-gradient(155deg, rgba(30,30,42,0.95), rgba(16,17,25,0.98))",
   boxShadow: "0 16px 36px rgba(0, 0, 0, 0.22)",
 };
 
 const softCardStyle: CSSProperties = {
-  borderColor: "rgba(255,255,255,0.1)",
-  background: "linear-gradient(160deg, rgba(24,24,30,0.95), rgba(15,15,20,0.96))",
+  borderColor: "rgba(148,163,184,0.2)",
+  background:
+    "radial-gradient(circle at 18% -45%, rgba(37,99,235,0.16), rgba(17,19,30,0.96) 52%), linear-gradient(160deg, rgba(22,24,36,0.95), rgba(14,16,24,0.96))",
 };
 
 const subtleMutedText: CSSProperties = {
@@ -160,7 +184,7 @@ const subtleMutedText: CSSProperties = {
 };
 
 const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#e6c773] focus-visible:ring-offset-[#17171d]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-violet-300/80 focus-visible:ring-offset-[#121420]";
 
 const DASHBOARD_VIEW_STORAGE_KEY = "tenf:admin:dashboard2:saved-views";
 const OPS_OWNER_STORAGE_KEY = "tenf:admin:dashboard2:ops-owners";
@@ -258,12 +282,16 @@ export default function Dashboard2Page() {
   const [recapMonthFilter, setRecapMonthFilter] = useState<"all" | string>("all");
   const [upcomingKpis, setUpcomingKpis] = useState<{
     nextMeetingRegistrations: number;
+    nextMeetingDateIso: string;
+    nextMeetingLabel: string;
     nextEventRegistrations: number;
     nextEventLabel: string;
     upcomingSpotlights: number;
     pendingEventValidations: number;
   }>({
     nextMeetingRegistrations: 0,
+    nextMeetingDateIso: "",
+    nextMeetingLabel: "",
     nextEventRegistrations: 0,
     nextEventLabel: "",
     upcomingSpotlights: 0,
@@ -280,6 +308,7 @@ export default function Dashboard2Page() {
 
   const currentMonth = monthKey();
   const evaluationMonth = previousMonthKey();
+  const currentLongDate = formatLongFrenchDate(new Date());
 
   const pushToast = (type: AdminToastType, title: string, description?: string) => {
     const toast = createToast(type, title, description);
@@ -422,6 +451,8 @@ export default function Dashboard2Page() {
         setUpcomingKpis(
           data.recap?.upcomingKpis || {
             nextMeetingRegistrations: 0,
+            nextMeetingDateIso: "",
+            nextMeetingLabel: "",
             nextEventRegistrations: 0,
             nextEventLabel: "",
             upcomingSpotlights: 0,
@@ -858,31 +889,34 @@ export default function Dashboard2Page() {
       <section
         className="rounded-3xl border p-6 md:p-8"
         style={{
-          borderColor: "rgba(212,175,55,0.24)",
-          background: "radial-gradient(circle at 16% 12%, rgba(212,175,55,0.2), rgba(27,27,33,0.97) 44%)",
+          borderColor: "rgba(148,163,184,0.24)",
+          background:
+            "radial-gradient(circle at 16% 12%, rgba(124,58,237,0.22), rgba(26,27,37,0.97) 44%), linear-gradient(145deg, rgba(22,23,35,0.96), rgba(15,16,24,0.98))",
           boxShadow: "0 20px 45px rgba(0, 0, 0, 0.28)",
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.18em]" style={{ color: "rgba(230, 201, 128, 0.9)" }}>
+            <p className="text-xs uppercase tracking-[0.18em]" style={{ color: "rgba(196,181,253,0.92)" }}>
               Espace administration premium
             </p>
             <h1 className="mt-3 text-2xl font-semibold sm:text-3xl md:text-4xl">Bonjour {adminDisplayName}</h1>
-            <p className="mt-1 text-xs uppercase tracking-[0.11em]" style={{ color: "rgba(222, 209, 170, 0.86)" }}>
+            <p className="mt-1 text-xs uppercase tracking-[0.11em]" style={{ color: "rgba(191,219,254,0.86)" }}>
               {adminRoleLabel}
             </p>
             <p className="mt-3 text-sm md:text-base" style={{ color: "rgba(236, 236, 239, 0.84)" }}>
-              Vue orientee priorites, actions et qualite des operations pour {currentMonth}.
+              Esprit TENF : entraide, progression et exigence bienveillante au service de la communaute.
+              <br />
+              {currentLongDate.charAt(0).toUpperCase() + currentLongDate.slice(1)}
             </p>
           </div>
           <div className="grid gap-2">
             <span
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.09em]"
               style={{
-                borderColor: "rgba(212,175,55,0.45)",
-                backgroundColor: "rgba(212,175,55,0.12)",
-                color: "rgba(244, 219, 151, 0.95)",
+                borderColor: "rgba(167,139,250,0.5)",
+                backgroundColor: "rgba(124,58,237,0.16)",
+                color: "rgba(221,214,254,0.95)",
               }}
             >
               <ShieldCheck size={14} />
@@ -891,11 +925,33 @@ export default function Dashboard2Page() {
             <Link
               href="/admin/control-center"
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px] ${focusRingClass}`}
-              style={{ backgroundColor: "rgba(212,175,55,0.95)", color: "#201b12" }}
+              style={{
+                background: "linear-gradient(135deg, rgba(124,58,237,0.96), rgba(37,99,235,0.96))",
+                color: "white",
+                boxShadow: "0 10px 20px rgba(76,29,149,0.35)",
+              }}
             >
               Ouvrir le control center
               <ArrowUpRight size={14} />
             </Link>
+            <div
+              className="rounded-xl border px-3 py-2 text-xs"
+              style={{
+                borderColor: "rgba(148,163,184,0.28)",
+                backgroundColor: "rgba(255,255,255,0.03)",
+                color: "rgba(226,232,240,0.9)",
+              }}
+            >
+              <p className="font-semibold uppercase tracking-[0.06em] text-[10px] text-violet-200/90">
+                Prochaine réunion
+              </p>
+              <p className="mt-1 text-[12px]">
+                {upcomingKpis.nextMeetingLabel || "Réunion staff"} · {formatMeetingDateTime(upcomingKpis.nextMeetingDateIso)}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-300/90">
+                {upcomingKpis.nextMeetingRegistrations} inscrit(s)
+              </p>
+            </div>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -905,9 +961,9 @@ export default function Dashboard2Page() {
                 href={action.href}
                 className={`rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.07em] transition hover:-translate-y-[1px] sm:text-xs ${focusRingClass}`}
                 style={{
-                  borderColor: "rgba(255,255,255,0.15)",
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                  color: "rgba(228,228,236,0.9)",
+                  borderColor: "rgba(148,163,184,0.26)",
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  color: "rgba(226,232,240,0.92)",
                 }}
               >
                 {action.label}
@@ -972,7 +1028,8 @@ export default function Dashboard2Page() {
             <button
               type="button"
               onClick={saveCurrentView}
-              className="rounded-lg border border-[#e6c773]/40 px-3 py-2 text-sm font-semibold text-[#edd38d] hover:bg-[#e6c773]/10"
+              className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-violet-500/10"
+              style={{ borderColor: "rgba(167,139,250,0.45)", color: "rgba(221,214,254,0.96)" }}
             >
               Sauver la vue
             </button>
@@ -1018,7 +1075,8 @@ export default function Dashboard2Page() {
                   <button
                     type="button"
                     onClick={() => assignOwner(item.id)}
-                    className="rounded-lg border border-[#e6c773]/30 px-3 py-1.5 text-xs font-semibold text-[#edd38d] hover:bg-[#e6c773]/10"
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-violet-500/10"
+                    style={{ borderColor: "rgba(167,139,250,0.36)", color: "rgba(221,214,254,0.92)" }}
                   >
                     Assigner à moi
                   </button>

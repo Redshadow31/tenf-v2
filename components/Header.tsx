@@ -38,6 +38,8 @@ const dropdownGroups: DropdownGroup[] = [
     label: "Découvrir les créateurs",
     items: [
       { href: "/membres", label: "Membres" },
+      { href: "/decouvrir-createurs", label: "Clips à découvrir" },
+      { href: "/interviews", label: "Interviews TENF" },
       { href: "/lives", label: "Lives" },
       { href: "/lives/calendrier", label: "Calendrier des lives" },
     ],

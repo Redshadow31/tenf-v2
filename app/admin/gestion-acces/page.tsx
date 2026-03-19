@@ -10,6 +10,7 @@ interface AdminAccess {
   addedAt: string;
   addedBy: string;
   username?: string;
+  adminAlias?: string;
   avatar?: string;
   addedByUsername?: string; // Nom d'utilisateur de la personne qui a ajouté l'accès
 }
@@ -31,6 +32,7 @@ export default function GestionAccesPage() {
   const [isFounder, setIsFounder] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newDiscordId, setNewDiscordId] = useState("");
+  const [newAdminAlias, setNewAdminAlias] = useState("");
   const [newRole, setNewRole] = useState<"ADMIN_COORDINATEUR" | "MODERATEUR" | "MODERATEUR_EN_FORMATION" | "MODERATEUR_EN_PAUSE" | "SOUTIEN_TENF">("MODERATEUR_EN_FORMATION");
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
@@ -165,6 +167,7 @@ export default function GestionAccesPage() {
         body: JSON.stringify({
           discordId: newDiscordId.trim(),
           role: newRole,
+          adminAlias: newAdminAlias.trim(),
         }),
       });
 
@@ -176,6 +179,7 @@ export default function GestionAccesPage() {
       // Recharger la liste
       await loadAccessList();
       setNewDiscordId("");
+      setNewAdminAlias("");
       setIsAdding(false);
       setSuccess("Accès ajouté avec succès !");
       setError(null);
@@ -433,6 +437,28 @@ export default function GestionAccesPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                  Pseudo admin (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={newAdminAlias}
+                  onChange={(e) => setNewAdminAlias(e.target.value)}
+                  placeholder="Ex: Modo Luna"
+                  maxLength={40}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    backgroundColor: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text)',
+                  }}
+                />
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  Ce pseudo sera affiché dans l'espace admin. Laisse vide pour utiliser le pseudo Discord.
+                </p>
+              </div>
+
               <button
                 onClick={handleAddAccess}
                 className="w-full px-4 py-2 rounded-lg font-medium text-white transition-colors"
@@ -540,6 +566,11 @@ export default function GestionAccesPage() {
                             <div className="font-medium" style={{ color: 'var(--color-text)' }}>
                               {access.username || "Inconnu"}
                             </div>
+                            {access.adminAlias ? (
+                              <div className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
+                                Pseudo admin : {access.adminAlias}
+                              </div>
+                            ) : null}
                             <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                               {access.discordId}
                             </div>
@@ -669,6 +700,11 @@ export default function GestionAccesPage() {
                         <div className="font-medium truncate" style={{ color: "var(--color-text)" }}>
                           {access.username || "Inconnu"}
                         </div>
+                        {access.adminAlias ? (
+                          <div className="text-xs font-semibold truncate" style={{ color: "var(--color-primary)" }}>
+                            Pseudo admin : {access.adminAlias}
+                          </div>
+                        ) : null}
                         <div className="text-xs truncate" style={{ color: "var(--color-text-secondary)" }}>
                           {access.discordId}
                         </div>
