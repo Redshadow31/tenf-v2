@@ -22,6 +22,64 @@ function normalize(value?: unknown): string {
   return String(value ?? "").toLowerCase().trim().replace(/^@+/, "");
 }
 
+function compactKey(value?: unknown): string {
+  return normalize(value).replace(/[^a-z0-9]/g, "");
+}
+
+function getIdentityAliases(rawValue?: unknown): string[] {
+  const normalized = normalize(rawValue);
+  if (!normalized) return [];
+
+  const aliases = new Set<string>([normalized]);
+  const compact = compactKey(normalized);
+  if (compact) aliases.add(compact);
+
+  const hashIdx = normalized.indexOf("#");
+  if (hashIdx > 0) {
+    aliases.add(normalized.slice(0, hashIdx));
+  }
+
+  if (normalized.startsWith("<@") && normalized.endsWith(">")) {
+    const mentionId = normalized.replace(/[<@!>]/g, "");
+    if (mentionId) {
+      aliases.add(mentionId);
+      const mentionCompact = compactKey(mentionId);
+      if (mentionCompact) aliases.add(mentionCompact);
+    }
+  }
+
+  return Array.from(aliases);
+}
+
+function safeTimestamp(value?: string | null): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function dedupeMemberPresences(
+  rows: Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }>
+): Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }> {
+  const byEvent = new Map<string, { event_id: string; present: boolean; validated_at: string | null; created_at: string | null }>();
+  for (const row of rows) {
+    const key = String(row.event_id || "");
+    if (!key) continue;
+
+    const existing = byEvent.get(key);
+    if (!existing) {
+      byEvent.set(key, row);
+      continue;
+    }
+
+    const existingTs = Math.max(safeTimestamp(existing.validated_at), safeTimestamp(existing.created_at));
+    const currentTs = Math.max(safeTimestamp(row.validated_at), safeTimestamp(row.created_at));
+    if (currentTs >= existingTs) {
+      byEvent.set(key, row);
+    }
+  }
+  return Array.from(byEvent.values());
+}
+
 function isFormationCategory(category?: string | null): boolean {
   const key = normalize(category);
   return key.includes("formation");
@@ -227,11 +285,9 @@ export async function GET() {
     const effectiveRole =
       (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || member.role;
 
-    const identity = new Set<string>(
-      [member.twitchLogin, member.discordId, member.discordUsername, member.displayName, member.siteUsername]
-        .filter(Boolean)
-        .map((v) => normalize(v))
-    );
+    const identity = new Set<string>();
+    [member.twitchLogin, member.discordId, member.discordUsername, member.displayName, member.siteUsername]
+      .forEach((value) => getIdentityAliases(value).forEach((alias) => identity.add(alias)));
 
     const now = new Date();
     const monthKey = getCurrentMonthKey();
@@ -243,8 +299,8 @@ export async function GET() {
         .filter((raid) => {
           const source = raid.source || (raid.manual ? "manual" : "twitch-live");
           if (source === "discord") return false;
-          const raider = normalize(raid.raider);
-          return identity.has(raider);
+          const raiderAliases = getIdentityAliases(raid.raider);
+          return raiderAliases.some((alias) => identity.has(alias));
         })
         .reduce((total, raid) => total + (raid.count || 1), 0);
     } catch {
@@ -262,7 +318,8 @@ export async function GET() {
       raidsTotal = totals.flat().reduce((sum, raid) => {
         const source = raid.source || (raid.manual ? "manual" : "twitch-live");
         if (source === "discord") return sum;
-        return identity.has(normalize(raid.raider)) ? sum + (raid.count || 1) : sum;
+        const raiderAliases = getIdentityAliases(raid.raider);
+        return raiderAliases.some((alias) => identity.has(alias)) ? sum + (raid.count || 1) : sum;
       }, 0);
     } catch {
       // fallback raidsThisMonth
@@ -307,22 +364,48 @@ export async function GET() {
     const formationHistory: Array<{ id: string; title: string; date: string }> = [];
     const eventPresenceHistory: Array<{ id: string; title: string; date: string; category: string }> = [];
 
-    let memberPresences: Array<{ event_id: string; validated_at: string | null; created_at: string | null }> = [];
+    let memberPresenceRows: Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }> = [];
     try {
-      const { data } = await supabaseAdmin
-        .from("event_presences")
-        .select("event_id,validated_at,created_at,twitch_login,present")
-        .eq("present", true)
-        .eq("twitch_login", normalize(member.twitchLogin))
-        .limit(2000);
-      memberPresences = (data || []).map((row: any) => ({
-        event_id: String(row.event_id),
-        validated_at: row.validated_at || null,
-        created_at: row.created_at || null,
-      }));
+      const allEventIds = Array.from(new Set(allEvents.map((event) => String(event.id)).filter(Boolean)));
+      const chunkSize = 200;
+      const chunks: string[][] = [];
+      for (let i = 0; i < allEventIds.length; i += chunkSize) {
+        chunks.push(allEventIds.slice(i, i + chunkSize));
+      }
+
+      const chunkRows = await Promise.all(
+        chunks.map(async (ids) => {
+          const { data } = await supabaseAdmin
+            .from("event_presences")
+            .select("event_id,present,validated_at,created_at,twitch_login,discord_id")
+            .in("event_id", ids)
+            .eq("present", true)
+            .limit(5000);
+          return data || [];
+        })
+      );
+
+      const filteredRows = chunkRows
+        .flat()
+        .filter((row: any) => {
+          const twitchAliases = getIdentityAliases(row.twitch_login);
+          const discordAliases = getIdentityAliases(row.discord_id);
+          return [...twitchAliases, ...discordAliases].some((alias) => identity.has(alias));
+        });
+
+      memberPresenceRows = dedupeMemberPresences(
+        filteredRows.map((row: any) => ({
+          event_id: String(row.event_id),
+          present: Boolean(row.present),
+          validated_at: row.validated_at || null,
+          created_at: row.created_at || null,
+        }))
+      );
     } catch {
-      memberPresences = [];
+      memberPresenceRows = [];
     }
+
+    const memberPresences = memberPresenceRows.filter((row) => row.present);
 
     const seenEvents = new Set<string>();
     for (const presence of memberPresences) {
