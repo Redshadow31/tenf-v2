@@ -328,7 +328,7 @@ export default function AdminEngagementFollowPage() {
                         {row.followRate !== null ? `${row.followRate}%` : "—"}
                       </td>
                       <td className="px-3 py-3 align-top text-sm">
-                        {row.deltaFollowRate !== null
+                        {row.deltaFollowRate != null
                           ? `${row.deltaFollowRate > 0 ? "+" : ""}${row.deltaFollowRate}%`
                           : "—"}
                       </td>
