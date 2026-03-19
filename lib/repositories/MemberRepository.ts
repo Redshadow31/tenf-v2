@@ -66,7 +66,7 @@ export class MemberRepository {
    * @param offset - Nombre de résultats à ignorer (défaut: 0)
    */
   async findAll(limit = 100, offset = 0): Promise<MemberData[]> {
-    const cacheKeyStr = cacheKey('members', 'all', limit, offset);
+    const cacheKeyStr = cacheKey('members', 'all_v2_stable_order', limit, offset);
     const startTime = Date.now();
     
     // Essayer de récupérer du cache
@@ -80,7 +80,9 @@ export class MemberRepository {
     const { data, error } = await supabaseAdmin
       .from('members')
       .select('*')
-      .order('updated_at', { ascending: false })
+      // Ordre stable indispensable pour la pagination offset
+      // (évite de "perdre" des lignes si updated_at bouge pendant le scan).
+      .order('twitch_login', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (error) {
@@ -169,7 +171,7 @@ export class MemberRepository {
    * Récupère les membres actifs avec pagination
    */
   async findActive(limit = 50, offset = 0): Promise<MemberData[]> {
-    const cacheKeyStr = cacheKey('members', 'active', limit, offset);
+    const cacheKeyStr = cacheKey('members', 'active_v2_stable_order', limit, offset);
     
     // Essayer de récupérer du cache
     try {
@@ -187,7 +189,8 @@ export class MemberRepository {
         .from('members')
         .select('*')
         .eq('is_active', true)
-        .order('updated_at', { ascending: false })
+        // Ordre stable pour éviter les trous de pagination sur les scans complets.
+        .order('twitch_login', { ascending: true })
         .range(offset, offset + limit - 1);
 
       if (error) {

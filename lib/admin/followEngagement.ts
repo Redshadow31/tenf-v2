@@ -104,6 +104,11 @@ type ComputedMemberSnapshot = {
   notFollowedChannels: FollowEngagementDetailChannel[];
 };
 
+type SnapshotHistoryEntry = {
+  row: any;
+  snapshot: SnapshotMeta;
+};
+
 const SNAPSHOTS_TABLE = "follow_engagement_snapshots";
 const SNAPSHOT_MEMBERS_TABLE = "follow_engagement_snapshot_members";
 const SNAPSHOT_MEMBER_CHANNELS_TABLE = "follow_engagement_snapshot_member_channels";
@@ -127,13 +132,18 @@ function memberToTenfChannel(member: MemberData): TenfChannel | null {
   };
 }
 
-async function listActiveTenfChannels(): Promise<TenfChannel[]> {
+async function listActiveTenfChannels(): Promise<{
+  channels: TenfChannel[];
+  activeMembersCount: number;
+}> {
   const channels: TenfChannel[] = [];
+  let activeMembersCount = 0;
 
   for (let page = 0; page < MAX_ACTIVE_MEMBERS_PAGES; page++) {
     const offset = page * ACTIVE_MEMBERS_PAGE_SIZE;
     const chunk = await memberRepository.findActive(ACTIVE_MEMBERS_PAGE_SIZE, offset);
     if (!Array.isArray(chunk) || chunk.length === 0) break;
+    activeMembersCount += chunk.length;
 
     for (const member of chunk) {
       const channel = memberToTenfChannel(member);
@@ -144,7 +154,7 @@ async function listActiveTenfChannels(): Promise<TenfChannel[]> {
     if (chunk.length < ACTIVE_MEMBERS_PAGE_SIZE) break;
   }
 
-  return channels;
+  return { channels, activeMembersCount };
 }
 
 async function fetchAllFollowedChannels(
@@ -368,7 +378,7 @@ async function computeSnapshotPayload(): Promise<{
   rows: ComputedMemberSnapshot[];
 }> {
   const generatedAtIso = new Date().toISOString();
-  const channels = await listActiveTenfChannels();
+  const { channels, activeMembersCount } = await listActiveTenfChannels();
 
   const rows = await withConcurrency(
     channels,
@@ -387,9 +397,76 @@ async function computeSnapshotPayload(): Promise<{
     generatedAt: generatedAtIso,
     sourceDataRetrievedAt: generatedAtIso,
     totalActiveTenfChannels: channels.length,
-    trackedMembersCount: channels.length,
+    trackedMembersCount: activeMembersCount,
     rows,
   };
+}
+
+async function getLatestCalculatedRowsForLogins(
+  logins: string[]
+): Promise<Map<string, { row: any; snapshotId: string }>> {
+  const latestByLogin = new Map<string, { row: any; snapshotId: string }>();
+  if (!Array.isArray(logins) || logins.length === 0) {
+    return latestByLogin;
+  }
+
+  const normalizedUniqueLogins = Array.from(
+    new Set(logins.map((login) => normalizeTwitchLogin(login)).filter(Boolean) as string[])
+  );
+  if (normalizedUniqueLogins.length === 0) {
+    return latestByLogin;
+  }
+
+  const CHUNK_SIZE = 200;
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES_PER_CHUNK = Math.max(1, Math.floor(SNAPSHOT_MEMBERS_FALLBACK_LIMIT / PAGE_SIZE));
+
+  for (let i = 0; i < normalizedUniqueLogins.length; i += CHUNK_SIZE) {
+    const chunk = normalizedUniqueLogins.slice(i, i + CHUNK_SIZE);
+    if (chunk.length === 0) continue;
+
+    for (let page = 0; page < MAX_PAGES_PER_CHUNK; page++) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabaseAdmin
+        .from(SNAPSHOT_MEMBERS_TABLE)
+        .select(
+          "snapshot_id, discord_id, display_name, member_twitch_login, linked_twitch_login, linked_twitch_display_name, followed_count, total_active_tenf_channels, follow_rate, state, reason, last_checked_at, created_at"
+        )
+        .in("member_twitch_login", chunk)
+        .eq("state", "ok")
+        .not("follow_rate", "is", null)
+        .not("followed_count", "is", null)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      for (const row of data) {
+        const login = normalizeTwitchLogin(row.member_twitch_login);
+        if (!login || latestByLogin.has(login)) continue;
+        latestByLogin.set(login, {
+          row,
+          snapshotId: String(row.snapshot_id || ""),
+        });
+      }
+
+      if (chunk.every((login) => latestByLogin.has(login))) {
+        break;
+      }
+      if (data.length < PAGE_SIZE) {
+        break;
+      }
+    }
+  }
+
+  return latestByLogin;
 }
 
 export async function createFollowEngagementSnapshot(
@@ -507,6 +584,20 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
   const previousSnapshot = snapshots?.[1] as SnapshotMeta | undefined;
   if (!latestSnapshot?.id) return null;
 
+  let activeMembersCount = Number(latestSnapshot.tracked_members_count || 0);
+  const activeChannelByLogin = new Map<string, TenfChannel>();
+  try {
+    const activeData = await listActiveTenfChannels();
+    activeMembersCount = activeData.activeMembersCount;
+    for (const channel of activeData.channels) {
+      if (!activeChannelByLogin.has(channel.twitchLogin)) {
+        activeChannelByLogin.set(channel.twitchLogin, channel);
+      }
+    }
+  } catch (error) {
+    console.warn("[Follow Overview] Echec scan membres actifs, fallback snapshots uniquement:", error);
+  }
+
   const snapshotIds = (snapshots || []).map((snapshot: any) => String(snapshot.id)).filter(Boolean);
   const { data: snapshotRows, error: rowsError } = await supabaseAdmin
     .from(SNAPSHOT_MEMBERS_TABLE)
@@ -521,21 +612,6 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     snapshotMetaById.set(String((snapshot as any).id), snapshot as SnapshotMeta);
   }
 
-  // Recuperer la derniere valeur calculee valide sur un historique large.
-  // Ceci evite la baisse progressive du nombre de lignes fallback
-  // quand les anciens snapshots sortent de la fenetre recente.
-  const { data: historicalCalculatedRows, error: historicalError } = await supabaseAdmin
-    .from(SNAPSHOT_MEMBERS_TABLE)
-    .select(
-      "snapshot_id, discord_id, display_name, member_twitch_login, linked_twitch_login, linked_twitch_display_name, followed_count, total_active_tenf_channels, follow_rate, state, reason, last_checked_at, created_at"
-    )
-    .eq("state", "ok")
-    .not("follow_rate", "is", null)
-    .not("followed_count", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(SNAPSHOT_MEMBERS_FALLBACK_LIMIT);
-  if (historicalError) throw historicalError;
-
   const rowsBySnapshotId = new Map<string, any[]>();
   for (const row of snapshotRows || []) {
     const snapshotId = String(row.snapshot_id || "");
@@ -545,7 +621,7 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     rowsBySnapshotId.set(snapshotId, list);
   }
 
-  const historyByLogin = new Map<string, Array<{ row: any; snapshot: SnapshotMeta }>>();
+  const historyByLogin = new Map<string, SnapshotHistoryEntry[]>();
   for (const snapshot of snapshots || []) {
     const snapshotId = String((snapshot as any).id);
     const rowsForSnapshot = rowsBySnapshotId.get(snapshotId) || [];
@@ -558,14 +634,36 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     }
   }
 
-  const latestCalculatedByLogin = new Map<string, { row: any; snapshotId: string }>();
-  for (const row of historicalCalculatedRows || []) {
-    const login = String(row.member_twitch_login || "").toLowerCase();
-    if (!login || latestCalculatedByLogin.has(login)) continue;
-    latestCalculatedByLogin.set(login, {
-      row,
-      snapshotId: String(row.snapshot_id || ""),
-    });
+  const targetLogins = new Set<string>();
+  if (activeChannelByLogin.size > 0) {
+    for (const login of activeChannelByLogin.keys()) targetLogins.add(login);
+  } else {
+    for (const login of historyByLogin.keys()) targetLogins.add(login);
+  }
+
+  const fallbackCandidateLogins: string[] = [];
+  const hasUsableCalculatedValue = (row: any): boolean =>
+    row?.state === "ok" &&
+    row?.follow_rate !== null &&
+    row?.follow_rate !== undefined &&
+    row?.followed_count !== null &&
+    row?.followed_count !== undefined;
+
+  for (const login of targetLogins) {
+    const history = historyByLogin.get(login) || [];
+    const latestEntry = history[0] || null;
+    if (!latestEntry || !hasUsableCalculatedValue(latestEntry.row)) {
+      fallbackCandidateLogins.push(login);
+    }
+  }
+
+  let latestCalculatedByLogin = new Map<string, { row: any; snapshotId: string }>();
+  if (fallbackCandidateLogins.length > 0) {
+    try {
+      latestCalculatedByLogin = await getLatestCalculatedRowsForLogins(fallbackCandidateLogins);
+    } catch (error) {
+      console.warn("[Follow Overview] Echec lecture historique calcule, fallback partiel:", error);
+    }
   }
 
   const missingSnapshotIds = Array.from(
@@ -595,22 +693,13 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     return null;
   };
 
-  const hasUsableCalculatedValue = (row: any): boolean =>
-    row?.state === "ok" &&
-    row?.follow_rate !== null &&
-    row?.follow_rate !== undefined &&
-    row?.followed_count !== null &&
-    row?.followed_count !== undefined;
-
   const mergedRows: FollowEngagementOverviewRow[] = [];
-  for (const [login, history] of historyByLogin.entries()) {
+  for (const login of targetLogins) {
+    const history = historyByLogin.get(login) || [];
     const latestEntry = history[0] || null;
-    if (!latestEntry) continue;
+    const activeChannel = activeChannelByLogin.get(login) || null;
 
-    // Regle demandee: si le snapshot courant est "not_linked",
-    // reprendre la derniere valeur calculee valide disponible.
-    const latestCalculatedEntry =
-      history.find((entry) => hasUsableCalculatedValue(entry.row)) || null;
+    const latestCalculatedEntry = history.find((entry) => hasUsableCalculatedValue(entry.row)) || null;
     const latestCalculatedGlobal = latestCalculatedByLogin.get(login);
     const latestCalculatedGlobalSnapshot = latestCalculatedGlobal?.snapshotId
       ? snapshotMetaById.get(latestCalculatedGlobal.snapshotId)
@@ -620,15 +709,43 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
         ? { row: latestCalculatedGlobal.row, snapshot: latestCalculatedGlobalSnapshot }
         : null;
     const latestCalculatedAnyEntry = latestCalculatedEntry || latestCalculatedGlobalEntry;
-    const shouldFallbackToLatestCalculated =
-      latestEntry.row?.state === "not_linked" && Boolean(latestCalculatedAnyEntry);
-    const shouldFallbackForUnusableLatest =
-      !hasUsableCalculatedValue(latestEntry.row) && Boolean(latestCalculatedAnyEntry);
 
-    const sourceEntry =
-      shouldFallbackToLatestCalculated || shouldFallbackForUnusableLatest
+    const shouldFallbackToLatestCalculated = latestEntry?.row?.state === "not_linked" && Boolean(latestCalculatedAnyEntry);
+    const shouldFallbackForUnusableLatest =
+      (!latestEntry || !hasUsableCalculatedValue(latestEntry.row)) && Boolean(latestCalculatedAnyEntry);
+
+    let sourceEntry: SnapshotHistoryEntry | null = null;
+    if (latestEntry) {
+      sourceEntry =
+        shouldFallbackToLatestCalculated || shouldFallbackForUnusableLatest
         ? (latestCalculatedAnyEntry as { row: any; snapshot: SnapshotMeta })
         : latestEntry;
+    } else if (latestCalculatedAnyEntry) {
+      sourceEntry = latestCalculatedAnyEntry as { row: any; snapshot: SnapshotMeta };
+    }
+
+    if (!sourceEntry) {
+      if (!activeChannel) continue;
+      mergedRows.push({
+        discordId: activeChannel.discordId,
+        displayName: activeChannel.displayName,
+        memberTwitchLogin: activeChannel.twitchLogin,
+        linkedTwitchLogin: null,
+        linkedTwitchDisplayName: null,
+        followedCount: null,
+        totalActiveTenfChannels: Number(latestSnapshot.total_active_tenf_channels || 0),
+        followRate: null,
+        lastCalculatedAt: null,
+        state: "calculation_impossible",
+        reason: "missing_snapshot_row",
+        snapshotId: String(latestSnapshot.id),
+        snapshotGeneratedAt: String(latestSnapshot.generated_at),
+        isStaleFromPreviousSnapshot: false,
+        previousFollowRate: null,
+        deltaFollowRate: null,
+      });
+      continue;
+    }
 
     const source = sourceEntry.row;
     const sourceSnapshot = sourceEntry.snapshot;
@@ -637,9 +754,9 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     const isStaleFromHistory = String(sourceSnapshot.id) !== String(latestSnapshot.id);
 
     mergedRows.push({
-      discordId: source.discord_id || null,
-      displayName: String(source.display_name || ""),
-      memberTwitchLogin: String(source.member_twitch_login || "").toLowerCase(),
+      discordId: source.discord_id || activeChannel?.discordId || null,
+      displayName: String(source.display_name || activeChannel?.displayName || login),
+      memberTwitchLogin: String(source.member_twitch_login || login).toLowerCase(),
       linkedTwitchLogin: source.linked_twitch_login ? String(source.linked_twitch_login).toLowerCase() : null,
       linkedTwitchDisplayName: source.linked_twitch_display_name || null,
       followedCount: typeof source.followed_count === "number" ? source.followed_count : null,
@@ -669,7 +786,7 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
     generatedAt: String(latestSnapshot.generated_at),
     sourceDataRetrievedAt: String(latestSnapshot.source_data_retrieved_at || latestSnapshot.generated_at),
     totalActiveTenfChannels: Number(latestSnapshot.total_active_tenf_channels || 0),
-    trackedMembersCount: Number(latestSnapshot.tracked_members_count || 0),
+    trackedMembersCount: activeMembersCount,
     rows: mergedRows,
     previousSnapshotId: previousSnapshot ? String(previousSnapshot.id) : null,
     previousGeneratedAt: previousSnapshot ? String(previousSnapshot.generated_at) : null,

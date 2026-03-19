@@ -1104,8 +1104,15 @@ export default function GestionMembresPage() {
     }
     return { overdue, dueSoon };
   })();
-  const totalActiveMembers = members.filter((m) => m.statut === "Actif" && m.role !== "Nouveau").length;
-  const totalInactiveMembers = communityFollowupMembers.length;
+  const totalActiveMembers = members.filter(
+    (m) => (m.statut === "Actif" || isStaffRole(m.role)) && m.role !== "Nouveau"
+  ).length;
+  const totalInactiveMembers = members.filter(
+    (member) =>
+      member.statut === "Inactif" &&
+      !isStaffRole(member.role) &&
+      member.role !== "Nouveau"
+  ).length;
   const totalNewMembers = members.filter((m) => m.role === "Nouveau").length;
   const totalArchivedMembers = archivedMembers.length;
   const totalIncompleteMembers = members.filter((m) => getMemberCompleteness(m).percent < 80).length;
@@ -2086,7 +2093,7 @@ export default function GestionMembresPage() {
             </div>
             <div className="rounded-xl border border-green-500/25 bg-green-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-green-200">Actifs</p>
-              <p className="mt-1 text-xl font-semibold text-green-300">{activeMembers.length}</p>
+              <p className="mt-1 text-xl font-semibold text-green-300">{totalActiveMembers}</p>
             </div>
             <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-red-200">Suivi communauté</p>
@@ -2094,7 +2101,7 @@ export default function GestionMembresPage() {
             </div>
             <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-purple-200">Nouveaux</p>
-              <p className="mt-1 text-xl font-semibold text-purple-300">{newMembers.length}</p>
+              <p className="mt-1 text-xl font-semibold text-purple-300">{totalNewMembers}</p>
             </div>
             <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-yellow-200">Incomplets</p>

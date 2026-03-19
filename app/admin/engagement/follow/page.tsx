@@ -206,7 +206,7 @@ export default function AdminEngagementFollowPage() {
         : 0;
 
     return {
-      totalMembers: rows.length,
+      totalMembers: overview?.trackedMembersCount ?? rows.length,
       linkedMembers: linkedRows.length,
       calculableMembers: okRows.length,
       averageRate,
