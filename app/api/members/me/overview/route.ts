@@ -117,6 +117,85 @@ function profileCompletion(member: any): { completed: boolean; percent: number }
   return { completed: percent >= 100, percent };
 }
 
+function buildSafeOverviewPayload(input: {
+  discordId: string;
+  monthKey: string;
+  member?: any | null;
+}) {
+  const { discordId, monthKey, member } = input;
+  const role = String(member?.role || "Membre");
+  const displayName = String(
+    member?.displayName ||
+      member?.display_name ||
+      member?.siteUsername ||
+      member?.site_username ||
+      member?.twitchLogin ||
+      member?.twitch_login ||
+      "Membre"
+  );
+  const twitchLogin = String(member?.twitchLogin || member?.twitch_login || "");
+  const integrationDateRaw = member?.integrationDate || member?.integration_date || null;
+  const integrationDateIso =
+    integrationDateRaw instanceof Date
+      ? integrationDateRaw.toISOString()
+      : typeof integrationDateRaw === "string" && integrationDateRaw
+        ? integrationDateRaw
+        : null;
+
+  return {
+    member: {
+      discordId,
+      twitchLogin,
+      displayName,
+      role,
+      profileValidationStatus: String(member?.profileValidationStatus || member?.profile_validation_status || "non_soumis"),
+      onboardingStatus: String(member?.onboardingStatus || member?.onboarding_status || "termine"),
+      integrationDate: integrationDateIso,
+      parrain: member?.parrain || null,
+      bio: String(member?.description || member?.customBio || member?.custom_bio || ""),
+      socials: {
+        twitch: twitchLogin ? `https://www.twitch.tv/${twitchLogin}` : "",
+        discord: String(member?.discordUsername || member?.discord_username || ""),
+        instagram: String(member?.instagram || ""),
+        tiktok: String(member?.tiktok || ""),
+        twitter: String(member?.twitter || ""),
+        youtube: "",
+      },
+    },
+    vip: {
+      activeThisMonth: Boolean(member?.isVip || member?.is_vip),
+      statusLabel: Boolean(member?.isVip || member?.is_vip) ? "Actif ce mois" : "Non actif ce mois",
+      source: Boolean(member?.isVip || member?.is_vip) ? ("member_flag" as const) : ("none" as const),
+      startsAt: null,
+      endsAt: null,
+    },
+    monthKey,
+    stats: {
+      raidsThisMonth: 0,
+      raidsTotal: 0,
+      eventPresencesThisMonth: 0,
+      participationThisMonth: 0,
+      formationsValidated: 0,
+      formationsValidatedThisMonth: 0,
+    },
+    profile: {
+      completed: false,
+      percent: 0,
+    },
+    upcomingEvents: [],
+    formationHistory: [],
+    eventPresenceHistory: [],
+    attendance: {
+      currentMonthKey: monthKey,
+      previousMonthKey: getPreviousMonthKey(new Date()),
+      monthlyHistory: [],
+      monthEvents: [],
+      monthEventsByMonth: [],
+      categoryBreakdown: [],
+    },
+  };
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -125,7 +204,22 @@ export async function GET() {
       return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
     }
 
-    const member = await memberRepository.findByDiscordId(discordId);
+    let member: Awaited<ReturnType<typeof memberRepository.findByDiscordId>> = null;
+    try {
+      member = await memberRepository.findByDiscordId(discordId);
+    } catch (repoError) {
+      console.error("[members/me/overview] memberRepository.findByDiscordId failed, fallback to direct Supabase query", repoError);
+      const { data, error } = await supabaseAdmin
+        .from("members")
+        .select("*")
+        .eq("discord_id", discordId)
+        .single();
+      if (error) {
+        console.error("[members/me/overview] direct members lookup failed", error);
+      } else {
+        member = data as any;
+      }
+    }
     if (!member) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
@@ -402,6 +496,30 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[members/me/overview] GET error:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    try {
+      const session = await getServerSession(authOptions);
+      const discordId = session?.user?.discordId;
+      if (!discordId) {
+        return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
+      }
+
+      const monthKey = getCurrentMonthKey();
+      const { data } = await supabaseAdmin
+        .from("members")
+        .select("*")
+        .eq("discord_id", discordId)
+        .single();
+
+      return NextResponse.json(
+        buildSafeOverviewPayload({
+          discordId,
+          monthKey,
+          member: data || null,
+        })
+      );
+    } catch (fallbackError) {
+      console.error("[members/me/overview] fallback response failed:", fallbackError);
+      return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    }
   }
 }

@@ -71,7 +71,7 @@ export default function LiveCard({ live }: LiveCardProps) {
         {live.isTopRaider ? (
           <div className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-300/60 bg-fuchsia-500/25 px-2.5 py-1 text-xs font-extrabold tracking-[0.02em] text-fuchsia-100 shadow-[0_0_16px_rgba(217,70,239,0.35)]">
             <span aria-hidden="true">🚀</span>
-            Top Raider{live.topRaidsCount ? ` · ${live.topRaidsCount}` : ""}
+            Top Raider
           </div>
         ) : null}
       </div>
@@ -101,12 +101,12 @@ export default function LiveCard({ live }: LiveCardProps) {
             <>
               {live.isSolidarityRaider ? (
                 <span className="rounded-full border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-200">
-                  🤝 Raid solidaire {live.uniqueRaidTargetsThisMonth ? `(${live.uniqueRaidTargetsThisMonth})` : ""}
+                  🤝 Raid solidaire
                 </span>
               ) : null}
               {live.isCommunityBooster ? (
                 <span className="rounded-full border border-indigo-300/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-200">
-                  💪 Booster commu {live.raidsDoneThisMonth ? `(${live.raidsDoneThisMonth})` : ""}
+                  💪 Booster commu
                 </span>
               ) : null}
               {live.isDiscoverer ? (
@@ -116,7 +116,7 @@ export default function LiveCard({ live }: LiveCardProps) {
               ) : null}
               {live.isWarmlySupported ? (
                 <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-200">
-                  💜 Accueil chaleureux {live.uniqueRaidersReceivedThisMonth ? `(${live.uniqueRaidersReceivedThisMonth})` : ""}
+                  💜 Accueil chaleureux
                 </span>
               ) : null}
               {live.isBalancedSupport ? (
