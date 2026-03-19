@@ -113,9 +113,33 @@ const defaultDashboardData: DashboardData = {
 // ============================================
 
 function isNetlify(): boolean {
-  return typeof getStore === 'function' || 
-         !!process.env.NETLIFY || 
-         !!process.env.NETLIFY_DEV;
+  return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+}
+
+function createDashboardStore() {
+  try {
+    return getStore(DASHBOARD_STORE_NAME);
+  } catch {
+    const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+    const token =
+      process.env.NETLIFY_AUTH_TOKEN ||
+      process.env.NETLIFY_BLOBS_TOKEN ||
+      process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+
+    if (!siteID || !token) {
+      return null;
+    }
+
+    try {
+      return getStore({
+        name: DASHBOARD_STORE_NAME,
+        siteID,
+        token,
+      });
+    } catch {
+      return null;
+    }
+  }
 }
 
 // ============================================
@@ -124,8 +148,8 @@ function isNetlify(): boolean {
 
 export async function loadDashboardData(): Promise<DashboardData> {
   try {
-    if (isNetlify()) {
-      const store = getStore(DASHBOARD_STORE_NAME);
+    const store = createDashboardStore();
+    if (store) {
       const data = await store.get(DASHBOARD_KEY, { type: 'json' });
       if (data) {
         // Fusionner avec les données par défaut pour les nouvelles propriétés
@@ -163,8 +187,8 @@ export async function saveDashboardData(data: DashboardData, updatedBy?: string)
       updatedBy: updatedBy || data.updatedBy,
     };
 
-    if (isNetlify()) {
-      const store = getStore(DASHBOARD_STORE_NAME);
+    const store = createDashboardStore();
+    if (store) {
       await store.set(DASHBOARD_KEY, JSON.stringify(dataToSave, null, 2));
     } else {
       // Développement local

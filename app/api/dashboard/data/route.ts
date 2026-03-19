@@ -13,7 +13,7 @@ const DASHBOARD_PUBLIC_TTL_SECONDS = 120;
  */
 export async function GET() {
   try {
-    const cacheKeyStr = cacheKey('api', 'dashboard', 'data', 'public', 'v1');
+    const cacheKeyStr = cacheKey('api', 'dashboard', 'data', 'public', 'v2');
     const cached = await cacheGet<any>(cacheKeyStr);
     if (cached) {
       return NextResponse.json(cached);

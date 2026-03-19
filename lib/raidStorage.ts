@@ -49,6 +49,32 @@ export interface RaidAlert {
 
 const RAID_STORE_NAME = "tenf-raids";
 
+function createRaidStore() {
+  try {
+    return getStore(RAID_STORE_NAME);
+  } catch {
+    const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+    const token =
+      process.env.NETLIFY_AUTH_TOKEN ||
+      process.env.NETLIFY_BLOBS_TOKEN ||
+      process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+
+    if (!siteID || !token) {
+      return null;
+    }
+
+    try {
+      return getStore({
+        name: RAID_STORE_NAME,
+        siteID,
+        token,
+      });
+    } catch {
+      return null;
+    }
+  }
+}
+
 // ============================================
 // UTILITAIRES
 // ============================================
@@ -100,12 +126,10 @@ function getFilePath(monthKey: string, filename: string): string {
  * Charge un fichier depuis Netlify Blobs
  */
 async function loadFromBlobs(monthKey: string, filename: string): Promise<string | null> {
-  if (!isNetlify()) {
-    return null;
-  }
+  const store = createRaidStore();
+  if (!store) return null;
 
   try {
-    const store = getStore(RAID_STORE_NAME);
     const key = `${monthKey}/${filename}`;
     const data = await store.get(key, { type: "text" });
     return data || null;
@@ -119,12 +143,10 @@ async function loadFromBlobs(monthKey: string, filename: string): Promise<string
  * Sauvegarde un fichier dans Netlify Blobs
  */
 async function saveToBlobs(monthKey: string, filename: string, content: string): Promise<void> {
-  if (!isNetlify()) {
-    return;
-  }
+  const store = createRaidStore();
+  if (!store) return;
 
   try {
-    const store = getStore(RAID_STORE_NAME);
     const key = `${monthKey}/${filename}`;
     await store.set(key, content);
     console.log(`[RaidStorage] Sauvegardé dans Blobs: ${key}`);
@@ -791,9 +813,9 @@ export interface IgnoredRaid {
 export async function loadIgnoredRaids(monthKey: string): Promise<IgnoredRaid[]> {
   try {
     const filename = "ignored-raids.json";
-    
-    if (isNetlify()) {
-      const store = getStore(RAID_STORE_NAME);
+
+    const store = createRaidStore();
+    if (store) {
       const key = `${monthKey}/${filename}`;
       const data = await store.get(key, { type: 'json' }).catch(() => null);
       return data || [];
@@ -817,9 +839,9 @@ export async function loadIgnoredRaids(monthKey: string): Promise<IgnoredRaid[]>
 export async function saveIgnoredRaids(monthKey: string, ignored: IgnoredRaid[]): Promise<void> {
   try {
     const filename = "ignored-raids.json";
-    
-    if (isNetlify()) {
-      const store = getStore(RAID_STORE_NAME);
+
+    const store = createRaidStore();
+    if (store) {
       const key = `${monthKey}/${filename}`;
       await store.set(key, JSON.stringify(ignored, null, 2));
     } else {
