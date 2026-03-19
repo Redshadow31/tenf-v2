@@ -5,6 +5,7 @@ import {
   getLinkedTwitchAccountByTwitchUserId,
   upsertLinkedTwitchAccount,
 } from "@/lib/twitchLinkedAccount";
+import { logger, LogCategory, LogLevel } from "@/lib/logging/logger";
 
 const TWITCH_LINK_STATE_COOKIE = "twitch_link_oauth_state";
 
@@ -237,6 +238,25 @@ export async function GET(request: NextRequest) {
       }
       throw upsertError;
     }
+
+    await logger.log({
+      category: LogCategory.TWITCH,
+      level: LogLevel.INFO,
+      message: "Liaison Twitch effectuee",
+      userId: user.discordId,
+      route: "/api/auth/twitch/link/callback",
+      details: {
+        action: "twitch_link_success",
+        discordId: user.discordId,
+        twitchUserId: String(twitchUser.id),
+        twitchLogin: String(twitchUser.login || "").toLowerCase(),
+        twitchDisplayName: String(twitchUser.display_name || twitchUser.login || ""),
+      },
+      metadata: {
+        resourceType: "linked_twitch_account",
+        resourceId: String(twitchUser.id),
+      },
+    });
 
     return clearStateCookie(
       NextResponse.redirect(

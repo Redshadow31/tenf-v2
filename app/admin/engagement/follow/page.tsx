@@ -15,6 +15,11 @@ type FollowOverviewRow = {
   lastCalculatedAt: string | null;
   state: "ok" | "not_linked" | "calculation_impossible";
   reason: string | null;
+  snapshotId?: string;
+  snapshotGeneratedAt?: string;
+  isStaleFromPreviousSnapshot?: boolean;
+  previousFollowRate?: number | null;
+  deltaFollowRate?: number | null;
 };
 
 type FollowOverviewResponse = {
@@ -24,6 +29,8 @@ type FollowOverviewResponse = {
   totalActiveTenfChannels: number;
   trackedMembersCount: number;
   rows: FollowOverviewRow[];
+  previousSnapshotId?: string | null;
+  previousGeneratedAt?: string | null;
 };
 
 type DetailPayload = {
@@ -121,8 +128,10 @@ export default function AdminEngagementFollowPage() {
     setDetail(null);
     setDetailLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (row.snapshotId) params.set("snapshotId", row.snapshotId);
       const response = await fetch(
-        `/api/admin/engagement/follow/detail/${encodeURIComponent(row.discordId)}`,
+        `/api/admin/engagement/follow/detail/${encodeURIComponent(row.discordId)}${params.toString() ? `?${params.toString()}` : ""}`,
         { cache: "no-store" }
       );
       if (!response.ok) {
@@ -259,6 +268,11 @@ export default function AdminEngagementFollowPage() {
       <div className="mb-4 text-xs text-gray-400">
         Total chaines actives TENF: <strong>{overview?.totalActiveTenfChannels ?? "—"}</strong>
         {" · "}Dernier snapshot: <strong>{formatDate(overview?.generatedAt)}</strong>
+        {overview?.previousGeneratedAt ? (
+          <>
+            {" · "}Snapshot precedent: <strong>{formatDate(overview.previousGeneratedAt)}</strong>
+          </>
+        ) : null}
         {" · "}Dernieres donnees recuperees: <strong>{formatDate(overview?.sourceDataRetrievedAt)}</strong>
       </div>
 
@@ -281,7 +295,9 @@ export default function AdminEngagementFollowPage() {
                   <th className="px-3 py-3">Suivies</th>
                   <th className="px-3 py-3">Total TENF</th>
                   <th className="px-3 py-3">Progression</th>
+                  <th className="px-3 py-3">Delta</th>
                   <th className="px-3 py-3">Etat</th>
+                  <th className="px-3 py-3">Snapshot source</th>
                   <th className="px-3 py-3">Dernier calcul</th>
                   <th className="px-3 py-3">Action</th>
                 </tr>
@@ -311,10 +327,25 @@ export default function AdminEngagementFollowPage() {
                       <td className="px-3 py-3 align-top text-sm">
                         {row.followRate !== null ? `${row.followRate}%` : "—"}
                       </td>
+                      <td className="px-3 py-3 align-top text-sm">
+                        {row.deltaFollowRate !== null
+                          ? `${row.deltaFollowRate > 0 ? "+" : ""}${row.deltaFollowRate}%`
+                          : "—"}
+                      </td>
                       <td className="px-3 py-3 align-top">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-[11px] ${badge.className}`}>
-                          {badge.label}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex rounded-full px-2 py-1 text-[11px] ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                          {row.isStaleFromPreviousSnapshot ? (
+                            <span className="inline-flex rounded-full bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-200 border border-fuchsia-500/30">
+                              Snapshot precedent
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 align-top text-xs text-gray-400">
+                        {formatDate(row.snapshotGeneratedAt || null)}
                       </td>
                       <td className="px-3 py-3 align-top text-xs text-gray-400">
                         {formatDate(row.lastCalculatedAt)}
@@ -322,7 +353,7 @@ export default function AdminEngagementFollowPage() {
                       <td className="px-3 py-3 align-top">
                         <button
                           type="button"
-                          disabled={!row.discordId}
+                          disabled={!row.discordId || !row.snapshotId}
                           onClick={() => openDetail(row)}
                           className="rounded-lg border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                           style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}

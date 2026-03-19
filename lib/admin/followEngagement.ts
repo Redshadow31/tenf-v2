@@ -28,6 +28,11 @@ export type FollowEngagementOverviewRow = {
   lastCalculatedAt: string | null;
   state: FollowCalculationState;
   reason: string | null;
+  snapshotId?: string;
+  snapshotGeneratedAt?: string;
+  isStaleFromPreviousSnapshot?: boolean;
+  previousFollowRate?: number | null;
+  deltaFollowRate?: number | null;
 };
 
 export type FollowEngagementOverviewResponse = {
@@ -37,6 +42,8 @@ export type FollowEngagementOverviewResponse = {
   totalActiveTenfChannels: number;
   trackedMembersCount: number;
   rows: FollowEngagementOverviewRow[];
+  previousSnapshotId?: string | null;
+  previousGeneratedAt?: string | null;
 };
 
 export type FollowEngagementDetailChannel = {
@@ -67,6 +74,14 @@ export type FollowEngagementDetailResponse = {
   followedChannels: FollowEngagementDetailChannel[];
   notFollowedChannels: FollowEngagementDetailChannel[];
   lastCalculatedAt: string | null;
+};
+
+type SnapshotMeta = {
+  id: string;
+  generated_at: string;
+  source_data_retrieved_at: string | null;
+  total_active_tenf_channels: number;
+  tracked_members_count: number;
 };
 
 type TenfChannel = {
@@ -479,48 +494,111 @@ export async function createFollowEngagementSnapshot(
 }
 
 export async function getLatestFollowEngagementOverview(): Promise<FollowEngagementOverviewResponse | null> {
-  const { data: snapshot, error: snapshotError } = await supabaseAdmin
+  const { data: snapshots, error: snapshotError } = await supabaseAdmin
     .from(SNAPSHOTS_TABLE)
     .select("id, generated_at, source_data_retrieved_at, total_active_tenf_channels, tracked_members_count")
     .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(2);
 
   if (snapshotError) throw snapshotError;
-  if (!snapshot?.id) return null;
+  const latestSnapshot = snapshots?.[0] as SnapshotMeta | undefined;
+  const previousSnapshot = snapshots?.[1] as SnapshotMeta | undefined;
+  if (!latestSnapshot?.id) return null;
 
-  const { data: rows, error: rowsError } = await supabaseAdmin
+  const { data: latestRows, error: rowsError } = await supabaseAdmin
     .from(SNAPSHOT_MEMBERS_TABLE)
     .select("*")
-    .eq("snapshot_id", snapshot.id)
+    .eq("snapshot_id", latestSnapshot.id)
     .order("follow_rate", { ascending: false, nullsFirst: false });
 
   if (rowsError) throw rowsError;
 
+  let previousRows: any[] = [];
+  if (previousSnapshot?.id) {
+    const { data, error } = await supabaseAdmin
+      .from(SNAPSHOT_MEMBERS_TABLE)
+      .select("*")
+      .eq("snapshot_id", previousSnapshot.id)
+      .order("follow_rate", { ascending: false, nullsFirst: false });
+    if (error) throw error;
+    previousRows = data || [];
+  }
+
+  const latestByLogin = new Map<string, any>();
+  const previousByLogin = new Map<string, any>();
+  for (const row of latestRows || []) {
+    const key = String(row.member_twitch_login || "").toLowerCase();
+    if (key) latestByLogin.set(key, row);
+  }
+  for (const row of previousRows || []) {
+    const key = String(row.member_twitch_login || "").toLowerCase();
+    if (key) previousByLogin.set(key, row);
+  }
+
+  const mergedRows: FollowEngagementOverviewRow[] = [];
+  const allLogins = new Set<string>([
+    ...Array.from(latestByLogin.keys()),
+    ...Array.from(previousByLogin.keys()),
+  ]);
+  for (const login of allLogins) {
+    const latest = latestByLogin.get(login);
+    const previous = previousByLogin.get(login);
+    const source = latest || previous;
+    if (!source) continue;
+
+    const currentRate =
+      typeof source.follow_rate === "number"
+        ? Number(source.follow_rate)
+        : source.follow_rate !== null && source.follow_rate !== undefined
+          ? Number(source.follow_rate)
+          : null;
+    const previousRate =
+      previous && (typeof previous.follow_rate === "number"
+        ? Number(previous.follow_rate)
+        : previous.follow_rate !== null && previous.follow_rate !== undefined
+          ? Number(previous.follow_rate)
+          : null);
+
+    mergedRows.push({
+      discordId: source.discord_id || null,
+      displayName: String(source.display_name || ""),
+      memberTwitchLogin: String(source.member_twitch_login || "").toLowerCase(),
+      linkedTwitchLogin: source.linked_twitch_login ? String(source.linked_twitch_login).toLowerCase() : null,
+      linkedTwitchDisplayName: source.linked_twitch_display_name || null,
+      followedCount: typeof source.followed_count === "number" ? source.followed_count : null,
+      totalActiveTenfChannels: Number(source.total_active_tenf_channels || 0),
+      followRate: currentRate,
+      lastCalculatedAt: source.last_checked_at || null,
+      state: source.state as FollowCalculationState,
+      reason: source.reason || null,
+      snapshotId: latest ? String(latestSnapshot.id) : String(previousSnapshot?.id || ""),
+      snapshotGeneratedAt: latest ? String(latestSnapshot.generated_at) : String(previousSnapshot?.generated_at || ""),
+      isStaleFromPreviousSnapshot: !latest,
+      previousFollowRate: previousRate ?? null,
+      deltaFollowRate:
+        currentRate !== null && previousRate !== null ? Number((currentRate - previousRate).toFixed(1)) : null,
+    });
+  }
+
+  mergedRows.sort((a, b) => {
+    if (a.isStaleFromPreviousSnapshot !== b.isStaleFromPreviousSnapshot) {
+      return a.isStaleFromPreviousSnapshot ? 1 : -1;
+    }
+    const aRate = a.followRate ?? -1;
+    const bRate = b.followRate ?? -1;
+    if (bRate !== aRate) return bRate - aRate;
+    return a.displayName.localeCompare(b.displayName, "fr");
+  });
+
   return {
-    snapshotId: String(snapshot.id),
-    generatedAt: String(snapshot.generated_at),
-    sourceDataRetrievedAt: String(snapshot.source_data_retrieved_at || snapshot.generated_at),
-    totalActiveTenfChannels: Number(snapshot.total_active_tenf_channels || 0),
-    trackedMembersCount: Number(snapshot.tracked_members_count || 0),
-    rows: (rows || []).map((row: any) => ({
-      discordId: row.discord_id || null,
-      displayName: String(row.display_name || ""),
-      memberTwitchLogin: String(row.member_twitch_login || "").toLowerCase(),
-      linkedTwitchLogin: row.linked_twitch_login ? String(row.linked_twitch_login).toLowerCase() : null,
-      linkedTwitchDisplayName: row.linked_twitch_display_name || null,
-      followedCount: typeof row.followed_count === "number" ? row.followed_count : null,
-      totalActiveTenfChannels: Number(row.total_active_tenf_channels || 0),
-      followRate:
-        typeof row.follow_rate === "number"
-          ? Number(row.follow_rate)
-          : row.follow_rate !== null && row.follow_rate !== undefined
-            ? Number(row.follow_rate)
-            : null,
-      lastCalculatedAt: row.last_checked_at || null,
-      state: row.state as FollowCalculationState,
-      reason: row.reason || null,
-    })),
+    snapshotId: String(latestSnapshot.id),
+    generatedAt: String(latestSnapshot.generated_at),
+    sourceDataRetrievedAt: String(latestSnapshot.source_data_retrieved_at || latestSnapshot.generated_at),
+    totalActiveTenfChannels: Number(latestSnapshot.total_active_tenf_channels || 0),
+    trackedMembersCount: Number(latestSnapshot.tracked_members_count || 0),
+    rows: mergedRows,
+    previousSnapshotId: previousSnapshot ? String(previousSnapshot.id) : null,
+    previousGeneratedAt: previousSnapshot ? String(previousSnapshot.generated_at) : null,
   };
 }
 
@@ -540,14 +618,16 @@ export async function buildFollowEngagementOverview(): Promise<FollowEngagementO
 }
 
 export async function buildFollowEngagementMemberDetail(
-  discordId: string
+  discordId: string,
+  snapshotId?: string | null
 ): Promise<FollowEngagementDetailResponse | null> {
-  const { data: snapshot, error: snapshotError } = await supabaseAdmin
+  const snapshotQuery = supabaseAdmin
     .from(SNAPSHOTS_TABLE)
-    .select("id, generated_at, source_data_retrieved_at")
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select("id, generated_at, source_data_retrieved_at");
+
+  const { data: snapshot, error: snapshotError } = snapshotId
+    ? await snapshotQuery.eq("id", snapshotId).maybeSingle()
+    : await snapshotQuery.order("generated_at", { ascending: false }).limit(1).maybeSingle();
 
   if (snapshotError) throw snapshotError;
   if (!snapshot?.id) return null;

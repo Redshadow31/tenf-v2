@@ -23,7 +23,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "discordId manquant" }, { status: 400 });
     }
 
-    const detail = await buildFollowEngagementMemberDetail(discordId);
+    const snapshotId = _request.nextUrl.searchParams.get("snapshotId");
+    const detail = await buildFollowEngagementMemberDetail(discordId, snapshotId);
     if (!detail) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }

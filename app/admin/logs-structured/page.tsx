@@ -28,6 +28,7 @@ export default function StructuredLogsPage() {
   const [logs, setLogs] = useState<StructuredLog[]>([]);
   const [stats, setStats] = useState<LogStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [liveLogins, setLiveLogins] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     category: '' as LogCategory | '',
     level: '' as LogLevel | '',
@@ -59,6 +60,49 @@ export default function StructuredLogsPage() {
   useEffect(() => {
     loadLogs();
   }, [filters.category, filters.level]);
+
+  useEffect(() => {
+    const extractTwitchLogin = (log: StructuredLog): string | null => {
+      const fromDetails = String(log.details?.twitchLogin || log.details?.twitch_login || "").trim().toLowerCase();
+      if (/^[a-z0-9_]{3,25}$/.test(fromDetails)) return fromDetails;
+      return null;
+    };
+
+    const logins = Array.from(new Set(logs.map(extractTwitchLogin).filter((value): value is string => Boolean(value))));
+    if (logins.length === 0) {
+      setLiveLogins(new Set());
+      return;
+    }
+
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/twitch/streams", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logins }),
+        });
+        if (!response.ok) {
+          if (active) setLiveLogins(new Set());
+          return;
+        }
+        const payload = await response.json();
+        const streams = Array.isArray(payload?.streams) ? payload.streams : [];
+        const next = new Set<string>(
+          streams
+            .map((stream: any) => String(stream?.userLogin || "").toLowerCase())
+            .filter(Boolean)
+        );
+        if (active) setLiveLogins(next);
+      } catch {
+        if (active) setLiveLogins(new Set());
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [logs]);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -132,6 +176,12 @@ export default function StructuredLogsPage() {
     }
     return true;
   });
+
+  const extractTwitchLogin = (log: StructuredLog): string | null => {
+    const fromDetails = String(log.details?.twitchLogin || log.details?.twitch_login || "").trim().toLowerCase();
+    if (/^[a-z0-9_]{3,25}$/.test(fromDetails)) return fromDetails;
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -283,6 +333,27 @@ export default function StructuredLogsPage() {
                   <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
                     {log.message}
                   </p>
+                  {(() => {
+                    const twitchLogin = extractTwitchLogin(log);
+                    if (!twitchLogin) return null;
+                    const isLive = liveLogins.has(twitchLogin);
+                    return (
+                      <a
+                        href={`https://twitch.tv/${twitchLogin}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-2 text-xs text-violet-300 hover:text-violet-200"
+                      >
+                        <span
+                          className={`inline-block h-2 w-2 rounded-full ${isLive ? "bg-red-500" : "bg-gray-500"}`}
+                          title={isLive ? "En live" : "Hors live"}
+                          aria-hidden="true"
+                        />
+                        @{twitchLogin}
+                        {isLive ? " (live)" : ""}
+                      </a>
+                    );
+                  })()}
                   {log.route && (
                     <p className="text-xs mt-1 opacity-70">
                       Route: {log.route}
