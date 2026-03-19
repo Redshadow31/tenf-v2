@@ -102,6 +102,7 @@ export default function AdminEngagementFollowPage() {
   const [selectedDiscordId, setSelectedDiscordId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
 
   async function loadOverview() {
     try {
@@ -212,6 +213,24 @@ export default function AdminEngagementFollowPage() {
     };
   }, [overview]);
 
+  const filteredRows = useMemo(() => {
+    const rows = overview?.rows || [];
+    const query = memberSearch.trim().toLowerCase();
+    if (!query) return rows;
+
+    return rows.filter((row) => {
+      const searchable = [
+        row.displayName,
+        row.memberTwitchLogin,
+        row.linkedTwitchLogin || "",
+        row.linkedTwitchDisplayName || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [overview, memberSearch]);
+
   if (checkingAccess) {
     return (
       <div className="text-white">
@@ -277,13 +296,30 @@ export default function AdminEngagementFollowPage() {
       </div>
 
       <div className="rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            type="text"
+            value={memberSearch}
+            onChange={(event) => setMemberSearch(event.target.value)}
+            placeholder="Rechercher un membre (nom, @login, compte lie)"
+            className="w-full rounded-lg border px-3 py-2 text-sm sm:max-w-md"
+            style={{
+              borderColor: "var(--color-border)",
+              backgroundColor: "rgba(10,10,14,0.55)",
+              color: "var(--color-text)",
+            }}
+          />
+          <p className="text-xs text-gray-400">
+            {filteredRows.length} resultat(s) sur {(overview?.rows || []).length}
+          </p>
+        </div>
         {loading ? (
           <div className="py-10 text-center text-sm text-gray-400">Chargement des donnees follow...</div>
         ) : error ? (
           <div className="py-6 text-sm text-red-300">{error}</div>
-        ) : (overview?.rows || []).length === 0 ? (
+        ) : filteredRows.length === 0 ? (
           <div className="py-10 text-center text-sm text-gray-400">
-            Aucun snapshot enregistre pour le moment. Clique sur "Generer un nouveau snapshot".
+            Aucun membre ne correspond a ta recherche.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -303,7 +339,7 @@ export default function AdminEngagementFollowPage() {
                 </tr>
               </thead>
               <tbody>
-                {(overview?.rows || []).map((row) => {
+                {filteredRows.map((row) => {
                   const badge = stateBadge(row);
                   return (
                     <tr key={`${row.memberTwitchLogin}-${row.discordId || "na"}`} className="border-b border-neutral-800">
