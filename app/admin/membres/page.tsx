@@ -241,11 +241,21 @@ export default function MembersControlPanelPage() {
     let mounted = true;
     async function loadUser() {
       try {
-        const user = await getDiscordUser();
+        const [user, aliasRes] = await Promise.all([
+          getDiscordUser(),
+          fetch("/api/admin/access/self", { cache: "no-store" }),
+        ]);
         if (!mounted) return;
-        if (user?.username) {
-          setUsername(user.username);
+
+        let displayName = user?.username || "Admin";
+        if (aliasRes.ok) {
+          const aliasData = await aliasRes.json();
+          const alias = typeof aliasData?.adminAlias === "string" ? aliasData.adminAlias.trim() : "";
+          if (alias) {
+            displayName = alias;
+          }
         }
+        setUsername(displayName);
       } catch {
         // keep default fallback
       }

@@ -350,17 +350,27 @@ export default function Dashboard2Page() {
   useEffect(() => {
     async function loadCurrentAdminHeader() {
       try {
-        const [user, roleRes] = await Promise.all([
+        const [user, roleRes, aliasRes] = await Promise.all([
           getDiscordUser(),
           fetch("/api/user/role", { cache: "no-store" }),
+          fetch("/api/admin/access/self", { cache: "no-store" }),
         ]);
 
         const roleData = roleRes.ok ? await roleRes.json() : null;
         const role = typeof roleData?.role === "string" ? roleData.role : null;
 
-        if (user?.username) {
-          setCurrentAdmin({ username: user.username, role });
+        const fallbackUsername = user?.username || "Admin";
+        let displayName = fallbackUsername;
+
+        if (aliasRes.ok) {
+          const aliasData = await aliasRes.json();
+          const alias = typeof aliasData?.adminAlias === "string" ? aliasData.adminAlias.trim() : "";
+          if (alias) {
+            displayName = alias;
+          }
         }
+
+        setCurrentAdmin({ username: displayName, role });
       } catch (error) {
         console.warn("[dashboard2] Impossible de charger le header admin personalise:", error);
       }
