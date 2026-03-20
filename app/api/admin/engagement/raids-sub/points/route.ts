@@ -229,12 +229,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const eventIds = Array.isArray(body?.eventIds)
+    const eventIds: string[] = Array.isArray(body?.eventIds)
       ? Array.from(
           new Set(
             body.eventIds
               .map((value: unknown) => String(value || "").trim())
-              .filter(Boolean)
+              .filter((value: string) => value.length > 0)
           )
         )
       : [];
