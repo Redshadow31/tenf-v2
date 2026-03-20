@@ -146,7 +146,7 @@ export default function OnboardingContenusPage() {
                     Owner: {card.owner}
                   </span>
                 </div>
-                <p className="mt-3 text-xs font-medium text-indigo-200 transition group-hover:translate-x-0.5">Ouvrir le contenu -></p>
+                <p className="mt-3 text-xs font-medium text-indigo-200 transition group-hover:translate-x-0.5">Ouvrir le contenu -&gt;</p>
               </div>
             </div>
           </Link>

@@ -575,7 +575,7 @@ export default function EvaluationDashboardPage() {
             <div className="mt-3 space-y-3 text-xs">
               <div>
                 <div className="mb-1 flex items-center justify-between text-emerald-200">
-                  <span>Performants (>= 16)</span>
+                  <span>Performants (&gt;= 16)</span>
                   <span>{scoreInsights.highCount}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">

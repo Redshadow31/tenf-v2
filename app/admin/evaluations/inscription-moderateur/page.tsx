@@ -269,7 +269,7 @@ export default function InscriptionModerateurPage() {
           <p className="mt-2 text-3xl font-semibold text-indigo-200">{staffingStats.sessionCount}</p>
         </article>
         <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions couvertes (>=2)</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions couvertes (&gt;=2)</p>
           <p className="mt-2 text-3xl font-semibold text-emerald-300">{staffingStats.covered}</p>
         </article>
         <article className={`${sectionCardClass} p-4`}>

@@ -164,18 +164,19 @@ async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): 
     }
   }
 
-  const enrichedCandidates = reassignableCandidates
-    .map((candidate) => {
+  const enrichedCandidates: CorrelationMember[] = reassignableCandidates
+    .map((candidate): CorrelationMember => {
       const member = membersByLogin.get(candidate.twitchLogin);
       if (!member) {
         return candidate;
       }
+      const memberStatus: CorrelationMember["memberStatus"] = member.isActive === true ? "actif" : "inactif";
       return {
         ...candidate,
         inMembersList: true,
         consideredActivated: isConsideredActivated(member),
         memberRole: member.role,
-        memberStatus: member.isActive === true ? "actif" : "inactif",
+        memberStatus,
       };
     })
     .sort((a, b) => b.attendanceCount - a.attendanceCount);
