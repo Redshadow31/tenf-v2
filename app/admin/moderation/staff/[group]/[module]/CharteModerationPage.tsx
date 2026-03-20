@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CharteSection = {
   id: number;
@@ -202,6 +202,10 @@ export default function CharteModerationPage() {
   const [validated, setValidated] = useState<Record<number, boolean>>({});
   const [globalEngagement, setGlobalEngagement] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitInfo, setSubmitInfo] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState("");
 
   const completedCount = useMemo(
     () => sections.filter((section) => validated[section.id]).length,
@@ -219,6 +223,62 @@ export default function CharteModerationPage() {
   const toggleSection = (id: number) => {
     setValidated((prev) => ({ ...prev, [id]: !prev[id] }));
     setSubmitted(false);
+    setSubmitError(null);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadViewerValidation = async () => {
+      try {
+        const response = await fetch("/api/admin/moderation/staff/charte-validations", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const body = await response.json();
+        const viewerValidation = body?.viewerValidation;
+        if (!viewerValidation || cancelled) return;
+        setSubmitted(true);
+        setSubmitInfo(
+          `Déjà validée le ${new Date(viewerValidation.validatedAt).toLocaleString("fr-FR")} par ${viewerValidation.validatedByUsername}.`
+        );
+      } catch {
+        // Ignore: la page reste utilisable même si le statut n'est pas lisible.
+      }
+    };
+    void loadViewerValidation();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const submitValidation = async () => {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitInfo(null);
+    try {
+      const response = await fetch("/api/admin/moderation/staff/charte-validations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          charterVersion: "Charte v2",
+          feedback,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.error || "Impossible de valider la charte.");
+      }
+      setSubmitted(true);
+      const entry = body.entry;
+      setSubmitInfo(
+        `Validation enregistrée le ${new Date(entry.validatedAt).toLocaleString("fr-FR")} par ${entry.validatedByUsername}.`
+      );
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Erreur inconnue.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -427,16 +487,37 @@ export default function CharteModerationPage() {
 
           <button
             type="button"
-            onClick={() => setSubmitted(true)}
-            disabled={!canSubmit}
+            onClick={() => void submitValidation()}
+            disabled={!canSubmit || submitting}
             className="mt-4 rounded-lg border border-emerald-300/45 bg-emerald-400/20 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Valider la charte complète
+            {submitting ? "Validation en cours..." : "Valider la charte complète"}
           </button>
+
+          <label className="mt-4 block text-sm text-emerald-100/90">
+            Retour optionnel pour les admins (visible dans le suivi des validations)
+            <textarea
+              value={feedback}
+              onChange={(event) => setFeedback(event.target.value)}
+              maxLength={1200}
+              className="mt-2 min-h-[92px] w-full rounded-lg border border-emerald-300/25 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-300/50"
+              placeholder="Ex: points clairs / zones à préciser."
+            />
+          </label>
 
           {submitted && canSubmit ? (
             <p className="mt-3 rounded-lg border border-emerald-300/40 bg-emerald-400/15 px-3 py-2 text-sm text-emerald-100">
               Charte validée. Merci pour ton engagement professionnel en modération TENF.
+            </p>
+          ) : null}
+          {submitInfo ? (
+            <p className="mt-3 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100">
+              {submitInfo}
+            </p>
+          ) : null}
+          {submitError ? (
+            <p className="mt-3 rounded-lg border border-rose-300/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+              {submitError}
             </p>
           ) : null}
         </section>
