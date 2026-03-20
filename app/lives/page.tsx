@@ -18,6 +18,13 @@ function normalizeText(value: string): string {
     .trim();
 }
 
+function normalizeLoginKey(value: string): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+}
+
 function safeToDateMs(value: string): number {
   const parsed = new Date(value).getTime();
   return Number.isNaN(parsed) ? 0 : parsed;
@@ -63,6 +70,8 @@ export default function LivesPage() {
   const [error, setError] = useState<string | null>(null);
   const [randomHint, setRandomHint] = useState<string | null>(null);
   const [spotlightLogin, setSpotlightLogin] = useState<string | null>(null);
+  const [spotlightDisplayName, setSpotlightDisplayName] = useState<string | null>(null);
+  const [spotlightEncouragement, setSpotlightEncouragement] = useState<string | null>(null);
   const [topRaiderLogin, setTopRaiderLogin] = useState<string | null>(null);
   const [topRaiderCount, setTopRaiderCount] = useState<number>(0);
   const [raidMetricsByLogin, setRaidMetricsByLogin] = useState<Record<string, RaidMetrics>>({});
@@ -231,9 +240,17 @@ export default function LivesPage() {
           const spotlightBody = spotlightResponse.ok ? await spotlightResponse.json() : { spotlight: null };
           const liveSpotlightLogin =
             typeof spotlightBody?.spotlight?.streamerTwitchLogin === "string"
-              ? spotlightBody.spotlight.streamerTwitchLogin.toLowerCase()
+              ? normalizeLoginKey(spotlightBody.spotlight.streamerTwitchLogin)
               : null;
           setSpotlightLogin(liveSpotlightLogin);
+          setSpotlightDisplayName(
+            typeof spotlightBody?.spotlight?.streamerDisplayName === "string"
+              ? spotlightBody.spotlight.streamerDisplayName
+              : null
+          );
+          setSpotlightEncouragement(
+            typeof spotlightBody?.spotlight?.text === "string" ? spotlightBody.spotlight.text : null
+          );
 
           const raidsBody = raidsResponse.ok ? await raidsResponse.json() : { stats: { topRaider: null } };
           const liveTopRaiderLogin =
@@ -368,7 +385,11 @@ export default function LivesPage() {
     }
 
     const withPriority = result.map((live) => {
-      const normalizedLogin = live.twitchLogin.toLowerCase();
+      const normalizedLogin = normalizeLoginKey(live.twitchLogin);
+      const isSpotlightMatch =
+        (!!spotlightLogin && normalizedLogin === normalizeLoginKey(spotlightLogin)) ||
+        (!!spotlightDisplayName &&
+          normalizeText(live.displayName) === normalizeText(spotlightDisplayName));
       const metrics = raidMetricsByLogin[normalizedLogin];
       const raidsDone = metrics?.raidsDone || 0;
       const raidsReceived = metrics?.raidsReceived || 0;
@@ -377,7 +398,7 @@ export default function LivesPage() {
       const hasRaidActivity = raidsDone + raidsReceived > 0;
       return {
         ...live,
-        isSpotlight: !!spotlightLogin && normalizedLogin === spotlightLogin,
+        isSpotlight: isSpotlightMatch,
         isTopRaider: !!topRaiderLogin && normalizedLogin === topRaiderLogin,
         topRaidsCount:
           !!topRaiderLogin && normalizedLogin === topRaiderLogin && topRaiderCount > 0
@@ -414,6 +435,7 @@ export default function LivesPage() {
     selectedGame,
     selectedRole,
     spotlightLogin,
+    spotlightDisplayName,
     topRaiderLogin,
     topRaiderCount,
     raidMetricsByLogin,
@@ -464,6 +486,8 @@ export default function LivesPage() {
         onPickRandomLive={handlePickRandomLive}
         randomDisabled={filteredLives.length === 0}
         eventsHref="/events2"
+        spotlightDisplayName={spotlightDisplayName}
+        spotlightText={spotlightEncouragement}
       />
 
       <LivesPhilosophyBanner />

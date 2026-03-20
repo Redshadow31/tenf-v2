@@ -34,9 +34,11 @@ export default function LiveCard({ live }: LiveCardProps) {
     <article
       className="group flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
       style={{
-        borderColor: "var(--color-border)",
+        borderColor: live.isSpotlight ? "rgba(251,191,36,0.55)" : "var(--color-border)",
         backgroundColor: "var(--color-card)",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.24)",
+        boxShadow: live.isSpotlight
+          ? "0 14px 36px rgba(245,158,11,0.28)"
+          : "0 10px 30px rgba(0,0,0,0.24)",
       }}
     >
       <div className="relative aspect-video w-full overflow-hidden">
@@ -96,6 +98,11 @@ export default function LiveCard({ live }: LiveCardProps) {
             )}
           </div>
         )}
+        {live.isSpotlight ? (
+          <div className="rounded-lg border border-amber-300/35 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100 md:text-xs">
+            Mise en avant TENF du moment : prends 2 minutes pour passer en chat.
+          </div>
+        ) : null}
         <div className="flex min-h-[3.5rem] flex-wrap content-start gap-1.5 text-[11px] md:min-h-[3.75rem] md:gap-2 md:text-xs">
           {hasMutualSupportBadge ? (
             <>

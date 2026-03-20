@@ -3,6 +3,8 @@ type LivesHeroProps = {
   onPickRandomLive: () => void;
   randomDisabled: boolean;
   eventsHref: string;
+  spotlightDisplayName?: string | null;
+  spotlightText?: string | null;
 };
 
 export default function LivesHero({
@@ -10,6 +12,8 @@ export default function LivesHero({
   onPickRandomLive,
   randomDisabled,
   eventsHref,
+  spotlightDisplayName,
+  spotlightText,
 }: LivesHeroProps) {
   return (
     <section
@@ -30,6 +34,19 @@ export default function LivesHero({
             <br />
             Peu importe la taille du stream : sur TENF, chaque presence compte.
           </p>
+          {spotlightDisplayName && spotlightText ? (
+            <div
+              className="max-w-2xl rounded-xl border px-4 py-3"
+              style={{
+                borderColor: "rgba(251, 191, 36, 0.45)",
+                background: "linear-gradient(120deg, rgba(251,191,36,0.14), rgba(245,158,11,0.06))",
+              }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-amber-200">Mise en avant Spotlight</p>
+              <p className="mt-1 text-sm font-semibold text-amber-100">{spotlightDisplayName}</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-50/90">{spotlightText}</p>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
