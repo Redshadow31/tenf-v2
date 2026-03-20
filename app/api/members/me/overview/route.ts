@@ -114,6 +114,21 @@ function getLastMonthKeys(from: Date, count: number): string[] {
   }).reverse();
 }
 
+function monthRange(monthKey: string): { startIso: string; endIso: string } {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!year || !month || month < 1 || month > 12) {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    return { startIso: start.toISOString(), endIso: end.toISOString() };
+  }
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1));
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
 async function loadEventsWithoutCache(): Promise<
   Array<{
     id: string;
@@ -312,6 +327,59 @@ export async function GET() {
       raidsThisMonth = 0;
     }
 
+    try {
+      const { startIso, endIso } = monthRange(monthKey);
+      const normalizedLogin = normalize(member.twitchLogin);
+      const normalizedTwitchId = member.twitchId ? String(member.twitchId) : null;
+
+      const [manualRes, eventsubRes] = await Promise.all([
+        supabaseAdmin
+          .from("raid_declarations")
+          .select("id,target_twitch_login,raid_at,status")
+          .eq("member_discord_id", discordId)
+          .gte("raid_at", startIso)
+          .lt("raid_at", endIso)
+          .limit(2000),
+        normalizedTwitchId
+          ? supabaseAdmin
+              .from("raid_test_events")
+              .select("id,to_broadcaster_user_login,event_at,processing_status")
+              .or(`from_broadcaster_user_id.eq.${normalizedTwitchId},from_broadcaster_user_login.eq.${normalizedLogin}`)
+              .gte("event_at", startIso)
+              .lt("event_at", endIso)
+              .limit(2000)
+          : supabaseAdmin
+              .from("raid_test_events")
+              .select("id,to_broadcaster_user_login,event_at,processing_status")
+              .eq("from_broadcaster_user_login", normalizedLogin)
+              .gte("event_at", startIso)
+              .lt("event_at", endIso)
+              .limit(2000),
+      ]);
+
+      const dedupe = new Set<string>();
+      for (const row of (manualRes.data || []) as Array<any>) {
+        const status = String(row.status || "").toLowerCase();
+        if (status === "rejected") continue;
+        const ts = new Date(String(row.raid_at || "")).getTime();
+        const minuteBucket = Number.isFinite(ts) ? Math.floor(ts / 60000) : String(row.raid_at || "");
+        const target = normalize(row.target_twitch_login);
+        dedupe.add(`manual:${target}|${minuteBucket}`);
+      }
+      for (const row of (eventsubRes.data || []) as Array<any>) {
+        const status = String(row.processing_status || "").toLowerCase();
+        if (status === "duplicate" || status === "ignored" || status === "rejected") continue;
+        const ts = new Date(String(row.event_at || "")).getTime();
+        const minuteBucket = Number.isFinite(ts) ? Math.floor(ts / 60000) : String(row.event_at || "");
+        const target = normalize(row.to_broadcaster_user_login);
+        dedupe.add(`eventsub:${target}|${minuteBucket}`);
+      }
+
+      raidsThisMonth = Math.max(raidsThisMonth, dedupe.size);
+    } catch {
+      // Best effort: conserve le calcul historique si les tables v2 ne sont pas disponibles.
+    }
+
     let raidsTotal = raidsThisMonth;
     try {
       // Best effort sur les 12 derniers mois (sans dépendre d'un index blobs)
@@ -347,6 +415,25 @@ export async function GET() {
     for (const event of allEvents) {
       if (!event?.id) continue;
       eventById.set(String(event.id), event);
+    }
+
+    try {
+      const { data: aliases } = await supabaseAdmin
+        .from("community_events")
+        .select("id,legacy_event_id")
+        .not("legacy_event_id", "is", null)
+        .limit(5000);
+      for (const row of aliases || []) {
+        const canonicalId = String((row as any).id || "");
+        const legacyId = String((row as any).legacy_event_id || "");
+        if (!canonicalId || !legacyId) continue;
+        const canonicalEvent = eventById.get(canonicalId);
+        if (canonicalEvent) {
+          eventById.set(legacyId, canonicalEvent);
+        }
+      }
+    } catch {
+      // Compat: selon les environnements, legacy_event_id peut ne pas être disponible.
     }
 
     const upcomingEvents = allEvents
