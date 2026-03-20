@@ -229,10 +229,103 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
+    const eventIds = Array.isArray(body?.eventIds)
+      ? Array.from(
+          new Set(
+            body.eventIds
+              .map((value: unknown) => String(value || "").trim())
+              .filter(Boolean)
+          )
+        )
+      : [];
     const eventId = String(body?.eventId || "").trim();
     const note = String(body?.note || "").trim();
     const pointsRaw = Number.parseInt(String(body?.points || "500"), 10);
     const points = Number.isFinite(pointsRaw) && pointsRaw > 0 ? pointsRaw : 500;
+
+    if (eventIds.length > 0) {
+      const eventsRes = await supabaseAdmin
+        .from("raid_test_events")
+        .select("id,run_id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,processing_status")
+        .in("id", eventIds);
+
+      if (eventsRes.error) {
+        const message = String(eventsRes.error.message || "");
+        if (isMissingRelationError(message)) {
+          return NextResponse.json({ error: "Table points manquante. Applique la migration 0037." }, { status: 500 });
+        }
+        return NextResponse.json({ error: "Impossible de charger les raids à valider" }, { status: 500 });
+      }
+
+      const events = eventsRes.data || [];
+      const foundIds = new Set(events.map((event: any) => String(event.id)));
+      const missingCount = eventIds.filter((id) => !foundIds.has(id)).length;
+      const matchedEvents = events.filter((event: any) => event.processing_status === "matched");
+      const invalidStatusCount = events.length - matchedEvents.length;
+
+      let alreadyAwardedCount = 0;
+      let toInsert = matchedEvents;
+      if (matchedEvents.length > 0) {
+        const existingRes = await supabaseAdmin
+          .from("raid_test_points")
+          .select("raid_test_event_id")
+          .in(
+            "raid_test_event_id",
+            matchedEvents.map((event: any) => event.id)
+          );
+
+        if (existingRes.error) {
+          const message = String(existingRes.error.message || "");
+          if (isMissingRelationError(message)) {
+            return NextResponse.json({ error: "Table points manquante. Applique la migration 0037." }, { status: 500 });
+          }
+          return NextResponse.json({ error: "Vérification des points existants impossible" }, { status: 500 });
+        }
+
+        const alreadyAwardedIds = new Set(
+          (existingRes.data || []).map((item: any) => String(item.raid_test_event_id || ""))
+        );
+        alreadyAwardedCount = alreadyAwardedIds.size;
+        toInsert = matchedEvents.filter((event: any) => !alreadyAwardedIds.has(String(event.id)));
+      }
+
+      let insertedCount = 0;
+      if (toInsert.length > 0) {
+        const insertRes = await supabaseAdmin.from("raid_test_points").insert(
+          toInsert.map((event: any) => ({
+            run_id: event.run_id,
+            raid_test_event_id: event.id,
+            raider_twitch_login: event.from_broadcaster_user_login,
+            target_twitch_login: event.to_broadcaster_user_login,
+            event_at: event.event_at,
+            points,
+            status: "awarded",
+            note,
+            awarded_by_discord_id: admin.discordId,
+            awarded_by_username: admin.username,
+          }))
+        );
+
+        if (insertRes.error) {
+          const message = String(insertRes.error.message || "");
+          if (isMissingRelationError(message)) {
+            return NextResponse.json({ error: "Table points manquante. Applique la migration 0037." }, { status: 500 });
+          }
+          return NextResponse.json({ error: "Impossible d'attribuer les points en masse" }, { status: 500 });
+        }
+        insertedCount = toInsert.length;
+      }
+
+      return NextResponse.json({
+        success: true,
+        bulk: true,
+        totalRequested: eventIds.length,
+        insertedCount,
+        alreadyAwardedCount,
+        invalidStatusCount,
+        missingCount,
+      });
+    }
 
     if (!eventId) {
       return NextResponse.json({ error: "eventId manquant" }, { status: 400 });

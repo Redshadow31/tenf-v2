@@ -78,12 +78,23 @@ export type FollowEngagementDetailResponse = {
   lastCalculatedAt: string | null;
 };
 
+export type FollowEngagementSnapshotRunStatus = "running" | "completed" | "failed";
+
+export type FollowEngagementSnapshotRunInfo = {
+  snapshotId: string;
+  status: FollowEngagementSnapshotRunStatus;
+  generatedAt: string;
+  createdAt: string;
+};
+
 type SnapshotMeta = {
   id: string;
   generated_at: string;
   source_data_retrieved_at: string | null;
   total_active_tenf_channels: number;
   tracked_members_count: number;
+  status?: FollowEngagementSnapshotRunStatus | string;
+  created_at?: string | null;
 };
 
 type TenfChannel = {
@@ -469,113 +480,171 @@ async function getLatestCalculatedRowsForLogins(
   return latestByLogin;
 }
 
-export async function createFollowEngagementSnapshot(
+export async function startFollowEngagementSnapshotJob(
   generatedByDiscordId: string | null
-): Promise<FollowEngagementOverviewResponse> {
-  const computed = await computeSnapshotPayload();
+): Promise<{ snapshotId: string; alreadyRunning: boolean }> {
+  const { data: runningSnapshot, error: runningError } = await supabaseAdmin
+    .from(SNAPSHOTS_TABLE)
+    .select("id")
+    .eq("status", "running")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
+  if (runningError) throw runningError;
+  if (runningSnapshot?.id) {
+    return { snapshotId: String(runningSnapshot.id), alreadyRunning: true };
+  }
+
+  const nowIso = new Date().toISOString();
   const { data: snapshotRow, error: snapshotError } = await supabaseAdmin
     .from(SNAPSHOTS_TABLE)
     .insert({
-      generated_at: computed.generatedAt,
-      source_data_retrieved_at: computed.sourceDataRetrievedAt,
-      total_active_tenf_channels: computed.totalActiveTenfChannels,
-      tracked_members_count: computed.trackedMembersCount,
+      generated_at: nowIso,
+      source_data_retrieved_at: nowIso,
+      total_active_tenf_channels: 0,
+      tracked_members_count: 0,
       generated_by_discord_id: generatedByDiscordId,
-      status: "completed",
+      status: "running",
     })
     .select("id")
     .single();
 
   if (snapshotError || !snapshotRow?.id) {
-    throw snapshotError || new Error("Impossible de creer le snapshot follow");
+    throw snapshotError || new Error("Impossible de creer le job snapshot follow");
   }
 
-  const membersInsert = computed.rows.map((entry) => ({
-    snapshot_id: snapshotRow.id,
-    discord_id: entry.row.discordId,
-    display_name: entry.row.displayName,
-    member_twitch_login: entry.row.memberTwitchLogin,
-    linked_twitch_login: entry.row.linkedTwitchLogin,
-    linked_twitch_display_name: entry.row.linkedTwitchDisplayName,
-    followed_count: entry.row.followedCount,
-    total_active_tenf_channels: entry.row.totalActiveTenfChannels,
-    follow_rate: entry.row.followRate,
-    state: entry.row.state,
-    reason: entry.row.reason,
-    last_checked_at: entry.row.lastCalculatedAt,
-  }));
+  return { snapshotId: String(snapshotRow.id), alreadyRunning: false };
+}
 
-  const { data: insertedMembers, error: membersError } = await supabaseAdmin
-    .from(SNAPSHOT_MEMBERS_TABLE)
-    .insert(membersInsert)
-    .select("id, member_twitch_login");
+export async function executeFollowEngagementSnapshotJob(
+  snapshotId: string,
+  generatedByDiscordId: string | null
+): Promise<FollowEngagementOverviewResponse> {
+  try {
+    const computed = await computeSnapshotPayload();
 
-  if (membersError) throw membersError;
+    const { error: updateSnapshotError } = await supabaseAdmin
+      .from(SNAPSHOTS_TABLE)
+      .update({
+        generated_at: computed.generatedAt,
+        source_data_retrieved_at: computed.sourceDataRetrievedAt,
+        total_active_tenf_channels: computed.totalActiveTenfChannels,
+        tracked_members_count: computed.trackedMembersCount,
+        generated_by_discord_id: generatedByDiscordId,
+        status: "completed",
+      })
+      .eq("id", snapshotId);
+    if (updateSnapshotError) throw updateSnapshotError;
 
-  const memberIdByLogin = new Map<string, string>();
-  for (const row of insertedMembers || []) {
-    if (row.id && row.member_twitch_login) {
-      memberIdByLogin.set(String(row.member_twitch_login).toLowerCase(), String(row.id));
+    const { error: cleanupMembersError } = await supabaseAdmin
+      .from(SNAPSHOT_MEMBERS_TABLE)
+      .delete()
+      .eq("snapshot_id", snapshotId);
+    if (cleanupMembersError) throw cleanupMembersError;
+
+    const membersInsert = computed.rows.map((entry) => ({
+      snapshot_id: snapshotId,
+      discord_id: entry.row.discordId,
+      display_name: entry.row.displayName,
+      member_twitch_login: entry.row.memberTwitchLogin,
+      linked_twitch_login: entry.row.linkedTwitchLogin,
+      linked_twitch_display_name: entry.row.linkedTwitchDisplayName,
+      followed_count: entry.row.followedCount,
+      total_active_tenf_channels: entry.row.totalActiveTenfChannels,
+      follow_rate: entry.row.followRate,
+      state: entry.row.state,
+      reason: entry.row.reason,
+      last_checked_at: entry.row.lastCalculatedAt,
+    }));
+
+    const { data: insertedMembers, error: membersError } = await supabaseAdmin
+      .from(SNAPSHOT_MEMBERS_TABLE)
+      .insert(membersInsert)
+      .select("id, member_twitch_login");
+    if (membersError) throw membersError;
+
+    const memberIdByLogin = new Map<string, string>();
+    for (const row of insertedMembers || []) {
+      if (row.id && row.member_twitch_login) {
+        memberIdByLogin.set(String(row.member_twitch_login).toLowerCase(), String(row.id));
+      }
     }
-  }
 
-  const channelsInsert: Array<{
-    snapshot_member_id: string;
-    twitch_login: string;
-    twitch_id: string | null;
-    display_name: string;
-    is_followed: boolean;
-    is_own_channel: boolean;
-  }> = [];
+    const channelsInsert: Array<{
+      snapshot_member_id: string;
+      twitch_login: string;
+      twitch_id: string | null;
+      display_name: string;
+      is_followed: boolean;
+      is_own_channel: boolean;
+    }> = [];
 
-  for (const entry of computed.rows) {
-    const snapshotMemberId = memberIdByLogin.get(entry.row.memberTwitchLogin.toLowerCase());
-    if (!snapshotMemberId) continue;
+    for (const entry of computed.rows) {
+      const snapshotMemberId = memberIdByLogin.get(entry.row.memberTwitchLogin.toLowerCase());
+      if (!snapshotMemberId) continue;
 
-    for (const channel of entry.followedChannels) {
-      channelsInsert.push({
-        snapshot_member_id: snapshotMemberId,
-        twitch_login: channel.twitchLogin,
-        twitch_id: channel.twitchId,
-        display_name: channel.displayName,
-        is_followed: true,
-        is_own_channel: channel.isOwnChannel,
-      });
+      for (const channel of entry.followedChannels) {
+        channelsInsert.push({
+          snapshot_member_id: snapshotMemberId,
+          twitch_login: channel.twitchLogin,
+          twitch_id: channel.twitchId,
+          display_name: channel.displayName,
+          is_followed: true,
+          is_own_channel: channel.isOwnChannel,
+        });
+      }
+      for (const channel of entry.notFollowedChannels) {
+        channelsInsert.push({
+          snapshot_member_id: snapshotMemberId,
+          twitch_login: channel.twitchLogin,
+          twitch_id: channel.twitchId,
+          display_name: channel.displayName,
+          is_followed: false,
+          is_own_channel: channel.isOwnChannel,
+        });
+      }
     }
-    for (const channel of entry.notFollowedChannels) {
-      channelsInsert.push({
-        snapshot_member_id: snapshotMemberId,
-        twitch_login: channel.twitchLogin,
-        twitch_id: channel.twitchId,
-        display_name: channel.displayName,
-        is_followed: false,
-        is_own_channel: channel.isOwnChannel,
-      });
+
+    if (channelsInsert.length > 0) {
+      const { error: channelsError } = await supabaseAdmin
+        .from(SNAPSHOT_MEMBER_CHANNELS_TABLE)
+        .insert(channelsInsert);
+      if (channelsError) throw channelsError;
     }
-  }
 
-  if (channelsInsert.length > 0) {
-    const { error: channelsError } = await supabaseAdmin
-      .from(SNAPSHOT_MEMBER_CHANNELS_TABLE)
-      .insert(channelsInsert);
-    if (channelsError) throw channelsError;
+    return {
+      snapshotId,
+      generatedAt: computed.generatedAt,
+      sourceDataRetrievedAt: computed.sourceDataRetrievedAt,
+      totalActiveTenfChannels: computed.totalActiveTenfChannels,
+      trackedMembersCount: computed.trackedMembersCount,
+      rows: computed.rows.map((entry) => entry.row),
+    };
+  } catch (error) {
+    await supabaseAdmin
+      .from(SNAPSHOTS_TABLE)
+      .update({ status: "failed" })
+      .eq("id", snapshotId);
+    throw error;
   }
+}
 
-  return {
-    snapshotId: snapshotRow.id,
-    generatedAt: computed.generatedAt,
-    sourceDataRetrievedAt: computed.sourceDataRetrievedAt,
-    totalActiveTenfChannels: computed.totalActiveTenfChannels,
-    trackedMembersCount: computed.trackedMembersCount,
-    rows: computed.rows.map((entry) => entry.row),
-  };
+export async function createFollowEngagementSnapshot(
+  generatedByDiscordId: string | null
+): Promise<FollowEngagementOverviewResponse> {
+  const started = await startFollowEngagementSnapshotJob(generatedByDiscordId);
+  if (started.alreadyRunning) {
+    throw new Error("snapshot_already_running");
+  }
+  return executeFollowEngagementSnapshotJob(started.snapshotId, generatedByDiscordId);
 }
 
 export async function getLatestFollowEngagementOverview(): Promise<FollowEngagementOverviewResponse | null> {
   const { data: snapshots, error: snapshotError } = await supabaseAdmin
     .from(SNAPSHOTS_TABLE)
-    .select("id, generated_at, source_data_retrieved_at, total_active_tenf_channels, tracked_members_count")
+    .select("id, generated_at, source_data_retrieved_at, total_active_tenf_channels, tracked_members_count, status")
+    .eq("status", "completed")
     .order("generated_at", { ascending: false })
     .limit(SNAPSHOT_METADATA_WINDOW);
 
@@ -793,6 +862,37 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
   };
 }
 
+export async function getFollowEngagementSnapshotRunInfo(
+  snapshotId?: string | null
+): Promise<FollowEngagementSnapshotRunInfo | null> {
+  let query = supabaseAdmin
+    .from(SNAPSHOTS_TABLE)
+    .select("id, status, generated_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (snapshotId) {
+    query = query.eq("id", snapshotId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  if (!data?.id) return null;
+
+  const status = String(data.status || "failed");
+  const normalizedStatus: FollowEngagementSnapshotRunStatus =
+    status === "running" || status === "completed" || status === "failed"
+      ? status
+      : "failed";
+
+  return {
+    snapshotId: String(data.id),
+    status: normalizedStatus,
+    generatedAt: String(data.generated_at || data.created_at || new Date(0).toISOString()),
+    createdAt: String(data.created_at || data.generated_at || new Date(0).toISOString()),
+  };
+}
+
 export async function buildFollowEngagementOverview(): Promise<FollowEngagementOverviewResponse> {
   const latest = await getLatestFollowEngagementOverview();
   if (latest) return latest;
@@ -812,13 +912,17 @@ export async function buildFollowEngagementMemberDetail(
   discordId: string,
   snapshotId?: string | null
 ): Promise<FollowEngagementDetailResponse | null> {
-  const snapshotQuery = supabaseAdmin
+  let snapshotQuery = supabaseAdmin
     .from(SNAPSHOTS_TABLE)
     .select("id, generated_at, source_data_retrieved_at");
 
   const { data: snapshot, error: snapshotError } = snapshotId
     ? await snapshotQuery.eq("id", snapshotId).maybeSingle()
-    : await snapshotQuery.order("generated_at", { ascending: false }).limit(1).maybeSingle();
+    : await snapshotQuery
+        .eq("status", "completed")
+        .order("generated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
   if (snapshotError) throw snapshotError;
   if (!snapshot?.id) return null;

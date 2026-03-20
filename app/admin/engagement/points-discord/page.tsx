@@ -84,6 +84,7 @@ export default function AdminEngagementPointsDiscordPage() {
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [runId, setRunId] = useState<string | null>(null);
@@ -92,6 +93,7 @@ export default function AdminEngagementPointsDiscordPage() {
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
   const [noteByEventId, setNoteByEventId] = useState<Record<string, string>>({});
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [bulkFeedback, setBulkFeedback] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
   const historyLoadedAtRef = useRef<Record<string, number>>({});
@@ -174,6 +176,48 @@ export default function AdminEngagementPointsDiscordPage() {
       setError(e instanceof Error ? e.message : "Erreur reseau.");
     } finally {
       setSavingId("");
+    }
+  }
+
+  async function awardAllPoints() {
+    if (sortedTodo.length === 0) {
+      setBulkFeedback("Aucun raid en attente à valider.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Valider ${sortedTodo.length} raid(s) en une seule fois ?\n` +
+        "Cette action attribue +500 points pour chaque raid non encore traité."
+    );
+    if (!confirmed) return;
+
+    setBulkSaving(true);
+    setBulkFeedback("");
+    try {
+      const response = await fetch("/api/admin/engagement/raids-sub/points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventIds: sortedTodo.map((item) => item.id),
+          points: 500,
+          note: "Validation groupée depuis points-discord",
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || "Impossible de valider tous les raids.");
+      }
+      const inserted = Number(body.insertedCount || 0);
+      const already = Number(body.alreadyAwardedCount || 0);
+      const invalid = Number(body.invalidStatusCount || 0);
+      const missing = Number(body.missingCount || 0);
+      setBulkFeedback(
+        `Validation groupée terminée: ${inserted} ajouté(s), ${already} déjà attribué(s), ${invalid} statut non matched, ${missing} introuvable(s).`
+      );
+      await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur reseau.");
+    } finally {
+      setBulkSaving(false);
     }
   }
 
@@ -367,11 +411,22 @@ export default function AdminEngagementPointsDiscordPage() {
                   <p className="text-sm font-semibold text-cyan-100">
                     Commandes Discord pour raids à valider (raiders uniquement, 20 pseudos max/commande)
                   </p>
-                  <button type="button" onClick={() => void copyRaidCommands()} className={secondaryButtonClass}>
-                    Générer + Copier
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => void copyRaidCommands()} className={secondaryButtonClass}>
+                      Générer + Copier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void awardAllPoints()}
+                      disabled={bulkSaving || sortedTodo.length === 0}
+                      className={primaryButtonClass}
+                    >
+                      {bulkSaving ? "Validation globale..." : "Tout valider (+500)"}
+                    </button>
+                  </div>
                 </div>
                 {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
+                {bulkFeedback ? <p className="mt-2 text-xs text-emerald-200">{bulkFeedback}</p> : null}
                 {raidCommands.length === 0 ? (
                   <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable trouvé sur les raids en attente.</p>
                 ) : (
@@ -417,7 +472,12 @@ export default function AdminEngagementPointsDiscordPage() {
                       placeholder="Note optionnelle (ex: points envoyés via bot manuellement)"
                       className={controlClass}
                     />
-                    <button type="button" onClick={() => void awardPoints(item.id)} disabled={savingId === item.id} className={primaryButtonClass}>
+                    <button
+                      type="button"
+                      onClick={() => void awardPoints(item.id)}
+                      disabled={bulkSaving || savingId === item.id}
+                      className={primaryButtonClass}
+                    >
                       {savingId === item.id ? "Validation..." : "Valider points +500"}
                     </button>
                   </div>

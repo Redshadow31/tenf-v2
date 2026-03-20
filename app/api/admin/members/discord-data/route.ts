@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { memberRepository } from "@/lib/repositories";
+import { updateMemberData } from "@/lib/memberData";
 
 type MemberDiscordRow = {
   twitchLogin: string;
@@ -225,6 +226,20 @@ export async function POST(request: NextRequest) {
           discordUsername: current,
           updatedBy: admin.discordId,
         });
+        // Compat historique: certaines vues admin utilisent encore memberData en fallback.
+        // On synchronise aussi ce stockage pour garder un affichage cohérent partout.
+        try {
+          await updateMemberData(
+            { twitchLogin: member.twitchLogin, discordId: member.discordId },
+            { discordUsername: current },
+            admin.discordId || "system"
+          );
+        } catch (legacySyncError) {
+          console.warn(
+            `[admin/members/discord-data] Sync legacy ignorée pour ${member.twitchLogin}:`,
+            legacySyncError
+          );
+        }
         updated += 1;
         results.push({
           twitchLogin: member.twitchLogin,

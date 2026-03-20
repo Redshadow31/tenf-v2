@@ -66,6 +66,23 @@ type DetailPayload = {
   lastCalculatedAt: string | null;
 };
 
+type SnapshotRunResponse = {
+  success: boolean;
+  snapshotId: string;
+  status: "running";
+  alreadyRunning: boolean;
+};
+
+type SnapshotStatusResponse = {
+  success: boolean;
+  snapshot: {
+    snapshotId: string;
+    status: "running" | "completed" | "failed";
+    generatedAt: string;
+    createdAt: string;
+  } | null;
+};
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "Indisponible";
   const date = new Date(value);
@@ -97,7 +114,9 @@ export default function AdminEngagementFollowPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [runningSnapshot, setRunningSnapshot] = useState(false);
+  const [runningSnapshotId, setRunningSnapshotId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [overview, setOverview] = useState<FollowOverviewResponse | null>(null);
   const [selectedDiscordId, setSelectedDiscordId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -151,18 +170,41 @@ export default function AdminEngagementFollowPage() {
     try {
       setRunningSnapshot(true);
       setError(null);
+      setNotice(null);
       const response = await fetch("/api/admin/engagement/follow/snapshots/run", {
         method: "POST",
       });
-      if (!response.ok) {
+      if (!response.ok && response.status !== 202) {
         throw new Error(`Erreur generation snapshot (${response.status})`);
       }
-      await loadOverview();
+      const payload = (await response.json()) as SnapshotRunResponse;
+      if (!payload.snapshotId) {
+        throw new Error("Impossible de recuperer l'identifiant du snapshot en cours");
+      }
+      setRunningSnapshotId(payload.snapshotId);
+      if (payload.alreadyRunning) {
+        setNotice("Un snapshot etait deja en cours. Suivi du statut active.");
+      } else {
+        setNotice("Generation du snapshot lancee. Mise a jour automatique en cours...");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
       setRunningSnapshot(false);
     }
+  }
+
+  async function loadSnapshotStatus(snapshotId?: string): Promise<SnapshotStatusResponse["snapshot"]> {
+    const params = new URLSearchParams();
+    if (snapshotId) params.set("snapshotId", snapshotId);
+    const response = await fetch(
+      `/api/admin/engagement/follow/snapshots/status${params.toString() ? `?${params.toString()}` : ""}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      throw new Error(`Erreur statut snapshot (${response.status})`);
+    }
+    const payload = (await response.json()) as SnapshotStatusResponse;
+    return payload.snapshot;
   }
 
   useEffect(() => {
@@ -188,8 +230,72 @@ export default function AdminEngagementFollowPage() {
 
   useEffect(() => {
     if (!hasAccess) return;
-    loadOverview();
+    async function loadInitialData() {
+      await loadOverview();
+      try {
+        const latestSnapshot = await loadSnapshotStatus();
+        if (latestSnapshot?.status === "running") {
+          setRunningSnapshot(true);
+          setRunningSnapshotId(latestSnapshot.snapshotId);
+          setNotice("Un snapshot est en cours. Suivi du statut active.");
+        }
+      } catch (_error) {
+        // On ignore ici, le tableau reste utilisable meme sans statut.
+      }
+    }
+    void loadInitialData();
   }, [hasAccess]);
+
+  useEffect(() => {
+    if (!hasAccess || !runningSnapshot || !runningSnapshotId) return;
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const snapshot = await loadSnapshotStatus(runningSnapshotId);
+        if (cancelled) return;
+
+        if (!snapshot) {
+          timeoutId = setTimeout(tick, 3000);
+          return;
+        }
+
+        if (snapshot.status === "failed") {
+          setRunningSnapshot(false);
+          setRunningSnapshotId(null);
+          setError("La generation du snapshot a echoue.");
+          setNotice(null);
+          return;
+        }
+
+        if (snapshot.status === "completed") {
+          setRunningSnapshot(false);
+          setRunningSnapshotId(null);
+          setNotice("Snapshot termine. Donnees rechargees.");
+          await loadOverview();
+          return;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setRunningSnapshot(false);
+        setRunningSnapshotId(null);
+        setError(err instanceof Error ? err.message : "Erreur inconnue");
+        return;
+      }
+
+      timeoutId = setTimeout(tick, 3000);
+    };
+
+    timeoutId = setTimeout(tick, 1200);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [hasAccess, runningSnapshot, runningSnapshotId]);
 
   const summary = useMemo(() => {
     const rows = overview?.rows || [];
@@ -261,9 +367,16 @@ export default function AdminEngagementFollowPage() {
           className="rounded-lg border px-4 py-2 text-sm font-medium"
           style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
         >
-          {runningSnapshot ? "Generation snapshot..." : "Generer un nouveau snapshot"}
+          {runningSnapshot ? "Snapshot en cours..." : "Generer un nouveau snapshot"}
         </button>
       </div>
+
+      {runningSnapshot ? (
+        <div className="mb-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200">
+          Generation en cours{runningSnapshotId ? ` (id: ${runningSnapshotId})` : ""}. L'ecran sera mis a jour
+          automatiquement des que le snapshot est termine.
+        </div>
+      ) : null}
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
@@ -313,6 +426,7 @@ export default function AdminEngagementFollowPage() {
             {filteredRows.length} resultat(s) sur {(overview?.rows || []).length}
           </p>
         </div>
+        {notice ? <div className="mb-4 text-xs text-cyan-200">{notice}</div> : null}
         {loading ? (
           <div className="py-10 text-center text-sm text-gray-400">Chargement des donnees follow...</div>
         ) : error ? (

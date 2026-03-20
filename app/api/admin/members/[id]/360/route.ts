@@ -20,6 +20,9 @@ import { getMonthKey } from "@/lib/raidStorage";
 import { eventRepository, memberRepository } from "@/lib/repositories";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
 
+const SUPABASE_PAGE_SIZE = 1000;
+const SUPABASE_MAX_PAGES = 20;
+
 function buildMonthKeys(months: number): string[] {
   const now = new Date();
   return Array.from({ length: months }, (_, i) => {
@@ -87,6 +90,18 @@ function buildMemberIdentifierSets(member: any, decodedId: string) {
   return { logins, discordIds, displayNames, siteUsernames };
 }
 
+async function fetchAllSupabaseMembers(): Promise<any[]> {
+  const allMembers: any[] = [];
+  for (let page = 0; page < SUPABASE_MAX_PAGES; page += 1) {
+    const offset = page * SUPABASE_PAGE_SIZE;
+    const chunk = await memberRepository.findAll(SUPABASE_PAGE_SIZE, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    allMembers.push(...chunk);
+    if (chunk.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return allMembers;
+}
+
 /**
  * GET - Récupère toutes les données agrégées pour la fiche 360° d'un membre
  */
@@ -113,7 +128,7 @@ export async function GET(
 
     // Charger les données de base
     await loadMemberDataFromStorage();
-    const supabaseMembers = await memberRepository.findAll(2000, 0);
+    const supabaseMembers = await fetchAllSupabaseMembers();
 
     // Trouver le membre
     // 1) Source canonique Supabase (plus fiable pour l'état courant)
