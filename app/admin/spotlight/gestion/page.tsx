@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Calendar, Users, CheckCircle2, XCircle, Star, ArrowLeft } from "lucide-react";
-import { getDiscordUser } from "@/lib/discord";
+import { Calendar, Users, CheckCircle2, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface EventWithData {
   event: {
@@ -41,6 +40,23 @@ interface EvaluationCriteria {
   value: number;
 }
 
+interface MemberOption {
+  twitchLogin: string;
+  displayName: string;
+}
+
+interface ManualSpotlight {
+  id: string;
+  streamerTwitchLogin: string;
+  streamerDisplayName?: string;
+  startedAt: string;
+  endsAt?: string;
+  status: "active" | "cancelled" | "completed";
+  moderatorUsername: string;
+  hasStarted: boolean;
+  hasEnded: boolean;
+}
+
 const DEFAULT_CRITERIA: EvaluationCriteria[] = [
   { id: "accueil", label: "Accueil & Présentation", maxValue: 3, value: 3 },
   { id: "interaction", label: "Interaction & Dynamique", maxValue: 5, value: 4 },
@@ -49,6 +65,15 @@ const DEFAULT_CRITERIA: EvaluationCriteria[] = [
   { id: "qualite", label: "Qualité technique", maxValue: 2, value: 2 },
   { id: "tenf", label: "TENF Spirit", maxValue: 4, value: 3 },
 ];
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 disabled:opacity-50";
+const inputClass =
+  "w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-300/45";
 
 export default function GestionSpotlightPage() {
   const [events, setEvents] = useState<EventWithData[]>([]);
@@ -59,10 +84,155 @@ export default function GestionSpotlightPage() {
   const [evaluation, setEvaluation] = useState<EvaluationCriteria[]>(DEFAULT_CRITERIA);
   const [moderatorComments, setModeratorComments] = useState("");
   const [saving, setSaving] = useState(false);
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [manualSpotlights, setManualSpotlights] = useState<ManualSpotlight[]>([]);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualSearch, setManualSearch] = useState("");
+  const [selectedManualStreamer, setSelectedManualStreamer] = useState<MemberOption | null>(null);
+  const [manualDate, setManualDate] = useState("");
+  const [manualStartTime, setManualStartTime] = useState("");
+  const [manualEndTime, setManualEndTime] = useState("");
 
   useEffect(() => {
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    setManualDate(dateStr);
+    setManualStartTime(now.toTimeString().slice(0, 5));
+    const plus2h = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    setManualEndTime(plus2h.toTimeString().slice(0, 5));
+
     loadData();
+    loadManualSpotlightData();
   }, []);
+
+  const filteredMembers = useMemo(() => {
+    const query = manualSearch.trim().toLowerCase();
+    if (!query) return members.slice(0, 30);
+    return members
+      .filter((member) => {
+        return (
+          member.twitchLogin.toLowerCase().includes(query) ||
+          member.displayName.toLowerCase().includes(query)
+        );
+      })
+      .slice(0, 30);
+  }, [members, manualSearch]);
+
+  const loadManualSpotlightData = async () => {
+    try {
+      setManualLoading(true);
+      setManualError(null);
+      const [membersRes, spotlightsRes] = await Promise.all([
+        fetch("/api/members/public", { cache: "no-store" }),
+        fetch("/api/admin/membres/spotlight", { cache: "no-store" }),
+      ]);
+
+      if (membersRes.ok) {
+        const membersData = await membersRes.json();
+        const validMembers = (membersData.members || [])
+          .filter((item: any) => item.twitchLogin && item.isActive !== false)
+          .map((item: any) => ({
+            twitchLogin: item.twitchLogin,
+            displayName: item.displayName || item.twitchLogin,
+          }));
+        setMembers(validMembers);
+      }
+
+      if (spotlightsRes.ok) {
+        const spotlightData = await spotlightsRes.json();
+        const formatted = (spotlightData.spotlights || []).map((item: any) => ({
+          id: item.id,
+          streamerTwitchLogin: item.streamerTwitchLogin,
+          streamerDisplayName: item.streamerDisplayName,
+          startedAt: item.startedAt,
+          endsAt: item.endsAt,
+          status: item.status,
+          moderatorUsername: item.moderatorUsername,
+          hasStarted: !!item.hasStarted,
+          hasEnded: !!item.hasEnded,
+        }));
+        setManualSpotlights(formatted);
+      }
+    } catch (error) {
+      setManualError(error instanceof Error ? error.message : "Erreur de chargement");
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
+  const handleCreateManualSpotlight = async () => {
+    setManualError(null);
+
+    if (!selectedManualStreamer) {
+      setManualError("Sélectionne un streamer.");
+      return;
+    }
+    if (!manualDate || !manualStartTime || !manualEndTime) {
+      setManualError("Renseigne la date, l'heure de début et l'heure de fin.");
+      return;
+    }
+
+    const startsAt = new Date(`${manualDate}T${manualStartTime}`);
+    const endsAt = new Date(`${manualDate}T${manualEndTime}`);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      setManualError("Date ou heure invalide.");
+      return;
+    }
+    if (endsAt <= startsAt) {
+      setManualError("L'heure de fin doit être après l'heure de début.");
+      return;
+    }
+
+    try {
+      setManualSaving(true);
+      const response = await fetch("/api/admin/membres/spotlight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          streamerTwitchLogin: selectedManualStreamer.twitchLogin,
+          streamerDisplayName: selectedManualStreamer.displayName,
+          startedAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur de création");
+      }
+
+      setSelectedManualStreamer(null);
+      setManualSearch("");
+      await loadManualSpotlightData();
+    } catch (error) {
+      setManualError(error instanceof Error ? error.message : "Erreur de création");
+    } finally {
+      setManualSaving(false);
+    }
+  };
+
+  const updateManualSpotlightStatus = async (id: string, status: ManualSpotlight["status"]) => {
+    try {
+      setManualSaving(true);
+      setManualError(null);
+      const response = await fetch("/api/admin/membres/spotlight", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Mise à jour impossible");
+      }
+      await loadManualSpotlightData();
+    } catch (error) {
+      setManualError(error instanceof Error ? error.message : "Erreur de mise à jour");
+    } finally {
+      setManualSaving(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -330,65 +500,310 @@ export default function GestionSpotlightPage() {
   const totalScore = evaluation.reduce((sum, crit) => sum + crit.value, 0);
   const maxScore = evaluation.reduce((sum, crit) => sum + crit.maxValue, 0);
   const scorePercentage = (totalScore / maxScore) * 100;
+  const totalSpotlightEvents = events.length;
+  const avgPresenceRate =
+    totalSpotlightEvents > 0
+      ? Math.round(
+          events.reduce((acc, item) => acc + (item.presenceRate || 0), 0) / totalSpotlightEvents
+        )
+      : 0;
+  const manualActiveCount = manualSpotlights.filter((item) => item.status === "active").length;
+  const eventsWithWeakPresence = events.filter((item) => (item.presenceRate || 0) < 50).length;
 
   if (loading) {
     return (
-      <div className="text-white">
+      <div className="space-y-6 text-white">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-300" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="text-white">
-      <div className="mb-8">
+    <div className="space-y-6 text-white">
+      <section className={`${glassCardClass} p-5 md:p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Communaute - Evenements - Spotlight</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+              Gestion Spotlight
+            </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Cockpit opérationnel pour piloter la programmation Spotlight sur la page Lives, suivre les présences
+              des événements Spotlight et centraliser l'évaluation qualitative des streamers.
+            </p>
+          </div>
+          <Link href="/admin/spotlight" className={subtleButtonClass}>
+            Retour au hub Spotlight
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements Spotlight</p>
+          <p className="mt-2 text-3xl font-semibold">{totalSpotlightEvents}</p>
+          <p className="mt-1 text-xs text-slate-400">Base d'analyse présence et qualité</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Programmations manuelles actives</p>
+          <p className="mt-2 text-3xl font-semibold text-indigo-200">{manualActiveCount}</p>
+          <p className="mt-1 text-xs text-slate-400">Pseudos priorisés avec badge sur Lives</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Présence moyenne</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">{avgPresenceRate}%</p>
+          <p className="mt-1 text-xs text-slate-400">Taux de participation des sessions Spotlight</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions à risque</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-300">{eventsWithWeakPresence}</p>
+          <p className="mt-1 text-xs text-slate-400">Présence inférieure à 50%</p>
+        </article>
+      </section>
+
+      <section className={`${sectionCardClass} p-5`}>
+        <h2 className="text-lg font-semibold text-slate-100">Explication de la page</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+            <p className="text-sm font-semibold text-indigo-100">1) Programmer la mise en avant</p>
+            <p className="mt-1 text-xs text-slate-300">
+              Sélectionner un pseudo et un créneau horaire pour forcer la visibilité sur la page Lives
+              (badge Spotlight TENF + remontée en premier).
+            </p>
+          </div>
+          <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+            <p className="text-sm font-semibold text-cyan-100">2) Contrôler la présence</p>
+            <p className="mt-1 text-xs text-slate-300">
+              Ouvrir chaque session Spotlight pour vérifier les participants présents/absents et détecter les sessions à risque.
+            </p>
+          </div>
+          <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+            <p className="text-sm font-semibold text-emerald-100">3) Valider l'évaluation</p>
+            <p className="mt-1 text-xs text-slate-300">
+              Compléter la grille qualitative pour alimenter le suivi streamer et les décisions d'accompagnement.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${sectionCardClass} p-5`}>
         <Link
           href="/admin/spotlight"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block flex items-center gap-2"
+          className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-100"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour au hub Spotlight
         </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">Gestion Spotlight</h1>
-        <p className="text-gray-400">Gérer les présences et évaluations des événements Spotlight</p>
-      </div>
+        <div className="mb-4">
+          <h2 className="text-2xl font-semibold text-white">Programmation manuelle Lives</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Ce bloc permet de forcer un pseudo en Spotlight TENF (badge + priorité d'affichage sur la page lives).
+          </p>
+        </div>
+
+        {manualError && (
+          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
+            {manualError}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-sm text-slate-300">Streamer</label>
+          {selectedManualStreamer ? (
+            <div className="flex items-center justify-between rounded-lg border border-indigo-300/40 bg-indigo-300/10 p-3">
+              <div>
+                <div className="font-semibold">{selectedManualStreamer.displayName}</div>
+                <div className="text-sm text-slate-300">@{selectedManualStreamer.twitchLogin}</div>
+              </div>
+              <button
+                onClick={() => setSelectedManualStreamer(null)}
+                className="text-sm text-slate-300 hover:text-white"
+                disabled={manualSaving}
+                type="button"
+              >
+                Changer
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={manualSearch}
+                onChange={(event) => setManualSearch(event.target.value)}
+                placeholder="Rechercher un streamer..."
+                className={inputClass}
+              />
+              <div className="max-h-56 space-y-2 overflow-y-auto">
+                {filteredMembers.map((member) => (
+                  <button
+                    key={member.twitchLogin}
+                    onClick={() => setSelectedManualStreamer(member)}
+                    className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-left transition-colors hover:border-indigo-300/45"
+                    type="button"
+                  >
+                    <div className="font-medium">{member.displayName}</div>
+                    <div className="text-xs text-slate-400">@{member.twitchLogin}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Date</label>
+            <input
+              type="date"
+              value={manualDate}
+              onChange={(event) => setManualDate(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Heure de début</label>
+            <input
+              type="time"
+              value={manualStartTime}
+              onChange={(event) => setManualStartTime(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-slate-300">Heure de fin</label>
+            <input
+              type="time"
+              value={manualEndTime}
+              onChange={(event) => setManualEndTime(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            onClick={handleCreateManualSpotlight}
+            disabled={manualSaving}
+            className={subtleButtonClass}
+            type="button"
+          >
+            {manualSaving ? "Enregistrement..." : "Programmer la mise en avant"}
+          </button>
+          <button
+            onClick={loadManualSpotlightData}
+            disabled={manualLoading || manualSaving}
+            className="inline-flex items-center rounded-xl border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-indigo-300/40 hover:text-white disabled:opacity-50"
+            type="button"
+          >
+            {manualLoading ? "Actualisation..." : "Actualiser les programmations"}
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <h3 className="text-lg font-semibold text-white">Programmations manuelles</h3>
+          {manualSpotlights.length === 0 ? (
+            <p className="text-sm text-slate-400">Aucune programmation manuelle pour le moment.</p>
+          ) : (
+            <div className="space-y-2">
+              {manualSpotlights.map((spotlight) => {
+                const liveState =
+                  spotlight.status !== "active"
+                    ? "Inactif"
+                    : spotlight.hasEnded
+                      ? "Terminé"
+                      : spotlight.hasStarted
+                        ? "Démarré"
+                        : "À venir";
+                return (
+                  <div
+                    key={spotlight.id}
+                    className="flex flex-col gap-3 rounded-xl border border-[#353a50] bg-[#121623]/80 p-3 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="font-semibold text-white">
+                        {spotlight.streamerDisplayName || spotlight.streamerTwitchLogin}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatEventDate(spotlight.startedAt)} - {spotlight.endsAt ? formatEventDate(spotlight.endsAt) : "Sans fin"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Créé par {spotlight.moderatorUsername || "admin inconnu"} - État: {liveState}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {spotlight.status === "active" ? (
+                        <button
+                          onClick={() => updateManualSpotlightStatus(spotlight.id, "cancelled")}
+                          className="rounded-md border border-amber-500/40 px-3 py-1 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/10"
+                          disabled={manualSaving}
+                          type="button"
+                        >
+                          Annuler
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateManualSpotlightStatus(spotlight.id, "active")}
+                          className="rounded-md border border-emerald-500/40 px-3 py-1 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/10"
+                          disabled={manualSaving}
+                          type="button"
+                        >
+                          Réactiver
+                        </button>
+                      )}
+                      {!spotlight.hasEnded && spotlight.status !== "completed" && (
+                        <button
+                          onClick={() => updateManualSpotlightStatus(spotlight.id, "completed")}
+                          className="rounded-md border border-slate-500/40 px-3 py-1 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-500/10"
+                          disabled={manualSaving}
+                          type="button"
+                        >
+                          Terminer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Sélecteur de mois */}
       {groupedEvents.length > 0 && (
-        <div className="mb-6 flex items-center gap-4">
-          <label className="text-sm font-semibold text-gray-300">Filtrer par mois :</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-          >
-            <option value="">Tous les mois</option>
-            {groupedEvents.map(([monthKey]) => (
-              <option key={monthKey} value={monthKey}>
-                {formatMonthKey(monthKey)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <section className={`${sectionCardClass} p-4`}>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm font-semibold text-slate-300">Filtrer par mois :</label>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className={inputClass}>
+              <option value="">Tous les mois</option>
+              {groupedEvents.map(([monthKey]) => (
+                <option key={monthKey} value={monthKey}>
+                  {formatMonthKey(monthKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
       )}
 
       {/* Liste des événements par mois */}
       {displayedEvents.length === 0 ? (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
-          <p className="text-gray-400">Aucun événement Spotlight pour le moment</p>
-        </div>
+        <section className={`${sectionCardClass} p-8 text-center`}>
+          <p className="text-slate-400">Aucun événement Spotlight pour le moment</p>
+        </section>
       ) : (
         <div className="space-y-8">
           {displayedEvents.map(([monthKey, monthEvents]) => (
             <div key={monthKey}>
               <div className="flex items-center gap-3 mb-6">
-                <Calendar className="w-6 h-6 text-[#9146ff]" />
+                <Calendar className="w-6 h-6 text-indigo-300" />
                 <h2 className="text-2xl font-bold text-white">
                   {formatMonthKey(monthKey)}
                 </h2>
-                <span className="text-gray-400 text-sm">
+                <span className="text-slate-400 text-sm">
                   ({monthEvents.length} {monthEvents.length > 1 ? "événements" : "événement"})
                 </span>
               </div>
@@ -397,11 +812,11 @@ export default function GestionSpotlightPage() {
                 {monthEvents.map((item) => (
                   <div
                     key={item.event.id}
-                    className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden hover:border-[#9146ff]/50 transition-all hover:shadow-lg hover:shadow-[#9146ff]/20 group cursor-pointer"
+                    className="overflow-hidden rounded-xl border border-[#353a50] bg-[#121623]/80 transition-all group cursor-pointer hover:border-indigo-300/45 hover:bg-[#171d2f]"
                     onClick={() => handleOpenEvent(item)}
                   >
                     {item.event.image && (
-                      <div className="relative w-full h-48 overflow-hidden bg-gray-800">
+                      <div className="relative w-full h-48 overflow-hidden bg-slate-900">
                         <img
                           src={item.event.image}
                           alt={item.event.title}
@@ -416,12 +831,12 @@ export default function GestionSpotlightPage() {
                       </h3>
 
                       <div className="space-y-2 text-sm mb-3">
-                        <div className="flex items-center gap-2 text-gray-400">
+                        <div className="flex items-center gap-2 text-slate-400">
                           <Calendar className="w-4 h-4" />
                           <span>{formatEventDate(item.event.date)}</span>
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-700">
-                          <div className="flex items-center gap-2 text-gray-400">
+                        <div className="flex items-center justify-between border-t border-[#353a50] pt-2">
+                          <div className="flex items-center gap-2 text-slate-400">
                             <Users className="w-4 h-4" />
                             <span>{item.registrationCount} inscription{item.registrationCount > 1 ? 's' : ''}</span>
                           </div>
@@ -442,7 +857,7 @@ export default function GestionSpotlightPage() {
                         </div>
                         {item.presenceRate !== undefined && item.presenceRate > 0 && (
                           <div className="flex items-center justify-between pt-1">
-                            <span className="text-xs text-gray-400">Taux de présence</span>
+                            <span className="text-xs text-slate-400">Taux de présence</span>
                             <span className={`text-xs font-semibold ${item.presenceRate >= 80 ? 'text-green-400' : item.presenceRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
                               {item.presenceRate}%
                             </span>
