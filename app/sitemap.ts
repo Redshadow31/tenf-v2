@@ -9,6 +9,7 @@ const routes: Array<{
 }> = [
   { path: "", changeFrequency: "daily", priority: 1 },
   { path: "/a-propos", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/communaute-entraide-streamer-twitch", changeFrequency: "weekly", priority: 0.9 },
   { path: "/fonctionnement-tenf", changeFrequency: "weekly", priority: 0.9 },
   { path: "/lives", changeFrequency: "hourly", priority: 0.9 },
   { path: "/events", changeFrequency: "daily", priority: 0.8 },

@@ -107,9 +107,17 @@ function toTimestamp(value?: string): number {
 }
 
 export const metadata: Metadata = {
-  title: "Accueil | TENF",
+  title: "Communaute d'entraide Twitch pour streamers | TENF",
   description:
-    "Hub communautaire TENF pour découvrir les lives, les créateurs, les VIP et l'évolution de la communauté Twitch Entraide New Family.",
+    "TENF est une communaute d'entraide Twitch pour streamers: visibilite, lives, evenements communautaires et progression collective des createurs.",
+  keywords: [
+    "communaute entraide streamer",
+    "communaute entraide twitch",
+    "communaute streamers twitch",
+    "entraide createurs twitch",
+    "discord entraide twitch",
+    "communaute twitch francophone",
+  ],
   alternates: {
     canonical: "https://tenf-community.com",
   },
@@ -226,6 +234,13 @@ export default async function Page() {
                 style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
               >
                 Découvrir le fonctionnement
+              </Link>
+              <Link
+                href="/communaute-entraide-streamer-twitch"
+                className="inline-flex items-center justify-center rounded-xl border px-6 py-3 text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                Communaute entraide streamer
               </Link>
             </div>
 
