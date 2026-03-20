@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ModeratorRegistrationModal from "@/components/admin/ModeratorRegistrationModal";
 
 type Integration = {
@@ -21,6 +21,11 @@ type ModeratorStats = {
 type RegistrationStats = {
   normalCount: number; // Nombre d'inscrits normaux (hors modérateurs)
 };
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 
 export default function InscriptionModerateurPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -227,20 +232,95 @@ export default function InscriptionModerateurPage() {
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
+  const staffingStats = useMemo(() => {
+    const sessionCount = integrations.length;
+    let covered = 0;
+    let atRisk = 0;
+    let totalAdmins = 0;
+
+    integrations.forEach((integration) => {
+      const stats = moderatorStats[integration.id];
+      const adminCount = stats?.adminCount || 0;
+      totalAdmins += adminCount;
+      if (adminCount >= 2) covered += 1;
+      else atRisk += 1;
+    });
+
+    const avgAdminsPerSession = sessionCount > 0 ? Math.round((totalAdmins / sessionCount) * 10) / 10 : 0;
+    return { sessionCount, covered, atRisk, totalAdmins, avgAdminsPerSession };
+  }, [integrations, moderatorStats]);
 
   return (
-    <div className="space-y-8">
-      {/* Titre */}
-      <h1 className="text-3xl font-bold text-white">Inscription modérateur</h1>
+    <div className="space-y-6 p-8 text-white">
+      <section className={`${glassCardClass} p-6`}>
+        <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Onboarding · Staff sessions</p>
+        <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+          Planification staff onboarding
+        </h1>
+        <p className="mt-3 text-sm text-slate-300">
+          Cette page sert à planifier et sécuriser la couverture staff sur chaque session d'intégration.
+          Le staffing est considéré conforme uniquement si la session a au moins 2 modérateurs.
+        </p>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions publiées</p>
+          <p className="mt-2 text-3xl font-semibold text-indigo-200">{staffingStats.sessionCount}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions couvertes (>=2)</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">{staffingStats.covered}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions à risque (&lt;2)</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-300">{staffingStats.atRisk}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Moyenne admins/session</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-300">{staffingStats.avgAdminsPerSession}</p>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Règles de staffing</h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-emerald-100">
+              Règle minimale: 2 modérateurs par session (objectif non négociable).
+            </p>
+            <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
+              Inclure au moins un profil admin/lead pour les sessions sensibles.
+            </p>
+            <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
+              Prioriser les sessions avec fort volume d'inscrits quand la couverture est incomplète.
+            </p>
+          </div>
+        </article>
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Légende calendrier</h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="rounded-lg border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-emerald-100">
+              Vert: session conforme (2 admins ou plus)
+            </div>
+            <div className="rounded-lg border border-amber-400/35 bg-amber-500/15 px-3 py-2 text-amber-100">
+              Jaune: session partiellement staffée (1 admin)
+            </div>
+            <div className="rounded-lg border border-rose-400/35 bg-rose-500/15 px-3 py-2 text-rose-100">
+              Rouge: session critique (0 admin)
+            </div>
+          </div>
+        </article>
+      </section>
 
       {/* Calendrier */}
-      <div className="card bg-[#1a1a1d] border border-gray-700 p-6">
+      <div className={`${sectionCardClass} p-6`}>
         {/* En-tête du calendrier */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="rounded-lg bg-[#0e0e10] p-2 text-gray-400 hover:text-white transition-colors"
+              className="rounded-lg bg-[#0f1321] border border-[#353a50] p-2 text-gray-400 hover:text-white transition-colors"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -248,7 +328,7 @@ export default function InscriptionModerateurPage() {
             </button>
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="rounded-lg bg-[#0e0e10] p-2 text-gray-400 hover:text-white transition-colors"
+              className="rounded-lg bg-[#0f1321] border border-[#353a50] p-2 text-gray-400 hover:text-white transition-colors"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -286,8 +366,10 @@ export default function InscriptionModerateurPage() {
                   date
                     ? integration
                       ? hasEnoughAdmins
-                        ? "cursor-pointer border-green-500 bg-[#0e0e10] hover:bg-[#1a1a1d]"
-                        : "cursor-pointer border-gray-600 bg-[#0e0e10] hover:bg-[#1a1a1d]"
+                        ? "cursor-pointer border-green-500/60 bg-[#0f1321] hover:bg-[#182133]"
+                        : (stats?.adminCount || 0) === 1
+                        ? "cursor-pointer border-amber-500/60 bg-[#0f1321] hover:bg-[#182133]"
+                        : "cursor-pointer border-rose-500/60 bg-[#0f1321] hover:bg-[#182133]"
                       : "border-gray-800 bg-[#0e0e10]"
                     : "border-transparent"
                 }`}
@@ -344,13 +426,13 @@ export default function InscriptionModerateurPage() {
 
       {loading && (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-300"></div>
           <p className="text-gray-400 mt-4">Chargement des intégrations...</p>
         </div>
       )}
 
       {!loading && integrations.length === 0 && (
-        <div className="text-center py-12">
+        <div className={`${sectionCardClass} text-center py-12`}>
           <p className="text-gray-400">Aucune intégration disponible pour le moment.</p>
         </div>
       )}

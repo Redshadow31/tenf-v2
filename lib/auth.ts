@@ -177,6 +177,7 @@ export const authOptions: NextAuthOptions = {
           token.username = String(devUser.username || devUser.name || "Dev Local");
           token.avatar = (devUser.avatar || null) as string | null;
           token.role = normalizeAdminRole(devUser.role) || "ADMIN_COORDINATEUR";
+          (token as any).devBypass = true;
         }
       }
 
@@ -193,6 +194,7 @@ export const authOptions: NextAuthOptions = {
         session.user.username = (token.username || "Unknown") as string;
         session.user.avatar = (token.avatar || null) as string | null;
         session.user.role = normalizeAdminRole((token.role as string | null | undefined) || null);
+        (session.user as any).devBypass = (token as any).devBypass === true;
       }
 
       return session;

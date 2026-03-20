@@ -1,8 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { X, Users, Plus, Save } from "lucide-react";
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 type Integration = {
   id: string;
   title: string;
@@ -234,20 +241,163 @@ export default function InscriptionPage() {
     return allRegistrations[integrationId]?.length || 0;
   };
 
+  const now = new Date();
+  const futureIntegrations = useMemo(
+    () => integrations.filter((i) => new Date(i.date) >= now),
+    [integrations]
+  );
+  const pastIntegrations = useMemo(
+    () => integrations.filter((i) => new Date(i.date) < now),
+    [integrations]
+  );
+  const stats = useMemo(() => {
+    const totalSessions = integrations.length;
+    const totalRegistrations = Object.values(allRegistrations).reduce((sum, regs) => sum + regs.length, 0);
+    const upcomingSessions = futureIntegrations.length;
+    const presentCount = Object.values(allRegistrations)
+      .flat()
+      .filter((reg) => reg.present === true).length;
+    const absentCount = Object.values(allRegistrations)
+      .flat()
+      .filter((reg) => reg.present === false).length;
+    const undefinedPresence = Math.max(0, totalRegistrations - presentCount - absentCount);
+    const futureRegistrations = futureIntegrations.reduce((sum, integration) => sum + (allRegistrations[integration.id]?.length || 0), 0);
+    const pastRegistrations = totalRegistrations - futureRegistrations;
+    const attendanceRate = presentCount + absentCount > 0
+      ? Math.round((presentCount / (presentCount + absentCount)) * 100)
+      : 0;
+    const lowEnrollmentFutureSessions = futureIntegrations.filter(
+      (integration) => (allRegistrations[integration.id]?.length || 0) < 3
+    ).length;
+    return {
+      totalSessions,
+      totalRegistrations,
+      upcomingSessions,
+      absentCount,
+      presentCount,
+      undefinedPresence,
+      futureRegistrations,
+      pastRegistrations,
+      attendanceRate,
+      lowEnrollmentFutureSessions,
+    };
+  }, [integrations, allRegistrations, futureIntegrations.length]);
+
   return (
-    <div className="text-white">
-      <div className="mb-8">
-        <Link
-          href="/admin/onboarding"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
-        >
-          ← Retour à l'onboarding
-        </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">Inscriptions</h1>
-        <p className="text-gray-400">
-          Gérer les inscriptions aux réunions d'intégration
-        </p>
-      </div>
+    <div className="space-y-6 p-8 text-white">
+      <section className={`${glassCardClass} p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <Link
+              href="/admin/onboarding"
+              className="mb-3 inline-block text-sm text-slate-300 transition hover:text-white"
+            >
+              ← Retour à l'onboarding
+            </Link>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Onboarding · Inscriptions</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+              Pilotage des inscriptions aux sessions
+            </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Suis les inscrits, mets à jour les présences et ajoute des membres manuellement pour fiabiliser le suivi onboarding.
+            </p>
+          </div>
+          <button type="button" onClick={() => void loadData()} className={subtleButtonClass}>
+            <Save className="h-4 w-4" />
+            Rafraîchir
+          </button>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions publiées</p>
+          <p className="mt-2 text-3xl font-semibold text-indigo-200">{stats.totalSessions}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions à venir</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-300">{stats.upcomingSessions}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Inscriptions totales</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">{stats.totalRegistrations}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Absences marquées</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-300">{stats.absentCount}</p>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Qualité de suivi des présences</h2>
+          <div className="mt-4 space-y-3 text-sm">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-slate-300">
+                <span>Présents</span>
+                <span className="font-semibold text-emerald-200">{stats.presentCount}</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#1f2434]">
+                <div
+                  className="h-2 rounded-full bg-emerald-400"
+                  style={{
+                    width: `${stats.totalRegistrations > 0 ? Math.round((stats.presentCount / stats.totalRegistrations) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-slate-300">
+                <span>Absents</span>
+                <span className="font-semibold text-rose-200">{stats.absentCount}</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#1f2434]">
+                <div
+                  className="h-2 rounded-full bg-rose-400"
+                  style={{
+                    width: `${stats.totalRegistrations > 0 ? Math.round((stats.absentCount / stats.totalRegistrations) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-slate-300">
+                <span>Non renseignés</span>
+                <span className="font-semibold text-amber-200">{stats.undefinedPresence}</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#1f2434]">
+                <div
+                  className="h-2 rounded-full bg-amber-400"
+                  style={{
+                    width: `${stats.totalRegistrations > 0 ? Math.round((stats.undefinedPresence / stats.totalRegistrations) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Lecture rapide onboarding</h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Inscriptions futures</span>
+              <span className="font-semibold text-sky-200">{stats.futureRegistrations}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Inscriptions sessions passées</span>
+              <span className="font-semibold text-indigo-200">{stats.pastRegistrations}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Taux présence consolidé</span>
+              <span className="font-semibold text-emerald-200">{stats.attendanceRate}%</span>
+            </div>
+            <div className="rounded-lg border border-amber-400/35 bg-amber-500/15 px-3 py-2 text-amber-100">
+              Sessions à venir avec faible volume (&lt;3 inscrits): <span className="font-semibold">{stats.lowEnrollmentFutureSessions}</span>
+            </div>
+          </div>
+        </article>
+      </section>
 
       {loading ? (
         <div className="text-center py-12">
@@ -255,7 +405,7 @@ export default function InscriptionPage() {
           <p className="text-gray-400 mt-4">Chargement des inscriptions...</p>
         </div>
       ) : integrations.length === 0 ? (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+        <div className={`${sectionCardClass} p-6`}>
           <p className="text-gray-400 text-center">
             Aucune réunion d'intégration publiée pour le moment.
           </p>
@@ -263,26 +413,22 @@ export default function InscriptionPage() {
       ) : (
         <div className="space-y-8">
           {(() => {
-            const now = new Date();
-            const futureIntegrations = integrations.filter((i: Integration) => new Date(i.date) >= now);
-            const pastIntegrations = integrations.filter((i: Integration) => new Date(i.date) < now);
-            
             const renderTable = (integrationsList: Integration[]) => (
-              <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+              <div className={`${sectionCardClass} overflow-hidden`}>
                 <table className="w-full">
-                  <thead className="bg-[#0e0e10] border-b border-gray-700">
+                  <thead className="bg-[#0f1321] border-b border-[#353a50]">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Réunion</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Date</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Inscrits</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Action</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Réunion</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Date</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Inscrits</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-[#2f3448]">
                     {integrationsList.map((integration) => (
                       <tr
                         key={integration.id}
-                        className="hover:bg-[#252529] transition-colors cursor-pointer"
+                        className="hover:bg-[#1a2132] transition-colors cursor-pointer"
                         onClick={() => handleOpenModal(integration)}
                       >
                         <td className="px-6 py-4">
@@ -306,7 +452,7 @@ export default function InscriptionPage() {
                               e.stopPropagation();
                               handleOpenModal(integration);
                             }}
-                            className="text-[#9146ff] hover:text-[#7c3aed] transition-colors text-sm font-medium"
+                                  className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-1.5 text-indigo-100 transition hover:bg-indigo-500/30 text-sm font-medium"
                           >
                             Voir les détails
                           </button>
@@ -348,19 +494,19 @@ export default function InscriptionPage() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="card relative max-h-[90vh] w-full max-w-4xl overflow-y-auto bg-[#1a1a1d] border border-gray-700"
+            className="card relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-[#353a50] bg-[#141927]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Bouton fermer */}
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute right-4 top-4 z-10 rounded-lg bg-[#0e0e10] p-2 text-gray-400 transition-colors hover:text-white"
+              className="absolute right-4 top-4 z-10 rounded-lg border border-[#353a50] bg-[#0f1321] p-2 text-gray-400 transition-colors hover:text-white"
             >
               <X className="h-6 w-6" />
             </button>
 
             {/* En-tête */}
-            <div className="p-6 border-b border-gray-700">
+              <div className="p-6 border-b border-[#353a50]">
               <h2 className="text-2xl font-bold text-white mb-2">{selectedIntegration.title}</h2>
               <p className="text-gray-400">
                 {formatDate(selectedIntegration.date)} • {selectedRegistrations.length} inscription{selectedRegistrations.length > 1 ? 's' : ''}
@@ -369,7 +515,7 @@ export default function InscriptionPage() {
 
             {/* Formulaire d'ajout manuel */}
             {showAddForm && (
-              <div className="p-6 border-b border-gray-700 bg-[#0e0e10]">
+              <div className="p-6 border-b border-[#353a50] bg-[#0f1321]">
                 <h3 className="text-lg font-semibold text-white mb-4">Ajouter un membre manuellement</h3>
                 <div className="space-y-4">
                   <div>
@@ -380,7 +526,7 @@ export default function InscriptionPage() {
                       type="text"
                       value={newMember.discordUsername}
                       onChange={(e) => setNewMember({ ...newMember, discordUsername: e.target.value })}
-                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className="w-full rounded-lg border border-[#353a50] bg-[#121623]/85 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
                       placeholder="Pseudo Discord"
                     />
                   </div>
@@ -392,7 +538,7 @@ export default function InscriptionPage() {
                       type="text"
                       value={newMember.twitchChannelUrl}
                       onChange={(e) => setNewMember({ ...newMember, twitchChannelUrl: e.target.value })}
-                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className="w-full rounded-lg border border-[#353a50] bg-[#121623]/85 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
                       placeholder="https://www.twitch.tv/pseudo ou pseudo"
                     />
                   </div>
@@ -404,7 +550,7 @@ export default function InscriptionPage() {
                       type="text"
                       value={newMember.parrain}
                       onChange={(e) => setNewMember({ ...newMember, parrain: e.target.value })}
-                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+                      className="w-full rounded-lg border border-[#353a50] bg-[#121623]/85 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
                       placeholder="Pseudo Discord du parrain"
                     />
                   </div>
@@ -416,7 +562,7 @@ export default function InscriptionPage() {
                       value={newMember.notes}
                       onChange={(e) => setNewMember({ ...newMember, notes: e.target.value })}
                       rows={2}
-                      className="w-full bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff] resize-none"
+                      className="w-full rounded-lg border border-[#353a50] bg-[#121623]/85 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55 resize-none"
                       placeholder="Notes optionnelles"
                     />
                   </div>
@@ -426,14 +572,14 @@ export default function InscriptionPage() {
                         setShowAddForm(false);
                         setNewMember({ discordUsername: "", twitchChannelUrl: "", parrain: "", notes: "" });
                       }}
-                      className="flex-1 rounded-lg bg-[#1a1a1d] border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#252529]"
+                      className="flex-1 rounded-lg border border-slate-300/30 bg-slate-500/15 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-500/25"
                     >
                       Annuler
                     </button>
                     <button
                       onClick={handleAddMember}
                       disabled={saving}
-                      className="flex-1 rounded-lg bg-[#9146ff] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#7c3aed] disabled:opacity-50"
+                      className="flex-1 rounded-lg border border-emerald-300/35 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30 disabled:opacity-50"
                     >
                       {saving ? "Ajout..." : "Ajouter"}
                     </button>
@@ -443,11 +589,11 @@ export default function InscriptionPage() {
             )}
 
             {/* Boutons d'action */}
-            <div className="p-6 border-b border-gray-700 flex gap-3">
+            <div className="p-6 border-b border-[#353a50] flex gap-3">
               {!showAddForm && (
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors"
+                  className="flex items-center gap-2 rounded-lg border border-sky-300/35 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-100 transition hover:bg-sky-500/30"
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter un membre
@@ -457,7 +603,7 @@ export default function InscriptionPage() {
                 <button
                   onClick={handleSavePresences}
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-500/30 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? "Enregistrement..." : "Enregistrer les présences"}
@@ -478,10 +624,8 @@ export default function InscriptionPage() {
                     const isAbsent = isPresent === false;
                     
                     return (
-                      <div
-                        key={registration.id}
-                        className={`bg-[#0e0e10] border rounded-lg p-4 ${
-                          isAbsent ? 'border-red-500/50 bg-red-950/20' : 'border-gray-700'
+                      <div key={registration.id} className={`border rounded-lg p-4 ${
+                          isAbsent ? 'border-red-500/50 bg-red-950/20' : 'border-[#353a50] bg-[#0f1321]'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-3">
@@ -501,7 +645,7 @@ export default function InscriptionPage() {
                                       href={registration.twitchChannelUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-[#9146ff] hover:text-[#7c3aed] underline break-all"
+                                      className="text-indigo-300 hover:text-indigo-200 underline break-all"
                                     >
                                       {registration.twitchChannelUrl}
                                     </a>
@@ -524,7 +668,7 @@ export default function InscriptionPage() {
                                 type="checkbox"
                                 checked={isPresent === true}
                                 onChange={(e) => handlePresenceChange(registration.id, e.target.checked)}
-                                className="w-5 h-5 text-[#9146ff] bg-[#1a1a1d] border-gray-700 rounded focus:ring-[#9146ff]"
+                                className="w-5 h-5 text-indigo-300 bg-[#121623]/85 border-[#353a50] rounded focus:ring-indigo-300/50"
                               />
                               <span className={`text-sm font-medium ${isAbsent ? 'text-red-400' : 'text-gray-300'}`}>
                                 {isAbsent ? 'Absent' : isPresent ? 'Présent' : 'Non défini'}

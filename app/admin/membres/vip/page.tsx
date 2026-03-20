@@ -2,7 +2,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Search, Crown, Calendar, Plus, X, Save, Users, Star, Trash2, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Search,
+  Crown,
+  Calendar,
+  X,
+  Save,
+  Star,
+  Trash2,
+  Upload,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  ArrowRight,
+  Activity,
+  ShieldAlert,
+  History,
+} from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -16,9 +32,16 @@ interface Member {
   consecutiveMonths?: number;
 }
 
-interface VipHistoryEntry {
-  login: string;
-  month: string;
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+
+function getCurrentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export default function GestionVipPage() {
@@ -26,15 +49,16 @@ export default function GestionVipPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [vipFilter, setVipFilter] = useState<"all" | "vip" | "non-vip">("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | "active" | "inactive">("all");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [vipHistory, setVipHistory] = useState<Record<string, string[]>>({});
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [showMonthManager, setShowMonthManager] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkApplyMode, setBulkApplyMode] = useState<"current" | "history">("current");
   const [bulkPseudoList, setBulkPseudoList] = useState("");
   const [bulkAnalysis, setBulkAnalysis] = useState<{
     matched: Array<{ login: string; member: Member }>;
@@ -49,39 +73,34 @@ export default function GestionVipPage() {
   async function loadMembers() {
     try {
       setLoading(true);
-      const response = await fetch("/api/admin/members", {
-        cache: "no-store",
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const membersList = (data.members || []).map((m: any) => ({
-          twitchLogin: m.twitchLogin || "",
-          displayName: m.displayName || m.nom || m.twitchLogin || "",
-          isVip: m.isVip || false,
-          role: m.role || "Affilié",
-          isActive: m.isActive !== false,
-        }));
-        
-        // Charger les badges VIP depuis l'API
-        for (const member of membersList) {
-          try {
-            const vipResponse = await fetch(`/api/vip-history?action=badge&login=${member.twitchLogin}`);
-            if (vipResponse.ok) {
-              const vipData = await vipResponse.json();
-              member.vipBadge = vipData.badge || "";
-              member.consecutiveMonths = vipData.months || 0;
-            }
-          } catch (error) {
-            console.error(`Erreur lors du chargement du badge VIP pour ${member.twitchLogin}:`, error);
-          }
-        }
-        
-        // Trier par nom d'affichage
-        membersList.sort((a: Member, b: Member) => 
-          a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' })
+      const [membersResponse, badgeMapResponse] = await Promise.all([
+        fetch("/api/admin/members", { cache: "no-store" }),
+        fetch("/api/vip-history?action=badge-map", { cache: "no-store" }),
+      ]);
+
+      if (membersResponse.ok) {
+        const data = await membersResponse.json();
+        const badgeMapPayload = badgeMapResponse.ok ? await badgeMapResponse.json() : { byLogin: {} };
+        const badgeMap = (badgeMapPayload?.byLogin || {}) as Record<string, { badge?: string; months?: number }>;
+
+        const membersList = (data.members || []).map((m: any) => {
+          const login = String(m.twitchLogin || "").toLowerCase();
+          const vipInfo = badgeMap[login] || {};
+          return {
+            twitchLogin: m.twitchLogin || "",
+            displayName: m.displayName || m.nom || m.twitchLogin || "",
+            isVip: m.isVip || false,
+            role: m.role || "Affilié",
+            isActive: m.isActive !== false,
+            vipBadge: vipInfo.badge || "",
+            consecutiveMonths: vipInfo.months || 0,
+          };
+        });
+
+        membersList.sort((a: Member, b: Member) =>
+          a.displayName.localeCompare(b.displayName, "fr", { sensitivity: "base" })
         );
-        
+
         setMembers(membersList);
       } else {
         setMessage({ type: "error", text: "Erreur lors du chargement des membres" });
@@ -147,9 +166,8 @@ export default function GestionVipPage() {
           const currentMonthKey = `${year}-${month}`;
           setSelectedMonth(currentMonthKey);
           
-          // Charger les données
-          await loadMembers();
-          await loadVipHistory();
+          // Charger les données en parallèle
+          await Promise.all([loadMembers(), loadVipHistory()]);
         } catch (error) {
           console.error("Erreur lors de l'initialisation:", error);
           setMessage({ type: "error", text: "Erreur lors du chargement des données" });
@@ -194,11 +212,15 @@ export default function GestionVipPage() {
       filtered = filtered.filter((m) => !m.isVip);
     }
 
-    // Filtrer uniquement les membres actifs
-    filtered = filtered.filter((m) => m.isActive);
+    // Filtrer par activité
+    if (activityFilter === "active") {
+      filtered = filtered.filter((m) => m.isActive);
+    } else if (activityFilter === "inactive") {
+      filtered = filtered.filter((m) => !m.isActive);
+    }
 
     return filtered;
-  }, [members, searchQuery, vipFilter]);
+  }, [members, searchQuery, vipFilter, activityFilter]);
 
   async function toggleVipStatus(member: Member) {
     if (!currentAdmin) return;
@@ -305,7 +327,7 @@ export default function GestionVipPage() {
   function getMonthOptions(): string[] {
     const options: string[] = [];
     const now = new Date();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 60; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -414,10 +436,23 @@ export default function GestionVipPage() {
 
       let successCount = 0;
       let errorCount = 0;
+      const historicalMode = bulkApplyMode === "history" || selectedMonth !== getCurrentMonthKey();
+      const monthLogins = vipMonthLogins ?? vipHistory[selectedMonth] ?? [];
+      const existingMonthSet = new Set(monthLogins.map((login) => login.toLowerCase()));
 
       for (const { member } of membersToUpdate) {
         try {
-          if (member.isVip) continue; // Déjà VIP
+          if (historicalMode) {
+            const normalizedLogin = member.twitchLogin.toLowerCase();
+            if (!existingMonthSet.has(normalizedLogin)) {
+              await addVipToMonth(member.twitchLogin, selectedMonth);
+              existingMonthSet.add(normalizedLogin);
+            }
+            successCount++;
+            continue;
+          }
+
+          if (member.isVip) continue; // Déjà VIP (mode courant)
 
           const memberResponse = await fetch(`/api/admin/members?twitchLogin=${member.twitchLogin}`);
           if (!memberResponse.ok) continue;
@@ -451,7 +486,11 @@ export default function GestionVipPage() {
 
       setMessage({
         type: successCount > 0 ? "success" : "error",
-        text: `${successCount} VIP activé(s) avec succès${errorCount > 0 ? `, ${errorCount} erreur(s)` : ""}`,
+        text: historicalMode
+          ? `${successCount} entrée(s) historique VIP enregistrée(s) pour ${formatMonthKey(selectedMonth)}${
+              errorCount > 0 ? `, ${errorCount} erreur(s)` : ""
+            }`
+          : `${successCount} VIP activé(s) avec succès${errorCount > 0 ? `, ${errorCount} erreur(s)` : ""}`,
       });
 
       setBulkAnalysis(null);
@@ -580,8 +619,78 @@ export default function GestionVipPage() {
     const currentMonthVips = selectedMonth
       ? (vipMonthLogins !== null ? vipMonthLogins.length : (vipHistory[selectedMonth] || []).length)
       : 0;
-    return { vipCount, currentMonthVips, totalActive: members.filter((m) => m.isActive).length };
+    const totalActive = members.filter((m) => m.isActive).length;
+    const inactiveVip = members.filter((m) => m.isVip && !m.isActive).length;
+    return { vipCount, currentMonthVips, totalActive, inactiveVip };
   }, [members, selectedMonth, vipHistory, vipMonthLogins]);
+
+  const vipTrend = useMemo(() => {
+    const months = Object.keys(vipHistory).sort((a, b) => b.localeCompare(a));
+    const current = selectedMonth ? (vipHistory[selectedMonth]?.length || 0) : 0;
+    const previousMonth = selectedMonth
+      ? (() => {
+          const [y, m] = selectedMonth.split("-").map((v) => parseInt(v, 10));
+          const d = new Date(y, m - 2, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          return vipHistory[key]?.length || 0;
+        })()
+      : 0;
+    const variation = current - previousMonth;
+    const recent3 = months.slice(0, 3).map((month) => ({ month, count: vipHistory[month]?.length || 0 }));
+    return { current, previousMonth, variation, recent3 };
+  }, [vipHistory, selectedMonth]);
+
+  const vipQuality = useMemo(() => {
+    const goldOrHigher = members.filter(
+      (m) => m.isVip && (m.vipBadge === "Or" || m.vipBadge === "Légende" || m.vipBadge === "Diamant")
+    ).length;
+    const multiMonth = members.filter((m) => m.isVip && (m.consecutiveMonths || 0) >= 3).length;
+    const vipWithoutMonth = members.filter((m) => {
+      if (!m.isVip || !selectedMonth) return false;
+      const monthLogins = vipMonthLogins ?? vipHistory[selectedMonth] ?? [];
+      return !monthLogins.some((login) => login.toLowerCase() === m.twitchLogin.toLowerCase());
+    }).length;
+
+    return { goldOrHigher, multiMonth, vipWithoutMonth };
+  }, [members, selectedMonth, vipHistory, vipMonthLogins]);
+
+  const prioritizedActions = useMemo(() => {
+    const monthLogins = selectedMonth ? vipMonthLogins ?? vipHistory[selectedMonth] ?? [] : [];
+    const monthSet = new Set(monthLogins.map((login) => login.toLowerCase()));
+
+    return [
+      {
+        key: "month-sync",
+        label: "VIP actifs non synchronisés au mois",
+        impact: "bloquant_onboarding",
+        count: members.filter((m) => m.isVip && m.isActive && !monthSet.has(m.twitchLogin.toLowerCase())).length,
+      },
+      {
+        key: "inactive",
+        label: "VIP inactifs à nettoyer",
+        impact: "qualite_data",
+        count: members.filter((m) => m.isVip && !m.isActive).length,
+      },
+      {
+        key: "candidate",
+        label: "Candidats VIP (badge Or+ mais non VIP)",
+        impact: "processus_interne",
+        count: members.filter(
+          (m) =>
+            !m.isVip &&
+            (m.vipBadge === "Or" || m.vipBadge === "Légende" || m.vipBadge === "Diamant") &&
+            m.isActive
+        ).length,
+      },
+    ].map((item) => ({
+      ...item,
+      score:
+        item.count *
+        (item.impact === "bloquant_onboarding" ? 1.4 : item.impact === "qualite_data" ? 1.25 : 1.1),
+    }));
+  }, [members, selectedMonth, vipHistory, vipMonthLogins]);
+
+  const isSelectedMonthCurrent = selectedMonth === getCurrentMonthKey();
 
   if (loading) {
     return (
@@ -595,25 +704,44 @@ export default function GestionVipPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-8">
-      <div className="mb-8">
-        <Link
-          href="/admin/membres"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block"
-        >
-          ← Retour à Membres
-        </Link>
-        <div className="flex items-center gap-3 mb-2">
-          <Crown className="w-8 h-8 text-yellow-400" />
-          <h1 className="text-4xl font-bold text-white">Gestion des VIP</h1>
+    <div className="space-y-6 p-8 text-white">
+      <section className={`${glassCardClass} p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <Link href="/admin/membres" className="mb-3 inline-block text-sm text-slate-300 transition hover:text-white">
+              ← Retour à Membres
+            </Link>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Membres · VIP</p>
+            <div className="mt-2 flex items-center gap-2">
+              <Crown className="h-6 w-6 text-amber-200" />
+              <h1 className="bg-gradient-to-r from-amber-100 via-yellow-200 to-orange-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+                Gestion des statuts VIP
+              </h1>
+            </div>
+            <p className="mt-3 text-sm text-slate-300">
+              Pilote les promotions VIP, la cohérence mensuelle et le suivi de rétention des membres premium.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void loadMembers();
+              void loadVipHistory();
+              void loadVipMonthForSelectedMonth();
+            }}
+            disabled={loading || saving || savingMonth}
+            className={`${subtleButtonClass} disabled:opacity-60`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </button>
         </div>
-        <p className="text-gray-400">Gérez le statut VIP des membres et l'historique mensuel</p>
-      </div>
+      </section>
 
       {/* Message de succès/erreur */}
       {message && (
         <div
-          className={`mb-6 p-4 rounded-lg border ${
+          className={`p-4 rounded-lg border ${
             message.type === "success"
               ? "bg-green-900/30 border-green-600 text-green-300"
               : "bg-red-900/30 border-red-600 text-red-300"
@@ -624,25 +752,28 @@ export default function GestionVipPage() {
       )}
 
       {/* Boutons d'action globaux */}
-      <div className="flex gap-4 mb-6 flex-wrap">
+      <div className="flex gap-4 flex-wrap">
         <button
-          onClick={() => setShowBulkAddModal(true)}
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+          onClick={() => {
+            setBulkApplyMode(isSelectedMonthCurrent ? "current" : "history");
+            setShowBulkAddModal(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/35 bg-[linear-gradient(135deg,rgba(16,185,129,0.28),rgba(6,95,70,0.4))] px-5 py-2.5 text-sm font-semibold text-emerald-100 transition hover:-translate-y-[1px] hover:border-emerald-200/55 hover:bg-[linear-gradient(135deg,rgba(16,185,129,0.4),rgba(6,95,70,0.58))]"
         >
           <Upload className="w-5 h-5" />
           Ajouter VIP en masse
         </button>
         <button
           onClick={() => setConfirmDeleteAll(true)}
-          className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+          className="inline-flex items-center gap-2 rounded-xl border border-rose-300/35 bg-[linear-gradient(135deg,rgba(244,63,94,0.24),rgba(127,29,29,0.42))] px-5 py-2.5 text-sm font-semibold text-rose-100 transition hover:-translate-y-[1px] hover:border-rose-200/55 hover:bg-[linear-gradient(135deg,rgba(244,63,94,0.36),rgba(127,29,29,0.58))]"
         >
           <Trash2 className="w-5 h-5" />
           Retirer VIP à tous
         </button>
         <button
           onClick={saveCurrentMonthVips}
-          disabled={savingMonth || !selectedMonth}
-          className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={savingMonth || !selectedMonth || !isSelectedMonthCurrent}
+          className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/35 bg-indigo-500/20 px-5 py-2.5 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {savingMonth ? (
             <>
@@ -652,37 +783,162 @@ export default function GestionVipPage() {
           ) : (
             <>
               <Save className="w-5 h-5" />
-              Enregistrer VIP du mois ({selectedMonth ? formatMonthKey(selectedMonth) : "..."})
+              Enregistrer snapshot mois courant
             </>
           )}
         </button>
+        {!isSelectedMonthCurrent && selectedMonth ? (
+          <p className="self-center text-xs text-amber-300/90">
+            Snapshot désactivé hors mois courant. Utilise l'ajout en masse en mode historique.
+          </p>
+        ) : null}
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">VIP Actifs</p>
-          <p className="text-3xl font-bold text-yellow-400">{stats.vipCount}</p>
-        </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">VIP {selectedMonth ? formatMonthKey(selectedMonth) : "Ce mois"}</p>
-          <p className="text-3xl font-bold text-yellow-400">{stats.currentMonthVips}</p>
-        </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Membres Actifs</p>
-          <p className="text-3xl font-bold text-white">{stats.totalActive}</p>
-        </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Taux VIP</p>
-          <p className="text-3xl font-bold text-green-400">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">VIP actifs</p>
+          <p className="mt-2 text-3xl font-semibold text-amber-200">{stats.vipCount}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">VIP du mois sélectionné</p>
+          <p className="mt-2 text-3xl font-semibold text-yellow-200">{stats.currentMonthVips}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Membres actifs</p>
+          <p className="mt-2 text-3xl font-semibold">{stats.totalActive}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Taux VIP</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">
             {stats.totalActive > 0 ? Math.round((stats.vipCount / stats.totalActive) * 100) : 0}%
           </p>
-        </div>
-      </div>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <article className={`${sectionCardClass} p-5`}>
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-emerald-200" />
+            <h2 className="text-lg font-semibold text-slate-100">Tendance mensuelle</h2>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+            <div className="rounded-lg border border-indigo-400/30 bg-indigo-500/10 p-3">
+              <p className="text-slate-300">Mois actuel</p>
+              <p className="text-xl font-semibold text-indigo-200">{vipTrend.current}</p>
+            </div>
+            <div className="rounded-lg border border-slate-400/30 bg-slate-500/10 p-3">
+              <p className="text-slate-300">Mois précédent</p>
+              <p className="text-xl font-semibold text-slate-200">{vipTrend.previousMonth}</p>
+            </div>
+            <div className="col-span-2 rounded-lg border border-sky-400/30 bg-sky-500/10 p-3">
+              <p className="text-slate-300">Variation</p>
+              <p className="text-xl font-semibold text-sky-200">{vipTrend.variation >= 0 ? `+${vipTrend.variation}` : vipTrend.variation}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-amber-200" />
+            <h2 className="text-lg font-semibold text-slate-100">Qualité VIP</h2>
+          </div>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="rounded-lg border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-slate-300">VIP inactifs</p>
+              <p className="text-lg font-semibold text-rose-200">{stats.inactiveVip}</p>
+            </div>
+            <div className="rounded-lg border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-slate-300">VIP badge Or / Diamant / Légende</p>
+              <p className="text-lg font-semibold text-amber-200">{vipQuality.goldOrHigher}</p>
+            </div>
+            <div className="rounded-lg border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-slate-300">VIP 3+ mois consécutifs</p>
+              <p className="text-lg font-semibold text-emerald-200">{vipQuality.multiMonth}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-sky-200" />
+            <h2 className="text-lg font-semibold text-slate-100">Lecture rapide</h2>
+          </div>
+          <div className="mt-3 space-y-2 text-sm">
+            {vipTrend.recent3.length === 0 ? (
+              <p className="text-slate-400">Aucun historique sur les 3 derniers mois.</p>
+            ) : (
+              vipTrend.recent3.map((entry) => (
+                <div key={entry.month} className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+                  <span className="text-slate-200">{formatMonthKey(entry.month)}</span>
+                  <span className="font-semibold text-indigo-200">{entry.count}</span>
+                </div>
+              ))
+            )}
+            <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-300">
+              VIP actifs hors mois sélectionné: <span className="font-semibold text-amber-200">{vipQuality.vipWithoutMonth}</span>
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Plan d'action priorisé</h2>
+          <div className="mt-3 space-y-2">
+            {prioritizedActions.map((action) => (
+              <div key={action.key} className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-slate-100">{action.label}</p>
+                  <p className="text-xs text-slate-400">Score {Math.round(action.score)}</p>
+                </div>
+                <span className="text-lg font-semibold text-indigo-200">{action.count}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Actions internes</h2>
+          <div className="mt-3 space-y-2">
+            <button
+              onClick={() => {
+                setBulkApplyMode(isSelectedMonthCurrent ? "current" : "history");
+                setShowBulkAddModal(true);
+              }}
+              className="w-full inline-flex items-center justify-between rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25"
+            >
+              Ajouter VIP en masse
+              <Upload className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setConfirmDeleteAll(true)}
+              className="w-full inline-flex items-center justify-between rounded-lg border border-rose-300/35 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/25"
+            >
+              Retirer VIP à tous
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={saveCurrentMonthVips}
+              disabled={savingMonth || !selectedMonth || !isSelectedMonthCurrent}
+              className="w-full inline-flex items-center justify-between rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-50"
+            >
+              Enregistrer VIP du mois
+              <Save className="h-4 w-4" />
+            </button>
+            <Link
+              href="/admin/membres/gestion"
+              className="w-full inline-flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-sm text-slate-100 hover:border-indigo-300/45"
+            >
+              Ouvrir gestion membres
+              <ArrowRight className="h-4 w-4 text-indigo-200" />
+            </Link>
+          </div>
+        </article>
+      </section>
 
       {/* Filtres et sélection de mois */}
-      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className={`${sectionCardClass} p-6`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {/* Recherche */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -691,7 +947,7 @@ export default function GestionVipPage() {
               placeholder="Rechercher un membre..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
+              className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 pl-10 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-300/55"
             />
           </div>
 
@@ -700,11 +956,24 @@ export default function GestionVipPage() {
             <select
               value={vipFilter}
               onChange={(e) => setVipFilter(e.target.value as "all" | "vip" | "non-vip")}
-              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+              className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
             >
               <option value="all">Tous les membres</option>
               <option value="vip">VIP uniquement</option>
               <option value="non-vip">Non-VIP uniquement</option>
+            </select>
+          </div>
+
+          {/* Filtre activité */}
+          <div>
+            <select
+              value={activityFilter}
+              onChange={(e) => setActivityFilter(e.target.value as "all" | "active" | "inactive")}
+              className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
+            >
+              <option value="all">Actifs + inactifs</option>
+              <option value="active">Actifs uniquement</option>
+              <option value="inactive">Inactifs uniquement</option>
             </select>
           </div>
 
@@ -713,7 +982,7 @@ export default function GestionVipPage() {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="flex-1 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
+              className="flex-1 rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
             >
               {getMonthOptions().map((option) => (
                 <option key={option} value={option}>
@@ -723,18 +992,18 @@ export default function GestionVipPage() {
             </select>
             <button
               onClick={() => setShowMonthManager(!showMonthManager)}
-              className="bg-[#9146ff] hover:bg-[#7c3aed] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-4 py-2 text-indigo-100 transition hover:bg-indigo-500/30 flex items-center gap-2"
             >
               <Calendar className="w-5 h-5" />
               Gérer
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Gestion du mois sélectionné */}
       {showMonthManager && selectedMonth && (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 mb-6">
+        <section className={`${sectionCardClass} p-6`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
               VIP du mois : {formatMonthKey(selectedMonth)}
@@ -753,7 +1022,7 @@ export default function GestionVipPage() {
                 return (
                   <div
                     key={login}
-                    className="flex items-center justify-between bg-[#0e0e10] border border-gray-700 rounded-lg p-3"
+                    className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 p-3"
                   >
                     <div>
                       <span className="font-semibold text-white">
@@ -765,7 +1034,7 @@ export default function GestionVipPage() {
                     </div>
                     <button
                       onClick={() => removeVipFromMonth(login, selectedMonth)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                      className="rounded-lg border border-rose-300/40 bg-rose-500/20 px-3 py-1 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30"
                     >
                       Retirer
                     </button>
@@ -778,11 +1047,11 @@ export default function GestionVipPage() {
               </p>
             )}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Liste des membres */}
-      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+      <section className={`${sectionCardClass} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -819,7 +1088,14 @@ export default function GestionVipPage() {
                   >
                     <td className="py-4 px-6">
                       <div>
-                        <div className="font-semibold text-white">{member.displayName}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-white">{member.displayName}</div>
+                          {!member.isActive && (
+                            <span className="rounded-full border border-rose-400/35 bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
+                              Inactif
+                            </span>
+                          )}
+                        </div>
                         <div className="text-gray-500 text-xs">{member.twitchLogin}</div>
                       </div>
                     </td>
@@ -856,10 +1132,10 @@ export default function GestionVipPage() {
                       <button
                         onClick={() => toggleVipStatus(member)}
                         disabled={saving}
-                        className={`font-semibold px-4 py-2 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`font-semibold px-4 py-2 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed ${
                           member.isVip
-                            ? "bg-red-600 hover:bg-red-700 text-white"
-                            : "bg-green-600 hover:bg-green-700 text-white"
+                            ? "border border-rose-300/35 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                            : "border border-emerald-300/35 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
                         }`}
                       >
                         {member.isVip ? "Retirer VIP" : "Activer VIP"}
@@ -871,7 +1147,7 @@ export default function GestionVipPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       {/* Modal de confirmation suppression tous VIP */}
       {confirmDeleteAll && (
@@ -881,7 +1157,7 @@ export default function GestionVipPage() {
           onClick={() => setConfirmDeleteAll(false)}
         >
           <div
-            className="bg-[#1a1a1d] border border-red-600 rounded-lg p-8 max-w-md w-full"
+            className="max-w-md w-full rounded-2xl border border-rose-500/40 bg-[#141927] p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
@@ -896,14 +1172,14 @@ export default function GestionVipPage() {
               <button
                 onClick={() => setConfirmDeleteAll(false)}
                 disabled={saving}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                className="rounded-lg border border-slate-300/30 bg-slate-500/15 px-6 py-2 font-semibold text-slate-100 transition hover:bg-slate-500/25 disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={deleteAllVips}
                 disabled={saving}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-lg border border-rose-300/40 bg-rose-500/20 px-6 py-2 font-semibold text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -937,7 +1213,7 @@ export default function GestionVipPage() {
           }}
         >
           <div
-            className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-[#353a50] bg-[#141927] p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -958,6 +1234,39 @@ export default function GestionVipPage() {
               </button>
             </div>
 
+            <div className="mb-6 rounded-lg border border-[#353a50] bg-[#0f1321] p-3">
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Mode d'application</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkApplyMode("current")}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    bulkApplyMode === "current"
+                      ? "border border-emerald-300/45 bg-emerald-500/20 text-emerald-100"
+                      : "border border-[#353a50] bg-[#121623]/80 text-slate-200 hover:border-emerald-300/35"
+                  }`}
+                >
+                  Activer VIP actuel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkApplyMode("history")}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    bulkApplyMode === "history"
+                      ? "border border-amber-300/45 bg-amber-500/20 text-amber-100"
+                      : "border border-[#353a50] bg-[#121623]/80 text-slate-200 hover:border-amber-300/35"
+                  }`}
+                >
+                  Historique uniquement (mois passé)
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                {bulkApplyMode === "history"
+                  ? "Ce mode ajoute des entrées VIP au mois sélectionné sans modifier le statut VIP actuel des membres."
+                  : "Ce mode active le statut VIP actuel et rattache aussi les membres au mois sélectionné."}
+              </p>
+            </div>
+
             {!bulkAnalysis ? (
               <>
                 <div className="mb-6">
@@ -969,10 +1278,13 @@ export default function GestionVipPage() {
                     onChange={(e) => setBulkPseudoList(e.target.value)}
                     placeholder="aabadon&#10;alicorne&#10;batje&#10;..."
                     rows={15}
-                    className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#9146ff] font-mono text-sm"
+                    className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-4 py-3 font-mono text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-300/55"
                   />
                   <p className="text-xs text-gray-400 mt-2">
-                    Collez la liste de pseudos (un par ligne). Les VIP seront activés pour le mois sélectionné : {selectedMonth ? formatMonthKey(selectedMonth) : "..."}
+                    Collez la liste de pseudos (un par ligne). Cible: {selectedMonth ? formatMonthKey(selectedMonth) : "..."}.
+                    {bulkApplyMode === "history"
+                      ? " Mode historique: pas d'activation VIP actuelle."
+                      : " Mode courant: activation VIP + affectation mensuelle."}
                   </p>
                 </div>
 
@@ -983,14 +1295,14 @@ export default function GestionVipPage() {
                       setBulkPseudoList("");
                     }}
                     disabled={saving}
-                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    className="rounded-lg border border-slate-300/30 bg-slate-500/15 px-6 py-2 font-semibold text-slate-100 transition hover:bg-slate-500/25 disabled:opacity-50"
                   >
                     Annuler
                   </button>
                   <button
                     onClick={analyzeBulkList}
                     disabled={!bulkPseudoList.trim() || saving}
-                    className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="inline-flex items-center gap-2 rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-6 py-2 font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Search className="w-5 h-5" />
                     Analyser
@@ -1008,7 +1320,7 @@ export default function GestionVipPage() {
                           Membres reconnus ({bulkAnalysis.matched.length})
                         </h3>
                       </div>
-                      <div className="bg-[#0e0e10] border border-green-700/30 rounded-lg p-4 max-h-40 overflow-y-auto">
+                      <div className="max-h-40 overflow-y-auto rounded-lg border border-green-700/30 bg-[#0f1321] p-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {bulkAnalysis.matched.map(({ login, member }) => (
                             <div key={member.twitchLogin} className="text-sm text-gray-300">
@@ -1030,7 +1342,7 @@ export default function GestionVipPage() {
                           Pseudos non reconnus ({bulkAnalysis.unmatched.length})
                         </h3>
                       </div>
-                      <div className="bg-[#0e0e10] border border-yellow-700/30 rounded-lg p-4 space-y-4 max-h-96 overflow-y-auto">
+                      <div className="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-yellow-700/30 bg-[#0f1321] p-4">
                         {bulkAnalysis.unmatched.map(({ original, suggestions }) => (
                           <div key={original} className="border-b border-gray-700 pb-4 last:border-0">
                             <div className="font-semibold text-yellow-400 mb-2">{original}</div>
@@ -1084,7 +1396,7 @@ export default function GestionVipPage() {
                     </div>
                   )}
 
-                  <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                  <div className="rounded-lg border border-[#353a50] bg-[#0f1321] p-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <div className="text-2xl font-bold text-green-400">{bulkAnalysis.matched.length}</div>
@@ -1100,7 +1412,9 @@ export default function GestionVipPage() {
                         <div className="text-2xl font-bold text-blue-400">
                           {bulkAnalysis.matched.length + Object.values(selectedUnmatched).filter((v) => v !== "").length}
                         </div>
-                        <div className="text-xs text-gray-400">Total à activer</div>
+                        <div className="text-xs text-gray-400">
+                          {bulkApplyMode === "history" ? "Total à historiser" : "Total à activer"}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1112,7 +1426,7 @@ export default function GestionVipPage() {
                         setSelectedUnmatched({});
                       }}
                       disabled={saving}
-                      className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                      className="rounded-lg border border-slate-300/30 bg-slate-500/15 px-6 py-2 font-semibold text-slate-100 transition hover:bg-slate-500/25 disabled:opacity-50"
                     >
                       Retour
                     </button>
@@ -1123,7 +1437,7 @@ export default function GestionVipPage() {
                         bulkAnalysis.matched.length + Object.values(selectedUnmatched).filter((v) => v !== "").length === 0 ||
                         !selectedMonth
                       }
-                      className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/20 px-6 py-2 font-semibold text-emerald-100 transition hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? (
                         <>
@@ -1133,7 +1447,8 @@ export default function GestionVipPage() {
                       ) : (
                         <>
                           <Save className="w-5 h-5" />
-                          Appliquer ({bulkAnalysis.matched.length + Object.values(selectedUnmatched).filter((v) => v !== "").length})
+                          {bulkApplyMode === "history" ? "Historiser" : "Appliquer"} (
+                          {bulkAnalysis.matched.length + Object.values(selectedUnmatched).filter((v) => v !== "").length})
                         </>
                       )}
                     </button>

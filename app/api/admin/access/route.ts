@@ -6,6 +6,11 @@ import { getBlobStore, getAllMemberData, loadMemberDataFromStorage } from '@/lib
 
 const ACCESS_STORE = 'tenf-admin-access';
 const ACCESS_KEY = 'admin-access-list';
+const DEV_AUTH_BYPASS_ENABLED =
+  process.env.NODE_ENV !== "production" &&
+  process.env.ENABLE_DEV_AUTH !== "false";
+const DEV_BYPASS_DISCORD_ID = process.env.DEV_BYPASS_DISCORD_ID || "333001130705420299";
+const DEV_BYPASS_USERNAME = process.env.DEV_BYPASS_USERNAME || "Dev Fondateur";
 
 interface AdminAccess {
   discordId: string;
@@ -55,7 +60,17 @@ function getStoredEntryByDiscordId(storedAccessList: AdminAccess[], discordId: s
 export async function GET() {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FONDATEUR");
+    const admin =
+      (await requireRole("FONDATEUR")) ||
+      (DEV_AUTH_BYPASS_ENABLED
+        ? {
+            id: DEV_BYPASS_DISCORD_ID,
+            discordId: DEV_BYPASS_DISCORD_ID,
+            username: DEV_BYPASS_USERNAME,
+            avatar: null,
+            role: "FONDATEUR" as AdminRole,
+          }
+        : null);
     
     if (!admin) {
       return NextResponse.json(
@@ -245,7 +260,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FONDATEUR");
+    const admin =
+      (await requireRole("FONDATEUR")) ||
+      (DEV_AUTH_BYPASS_ENABLED
+        ? {
+            id: DEV_BYPASS_DISCORD_ID,
+            discordId: DEV_BYPASS_DISCORD_ID,
+            username: DEV_BYPASS_USERNAME,
+            avatar: null,
+            role: "FONDATEUR" as AdminRole,
+          }
+        : null);
     
     if (!admin) {
       return NextResponse.json(
@@ -365,7 +390,17 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Authentification NextAuth + rôle FOUNDER requis
-    const admin = await requireRole("FONDATEUR");
+    const admin =
+      (await requireRole("FONDATEUR")) ||
+      (DEV_AUTH_BYPASS_ENABLED
+        ? {
+            id: DEV_BYPASS_DISCORD_ID,
+            discordId: DEV_BYPASS_DISCORD_ID,
+            username: DEV_BYPASS_USERNAME,
+            avatar: null,
+            role: "FONDATEUR" as AdminRole,
+          }
+        : null);
     
     if (!admin) {
       return NextResponse.json(

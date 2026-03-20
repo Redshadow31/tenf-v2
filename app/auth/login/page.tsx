@@ -22,6 +22,11 @@ export default function LoginPage() {
   const devAuthEnabled =
     process.env.NODE_ENV !== "production" &&
     process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH !== "false";
+  const devFounderPreset = {
+    discordId: "333001130705420299",
+    username: "Dev Fondateur",
+    role: "FONDATEUR",
+  };
 
   useEffect(() => {
     // Si déjà authentifié via NextAuth, rediriger
@@ -136,6 +141,24 @@ export default function LoginPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-300">
                 Mode développement local
               </p>
+              <button
+                onClick={() => {
+                  setIsLoading(true);
+                  setDevDiscordId(devFounderPreset.discordId);
+                  setDevUsername(devFounderPreset.username);
+                  setDevRole(devFounderPreset.role);
+                  void signIn("dev-bypass", {
+                    callbackUrl,
+                    discordId: devFounderPreset.discordId,
+                    username: devFounderPreset.username,
+                    role: devFounderPreset.role,
+                  });
+                }}
+                disabled={isLoading}
+                className="mb-3 w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+              >
+                Accès total local (1 clic)
+              </button>
               <div className="space-y-2">
                 <input
                   value={devDiscordId}

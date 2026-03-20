@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import EventDiscordPointsTab from "@/components/admin/EventDiscordPointsTab";
 
 type TodoRaidItem = {
   id: string;
@@ -81,6 +82,7 @@ const tabInactiveClass = `${tabBaseClass} border-white/15 bg-white/[0.03] text-s
 
 export default function AdminEngagementPointsDiscordPage() {
   const pathname = usePathname();
+  const [sourceTab, setSourceTab] = useState<"raids" | "events">("raids");
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
@@ -139,21 +141,23 @@ export default function AdminEngagementPointsDiscordPage() {
   }
 
   useEffect(() => {
+    if (sourceTab !== "raids") return;
     void loadData({ includeTodo: true, includeHistory: true, month: selectedMonth });
     const interval = window.setInterval(() => {
       void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     }, 30_000);
     return () => window.clearInterval(interval);
-  }, [activeTab, selectedMonth]);
+  }, [sourceTab, activeTab, selectedMonth]);
 
   useEffect(() => {
+    if (sourceTab !== "raids") return;
     if (activeTab !== "history") return;
     const loadedAt = historyLoadedAtRef.current[selectedMonth] || 0;
     const ageMs = Date.now() - loadedAt;
     if (!loadedAt || ageMs > 120_000) {
       void loadData({ includeTodo: false, includeHistory: true, month: selectedMonth });
     }
-  }, [activeTab, selectedMonth]);
+  }, [sourceTab, activeTab, selectedMonth]);
 
   async function awardPoints(eventId: string) {
     setSavingId(eventId);
@@ -308,9 +312,11 @@ export default function AdminEngagementPointsDiscordPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <h1 className="mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
-              Points de raid Discord
+              Points Discord - Raids & Evenements
             </h1>
-            <p className="text-sm text-slate-300">Validation des points (+500) après vérification des raids EventSub.</p>
+            <p className="text-sm text-slate-300">
+              Gestion des points Discord sur deux flux: raids EventSub (+500) et presences evenements (+300).
+            </p>
             <p className="mt-2 text-xs text-slate-400">
               Auto-refresh: 30s
               {lastRefreshAt ? ` • dernière mise à jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
@@ -336,6 +342,63 @@ export default function AdminEngagementPointsDiscordPage() {
         </div>
       </div>
 
+      <section className={`${panelClass} p-5`}>
+        <h2 className="text-base font-semibold text-slate-100">Explication du fonctionnement</h2>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+          <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
+            1. Choisir l&apos;onglet source: <strong>Raids</strong> ou <strong>Evenements</strong>.
+          </p>
+          <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
+            2. Generer la commande Discord puis verifier les pseudos avant attribution.
+          </p>
+          <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
+            3. Valider ligne par ligne ou en masse pour alimenter l&apos;historique mensuel.
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-emerald-300/35 bg-emerald-300/10 p-3 text-xs text-emerald-100">
+            <p className="font-semibold">Flux Raids EventSub</p>
+            <p className="mt-1">
+              Source: raids <strong>matched</strong> non encore traites. Attribution: <strong>+500</strong>. Commande:
+              <strong> /raid @pseudo</strong>.
+            </p>
+          </div>
+          <div className="rounded-xl border border-sky-300/35 bg-sky-300/10 p-3 text-xs text-sky-100">
+            <p className="font-semibold">Flux Presences Evenements</p>
+            <p className="mt-1">
+              Source: presences <strong>validees</strong> (`present=true`). Attribution: <strong>+300</strong>. Commande:
+              <strong> /event @pseudo</strong>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className={`${panelClass} p-4`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSourceTab("raids")}
+            className={sourceTab === "raids" ? tabActiveTodoClass : tabInactiveClass}
+          >
+            Points Discord raids
+          </button>
+          <button
+            type="button"
+            onClick={() => setSourceTab("events")}
+            className={sourceTab === "events" ? tabActiveHistoryClass : tabInactiveClass}
+          >
+            Points Discord evenements
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          {sourceTab === "raids"
+            ? "Mode raids: verification des raids EventSub avant attribution +500."
+            : "Mode evenements: presences validees +300 avec commande /event."}
+        </p>
+      </div>
+
+      {sourceTab === "raids" ? (
+        <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className={`${panelClass} p-4`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raids à traiter</p>
@@ -512,6 +575,10 @@ export default function AdminEngagementPointsDiscordPage() {
           </div>
         )}
       </div>
+        </>
+      ) : (
+        <EventDiscordPointsTab />
+      )}
     </div>
   );
 }

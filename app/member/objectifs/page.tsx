@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Flag } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Flag, ShieldCheck } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
-import ProgressGoalCard from "@/components/member/ui/ProgressGoalCard";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
 import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthlyGoals";
 
@@ -50,10 +49,32 @@ function globalObjectiveMessage(score: number): string {
   return "Le mois est en cours: une action aujourd hui peut tout lancer.";
 }
 
+type GoalKey = "events" | "spotlight" | "raids" | "formations";
+type GoalValidationMap = Record<string, Partial<Record<GoalKey, string>>>;
+const GOALS_VALIDATION_STORAGE_KEY = "member-monthly-goals-validation-v1";
+
+function readGoalValidationMap(): GoalValidationMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(GOALS_VALIDATION_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as GoalValidationMap;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeGoalValidationMap(map: GoalValidationMap) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(GOALS_VALIDATION_STORAGE_KEY, JSON.stringify(map));
+}
+
 export default function MemberGoalsPage() {
   const { data, loading } = useMemberOverview();
   const [selectedMonth, setSelectedMonth] = useState("");
   const [raidsForMonth, setRaidsForMonth] = useState(0);
+  const [validatedGoals, setValidatedGoals] = useState<Partial<Record<GoalKey, string>>>({});
   const months = useMemo(() => getLast12Months(), []);
 
   useEffect(() => {
@@ -61,6 +82,12 @@ export default function MemberGoalsPage() {
   }, [data?.monthKey]);
 
   const { goals, updateGoals, resetGoals } = useMemberMonthlyGoals(selectedMonth);
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    const map = readGoalValidationMap();
+    setValidatedGoals(map[selectedMonth] || {});
+  }, [selectedMonth]);
 
   useEffect(() => {
     if (!selectedMonth || !data?.member?.twitchLogin) return;
@@ -100,6 +127,32 @@ export default function MemberGoalsPage() {
   const formationsProgress = progressPercent(formationsCurrent, goals.formations);
   const globalScore = Math.round((eventsProgress + spotlightProgress + raidsProgress + formationsProgress) / 4);
   const globalMessage = globalObjectiveMessage(globalScore);
+  const objectives = [
+    { key: "events" as const, label: "Presence evenements (general)", current: eventsCurrent, target: goals.events, progress: eventsProgress },
+    { key: "spotlight" as const, label: "Presence spotlight", current: spotlightCurrent, target: goals.spotlight, progress: spotlightProgress },
+    { key: "raids" as const, label: "Raids TENF", current: raidsForMonth, target: goals.raids, progress: raidsProgress },
+    { key: "formations" as const, label: "Formations a valider", current: formationsCurrent, target: goals.formations, progress: formationsProgress },
+  ];
+  const validatedCount = objectives.filter((objective) => Boolean(validatedGoals[objective.key])).length;
+  const validationProgress = Math.round((validatedCount / objectives.length) * 100);
+
+  const handleValidateObjective = (goalKey: GoalKey) => {
+    if (!selectedMonth) return;
+    const map = readGoalValidationMap();
+    const monthState = map[selectedMonth] || {};
+    monthState[goalKey] = new Date().toISOString();
+    map[selectedMonth] = monthState;
+    writeGoalValidationMap(map);
+    setValidatedGoals({ ...monthState });
+  };
+
+  const clearMonthValidations = () => {
+    if (!selectedMonth) return;
+    const map = readGoalValidationMap();
+    map[selectedMonth] = {};
+    writeGoalValidationMap(map);
+    setValidatedGoals({});
+  };
 
   return (
     <MemberSurface>
@@ -170,85 +223,113 @@ export default function MemberGoalsPage() {
           <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
             {globalMessage}
           </p>
+          <div className="mt-3 h-2 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+            <div
+              className="h-2 rounded-full"
+              style={{
+                width: `${globalScore}%`,
+                background:
+                  "linear-gradient(90deg, rgba(99,102,241,0.95), rgba(56,189,248,0.95))",
+              }}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            <span>
+              Validation des objectifs: {validatedCount}/{objectives.length}
+            </span>
+            <button
+              type="button"
+              onClick={clearMonthValidations}
+              className="rounded-full border px-2.5 py-1 hover:opacity-85"
+              style={{ borderColor: "rgba(255,255,255,0.2)", color: "var(--color-text)" }}
+            >
+              Reinitialiser validations
+            </button>
+          </div>
+          <div className="mt-2 h-2 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+            <div
+              className="h-2 rounded-full"
+              style={{
+                width: `${validationProgress}%`,
+                background:
+                  "linear-gradient(90deg, rgba(16,185,129,0.95), rgba(59,130,246,0.95))",
+              }}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Presence evenements (general)
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={goals.events}
-              onChange={(event) => updateGoals({ events: Number(event.target.value) })}
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-            />
-            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {objectiveMessage(eventsCurrent, goals.events)}
-            </p>
-          </label>
-          <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Presence spotlight
-            </span>
-            <input
-              type="number"
-              min={0}
-              max={20}
-              value={goals.spotlight}
-              onChange={(event) => updateGoals({ spotlight: Number(event.target.value) })}
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-            />
-            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {objectiveMessage(spotlightCurrent, goals.spotlight)}
-            </p>
-          </label>
-          <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Raids TENF
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={40}
-              value={goals.raids}
-              onChange={(event) => updateGoals({ raids: Number(event.target.value) })}
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-            />
-            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {objectiveMessage(raidsForMonth, goals.raids)}
-            </p>
-          </label>
-          <label className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Formations a valider
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={goals.formations}
-              onChange={(event) => updateGoals({ formations: Number(event.target.value) })}
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-            />
-            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {objectiveMessage(formationsCurrent, goals.formations)}
-            </p>
-          </label>
+          {objectives.map((objective) => {
+            const isCompleted = objective.current >= objective.target;
+            const validatedAt = validatedGoals[objective.key];
+            const goalMaxByKey: Record<GoalKey, number> = {
+              events: 30,
+              spotlight: 20,
+              raids: 40,
+              formations: 20,
+            };
+            return (
+              <div key={objective.key} className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    {objective.label}
+                  </span>
+                  {validatedAt ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                      style={{ borderColor: "rgba(16,185,129,0.35)", color: "#9ae6b4", backgroundColor: "rgba(16,185,129,0.12)" }}
+                    >
+                      <ShieldCheck size={12} />
+                      Valide
+                    </span>
+                  ) : null}
+                </div>
+                <input
+                  type="number"
+                  min={objective.key === "spotlight" ? 0 : 1}
+                  max={goalMaxByKey[objective.key]}
+                  value={goals[objective.key]}
+                  onChange={(event) => updateGoals({ [objective.key]: Number(event.target.value) })}
+                  className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+                <div className="mt-2 h-2 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      width: `${objective.progress}%`,
+                      background: isCompleted
+                        ? "linear-gradient(90deg, rgba(16,185,129,0.95), rgba(6,182,212,0.95))"
+                        : "linear-gradient(90deg, rgba(99,102,241,0.95), rgba(59,130,246,0.95))",
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  {objective.current}/{objective.target} · {objectiveMessage(objective.current, objective.target)}
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+                    {validatedAt ? `Valide le ${new Date(validatedAt).toLocaleDateString("fr-FR")}` : "Non valide"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!isCompleted || Boolean(validatedAt)}
+                    onClick={() => handleValidateObjective(objective.key)}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold disabled:opacity-45"
+                    style={{
+                      borderColor: isCompleted ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.2)",
+                      color: isCompleted ? "#b7f5cd" : "var(--color-text-secondary)",
+                      backgroundColor: isCompleted ? "rgba(16,185,129,0.12)" : "transparent",
+                    }}
+                  >
+                    <CheckCircle2 size={12} />
+                    Valider objectif
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <ProgressGoalCard label="Objectif presences (general)" current={eventsCurrent} target={goals.events} />
-        <ProgressGoalCard label="Objectif presences Spotlight" current={spotlightCurrent} target={goals.spotlight} />
-        <ProgressGoalCard label="Objectif raids TENF" current={raidsForMonth} target={goals.raids} />
-        <ProgressGoalCard label="Objectif formations du mois" current={formationsCurrent} target={goals.formations} />
       </section>
     </MemberSurface>
   );

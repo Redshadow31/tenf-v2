@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -38,6 +39,7 @@ export default function AdminEngagementRaidsAValiderPage() {
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [savingId, setSavingId] = useState("");
   const [rows, setRows] = useState<RaidDeclaration[]>([]);
   const [commentById, setCommentById] = useState<Record<string, string>>({});
@@ -105,6 +107,13 @@ export default function AdminEngagementRaidsAValiderPage() {
   }, [rows]);
 
   async function updateStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
+    if (status === "validated") {
+      const ok = window.confirm(
+        "Avant validation: verifier que ce raid n'est pas deja comptabilise automatiquement via EventSub.\n\nContinuer ?"
+      );
+      if (!ok) return;
+    }
+
     setSavingId(id);
     try {
       const response = await fetch(`/api/admin/engagement/raids-declarations/${id}`, {
@@ -119,6 +128,11 @@ export default function AdminEngagementRaidsAValiderPage() {
       if (!response.ok) {
         setError(body.error || "Mise a jour impossible.");
         return;
+      }
+      if (body.autoRejectedAlreadyCounted) {
+        setNotice(body.message || "Raid refuse: deja comptabilise automatiquement via EventSub.");
+      } else {
+        setNotice("Mise a jour enregistree.");
       }
       setRows((previous) => previous.map((item) => (item.id === id ? body.declaration : item)));
     } catch {
@@ -265,14 +279,26 @@ export default function AdminEngagementRaidsAValiderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
-      <div className="mb-8">
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
+    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+      <section className="rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur">
+        <Link href="/admin/raids" className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
           ← Retour à Engagement
         </Link>
-        <h1 className="mb-2 text-4xl font-bold">Raids à valider</h1>
-        <p className="text-gray-400">Validation des declarations raids membres avec statuts synchronises.</p>
-      </div>
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
+          Raids à valider
+        </h1>
+        <p className="text-sm text-slate-300">Validation des declarations raids membres avec statuts synchronises.</p>
+      </section>
+
+      <section className="rounded-2xl border border-amber-300/35 bg-amber-300/10 p-4 text-amber-100">
+        <p className="inline-flex items-center gap-2 text-sm font-semibold">
+          <AlertTriangle className="h-4 w-4" />
+          Rappel obligatoire
+        </p>
+        <p className="mt-1 text-sm">
+          Toujours verifier qu un raid automatique EventSub n est pas deja comptabilise avant de valider une declaration manuelle.
+        </p>
+      </section>
 
       {!backendReady ? (
         <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/20 p-4">
@@ -361,8 +387,13 @@ export default function AdminEngagementRaidsAValiderPage() {
       {error ? (
         <div className="mb-4 rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div>
       ) : null}
+      {notice ? (
+        <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-200">
+          {notice}
+        </div>
+      ) : null}
 
-      <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
+      <div className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-6 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
         {loading ? (
           <p className="text-sm text-gray-300">Chargement des declarations...</p>
         ) : rows.length === 0 ? (
@@ -384,7 +415,7 @@ export default function AdminEngagementRaidsAValiderPage() {
                 })
                 .slice(0, 8);
               return (
-                <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
+                <article key={item.id} className="rounded-xl border border-[#353a50] bg-[#121623]/85 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-base font-semibold text-white">
                       {item.member_display_name} ({item.member_twitch_login}) → {item.target_twitch_login}
@@ -458,6 +489,10 @@ export default function AdminEngagementRaidsAValiderPage() {
                       style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#0e0e10", color: "#fff" }}
                     />
                     <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-indigo-300/30 bg-indigo-300/10 px-2 py-1 text-[11px] text-indigo-100">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Verification EventSub auto activee
+                      </span>
                       <button
                         type="button"
                         onClick={() => void updateStatus(item.id, "to_study")}

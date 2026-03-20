@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, RefreshCw } from "lucide-react";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 import { getDiscordUser } from "@/lib/discord";
@@ -14,6 +15,7 @@ type OpsItem = {
   description: string;
   count: number;
   priority: OpsPriority;
+  impact: "bloquant_onboarding" | "risque_moderation" | "qualite_data" | "processus_interne";
   sla: string;
   owner: string;
   href: string;
@@ -82,6 +84,13 @@ const PRIORITY_WEIGHT: Record<OpsPriority, number> = {
   basse: 1,
 };
 
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+
 export default function MembersControlPanelPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,6 +110,7 @@ export default function MembersControlPanelPage() {
   const [currentRoleView, setCurrentRoleView] = useState<RoleView>("operations");
   const [roleLabel, setRoleLabel] = useState<string | null>(null);
   const [username, setUsername] = useState("Admin");
+  const [impactFilter, setImpactFilter] = useState<OpsItem["impact"] | "all">("all");
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-pilotage-saved-views";
   const OWNERS_KEY = "tenf-admin-members-pilotage-owners";
@@ -347,6 +357,7 @@ export default function MembersControlPanelPage() {
       description: "Demandes de modifications de profil en attente.",
       count: ops.profileValidationPendingCount,
       priority: ops.profileValidationPendingCount > 0 ? "haute" : "basse",
+      impact: "bloquant_onboarding",
       sla: "24h",
       owner: opsOwners["profile-validation"] || "",
       href: "/admin/membres/validation-profil",
@@ -357,6 +368,7 @@ export default function MembersControlPanelPage() {
       description: "Membres présents en source legacy mais absents Supabase.",
       count: syncMissingCount,
       priority: syncMissingCount > 0 ? "haute" : "moyenne",
+      impact: "qualite_data",
       sla: "48h",
       owner: opsOwners["sync-missing"] || "",
       href: "/admin/membres/synchronisation",
@@ -367,6 +379,7 @@ export default function MembersControlPanelPage() {
       description: "Nouvelles candidatures à instruire.",
       count: ops.staffApplicationsPendingCount,
       priority: ops.staffApplicationsPendingCount > 0 ? "haute" : "moyenne",
+      impact: "risque_moderation",
       sla: "24h",
       owner: opsOwners["new-postulations"] || "",
       href: "/admin/membres/postulations",
@@ -377,6 +390,7 @@ export default function MembersControlPanelPage() {
       description: "Membres avec revue dépassée.",
       count: summary.reviewOverdue,
       priority: summary.reviewOverdue > 0 ? "moyenne" : "basse",
+      impact: "processus_interne",
       sla: "7 jours",
       owner: opsOwners["review-due"] || "",
       href: "/admin/membres/revues",
@@ -387,6 +401,7 @@ export default function MembersControlPanelPage() {
       description: "Membres qui arrivent à échéance de revue.",
       count: summary.reviewDue7d,
       priority: summary.reviewDue7d > 0 ? "moyenne" : "basse",
+      impact: "processus_interne",
       sla: "7 jours",
       owner: opsOwners["review-due-7d"] || "",
       href: "/admin/membres/revues",
@@ -397,6 +412,7 @@ export default function MembersControlPanelPage() {
       description: "Profils avec identifiants/champs essentiels manquants.",
       count: summary.incomplete,
       priority: summary.incomplete > 0 ? "moyenne" : "basse",
+      impact: "bloquant_onboarding",
       sla: "7 jours",
       owner: opsOwners["incomplete-profiles"] || "",
       href: "/admin/membres/incomplets",
@@ -407,11 +423,13 @@ export default function MembersControlPanelPage() {
       description: "Anomalies détectées sur la donnée membres.",
       count: dataHealth.errors,
       priority: dataHealth.errors > 0 ? "haute" : "basse",
+      impact: "qualite_data",
       sla: "48h",
       owner: opsOwners["data-errors"] || "",
       href: "/admin/membres/erreurs",
     },
   ];
+  const queueTotal = useMemo(() => opsQueue.reduce((sum, item) => sum + item.count, 0), [opsQueue]);
 
   const activeView = savedViews.find((v) => v.id === selectedViewId) || defaultViewForRole(currentRoleView);
   const effectiveSearch = (search || activeView.search || "").trim().toLowerCase();
@@ -420,6 +438,7 @@ export default function MembersControlPanelPage() {
     const base = opsQueue.filter((item) => {
       if (!activeView.priorities.includes(item.priority)) return false;
       if (activeView.onlyBacklog && item.count <= 0) return false;
+      if (impactFilter !== "all" && item.impact !== impactFilter) return false;
       if (!effectiveSearch) return true;
       return (
         item.title.toLowerCase().includes(effectiveSearch) ||
@@ -436,7 +455,7 @@ export default function MembersControlPanelPage() {
       if (priorityDelta !== 0) return priorityDelta;
       return b.count - a.count;
     });
-  }, [activeView.onlyBacklog, activeView.priorities, activeView.sortBy, effectiveSearch, opsQueue]);
+  }, [activeView.onlyBacklog, activeView.priorities, activeView.sortBy, effectiveSearch, impactFilter, opsQueue]);
 
   const paginatedQueue = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -453,8 +472,190 @@ export default function MembersControlPanelPage() {
     { href: "/admin/membres/incomplets", title: "Profils incomplets", description: "Corrections ciblées Discord/Twitch/intégration.", icon: "🧩", color: "from-yellow-500 to-amber-600" },
     { href: "/admin/membres/synchronisation", title: "Synchronisation", description: "Contrôle migration legacy/Supabase et écarts.", icon: "🔄", color: "from-purple-500 to-fuchsia-600" },
     { href: "/admin/membres/erreurs", title: "Erreurs & incohérences", description: "Détection qualité des données et anomalies.", icon: "🚨", color: "from-red-500 to-orange-600" },
+    { href: "/admin/membres/historique", title: "Historique membres", description: "Timeline consolidée des événements et audits.", icon: "🕒", color: "from-slate-500 to-indigo-600" },
     { href: "/admin/membres/reconciliation", title: "Réconciliation public → gestion", description: "Repérer les membres publics non référencés admin.", icon: "🧭", color: "from-cyan-500 to-blue-600" },
   ];
+
+  const roleChecklist = useMemo(() => {
+    if (currentRoleView === "moderation") {
+      return [
+        {
+          id: "mod-postulations",
+          label: "Traiter les postulations staff",
+          done: ops.staffApplicationsPendingCount === 0,
+          href: "/admin/membres/postulations",
+        },
+        {
+          id: "mod-reviews",
+          label: "Vérifier les revues en retard",
+          done: summary.reviewOverdue === 0,
+          href: "/admin/membres/revues",
+        },
+        {
+          id: "mod-validation",
+          label: "Clôturer les validations de profil",
+          done: ops.profileValidationPendingCount === 0,
+          href: "/admin/membres/validation-profil",
+        },
+      ];
+    }
+    if (currentRoleView === "recrutement") {
+      return [
+        {
+          id: "recruit-postulations",
+          label: "Prioriser les candidatures en attente",
+          done: ops.staffApplicationsPendingCount === 0,
+          href: "/admin/membres/postulations",
+        },
+        {
+          id: "recruit-incomplete",
+          label: "Relancer les profils incomplets",
+          done: summary.incomplete === 0,
+          href: "/admin/membres/incomplets",
+        },
+        {
+          id: "recruit-sync",
+          label: "Contrôler les écarts de synchronisation",
+          done: syncMissingCount === 0,
+          href: "/admin/membres/synchronisation",
+        },
+      ];
+    }
+    if (currentRoleView === "support") {
+      return [
+        {
+          id: "support-validation",
+          label: "Répondre aux demandes profil",
+          done: ops.profileValidationPendingCount === 0,
+          href: "/admin/membres/validation-profil",
+        },
+        {
+          id: "support-errors",
+          label: "Réduire les erreurs de données",
+          done: dataHealth.errors === 0,
+          href: "/admin/membres/erreurs",
+        },
+        {
+          id: "support-discord",
+          label: "Compléter les usernames Discord",
+          done: dataHealth.discordMissingUsername === 0,
+          href: "/admin/membres/donnee-discord",
+        },
+      ];
+    }
+    return [
+      {
+        id: "ops-backlog",
+        label: "Résorber le backlog prioritaire",
+        done: queueTotal === 0,
+        href: "/admin/membres/actions",
+      },
+      {
+        id: "ops-reviews",
+        label: "Maintenir les revues dans le SLA",
+        done: summary.reviewOverdue === 0,
+        href: "/admin/membres/revues",
+      },
+      {
+        id: "ops-quality",
+        label: "Stabiliser la qualité data",
+        done: dataHealth.errors === 0 && syncMissingCount === 0,
+        href: "/admin/membres/qualite-data",
+      },
+    ];
+  }, [
+    currentRoleView,
+    dataHealth.discordMissingUsername,
+    dataHealth.errors,
+    ops.profileValidationPendingCount,
+    ops.staffApplicationsPendingCount,
+    queueTotal,
+    summary.incomplete,
+    summary.reviewOverdue,
+    syncMissingCount,
+  ]);
+
+  const progressMetrics = useMemo(() => {
+    const completionRate = summary.total > 0 ? Math.round((summary.avgCompletion / 100) * 100) : 0;
+    const validatedRate = summary.total > 0 ? Math.round((summary.validatedProfiles / summary.total) * 100) : 0;
+    const reviewCoverageRate = summary.total > 0 ? Math.max(0, Math.round(((summary.total - summary.reviewOverdue) / summary.total) * 100)) : 0;
+    const dataQualityRate = Math.max(
+      0,
+      100 - Math.round(((summary.missingDiscord + summary.missingTwitchId + syncMissingCount + dataHealth.errors) / Math.max(summary.total, 1)) * 100)
+    );
+    return { completionRate, validatedRate, reviewCoverageRate, dataQualityRate };
+  }, [
+    dataHealth.errors,
+    summary.avgCompletion,
+    summary.missingDiscord,
+    summary.missingTwitchId,
+    summary.reviewOverdue,
+    summary.total,
+    summary.validatedProfiles,
+    syncMissingCount,
+  ]);
+
+  const impactBreakdown = useMemo(() => {
+    const counts = {
+      bloquant_onboarding: 0,
+      risque_moderation: 0,
+      qualite_data: 0,
+      processus_interne: 0,
+    };
+    opsQueue.forEach((item) => {
+      counts[item.impact] += item.count;
+    });
+    const total = Object.values(counts).reduce((acc, value) => acc + value, 0);
+    const toPct = (value: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
+    return {
+      counts,
+      total,
+      pct: {
+        bloquant_onboarding: toPct(counts.bloquant_onboarding),
+        risque_moderation: toPct(counts.risque_moderation),
+        qualite_data: toPct(counts.qualite_data),
+        processus_interne: toPct(counts.processus_interne),
+      },
+    };
+  }, [opsQueue]);
+
+  const impactDonutBackground = useMemo(() => {
+    const p1 = impactBreakdown.pct.bloquant_onboarding;
+    const p2 = impactBreakdown.pct.risque_moderation;
+    const p3 = impactBreakdown.pct.qualite_data;
+    const p4 = Math.max(0, 100 - (p1 + p2 + p3));
+    if (impactBreakdown.total === 0) {
+      return "conic-gradient(#1f2433 0% 100%)";
+    }
+    return `conic-gradient(#e879f9 0% ${p1}%, #fb923c ${p1}% ${p1 + p2}%, #22d3ee ${p1 + p2}% ${p1 + p2 + p3}%, #94a3b8 ${p1 + p2 + p3}% ${p1 + p2 + p3 + p4}%)`;
+  }, [impactBreakdown]);
+
+  const ownerLoad = useMemo(() => {
+    const map = new Map<string, number>();
+    opsQueue.forEach((item) => {
+      if (item.count <= 0) return;
+      const owner = item.owner.trim() || "Non assigné";
+      map.set(owner, (map.get(owner) || 0) + item.count);
+    });
+    const rows = Array.from(map.entries())
+      .map(([owner, total]) => ({ owner, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+    const max = rows[0]?.total || 1;
+    return rows.map((row) => ({ ...row, pct: Math.round((row.total / max) * 100) }));
+  }, [opsQueue]);
+
+  const topAnomalies = useMemo(() => {
+    return [
+      { id: "missing-discord", label: "Discord manquant", value: summary.missingDiscord, href: "/admin/membres/incomplets" },
+      { id: "missing-twitch", label: "Twitch ID manquant", value: summary.missingTwitchId, href: "/admin/membres/incomplets" },
+      { id: "sync-gap", label: "Écarts de synchronisation", value: syncMissingCount, href: "/admin/membres/synchronisation" },
+      { id: "data-errors", label: "Erreurs techniques data", value: dataHealth.errors, href: "/admin/membres/erreurs" },
+      { id: "discord-username", label: "Username Discord vide", value: dataHealth.discordMissingUsername, href: "/admin/membres/donnee-discord" },
+    ]
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [dataHealth.discordMissingUsername, dataHealth.errors, summary.missingDiscord, summary.missingTwitchId, syncMissingCount]);
 
   if (loading) {
     return (
@@ -471,7 +672,6 @@ export default function MembersControlPanelPage() {
     0,
     100 - (dataHealth.errors * 4 + dataHealth.warnings * 2 + syncMissingCount + dataHealth.discordMissingUsername)
   );
-  const queueTotal = opsQueue.reduce((sum, item) => sum + item.count, 0);
   const generatedAtLabel = generatedAt
     ? new Date(generatedAt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "n/a";
@@ -482,42 +682,46 @@ export default function MembersControlPanelPage() {
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
-      <section className="rounded-2xl border border-[#e6c773]/25 bg-[radial-gradient(circle_at_top_left,_rgba(230,199,115,0.18),_rgba(18,18,24,0.96)_45%)] p-5 md:p-6 shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
+      <section className={`${glassCardClass} p-5 md:p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-[#e6c773]">Gestion des membres</p>
-            <h1 className="mt-2 text-3xl font-bold md:text-4xl">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Gestion des membres</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
               Bienvenue {username} dans l&apos;espace de gestion des membres
             </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Pilotage opérationnel des profils, revues et qualité de données pour sécuriser les actions staff.
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-3">
             <button
               type="button"
               onClick={() => void loadDashboard(true)}
               disabled={refreshing}
-              className="rounded-lg border border-[#e6c773]/35 px-3 py-2 text-xs font-semibold text-[#edd38d] hover:bg-[#e6c773]/10 disabled:opacity-60"
+              className={`${subtleButtonClass} disabled:opacity-60`}
             >
-              {refreshing ? "Actualisation..." : "Rafraîchir les métriques"}
+              <RefreshCw className="h-4 w-4" />
+              {refreshing ? "Actualisation..." : "Actualiser les données"}
             </button>
-            <p className="text-xs text-gray-400">Dernière synchro: {generatedAtLabel}</p>
+            <p className="text-xs text-slate-400">Dernière synchro : {generatedAtLabel}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
             href="/admin/membres/actions"
-            className="rounded-lg border border-[#e6c773]/35 bg-[#e6c773]/10 px-3 py-1.5 text-xs font-semibold text-[#f0dca1] hover:bg-[#e6c773]/20"
+            className="rounded-lg border border-indigo-300/35 bg-indigo-300/10 px-3 py-1.5 text-xs font-semibold text-indigo-100 hover:bg-indigo-300/20"
           >
             Queue unifiée: {queueTotal}
           </Link>
           <Link
             href="/admin/membres/qualite-data"
-            className="rounded-lg border border-cyan-400/35 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-300/20"
           >
             Qualité data: score {qualityScore}
           </Link>
           <Link
             href="/admin/membres/revues"
-            className="rounded-lg border border-amber-400/35 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/20"
+            className="rounded-lg border border-amber-300/35 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-300/20"
           >
             Revues à planifier: {summary.reviewDue7d}
           </Link>
@@ -525,58 +729,218 @@ export default function MembersControlPanelPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-8">
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Membres total</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Membres total</p>
           <p className="mt-2 text-3xl font-bold text-white">{summary.total}</p>
-          <p className="mt-1 text-xs text-gray-500">Base consolidée admin</p>
+          <p className="mt-1 text-xs text-slate-400">Base consolidée admin</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Profils incomplets</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Profils incomplets</p>
           <p className="mt-2 text-3xl font-bold text-amber-300">{summary.incomplete}</p>
-          <p className="mt-1 text-xs text-gray-500">Priorité de complétion</p>
+          <p className="mt-1 text-xs text-slate-400">Priorité de complétion</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Revues en retard</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Revues en retard</p>
           <p className="mt-2 text-3xl font-bold text-orange-300">{summary.reviewOverdue}</p>
-          <p className="mt-1 text-xs text-gray-500">Revue due dépassée</p>
+          <p className="mt-1 text-xs text-slate-400">Revue due dépassée</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Revues &lt; 7 jours</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Revues &lt; 7 jours</p>
           <p className="mt-2 text-3xl font-bold text-yellow-300">{summary.reviewDue7d}</p>
-          <p className="mt-1 text-xs text-gray-500">Charge prévisionnelle</p>
+          <p className="mt-1 text-xs text-slate-400">Charge prévisionnelle</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Validation profils</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Validation profils</p>
           <p className="mt-2 text-3xl font-bold text-cyan-300">{ops.profileValidationPendingCount}</p>
-          <p className="mt-1 text-xs text-gray-500">Demandes à traiter</p>
+          <p className="mt-1 text-xs text-slate-400">Demandes à traiter</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Postulations staff</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-400">Postulations staff</p>
           <p className="mt-2 text-3xl font-bold text-indigo-300">{ops.staffApplicationsPendingCount}</p>
-          <p className="mt-1 text-xs text-gray-500">{ops.staffApplicationsRedFlagCount} red flag</p>
+          <p className="mt-1 text-xs text-slate-400">{ops.staffApplicationsRedFlagCount} red flag</p>
         </div>
-        <div className="rounded-xl border border-cyan-500/25 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-300">Score qualité data</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-300">Score qualité data</p>
           <p className="mt-2 text-3xl font-bold text-cyan-200">{qualityScore}</p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-slate-400">
             {dataHealth.errors} erreurs, {dataHealth.warnings} alertes
           </p>
         </div>
-        <div className="rounded-xl border border-red-500/30 bg-[#1a1a1d] p-4">
-          <p className="text-xs uppercase tracking-[0.08em] text-gray-300">Risque données</p>
+        <div className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.08em] text-slate-300">Risque données</p>
           <p className="mt-2 text-3xl font-bold text-red-300">{redCritical}</p>
-          <p className="mt-1 text-xs text-gray-500">IDs manquants + sync</p>
+          <p className="mt-1 text-xs text-slate-400">IDs manquants + sync</p>
         </div>
       </section>
 
-      <section className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#17171d]/95 p-3">
-        <span className="rounded-md border border-white/10 bg-black/20 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-100">Fenêtre opérationnelle 7 jours</h2>
+            <span className="rounded-full border border-indigo-300/30 bg-indigo-300/10 px-2.5 py-1 text-xs text-indigo-100">
+              Pilotage court terme
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-slate-400">
+            Indicateurs clés à stabiliser cette semaine pour éviter le décalage des traitements membres.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Revues à échéance</p>
+              <p className="mt-1 text-2xl font-semibold text-amber-200">{summary.reviewDue7d}</p>
+            </div>
+            <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Profils à compléter</p>
+              <p className="mt-1 text-2xl font-semibold text-sky-200">{summary.incomplete}</p>
+            </div>
+            <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Tickets validation profil</p>
+              <p className="mt-1 text-2xl font-semibold text-indigo-200">{ops.profileValidationPendingCount}</p>
+            </div>
+            <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Risque qualité data</p>
+              <p className="mt-1 text-2xl font-semibold text-rose-200">{dataHealth.errors + syncMissingCount}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Checklist du rôle</h2>
+          <p className="mt-1 text-sm text-slate-400">Top 3 actions quotidiennes guidées selon votre rôle.</p>
+          <div className="mt-4 space-y-2">
+            {roleChecklist.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition ${
+                  item.done
+                    ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/15"
+                    : "border-amber-300/35 bg-amber-300/10 text-amber-100 hover:bg-amber-300/15"
+                }`}
+              >
+                <span>{item.label}</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">{item.done ? "OK" : "À faire"}</span>
+              </Link>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Progression parcours</h2>
+          <div className="mt-4 space-y-3">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Complétion moyenne profil</span>
+                <span>{progressMetrics.completionRate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-800">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-sky-300" style={{ width: `${progressMetrics.completionRate}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Profils validés</span>
+                <span>{progressMetrics.validatedRate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-800">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-lime-300" style={{ width: `${progressMetrics.validatedRate}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Couverture des revues</span>
+                <span>{progressMetrics.reviewCoverageRate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-800">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-300" style={{ width: `${progressMetrics.reviewCoverageRate}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Santé des données</span>
+                <span>{progressMetrics.dataQualityRate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-800">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-300" style={{ width: `${progressMetrics.dataQualityRate}%` }} />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Camembert backlog impact</h2>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="relative h-32 w-32 rounded-full" style={{ background: impactDonutBackground }}>
+              <div className="absolute inset-4 flex items-center justify-center rounded-full bg-[#0f1321] text-center">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.08em] text-slate-400">Total</p>
+                  <p className="text-xl font-semibold text-slate-100">{impactBreakdown.total}</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <p className="text-fuchsia-200">Onboarding: {impactBreakdown.counts.bloquant_onboarding} ({impactBreakdown.pct.bloquant_onboarding}%)</p>
+              <p className="text-orange-200">Modération: {impactBreakdown.counts.risque_moderation} ({impactBreakdown.pct.risque_moderation}%)</p>
+              <p className="text-cyan-200">Qualité data: {impactBreakdown.counts.qualite_data} ({impactBreakdown.pct.qualite_data}%)</p>
+              <p className="text-slate-300">Interne: {impactBreakdown.counts.processus_interne} ({impactBreakdown.pct.processus_interne}%)</p>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Charge par owner</h2>
+          <p className="mt-1 text-xs text-slate-400">Top charge active sur les actions ouvertes.</p>
+          <div className="mt-4 space-y-2">
+            {ownerLoad.length === 0 ? (
+              <p className="rounded-xl border border-slate-700 bg-[#121623]/80 p-3 text-sm text-slate-400">Aucune charge active détectée.</p>
+            ) : (
+              ownerLoad.map((row) => (
+                <div key={row.owner}>
+                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                    <span>{row.owner}</span>
+                    <span>{row.total}</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-slate-800">
+                    <div className="h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-300" style={{ width: `${row.pct}%` }} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+      </section>
+
+      <section className={`${sectionCardClass} p-5`}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-100">Top anomalies données</h2>
+          <Link href="/admin/membres/qualite-data" className="text-xs text-indigo-200 hover:text-indigo-100">
+            Ouvrir qualité data
+          </Link>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
+          {topAnomalies.map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-3 transition hover:border-indigo-300/45 hover:bg-[#171d2f]"
+            >
+              <p className="text-xs uppercase tracking-[0.08em] text-slate-400">{item.label}</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-100">{item.value}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className={`${sectionCardClass} flex flex-wrap items-center gap-2 p-3`}>
+        <span className="rounded-md border border-[#353a50] bg-[#121623]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
           {roleLabel || "Operations"}
         </span>
         <select
           value={selectedViewId}
           onChange={(e) => setSelectedViewId(e.target.value)}
-          className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-sm text-white"
         >
           <option value="">Vues sauvegardées</option>
           {savedViews.map((view) => (
@@ -587,7 +951,7 @@ export default function MembersControlPanelPage() {
           value={newViewLabel}
           onChange={(e) => setNewViewLabel(e.target.value)}
           placeholder="Nom de vue"
-          className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-sm text-white"
         />
         <button
           onClick={() => {
@@ -599,7 +963,7 @@ export default function MembersControlPanelPage() {
             persistViews(updated);
             pushToast("info", "Vue mise à jour", !current.onlyBacklog ? "Mode backlog actif" : "Toutes tâches affichées");
           }}
-          className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10"
+          className="rounded-lg border border-indigo-300/25 bg-indigo-300/5 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-300/10"
         >
           {activeView.onlyBacklog ? "Tâches actives uniquement" : "Toutes les tâches"}
         </button>
@@ -615,27 +979,49 @@ export default function MembersControlPanelPage() {
             persistViews(updated);
             pushToast("info", "Tri mis à jour", nextSort === "priority" ? "Tri par priorité" : "Tri par volume");
           }}
-          className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10"
+          className="rounded-lg border border-indigo-300/25 bg-indigo-300/5 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-300/10"
         >
           Tri : {activeView.sortBy === "priority" ? "Priorité" : "Volume"}
         </button>
+        {(["all", "bloquant_onboarding", "risque_moderation", "qualite_data", "processus_interne"] as const).map((impact) => (
+          <button
+            key={impact}
+            type="button"
+            onClick={() => setImpactFilter(impact)}
+            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+              impactFilter === impact
+                ? "border-indigo-300/50 bg-indigo-400/20 text-indigo-100"
+                : "border-[#353a50] bg-[#121623]/80 text-slate-300 hover:border-indigo-300/35 hover:text-indigo-100"
+            }`}
+          >
+            {impact === "all"
+              ? "Impact: Tous"
+              : impact === "bloquant_onboarding"
+              ? "Onboarding"
+              : impact === "risque_moderation"
+              ? "Modération"
+              : impact === "qualite_data"
+              ? "Qualité data"
+              : "Interne"}
+          </button>
+        ))}
         <button
           onClick={saveCurrentView}
-          className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+          className="rounded-lg border border-indigo-300/30 bg-indigo-500/25 px-3 py-2 text-sm font-semibold text-indigo-100 hover:bg-indigo-500/35"
         >
           Sauver vue
         </button>
         {selectedViewId && (
           <button
             onClick={() => deleteView(selectedViewId)}
-            className="rounded-lg bg-red-600/20 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-600/30"
+            className="rounded-lg border border-rose-300/30 bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-200 hover:bg-rose-500/30"
           >
             Suppr vue
           </button>
         )}
       </section>
 
-      <section className="rounded-2xl border border-gray-700 bg-[#1a1a1d] p-4">
+      <section className={`${sectionCardClass} p-4`}>
         <AdminTableShell
           title="À traiter maintenant"
           subtitle="File priorisée avec SLA, responsable et accès direct"
@@ -654,6 +1040,8 @@ export default function MembersControlPanelPage() {
                 <tr className="border-b border-gray-700">
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Action</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Priorité</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Impact</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Score</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">SLA</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Volume</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-300">Owner</th>
@@ -680,6 +1068,42 @@ export default function MembersControlPanelPage() {
                         {item.priority}
                       </span>
                     </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                          item.impact === "bloquant_onboarding"
+                            ? "bg-fuchsia-500/20 text-fuchsia-200"
+                            : item.impact === "risque_moderation"
+                            ? "bg-orange-500/20 text-orange-200"
+                            : item.impact === "qualite_data"
+                            ? "bg-cyan-500/20 text-cyan-200"
+                            : "bg-slate-500/20 text-slate-200"
+                        }`}
+                      >
+                        {item.impact === "bloquant_onboarding"
+                          ? "Bloquant onboarding"
+                          : item.impact === "risque_moderation"
+                          ? "Risque modération"
+                          : item.impact === "qualite_data"
+                          ? "Qualité data"
+                          : "Processus interne"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="inline-flex rounded-full border border-indigo-300/35 bg-indigo-300/10 px-2 py-1 text-xs font-semibold text-indigo-100">
+                        {Math.round(
+                          item.count *
+                            (item.priority === "haute" ? 3 : item.priority === "moyenne" ? 2 : 1) *
+                            (item.impact === "bloquant_onboarding"
+                              ? 1.4
+                              : item.impact === "risque_moderation"
+                              ? 1.3
+                              : item.impact === "qualite_data"
+                              ? 1.25
+                              : 1.1)
+                        )}
+                      </span>
+                    </td>
                     <td className="px-3 py-3 text-sm text-gray-300">{item.sla}</td>
                     <td className="px-3 py-3 text-sm font-semibold text-white">{item.count}</td>
                     <td className="px-3 py-3">
@@ -702,7 +1126,7 @@ export default function MembersControlPanelPage() {
                 ))}
                 {paginatedQueue.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">
+                    <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">
                       Aucune action trouvée avec cette vue.
                     </td>
                   </tr>
@@ -718,31 +1142,19 @@ export default function MembersControlPanelPage() {
           <Link
             key={section.href}
             href={section.href}
-            className="group rounded-xl border border-gray-700 bg-[#1a1a1d] p-5 transition-all hover:-translate-y-[1px] hover:border-[#9146ff] hover:shadow-lg hover:shadow-[#9146ff]/20"
+            className="group rounded-2xl border border-indigo-300/20 bg-[linear-gradient(135deg,rgba(79,70,229,0.17),rgba(15,23,42,0.66))] p-5 transition hover:-translate-y-[2px] hover:border-indigo-200/45 hover:shadow-[0_16px_34px_rgba(67,56,202,0.35)]"
           >
             <div className="flex items-start gap-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${section.color} text-2xl`}>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${section.color} text-2xl shadow-[0_8px_20px_rgba(2,6,23,0.35)]`}>
                 {section.icon}
               </div>
               <div className="flex-1">
-                <h2 className="mb-1 text-base font-bold text-white transition-colors group-hover:text-[#9146ff]">
+                <h2 className="mb-1 text-base font-semibold text-slate-100 transition-colors group-hover:text-indigo-200">
                   {section.title}
                 </h2>
-                <p className="text-gray-400 text-sm">{section.description}</p>
+                <p className="text-sm text-slate-300">{section.description}</p>
               </div>
-              <svg
-                className="w-6 h-6 text-gray-400 group-hover:text-[#9146ff] transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
+              <ArrowRight className="h-5 w-5 text-slate-400 transition-colors group-hover:text-indigo-200" />
             </div>
           </Link>
         ))}

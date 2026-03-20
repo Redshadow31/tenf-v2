@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { Calendar, ArrowLeft, Archive, Clock3, Sparkles } from "lucide-react";
 
 interface Event {
   id: string;
@@ -71,6 +71,11 @@ const categories: CategoryConfig[] = [
 const getCategoryConfig = (categoryValue: string): CategoryConfig => {
   return categories.find(cat => cat.value === categoryValue) || categories[0];
 };
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 
 export default function ArchivesPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -158,49 +163,105 @@ export default function ArchivesPage() {
   const displayedEvents = selectedMonth
     ? groupedEvents.filter(([monthKey]) => monthKey === selectedMonth)
     : groupedEvents;
+  const publishedCount = events.filter((event) => event.isPublished).length;
+  const withImageCount = events.filter((event) => Boolean(event.image)).length;
+  const latestMonth = groupedEvents.length > 0 ? groupedEvents[0][0] : "";
 
   return (
-    <div className="text-white">
-      <div className="mb-8">
+    <div className="space-y-6 text-white">
+      <section className={`${glassCardClass} p-5 md:p-6`}>
         <Link
           href="/admin/events"
-          className="text-gray-400 hover:text-white transition-colors mb-4 inline-block flex items-center gap-2"
+          className="text-gray-300 hover:text-white transition-colors mb-4 inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour aux événements
         </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">
-          Événements Passés
-        </h1>
-        <p className="text-gray-400">
-          Consultez l'historique des événements organisés par mois
-        </p>
-      </div>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Evenements communautaires</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+              Archives des evenements
+            </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Cette page centralise l'historique des evenements passes pour faciliter les analyses, la reutilisation des formats
+              qui performent et la preparation des prochaines editions.
+            </p>
+          </div>
+          <div className="rounded-xl border border-indigo-300/25 bg-[#101522]/70 px-4 py-3 text-sm text-indigo-100">
+            <p className="text-xs uppercase tracking-[0.1em] text-indigo-200/80">Dernier mois archive</p>
+            <p className="mt-1">{latestMonth ? formatMonthKey(latestMonth) : "Aucun"}</p>
+          </div>
+        </div>
+      </section>
 
-      {/* Sélecteur de mois */}
-      <div className="mb-6 flex items-center gap-4">
-        <label className="text-sm font-semibold text-gray-300">Filtrer par mois :</label>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#9146ff]"
-        >
-          <option value="">Tous les mois</option>
-          {groupedEvents.map(([monthKey]) => (
-            <option key={monthKey} value={monthKey}>
-              {formatMonthKey(monthKey)}
-            </option>
-          ))}
-        </select>
-      </div>
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Evenements archives</p>
+          <p className="mt-2 text-3xl font-semibold">{events.length}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Publies</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">{publishedCount}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Avec visuel</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-300">{withImageCount}</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Mois disponibles</p>
+          <p className="mt-2 text-3xl font-semibold text-amber-300">{groupedEvents.length}</p>
+        </article>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Filtrage et lecture des archives</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Utilise le filtre mois pour analyser une periode precise et comparer les categories.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label className="text-sm font-semibold text-slate-300">Filtrer par mois :</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded-xl border border-[#353a50] bg-[#0f1424] px-4 py-2 text-sm text-white focus:border-indigo-300/45 focus:outline-none"
+            >
+              <option value="">Tous les mois</option>
+              {groupedEvents.map(([monthKey]) => (
+                <option key={monthKey} value={monthKey}>
+                  {formatMonthKey(monthKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </article>
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Explication de la page</h2>
+          <div className="mt-3 space-y-2 text-sm text-slate-300">
+            <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
+              <Archive className="mr-1 inline h-4 w-4" />
+              Conserver une trace fiable des evenements termines.
+            </p>
+            <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
+              <Clock3 className="mr-1 inline h-4 w-4" />
+              Identifier les periodes fortes et les creux d activite.
+            </p>
+            <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
+              <Sparkles className="mr-1 inline h-4 w-4" />
+              Reutiliser les formats qui ont donne les meilleurs resultats.
+            </p>
+          </div>
+        </article>
+      </section>
 
       {loading ? (
-        <div className="text-center py-12">
+        <div className={`${sectionCardClass} text-center py-12`}>
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
           <p className="text-gray-400 mt-4">Chargement des événements...</p>
         </div>
       ) : displayedEvents.length === 0 ? (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
+        <div className={`${sectionCardClass} p-8 text-center`}>
           <p className="text-gray-400">
             {selectedMonth ? "Aucun événement pour ce mois" : "Aucun événement passé"}
           </p>
@@ -226,7 +287,7 @@ export default function ArchivesPage() {
                   return (
                     <div
                       key={event.id}
-                      className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden hover:border-[#9146ff]/50 transition-all hover:shadow-lg hover:shadow-[#9146ff]/20 group"
+                      className="rounded-2xl border border-[#353a50] bg-[#121623]/85 overflow-hidden hover:border-indigo-300/45 transition-all hover:shadow-[0_16px_34px_rgba(67,56,202,0.35)] group"
                     >
                       {/* Image de l'événement */}
                       {event.image && (

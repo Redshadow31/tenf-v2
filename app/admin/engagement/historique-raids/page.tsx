@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
-import { X } from "lucide-react";
+import { ArrowRight, Info, X } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -61,6 +61,11 @@ type DeclarationDuplicateGroup = {
 };
 
 type RaidSourceFilter = "all" | "manual" | "raids_sub";
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 
 function normalizeRaidSource(raid: RaidApiItem): "manual" | "raids_sub" | "other" {
   const source = String(raid?.source || "").toLowerCase();
@@ -784,12 +789,19 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
-      <div className="mb-8">
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
+    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+      <section className={glassCardClass}>
+        <Link href="/admin/raids" className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
           ← Retour à Engagement
         </Link>
-        <div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Link
+            href="/admin/raids2"
+            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-300"
+            style={{ borderColor: "rgba(52,211,153,0.45)" }}
+          >
+            Ouvrir suivi des raids (import manuel)
+          </Link>
           <Link
             href="/admin/engagement/raids-a-valider"
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#facc15]"
@@ -797,13 +809,26 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           >
             Ouvrir raids a valider
           </Link>
+          <Link
+            href="/admin/engagement/raids-sub"
+            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-sky-300"
+            style={{ borderColor: "rgba(56,189,248,0.45)" }}
+          >
+            Ouvrir raids-sub EventSub
+            <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Link>
         </div>
-        <h1 className="mb-2 text-4xl font-bold">Historique des raids</h1>
-        <p className="text-gray-400">Historique consolide relie au module de validation des raids membres.</p>
-      </div>
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
+          Historique des raids
+        </h1>
+        <p className="max-w-4xl text-sm text-slate-300">
+          Vue consolidée des raids manuels et EventSub pour analyser volumes, qualité de validation, tendances mensuelles
+          et actions de correction.
+        </p>
+      </section>
 
       <div
-        className="mb-6 rounded-xl border p-4"
+        className={`${sectionCardClass} mb-0 rounded-xl border p-4`}
         style={{
           borderColor: "rgba(139,92,246,0.26)",
           background: "radial-gradient(circle at 10% 8%, rgba(139,92,246,0.14), rgba(26,26,29,0.95) 42%)",
@@ -891,7 +916,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         </div>
 
         <div className="mt-4 space-y-3">
-          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+          <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-3 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
             <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Validation</p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
@@ -917,7 +942,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+          <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-3 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
             <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Volumes</p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
@@ -939,7 +964,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+          <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-3 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
             <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Leaders et tendances</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
@@ -969,7 +994,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
+          <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-3 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs uppercase tracking-[0.12em] text-gray-400">Graphique quotidien</p>
               <p className="text-xs text-gray-500">
@@ -999,7 +1024,26 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
+      <section className={`${sectionCardClass} p-4`}>
+        <h2 className="text-base font-semibold text-slate-100">Explication de la page</h2>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+          <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
+            1. Filtrer le mois et la source pour isoler les zones de friction.
+          </p>
+          <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
+            2. Comparer l'historique de validation avec les stats de raids faits/reçus.
+          </p>
+          <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
+            3. Utiliser les modals et outils anti-doublons pour assainir les données.
+          </p>
+        </div>
+        <p className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-500/30 bg-slate-500/10 px-3 py-2 text-xs text-slate-200">
+          <Info className="h-3.5 w-3.5" />
+          Le mode "Tous" combine manuel + raids-sub pour une lecture consolidée.
+        </p>
+      </section>
+
+      <div className={`${sectionCardClass} rounded-lg border p-6`}>
         {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
         {loading ? (
           <p className="text-sm text-gray-300">Chargement des donnees...</p>

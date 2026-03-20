@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 
 type SummaryData = {
@@ -52,6 +53,14 @@ function formatLiveDuration(minutes: number): string {
 }
 
 export default function AdminRaidsSubPage() {
+  const pathname = usePathname();
+  const isCommunity = pathname.startsWith("/admin/communaute");
+  const backHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
+  const historyHref = isCommunity ? "/admin/communaute/engagement/historique-raids" : "/admin/engagement/historique-raids";
+  const eventSubHubHref = "/admin/engagement/raids-test";
+  const reviewHref = "/admin/engagement/raids-sub/a-valider";
+  const watchlistHref = "/admin/engagement/raids-test/watchlist";
+
   const [loading, setLoading] = useState(true);
   const [runningAction, setRunningAction] = useState<"" | "refresh" | "sync">("");
   const [activeTab, setActiveTab] = useState<"overview" | "stats" | "history">("overview");
@@ -316,30 +325,54 @@ export default function AdminRaidsSubPage() {
   }, [dailyChartData, selectedChartDay]);
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white">
-      <div className="mb-8">
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-400 transition-colors hover:text-white">
+    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+      <section className="rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur">
+        <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
           ← Retour au suivi des raids
         </Link>
         <div className="mb-3 flex flex-wrap gap-2">
           <Link
-            href="/admin/engagement/historique-raids"
+            href={historyHref}
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#c4b5fd]"
             style={{ borderColor: "rgba(167,139,250,0.45)" }}
           >
             Ouvrir historique raids
           </Link>
           <Link
-            href="/admin/engagement/raids-test"
+            href={eventSubHubHref}
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#93c5fd]"
             style={{ borderColor: "rgba(96,165,250,0.45)" }}
           >
             Ouvrir hub raids EventSub test
           </Link>
         </div>
-        <h1 className="mb-2 text-4xl font-bold">Raids Sub - Suivi EventSub</h1>
-        <p className="text-gray-400">Vue dediee au flux EventSub (hors declarations manuelles), stylee comme l'historique raids.</p>
-      </div>
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
+          Raids Sub - Suivi EventSub
+        </h1>
+        <p className="max-w-4xl text-sm text-slate-300">
+          Cette page pilote le flux EventSub de bout en bout: surveillance des subscriptions, suivi des statuts de traitement,
+          analyse des volumes quotidiens et corrections rapides des raids mal classés.
+        </p>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Events total</p>
+          <p className="mt-2 text-3xl font-semibold">{summary?.stats.eventsTotal ?? 0}</p>
+        </article>
+        <article className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Abonnements actifs</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-300">{summary?.stats.activeSubscriptions ?? 0}</p>
+        </article>
+        <article className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raids matchés</p>
+          <p className="mt-2 text-3xl font-semibold text-cyan-300">{summary?.eventStatus.matched ?? 0}</p>
+        </article>
+        <article className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">En erreur</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-300">{summary?.eventStatus.error ?? 0}</p>
+        </article>
+      </section>
 
       <div
         className="mb-6 rounded-xl border p-4"
@@ -404,14 +437,14 @@ export default function AdminRaidsSubPage() {
             {runningAction === "sync" ? "Sync..." : "Sync EventSub maintenant"}
           </button>
           <Link
-            href="/admin/engagement/raids-sub/a-valider"
+            href={reviewHref}
             className="rounded-lg border px-3 py-2 text-sm font-semibold text-[#facc15]"
             style={{ borderColor: "rgba(250,204,21,0.45)" }}
           >
             Ouvrir raids-sub a valider
           </Link>
           <Link
-            href="/admin/engagement/raids-test/watchlist"
+            href={watchlistHref}
             className="rounded-lg border px-3 py-2 text-sm font-semibold text-emerald-300"
             style={{ borderColor: "rgba(52,211,153,0.45)" }}
           >
@@ -447,15 +480,30 @@ export default function AdminRaidsSubPage() {
         </div>
       ) : null}
 
+      <section className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+        <h2 className="text-base font-semibold text-slate-100">Explication opérationnelle</h2>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+          <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
+            1. Vérifier le tableau de bord pour détecter les erreurs et abonnements défaillants.
+          </p>
+          <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
+            2. Utiliser les stats pour suivre les tendances mensuelles et les streamers les plus actifs.
+          </p>
+          <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
+            3. Corriger les cas ignorés ou invalidés depuis l'historique et la file à valider.
+          </p>
+        </div>
+      </section>
+
       <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
         {loading ? <p className="mb-3 text-sm text-gray-300">Chargement des donnees...</p> : null}
 
         {activeTab === "overview" ? (
           <>
-            <div className="space-y-3">
-              <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Vue generale</p>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+            <div className="space-y-4">
+              <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-4 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
+                <p className="mb-3 text-xs uppercase tracking-[0.12em] text-slate-400">Vue generale</p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                   <Card label="Events total" value={summary?.stats.eventsTotal ?? 0} />
                   <Card label="Abonnements total" value={summary?.stats.subscriptionsTotal ?? 0} />
                   <Card label="Abonnements actifs" value={summary?.stats.activeSubscriptions ?? 0} />
@@ -464,9 +512,9 @@ export default function AdminRaidsSubPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Watchlist et couverture</p>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+              <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-4 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
+                <p className="mb-3 text-xs uppercase tracking-[0.12em] text-slate-400">Watchlist et couverture</p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                   <Card label="Membres eligibles" value={summary?.watchlist.eligibleMembers ?? 0} />
                   <Card label="En live maintenant" value={summary?.watchlist.liveNow ?? 0} />
                   <Card label="A surveiller" value={summary?.watchlist.targetedByPolicy ?? 0} />
@@ -475,28 +523,28 @@ export default function AdminRaidsSubPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-gray-700 bg-[#101014] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Statut des events</p>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-                  <Mini label="recus" value={summary?.eventStatus.received ?? 0} color="#e5e7eb" />
-                  <Mini label="matches" value={summary?.eventStatus.matched ?? 0} color="#34d399" />
-                  <Mini label="ignores" value={summary?.eventStatus.ignored ?? 0} color="#f59e0b" />
-                  <Mini label="doublons" value={summary?.eventStatus.duplicate ?? 0} color="#93c5fd" />
-                  <Mini label="erreurs" value={summary?.eventStatus.error ?? 0} color="#f87171" />
+              <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-4 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
+                <p className="mb-3 text-xs uppercase tracking-[0.12em] text-slate-400">Statut des events</p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                  <Mini label="recus" value={summary?.eventStatus.received ?? 0} tone="neutral" />
+                  <Mini label="matches" value={summary?.eventStatus.matched ?? 0} tone="success" />
+                  <Mini label="ignores" value={summary?.eventStatus.ignored ?? 0} tone="warning" />
+                  <Mini label="doublons" value={summary?.eventStatus.duplicate ?? 0} tone="info" />
+                  <Mini label="erreurs" value={summary?.eventStatus.error ?? 0} tone="danger" />
                 </div>
               </section>
             </div>
 
             <div className="mt-6 grid gap-3 md:grid-cols-3">
-              <Link href="/admin/engagement/raids-sub/a-valider" className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-[#9146ff]/60">
+              <Link href={reviewHref} className="rounded-xl border border-indigo-300/30 bg-indigo-300/10 p-4 transition hover:border-indigo-200/50 hover:brightness-110">
                 <p className="text-lg font-semibold">Raids Sub a valider</p>
                 <p className="mt-1 text-sm text-gray-400">Validation manuelle et forcage en matched des events ignores.</p>
               </Link>
-              <Link href="/admin/engagement/raids-sub/a-valider?status=ignored" className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-amber-400/70">
+              <Link href={`${reviewHref}?status=ignored`} className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 transition hover:border-amber-200/60 hover:brightness-110">
                 <p className="text-lg font-semibold text-amber-300">Details des ignores</p>
                 <p className="mt-1 text-sm text-gray-400">Ouvre directement les events ignores pour correction rapide.</p>
               </Link>
-              <Link href="/admin/engagement/raids-test/watchlist" className="rounded-xl border border-gray-700 bg-[#151519] p-4 transition-colors hover:border-[#9146ff]/60">
+              <Link href={watchlistHref} className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 p-4 transition hover:border-emerald-200/60 hover:brightness-110">
                 <p className="text-lg font-semibold">Watchlist live vs surveille</p>
                 <p className="mt-1 text-sm text-gray-400">Controle qui est en live et qui est effectivement surveille.</p>
               </Link>
@@ -702,18 +750,28 @@ export default function AdminRaidsSubPage() {
 
 function Card({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
-      <p className="text-gray-400">{label}</p>
-      <p className="font-semibold text-white">{value}</p>
+    <div className="rounded-lg border border-[#3b4157] bg-[#0f1422] px-3 py-2.5 text-sm">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-white">{value}</p>
     </div>
   );
 }
 
-function Mini({ label, value, color }: { label: string; value: number; color: string }) {
+function Mini({ label, value, tone }: { label: string; value: number; tone: "neutral" | "success" | "warning" | "info" | "danger" }) {
+  const toneClass =
+    tone === "success"
+      ? "text-emerald-300 border-emerald-300/25 bg-emerald-300/10"
+      : tone === "warning"
+        ? "text-amber-300 border-amber-300/25 bg-amber-300/10"
+        : tone === "info"
+          ? "text-sky-300 border-sky-300/25 bg-sky-300/10"
+          : tone === "danger"
+            ? "text-rose-300 border-rose-300/25 bg-rose-300/10"
+            : "text-slate-200 border-slate-300/20 bg-slate-300/10";
   return (
-    <div className="rounded-lg border border-white/10 bg-[#121216] p-3">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-lg font-semibold" style={{ color }}>
+    <div className={`rounded-lg border p-3 ${toneClass}`}>
+      <p className="text-xs opacity-90">{label}</p>
+      <p className="text-lg font-semibold">
         {value}
       </p>
     </div>

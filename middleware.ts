@@ -10,9 +10,17 @@ import { normalizeAdminRole } from "@/lib/adminRoles";
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const devAuthBypassEnabled =
+    process.env.NODE_ENV !== "production" &&
+    process.env.ENABLE_DEV_AUTH !== "false";
 
   // Vérifier si c'est une route admin
   if (pathname.startsWith("/admin")) {
+    // En local/dev: bypass global de la barrière middleware pour fluidifier le debug.
+    if (devAuthBypassEnabled) {
+      return NextResponse.next();
+    }
+
     // Vérifier le token NextAuth JWT
     const token = await getToken({ 
       req: request, 

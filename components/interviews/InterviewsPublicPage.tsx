@@ -27,6 +27,7 @@ type PublicInterviewsResponse = {
 };
 
 type GroupFilter = "all" | InterviewGroupType;
+type PublicTab = "all" | "staff-presentation" | "members";
 
 function youtubeThumbnail(item: InterviewItem): string {
   if (item.thumbnailOverride && /^https?:\/\//i.test(item.thumbnailOverride)) {
@@ -236,6 +237,36 @@ export default function InterviewsPublicPage({ backHref = "/vip" }: { backHref?:
   const [selected, setSelected] = useState<InterviewItem | null>(null);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<PublicTab>("all");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    if (tabParam === "staff" || tabParam === "staff-presentation") {
+      setActiveTab("staff-presentation");
+      return;
+    }
+    if (tabParam === "members" || tabParam === "member") {
+      setActiveTab("members");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (activeTab === "all") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", activeTab);
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [activeTab]);
+
+  const effectiveGroupFilter: GroupFilter = useMemo(() => {
+    if (activeTab === "staff-presentation") return "staff";
+    if (activeTab === "members") return "member";
+    return groupFilter;
+  }, [activeTab, groupFilter]);
 
   useEffect(() => {
     async function loadData() {
@@ -272,17 +303,22 @@ export default function InterviewsPublicPage({ backHref = "/vip" }: { backHref?:
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return interviews.filter((item) => {
-      if (groupFilter !== "all" && item.groupType !== groupFilter) return false;
+      if (effectiveGroupFilter !== "all" && item.groupType !== effectiveGroupFilter) return false;
       if (featuredOnly && !item.featured) return false;
       if (!normalized) return true;
       const haystack = `${item.title} ${item.memberDisplayName} ${item.memberTwitchLogin}`.toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [featuredOnly, groupFilter, interviews, query]);
+  }, [effectiveGroupFilter, featuredOnly, interviews, query]);
 
   const staff = filtered.filter((item) => item.groupType === "staff");
   const members = filtered.filter((item) => item.groupType === "member");
   const total = filtered.length;
+  const tabbedItems = useMemo(() => {
+    if (activeTab === "staff-presentation") return staff;
+    if (activeTab === "members") return members;
+    return filtered;
+  }, [activeTab, filtered, staff, members]);
 
   return (
     <main className="min-h-screen py-10 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
@@ -325,6 +361,7 @@ export default function InterviewsPublicPage({ backHref = "/vip" }: { backHref?:
             <select
               value={groupFilter}
               onChange={(event) => setGroupFilter(event.target.value as GroupFilter)}
+              disabled={activeTab !== "all"}
               className="rounded-xl border px-3 py-2 text-sm outline-none"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
             >
@@ -365,6 +402,28 @@ export default function InterviewsPublicPage({ backHref = "/vip" }: { backHref?:
               Membres: {members.length}
             </span>
           </div>
+
+          <div className="mt-4 inline-flex flex-wrap gap-2 rounded-xl border p-1" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+            {[
+              { id: "all", label: "Toutes les interviews" },
+              { id: "staff-presentation", label: `Présentation du staff (${staff.length})` },
+              { id: "members", label: `Interviews membres (${members.length})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as PublicTab)}
+                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
+                style={{
+                  borderColor: activeTab === tab.id ? "var(--color-primary)" : "var(--color-border)",
+                  backgroundColor: activeTab === tab.id ? "var(--color-primary)" : "var(--color-surface)",
+                  color: activeTab === tab.id ? "#fff" : "var(--color-text)",
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </section>
 
         {loading ? (
@@ -382,48 +441,71 @@ export default function InterviewsPublicPage({ backHref = "/vip" }: { backHref?:
             {error}
           </section>
         ) : (
-          <div className="space-y-8">
-            <section className="space-y-4">
-              <div className="flex items-end justify-between gap-4">
-                <h2 className="text-2xl font-bold sm:text-3xl">Interviews Staff</h2>
-                <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                  {staff.length} vidéo{staff.length > 1 ? "s" : ""}
-                </span>
-              </div>
-              {staff.length === 0 ? (
-                <div
-                  className="rounded-2xl border p-5 text-sm"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
-                >
-                  Aucune interview staff publiée pour ces filtres.
+          <div className="space-y-5">
+            {activeTab === "staff-presentation" ? (
+              <section
+                className="rounded-2xl border p-4 text-sm"
+                style={{ borderColor: "color-mix(in srgb, var(--color-primary) 42%, var(--color-border))", backgroundColor: "var(--color-card)" }}
+              >
+                <p className="font-semibold">Présentation du staff TENF</p>
+                <p className="mt-1" style={{ color: "var(--color-text-secondary)" }}>
+                  Cette section met en avant les interviews staff: rôle, vision, parcours et responsabilités dans la communauté.
+                  Les contenus affichés ici sont gérés depuis le back-office admin interviews.
+                </p>
+                <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  L’onglet applique automatiquement le filtre groupe <strong>Staff</strong> pour rester synchronisé avec la catégorisation
+                  définie dans l’admin.
+                </p>
+                <div className="mt-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href="/admin/interviews"
+                      className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/5"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    >
+                      Ouvrir la gestion admin interviews
+                    </Link>
+                    <Link
+                      href="/interviews?tab=staff-presentation"
+                      className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/5"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    >
+                      Lien direct présentation staff
+                    </Link>
+                  </div>
                 </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {staff.map((item) => (
-                    <InterviewCard key={item.id} item={item} onOpen={setSelected} />
-                  ))}
-                </div>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             <section className="space-y-4">
               <div className="flex items-end justify-between gap-4">
-                <h2 className="text-2xl font-bold sm:text-3xl">Interviews Membres</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">
+                  {activeTab === "staff-presentation"
+                    ? "Interviews de présentation staff"
+                    : activeTab === "members"
+                      ? "Interviews Membres"
+                      : "Toutes les interviews"}
+                </h2>
                 <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                  {members.length} vidéo{members.length > 1 ? "s" : ""}
+                  {tabbedItems.length} vidéo{tabbedItems.length > 1 ? "s" : ""}
                 </span>
               </div>
-              {members.length === 0 ? (
+              {tabbedItems.length === 0 ? (
                 <div
                   className="rounded-2xl border p-5 text-sm"
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
                 >
-                  Aucune interview membre publiée pour ces filtres.
+                  Aucune interview disponible pour cet onglet avec les filtres actuels.
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {members.map((item) => (
-                    <InterviewCard key={item.id} item={item} onOpen={setSelected} variant="member" />
+                  {tabbedItems.map((item) => (
+                    <InterviewCard
+                      key={item.id}
+                      item={item}
+                      onOpen={setSelected}
+                      variant={item.groupType === "member" ? "member" : "default"}
+                    />
                   ))}
                 </div>
               )}

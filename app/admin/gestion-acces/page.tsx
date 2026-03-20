@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Users, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle2, X, Pencil } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
@@ -24,6 +24,11 @@ const ROLE_LABELS: Record<string, string> = {
   SOUTIEN_TENF: "Soutien TENF",
 };
 
+const heroCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.14),rgba(12,14,22,0.9)_45%,rgba(56,189,248,0.08))] shadow-[0_18px_40px_rgba(2,6,23,0.45)]";
+const sectionCardClass =
+  "rounded-2xl border border-[#31364a] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.12),_rgba(11,13,20,0.95)_48%)] shadow-[0_12px_32px_rgba(2,6,23,0.45)]";
+
 export default function GestionAccesPage() {
   const [accessList, setAccessList] = useState<AdminAccess[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +44,9 @@ export default function GestionAccesPage() {
   const [searchingDiscord, setSearchingDiscord] = useState(false);
   const [showAccessListModal, setShowAccessListModal] = useState(false);
   const [verifyingAccess, setVerifyingAccess] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | AdminAccess["role"]>("all");
+  const [aliasFilter, setAliasFilter] = useState<"all" | "with_alias" | "without_alias">("all");
 
   // Vérifier si l'utilisateur est fondateur
   useEffect(() => {
@@ -293,6 +301,42 @@ export default function GestionAccesPage() {
     }
   };
 
+  const accessMetrics = useMemo(() => {
+    const founderCount = accessList.filter((entry) => entry.role === "FONDATEUR").length;
+    const lockedCount = accessList.filter(
+      (entry) => entry.role === "FONDATEUR" || (entry.addedBy === "system" && new Date(entry.addedAt).getTime() === 0)
+    ).length;
+    const aliasCount = accessList.filter((entry) => String(entry.adminAlias || "").trim().length > 0).length;
+    const noAliasCount = accessList.length - aliasCount;
+    const noAvatarCount = accessList.filter((entry) => !entry.avatar).length;
+
+    return {
+      total: accessList.length,
+      founderCount,
+      lockedCount,
+      aliasCount,
+      noAliasCount,
+      noAvatarCount,
+    };
+  }, [accessList]);
+
+  const filteredAccessList = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+    return accessList.filter((entry) => {
+      if (roleFilter !== "all" && entry.role !== roleFilter) return false;
+      if (aliasFilter === "with_alias" && !String(entry.adminAlias || "").trim()) return false;
+      if (aliasFilter === "without_alias" && String(entry.adminAlias || "").trim()) return false;
+
+      if (!query) return true;
+      return (
+        String(entry.username || "").toLowerCase().includes(query) ||
+        String(entry.discordId || "").toLowerCase().includes(query) ||
+        String(entry.adminAlias || "").toLowerCase().includes(query) ||
+        String(ROLE_LABELS[entry.role] || entry.role).toLowerCase().includes(query)
+      );
+    });
+  }, [accessList, aliasFilter, roleFilter, tableSearch]);
+
   if (loading && !isFounder) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -318,6 +362,50 @@ export default function GestionAccesPage() {
       />
 
       <div className="max-w-7xl mx-auto px-8 py-6">
+        <section className={`${heroCardClass} mb-6 p-5 md:p-6`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Administration du site</p>
+              <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent">
+                Gestion des comptes administrateurs
+              </h1>
+              <p className="mt-3 text-sm text-slate-300">
+                Centre de contrôle des accès: attribution des rôles, gestion des pseudos admin et vérification des comptes verrouillés.
+              </p>
+            </div>
+            <button
+              onClick={handleVerifyAccess}
+              disabled={verifyingAccess || loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/30 bg-indigo-500/20 px-4 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:bg-indigo-500/30 disabled:opacity-60"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {verifyingAccess ? "Vérification..." : "Vérifier les accès"}
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Comptes autorisés</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{accessMetrics.total}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Fondateurs</p>
+              <p className="mt-2 text-3xl font-semibold text-indigo-200">{accessMetrics.founderCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Comptes verrouillés</p>
+              <p className="mt-2 text-3xl font-semibold text-amber-200">{accessMetrics.lockedCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Pseudo admin défini</p>
+              <p className="mt-2 text-3xl font-semibold text-emerald-200">{accessMetrics.aliasCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sans avatar</p>
+              <p className="mt-2 text-3xl font-semibold text-rose-200">{accessMetrics.noAvatarCount}</p>
+            </article>
+          </div>
+        </section>
+
         {/* Message d'erreur */}
         {error && (
           <div className="mb-6 p-4 rounded-lg border flex items-center gap-3" style={{ backgroundColor: 'var(--color-card)', borderColor: '#dc2626' }}>
@@ -347,7 +435,7 @@ export default function GestionAccesPage() {
         )}
 
         {/* Section d'ajout */}
-        <div className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <div className="mb-8 p-6 rounded-2xl border border-[#31364a] bg-[#111625]/90">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
               <Plus className="w-5 h-5" />
@@ -516,39 +604,56 @@ export default function GestionAccesPage() {
         </div>
 
         {/* Liste des accès */}
-        <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+        <div className="rounded-2xl border border-[#31364a] overflow-hidden bg-[#111625]/90">
           <div className="p-4 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: 'var(--color-border)' }}>
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
               <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
-                Membres autorisés au dashboard admin ({accessList.length})
+                Membres autorisés au dashboard admin ({filteredAccessList.length}/{accessList.length})
               </h2>
             </div>
-            <button
-              onClick={handleVerifyAccess}
-              disabled={verifyingAccess || loading}
-              className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'white',
-              }}
-              title="Vérifier et afficher la liste des personnes autorisées via cette page"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              {verifyingAccess ? "Vérification..." : "Vérifier qui a accès"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(event) => setTableSearch(event.target.value)}
+                placeholder="Rechercher pseudo, alias, ID..."
+                className="rounded-lg border border-[#3a4059] bg-[#0d1220] px-3 py-2 text-sm text-white placeholder:text-slate-500"
+              />
+              <select
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value as "all" | AdminAccess["role"])}
+                className="rounded-lg border border-[#3a4059] bg-[#0d1220] px-3 py-2 text-sm text-white"
+              >
+                <option value="all">Tous les rôles</option>
+                {Object.keys(ROLE_LABELS).map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={aliasFilter}
+                onChange={(event) => setAliasFilter(event.target.value as "all" | "with_alias" | "without_alias")}
+                className="rounded-lg border border-[#3a4059] bg-[#0d1220] px-3 py-2 text-sm text-white"
+              >
+                <option value="all">Alias: tous</option>
+                <option value="with_alias">Alias: définis</option>
+                <option value="without_alias">Alias: manquants</option>
+              </select>
+            </div>
           </div>
           <p className="px-4 pb-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            L'accès au dashboard admin est accordé uniquement aux personnes présentes dans cette liste (ajout/suppression sur cette page).
+            L'accès au dashboard admin est accordé uniquement aux personnes présentes dans cette liste. Alertes rapides: {accessMetrics.noAliasCount} sans alias, {accessMetrics.noAvatarCount} sans avatar.
           </p>
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
             </div>
-          ) : accessList.length === 0 ? (
+          ) : filteredAccessList.length === 0 ? (
             <div className="p-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-              Aucun accès trouvé
+              Aucun accès trouvé avec ces filtres.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -573,7 +678,7 @@ export default function GestionAccesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {accessList.map((access) => (
+                  {filteredAccessList.map((access) => (
                     <tr
                       key={access.discordId}
                       className="border-b transition-colors"

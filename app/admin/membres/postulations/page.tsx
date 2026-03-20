@@ -6,7 +6,7 @@ import { getDiscordUser } from "@/lib/discord";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 import { isFounder } from "@/lib/adminRoles";
-import { CheckCircle2, MessageSquare, ShieldCheck, Star } from "lucide-react";
+import { CheckCircle2, MessageSquare, ShieldCheck, Star, RefreshCw, ArrowRight, Activity } from "lucide-react";
 
 type StaffApplication = {
   id: string;
@@ -109,6 +109,12 @@ type FounderFinalDecision = {
 const COMMENT_PREFIX = "__TENF_REVIEW_COMMENT__";
 const OPINION_PREFIX = "__TENF_REVIEW_OPINION__";
 const FINAL_DECISION_PREFIX = "__TENF_FINAL_DECISION__";
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
 export default function PostulationsStaffPage() {
   const [applications, setApplications] = useState<StaffApplication[]>([]);
@@ -420,6 +426,19 @@ export default function PostulationsStaffPage() {
     const flagged = applications.filter((a) => a.has_red_flag).length;
     return { total, open, accepted, flagged };
   }, [applications]);
+  const operationalStats = useMemo(() => {
+    const now = Date.now();
+    const last7Days = now - 7 * 24 * 60 * 60 * 1000;
+    const recent = applications.filter((a) => new Date(a.created_at).getTime() >= last7Days).length;
+    const toContact = applications.filter((a) => a.admin_status === "nouveau" || a.admin_status === "a_contacter").length;
+    const interviews = applications.filter((a) => a.admin_status === "entretien_prevu").length;
+    const scored = applications.filter((a) => typeof a.score === "number");
+    const avgScore = scored.length > 0 ? Math.round((scored.reduce((sum, a) => sum + (a.score || 0), 0) / scored.length) * 10) / 10 : 0;
+    const roleModerateur = applications.filter((a) => a.answers.role_postule === "moderateur").length;
+    const roleSoutien = applications.filter((a) => a.answers.role_postule === "soutien").length;
+    const roleBoth = applications.filter((a) => a.answers.role_postule === "les_deux").length;
+    return { recent, toContact, interviews, avgScore, roleModerateur, roleSoutien, roleBoth };
+  }, [applications]);
   const selectedNotes = useMemo(
     () => parseStructuredAdminNotes(selected?.admin_notes || []),
     [selected?.id, selected?.admin_notes]
@@ -532,19 +551,35 @@ export default function PostulationsStaffPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-8">
+    <div className="min-h-screen bg-[#0e0e10] text-white p-8 space-y-6">
       <AdminToastStack
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
-      <Link href="/admin/membres/gestion" className="text-gray-400 hover:text-white inline-block mb-4">
-        ← Retour gestion membres
-      </Link>
-      <section className="mb-6 rounded-2xl border border-purple-500/30 bg-gradient-to-br from-[#20132e] to-[#121318] p-5">
-        <h1 className="text-2xl md:text-3xl font-bold">Postulations Modérateur / Soutien TENF</h1>
-        <p className="mt-1 text-sm text-gray-300">
-          Relecture ciblee par poste, discussion interne admin avance, puis decision finale fondateurs.
-        </p>
+      <section className={`${glassCardClass} p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <Link href="/admin/membres/gestion" className="text-sm text-slate-300 hover:text-white inline-block mb-3">
+              ← Retour gestion membres
+            </Link>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Membres · Recrutement staff</p>
+            <h1 className="bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-2xl md:text-3xl font-semibold text-transparent">
+              Postulations Modérateur / Soutien TENF
+            </h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Gère le pipeline de recrutement: tri des candidatures, revue interne, avis croisés, décision finale fondateurs et suivi opérationnel.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadApplications()}
+            disabled={loading}
+            className={`${subtleButtonClass} disabled:opacity-60`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </button>
+        </div>
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2">
             <p className="text-xs text-gray-400">Total</p>
@@ -565,11 +600,63 @@ export default function PostulationsStaffPage() {
         </div>
       </section>
 
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-sky-200" />
+            <h2 className="text-lg font-semibold text-slate-100">Pilotage recrutement</h2>
+          </div>
+          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+            <div className="rounded-lg border border-sky-400/30 bg-sky-500/10 p-3">
+              <p className="text-slate-300">Nouvelles 7j</p>
+              <p className="text-xl font-semibold text-sky-200">{operationalStats.recent}</p>
+            </div>
+            <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3">
+              <p className="text-slate-300">À contacter</p>
+              <p className="text-xl font-semibold text-amber-200">{operationalStats.toContact}</p>
+            </div>
+            <div className="rounded-lg border border-indigo-400/30 bg-indigo-500/10 p-3">
+              <p className="text-slate-300">Entretiens</p>
+              <p className="text-xl font-semibold text-indigo-200">{operationalStats.interviews}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3">
+              <p className="text-slate-300">Score moyen</p>
+              <p className="text-xl font-semibold text-emerald-200">{operationalStats.avgScore}</p>
+            </div>
+          </div>
+        </article>
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Répartition des postulations</h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Parcours Modérateur</span>
+              <span className="font-semibold text-indigo-200">{operationalStats.roleModerateur}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Parcours Soutien TENF</span>
+              <span className="font-semibold text-emerald-200">{operationalStats.roleSoutien}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+              <span className="text-slate-200">Parcours Mixte</span>
+              <span className="font-semibold text-amber-200">{operationalStats.roleBoth}</span>
+            </div>
+            <Link
+              href="/admin/membres/gestion"
+              className="inline-flex w-full items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-100 hover:border-indigo-300/45"
+            >
+              Ouvrir gestion membres
+              <ArrowRight className="h-4 w-4 text-indigo-200" />
+            </Link>
+          </div>
+        </article>
+      </section>
+
+      <section className={`${sectionCardClass} p-4`}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
         >
           <option value="all">Tous rôles</option>
           <option value="moderateur">Modérateur</option>
@@ -579,7 +666,7 @@ export default function PostulationsStaffPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
         >
           <option value="all">Tous statuts</option>
           <option value="nouveau">Nouveau</option>
@@ -593,21 +680,23 @@ export default function PostulationsStaffPage() {
           type="date"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
         />
         <button
           onClick={exportCsv}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 font-semibold"
+          className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-2 font-semibold text-indigo-100 transition hover:bg-indigo-500/30"
         >
           Export CSV
         </button>
       </div>
+      </section>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <section className={`${sectionCardClass} p-4`}>
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={selectedSavedViewId}
           onChange={(e) => applySavedView(e.target.value)}
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white"
         >
           <option value="">Vues sauvegardées</option>
           {savedViews.map((view) => (
@@ -620,23 +709,24 @@ export default function PostulationsStaffPage() {
           value={newSavedViewName}
           onChange={(e) => setNewSavedViewName(e.target.value)}
           placeholder="Nom de vue"
-          className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white"
         />
-        <button onClick={saveCurrentView} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg text-sm font-semibold">
+        <button onClick={saveCurrentView} className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/30">
           Sauver vue
         </button>
         {selectedSavedViewId && (
           <button
             onClick={() => deleteSavedView(selectedSavedViewId)}
-            className="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-2 rounded-lg text-sm font-semibold"
+            className="rounded-lg border border-rose-300/35 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/25"
           >
             Suppr vue
           </button>
         )}
       </div>
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+        <div className={`${sectionCardClass} overflow-hidden`}>
           {filtered.length === 0 ? (
             <div className="p-6 text-gray-400">Aucune postulation pour ces filtres.</div>
           ) : (
@@ -658,7 +748,7 @@ export default function PostulationsStaffPage() {
                   key={application.id}
                   onClick={() => setSelectedId(application.id)}
                   className={`w-full text-left p-4 transition-colors ${
-                    selected?.id === application.id ? "bg-[#2a1740]" : "hover:bg-[#222225]"
+                        selected?.id === application.id ? "bg-[#2a1740]" : "hover:bg-[#1b1f2b]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -668,7 +758,7 @@ export default function PostulationsStaffPage() {
                         {formatRole(application.answers.role_postule)} · {new Date(application.created_at).toLocaleDateString("fr-FR")}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(application.admin_status)}</span>
+                    <span className="text-xs px-2 py-1 rounded border border-[#3a3f55] bg-[#121623]/80">{formatStatus(application.admin_status)}</span>
                   </div>
                 </button>
               ))}
@@ -677,7 +767,7 @@ export default function PostulationsStaffPage() {
           )}
         </div>
 
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-5">
+        <div className={`${sectionCardClass} p-5`}>
           {!selected ? (
             <p className="text-gray-400">Sélectionne une postulation pour voir le détail.</p>
           ) : (
@@ -693,7 +783,7 @@ export default function PostulationsStaffPage() {
                   <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(selected.admin_status)}</span>
                   <button
                     onClick={() => exportFullApplication(selected)}
-                    className="text-xs px-3 py-1 rounded bg-indigo-700 hover:bg-indigo-800 font-semibold"
+                    className="text-xs px-3 py-1 rounded-lg border border-indigo-300/35 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-100 font-semibold"
                   >
                     Exporter fiche complète
                   </button>
@@ -754,7 +844,7 @@ export default function PostulationsStaffPage() {
                     })
                   }
                   disabled={savingId === selected.id}
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                 >
                   <option value="nouveau">Nouveau</option>
                   <option value="a_contacter">À contacter</option>
@@ -769,13 +859,13 @@ export default function PostulationsStaffPage() {
                     value={assignedToInput}
                     onChange={(e) => setAssignedToInput(e.target.value)}
                     placeholder="Assigné à (optionnel)"
-                    className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                    className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                   />
                   <input
                     type="date"
                     value={lastContactedInput}
                     onChange={(e) => setLastContactedInput(e.target.value)}
-                    className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                    className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                   />
                 </div>
 
@@ -787,7 +877,7 @@ export default function PostulationsStaffPage() {
                     })
                   }
                   disabled={savingId === selected.id}
-                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-60 px-4 py-2 rounded-lg text-sm"
+                  className="rounded-lg border border-slate-300/30 bg-slate-500/15 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-500/25 disabled:opacity-60"
                 >
                   Mettre à jour suivi
                 </button>
@@ -820,7 +910,7 @@ export default function PostulationsStaffPage() {
                       ? "Note interne orientee Moderation (gestion de conflit, discernement, rigueur de cadre)..."
                       : "Note interne orientee Mixte (moderation + soutien, points forts/faibles)..."
                   }
-                  className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                 />
                 <button
                   onClick={async () => {
@@ -828,7 +918,7 @@ export default function PostulationsStaffPage() {
                     setNoteInput("");
                   }}
                   disabled={savingId === selected.id || !noteInput.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 px-4 py-2 rounded-lg text-sm font-semibold"
+                  className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-60"
                 >
                   Ajouter note
                 </button>
@@ -843,7 +933,7 @@ export default function PostulationsStaffPage() {
                     value={commentInput}
                     onChange={(e) => setCommentInput(e.target.value)}
                     placeholder="Ton commentaire visible uniquement par les admins avances..."
-                    className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                   />
                   <button
                     onClick={async () => {
@@ -857,7 +947,7 @@ export default function PostulationsStaffPage() {
                       setCommentInput("");
                     }}
                     disabled={savingId === selected.id || !commentInput.trim()}
-                    className="mt-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 px-4 py-2 rounded-lg text-sm font-semibold"
+                    className="mt-2 rounded-lg border border-sky-300/35 bg-sky-500/20 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/30 disabled:opacity-60"
                   >
                     Publier commentaire
                   </button>
@@ -884,7 +974,7 @@ export default function PostulationsStaffPage() {
                     <select
                       value={opinionRoleTarget}
                       onChange={(e) => setOpinionRoleTarget(e.target.value as AdminReviewOpinion["roleTarget"])}
-                      className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                      className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                     >
                       <option value="reserve">Reserve / a revalider</option>
                       <option value="moderateur">Orientation moderateur</option>
@@ -894,7 +984,7 @@ export default function PostulationsStaffPage() {
                     <select
                       value={opinionAnswerRating}
                       onChange={(e) => setOpinionAnswerRating(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
-                      className="bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                      className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                     >
                       <option value={1}>Qualite reponses: 1/5</option>
                       <option value={2}>Qualite reponses: 2/5</option>
@@ -908,7 +998,7 @@ export default function PostulationsStaffPage() {
                     value={opinionInput}
                     onChange={(e) => setOpinionInput(e.target.value)}
                     placeholder="Explique ton avis sur la candidature et le role conseille..."
-                    className="w-full mt-2 bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full mt-2 rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                   />
                   <button
                     onClick={async () => {
@@ -924,7 +1014,7 @@ export default function PostulationsStaffPage() {
                       setOpinionInput("");
                     }}
                     disabled={savingId === selected.id || !opinionInput.trim()}
-                    className="mt-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 px-4 py-2 rounded-lg text-sm font-semibold"
+                    className="mt-2 rounded-lg border border-violet-300/35 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/30 disabled:opacity-60"
                   >
                     Publier avis
                   </button>
@@ -957,7 +1047,7 @@ export default function PostulationsStaffPage() {
                       <select
                         value={finalDecisionOutcome}
                         onChange={(e) => setFinalDecisionOutcome(e.target.value as FounderFinalDecision["outcome"])}
-                        className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                        className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                       >
                         <option value="soutien_tenf">Decision: Soutien TENF</option>
                         <option value="moderateur_formation">Decision: Moderateur en formation</option>
@@ -968,14 +1058,14 @@ export default function PostulationsStaffPage() {
                         value={finalDecisionMemberMessage}
                         onChange={(e) => setFinalDecisionMemberMessage(e.target.value)}
                         placeholder="Message visible par le membre dans son espace postulation..."
-                        className="mt-2 w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                        className="mt-2 w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                       />
                       <textarea
                         rows={3}
                         value={finalDecisionInput}
                         onChange={(e) => setFinalDecisionInput(e.target.value)}
                         placeholder="Note interne fondateur (optionnel, non visible membre)..."
-                        className="mt-2 w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-3 py-2 text-white"
+                        className="mt-2 w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white"
                       />
                       <button
                         onClick={async () => {
@@ -996,7 +1086,7 @@ export default function PostulationsStaffPage() {
                           setFinalDecisionMemberMessage("");
                         }}
                         disabled={savingId === selected.id || !finalDecisionMemberMessage.trim()}
-                        className="mt-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 px-4 py-2 rounded-lg text-sm font-semibold"
+                        className="mt-2 rounded-lg border border-amber-300/35 bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/30 disabled:opacity-60"
                       >
                         Valider decision finale
                       </button>
@@ -1043,7 +1133,7 @@ export default function PostulationsStaffPage() {
                 <button
                   onClick={() => void updateApplication(selected.id, { adminStatus: "archive" })}
                   disabled={savingId === selected.id}
-                  className="bg-yellow-700 hover:bg-yellow-800 disabled:opacity-60 px-4 py-2 rounded-lg text-sm font-semibold"
+                  className="rounded-lg border border-yellow-300/35 bg-yellow-500/20 px-4 py-2 text-sm font-semibold text-yellow-100 transition hover:bg-yellow-500/30 disabled:opacity-60"
                 >
                   Archiver
                 </button>

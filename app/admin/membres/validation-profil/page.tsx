@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle, FileText, Loader2, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Loader2, Trash2, RefreshCw } from "lucide-react";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 
@@ -20,6 +20,13 @@ interface PendingItem {
   submitted_at: string;
 }
 
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+
 export default function ValidationProfilPage() {
   const [pending, setPending] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +38,7 @@ export default function ValidationProfilPage() {
   const [savedViews, setSavedViews] = useState<Array<{ id: string; name: string; search: string }>>([]);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [newSavedViewName, setNewSavedViewName] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const SAVED_VIEWS_KEY = "tenf-admin-validation-profil-saved-views";
 
   function pushToast(type: "success" | "warning" | "info", title: string, description?: string) {
@@ -68,6 +76,7 @@ export default function ValidationProfilPage() {
   async function loadPending() {
     try {
       setLoading(true);
+      setRefreshing(true);
       const res = await fetch("/api/admin/members/profile-validation", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
@@ -77,6 +86,7 @@ export default function ValidationProfilPage() {
       console.error(e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -162,28 +172,66 @@ export default function ValidationProfilPage() {
     return filteredPending.slice(start, start + pageSize);
   }, [filteredPending, currentPage, pageSize]);
 
+  const totalPending = pending.length;
+  const filteredCount = filteredPending.length;
+  const withDescription = pending.filter((item) => Boolean(item.description?.trim())).length;
+  const withSocialLinks = pending.filter((item) => item.instagram || item.tiktok || item.twitter).length;
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+    <div className="space-y-6 text-white">
       <AdminToastStack
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <Link href="/admin/membres/gestion" className="inline-block text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
-          ← Retour à la gestion des membres
-        </Link>
+      <section className={`${glassCardClass} p-5 md:p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <Link href="/admin/membres/gestion" className="inline-block text-sm text-slate-300 hover:text-white transition mb-4">
+              ← Retour à la gestion des membres
+            </Link>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Membres · Validation profil</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+              Centre de validation des profils
+            </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Les membres proposent des modifications de profil. Valide, rejette ou supprime les demandes selon les règles de conformité.
+            </p>
+          </div>
+          <button type="button" onClick={() => void loadPending()} disabled={refreshing} className={`${subtleButtonClass} disabled:opacity-60`}>
+            <RefreshCw className="h-4 w-4" />
+            {refreshing ? "Actualisation..." : "Actualiser"}
+          </button>
+        </div>
+      </section>
 
-        <h1 className="text-3xl font-bold mb-2">Validation des profils</h1>
-        <p className="text-sm mb-8" style={{ color: "var(--color-text-secondary)" }}>
-          Les membres proposent des modifications (descriptif, réseaux). Valide ou rejette les demandes.
-        </p>
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Demandes totales</p>
+          <p className="mt-2 text-3xl font-semibold">{totalPending}</p>
+          <p className="mt-1 text-xs text-slate-400">En attente de décision</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Filtre actif</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-300">{filteredCount}</p>
+          <p className="mt-1 text-xs text-slate-400">Résultats affichés</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Avec descriptif</p>
+          <p className="mt-2 text-3xl font-semibold text-indigo-300">{withDescription}</p>
+          <p className="mt-1 text-xs text-slate-400">Contexte éditorial disponible</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Réseaux fournis</p>
+          <p className="mt-2 text-3xl font-semibold text-cyan-300">{withSocialLinks}</p>
+          <p className="mt-1 text-xs text-slate-400">Instagram / TikTok / Twitter</p>
+        </article>
+      </section>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+      <section className={`${sectionCardClass} flex flex-wrap items-center gap-2 p-3`}>
           <select
             value={selectedSavedViewId}
             onChange={(e) => applySavedView(e.target.value)}
-            className="rounded-lg border px-3 py-2 text-sm"
-            style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-sm text-white"
           >
             <option value="">Vues sauvegardées</option>
             {savedViews.map((view) => (
@@ -194,32 +242,32 @@ export default function ValidationProfilPage() {
             value={newSavedViewName}
             onChange={(e) => setNewSavedViewName(e.target.value)}
             placeholder="Nom de vue"
-            className="rounded-lg border px-3 py-2 text-sm"
-            style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-sm text-white"
           />
-          <button onClick={saveCurrentView} className="px-3 py-2 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700">
+          <button onClick={saveCurrentView} className="rounded-lg border border-indigo-300/30 bg-indigo-500/25 px-3 py-2 text-sm font-semibold text-indigo-100 hover:bg-indigo-500/35">
             Sauver vue
           </button>
           {selectedSavedViewId && (
-            <button onClick={() => deleteSavedView(selectedSavedViewId)} className="px-3 py-2 rounded-lg text-sm font-semibold text-red-200 bg-red-600/20 hover:bg-red-600/30">
+            <button onClick={() => deleteSavedView(selectedSavedViewId)} className="rounded-lg border border-rose-300/30 bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-200 hover:bg-rose-500/30">
               Suppr vue
             </button>
           )}
-        </div>
+      </section>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--color-primary)" }} />
-          </div>
-        ) : filteredPending.length === 0 ? (
-          <div className="rounded-xl border p-12 text-center" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <FileText className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--color-text-secondary)" }} />
-            <p style={{ color: "var(--color-text-secondary)" }}>Aucune demande en attente</p>
-          </div>
-        ) : (
+      {loading ? (
+        <section className={`${sectionCardClass} flex justify-center py-12`}>
+          <Loader2 className="h-10 w-10 animate-spin text-indigo-300" />
+        </section>
+      ) : filteredPending.length === 0 ? (
+        <section className={`${sectionCardClass} p-12 text-center`}>
+          <FileText className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+          <p className="text-slate-300">Aucune demande en attente</p>
+        </section>
+      ) : (
+        <section className={`${sectionCardClass} p-4`}>
           <AdminTableShell
             title="Demandes en attente"
-            subtitle="Table standardisée filtres/pagination"
+            subtitle="Traitement standardisé avec filtres, pagination et actions rapides"
             searchValue={search}
             onSearchChange={setSearch}
             page={currentPage}
@@ -233,21 +281,19 @@ export default function ValidationProfilPage() {
             {paginatedPending.map((item) => (
               <div
                 key={item.id}
-                className="rounded-xl border p-6"
-                style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+                className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-6"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold">
                       <Link
                         href={`/admin/membres/gestion?search=${encodeURIComponent(item.twitch_login)}`}
-                        className="hover:underline"
-                        style={{ color: "var(--color-primary)" }}
+                        className="text-indigo-200 hover:text-indigo-100 hover:underline"
                       >
                         {item.twitch_login}
                       </Link>
                     </h3>
-                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    <p className="text-xs text-slate-400">
                       Soumis le {new Date(item.submitted_at).toLocaleDateString("fr-FR", { dateStyle: "long" })}
                     </p>
                   </div>
@@ -255,7 +301,7 @@ export default function ValidationProfilPage() {
                     <button
                       onClick={() => handleAction(item.id, "approve")}
                       disabled={actioning === item.id}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/35 bg-[linear-gradient(135deg,rgba(16,185,129,0.28),rgba(6,95,70,0.4))] px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:-translate-y-[1px] hover:border-emerald-200/55 hover:bg-[linear-gradient(135deg,rgba(16,185,129,0.4),rgba(6,95,70,0.58))] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {actioning === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                       Valider
@@ -263,7 +309,7 @@ export default function ValidationProfilPage() {
                     <button
                       onClick={() => handleAction(item.id, "reject")}
                       disabled={actioning === item.id}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-300/35 bg-[linear-gradient(135deg,rgba(244,63,94,0.24),rgba(127,29,29,0.42))] px-4 py-2 text-sm font-semibold text-rose-100 transition hover:-translate-y-[1px] hover:border-rose-200/55 hover:bg-[linear-gradient(135deg,rgba(244,63,94,0.36),rgba(127,29,29,0.58))] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <XCircle className="w-4 h-4" />
                       Rejeter
@@ -271,7 +317,7 @@ export default function ValidationProfilPage() {
                     <button
                       onClick={() => handleAction(item.id, "force_delete")}
                       disabled={actioning === item.id}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.24),rgba(120,53,15,0.44))] px-4 py-2 text-sm font-semibold text-amber-100 transition hover:-translate-y-[1px] hover:border-amber-200/55 hover:bg-[linear-gradient(135deg,rgba(245,158,11,0.38),rgba(120,53,15,0.62))] disabled:cursor-not-allowed disabled:opacity-50"
                       title="Supprime définitivement cette demande, sans modifier le profil membre"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -282,8 +328,8 @@ export default function ValidationProfilPage() {
 
                 {item.description && (
                   <div className="mb-4">
-                    <p className="text-xs font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>Descriptif</p>
-                    <p className="text-sm whitespace-pre-wrap rounded-lg p-3" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
+                    <p className="mb-1 text-xs font-medium text-slate-400">Descriptif</p>
+                    <p className="whitespace-pre-wrap rounded-lg border border-[#31384d] bg-[#0f1321]/85 p-3 text-sm text-slate-100">
                       {item.description}
                     </p>
                   </div>
@@ -292,31 +338,31 @@ export default function ValidationProfilPage() {
                 <div className="flex flex-wrap gap-4">
                   {item.instagram && (
                     <div>
-                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Instagram:</span>
+                      <span className="text-xs text-slate-400">Instagram:</span>
                       <span className="ml-2 text-sm">{item.instagram}</span>
                     </div>
                   )}
                   {item.tiktok && (
                     <div>
-                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>TikTok:</span>
+                      <span className="text-xs text-slate-400">TikTok:</span>
                       <span className="ml-2 text-sm">{item.tiktok}</span>
                     </div>
                   )}
                   {item.twitter && (
                     <div>
-                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Twitter:</span>
+                      <span className="text-xs text-slate-400">Twitter:</span>
                       <span className="ml-2 text-sm">{item.twitter}</span>
                     </div>
                   )}
                   {item.birthday && (
                     <div>
-                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Anniversaire:</span>
+                      <span className="text-xs text-slate-400">Anniversaire:</span>
                       <span className="ml-2 text-sm">{new Date(item.birthday).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}</span>
                     </div>
                   )}
                   {item.twitch_affiliate_date && (
                     <div>
-                      <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Affiliation Twitch:</span>
+                      <span className="text-xs text-slate-400">Affiliation Twitch:</span>
                       <span className="ml-2 text-sm">
                         {new Date(item.twitch_affiliate_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
                       </span>
@@ -327,8 +373,8 @@ export default function ValidationProfilPage() {
             ))}
           </div>
           </AdminTableShell>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   );
 }

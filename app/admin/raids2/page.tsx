@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import RaidCharts from "@/components/RaidCharts";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 import RaidAlertBadge from "@/components/RaidAlertBadge";
@@ -52,6 +53,11 @@ function isManualRaid(raid: RaidEntry): boolean {
 function monthKey(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
+
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 
 export default function Raids2Page() {
   const [loading, setLoading] = useState(true);
@@ -320,12 +326,15 @@ export default function Raids2Page() {
   }
 
   return (
-    <div className="text-white">
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+    <div className="space-y-6 text-white">
+      <section className={`${glassCardClass} flex items-start justify-between gap-4 flex-wrap`}>
         <div>
-          <h1 className="text-4xl font-bold mb-2">Suivi des raids v2</h1>
-          <p className="text-gray-400 text-sm">
-            Version experimentale (manuel uniquement) pour valider le nouveau visuel.
+          <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Suivi raids manuel</p>
+          <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
+            Suivi des raids v2
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm text-slate-300">
+            Cockpit opérationnel pour suivre les raids manuels, détecter les doublons, lancer les imports et contrôler les anomalies.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -354,9 +363,28 @@ export default function Raids2Page() {
             Verifier doublons
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className="mb-6 flex items-center gap-3 flex-wrap">
+      <section className={`${sectionCardClass} p-4`}>
+        <h2 className="text-base font-semibold text-slate-100">Explication de la page</h2>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+          <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
+            1. Importer les raids manuels du mois puis contrôler la cohérence des lignes.
+          </p>
+          <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
+            2. Utiliser le tableau membres pour détecter les comptes les plus actifs.
+          </p>
+          <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
+            3. Lancer la vérification des doublons avant clôture mensuelle.
+          </p>
+        </div>
+        <p className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-xs text-emerald-100">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Cette vue reste dédiée au flux manuel; les raids auto EventSub sont suivis ailleurs.
+        </p>
+      </section>
+
+      <div className={`${sectionCardClass} mb-0 flex items-center gap-3 flex-wrap p-4`}>
         <label className="text-gray-400 text-sm">Mois :</label>
         <select
           value={selectedMonth}
@@ -396,38 +424,47 @@ export default function Raids2Page() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-sm text-gray-400">Raids faits</p>
           <p className="text-3xl font-bold">{kpis.totalDone}</p>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-sm text-gray-400">Raids recus</p>
           <p className="text-3xl font-bold">{kpis.totalReceived}</p>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-sm text-gray-400">Raiders actifs</p>
           <p className="text-3xl font-bold">{kpis.activeRaiders}</p>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-sm text-gray-400">Cibles uniques</p>
           <p className="text-3xl font-bold">{kpis.uniqueTargets}</p>
         </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-sm text-gray-400">A verifier</p>
           <p className={`text-3xl font-bold ${unmatchedCount > 0 ? "text-yellow-300" : "text-green-300"}`}>{unmatchedCount}</p>
         </div>
       </div>
 
-      <RaidDailyChart month={selectedMonth} data={dailyChartData} />
+      <section className={`${sectionCardClass} p-5`}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-100">Tendance quotidienne des raids</h2>
+          <span className="inline-flex items-center gap-1 text-xs text-slate-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Vue mensuelle
+          </span>
+        </div>
+        <RaidDailyChart month={selectedMonth} data={dailyChartData} />
+      </section>
 
       {Object.keys(raidsByMember).length > 0 && (
-        <div className="mt-6">
+        <div>
           <RaidCharts raids={raidsByMember} getMemberDisplayName={getMemberDisplayName} />
         </div>
       )}
 
-      <div className="mt-6 bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+      <div className={`${sectionCardClass} rounded-lg overflow-hidden`}>
         <div className="px-6 py-4 border-b border-gray-700">
           <h2 className="text-xl font-semibold">Tableau membres (manuel)</h2>
         </div>
@@ -500,7 +537,7 @@ export default function Raids2Page() {
         </div>
       </div>
 
-      <div className="mt-6 bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
+      <div className={`${sectionCardClass} rounded-lg p-6`}>
         <h2 className="text-xl font-semibold mb-4">Activite recente raids (manuel)</h2>
         {timeline.length === 0 ? (
           <p className="text-sm text-gray-500">Aucune activite recente.</p>

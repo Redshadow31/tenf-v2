@@ -7,6 +7,10 @@ import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown } fr
 
 const panelClass =
   "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 const controlClass =
   "bg-[#0f0f16] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#93a0ff] focus:ring-2 focus:ring-[#4f46e5]/20";
 const actionPrimaryClass =
@@ -807,6 +811,12 @@ export default function EventPresencePage() {
       ...totals,
     };
   }, [events]);
+  // Le taux de présence doit être borné aux inscrits (0-100%).
+  const presentFromRegistrations = Math.max(0, dashboardStats.registrations - dashboardStats.absent);
+  const participationRateRaw =
+    dashboardStats.registrations > 0 ? Math.round((presentFromRegistrations / dashboardStats.registrations) * 100) : 0;
+  const participationRate = Math.min(100, Math.max(0, participationRateRaw));
+  const absenceRate = dashboardStats.registrations > 0 ? Math.max(0, 100 - participationRate) : 0;
 
   if (loading && !events.length) {
     return (
@@ -832,7 +842,7 @@ export default function EventPresencePage() {
 
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white p-8 space-y-6">
-      <div className={`mb-1 p-6 ${panelClass}`}>
+      <div className={`mb-1 p-6 ${glassCardClass}`}>
         <Link
           href="/admin/events"
           className="text-gray-300 hover:text-white transition-colors mb-4 inline-block"
@@ -845,6 +855,10 @@ export default function EventPresencePage() {
               Gestion des Participations
             </h1>
             <p className="text-gray-300">Pilote les présences, absences et ajouts manuels sur tous les événements du mois.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Cette page sert de tour de controle: qualifier la participation, fiabiliser les statistiques et garantir un suivi
+              propre de chaque session communautaire.
+            </p>
           </div>
           <button
             onClick={() => setIsCreateEventModalOpen(true)}
@@ -857,7 +871,7 @@ export default function EventPresencePage() {
       </div>
 
       {/* Sélecteur de mois et tri */}
-      <div className={`mb-1 p-4 ${panelClass} flex flex-col md:flex-row items-start md:items-center gap-4`}>
+      <div className={`mb-1 p-4 ${sectionCardClass} flex flex-col md:flex-row items-start md:items-center gap-4`}>
         <div className="flex items-center gap-4">
           <label className="text-sm font-semibold text-gray-300">Mois :</label>
           <select
@@ -899,31 +913,64 @@ export default function EventPresencePage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">Événements</p>
           <p className="text-2xl font-bold">{dashboardStats.totalEvents}</p>
         </div>
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">À venir</p>
           <p className="text-2xl font-bold text-emerald-300">{dashboardStats.upcoming}</p>
         </div>
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">Passés</p>
           <p className="text-2xl font-bold text-slate-300">{dashboardStats.past}</p>
         </div>
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">Inscriptions</p>
           <p className="text-2xl font-bold">{dashboardStats.registrations}</p>
         </div>
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">Présences</p>
           <p className="text-2xl font-bold text-emerald-300">{dashboardStats.present}</p>
         </div>
-        <div className={`${panelClass} p-4`}>
+        <div className={`${sectionCardClass} p-4`}>
           <p className="text-xs text-gray-400">Absences</p>
           <p className="text-2xl font-bold text-rose-300">{dashboardStats.absent}</p>
         </div>
       </div>
+
+      <section className={`grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr] ${sectionCardClass} p-5`}>
+        <article>
+          <h2 className="text-lg font-semibold text-slate-100">Visuel de suivi participation</h2>
+          <p className="mt-1 text-sm text-slate-400">Progression globale du mois sur les inscriptions enregistrees.</p>
+          <div className="mt-4 space-y-3">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Taux de présence</span>
+                <span>{participationRate}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-800/80">
+                <div className="h-2 rounded-full bg-[linear-gradient(90deg,rgba(52,211,153,0.95),rgba(56,189,248,0.95))]" style={{ width: `${participationRate}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                <span>Taux d'absence</span>
+                <span>{absenceRate}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-800/80">
+                <div className="h-2 rounded-full bg-[linear-gradient(90deg,rgba(251,191,36,0.95),rgba(244,63,94,0.95))]" style={{ width: `${absenceRate}%` }} />
+              </div>
+            </div>
+          </div>
+        </article>
+        <article className="rounded-xl border border-indigo-300/25 bg-indigo-300/10 p-4 text-sm text-indigo-100">
+          <p className="font-medium">Explication du suivi</p>
+          <p className="mt-2">- Ouvre un événement pour qualifier les présences individuelles.</p>
+          <p>- Ajoute des notes pour garder une trace de contexte.</p>
+          <p>- Valide puis ferme le modal pour enregistrer les changements.</p>
+        </article>
+      </section>
 
       <div className={`p-2 ${panelClass}`}>
         <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
@@ -1490,9 +1537,9 @@ function EventPresenceModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-[2px] p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-[3px] p-4">
       <div
-        className={`${panelClass} p-6 max-w-6xl w-full max-h-[92vh] overflow-y-auto`}
+        className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-indigo-300/20 bg-[linear-gradient(160deg,rgba(18,24,40,0.96),rgba(9,13,24,0.98))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.7)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
@@ -1513,6 +1560,10 @@ function EventPresenceModal({
           >
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs text-cyan-100">
+          Outil de suivi: utilise l'onglet participants pour l'operationnel et l'onglet statistiques pour la lecture rapide.
         </div>
 
         {/* Recherche et ajout de membre */}
@@ -1854,9 +1905,9 @@ function CreateEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-[2px] p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-[3px] p-4">
       <div
-        className={`${panelClass} p-6 max-w-2xl w-full`}
+        className="w-full max-w-2xl rounded-2xl border border-indigo-300/20 bg-[linear-gradient(160deg,rgba(18,24,40,0.96),rgba(9,13,24,0.98))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.7)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
@@ -1867,6 +1918,10 @@ function CreateEventModal({
           >
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-indigo-300/25 bg-indigo-300/10 p-3 text-xs text-indigo-100">
+          Explication: cette modal sert a ajouter rapidement un evenement passe pour rattacher et fiabiliser les presences.
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

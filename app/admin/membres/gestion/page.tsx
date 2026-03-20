@@ -129,6 +129,13 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   throw new Error(preview ? `Reponse API non-JSON: ${preview}` : "Reponse API non-JSON.");
 }
 
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+
 
 export default function GestionMembresPage() {
   const searchParams = useSearchParams();
@@ -2183,20 +2190,22 @@ export default function GestionMembresPage() {
       return "-";
     }
   };
-  const rowActionButtonBase = "px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1";
-  const rowActionButtonBaseCompact = "px-2 py-1 rounded text-[11px] font-semibold transition-colors flex items-center gap-1 whitespace-nowrap";
-  const rowActionInfo = `${rowActionButtonBase} bg-blue-600/20 text-blue-300 hover:bg-blue-600/30`;
-  const rowActionPrimary = `${rowActionButtonBase} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30`;
-  const rowActionEdit = `${rowActionButtonBase} bg-[#9146ff] text-white hover:bg-[#5a32b4]`;
-  const rowActionDanger = `${rowActionButtonBase} bg-red-600/20 text-red-300 hover:bg-red-600/30`;
-  const rowActionSuccess = `${rowActionButtonBase} bg-green-600/20 text-green-300 hover:bg-green-600/30`;
-  const rowActionWarning = `${rowActionButtonBase} bg-amber-600/20 text-amber-300 hover:bg-amber-600/30`;
-  const rowActionInfoCompact = `${rowActionButtonBaseCompact} bg-blue-600/20 text-blue-300 hover:bg-blue-600/30`;
-  const rowActionPrimaryCompact = `${rowActionButtonBaseCompact} bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30`;
-  const rowActionEditCompact = `${rowActionButtonBaseCompact} bg-[#9146ff] text-white hover:bg-[#5a32b4]`;
-  const rowActionDangerCompact = `${rowActionButtonBaseCompact} bg-red-600/20 text-red-300 hover:bg-red-600/30`;
-  const rowActionSuccessCompact = `${rowActionButtonBaseCompact} bg-green-600/20 text-green-300 hover:bg-green-600/30`;
-  const rowActionWarningCompact = `${rowActionButtonBaseCompact} bg-amber-600/20 text-amber-300 hover:bg-amber-600/30`;
+  const rowActionButtonBase =
+    "px-3 py-1 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1 border hover:-translate-y-[1px]";
+  const rowActionButtonBaseCompact =
+    "px-2 py-1 rounded-lg text-[11px] font-semibold transition inline-flex items-center gap-1 whitespace-nowrap border hover:-translate-y-[1px]";
+  const rowActionInfo = `${rowActionButtonBase} border-sky-300/35 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25`;
+  const rowActionPrimary = `${rowActionButtonBase} border-indigo-300/35 bg-indigo-500/18 text-indigo-100 hover:bg-indigo-500/28`;
+  const rowActionEdit = `${rowActionButtonBase} border-violet-300/35 bg-violet-500/18 text-violet-100 hover:bg-violet-500/28`;
+  const rowActionDanger = `${rowActionButtonBase} border-rose-300/35 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25`;
+  const rowActionSuccess = `${rowActionButtonBase} border-emerald-300/35 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25`;
+  const rowActionWarning = `${rowActionButtonBase} border-amber-300/35 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25`;
+  const rowActionInfoCompact = `${rowActionButtonBaseCompact} border-sky-300/35 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25`;
+  const rowActionPrimaryCompact = `${rowActionButtonBaseCompact} border-indigo-300/35 bg-indigo-500/18 text-indigo-100 hover:bg-indigo-500/28`;
+  const rowActionEditCompact = `${rowActionButtonBaseCompact} border-violet-300/35 bg-violet-500/18 text-violet-100 hover:bg-violet-500/28`;
+  const rowActionDangerCompact = `${rowActionButtonBaseCompact} border-rose-300/35 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25`;
+  const rowActionSuccessCompact = `${rowActionButtonBaseCompact} border-emerald-300/35 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25`;
+  const rowActionWarningCompact = `${rowActionButtonBaseCompact} border-amber-300/35 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25`;
 
   if (loading) {
     return (
@@ -2226,22 +2235,31 @@ export default function GestionMembresPage() {
         onClose={() => setActionNotice(null)}
       />
       <div className="p-4 md:p-6 xl:p-8">
-        <section
-          className="mb-6 rounded-2xl border p-5 md:p-6"
-          style={{
-            borderColor: "rgba(145,70,255,0.32)",
-            background:
-              "radial-gradient(circle at 8% 0%, rgba(145,70,255,0.18), transparent 38%), radial-gradient(circle at 92% 0%, rgba(14,165,233,0.10), transparent 30%), linear-gradient(180deg, rgba(17,24,39,0.45), rgba(17,24,39,0.12))",
-          }}
-        >
+        <section className={`${glassCardClass} mb-6 p-5 md:p-6`}>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-gray-400">Admin panel</p>
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Gestion des Membres</h1>
-              <p className="mt-2 text-sm text-gray-300">
-                Vue centralisée des profils, statuts, onboarding, raids et qualité des fiches.
+            <div className="max-w-4xl">
+              <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Admin panel · gestion membres</p>
+              <h1 className="bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+                Gestion des Membres
+              </h1>
+              <p className="mt-2 text-sm text-slate-200">
+                Cette page te permet de piloter l'ensemble du cycle membre: recherche et segmentation avancées, édition des profils,
+                gestion des statuts (actif/inactif/archivé), onboarding, revue périodique, contrôle qualité des fiches et opérations bulk
+                (imports, fusion, vérification Twitch/Discord, vues sauvegardées).
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                void loadMembers();
+                void loadArchivedMembers();
+              }}
+              className={subtleButtonClass}
+              title="Rafraîchir les données membres"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
             <div className="rounded-xl border border-gray-700 bg-[#14151a] px-3 py-2">
@@ -2271,8 +2289,34 @@ export default function GestionMembresPage() {
           </div>
         </section>
 
+        <section className="mb-6 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1fr]">
+          <article className={`${sectionCardClass} p-4`}>
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Fonctionnalités clés</p>
+            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 text-sm text-slate-200">
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Recherche multi-critères et filtres métier</p>
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Vues enregistrées pour workflows récurrents</p>
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Edition détaillée profil + actions rapides par ligne</p>
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Bulk update, import, fusion et vérifications massives</p>
+            </div>
+          </article>
+          <article className={`${sectionCardClass} p-4`}>
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Repères opérationnels</p>
+            <div className="mt-2 space-y-2 text-sm">
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
+                Active les filtres avancés pour les revues hebdo.
+              </p>
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
+                Sauvegarde tes segments de suivi par équipe.
+              </p>
+              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
+                Vérifie les IDs Twitch/Discord avant actions bulk.
+              </p>
+            </div>
+          </article>
+        </section>
+
         {/* Barre de recherche et actions */}
-        <div className="mb-6 sticky top-3 z-20 rounded-2xl border border-gray-800 bg-[#0f1014]/95 p-4 backdrop-blur">
+        <div className="mb-6 sticky top-3 z-20 rounded-2xl border border-[#2f3244] bg-[#0f1118]/95 p-4 backdrop-blur">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <input
@@ -2280,12 +2324,12 @@ export default function GestionMembresPage() {
                 placeholder="Rechercher un membre (pseudo, role, bio, jeu...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-[240px] bg-[#1a1a1d] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                className="flex-1 min-w-[240px] rounded-lg border border-[#353a50] bg-[#121623]/85 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-300/55"
               />
               <select
                 value={presetFilter}
                 onChange={(e) => setPresetFilter(e.target.value as PresetFilter)}
-                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                 title="Filtre métier rapide"
               >
                 <option value="all">Tous</option>
@@ -2302,8 +2346,8 @@ export default function GestionMembresPage() {
                 onClick={() => setShowAdvancedFilters((prev) => !prev)}
                 className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
                   showAdvancedFilters
-                    ? "bg-purple-600/20 border-purple-500/40 text-purple-200"
-                    : "bg-[#1a1a1d] border-gray-700 text-gray-300 hover:text-white"
+                    ? "bg-indigo-500/20 border-indigo-300/45 text-indigo-100"
+                    : "bg-[#121623]/85 border-[#353a50] text-gray-300 hover:text-white"
                 }`}
                 title="Afficher/Masquer les filtres avancés"
               >
@@ -2315,7 +2359,7 @@ export default function GestionMembresPage() {
               <select
                 value={selectedSavedViewId}
                 onChange={(e) => applySavedView(e.target.value)}
-                className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                 title="Vues enregistrées"
               >
                 <option value="">Vues enregistrées</option>
@@ -2327,7 +2371,7 @@ export default function GestionMembresPage() {
               </select>
               <button
                 onClick={saveCurrentView}
-                className="bg-indigo-500/12 hover:bg-indigo-500/20 border border-indigo-400/35 text-indigo-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                className="border border-indigo-300/35 bg-indigo-500/18 px-3 py-2 text-sm font-semibold text-indigo-100 rounded-lg transition hover:bg-indigo-500/28"
                 title="Enregistrer la vue actuelle"
               >
                 Sauver vue
@@ -2343,7 +2387,7 @@ export default function GestionMembresPage() {
                   setSelectedSavedViewId("");
                   pushNotice("info", "Filtres réinitialisés");
                 }}
-                className="bg-[#151821] hover:bg-[#1b2030] border border-gray-700 text-gray-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                className="border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm font-semibold text-slate-100 rounded-lg transition hover:bg-[#1a2132]"
                 title="Réinitialiser recherche et filtres"
               >
                 Reset filtres
@@ -2351,7 +2395,7 @@ export default function GestionMembresPage() {
               {selectedSavedViewId && (
                 <button
                   onClick={() => deleteSavedView(selectedSavedViewId)}
-                  className="bg-red-500/12 hover:bg-red-500/20 border border-red-400/35 text-red-200 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+                  className="border border-rose-300/35 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-100 rounded-lg transition hover:bg-rose-500/24"
                   title="Supprimer la vue sélectionnée"
                 >
                   Suppr vue
@@ -2364,7 +2408,7 @@ export default function GestionMembresPage() {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value as "all" | MemberRole)}
-                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                   title="Filtrer par rôle"
                 >
                   <option value="all">Tous les rôles</option>
@@ -2377,7 +2421,7 @@ export default function GestionMembresPage() {
                 <select
                   value={memberStatusFilter}
                   onChange={(e) => setMemberStatusFilter(e.target.value as "all" | MemberStatus)}
-                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                   title="Filtrer par statut membre"
                 >
                   <option value="all">Tous statuts</option>
@@ -2388,14 +2432,14 @@ export default function GestionMembresPage() {
                   type="date"
                   value={joinedAfterFilter}
                   onChange={(e) => setJoinedAfterFilter(e.target.value)}
-                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                   title="Membre depuis - date minimum"
                 />
                 <input
                   type="date"
                   value={joinedBeforeFilter}
                   onChange={(e) => setJoinedBeforeFilter(e.target.value)}
-                  className="bg-[#1a1a1d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-300/55"
                   title="Membre depuis - date maximum"
                 />
               </div>
@@ -2813,19 +2857,32 @@ export default function GestionMembresPage() {
         </div>
 
         {/* Tableau des membres */}
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-xl overflow-hidden shadow-[0_14px_28px_rgba(0,0,0,0.22)]">
-          <div className="border-b border-gray-700/70 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#16171b]">
-            <p className="text-sm text-gray-300">
-              Affichage <span className="font-semibold text-white">{startItem}</span>-<span className="font-semibold text-white">{endItem}</span> sur{" "}
-              <span className="font-semibold text-white">{displayedMembers.length}</span>
-            </p>
+        <div className={`${sectionCardClass} overflow-hidden`}>
+          <div className="border-b border-[#353a50]/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#121623]/95">
+            <div className="space-y-1">
+              <p className="text-sm text-slate-300">
+                Affichage <span className="font-semibold text-white">{startItem}</span>-<span className="font-semibold text-white">{endItem}</span> sur{" "}
+                <span className="font-semibold text-white">{displayedMembers.length}</span>
+              </p>
+              <div className="flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2 py-0.5 text-emerald-100">
+                  Actifs: {activeMembers.length}
+                </span>
+                <span className="rounded-full border border-amber-400/35 bg-amber-500/15 px-2 py-0.5 text-amber-100">
+                  Incomplets: {totalIncompleteMembers}
+                </span>
+                <span className="rounded-full border border-cyan-400/35 bg-cyan-500/15 px-2 py-0.5 text-cyan-100">
+                  Sans Twitch ID: {totalWithoutTwitchId}
+                </span>
+              </div>
+            </div>
             <div className="flex items-center gap-2 text-sm">
-              <label htmlFor="page-size" className="text-gray-400">Lignes/page</label>
+              <label htmlFor="page-size" className="text-slate-400">Lignes/page</label>
               <select
                 id="page-size"
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value) as 25 | 50 | 100)}
-                className="bg-[#0e0e10] border border-gray-700 rounded px-2 py-1 text-white"
+                className="rounded border border-[#353a50] bg-[#0f1321] px-2 py-1 text-white"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -2841,10 +2898,10 @@ export default function GestionMembresPage() {
                   : "w-full"
               }
             >
-              <thead className="sticky top-0 z-10 bg-[#1a1a1d]">
-                <tr className="border-b border-gray-700">
+              <thead className="sticky top-0 z-10 bg-[#111421]">
+                <tr className="border-b border-[#353a50]">
                   {currentAdmin?.isFounder && (
-                    <th className="py-4 px-3 text-sm font-semibold text-gray-300">
+                    <th className="py-4 px-3 text-sm font-semibold text-slate-300">
                       <input
                         type="checkbox"
                         checked={displayedMembers.length > 0 && displayedMembers.every((m) => selectedMemberLogins.includes(m.twitch))}
@@ -2855,11 +2912,11 @@ export default function GestionMembresPage() {
                   <SortableHeader column="nom" label="CRÉATEUR" />
                   {viewMode === "complet" && (
                     <>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Pseudo Site</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Discord</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ID Twitch</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Onboarding</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">Mentor</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Pseudo Site</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ID Discord</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ID Twitch</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Onboarding</th>
+                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Mentor</th>
                     </>
                   )}
                   <SortableHeader column="role" label="RÔLE" />
@@ -2881,14 +2938,14 @@ export default function GestionMembresPage() {
                       <SortableHeader column="isLive" label="Live" />
                     </>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-300">ACTIONS</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedMembers.map((member, rowIndex) => (
                   <tr
                     key={getMemberStableKey(member)}
-                    className={`border-b border-gray-700/80 hover:bg-[#202330] transition-colors ${rowIndex % 2 === 0 ? "bg-transparent" : "bg-[#17191f]"}`}
+                    className={`border-b border-[#2f354a]/80 hover:bg-[#1a2132] transition-colors ${rowIndex % 2 === 0 ? "bg-transparent" : "bg-[#131824]"}`}
                   >
                     {currentAdmin?.isFounder && (
                       <td className="py-4 px-3">
@@ -2904,7 +2961,7 @@ export default function GestionMembresPage() {
                         <img
                           src={member.avatar}
                           alt={member.nom}
-                          className="w-12 h-12 rounded-full object-cover"
+                          className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10"
                         />
                         <div>
                           <div className="text-white font-medium">{member.nom}</div>
@@ -2918,7 +2975,7 @@ export default function GestionMembresPage() {
                                 href={`https://www.twitch.tv/${member.twitch}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[#9146ff] hover:text-[#5a32b4]"
+                                className="text-indigo-300 hover:text-indigo-200"
                               >
                                 {member.twitch}
                               </a>
@@ -2939,7 +2996,7 @@ export default function GestionMembresPage() {
                           {member.siteUsername || "-"}
                         </td>
                         <td className="py-4 px-6">
-                          <code className="text-xs text-gray-400 bg-[#0e0e10] px-2 py-1 rounded">
+                          <code className="text-xs text-slate-300 bg-[#0f1321] px-2 py-1 rounded border border-[#343a4f]">
                             {member.discordId || "-"}
                           </code>
                         </td>
@@ -2947,7 +3004,7 @@ export default function GestionMembresPage() {
                           <div className="flex items-center gap-2">
                             {member.twitchId ? (
                               <>
-                                <code className="text-xs text-green-400 bg-[#0e0e10] px-2 py-1 rounded">
+                                <code className="text-xs text-green-300 bg-[#0f1321] px-2 py-1 rounded border border-[#345048]">
                                   {member.twitchId}
                                 </code>
                                 <span title="ID Twitch lié">
@@ -2987,7 +3044,7 @@ export default function GestionMembresPage() {
                                     alert('ÔØî Erreur lors de la synchronisation');
                                   }
                                 }}
-                                className="text-xs text-purple-400 hover:text-purple-300 underline ml-1 flex items-center gap-1"
+                                className="text-xs text-indigo-300 hover:text-indigo-200 underline ml-1 inline-flex items-center gap-1"
                                 title="Synchroniser l'ID Twitch"
                               >
                                 <RefreshCw className="w-3 h-3" />
@@ -3096,7 +3153,7 @@ export default function GestionMembresPage() {
                       <>
                         <td className="py-4 px-6">
                           {member.isVip ? (
-                            <span className="px-2 py-1 rounded bg-[#9146ff] text-white text-xs font-semibold">
+                            <span className="px-2 py-1 rounded border border-indigo-300/35 bg-indigo-500/20 text-indigo-100 text-xs font-semibold">
                               VIP
                             </span>
                           ) : (
@@ -3278,8 +3335,8 @@ export default function GestionMembresPage() {
             </table>
           </div>
           {displayedMembers.length > 0 && (
-            <div className="border-t border-gray-700/70 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#16171b]">
-              <p className="text-sm text-gray-400">
+            <div className="border-t border-[#353a50]/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#121623]/95">
+              <p className="text-sm text-slate-400">
                 Page <span className="text-white font-semibold">{clampedCurrentPage}</span> / <span className="text-white font-semibold">{totalPages}</span>
               </p>
               <div className="flex items-center gap-2">
@@ -3287,7 +3344,7 @@ export default function GestionMembresPage() {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={clampedCurrentPage === 1}
-                  className="px-3 py-1.5 text-sm rounded border border-gray-700 text-gray-200 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1f222a] transition-colors"
+                  className="px-3 py-1.5 text-sm rounded border border-[#353a50] text-slate-100 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1b2132] transition-colors"
                 >
                   Précédent
                 </button>
@@ -3295,7 +3352,7 @@ export default function GestionMembresPage() {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={clampedCurrentPage === totalPages}
-                  className="px-3 py-1.5 text-sm rounded border border-gray-700 text-gray-200 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1f222a] transition-colors"
+                  className="px-3 py-1.5 text-sm rounded border border-[#353a50] text-slate-100 disabled:text-gray-500 disabled:border-gray-800 hover:bg-[#1b2132] transition-colors"
                 >
                   Suivant
                 </button>

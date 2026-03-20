@@ -59,10 +59,7 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/membres/qualite-data", label: "Qualité data (vue fusionnée)" },
           { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
-          { href: "/admin/membres/donnee-discord", label: "Données Discord" },
-          { href: "/admin/membres/synchronisation", label: "Synchronisation des données" },
           { href: "/admin/membres/reconciliation", label: "Réconciliation public -> gestion" },
-          { href: "/admin/membres/erreurs", label: "Incohérences & erreurs" },
         ],
       },
       {
@@ -153,8 +150,12 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/communaute/engagement/raids-eventsub", label: "Raids EventSub" },
           { href: "/admin/communaute/engagement/signalements-raids", label: "Signalements raid (fallback bug)" },
           { href: "/admin/communaute/engagement/historique-raids", label: "Historique raids" },
-          { href: "/admin/communaute/engagement/points-discord", label: "Points Discord raids" },
         ],
+      },
+      {
+        href: "/admin/communaute/engagement/points-discord",
+        label: "Points Discord",
+        children: [{ href: "/admin/communaute/engagement/points-discord", label: "Points Discord" }],
       },
       {
         href: "/admin/communaute/evenements/spotlight",
@@ -408,6 +409,7 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/communaute/anniversaires", label: "Anniversaires" },
       { href: "/admin/communaute/engagement/raids-eventsub", label: "Raids EventSub" },
       { href: "/admin/communaute/engagement/signalements-raids", label: "Signalements raid" },
+      { href: "/admin/communaute/engagement/points-discord", label: "Points Discord" },
       { href: "/admin/communaute/engagement/follow", label: "Follow" },
       { href: "/admin/communaute/engagement/feuilles-follow", label: "Feuilles de follow" },
       { href: "/admin/communaute/evenements/spotlight", label: "Spotlight (legacy)" },

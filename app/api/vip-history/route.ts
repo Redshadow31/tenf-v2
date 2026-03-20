@@ -14,6 +14,53 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
     const login = searchParams.get('login');
 
+    if (action === 'badge-map') {
+      const history = loadVipHistory();
+      const byLoginMonths = new Map<string, Set<string>>();
+
+      for (const entry of history) {
+        const normalizedLogin = entry.login.toLowerCase();
+        if (!byLoginMonths.has(normalizedLogin)) {
+          byLoginMonths.set(normalizedLogin, new Set<string>());
+        }
+        byLoginMonths.get(normalizedLogin)!.add(entry.month);
+      }
+
+      const byLogin: Record<string, { badge: string; months: number }> = {};
+
+      const previousMonth = (month: string): string => {
+        const [yearStr, monthStr] = month.split('-');
+        let year = parseInt(yearStr, 10);
+        let monthNumber = parseInt(monthStr, 10) - 1;
+        if (monthNumber < 1) {
+          monthNumber = 12;
+          year -= 1;
+        }
+        return `${year}-${String(monthNumber).padStart(2, '0')}`;
+      };
+
+      for (const [memberLogin, monthSet] of byLoginMonths.entries()) {
+        const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
+        if (sortedMonths.length === 0) continue;
+
+        let consecutiveMonths = 1;
+        let cursor = sortedMonths[0];
+        while (true) {
+          const prev = previousMonth(cursor);
+          if (!monthSet.has(prev)) break;
+          consecutiveMonths += 1;
+          cursor = prev;
+        }
+
+        byLogin[memberLogin] = {
+          badge: consecutiveMonths <= 1 ? "VIP" : `VIP+${consecutiveMonths}`,
+          months: consecutiveMonths,
+        };
+      }
+
+      return NextResponse.json({ byLogin });
+    }
+
     if (action === 'badge' && login) {
       // Récupérer le badge VIP pour un membre spécifique
       const badge = getVipBadgeText(login);

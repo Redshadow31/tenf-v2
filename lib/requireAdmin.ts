@@ -31,7 +31,31 @@ export interface AuthenticatedAdmin {
  */
 export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null> {
   try {
+    const devAuthBypassEnabled =
+      process.env.NODE_ENV !== "production" &&
+      process.env.ENABLE_DEV_AUTH !== "false";
     const session = await getServerSession(authOptions);
+
+    // Bypass total en local/dev : force un profil admin fondateur
+    // pour éviter tous les blocages de permissions pendant le développement.
+    if (devAuthBypassEnabled) {
+      const discordId =
+        String(session?.user?.discordId || "").trim() ||
+        process.env.DEV_BYPASS_DISCORD_ID ||
+        "333001130705420299";
+      const username =
+        String(session?.user?.username || "").trim() ||
+        process.env.DEV_BYPASS_USERNAME ||
+        "Dev Fondateur";
+      const avatar = (session?.user?.avatar as string | null | undefined) || null;
+      return {
+        id: discordId,
+        discordId,
+        username,
+        avatar,
+        role: "FONDATEUR",
+      };
+    }
 
     if (!session?.user?.discordId) {
       return null;
@@ -44,6 +68,19 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     // Le rôle en session (JWT) peut être stale si un fondateur a modifié les accès
     // après la connexion de l'utilisateur.
     const sessionRole = normalizeAdminRole((session.user.role as string | null | undefined) || null);
+    const sessionDevBypass = (session.user as any)?.devBypass === true;
+
+    // En local/dev, un login via "dev-bypass" doit utiliser explicitement le rôle de session
+    // pour éviter qu'un rôle hardcodé/cache du même discordId écrase le rôle demandé au test.
+    if (devAuthBypassEnabled && sessionDevBypass && sessionRole) {
+      return {
+        id: discordId,
+        discordId,
+        username,
+        avatar,
+        role: sessionRole,
+      };
+    }
 
     // Priorité au rôle "source de vérité" (hardcodé/cache), puis fallback session.
     let role: AdminRole | null = getAdminRole(discordId);

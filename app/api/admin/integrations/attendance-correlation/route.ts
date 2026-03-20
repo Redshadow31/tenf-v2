@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { memberRepository } from "@/lib/repositories";
 import {
   getIntegration,
   loadIntegrations,
@@ -15,6 +16,10 @@ type CorrelationMember = {
   discordUsername?: string;
   parrain?: string;
   attendanceCount: number;
+  inMembersList: boolean;
+  consideredActivated: boolean;
+  memberRole?: string;
+  memberStatus?: "actif" | "inactif";
 };
 
 type CorrelationSnapshot = {
@@ -23,6 +28,12 @@ type CorrelationSnapshot = {
   integratedMembersCount: number;
   targetIntegration: { id: string; title: string; date: string } | null;
   reassignableCandidates: CorrelationMember[];
+  activationSummary: {
+    inMembersListCount: number;
+    consideredActivatedCount: number;
+    toActivateCount: number;
+    missingInMembersListCount: number;
+  };
   sessions: Array<{
     integrationId: string;
     title: string;
@@ -34,6 +45,36 @@ type CorrelationSnapshot = {
 
 function normalizeLogin(value?: string): string {
   return String(value || "").trim().toLowerCase();
+}
+
+function normalizeRole(value?: string): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isConsideredActivated(member: any): boolean {
+  const role = normalizeRole(member?.role);
+  if (member?.isActive === true) return true;
+  return role === "affilie" || role === "developpement" || role === "actif";
+}
+
+async function loadAllMembers(): Promise<any[]> {
+  const pageSize = 1000;
+  const maxPages = 20;
+  const all: any[] = [];
+
+  for (let page = 0; page < maxPages; page++) {
+    const offset = page * pageSize;
+    const chunk = await memberRepository.findAll(pageSize, offset);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    all.push(...chunk);
+    if (chunk.length < pageSize) break;
+  }
+
+  return all;
 }
 
 async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): Promise<CorrelationSnapshot> {
@@ -107,8 +148,44 @@ async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): 
       discordUsername: value.lastSeen.discordUsername,
       parrain: value.lastSeen.parrain,
       attendanceCount: value.attendanceCount,
-    }))
+      inMembersList: false,
+      consideredActivated: false,
+      memberRole: undefined,
+      memberStatus: undefined,
+    }));
+
+  const allMembers = await loadAllMembers();
+  const membersByLogin = new Map<string, any>();
+  for (const member of allMembers) {
+    const login = normalizeLogin(member?.twitchLogin);
+    if (!login) continue;
+    if (!membersByLogin.has(login)) {
+      membersByLogin.set(login, member);
+    }
+  }
+
+  const enrichedCandidates = reassignableCandidates
+    .map((candidate) => {
+      const member = membersByLogin.get(candidate.twitchLogin);
+      if (!member) {
+        return candidate;
+      }
+      return {
+        ...candidate,
+        inMembersList: true,
+        consideredActivated: isConsideredActivated(member),
+        memberRole: member.role,
+        memberStatus: member.isActive === true ? "actif" : "inactif",
+      };
+    })
     .sort((a, b) => b.attendanceCount - a.attendanceCount);
+
+  const inMembersListCount = enrichedCandidates.filter((candidate) => candidate.inMembersList).length;
+  const consideredActivatedCount = enrichedCandidates.filter((candidate) => candidate.consideredActivated).length;
+  const missingInMembersListCount = enrichedCandidates.filter((candidate) => !candidate.inMembersList).length;
+  const toActivateCount = enrichedCandidates.filter(
+    (candidate) => candidate.inMembersList && !candidate.consideredActivated
+  ).length;
 
   return {
     sessionsPastCount: pastIntegrations.length,
@@ -121,7 +198,13 @@ async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): 
           date: target.date,
         }
       : null,
-    reassignableCandidates,
+    reassignableCandidates: enrichedCandidates,
+    activationSummary: {
+      inMembersListCount,
+      consideredActivatedCount,
+      toActivateCount,
+      missingInMembersListCount,
+    },
     sessions,
   };
 }
@@ -155,6 +238,7 @@ export async function POST(request: NextRequest) {
     const targetIntegrationId = String(body?.targetIntegrationId || "").trim() || undefined;
     const minAttendances = Number(body?.minAttendances || "1");
     const dryRun = body?.dryRun === true;
+    const syncMembers = body?.syncMembers === true;
 
     const snapshot = await buildSnapshot(targetIntegrationId, minAttendances);
     if (!snapshot.targetIntegration?.id) {
@@ -173,6 +257,7 @@ export async function POST(request: NextRequest) {
 
     let created = 0;
     let skipped = 0;
+    let syncedActivated = 0;
     const errors: string[] = [];
 
     for (const candidate of snapshot.reassignableCandidates) {
@@ -197,14 +282,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (syncMembers) {
+      for (const candidate of snapshot.reassignableCandidates) {
+        if (!candidate.inMembersList || candidate.consideredActivated) continue;
+        try {
+          await memberRepository.update(candidate.twitchLogin, {
+            isActive: true,
+            updatedAt: new Date(),
+            updatedBy: admin.id,
+          } as any);
+          syncedActivated += 1;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`sync:${candidate.twitchLogin}: ${message}`);
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       targetIntegration: snapshot.targetIntegration,
       totalCandidates: snapshot.reassignableCandidates.length,
       created,
       skipped,
+      syncedActivated,
       errors,
-      message: `${created} membre(s) réassigné(s) automatiquement${skipped > 0 ? `, ${skipped} déjà inscrits` : ""}.`,
+      message: `${created} membre(s) réassigné(s) automatiquement${skipped > 0 ? `, ${skipped} déjà inscrits` : ""}${
+        syncMembers ? `, ${syncedActivated} profil(s) activé(s)` : ""
+      }.`,
     });
   } catch (error) {
     console.error("[Integration Attendance Correlation] POST error:", error);

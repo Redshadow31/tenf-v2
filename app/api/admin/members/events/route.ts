@@ -24,7 +24,11 @@ export async function GET(request: Request) {
     const source = searchParams.get('source') as any;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
+    const rawLimit = searchParams.get('limit');
+    const rawPage = searchParams.get('page');
+    const hasPagination = rawLimit !== null || rawPage !== null;
+    const limit = rawLimit ? Math.max(1, Math.min(500, parseInt(rawLimit, 10))) : 50;
+    const page = rawPage ? Math.max(1, parseInt(rawPage, 10)) : 1;
 
     const events = await getAllEvents({
       memberId: memberId || undefined,
@@ -32,7 +36,6 @@ export async function GET(request: Request) {
       source: source || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit,
     });
 
     // Timeline unifiée: fusionner les événements membres avec l'audit admin sur la ressource member.
@@ -60,9 +63,15 @@ export async function GET(request: Request) {
         }));
       unifiedEvents = [...unifiedEvents, ...mappedAudit];
       unifiedEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      if (limit && Number.isFinite(limit)) {
-        unifiedEvents = unifiedEvents.slice(0, limit);
-      }
+    }
+
+    if (hasPagination) {
+      const start = (page - 1) * limit;
+      const end = start + limit;
+      const paginatedEvents = unifiedEvents.slice(start, end);
+      const total = unifiedEvents.length;
+      const hasMore = end < total;
+      return NextResponse.json({ events: paginatedEvents, total, page, limit, hasMore });
     }
 
     return NextResponse.json({ events: unifiedEvents });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface PublicMember {
   twitchLogin: string;
@@ -46,8 +47,16 @@ function normalizeTwitchLogin(value?: string | null): string {
     .replace(/[^a-z0-9_]/g, "");
 }
 
+const glassCardClass =
+  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const sectionCardClass =
+  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const subtleButtonClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+
 export default function ReconciliationMembresPage() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [submittingLogin, setSubmittingLogin] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [publicMembers, setPublicMembers] = useState<PublicMember[]>([]);
@@ -57,6 +66,7 @@ export default function ReconciliationMembresPage() {
   async function loadData() {
     try {
       setLoading(true);
+      setRefreshing(true);
       setError(null);
 
       const [publicResponse, adminResponse] = await Promise.all([
@@ -91,6 +101,7 @@ export default function ReconciliationMembresPage() {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -141,6 +152,23 @@ export default function ReconciliationMembresPage() {
       );
     });
   }, [missingInAdmin, searchQuery]);
+
+  const reconciliationCoverage = useMemo(() => {
+    if (publicMembers.length === 0) return 100;
+    return Math.max(0, Math.round(((publicMembers.length - missingInAdmin.length) / publicMembers.length) * 100));
+  }, [missingInAdmin.length, publicMembers.length]);
+
+  const topMissingRoles = useMemo(() => {
+    const counts = new Map<string, number>();
+    missingInAdmin.forEach((member) => {
+      const key = String(member.role || "Non défini");
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([role, count]) => ({ role, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [missingInAdmin]);
 
   async function handleAddToGestion(member: PublicMember) {
     const login = normalizeTwitchLogin(member.twitchLogin);
@@ -271,66 +299,112 @@ export default function ReconciliationMembresPage() {
   }
 
   return (
-    <div className="text-white">
-      <div className="mb-6">
-        <Link
-          href="/admin/membres"
-          className="text-[#9146ff] hover:text-[#5a32b4] mb-3 inline-block"
-        >
-          ← Retour au hub Membres
-        </Link>
-        <h1 className="text-3xl font-bold text-white mb-2">
-          Détection Public → Gestion
-        </h1>
-        <p className="text-gray-400">
-          Détecte les membres visibles sur la page publique mais absents de la
-          gestion admin, puis les ajoute en 1 clic.
-        </p>
-      </div>
+    <div className="space-y-6 text-white">
+      <section className={`${glassCardClass} p-5 md:p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <Link href="/admin/membres" className="mb-3 inline-block text-sm text-slate-300 transition hover:text-white">
+              ← Retour au hub Membres
+            </Link>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Membres · Réconciliation</p>
+            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+              Réconciliation public → gestion
+            </h1>
+            <p className="mt-3 text-sm text-slate-300">
+              Détecte les membres visibles publiquement mais absents de la gestion admin, puis les ajoute en flux rapide.
+            </p>
+          </div>
+          <button type="button" onClick={() => void loadData()} disabled={refreshing} className={`${subtleButtonClass} disabled:opacity-60`}>
+            <RefreshCw className="h-4 w-4" />
+            {refreshing ? "Actualisation..." : "Actualiser"}
+          </button>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
-          <div className="text-2xl font-bold text-white">{publicMembers.length}</div>
-          <div className="text-sm text-gray-400">Membres visibles en public</div>
-        </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
-          <div className="text-2xl font-bold text-white">{adminMembers.length}</div>
-          <div className="text-sm text-gray-400">Membres présents en gestion</div>
-        </div>
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4">
-          <div className="text-2xl font-bold text-yellow-300">{missingInAdmin.length}</div>
-          <div className="text-sm text-gray-400">Manquants en gestion</div>
-        </div>
-      </div>
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Membres publics</p>
+          <p className="mt-2 text-3xl font-semibold">{publicMembers.length}</p>
+          <p className="mt-1 text-xs text-slate-400">Référentiel visible</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Membres en gestion</p>
+          <p className="mt-2 text-3xl font-semibold">{adminMembers.length}</p>
+          <p className="mt-1 text-xs text-slate-400">Base administrative</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Manquants en gestion</p>
+          <p className="mt-2 text-3xl font-semibold text-amber-300">{missingInAdmin.length}</p>
+          <p className="mt-1 text-xs text-slate-400">Candidats à importer</p>
+        </article>
+        <article className={`${sectionCardClass} p-4`}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Couverture réconciliation</p>
+          <p className="mt-2 text-3xl font-semibold text-cyan-300">{reconciliationCoverage}%</p>
+          <p className="mt-1 text-xs text-slate-400">Alignement public/gestion</p>
+        </article>
+      </section>
 
-      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Progression d’alignement</h2>
+          <div className="mt-4">
+            <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+              <span>Public déjà couvert dans gestion</span>
+              <span>{reconciliationCoverage}%</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-slate-800">
+              <div className="h-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-300" style={{ width: `${reconciliationCoverage}%` }} />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Objectif: tendre vers 100% pour réduire les pertes de traçabilité lors des opérations staff.
+          </p>
+        </article>
+        <article className={`${sectionCardClass} p-5`}>
+          <h2 className="text-lg font-semibold text-slate-100">Top rôles manquants</h2>
+          <div className="mt-3 space-y-2">
+            {topMissingRoles.length === 0 ? (
+              <p className="text-sm text-emerald-300">Aucun manque détecté.</p>
+            ) : (
+              topMissingRoles.map((item) => (
+                <div key={item.role} className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
+                  <span className="text-sm text-slate-200">{item.role}</span>
+                  <span className="text-sm font-semibold text-indigo-200">{item.count}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+      </section>
+
+      <section className={`${sectionCardClass} p-4`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher (pseudo, nom, Discord, ID Discord, URL Twitch...)"
-            className="w-full md:max-w-xl bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff]"
+            className="w-full md:max-w-xl rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-300/55"
           />
           <button
             onClick={loadData}
-            className="bg-[#9146ff] hover:bg-[#5a32b4] text-white px-4 py-2 rounded-lg font-semibold"
+            className="rounded-lg border border-indigo-300/35 bg-indigo-500/25 px-4 py-2 font-semibold text-indigo-100 hover:bg-indigo-500/35"
           >
             Actualiser
           </button>
         </div>
-      </div>
+      </section>
 
       {loading ? (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center text-gray-400">
+        <section className={`${sectionCardClass} p-8 text-center text-gray-400`}>
           Chargement du diagnostic...
-        </div>
+        </section>
       ) : error ? (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-300">
+        <section className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-300">
           {error}
-        </div>
+        </section>
       ) : filteredMissing.length === 0 ? (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 text-center">
+        <section className={`${sectionCardClass} p-8 text-center`}>
           <div className="text-4xl mb-3">✅</div>
           <div className="text-lg font-semibold text-white">
             Aucun membre public manquant dans la gestion
@@ -339,12 +413,12 @@ export default function ReconciliationMembresPage() {
             La base publique et la gestion admin sont alignées pour les filtres
             actuels.
           </div>
-        </div>
+        </section>
       ) : (
-        <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg overflow-hidden">
+        <section className={`${sectionCardClass} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#0e0e10] border-b border-gray-700">
+              <thead className="border-b border-gray-700 bg-[#121623]/80">
                 <tr>
                   <th className="text-left py-3 px-4 text-sm text-gray-300">Membre public</th>
                   <th className="text-left py-3 px-4 text-sm text-gray-300">Twitch</th>
@@ -355,13 +429,22 @@ export default function ReconciliationMembresPage() {
               </thead>
               <tbody>
                 {filteredMissing.map((member) => {
-                  const login = normalizeText(member.twitchLogin);
+                  const login = normalizeTwitchLogin(member.twitchLogin);
                   const isSubmitting = submittingLogin === login;
+                  const hasMissingIdentity = !member.discordId || !member.twitchLogin;
 
                   return (
-                    <tr key={`${member.twitchLogin}-${member.discordId || "no-discord"}`} className="border-b border-gray-800">
+                    <tr key={`${member.twitchLogin}-${member.discordId || "no-discord"}`} className="border-b border-gray-800 hover:bg-gray-800/35 transition-colors">
                       <td className="py-3 px-4 text-white">
-                        {member.displayName || member.twitchLogin}
+                        <div className="flex items-center gap-2">
+                          <span>{member.displayName || member.twitchLogin}</span>
+                          {hasMissingIdentity ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/35 bg-amber-300/10 px-2 py-0.5 text-[11px] text-amber-200">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Identité partielle
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-gray-300">
                         {member.twitchLogin || "-"}
@@ -376,15 +459,16 @@ export default function ReconciliationMembresPage() {
                           <button
                             onClick={() => handleAddToGestion(member)}
                             disabled={isSubmitting}
-                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-400 text-white text-sm font-semibold px-3 py-2 rounded-lg"
+                            className="rounded-lg border border-emerald-300/35 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:border-gray-600 disabled:bg-gray-700 disabled:text-gray-400"
                           >
                             {isSubmitting ? "Ajout..." : "Ajouter dans gestion"}
                           </button>
                           <Link
                             href={`/admin/membres/gestion?search=${encodeURIComponent(member.twitchLogin || member.displayName || "")}`}
-                            className="text-[#9146ff] hover:text-[#5a32b4] text-sm"
+                            className="inline-flex items-center gap-1 text-indigo-200 hover:text-indigo-100 text-sm"
                           >
                             Ouvrir gestion
+                            <ArrowRight className="h-4 w-4" />
                           </Link>
                         </div>
                       </td>
@@ -394,7 +478,7 @@ export default function ReconciliationMembresPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

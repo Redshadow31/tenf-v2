@@ -6,6 +6,16 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function normalizeLogin(value: string | null | undefined): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const message = String(error.message || "").toLowerCase();
+  return error.code === "42P01" || message.includes("does not exist") || message.includes("could not find the table");
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: { declarationId: string } }) {
   try {
     const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
@@ -36,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
 
     const { data: existing, error: existingError } = await supabaseAdmin
       .from("raid_declarations")
-      .select("id")
+      .select("id,member_twitch_login,target_twitch_login,raid_at,staff_comment")
       .eq("id", declarationId)
       .maybeSingle();
 
@@ -50,11 +60,55 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
     const updatePayload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
+
+    let autoRejectedAlreadyCounted = false;
+    let autoRejectedMessage = "";
+
+    if (status === "validated") {
+      const fromLogin = normalizeLogin(existing.member_twitch_login);
+      const toLogin = normalizeLogin(targetTwitchLogin || existing.target_twitch_login);
+      const raidDate = new Date(String(existing.raid_at || ""));
+      const canCheckDuplicate = Boolean(fromLogin && toLogin) && !Number.isNaN(raidDate.getTime());
+
+      if (canCheckDuplicate) {
+        const startDay = new Date(Date.UTC(raidDate.getUTCFullYear(), raidDate.getUTCMonth(), raidDate.getUTCDate(), 0, 0, 0, 0)).toISOString();
+        const endDay = new Date(Date.UTC(raidDate.getUTCFullYear(), raidDate.getUTCMonth(), raidDate.getUTCDate() + 1, 0, 0, 0, 0)).toISOString();
+        const { data: matchedEvents, error: matchedError } = await supabaseAdmin
+          .from("raid_test_events")
+          .select("id,event_at,run_id", { count: "exact" })
+          .eq("processing_status", "matched")
+          .eq("from_broadcaster_user_login", fromLogin)
+          .eq("to_broadcaster_user_login", toLogin)
+          .gte("event_at", startDay)
+          .lt("event_at", endDay)
+          .limit(1);
+
+        if (matchedError && !isMissingRelationError(matchedError)) {
+          return NextResponse.json({ error: "Impossible de verifier les raids EventSub deja comptabilises" }, { status: 500 });
+        }
+
+        if (!matchedError && (matchedEvents || []).length > 0) {
+          autoRejectedAlreadyCounted = true;
+          autoRejectedMessage =
+            "Declaration refusee automatiquement: ce raid est deja comptabilise via EventSub (status matched).";
+          updatePayload.status = "rejected";
+          const existingComment = String(existing.staff_comment || "").trim();
+          updatePayload.staff_comment = existingComment
+            ? `${existingComment} | ${autoRejectedMessage}`
+            : autoRejectedMessage;
+          updatePayload.reviewed_at = new Date().toISOString();
+          updatePayload.reviewed_by = admin.discordId || admin.id;
+        }
+      }
+    }
+
     if (status) {
-      updatePayload.status = status;
-      updatePayload.staff_comment = staffComment || null;
-      updatePayload.reviewed_at = new Date().toISOString();
-      updatePayload.reviewed_by = admin.discordId || admin.id;
+      if (!autoRejectedAlreadyCounted) {
+        updatePayload.status = status;
+        updatePayload.staff_comment = staffComment || null;
+        updatePayload.reviewed_at = new Date().toISOString();
+        updatePayload.reviewed_by = admin.discordId || admin.id;
+      }
     }
     if (targetTwitchLogin) {
       updatePayload.target_twitch_login = targetTwitchLogin;
@@ -73,7 +127,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
       return NextResponse.json({ error: "Impossible de mettre a jour la declaration" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, declaration: data });
+    return NextResponse.json({
+      success: true,
+      declaration: data,
+      autoRejectedAlreadyCounted,
+      message: autoRejectedAlreadyCounted ? autoRejectedMessage : undefined,
+    });
   } catch (error) {
     console.error("[api/admin/engagement/raids-declarations/:id] PATCH error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
