@@ -94,6 +94,41 @@ interface Member {
   deleteReason?: string;
 }
 
+type DiscordVerifyResult = {
+  twitchLogin: string;
+  displayName: string;
+  discordId: string;
+  storedDiscordUsername: string | null;
+  fetchedDiscordUsername: string | null;
+  status: "same" | "updated" | "different" | "not_found" | "error";
+  error?: string;
+};
+
+type DiscordVerifyResponse = {
+  processed: number;
+  same: number;
+  different: number;
+  updated: number;
+  notFound: number;
+  errors: number;
+  totalSelected?: number;
+  nextOffset?: number;
+  hasMore?: boolean;
+  results: DiscordVerifyResult[];
+  error?: string;
+};
+
+async function parseApiResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.toLowerCase().includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const raw = await response.text().catch(() => "");
+  const preview = raw.trim().slice(0, 180).replace(/\s+/g, " ");
+  throw new Error(preview ? `Reponse API non-JSON: ${preview}` : "Reponse API non-JSON.");
+}
+
 
 export default function GestionMembresPage() {
   const searchParams = useSearchParams();
@@ -145,7 +180,11 @@ export default function GestionMembresPage() {
   const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
   const [showMemberHistory, setShowMemberHistory] = useState(false);
   const [showVerifyTwitchNamesModal, setShowVerifyTwitchNamesModal] = useState(false);
+  const [showVerifyDiscordNamesModal, setShowVerifyDiscordNamesModal] = useState(false);
   const [syncingDiscordNames, setSyncingDiscordNames] = useState(false);
+  const [verifyDiscordInfo, setVerifyDiscordInfo] = useState("");
+  const [verifyDiscordError, setVerifyDiscordError] = useState("");
+  const [verifyDiscordResultsByLogin, setVerifyDiscordResultsByLogin] = useState<Record<string, DiscordVerifyResult>>({});
   const [selectedMemberLogins, setSelectedMemberLogins] = useState<string[]>([]);
   const [bulkRole, setBulkRole] = useState<MemberRole | "">("");
   const [bulkStatus, setBulkStatus] = useState<"" | "Actif" | "Inactif">("");
@@ -1107,6 +1146,10 @@ export default function GestionMembresPage() {
   const totalActiveMembers = members.filter(
     (m) => (m.statut === "Actif" || isStaffRole(m.role)) && m.role !== "Nouveau"
   ).length;
+  const verifyDiscordRows = Object.values(verifyDiscordResultsByLogin).sort((a, b) =>
+    String(a.displayName || a.twitchLogin).localeCompare(String(b.displayName || b.twitchLogin), "fr")
+  );
+  const verifyDiscordUpdatedRows = verifyDiscordRows.filter((row) => row.status === "updated");
   const totalInactiveMembers = members.filter(
     (member) =>
       member.statut === "Inactif" &&
@@ -1503,31 +1546,78 @@ export default function GestionMembresPage() {
     if (syncingDiscordNames) return;
 
     setSyncingDiscordNames(true);
+    setVerifyDiscordError("");
+    setVerifyDiscordInfo("");
+    setVerifyDiscordResultsByLogin({});
     try {
-      const response = await fetch("/api/admin/members/sync-discord-usernames", {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Erreur lors de la vérification des noms Discord");
+      const batchSize = 20;
+      let nextOffset = 0;
+      let hasMore = true;
+      let totalSelected = 0;
+      let totalProcessed = 0;
+      let totalSame = 0;
+      let totalDifferent = 0;
+      let totalUpdated = 0;
+      let totalNotFound = 0;
+      let totalErrors = 0;
+      const nextResults: Record<string, DiscordVerifyResult> = {};
+
+      while (hasMore) {
+        const response = await fetch("/api/admin/members/discord-data", {
+          method: "POST",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify({
+            all: true,
+            updateMismatches: true,
+            offset: nextOffset,
+            limit: batchSize,
+          }),
+        });
+        const body = await parseApiResponse<DiscordVerifyResponse>(response);
+        if (!response.ok) {
+          throw new Error(body.error || "Erreur lors de la vérification des noms Discord");
+        }
+
+        for (const row of body.results || []) {
+          nextResults[row.twitchLogin.toLowerCase()] = row;
+        }
+
+        totalProcessed += Number(body.processed || 0);
+        totalSame += Number(body.same || 0);
+        totalDifferent += Number(body.different || 0);
+        totalUpdated += Number(body.updated || 0);
+        totalNotFound += Number(body.notFound || 0);
+        totalErrors += Number(body.errors || 0);
+        totalSelected = Number(body.totalSelected || totalSelected || 0);
+
+        setVerifyDiscordResultsByLogin({ ...nextResults });
+        setVerifyDiscordInfo(
+          `Vérification en cours... ${Math.min(totalProcessed, totalSelected || totalProcessed)}/${totalSelected || "?"} • ` +
+            `identiques: ${totalSame}, différents: ${totalDifferent}, synchronisés: ${totalUpdated}, introuvables: ${totalNotFound}, erreurs: ${totalErrors}.`
+        );
+
+        hasMore = Boolean(body.hasMore);
+        nextOffset = Number(body.nextOffset || totalProcessed);
       }
 
-      const synced = Number(data?.synced || 0);
-      const notFound = Number(data?.notFound || 0);
-      const details = [`${synced} pseudo(s) mis à jour`];
-      if (notFound > 0) {
-        details.push(`${notFound} membre(s) non trouvé(s) côté Discord`);
-      }
-      pushNotice("success", `Vérification Discord terminée: ${details.join(" • ")}`);
+      setVerifyDiscordInfo(
+        `Vérification terminée. Traités: ${totalProcessed}/${totalSelected || totalProcessed}, identiques: ${totalSame}, différents: ${totalDifferent}, synchronisés: ${totalUpdated}, introuvables: ${totalNotFound}, erreurs: ${totalErrors}.`
+      );
+      pushNotice(
+        "success",
+        `Vérification Discord terminée: ${totalUpdated} pseudo(s) mis à jour • ${totalNotFound} introuvable(s) • ${totalErrors} erreur(s).`
+      );
       await loadMembers();
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      setVerifyDiscordError(message);
       pushNotice(
         "error",
-        `Erreur vérification Discord: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+        `Erreur vérification Discord: ${message}`
       );
     } finally {
       setSyncingDiscordNames(false);
@@ -2437,7 +2527,12 @@ export default function GestionMembresPage() {
 
             {currentAdmin?.isFounder && (
               <button
-                onClick={handleVerifyDiscordNames}
+                onClick={() => {
+                  setShowVerifyDiscordNamesModal(true);
+                  setVerifyDiscordError("");
+                  setVerifyDiscordInfo("");
+                  setVerifyDiscordResultsByLogin({});
+                }}
                 disabled={syncingDiscordNames}
                 className="bg-blue-500/14 hover:bg-blue-500/24 border border-blue-400/35 text-blue-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Vérifier et synchroniser les noms Discord via les IDs Discord"
@@ -3293,6 +3388,120 @@ export default function GestionMembresPage() {
               await loadMembers();
             }}
           />
+        )}
+
+        {/* Modal de vérification des pseudos Discord */}
+        {showVerifyDiscordNamesModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={() => {
+              if (!syncingDiscordNames) setShowVerifyDiscordNamesModal(false);
+            }}
+          >
+            <div
+              className="bg-[#1a1a1d] border border-gray-700 rounded-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Vérification des pseudos Discord</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Interroge Discord via chaque ID, synchronise les pseudos différents, puis affiche le résultat détaillé.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyDiscordNamesModal(false)}
+                  disabled={syncingDiscordNames}
+                  className="text-gray-400 hover:text-white disabled:opacity-50"
+                >
+                  Fermer
+                </button>
+              </div>
+
+              <div className="p-5 border-b border-gray-700 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleVerifyDiscordNames()}
+                  disabled={syncingDiscordNames}
+                  className="bg-blue-500/14 hover:bg-blue-500/24 border border-blue-400/35 text-blue-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncingDiscordNames ? "animate-spin" : ""}`} />
+                  {syncingDiscordNames ? "Vérification en cours..." : "Lancer la vérification"}
+                </button>
+                <span className="text-xs text-gray-400">
+                  Traitement progressif par lots (20 membres), comme la page Donnée Discord.
+                </span>
+              </div>
+
+              <div className="p-5 space-y-3">
+                {verifyDiscordError ? (
+                  <div className="rounded-lg border border-red-500/40 bg-red-900/20 px-3 py-2 text-sm text-red-200">
+                    {verifyDiscordError}
+                  </div>
+                ) : null}
+                {verifyDiscordInfo ? (
+                  <div className="rounded-lg border border-emerald-500/40 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200">
+                    {verifyDiscordInfo}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-gray-200">
+                    Résultats chargés: <strong>{verifyDiscordRows.length}</strong>
+                  </div>
+                  <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+                    Pseudos changés: <strong>{verifyDiscordUpdatedRows.length}</strong>
+                  </div>
+                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                    Non modifiés / autres: <strong>{Math.max(0, verifyDiscordRows.length - verifyDiscordUpdatedRows.length)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 overflow-y-auto space-y-4">
+                {verifyDiscordUpdatedRows.length > 0 ? (
+                  <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 p-3">
+                    <p className="text-sm font-semibold text-emerald-200 mb-2">Pseudos Discord mis à jour</p>
+                    <div className="space-y-2">
+                      {verifyDiscordUpdatedRows.map((row) => (
+                        <div key={`updated-${row.twitchLogin}`} className="text-xs text-emerald-100">
+                          <span className="font-semibold">{row.displayName}</span> ({row.twitchLogin}) • ID: {row.discordId} •{" "}
+                          {row.storedDiscordUsername || "vide"} → {row.fetchedDiscordUsername || "introuvable"}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-gray-700 bg-[#0e0e10] p-3">
+                  <p className="text-sm font-semibold text-gray-200 mb-2">Détail complet</p>
+                  {verifyDiscordRows.length === 0 ? (
+                    <p className="text-xs text-gray-400">Lance la vérification pour voir les résultats membre par membre.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {verifyDiscordRows.map((row) => (
+                        <div key={`${row.twitchLogin}-${row.discordId}`} className="rounded border border-gray-700 bg-[#141418] p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-white">
+                              {row.displayName} <span className="text-gray-400">({row.twitchLogin})</span>
+                            </p>
+                            <span className="text-[11px] rounded-full border border-gray-600 px-2 py-0.5 text-gray-300">
+                              {row.status}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1">
+                            ID Discord: {row.discordId} • Base: {row.storedDiscordUsername || "vide"} • Discord:{" "}
+                            {row.fetchedDiscordUsername || "introuvable"}
+                            {row.error ? ` • ${row.error}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Modal de fusion de membres */}
