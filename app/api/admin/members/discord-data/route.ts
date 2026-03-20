@@ -100,7 +100,9 @@ async function fetchDiscordUsernameById(discordId: string, botToken: string): Pr
     }
 
     const data = (await response.json()) as { username?: string; global_name?: string | null };
-    const username = String(data.global_name || data.username || "").trim();
+    // On veut le vrai pseudo Discord lié à l'ID utilisateur (username),
+    // pas le nom d'affichage global (global_name / surnom visuel).
+    const username = String(data.username || data.global_name || "").trim();
     if (!username) {
       return { ok: false, reason: "Pseudo Discord vide." };
     }
