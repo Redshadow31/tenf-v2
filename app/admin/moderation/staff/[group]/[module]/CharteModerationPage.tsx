@@ -94,6 +94,7 @@ const sections: CharteSection[] = [
       "Situation émotionnelle forte",
       "Cas répété",
       "Comportement ambigu",
+      "Situation impliquant un lien amical fort, un proche ou un risque de conflit d'intérêt",
       "Problème impliquant un membre actif important",
     ],
     note: "Dans ces cas : signalement staff obligatoire.",
@@ -117,6 +118,7 @@ const sections: CharteSection[] = [
       "Partager les discussions staff",
       "Parler des sanctions en public",
       "Exposer un membre",
+      "Exprimer en public un ressenti personnel négatif envers un membre",
     ],
   },
   {
@@ -187,12 +189,34 @@ const sections: CharteSection[] = [
       "Évoluer",
     ],
   },
+  {
+    id: 17,
+    emoji: "📩",
+    title: "Règles strictes sur les MP (messages privés)",
+    intro:
+      "Quand un modérateur échange en MP avec un membre dans le cadre de son rôle, ces messages engagent TENF.",
+    bullets: [
+      "Les MP liés à la modération appartiennent au cadre TENF (ils ne sont pas considérés comme \"privés personnels\").",
+      "Risque majeur d'interprétation: chaque mot peut impacter l'image de TENF.",
+      "Tout échange doit rester neutre, factuel, respectueux et traçable si nécessaire.",
+      "Le ressenti personnel négatif envers un membre est interdit, y compris en MP.",
+      "Interdiction des groupes MP où des modérateurs parlent d'un membre absent de ce groupe.",
+      "Interdiction des groupes MP servant à commenter, juger ou exposer un membre hors cadre staff officiel.",
+    ],
+    warnings: [
+      "MP émotionnels, ironiques, accusateurs ou humiliants",
+      "Discussion d'un membre absent dans un groupe MP informel",
+      "Pression ou influence en coulisses via MP",
+    ],
+    note:
+      "Violation de ces règles: sanction grave possible, allant du retrait de modération jusqu'au bannissement définitif du serveur.",
+  },
 ];
 
 const tabs = [
   { key: "fondamentaux", label: "Fondamentaux", sectionIds: [1, 2, 3, 4] },
   { key: "posture", label: "Posture & conflits", sectionIds: [5, 6, 7] },
-  { key: "cadre", label: "Cadre professionnel", sectionIds: [8, 9, 10, 11] },
+  { key: "cadre", label: "Cadre professionnel", sectionIds: [8, 9, 10, 11, 17] },
   { key: "qualite", label: "Qualité & progression", sectionIds: [12, 13, 14] },
   { key: "engagement", label: "ADN & engagement", sectionIds: [15, 16] },
 ];
