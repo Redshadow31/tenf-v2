@@ -45,6 +45,10 @@ function parseStoredAccessEntries(parsed: StoredAdminAccessEntry[]): AdminAccess
   }, []);
 }
 
+function getStoredEntryByDiscordId(storedAccessList: AdminAccess[], discordId: string): AdminAccess | undefined {
+  return storedAccessList.find((entry) => entry.discordId === discordId);
+}
+
 /**
  * GET - Récupère la liste de tous les membres avec accès au dashboard admin
  */
@@ -82,11 +86,13 @@ export async function GET() {
     
     // 1. Toujours inclure les fondateurs en premier (hardcodés, non modifiables)
     FOUNDERS.forEach(id => {
+      const stored = getStoredEntryByDiscordId(storedAccessList, id);
       accessList.push({
         discordId: id,
         role: 'FONDATEUR' as AdminRole,
         addedAt: new Date(0).toISOString(), // Date ancienne pour indiquer qu'ils sont là depuis le début
         addedBy: 'system',
+        adminAlias: stored?.adminAlias,
       });
       addedIds.add(id);
     });
@@ -97,11 +103,13 @@ export async function GET() {
       if (!addedIds.has(id)) {
         const role = getAdminRole(id);
         if (role) {
+          const stored = getStoredEntryByDiscordId(storedAccessList, id);
           accessList.push({
             discordId: id,
             role: role,
             addedAt: new Date(0).toISOString(),
             addedBy: 'system',
+            adminAlias: stored?.adminAlias,
           });
           addedIds.add(id);
         }
@@ -267,14 +275,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier que ce n'est pas un fondateur (les fondateurs ne peuvent pas être supprimés/modifiés)
-    if (isFounder(discordId)) {
-      return NextResponse.json(
-        { error: "Impossible de modifier un fondateur" },
-        { status: 403 }
-      );
-    }
-
     // Charger la liste actuelle depuis Blobs (uniquement les membres ajoutés manuellement)
     const store = getBlobStore(ACCESS_STORE);
     let storedAccessList: AdminAccess[] = [];
@@ -289,12 +289,23 @@ export async function POST(request: NextRequest) {
       console.error('Error loading admin access from Blobs:', error);
     }
 
-    // Filtrer les membres hardcodés de la liste Blobs (ils ne doivent pas être stockés)
-    storedAccessList = storedAccessList.filter(access => {
-      const hardcodedRole = getAdminRole(access.discordId);
-      // Garder uniquement les membres qui ne sont pas hardcodés
-      return !hardcodedRole || isFounder(access.discordId);
-    });
+    const hardcodedRole = getAdminRole(discordId);
+    const targetRole = hardcodedRole || normalizedRole;
+
+    if (!targetRole) {
+      return NextResponse.json(
+        { error: "Rôle invalide" },
+        { status: 400 }
+      );
+    }
+
+    // Si c'est un membre hardcodé (dont fondateur), le rôle ne peut pas être modifié.
+    if (hardcodedRole && normalizedRole !== hardcodedRole) {
+      return NextResponse.json(
+        { error: "Le rôle de ce membre est verrouillé. Seul le pseudo admin peut être modifié." },
+        { status: 403 }
+      );
+    }
 
     // Vérifier si l'accès existe déjà dans la liste Blobs
     const existingIndex = storedAccessList.findIndex(a => a.discordId === discordId);
@@ -303,7 +314,7 @@ export async function POST(request: NextRequest) {
       // Mettre à jour le rôle existant
       storedAccessList[existingIndex] = {
         ...storedAccessList[existingIndex],
-        role: normalizedRole,
+        role: targetRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
         adminAlias,
@@ -312,7 +323,7 @@ export async function POST(request: NextRequest) {
       // Ajouter un nouvel accès
       storedAccessList.push({
         discordId,
-        role: normalizedRole,
+        role: targetRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
         adminAlias,
@@ -331,7 +342,7 @@ export async function POST(request: NextRequest) {
       action: existingIndex >= 0 ? "admin.access.update" : "admin.access.create",
       resourceType: "admin_access",
       resourceId: discordId,
-      newValue: { role: normalizedRole, adminAlias: adminAlias || null },
+      newValue: { role: targetRole, adminAlias: adminAlias || null },
       metadata: { sourcePage: "/admin/gestion-acces" },
     });
 

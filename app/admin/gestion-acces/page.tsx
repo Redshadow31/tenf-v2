@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { Users, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle2, X, Pencil } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AdminAccess {
@@ -231,6 +231,45 @@ export default function GestionAccesPage() {
     } catch (err: any) {
       console.error("Error deleting access:", err);
       setError(err.message || "Erreur lors de la suppression de l'accès");
+      setSuccess(null);
+    }
+  }
+
+  async function handleEditAlias(access: AdminAccess) {
+    const suggestedAlias = access.adminAlias || "";
+    const nextAlias = prompt(
+      `Pseudo admin pour ${access.username || access.discordId} (laisse vide pour retirer le pseudo)`,
+      suggestedAlias
+    );
+
+    if (nextAlias === null) return;
+
+    try {
+      setError(null);
+      const response = await fetch("/api/admin/access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          discordId: access.discordId,
+          role: access.role,
+          adminAlias: nextAlias.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la mise à jour du pseudo admin");
+      }
+
+      await loadAccessList();
+      setSuccess("Pseudo admin mis à jour avec succès !");
+      setError(null);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Error updating admin alias:", err);
+      setError(err.message || "Erreur lors de la mise à jour du pseudo admin");
       setSuccess(null);
     }
   }
@@ -604,30 +643,46 @@ export default function GestionAccesPage() {
                         )}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        {access.role === "FONDATEUR" || (access.addedBy === 'system' && new Date(access.addedAt).getTime() === 0) ? (
-                          <span className="text-xs italic" style={{ color: 'var(--color-text-secondary)' }}>
-                            Non modifiable
-                          </span>
-                        ) : (
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleDeleteAccess(access.discordId)}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ml-auto"
+                            onClick={() => handleEditAlias(access)}
+                            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                             style={{
-                              backgroundColor: '#dc2626',
-                              color: 'white',
+                              backgroundColor: "var(--color-surface)",
+                              border: "1px solid var(--color-border)",
+                              color: "var(--color-text)",
                             }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#b91c1c';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#dc2626';
-                            }}
-                            title="Supprimer l'accès admin de ce membre"
+                            title="Modifier le pseudo admin"
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Supprimer
+                            <Pencil className="w-4 h-4" />
+                            Pseudo
                           </button>
-                        )}
+
+                          {access.role === "FONDATEUR" || (access.addedBy === 'system' && new Date(access.addedAt).getTime() === 0) ? (
+                            <span className="text-xs italic" style={{ color: 'var(--color-text-secondary)' }}>
+                              Suppression verrouillée
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteAccess(access.discordId)}
+                              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                              style={{
+                                backgroundColor: '#dc2626',
+                                color: 'white',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#b91c1c';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#dc2626';
+                              }}
+                              title="Supprimer l'accès admin de ce membre"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Supprimer
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -221,6 +221,9 @@ const tabs = [
   { key: "engagement", label: "ADN & engagement", sectionIds: [15, 16] },
 ];
 
+const MIN_SECONDS_BETWEEN_BLOCK_VALIDATIONS = 8;
+const MIN_MS_BETWEEN_BLOCK_VALIDATIONS = MIN_SECONDS_BETWEEN_BLOCK_VALIDATIONS * 1000;
+
 export default function CharteModerationPage() {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [validated, setValidated] = useState<Record<number, boolean>>({});
@@ -230,6 +233,9 @@ export default function CharteModerationPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitInfo, setSubmitInfo] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [lastValidatedAtMs, setLastValidatedAtMs] = useState<number | null>(null);
+  const [tickMs, setTickMs] = useState(() => Date.now());
+  const [validationGateInfo, setValidationGateInfo] = useState<string | null>(null);
 
   const completedCount = useMemo(
     () => sections.filter((section) => validated[section.id]).length,
@@ -238,6 +244,11 @@ export default function CharteModerationPage() {
   const allBlocksValidated = completedCount === sections.length;
   const canSubmit = allBlocksValidated && globalEngagement;
   const progress = Math.round((completedCount / sections.length) * 100);
+  const remainingCooldownMs = lastValidatedAtMs
+    ? Math.max(0, MIN_MS_BETWEEN_BLOCK_VALIDATIONS - (tickMs - lastValidatedAtMs))
+    : 0;
+  const remainingCooldownSeconds = Math.ceil(remainingCooldownMs / 1000);
+  const isValidationCooldownActive = remainingCooldownMs > 0;
 
   const activeSections = useMemo(() => {
     const ids = tabs[activeTabIndex]?.sectionIds ?? [];
@@ -245,10 +256,33 @@ export default function CharteModerationPage() {
   }, [activeTabIndex]);
 
   const toggleSection = (id: number) => {
+    const currentlyValidated = Boolean(validated[id]);
+    if (!currentlyValidated && isValidationCooldownActive) {
+      setValidationGateInfo(
+        `Attends ${remainingCooldownSeconds}s avant de valider un autre bloc pour assurer une lecture réelle.`
+      );
+      return;
+    }
+
     setValidated((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (!currentlyValidated) {
+      setLastValidatedAtMs(Date.now());
+      setValidationGateInfo(null);
+    }
     setSubmitted(false);
     setSubmitError(null);
   };
+
+  useEffect(() => {
+    if (!isValidationCooldownActive) {
+      setValidationGateInfo(null);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setTickMs(Date.now());
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [isValidationCooldownActive]);
 
   useEffect(() => {
     let cancelled = false;
@@ -395,13 +429,18 @@ export default function CharteModerationPage() {
                   <button
                     type="button"
                     onClick={() => toggleSection(section.id)}
+                    disabled={!checked && isValidationCooldownActive}
                     className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                       checked
                         ? "border-emerald-300/60 bg-emerald-500/20 text-emerald-100"
                         : "border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-500"
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    {checked ? "Bloc validé" : "Valider ce bloc"}
+                    {checked
+                      ? "Bloc validé"
+                      : isValidationCooldownActive
+                      ? `Attendre ${remainingCooldownSeconds}s`
+                      : "Valider ce bloc"}
                   </button>
                 </div>
 
@@ -492,6 +531,9 @@ export default function CharteModerationPage() {
           <p className="mt-2 text-sm text-emerald-100/90">
             La validation finale s'active uniquement après validation de tous les blocs.
           </p>
+          <p className="mt-2 text-xs text-emerald-100/80">
+            Anti-validation rapide: {MIN_SECONDS_BETWEEN_BLOCK_VALIDATIONS}s minimum entre chaque nouveau bloc validé.
+          </p>
 
           <label className="mt-4 flex items-start gap-3 text-sm text-slate-100">
             <input
@@ -542,6 +584,11 @@ export default function CharteModerationPage() {
           {submitError ? (
             <p className="mt-3 rounded-lg border border-rose-300/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
               {submitError}
+            </p>
+          ) : null}
+          {validationGateInfo ? (
+            <p className="mt-3 rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+              {validationGateInfo}
             </p>
           ) : null}
         </section>
