@@ -167,7 +167,7 @@ export default function HistoriquePage() {
                   VIP de {selectedMonthData.month} {selectedMonthData.year}
                 </h2>
                 {membersForSelectedMonth.length > 0 ? (
-                  <div className="grid grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 xl:gap-4">
                     {membersForSelectedMonth.map((member) => (
                       <div
                         key={member.login}

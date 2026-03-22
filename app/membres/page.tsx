@@ -1147,7 +1147,7 @@ export default function Page() {
             }}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible">
           {FILTERS.map((filter) => {
             const disabled = filter.key === "discover" && !showFollowStatuses;
             const tooltip = disabled

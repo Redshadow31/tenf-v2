@@ -288,7 +288,7 @@ export default function MemberRaidStatsPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:min-w-[280px]">
+                  <div className="grid min-w-0 gap-3 xl:min-w-[280px]">
                     <div className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(12,12,15,0.45)" }}>
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>

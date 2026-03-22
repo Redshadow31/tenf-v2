@@ -467,7 +467,7 @@ export default function ClipsPage() {
                 Tous les clips ({validClips.length})
               </h3>
               {validClips.length > 0 ? (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 xl:gap-4">
                   {validClips.map((clip, index) => {
                     const actualIndex = validClips.findIndex(c => c.id === clip.id);
                     return (

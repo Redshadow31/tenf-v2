@@ -100,9 +100,11 @@ function SocialIcon({ icon }: { icon: string }) {
 
 type HeaderProps = {
   onOpenMemberSidebar?: () => void;
+  /** Lien vers l'espace membre (affiché sur mobile quand pas dans l'espace membre) */
+  memberAreaHref?: string;
 };
 
-export default function Header({ onOpenMemberSidebar }: HeaderProps) {
+export default function Header({ onOpenMemberSidebar, memberAreaHref }: HeaderProps) {
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
@@ -305,6 +307,15 @@ export default function Header({ onOpenMemberSidebar }: HeaderProps) {
             >
               Compte
             </button>
+          ) : memberAreaHref ? (
+            <Link
+              href={memberAreaHref}
+              className="xl:hidden inline-flex items-center rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors"
+              style={{ color: "var(--color-text)", borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+              aria-label="Accéder à mon espace membre"
+            >
+              Compte
+            </Link>
           ) : null}
 
           <button

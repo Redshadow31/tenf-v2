@@ -86,7 +86,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       <ThemeProvider>
         <ConnectionTracker />
         <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-          <Header onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined} />
+          <Header
+            onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
+            memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
+          />
           <div className="flex">
             {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
             <main className="flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>

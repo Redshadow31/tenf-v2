@@ -68,6 +68,17 @@ body {
   }
 }
 
+/* Lisibilité mobile : textes denses (max-xl = < 1280px) */
+@media (max-width: 1279px) {
+  .prose-readable-mobile p,
+  .prose-readable-mobile li {
+    line-height: 1.7;
+  }
+  .prose-readable-mobile p {
+    max-width: 65ch;
+  }
+}
+
 h1,
 h2,
 h3 {

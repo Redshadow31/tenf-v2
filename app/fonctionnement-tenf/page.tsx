@@ -2284,7 +2284,7 @@ export default function Page() {
 
   return (
     <main id="top-fonctionnement" className={`min-h-screen ${styles.fonctionnementPage}`} style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10 prose-readable-mobile">
         {/* HERO INTRO */}
         <section className={`mb-10 rounded-2xl border p-6 md:p-8 about-glow about-fade-up ${styles.fonctionnementHero}`} style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
           <div className="max-w-4xl space-y-5">

@@ -19,19 +19,15 @@ export async function POST() {
 
     const started = await startFollowEngagementSnapshotJob(admin.discordId || null);
     if (!started.alreadyRunning) {
-      void executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null).catch(
-        (error) => {
-          console.error("[Admin Follow Snapshot Run] Erreur job async:", error);
-        }
-      );
+      await executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null);
     }
 
     return NextResponse.json({
       success: true,
       snapshotId: started.snapshotId,
-      status: "running",
+      status: started.alreadyRunning ? "running" : "completed",
       alreadyRunning: started.alreadyRunning,
-    }, { status: 202 });
+    }, { status: 200 });
   } catch (error) {
     console.error("[Admin Follow Snapshot Run] Erreur:", error);
     return NextResponse.json(

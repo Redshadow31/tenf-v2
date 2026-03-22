@@ -127,6 +127,8 @@ type SnapshotHistoryEntry = {
 const SNAPSHOTS_TABLE = "follow_engagement_snapshots";
 const SNAPSHOT_MEMBERS_TABLE = "follow_engagement_snapshot_members";
 const SNAPSHOT_MEMBER_CHANNELS_TABLE = "follow_engagement_snapshot_member_channels";
+/** Snapshots "running" depuis plus longtemps = considérés stuck (serverless kill) */
+const SNAPSHOT_STALE_MINUTES = 10;
 
 function normalizeTwitchLogin(login: string | null | undefined): string | null {
   if (!login) return null;
@@ -568,9 +570,20 @@ async function getLatestCalculatedRowsForLogins(
   return latestByLogin;
 }
 
+async function markStaleRunningSnapshots(): Promise<void> {
+  const cutoff = new Date(Date.now() - SNAPSHOT_STALE_MINUTES * 60 * 1000).toISOString();
+  await supabaseAdmin
+    .from(SNAPSHOTS_TABLE)
+    .update({ status: "failed" })
+    .eq("status", "running")
+    .lt("created_at", cutoff);
+}
+
 export async function startFollowEngagementSnapshotJob(
   generatedByDiscordId: string | null
 ): Promise<{ snapshotId: string; alreadyRunning: boolean }> {
+  await markStaleRunningSnapshots();
+
   const { data: runningSnapshot, error: runningError } = await supabaseAdmin
     .from(SNAPSHOTS_TABLE)
     .select("id")
@@ -953,6 +966,8 @@ export async function getLatestFollowEngagementOverview(): Promise<FollowEngagem
 export async function getFollowEngagementSnapshotRunInfo(
   snapshotId?: string | null
 ): Promise<FollowEngagementSnapshotRunInfo | null> {
+  await markStaleRunningSnapshots();
+
   let query = supabaseAdmin
     .from(SNAPSHOTS_TABLE)
     .select("id, status, generated_at, created_at")

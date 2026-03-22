@@ -69,7 +69,7 @@ type DetailPayload = {
 type SnapshotRunResponse = {
   success: boolean;
   snapshotId: string;
-  status: "running";
+  status: "running" | "completed";
   alreadyRunning: boolean;
 };
 
@@ -182,7 +182,12 @@ export default function AdminEngagementFollowPage() {
         throw new Error("Impossible de recuperer l'identifiant du snapshot en cours");
       }
       setRunningSnapshotId(payload.snapshotId);
-      if (payload.alreadyRunning) {
+      if (payload.status === "completed") {
+        setRunningSnapshot(false);
+        setRunningSnapshotId(null);
+        setNotice("Snapshot termine. Donnees rechargees.");
+        await loadOverview();
+      } else if (payload.alreadyRunning) {
         setNotice("Un snapshot etait deja en cours. Suivi du statut active.");
       } else {
         setNotice("Generation du snapshot lancee. Mise a jour automatique en cours...");

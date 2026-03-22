@@ -493,7 +493,7 @@ export default function BoutiquePage() {
           <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
             ⭐ Les favoris de la communaute
           </h2>
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+          <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>*]:snap-start sm:flex-wrap sm:overflow-visible">
             <SortButton label="Plus vus" active={popularMode === "mostViewed"} onClick={() => setPopularMode("mostViewed")} />
             <SortButton label="Plus cliques" active={popularMode === "mostClicked"} onClick={() => setPopularMode("mostClicked")} />
             <SortButton label="Plus recents" active={popularMode === "newest"} onClick={() => setPopularMode("newest")} />
@@ -600,7 +600,7 @@ export default function BoutiquePage() {
             <h3 className="text-xl font-bold" style={{ color: "#ffffff" }}>
               Decouvrir
             </h3>
-            <div className="flex gap-3 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+            <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-colors min-h-[42px] ${selectedCategory === null ? "text-white" : ""}`}

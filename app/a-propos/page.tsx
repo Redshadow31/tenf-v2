@@ -389,7 +389,7 @@ export default async function Page() {
 
   return (
     <main className="min-h-screen py-12" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-4 sm:px-6 lg:px-8 prose-readable-mobile">
         <section className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14 about-glow about-fade-up" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
           <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 35%, transparent), transparent 70%)" }} />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-64 w-64 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 70%)" }} />

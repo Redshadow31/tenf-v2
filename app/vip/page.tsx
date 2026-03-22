@@ -75,7 +75,7 @@ export default function VipPage() {
 
         {/* Grille des VIP */}
         {vipMembers.length > 0 ? (
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 xl:grid-cols-5 xl:gap-6">
             {vipMembers.map((member) => (
               <div
                 key={member.discordId}

@@ -519,7 +519,7 @@ export default function Events2Page() {
       )}
 
       <div className="sticky top-20 z-20 rounded-2xl border border-white/10 bg-[#111117]/90 backdrop-blur-xl p-4 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible">
           {statusFilters.map((filter) => (
             <button
               key={filter.id}
@@ -535,7 +535,7 @@ export default function Events2Page() {
           ))}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible">
           <button
             onClick={() => setSelectedCategory("all")}
             className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm border min-h-[42px] ${
