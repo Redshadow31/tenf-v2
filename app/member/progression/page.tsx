@@ -185,14 +185,14 @@ export default function MemberProgressionPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <ProgressGoalCard label="Objectif raids du mois" current={data.stats.raidsThisMonth} target={goals.raids} />
         <ProgressGoalCard label="Objectif presences du mois" current={data.stats.eventPresencesThisMonth} target={goals.events} />
         <ProgressGoalCard label="Objectif formations du mois" current={formationsThisMonth} target={goals.formations} />
         <ProgressGoalCard label="Profil complet" current={data.profile.percent} target={100} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
@@ -266,7 +266,7 @@ export default function MemberProgressionPage() {
         </article>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-[1fr_1fr]">
         <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             <CalendarDays size={17} />

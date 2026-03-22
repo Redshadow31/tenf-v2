@@ -805,7 +805,7 @@ export default function Page() {
             Chargement des lives...
           </div>
         ) : liveShowcaseMembers.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {liveShowcaseMembers.map((member) => {
               const stream = member.stream!;
               const followBadge = getFollowBadge(member.followState);
@@ -897,7 +897,7 @@ export default function Page() {
                 <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
                   Sélection de 3 profils au hasard
                 </p>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
                   {discoverForYouTopMembers.map((member) => {
                     const followBadge = getFollowBadge(member.followState);
                     return (
@@ -1003,7 +1003,7 @@ export default function Page() {
               Une sélection découverte du jour, même sans personnalisation Twitch.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
             {discoverTodayMembers.map((member) => (
               <article
                 key={`fallback-${member.twitchLogin}`}
@@ -1066,7 +1066,7 @@ export default function Page() {
 
         {recentIntegratedMembers.length > 0 ? (
           <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
               {recentIntegratedMembers.map((member) => (
                 <article
                   key={`recent-integrated-${member.login}`}
@@ -1201,7 +1201,7 @@ export default function Page() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
               {visibleMembers.map((member) => {
                 const followBadge = getFollowBadge(member.followState);
                 return (

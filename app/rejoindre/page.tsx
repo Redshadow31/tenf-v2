@@ -36,7 +36,7 @@ export default function Page() {
           Selectionne le guide adapte a ton besoin pour suivre les bonnes etapes.
         </p>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-2">
           {pages.map((page) => (
             <article
               key={page.href}

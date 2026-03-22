@@ -159,14 +159,14 @@ export default function MemberEventRegistrationsPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Inscriptions totales" value={registeredEvents.length} icon={<Ticket size={15} />} />
         <StatCard label="Evenements a venir" value={upcoming.length} icon={<CalendarDays size={15} />} />
         <StatCard label="Evenements termines" value={past.length} icon={<CheckCircle2 size={15} />} />
         <StatCard label="Engagement TENF" value={registeredEvents.length > 0 ? 100 : 0} suffix="%" icon={<Sparkles size={15} />} />
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {TENF_EVENT_VALUES.map((item) => {
           const Icon = item.icon;
           return (
@@ -208,7 +208,7 @@ export default function MemberEventRegistrationsPage() {
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
           Une ligne de conduite simple pour vivre chaque evenement avec ouverture, respect et esprit d equipe.
         </p>
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {EVENT_PARTICIPATION_GUIDELINES.map((tip) => (
             <div
               key={tip}
@@ -237,7 +237,7 @@ export default function MemberEventRegistrationsPage() {
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
           Ces repères aident a faire des evenements TENF des moments utiles, inclusifs et memorables.
         </p>
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {EVENT_COMMUNITY_GUIDELINES.map((tip) => (
             <div
               key={tip}

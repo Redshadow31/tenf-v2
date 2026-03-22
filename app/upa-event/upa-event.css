@@ -808,7 +808,7 @@
   .upa-page .upa-grid-3,
   .upa-page .upa-grid-4,
   .upa-page .upa-links-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .upa-page .upa-tabs-desktop,

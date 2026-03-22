@@ -87,7 +87,7 @@ export default function CommunauteEntraideStreamerPage() {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <article className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-4">
           <h2 className="text-base font-semibold text-indigo-100">Soutien live</h2>
           <p className="mt-2 text-sm text-slate-300">

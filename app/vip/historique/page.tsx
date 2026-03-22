@@ -129,7 +129,7 @@ export default function HistoriquePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
           {/* Liste des mois */}
           <div className="lg:col-span-1">
             <h2 className="text-xl font-semibold text-white mb-4">Mois</h2>

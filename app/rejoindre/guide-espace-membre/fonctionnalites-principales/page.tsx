@@ -204,7 +204,7 @@ export default function GuideMemberFonctionnalitesPage() {
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
             Pour chaque module: ce que tu retrouves, ce que cela t'apporte, puis les boutons a utiliser immediatement.
           </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-2">
             {modules.map((module) => (
               <article key={module.title} className="rounded-lg border p-4" style={{ borderColor: hexToRgba(module.accent, 0.35), backgroundColor: "var(--color-bg)" }}>
                 <p
@@ -274,7 +274,7 @@ export default function GuideMemberFonctionnalitesPage() {
             <CheckCircle2 size={18} />
             Parcours types membres (vraie version)
           </h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {memberJourneys.map((journey) => (
               <article key={journey.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>

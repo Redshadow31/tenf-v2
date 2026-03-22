@@ -578,11 +578,11 @@ export default function MemberDashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {remainingCards.map((item) => (
           <article
             key={item.label}
-            className="rounded-2xl border p-5 transition-all hover:-translate-y-[1px]"
+            className="rounded-2xl border p-4 sm:p-5 transition-all hover:-translate-y-[1px]"
             style={{
               borderColor: hexToRgba(accent, 0.2),
               background: "linear-gradient(150deg, rgba(32,32,38,0.95), rgba(22,22,27,0.96))",
@@ -629,7 +629,7 @@ export default function MemberDashboardPage() {
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
         <article
           className="rounded-2xl border p-5"
           style={{
@@ -744,7 +744,7 @@ export default function MemberDashboardPage() {
         </article>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             Prochain evenement conseille

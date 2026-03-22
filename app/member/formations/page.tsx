@@ -344,7 +344,7 @@ export default function MemberFormationCatalogPage() {
         ) : upcomingFormations.length === 0 ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Aucune formation planifiee prochainement.</p>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
             {upcomingFormations.slice(0, 6).map((formation) => (
               <article
                 key={formation.id}

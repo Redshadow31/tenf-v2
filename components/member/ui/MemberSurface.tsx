@@ -5,5 +5,5 @@ type MemberSurfaceProps = {
 };
 
 export default function MemberSurface({ children }: MemberSurfaceProps) {
-  return <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>;
+  return <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">{children}</div>;
 }

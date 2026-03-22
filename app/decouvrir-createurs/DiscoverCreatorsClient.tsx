@@ -216,7 +216,7 @@ export default function DiscoverCreatorsClient() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
             {TENF_VALUES.map((value) => (
               <article
                 key={value.title}
@@ -236,7 +236,7 @@ export default function DiscoverCreatorsClient() {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
             <label className="text-sm">
               <span className="mb-1 block" style={{ color: "var(--color-text-secondary)" }}>
                 Langue
@@ -318,7 +318,7 @@ export default function DiscoverCreatorsClient() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-2">
           <article
             className="rounded-2xl border p-5"
             style={{
@@ -333,7 +333,7 @@ export default function DiscoverCreatorsClient() {
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
               Une ligne de conduite simple: inclusion, ouverture et découverte active des autres créateurs.
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-2">
               {DISCOVER_INTENT_ITEMS.map((item) => (
                 <p
                   key={item}
@@ -364,7 +364,7 @@ export default function DiscoverCreatorsClient() {
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
               Les clips TENF servent aussi à transmettre l'énergie positive et les moments mémorables de la commu.
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-2">
               {CLIP_MOMENTS_ITEMS.map((item) => (
                 <p
                   key={item}
@@ -397,7 +397,7 @@ export default function DiscoverCreatorsClient() {
             Aucun clip disponible pour ce tirage. Reviens plus tard ou clique sur rafraîchir.
           </section>
         ) : (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredClips.map((clip) => (
               <article
                 key={clip.id}

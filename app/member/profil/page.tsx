@@ -389,7 +389,7 @@ export default function MemberProfilePage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
           <StatCard
             title="Reunion integration"
             value={member.tenfSummary.integration.integrated ? "Faite" : "Non faite"}
@@ -406,7 +406,7 @@ export default function MemberProfilePage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-[1.45fr_1fr]">
         <div className="space-y-6">
           <div id="twitch-connection">
             <MemberInfoCard title="Connexion Twitch">
@@ -488,7 +488,7 @@ export default function MemberProfilePage() {
           </div>
 
           <MemberInfoCard title="Informations du profil">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
               <div className="space-y-2 text-sm">
                 <p style={{ color: "var(--color-text)" }}>
                   <strong>Identite createur</strong>

@@ -185,7 +185,7 @@ export default async function PartenairesPage() {
             boxShadow: "0 20px 45px rgba(0, 0, 0, 0.28)",
           }}
         >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-[1.5fr_1fr]">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#f0d38c]/35 bg-[#f0d38c]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-[#f0d38c]">
                 <Sparkles size={13} />
@@ -258,7 +258,7 @@ export default async function PartenairesPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <article className={`${panelClass} p-5`}>
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
               <HeartHandshake size={16} />
@@ -328,7 +328,7 @@ export default async function PartenairesPage() {
           {activeTimeline.length === 0 ? (
             <p className="mt-2 text-sm text-gray-300">La timeline detaillee sera publiee prochainement.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {activeTimeline.map((item) => (
                 <article key={item.id} className={`${cardClass} p-4`}>
                   <div className="flex items-center justify-between gap-2">
@@ -348,7 +348,7 @@ export default async function PartenairesPage() {
         {partnerCommunities.length > 0 ? (
           <section className={`${panelClass} p-5`}>
             <h2 className="text-xl font-semibold">Communautes partenaires</h2>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {partnerCommunities.map((partner) => (
                 <article key={partner.id} className={`${cardClass} p-4`}>
                   <h3 className="text-base font-semibold">{partner.name}</h3>
@@ -370,7 +370,7 @@ export default async function PartenairesPage() {
           </section>
         ) : null}
 
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-[1.2fr_1fr]">
           <section className={`${panelClass} p-5`}>
             <h2 className="text-xl font-semibold">Equipe UPA Event</h2>
             <p className="mt-2 text-sm text-gray-300">

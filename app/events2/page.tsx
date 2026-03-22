@@ -617,7 +617,7 @@ export default function Events2Page() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-3">
             <div className="rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3">
               <p className="text-xs text-violet-200/80">Total ce mois</p>
               <p className="text-xl font-semibold">{monthStats.total}</p>
@@ -736,7 +736,7 @@ export default function Events2Page() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-gray-700 bg-[#1a1a1d] overflow-hidden animate-pulse">
               <div className="h-32 bg-[#2a2a2d]" />
@@ -762,14 +762,14 @@ export default function Events2Page() {
           {(selectedStatus === "all" || selectedStatus === "upcoming") && groupedUpcoming.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">A venir</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">{groupedUpcoming.map(renderCard)}</div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">{groupedUpcoming.map(renderCard)}</div>
             </section>
           )}
 
           {(selectedStatus === "all" || selectedStatus === "past") && sampledPast.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">Termines</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">{sampledPast.map(renderCard)}</div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">{sampledPast.map(renderCard)}</div>
             </section>
           )}
         </div>

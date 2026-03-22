@@ -334,7 +334,7 @@ export default function MemberRaidStatsPage() {
                 </div>
               </section>
 
-              <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <section className="grid grid-cols-2 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
                 <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>

@@ -258,7 +258,7 @@ export default function MemberGoalsPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {objectives.map((objective) => {
             const isCompleted = objective.current >= objective.target;
             const validatedAt = validatedGoals[objective.key];

@@ -699,7 +699,7 @@ export default function MemberPlanningPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm mb-1 font-medium" style={{ color: "var(--color-text-secondary)" }}>
                     Date *

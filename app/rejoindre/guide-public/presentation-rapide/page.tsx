@@ -154,7 +154,7 @@ export default function GuidePublicPresentationRapidePage() {
           <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
             A qui s'adresse TENF ?
           </h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {targetProfiles.map((profile) => (
               <article key={profile.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
@@ -189,7 +189,7 @@ export default function GuidePublicPresentationRapidePage() {
           <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
             Comprendre le menu du haut
           </h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-2">
             {menuCategories.map((item) => (
               <article key={item.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
@@ -218,7 +218,7 @@ export default function GuidePublicPresentationRapidePage() {
 
         <section className="mt-5 rounded-2xl border p-5" style={{ borderColor: hexToRgba(accent, 0.25), backgroundColor: "var(--color-card)", boxShadow: "0 10px 22px rgba(0,0,0,0.18)" }}>
           <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>Categories des pages publiques (hors connexion)</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {publicCategories.map((category) => (
               <article key={category.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>

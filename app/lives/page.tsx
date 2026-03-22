@@ -529,7 +529,7 @@ export default function LivesPage() {
       />
 
       {filteredLives.length > 0 ? (
-        <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredLives.map((live) => (
             <LiveCard key={`${live.twitchLogin}-${live.startedAt}`} live={live} />
           ))}

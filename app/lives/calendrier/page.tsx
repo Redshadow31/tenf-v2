@@ -422,7 +422,7 @@ export default function CalendrierLivesPage() {
           className="pointer-events-none absolute -bottom-16 right-8 h-40 w-40 rounded-full opacity-40 blur-3xl"
           style={{ background: "rgba(236,72,153,0.25)" }}
         />
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="relative space-y-4">
             <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl" style={{ color: "var(--color-text)" }}>
               Calendrier des lives membres
@@ -459,7 +459,7 @@ export default function CalendrierLivesPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-2">
             <div className="rounded-xl border p-4 transition-all duration-300 hover:-translate-y-[1px]" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}>
               <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
                 Lives prevus
@@ -569,7 +569,7 @@ export default function CalendrierLivesPage() {
         • Mode: <span style={{ color: "var(--color-text)" }}>{viewMode === "calendar" ? "Calendrier mensuel" : "Agenda timeline"}</span>
       </div>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
@@ -709,7 +709,7 @@ export default function CalendrierLivesPage() {
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 gap-2.5">
           <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "rgba(145,70,255,0.12)" }}>
             <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>Lives sur la plage</p>
             <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{allRangeItems.length}</p>
@@ -927,7 +927,7 @@ export default function CalendrierLivesPage() {
                 <div className="mb-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                   {time} - {timeItems.length} stream{timeItems.length > 1 ? "s" : ""}
                 </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
                   {timeItems.map((item) => (
                     <article
                       key={item.id}

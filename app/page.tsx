@@ -184,7 +184,7 @@ export default async function Page() {
 
   return (
     <main className="min-h-screen py-10 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-16 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 sm:gap-16 px-4 sm:px-6 lg:px-8">
         <section
           className="about-fade-up about-glow relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14"
           style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
@@ -244,7 +244,7 @@ export default async function Page() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
               {heroStats.map((stat, index) => (
                 <article
                   key={stat.label}
@@ -286,7 +286,7 @@ export default async function Page() {
               Voir tous les lives
             </Link>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {randomLives.length > 0 ? (
               randomLives.map((live) => (
                 <article
@@ -325,7 +325,7 @@ export default async function Page() {
               ))
             ) : (
               <article
-                className="about-reveal rounded-2xl border p-6 md:col-span-3"
+                className="about-reveal col-span-2 rounded-2xl border p-6 md:col-span-3"
                 style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
               >
                 <p style={{ color: "var(--color-text-secondary)" }}>
@@ -343,7 +343,7 @@ export default async function Page() {
             </p>
             <h2 className="text-3xl font-bold sm:text-4xl">Une communauté pensée pour faire progresser ensemble</h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {[
               {
                 title: "Entraide concrète",
@@ -394,7 +394,7 @@ export default async function Page() {
             </p>
             <h2 className="text-3xl font-bold sm:text-4xl">3 étapes pour intégrer, participer et progresser</h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {[
               {
                 title: "Intégration",
@@ -441,24 +441,24 @@ export default async function Page() {
               Explorer l&apos;annuaire
             </Link>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
             {newCreators.length > 0 ? (
               newCreators.map((member) => (
                 <article
                   key={member.twitchLogin}
-                  className="about-reveal rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-1"
+                  className="about-reveal rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1"
                   style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
                     <Image
                       src={member.avatar || `https://unavatar.io/twitch/${member.twitchLogin}`}
                       alt={member.displayName}
                       width={56}
                       height={56}
-                      className="rounded-full object-cover"
+                      className="h-11 w-11 shrink-0 rounded-full object-cover sm:h-14 sm:w-14"
                     />
                     <div>
-                      <h3 className="text-base font-semibold">{member.displayName}</h3>
+                      <h3 className="text-sm font-semibold sm:text-base">{member.displayName}</h3>
                       <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                         {member.role}
                       </p>
@@ -485,7 +485,7 @@ export default async function Page() {
               ))
             ) : (
               <article
-                className="about-reveal rounded-2xl border p-6 sm:col-span-2 lg:col-span-3"
+                className="about-reveal col-span-2 rounded-2xl border p-6 lg:col-span-3"
                 style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
               >
                 <p style={{ color: "var(--color-text-secondary)" }}>
@@ -508,7 +508,7 @@ export default async function Page() {
               Voir la page VIP
             </Link>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
             {vipOfMonth.length > 0 ? (
               vipOfMonth.map((vip) => (
                 <article
@@ -543,7 +543,7 @@ export default async function Page() {
               ))
             ) : (
               <article
-                className="about-reveal rounded-2xl border p-6 sm:col-span-2 lg:col-span-3"
+                className="about-reveal col-span-2 rounded-2xl border p-6 lg:col-span-3"
                 style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
               >
                 <p style={{ color: "var(--color-text-secondary)" }}>

@@ -213,7 +213,7 @@ export default function GuideEspaceMembrePage() {
           </div>
         </section>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-2">
           {guidePages.map((page) => (
             <article
               key={page.href}
@@ -285,7 +285,7 @@ export default function GuideEspaceMembrePage() {
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
             Pour chaque onglet, voici l'essentiel a retenir: ce que tu y trouves et l'avantage direct pour toi.
           </p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2">
             {memberTabsDetails.map((tab) => (
               <article key={tab.title} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
                 <div className="flex items-center justify-between gap-2">

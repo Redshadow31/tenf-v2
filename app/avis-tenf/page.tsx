@@ -243,7 +243,7 @@ export default function AvisTenfPage() {
             </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard label="Avis publies" value={String(stats.total)} />
             <StatCard label="Note moyenne" value={stats.average ? `${stats.average}/5` : "N/A"} />
             <StatCard label="Avis 5 coeurs" value={`${stats.fiveStarsPercent}%`} />
@@ -262,7 +262,7 @@ export default function AvisTenfPage() {
               </span>
             </div>
             <div
-              className={`grid grid-cols-1 gap-3 transition-opacity duration-500 lg:grid-cols-3 ${
+              className={`grid grid-cols-2 gap-3 transition-opacity duration-500 lg:grid-cols-3 ${
                 featuredVisible ? "opacity-100" : "opacity-0"
               }`}
             >
@@ -365,7 +365,7 @@ export default function AvisTenfPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[1fr_auto]">
                 <label className="block">
                   <span className="mb-1 block text-xs uppercase tracking-[0.09em] text-gray-300">Ton pseudo</span>
                   <input

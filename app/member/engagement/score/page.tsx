@@ -265,14 +265,14 @@ export default function MemberEngagementScorePage() {
             </div>
           </section>
 
-          <section className="grid gap-3 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label="Membres actifs suivis" value={analytics.followed} tone="good" />
             <StatCard label="Membres actifs non suivis" value={analytics.notFollowed} tone="warn" />
             <StatCard label="Statuts inconnus" value={analytics.unknown} tone="neutral" />
             <StatCard label="Objectif plein score" value={analytics.perfect ? "Atteint" : "En cours"} tone={analytics.perfect ? "good" : "neutral"} />
           </section>
 
-          <section className="grid gap-3 md:grid-cols-3">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {TENF_ENGAGEMENT_VALUES.map((item) => {
               const Icon = item.icon;
               return (
@@ -314,7 +314,7 @@ export default function MemberEngagementScorePage() {
             <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               Une ligne de conduite pour garder un engagement ouvert, bienveillant et utile a long terme.
             </p>
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
               {ENGAGEMENT_GUIDELINES.map((tip) => (
                 <div
                   key={tip}
@@ -343,7 +343,7 @@ export default function MemberEngagementScorePage() {
             <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               Des reperes simples pour transformer ton score en vrai impact communautaire.
             </p>
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
               {COMMUNITY_GUIDELINES.map((tip) => (
                 <div
                   key={tip}

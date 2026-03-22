@@ -222,7 +222,7 @@ export default function MemberRaidHistoryPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card label="Raids du mois" value={summary?.total ?? 0} icon={<Sparkles size={15} />} />
         <Card label="Raids valides" value={summary?.validated ?? 0} icon={<ShieldCheck size={15} />} />
         <Card label="Points attribues" value={summary?.pointsAwarded ?? 0} icon={<Clock3 size={15} />} />
@@ -235,7 +235,7 @@ export default function MemberRaidHistoryPage() {
         </section>
       ) : null}
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {TENF_VALUES.map((item) => {
           const Icon = item.icon;
           return (
@@ -277,7 +277,7 @@ export default function MemberRaidHistoryPage() {
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
           Une ligne de conduite simple pour transmettre une energie bienveillante et ouverte a chaque raid.
         </p>
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {RAID_GUIDELINES.map((tip) => (
             <div
               key={tip}
@@ -306,7 +306,7 @@ export default function MemberRaidHistoryPage() {
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
           Quand un streamer nous raid, on transforme ce moment en experience positive, ouverte et memorable.
         </p>
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {RECEIVED_RAID_GUIDELINES.map((tip) => (
             <div
               key={tip}

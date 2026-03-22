@@ -378,7 +378,7 @@ export default function BoutiquePage() {
               </a>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-3">
               {COMMUNITY_STATS.map((stat) => (
                 <div key={stat.label} className="rounded-xl border p-4 hover-scale-soft min-h-[96px]" style={{ borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(20,20,28,0.9)" }}>
                   <p className="text-sm" style={{ color: "#cab7ff" }}>
@@ -391,7 +391,7 @@ export default function BoutiquePage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-3">
               {impactCounters.map((item) => (
                 <div key={item.label} className="rounded-lg border p-3 hover-scale-soft min-h-[92px]" style={{ borderColor: "rgba(220,38,38,0.25)", backgroundColor: "rgba(30,16,20,0.65)" }}>
                   <p className="text-sm leading-snug" style={{ color: "#f5d5db" }}>
@@ -459,7 +459,7 @@ export default function BoutiquePage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {COLLECTIONS.map((collection) => {
               const productsInCollection = filteredProducts.filter((product) => {
                 const source = `${product.name} ${product.description} ${product.category?.name || ""}`;
@@ -498,7 +498,7 @@ export default function BoutiquePage() {
             <SortButton label="Plus cliques" active={popularMode === "mostClicked"} onClick={() => setPopularMode("mostClicked")} />
             <SortButton label="Plus recents" active={popularMode === "newest"} onClick={() => setPopularMode("newest")} />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {popularProducts.map((product) => (
               <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="popular" />
             ))}
@@ -510,7 +510,7 @@ export default function BoutiquePage() {
             🎮 Produits createurs TENF
           </h2>
           {creatorProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {creatorProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="creator" />
               ))}
@@ -528,7 +528,7 @@ export default function BoutiquePage() {
             Produits disponibles pour une duree limitee (30 jours max).
           </p>
           {drops.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {drops.map((product) => (
                 <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="drop" />
               ))}
@@ -543,7 +543,7 @@ export default function BoutiquePage() {
             🎁 Petits goodies TENF
           </h2>
           {affordableGoodies.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4 gap-5">
               {affordableGoodies.map((product) => (
                 <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="community" />
               ))}
@@ -558,7 +558,7 @@ export default function BoutiquePage() {
             Produits communaute
           </h2>
           {communityProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {communityProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} emphasis="community" />
               ))}
@@ -639,7 +639,7 @@ export default function BoutiquePage() {
             <h2 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
               Participer
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-5 gap-5">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onClick={handleProductClick} onTrackClick={trackProductEvent} />
               ))}

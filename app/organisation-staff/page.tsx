@@ -112,7 +112,7 @@ export default function OrganisationStaffPage() {
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
             Direction de la communaute
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-4">
             {governanceCards.map((item) => (
               <article
                 key={item.title}
@@ -138,7 +138,7 @@ export default function OrganisationStaffPage() {
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
             Equipe de moderation
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
             {moderationCards.map((item) => (
               <article
                 key={item.title}
@@ -201,7 +201,7 @@ export default function OrganisationStaffPage() {
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
             Les poles de fonctionnement TENF
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-4">
             {poles.map((pole) => (
               <article
                 key={pole.title}

@@ -441,7 +441,7 @@ export default function EvenementsCommunautairesPage() {
             style={{ background: "rgba(52,211,153,0.18)" }}
           />
 
-          <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+          <div className="relative grid grid-cols-2 gap-4 lg:grid-cols-2 gap-6 items-center">
             <div>
               <h1 className="text-3xl md:text-5xl font-bold mb-3" style={{ color: "var(--color-text)" }}>
                 Evenements communautaires TENF
@@ -606,7 +606,7 @@ export default function EvenementsCommunautairesPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {featuredUpcoming.map((eventCard) => (
               <article
                 key={`${eventCard.title}-${eventCard.dateLabel}`}
@@ -688,7 +688,7 @@ export default function EvenementsCommunautairesPage() {
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
             FAQ rapide
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
             {[
               {
                 q: "Comment participer a un evenement ?",
@@ -728,7 +728,7 @@ export default function EvenementsCommunautairesPage() {
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
             Types d&apos;evenements
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[
               {
                 icon: "🎮",
@@ -812,7 +812,7 @@ export default function EvenementsCommunautairesPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
                   Titre de l&apos;evenement *
@@ -827,7 +827,7 @@ export default function EvenementsCommunautairesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
                   Type d&apos;evenement *
@@ -900,7 +900,7 @@ export default function EvenementsCommunautairesPage() {
             Idees proposees par la communaute
           </h2>
           {ideasWithVotes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {ideasWithVotes.map((idea) => (
                 <div
                   key={idea.id ?? idea.title}
@@ -965,7 +965,7 @@ export default function EvenementsCommunautairesPage() {
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
             La communaute en action
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
             <div
               className={`rounded-lg border p-4 ${hoverGlowClass}`}
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}

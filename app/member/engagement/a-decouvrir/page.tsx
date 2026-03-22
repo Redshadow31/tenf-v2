@@ -184,7 +184,7 @@ export default function MemberEngagementDiscoverPage() {
           description="Chargement des chaines TENF que tu ne suis pas encore."
           badge="Engagement"
         />
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <article
               key={`discover-skeleton-${index}`}
@@ -280,7 +280,7 @@ export default function MemberEngagementDiscoverPage() {
           </section>
 
           <section className="rounded-2xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[1fr_auto]">
               <input
                 type="text"
                 value={search}
@@ -322,7 +322,7 @@ export default function MemberEngagementDiscoverPage() {
                 : "Aucun resultat avec ces filtres. Essaie une recherche ou un role different."}
             </section>
           ) : (
-            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {filteredDiscoverMembers.map((member) => (
                 <article
                   key={member.twitchLogin}

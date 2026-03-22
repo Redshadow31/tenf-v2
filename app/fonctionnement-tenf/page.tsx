@@ -487,7 +487,7 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
         <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
           Comment ça marche ?
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
           {[
             { icon: "🎁", title: "1. Choisir une récompense", text: "Parcours les catégories pour sélectionner une récompense qui correspond à ton besoin du moment." },
             { icon: "🛒", title: "2. Acheter sur Discord", text: "L'achat se fait dans le salon boutique TENF via le lien Discord dédié." },
@@ -557,7 +557,7 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
         <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
           Récompenses disponibles
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredItems.map((item) => (
             <article
               key={item.id}
@@ -660,7 +660,7 @@ Détails utiles : [Lien VOD si feedback, etc.]`;
         <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
           Questions fréquentes
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
           {faqItems.map((faq) => (
             <article
               key={faq.q}
@@ -779,7 +779,7 @@ function SpotlightContent() {
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
               💜 Pourquoi ta présence compte
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
               <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                 <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Soutien d'un membre</h3>
                 <p style={{ color: 'var(--color-text-secondary)' }}>Ta présence, même silencieuse, montre que tu es là pour le streamer. C'est un geste simple mais précieux.</p>
@@ -849,7 +849,7 @@ function SpotlightContent() {
               <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                 Si tu as envie de participer activement, voici quelques idées simples et naturelles :
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
                 <div className="flex items-start">
                   <span className="text-2xl mr-3">👋</span>
                   <div>
@@ -1496,7 +1496,7 @@ function SystemePointsContent() {
           <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-primary)' }}>
             Comment progresser dans TENF ?
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5 gap-2 text-sm">
             <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>💬 Échanger</p>
             <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>📺 Passer sur les lives</p>
             <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>⚡ Participer aux raids & events</p>
@@ -1513,7 +1513,7 @@ function SystemePointsContent() {
         {/* Activité quotidienne */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Activité quotidienne</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
             {/* Quête quotidienne */}
             <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
               <div className="flex items-start justify-between mb-4">
@@ -1552,7 +1552,7 @@ function SystemePointsContent() {
         {/* Actions communautaires */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Actions communautaires</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
             {/* Organisation de raids */}
             <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
               <div className="flex items-start justify-between mb-4">
@@ -1611,7 +1611,7 @@ function SystemePointsContent() {
         {/* Soutien et visibilité */}
         <div className="space-y-4">
           <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Soutien et visibilité</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
             {/* Parrainage de nouveaux membres */}
             <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
               <div className="flex items-start justify-between mb-4">
@@ -1665,7 +1665,7 @@ function SystemePointsContent() {
       <section className="space-y-8">
         <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎁 Bonus & avantages</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-6">
           {/* Pack de démarrage */}
           <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             <div className="text-center mb-4">
@@ -1855,7 +1855,7 @@ function ConseilContent() {
               <strong style={{ color: 'var(--color-text)' }}>Ta présence, même silencieuse, compte.</strong> 
               Le lurk n'est pas une absence, c'est une forme d'engagement :
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
               <div className="flex items-start">
                 <span className="text-2xl mr-3">📊</span>
                 <div>
@@ -1951,7 +1951,7 @@ function ConseilContent() {
             <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
               On ne te demande pas d'être présent tout le temps, partout, tout de suite. Ce qui compte, c'est :
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
               <div>
                 <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>✅ Régularité</h3>
                 <p style={{ color: 'var(--color-text-secondary)' }}>
@@ -1989,7 +1989,7 @@ function ConseilContent() {
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
               🎮 Conseils en live
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
               <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                 <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>👋 Présentation</h3>
                 <p style={{ color: 'var(--color-text-secondary)' }}>
@@ -2036,7 +2036,7 @@ function ConseilContent() {
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
               📅 Hors live
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
               <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                 <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>🗓️ Planning</h3>
                 <p style={{ color: 'var(--color-text-secondary)' }}>
@@ -2132,7 +2132,7 @@ function ConseilContent() {
             <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
               Les dramas, c'est rarement constructif. Voici comment les éviter :
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
               <div>
                 <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🤐 Ne pas réagir à chaud</h3>
                 <p style={{ color: 'var(--color-text-secondary)' }}>
@@ -2410,7 +2410,7 @@ export default function Page() {
             <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
               À retenir
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-2.5">
               {currentGuide.tldr.map((item) => (
                 <p key={item} className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                   {item.startsWith("Évite") || item.startsWith("Pas") ? "❌ " : "✔ "}
@@ -2421,7 +2421,7 @@ export default function Page() {
           </section>
 
           {/* Accordéons guide */}
-          <section className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <section className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
             {currentGuide.accordions.map((accordion) => {
               const borderColor = accordion.key === "details" ? "rgba(239,68,68,0.3)" : "var(--color-border)";
               const bgColor = accordion.key === "bonnes-pratiques"
@@ -2547,7 +2547,7 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Rôles et Hiérarchie
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6">
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Membres Actifs
@@ -2629,7 +2629,7 @@ export default function Page() {
                 <h2 className="text-xl font-semibold mb-8 text-center" style={{ color: 'var(--color-text)' }}>
                   Ressources Disponibles
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-6">
                   <div className="rounded-xl p-6 shadow-lg border integration-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>
                       Support Personnalisé

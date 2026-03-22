@@ -31,7 +31,7 @@ export default function MemberEngagementFriendsPage() {
           <p className="max-w-2xl text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
             Cette page accueillera prochainement tes connexions privilegiees TENF: membres favoris, suivi relationnel, et parcours d'entraide personnalise.
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <MiniPill label="Favoris" value="Bientot" />
             <MiniPill label="Suggestions" value="Bientot" />
             <MiniPill label="Interactions" value="Bientot" />

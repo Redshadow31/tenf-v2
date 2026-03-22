@@ -233,7 +233,7 @@ export default function NewFamilyAventuraPage() {
           <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
             Parcours IRL recommande
           </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             <article className="rounded-xl border p-3" style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "var(--color-bg)" }}>
               <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                 Infos pratiques
@@ -271,7 +271,7 @@ export default function NewFamilyAventuraPage() {
         </section>
 
         {/* SECTION 1 — HERO */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-2 gap-6 items-stretch">
           <div className="rounded-2xl border p-6 md:p-8 space-y-5 relative overflow-hidden" style={{ borderColor: "rgba(145,70,255,0.35)", background: "linear-gradient(135deg, rgba(145,70,255,0.18), rgba(145,70,255,0.06))" }}>
             <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: "rgba(236,72,153,0.2)" }} />
             <div className="pointer-events-none absolute -bottom-20 -left-20 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: "rgba(56,189,248,0.2)" }} />
@@ -313,7 +313,7 @@ export default function NewFamilyAventuraPage() {
                 Reponse rapide (30 sec)
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 gap-2">
               {[
                 { label: "Periode", value: "Mai/Juin 2027" },
                 { label: "Format", value: "IRL communaute" },
@@ -414,7 +414,7 @@ export default function NewFamilyAventuraPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-2 gap-4">
           <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
             <h2 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
               Pourquoi participer
@@ -478,7 +478,7 @@ export default function NewFamilyAventuraPage() {
         {/* SECTION 3 — EXPERIENCE */}
         <section id="experience" className="space-y-5">
           <SectionTitle title="Une experience pensee pour la communaute" />
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {[
               {
                 title: "Parc d'attraction",
@@ -516,7 +516,7 @@ export default function NewFamilyAventuraPage() {
         {/* SECTION 4 — PROGRAMME */}
         <section id="programme" className="space-y-5">
           <SectionTitle title="Un apercu du sejour" subtitle="Programme indicatif" />
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4 gap-3">
             {[
               "Jour 1 - arrivee et installation",
               "Jour 2 - journee parc",
@@ -540,7 +540,7 @@ export default function NewFamilyAventuraPage() {
         {/* SECTION 5 — GALERIE */}
         <section id="galerie" className="space-y-5">
           <SectionTitle title="L'ambiance du projet" />
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {inspiration.length === 0 ? (
               <div
                 className="rounded-xl border p-4 text-sm"
@@ -586,7 +586,7 @@ export default function NewFamilyAventuraPage() {
             projet au mieux.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
             {quickButtons.map((button) => (
               <button
                 key={button.key}
@@ -606,7 +606,7 @@ export default function NewFamilyAventuraPage() {
           </div>
 
           <form onSubmit={onFormSubmit} className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
                   Pseudo / nom *
@@ -663,7 +663,7 @@ export default function NewFamilyAventuraPage() {
               <p className="text-sm mb-2" style={{ color: "var(--color-text-secondary)" }}>
                 Je pourrais venir si...
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-2">
                 {CONDITIONS_OPTIONS.map((condition) => (
                   <label
                     key={condition}
@@ -767,7 +767,7 @@ export default function NewFamilyAventuraPage() {
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
               Donne une reponse rapide puis confirme avec ton pseudo.
             </p>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {quickButtons.map((button) => (
                 <button
                   key={button.key}

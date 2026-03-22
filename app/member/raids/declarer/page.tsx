@@ -283,7 +283,7 @@ export default function MemberDeclareRaidPage() {
           boxShadow: "0 18px 34px rgba(0,0,0,0.24)",
         }}
       >
-        <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-2">
             <label className="text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>
               Pseudo Twitch cible

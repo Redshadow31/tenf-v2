@@ -283,7 +283,7 @@ export default function MemberProfileCompletePage() {
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-gray-300">ID Discord (auto)</label>
                 <input value={form.discordId} disabled className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-gray-300" />
@@ -333,7 +333,7 @@ export default function MemberProfileCompletePage() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-gray-300">Date d anniversaire (optionnel)</label>
                 <input type="date" value={form.birthday} onChange={(e) => setForm((prev) => ({ ...prev, birthday: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
@@ -347,7 +347,7 @@ export default function MemberProfileCompletePage() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm text-gray-300">Instagram (optionnel)</label>
                 <input value={publicProfileForm.instagram} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, instagram: e.target.value }))} placeholder="pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
@@ -441,7 +441,7 @@ export default function MemberProfileCompletePage() {
             Progression actuelle: <strong>{completionPercent}%</strong>
           </div>
         </div>
-        <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
           <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               <UserCircle2 size={14} />
@@ -487,7 +487,7 @@ export default function MemberProfileCompletePage() {
             />
           </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2">
           <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
               Etape 1
@@ -515,7 +515,7 @@ export default function MemberProfileCompletePage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-2">
           <button
             type="button"
             onClick={() => setActiveTab("identite")}
@@ -574,7 +574,7 @@ export default function MemberProfileCompletePage() {
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 Renseigne les informations d identification et d activation membre.
               </p>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Pseudo Discord *</label>
                   <input required value={form.discordUsername} onChange={(e) => setForm((prev) => ({ ...prev, discordUsername: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
@@ -683,7 +683,7 @@ export default function MemberProfileCompletePage() {
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
                 />
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <div>
                   <label className="mb-1 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                     <Instagram size={14} />

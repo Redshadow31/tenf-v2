@@ -467,7 +467,7 @@ export default async function Page() {
               Les derniers evenements qui font vivre TENF
             </h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {activityFeed.length > 0 ? (
               activityFeed.map((event) => (
                 <article
@@ -542,7 +542,7 @@ export default async function Page() {
               Une dynamique communautaire, pas un simple espace de promotion
             </h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {differentiators.map((item) => {
               const Icon = item.icon;
               return (
@@ -575,7 +575,7 @@ export default async function Page() {
               Un parcours simple, clair et evolutif
             </h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {steps.map((step, index) => (
               <article
                 key={step.title}
@@ -608,7 +608,7 @@ export default async function Page() {
               Chaque brique est reliee aux autres pour que l&apos;entraide reste fluide, visible et utile au quotidien.
             </p>
           </div>
-          <div className="grid gap-4 md:gap-5 md:grid-cols-2 xl:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 md:gap-5 md:grid-cols-2 xl:grid-cols-12">
             {ecosystemItems.map((item, index) => {
               const Icon = item.icon;
               const layoutClass =
@@ -657,7 +657,7 @@ export default async function Page() {
             <p className="mb-5 text-sm" style={{ color: "var(--color-text-secondary)" }}>
               Une organisation lisible qui valorise l&apos;engagement staff, l&apos;evolution des createurs et la vie collective.
             </p>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {roleGroups.map((group) => (
                 <article
                   key={group.title}
@@ -696,7 +696,7 @@ export default async function Page() {
               Trois visages, une meme vision communautaire
             </h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {foundersWithAvatar.map((founder) => (
               <article
                 key={founder.name}
