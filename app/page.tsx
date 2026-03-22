@@ -183,10 +183,10 @@ export default async function Page() {
   ];
 
   return (
-    <main className="min-h-screen py-10 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 sm:gap-16 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen py-5 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 sm:gap-16 sm:px-6 lg:px-8">
         <section
-          className="about-fade-up about-glow relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14"
+          className="about-fade-up about-glow relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-10 lg:p-14"
           style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
         >
           <div
@@ -203,14 +203,14 @@ export default async function Page() {
                 "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 70%)",
             }}
           />
-          <div className="relative space-y-7">
+          <div className="relative space-y-4 sm:space-y-7">
             <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
             >
               Hub communautaire TENF
             </div>
-            <h1 className="max-w-5xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-5xl text-2xl font-bold leading-tight sm:text-5xl lg:text-6xl">
               Plus qu&apos;un Discord : une communauté qui fait grandir les streamers
             </h1>
             <p className="max-w-4xl text-base leading-relaxed sm:text-lg" style={{ color: "var(--color-text-secondary)" }}>
@@ -274,13 +274,13 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
                 Live en streaming
               </p>
-              <h2 className="text-3xl font-bold sm:text-4xl">Qui est en direct dans la communauté</h2>
+              <h2 className="text-xl font-bold sm:text-4xl">Qui est en direct dans la communauté</h2>
             </div>
             <Link href="/lives" className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
               Voir tous les lives
@@ -306,7 +306,7 @@ export default async function Page() {
                       EN DIRECT
                     </span>
                   </div>
-                  <div className="space-y-3 p-5">
+                  <div className="space-y-2 p-4 sm:space-y-3 sm:p-5">
                     <h3 className="text-lg font-semibold">{live.username}</h3>
                     <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                       {live.game || "Just Chatting"}
@@ -336,12 +336,12 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="max-w-3xl space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
               Vision TENF
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">Une communauté pensée pour faire progresser ensemble</h2>
+            <h2 className="text-xl font-bold sm:text-4xl">Une communauté pensée pour faire progresser ensemble</h2>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {[
@@ -368,11 +368,11 @@ export default async function Page() {
               return (
                 <article
                   key={item.title}
-                  className="about-reveal rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1"
+                  className="about-reveal rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-1 sm:p-6"
                   style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
                 >
                   <div
-                    className="mb-4 inline-flex rounded-xl p-2.5"
+                    className="mb-3 inline-flex rounded-xl p-2 sm:mb-4 sm:p-2.5"
                     style={{ backgroundColor: "color-mix(in srgb, var(--color-primary) 16%, transparent)" }}
                   >
                     <Icon size={20} style={{ color: "var(--color-primary)" }} />
@@ -387,12 +387,12 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="max-w-3xl space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
               Comment fonctionne TENF
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">3 étapes pour intégrer, participer et progresser</h2>
+            <h2 className="text-xl font-bold sm:text-4xl">3 étapes pour intégrer, participer et progresser</h2>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
             {[
@@ -414,11 +414,11 @@ export default async function Page() {
             ].map((step, index) => (
               <article
                 key={step.title}
-                className="about-reveal rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1"
-                style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-                  Étape {index + 1}
+className="about-reveal rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-1 sm:p-6"
+                  style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+                    Étape {index + 1}
                 </p>
                 <h3 className="mt-2 text-xl font-semibold">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
@@ -429,13 +429,13 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
                 Nouveaux créateurs
               </p>
-              <h2 className="text-3xl font-bold sm:text-4xl">Les derniers profils intégrés</h2>
+              <h2 className="text-xl font-bold sm:text-4xl">Les derniers profils intégrés</h2>
             </div>
             <Link href="/membres" className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
               Explorer l&apos;annuaire
@@ -496,13 +496,13 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
                 VIP du mois
               </p>
-              <h2 className="text-3xl font-bold sm:text-4xl">Les profils mis à l&apos;honneur</h2>
+              <h2 className="text-xl font-bold sm:text-4xl">Les profils mis à l&apos;honneur</h2>
             </div>
             <Link href="/vip" className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
               Voir la page VIP
@@ -554,13 +554,13 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
                 Témoignages
               </p>
-              <h2 className="text-3xl font-bold sm:text-4xl">Ce que la communauté dit de TENF</h2>
+              <h2 className="text-xl font-bold sm:text-4xl">Ce que la communauté dit de TENF</h2>
             </div>
             <Link href="/avis-tenf" className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
               Voir tous les avis
@@ -569,15 +569,15 @@ export default async function Page() {
           <TestimonialsCarousel reviews={reviews} />
         </section>
 
-        <section className="about-fade-up space-y-6">
+        <section className="about-fade-up space-y-4 sm:space-y-6">
           <div className="max-w-3xl space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
               Évolution TENF
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">Une croissance continue portée par la communauté</h2>
+            <h2 className="text-xl font-bold sm:text-4xl">Une croissance continue portée par la communauté</h2>
           </div>
-          <div className="rounded-2xl border p-6 sm:p-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <ol className="space-y-6">
+          <div className="rounded-2xl border p-4 sm:p-8" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <ol className="space-y-4 sm:space-y-6">
               {timeline.map((event) => (
                 <li key={event.date} className="about-reveal grid gap-2 sm:grid-cols-[180px_1fr] sm:gap-6">
                   <p className="text-sm font-semibold" style={{ color: "var(--color-primary)" }}>
@@ -600,7 +600,7 @@ export default async function Page() {
 
         <section className="about-fade-up">
           <div
-            className="about-glow rounded-3xl border p-8 text-center sm:p-10"
+            className="about-glow rounded-2xl border p-5 text-center sm:rounded-3xl sm:p-10"
             style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
           >
             <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>

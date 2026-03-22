@@ -8,7 +8,7 @@ const ClientLayout = dynamic(() => import("./layout.client"), { ssr: false });
 
 export const viewport: Viewport = {
   width: "device-width",
-  initialScale: 0.95,
+  initialScale: 0.88,
   minimumScale: 0.5,
   maximumScale: 5,
   viewportFit: "cover",

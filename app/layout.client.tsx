@@ -96,7 +96,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
           />
           <div className="flex min-w-0 overflow-x-hidden">
             {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
-            <main className="flex-1 min-w-0 mx-auto max-w-7xl w-full px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+            <main className="flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8">{children}</main>
           </div>
           {shouldRenderMobileSidebar ? (
             <div className="fixed inset-0 z-[70] xl:hidden flex" role="dialog" aria-modal="true" aria-label="Panneau membre">
