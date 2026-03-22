@@ -359,60 +359,154 @@ export const adminNavigation: NavItem[] = [
 
 /**
  * Navigation admin simple - pour les modérateurs qui débutent
- * Menu allégé avec les sections essentielles de consultation
+ * Même structure de hubs que le mode avancé (Capture 2) en TopBar,
+ * sidebar allégée avec les sections essentielles
  */
 export const adminNavigationSimple: NavItem[] = [
-  { href: "/admin/pilotage", label: "Vue d'ensemble pilotage", icon: "📊" },
-  { href: "/admin/pilotage/backlog", label: "File d'actions", icon: "📌" },
-  { href: "/admin/pilotage/incidents", label: "Incidents & alertes", icon: "🚨" },
-  { href: "/admin/pilotage/ops-live", label: "Monitoring temps réel", icon: "🛰️" },
-  { href: "/admin/pilotage/data-health", label: "Qualité des données", icon: "🧬" },
-  { href: "/admin/pilotage/release-readiness", label: "Préparation release", icon: "🧪" },
+  {
+    href: "/admin/pilotage",
+    label: "Pilotage du serveur",
+    icon: "📊",
+    children: [
+      { href: "/admin/pilotage", label: "Vue d'ensemble pilotage" },
+      { href: "/admin/pilotage/backlog", label: "File d'actions" },
+      { href: "/admin/pilotage/incidents", label: "Incidents & alertes" },
+      { href: "/admin/pilotage/ops-live", label: "Monitoring temps réel" },
+      { href: "/admin/pilotage/data-health", label: "Qualité des données" },
+      { href: "/admin/pilotage/release-readiness", label: "Préparation release" },
+    ],
+  },
   {
     href: "/admin/membres",
-    label: "Membres",
+    label: "Gestion des membres",
     icon: "👥",
     children: [
-      { href: "/admin/membres", label: "Dashboard membres" },
-      { href: "/admin/membres/gestion", label: "Liste & gestion" },
-      { href: "/admin/membres/actions", label: "Actions à traiter" },
-      { href: "/admin/membres/revues", label: "Revues membres" },
-      { href: "/admin/membres/qualite-data", label: "Qualité data" },
-      { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
-      { href: "/admin/membres/postulations", label: "Postulations staff" },
+      {
+        href: "/admin/membres",
+        label: "Vue d'ensemble & recherche",
+        children: [
+          { href: "/admin/membres", label: "Dashboard membres" },
+          { href: "/admin/membres/gestion", label: "Liste & gestion" },
+          { href: "/admin/membres/actions", label: "Actions à traiter" },
+          { href: "/admin/search", label: "Recherche membre" },
+        ],
+      },
+      {
+        href: "/admin/membres/validation-profil",
+        label: "Cycle profil",
+        children: [
+          { href: "/admin/membres/validation-profil", label: "Validation des profils" },
+          { href: "/admin/membres/revues", label: "Revues membres" },
+          { href: "/admin/membres/historique", label: "Historique des modifications" },
+        ],
+      },
+      {
+        href: "/admin/membres/qualite-data",
+        label: "Qualité data",
+        children: [
+          { href: "/admin/membres/qualite-data", label: "Qualité data" },
+          { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
+          { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
+        ],
+      },
+      {
+        href: "/admin/membres/badges",
+        label: "Rôles & distinctions",
+        children: [
+          { href: "/admin/membres/badges", label: "Badges & rôles" },
+          { href: "/admin/membres/vip", label: "VIP & reconnaissances" },
+        ],
+      },
+      {
+        href: "/admin/membres/postulations",
+        label: "Recrutement staff",
+        children: [{ href: "/admin/membres/postulations", label: "Postulations staff" }],
+      },
     ],
   },
   {
     href: "/admin/onboarding",
-    label: "Onboarding",
-    icon: "🚪",
+    label: "Onboarding membres",
+    icon: "🌱",
     children: [
-      { href: "/admin/onboarding", label: "Dashboard onboarding" },
-      { href: "/admin/onboarding/sessions", label: "Sessions" },
-      { href: "/admin/onboarding/inscriptions", label: "Inscriptions" },
-      { href: "/admin/onboarding/staff", label: "Staff onboarding" },
-      { href: "/admin/onboarding/presences", label: "Présences" },
-      { href: "/admin/onboarding/activation", label: "Activation" },
-      { href: "/admin/onboarding/contenus", label: "Contenus" },
-      { href: "/admin/onboarding/kpi", label: "KPI" },
+      {
+        href: "/admin/onboarding",
+        label: "Parcours onboarding",
+        children: [
+          { href: "/admin/onboarding", label: "Dashboard onboarding" },
+          { href: "/admin/onboarding/sessions", label: "Sessions" },
+          { href: "/admin/onboarding/inscriptions", label: "Inscriptions" },
+          { href: "/admin/onboarding/staff", label: "Staff onboarding" },
+          { href: "/admin/onboarding/presences", label: "Présences & retours" },
+          { href: "/admin/onboarding/activation", label: "Activation membres" },
+          { href: "/admin/onboarding/contenus", label: "Contenus onboarding" },
+          { href: "/admin/onboarding/kpi", label: "KPI onboarding" },
+        ],
+      },
     ],
   },
   {
     href: "/admin/communaute",
     label: "Vie communautaire",
-    icon: "📅",
+    icon: "🎉",
     children: [
-      { href: "/admin/communaute", label: "Dashboard Vie communautaire" },
-      { href: "/admin/communaute/evenements/calendrier", label: "Événements - Calendrier" },
-      { href: "/admin/communaute/evenements/participation", label: "Événements - Participation" },
-      { href: "/admin/communaute/evenements/propositions", label: "Événements - Propositions" },
-      { href: "/admin/communaute/anniversaires", label: "Anniversaires" },
-      { href: "/admin/communaute/engagement/raids-eventsub", label: "Raids EventSub" },
-      { href: "/admin/communaute/engagement/signalements-raids", label: "Signalements raid" },
-      { href: "/admin/communaute/engagement/points-discord", label: "Points Discord" },
-      { href: "/admin/communaute/engagement/follow", label: "Follow" },
-      { href: "/admin/communaute/engagement/feuilles-follow", label: "Feuilles de follow" },
-      { href: "/admin/communaute/evenements/spotlight", label: "Spotlight (legacy)" },
+      {
+        href: "/admin/communaute",
+        label: "Vue d'ensemble",
+        children: [{ href: "/admin/communaute", label: "Dashboard Vie communautaire" }],
+      },
+      {
+        href: "/admin/communaute/evenements",
+        label: "Événements & animation",
+        children: [
+          { href: "/admin/communaute/evenements", label: "Pilotage événements" },
+          { href: "/admin/communaute/evenements/calendrier", label: "Calendrier & planification" },
+          { href: "/admin/communaute/evenements/participation", label: "Participation & présences" },
+          { href: "/admin/communaute/evenements/propositions", label: "Événements proposés" },
+          { href: "/admin/communaute/evenements/liens-vocaux", label: "Liens vocaux" },
+          { href: "/admin/communaute/evenements/archives", label: "Archives événements" },
+        ],
+      },
+      {
+        href: "/admin/communaute/anniversaires",
+        label: "Moments communautaires",
+        children: [
+          { href: "/admin/communaute/anniversaires", label: "Dashboard anniversaires" },
+          { href: "/admin/communaute/anniversaires/mois", label: "Anniversaires du mois" },
+          { href: "/admin/communaute/anniversaires/tous", label: "Tous les anniversaires" },
+        ],
+      },
+      {
+        href: "/admin/communaute/engagement/follow",
+        label: "Engagement follow",
+        children: [
+          { href: "/admin/communaute/engagement", label: "Centre engagement" },
+          { href: "/admin/communaute/engagement/follow", label: "Follow" },
+          { href: "/admin/communaute/engagement/feuilles-follow", label: "Feuilles de follow" },
+        ],
+      },
+      {
+        href: "/admin/communaute/engagement/raids-eventsub",
+        label: "Engagement raids",
+        children: [
+          { href: "/admin/communaute/engagement/raids-eventsub", label: "Raids EventSub" },
+          { href: "/admin/communaute/engagement/signalements-raids", label: "Signalements raid" },
+          { href: "/admin/communaute/engagement/historique-raids", label: "Historique raids" },
+        ],
+      },
+      {
+        href: "/admin/communaute/engagement/points-discord",
+        label: "Points Discord",
+        children: [{ href: "/admin/communaute/engagement/points-discord", label: "Points Discord" }],
+      },
+      {
+        href: "/admin/communaute/evenements/spotlight",
+        label: "Spotlight (legacy)",
+        children: [
+          { href: "/admin/communaute/evenements/spotlight", label: "Pilotage Spotlight" },
+          { href: "/admin/communaute/evenements/spotlight/gestion", label: "Gestion Spotlight" },
+        ],
+      },
     ],
   },
   {
@@ -436,9 +530,61 @@ export const adminNavigationSimple: NavItem[] = [
   },
   {
     href: "/admin/interviews",
-    label: "Interviews TENF",
+    label: "Contenus publics",
     icon: "🎬",
-    children: [{ href: "/admin/interviews", label: "Gestion interviews YouTube" }],
+    children: [{ href: "/admin/interviews", label: "Interviews TENF (YouTube)" }],
+  },
+  {
+    href: "/admin/evaluation",
+    label: "Évaluation & progression",
+    icon: "📊",
+    children: [
+      {
+        href: "/admin/evaluation",
+        label: "Évaluation mensuelle",
+        children: [
+          { href: "/admin/evaluation", label: "Dashboard évaluation" },
+          { href: "/admin/evaluation/a", label: "Présence & activité" },
+          { href: "/admin/evaluation/b", label: "Engagement communautaire" },
+          { href: "/admin/evaluation/c", label: "Suivi des follows" },
+          { href: "/admin/evaluation/d", label: "Synthèse & bonus" },
+          { href: "/admin/evaluation/result", label: "Résultats validés" },
+          { href: "/admin/evaluation/progression", label: "Progression" },
+          { href: "/admin/evaluation/v2", label: "Évaluation v2" },
+        ],
+      },
+    ],
+  },
+  {
+    href: "/admin/boutique",
+    label: "Récompenses & avantages",
+    icon: "🎁",
+    children: [{ href: "/admin/boutique", label: "Boutique & récompenses" }],
+  },
+  {
+    href: "/admin/academy",
+    label: "Formation & accompagnement",
+    icon: "🎓",
+    children: [
+      {
+        href: "/admin/academy",
+        label: "TENF Academy",
+        children: [
+          { href: "/admin/academy", label: "Dashboard Academy" },
+          { href: "/admin/academy/access", label: "Accès & rôles" },
+          { href: "/admin/academy/promos", label: "Promos" },
+          { href: "/admin/academy/participants", label: "Participants" },
+        ],
+      },
+      {
+        href: "/admin/formation",
+        label: "Formation TENF",
+        children: [
+          { href: "/admin/formation", label: "Dashboard formation" },
+          { href: "/admin/formation/twitch-rules", label: "Comprendre Twitch et ses règles" },
+        ],
+      },
+    ],
   },
   {
     href: "/admin/moderation/staff",
@@ -446,33 +592,81 @@ export const adminNavigationSimple: NavItem[] = [
     icon: "🛡️",
     children: [
       { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
-      { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
-      { href: "/admin/moderation/staff/info/charte", label: "Info - Charte" },
-      { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
-      { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices" },
-      { href: "/admin/moderation/staff/discord/tickets", label: "Discord - Tickets" },
+      {
+        href: "/admin/moderation/staff/info",
+        label: "Info",
+        children: [
+          { href: "/admin/moderation/staff/info/annonces-staff", label: "Annonces staff" },
+          { href: "/admin/moderation/staff/info/charte", label: "Charte modération" },
+          { href: "/admin/moderation/staff/info/validation-charte", label: "Validation charte" },
+        ],
+      },
+      {
+        href: "/admin/moderation/staff/petits-travaux",
+        label: "Petit travaux",
+        children: [
+          { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Exercices mensuels" },
+          { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Mes soumissions" },
+          { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Mes validations" },
+        ],
+      },
+      {
+        href: "/admin/moderation/staff/discord",
+        label: "Discord",
+        children: [
+          { href: "/admin/moderation/staff/discord/tickets", label: "Tickets" },
+          { href: "/admin/moderation/staff/discord/incidents-streamers", label: "Incidents streamers" },
+          { href: "/admin/moderation/staff/discord/cas-sensibles", label: "Cas sensibles" },
+        ],
+      },
     ],
   },
   {
     href: "/admin/gestion-acces/accueil",
     label: "Administration du site",
-    icon: "🧭",
+    icon: "⚙️",
     children: [
-      { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-      { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-      { href: "/admin/gestion-acces/permissions", label: "Permissions" },
-      { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-      { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
-      { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
-      { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
-      { href: "/admin/moderation", label: "Dashboard modération" },
-      { href: "/admin/moderation/info/annonces", label: "Modération - Annonces" },
-      { href: "/admin/moderation/info/charte-validations", label: "Modération - Validations charte" },
-      { href: "/admin/moderation/staff/info/validation-charte", label: "Modération - Validation charte (staff)" },
-      { href: "/admin/moderation/petits-travaux/validations", label: "Modération - Validations exercices" },
-      { href: "/admin/moderation/discord/tickets", label: "Modération - Tickets Discord" },
-      { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
-      { href: "/admin/audit-logs/membres", label: "Logs membres" },
+      {
+        href: "/admin/gestion-acces/accueil",
+        label: "Vue d'ensemble administration",
+        children: [{ href: "/admin/gestion-acces/accueil", label: "Dashboard d'accueil" }],
+      },
+      {
+        href: "/admin/gestion-acces",
+        label: "Accès & sécurité",
+        children: [
+          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
+          { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
+        ],
+      },
+      {
+        href: "/admin/gestion-acces/dashboard",
+        label: "Configuration & données",
+        children: [
+          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
+          { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
+          { href: "/admin/migration", label: "Migration des données" },
+        ],
+      },
+      {
+        href: "/admin/gestion-acces/organigramme-staff",
+        label: "Organisation staff",
+        children: [
+          { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
+          { href: "/admin/follow/config", label: "Configuration follow staff" },
+        ],
+      },
+      {
+        href: "/admin/audit-logs",
+        label: "Logs & conformité",
+        children: [
+          { href: "/admin/audit-logs", label: "Audit & logs" },
+          { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
+          { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
+          { href: "/admin/audit-logs/membres", label: "Logs membres" },
+        ],
+      },
     ],
   },
   { href: "/admin/search", label: "Recherche membre", icon: "🔎" },

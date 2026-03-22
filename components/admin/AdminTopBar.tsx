@@ -25,6 +25,7 @@ const HUB_PRIORITY_ORDER = [
   "/admin/interviews",
   "/admin/boutique",
   "/admin/gestion-acces/accueil",
+  "/admin/moderation/staff",
   "/admin/search",
 ] as const;
 
