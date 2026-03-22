@@ -8,13 +8,15 @@ interface TENFLogoProps {
   showTagline?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
   useImage?: boolean; // Si true, utilise l'image depuis /logo.png au lieu du SVG
+  hideTaglineOnMobile?: boolean; // Masque le tagline sous 640px (sm)
 }
 
-export default function TENFLogo({ 
-  className = "", 
+export default function TENFLogo({
+  className = "",
   showTagline = true,
   size = "md",
-  useImage = true // Par défaut, utiliser le logo réel
+  useImage = true,
+  hideTaglineOnMobile = false,
 }: TENFLogoProps) {
   const sizeClasses = {
     sm: "h-8 w-8",
@@ -47,7 +49,11 @@ export default function TENFLogo({
         {showTagline && (
           <div className="flex flex-col">
             <span className={`font-bold ${textSizes[size]} text-white`}>TENF</span>
-            <span className="text-xs text-gray-400">Plus qu'une communauté</span>
+            <span
+              className={`text-xs text-gray-400 ${hideTaglineOnMobile ? "hidden sm:block" : ""}`}
+            >
+              Plus qu'une communauté
+            </span>
           </div>
         )}
       </Link>
@@ -127,7 +133,11 @@ export default function TENFLogo({
       <div className="flex flex-col">
         <span className={`font-bold ${textSizes[size]} text-white`}>TENF</span>
         {showTagline && (
-          <span className="text-xs text-gray-400">Plus qu'une communauté</span>
+          <span
+            className={`text-xs text-gray-400 ${hideTaglineOnMobile ? "hidden sm:block" : ""}`}
+          >
+            Plus qu'une communauté
+          </span>
         )}
       </div>
     </Link>

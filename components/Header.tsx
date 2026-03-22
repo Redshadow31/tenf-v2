@@ -170,7 +170,7 @@ export default function Header({ onOpenMemberSidebar }: HeaderProps) {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 gap-4">
         {/* Logo TENF cliquable */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          <TENFLogo showTagline={true} size="xl" />
+          <TENFLogo showTagline={true} size="xl" hideTaglineOnMobile />
         </div>
 
         {/* Navigation desktop */}

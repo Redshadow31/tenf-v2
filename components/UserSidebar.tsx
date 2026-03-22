@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import { X, type LucideIcon } from "lucide-react";
 import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } from "@/lib/discord";
 import { memberSidebarSections } from "@/lib/navigation/memberSidebar";
 import SidebarSection from "@/components/member/navigation/SidebarSection";
@@ -164,11 +164,11 @@ export default function UserSidebar({
             <button
               type="button"
               onClick={onRequestClose}
-              className="rounded-md px-2 py-1 text-xs transition-colors"
-              style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+              className="xl:hidden h-10 w-10 rounded-lg border inline-flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)", backgroundColor: "var(--color-surface)" }}
               aria-label="Fermer le panneau membre"
             >
-              Fermer
+              <X size={20} />
             </button>
           ) : null}
         </div>
@@ -186,11 +186,11 @@ export default function UserSidebar({
               <button
                 type="button"
                 onClick={onRequestClose}
-                className="rounded-md px-2 py-1 text-xs transition-colors"
-                style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+                className="xl:hidden h-10 w-10 rounded-lg border inline-flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)", backgroundColor: "var(--color-surface)" }}
                 aria-label="Fermer le panneau membre"
               >
-                Fermer
+                <X size={20} />
               </button>
             </div>
           ) : null}
@@ -214,11 +214,11 @@ export default function UserSidebar({
             <button
               type="button"
               onClick={onRequestClose}
-              className="rounded-md px-2 py-1 text-xs transition-colors"
-              style={{ color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}
+              className="xl:hidden h-10 w-10 rounded-lg border inline-flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)", backgroundColor: "var(--color-surface)" }}
               aria-label="Fermer le panneau membre"
             >
-              Fermer
+              <X size={20} />
             </button>
           </div>
         ) : null}
@@ -273,8 +273,17 @@ export default function UserSidebar({
                       : visibleItems;
                     if (groupItems.length === 0) return null;
 
+                    const hasActiveItem = groupItems.some(
+                      (item) =>
+                        pathname === item.href || (pathname != null && item.href !== "/" && pathname.startsWith(`${item.href}/`))
+                    );
+
                     return (
-                      <SidebarCollapsibleGroup key={`${section.title}-${group.title}`} title={group.title}>
+                      <SidebarCollapsibleGroup
+                        key={`${section.title}-${group.title}`}
+                        title={group.title}
+                        defaultOpen={hasActiveItem}
+                      >
                         {groupItems.map((item) => (
                           <SidebarLink
                             key={`${group.title}-${item.href}`}

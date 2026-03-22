@@ -92,16 +92,16 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
             <main className="flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
           </div>
           {shouldRenderMobileSidebar ? (
-            <div className="fixed inset-0 z-[70] xl:hidden" role="dialog" aria-modal="true" aria-label="Panneau membre">
+            <div className="fixed inset-0 z-[70] xl:hidden flex" role="dialog" aria-modal="true" aria-label="Panneau membre">
               <button
                 type="button"
-                className="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full animate-[member-sidebar-backdrop-fade_0.2s_ease-out]"
                 style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
                 onClick={() => setIsMobileSidebarOpen(false)}
                 aria-label="Fermer le panneau membre"
               />
               <UserSidebar
-                className="relative z-10 h-full max-w-[85vw] overflow-y-auto shadow-2xl"
+                className="relative z-10 h-full w-72 max-w-[85vw] overflow-y-auto shadow-2xl animate-[member-sidebar-slide-in_0.25s_ease-out]"
                 onNavigate={() => setIsMobileSidebarOpen(false)}
                 onRequestClose={() => setIsMobileSidebarOpen(false)}
                 showMobileCloseButton={true}
