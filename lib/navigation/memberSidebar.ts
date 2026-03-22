@@ -170,3 +170,9 @@ export const memberSidebarSections: SidebarNavSection[] = [
     ],
   },
 ];
+
+/** Liens aplatis pour le menu burger mobile (espace membre), hors admin */
+export const memberSidebarNavItemsForMobile: { href: string; label: string }[] = memberSidebarSections
+  .filter((s) => !s.adminOnly)
+  .flatMap((s) => s.groups.flatMap((g) => g.items.filter((i) => !i.adminOnly)))
+  .map((i) => ({ href: i.href, label: i.label }));

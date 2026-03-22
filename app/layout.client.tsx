@@ -89,6 +89,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
           <Header
             onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
             memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
+            showMemberMenuInBurger={isMemberArea}
           />
           <div className="flex">
             {shouldRenderDesktopSidebar ? <UserSidebar /> : null}

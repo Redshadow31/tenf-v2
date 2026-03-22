@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { memberSidebarNavItemsForMobile } from "@/lib/navigation/memberSidebar";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import TENFLogo from "./TENFLogo";
@@ -102,19 +103,23 @@ type HeaderProps = {
   onOpenMemberSidebar?: () => void;
   /** Lien vers l'espace membre (affiché sur mobile quand pas dans l'espace membre) */
   memberAreaHref?: string;
+  /** Afficher le menu espace membre dans le burger (mobile, quand dans l'espace membre) */
+  showMemberMenuInBurger?: boolean;
 };
 
-export default function Header({ onOpenMemberSidebar, memberAreaHref }: HeaderProps) {
+export default function Header({ onOpenMemberSidebar, memberAreaHref, showMemberMenuInBurger }: HeaderProps) {
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileOpenGroups, setMobileOpenGroups] = useState<Set<string>>(new Set());
+  const [memberMenuOpen, setMemberMenuOpen] = useState(false);
 
   useEffect(() => {
     setOpenDropdown(null);
     setMobileMenuOpen(false);
+    setMemberMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -409,6 +414,43 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref }: HeaderPr
                 </div>
               );
             })}
+
+            {showMemberMenuInBurger && (
+              <div className="rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
+                <button
+                  type="button"
+                  onClick={() => setMemberMenuOpen((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                  style={{ color: "var(--color-text)" }}
+                >
+                  <span>Compte</span>
+                  <span className={`transition-transform ${memberMenuOpen ? "rotate-180" : ""}`}>▼</span>
+                </button>
+                {memberMenuOpen && (
+                  <div className="px-2 pb-2">
+                    {memberSidebarNavItemsForMobile.map((item, idx) => (
+                      <Link
+                        key={`member-${idx}-${item.href}`}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block rounded-lg px-3 py-2 text-sm transition-colors"
+                        style={{ color: "var(--color-text-secondary)" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
+                          e.currentTarget.style.color = "var(--color-text)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.color = "var(--color-text-secondary)";
+                        }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         </div>
       )}
