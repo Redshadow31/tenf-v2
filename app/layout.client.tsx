@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import Header from "@/components/Header";
 import UserSidebar from "@/components/UserSidebar";
 import ConnectionTracker from "@/components/ConnectionTracker";
+import PwaSplashScreen from "@/components/PwaSplashScreen";
 
 type ClientLayoutProps = {
   children: ReactNode;
@@ -70,6 +71,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     return (
       <SessionProvider>
         <ThemeProvider>
+          <PwaSplashScreen />
           <ConnectionTracker />
           {children}
         </ThemeProvider>
@@ -84,6 +86,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <SessionProvider>
       <ThemeProvider>
+        <PwaSplashScreen />
         <ConnectionTracker />
         <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
           <Header
