@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1280, height=720" />
-  <title>Slide 10 - Suivi automatique des raids</title>
+  <title>Slide 10b - Signaler un raid non comptabilisé</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,8 +51,8 @@
       transform-origin:center center;
       transform:translate(-50%, -50%) scale(1);
       background:
-        radial-gradient(circle at 15% 15%, rgba(145,70,255,.16), transparent 28%),
-        radial-gradient(circle at 85% 85%, rgba(255,107,61,.14), transparent 26%),
+        radial-gradient(circle at 15% 15%, rgba(255,107,61,.14), transparent 28%),
+        radial-gradient(circle at 85% 85%, rgba(145,70,255,.16), transparent 26%),
         linear-gradient(135deg, #09090c 0%, #11131f 44%, #0d0e12 100%);
       color:white;
       will-change:transform;
@@ -77,7 +77,7 @@
       animation:breathe 8s ease-in-out infinite alternate;
     }
     .glow.violet{ width:420px; height:420px; top:-120px; right:-80px; background:rgba(145,70,255,.15); }
-    .glow.orange{ width:400px; height:400px; left:-100px; bottom:-100px; background:rgba(255,107,61,.12); animation-direction:alternate-reverse; }
+    .glow.orange{ width:400px; height:400px; left:-100px; bottom:-100px; background:rgba(255,107,61,.14); animation-direction:alternate-reverse; }
 
     .light-ray{
       position:absolute;
@@ -92,10 +92,10 @@
     .ray-2{ top:-330px; right:180px; animation-duration:15s; animation-direction:reverse; }
 
     .particle{ position:absolute; border-radius:50%; opacity:.72; z-index:0; animation:drift 9s ease-in-out infinite; box-shadow:0 0 8px currentColor; }
-    .p1{top:90px;left:180px;width:5px;height:5px;color:var(--gold);background:currentColor}
+    .p1{top:90px;left:180px;width:5px;height:5px;color:var(--orange);background:currentColor}
     .p2{top:150px;right:210px;width:4px;height:4px;color:var(--violet);background:currentColor;animation-delay:1s}
     .p3{top:290px;left:70px;width:3px;height:3px;color:#fff;background:currentColor;animation-delay:2s}
-    .p4{bottom:150px;right:180px;width:6px;height:6px;color:var(--orange);background:currentColor;animation-delay:.8s}
+    .p4{bottom:150px;right:180px;width:6px;height:6px;color:var(--gold);background:currentColor;animation-delay:.8s}
     .p5{bottom:120px;left:240px;width:4px;height:4px;color:var(--discord);background:currentColor;animation-delay:1.5s}
 
     .star{ position:absolute; background:#fff; border-radius:50%; z-index:0; animation:twinkle 4s infinite ease-in-out; }
@@ -133,13 +133,13 @@
     .tag-pill{
       padding:10px 14px;
       border-radius:999px;
-      background:rgba(87,242,135,.12);
-      border:1px solid rgba(87,242,135,.25);
+      background:rgba(255,107,61,.14);
+      border:1px solid rgba(255,107,61,.28);
       color:rgba(255,255,255,.92);
       font-size:12px;
       font-weight:700;
       white-space:nowrap;
-      box-shadow:0 0 24px rgba(87,242,135,.12);
+      box-shadow:0 0 24px rgba(255,107,61,.12);
     }
 
     .content{
@@ -177,23 +177,23 @@
       width:36px;
       height:2px;
       border-radius:999px;
-      background:linear-gradient(90deg, var(--violet), var(--orange));
-      box-shadow:0 0 18px rgba(145,70,255,.45);
+      background:linear-gradient(90deg, var(--orange), var(--violet));
+      box-shadow:0 0 18px rgba(255,107,61,.45);
     }
 
     .title{
       margin:0;
-      font-size:42px;
-      line-height:.93;
+      font-size:38px;
+      line-height:.95;
       font-weight:900;
       letter-spacing:-.04em;
       text-transform:uppercase;
-      text-shadow:0 0 18px rgba(145,70,255,.18);
+      text-shadow:0 0 18px rgba(255,107,61,.18);
     }
     .title span{display:block}
     .title .white{color:#fff}
-    .title .violet{color:var(--violet); text-shadow:0 0 22px rgba(145,70,255,.28)}
-    .title .green{color:var(--green); text-shadow:0 0 22px rgba(87,242,135,.24)}
+    .title .orange{color:var(--orange); text-shadow:0 0 22px rgba(255,107,61,.28)}
+    .title .violet{color:var(--violet); text-shadow:0 0 22px rgba(145,70,255,.24)}
 
     .intro{
       margin-top:14px;
@@ -208,8 +208,8 @@
       margin-top:18px;
       padding:14px 16px;
       border-radius:15px;
-      background:rgba(87,242,135,.08);
-      border:1px solid rgba(87,242,135,.2);
+      background:rgba(255,107,61,.08);
+      border:1px solid rgba(255,107,61,.2);
       box-shadow:0 10px 18px rgba(0,0,0,.16);
     }
     .link-box-title{
@@ -223,14 +223,24 @@
     .link-box-url{
       font-size:12px;
       line-height:1.5;
-      color:var(--green);
+      color:var(--orange);
       word-break:break-all;
     }
-    .link-box-note{
-      margin-top:8px;
-      font-size:11px;
-      color:rgba(255,255,255,.6);
+
+    .timeline-note{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:rgba(255,209,102,.08);
+      border:1px solid rgba(255,209,102,.18);
+      font-size:12px;
+      line-height:1.5;
+      color:rgba(255,255,255,.85);
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
     }
+    .timeline-note i{ color:var(--gold); margin-top:2px; flex-shrink:0; }
 
     .right{
       position:relative;
@@ -238,6 +248,11 @@
       display:flex;
       align-items:center;
       justify-content:center;
+    }
+
+    .browser-wrap{
+      transform:scale(0.88);
+      transform-origin:center center;
     }
 
     .browser-mockup{
@@ -249,7 +264,7 @@
       box-shadow:
         0 0 0 1px rgba(0,0,0,.5),
         0 24px 64px rgba(0,0,0,.6),
-        0 0 80px rgba(87,242,135,.06),
+        0 0 80px rgba(255,107,61,.08),
         inset 0 1px 0 rgba(255,255,255,.04);
       animation:fadeUp .8s ease-out both;
     }
@@ -268,10 +283,10 @@
       position:absolute;
       left:0; right:0; bottom:0;
       height:1px;
-      background:linear-gradient(90deg, transparent, rgba(87,242,135,.2), transparent);
-      opacity:.5;
+      background:linear-gradient(90deg, transparent, rgba(255,107,61,.25), transparent);
+      opacity:.6;
     }
-    .browser-dot{ width:10px; height:10px; border-radius:50%; box-shadow:inset 0 1px 1px rgba(255,255,255,.15); }
+    .browser-dot{ width:10px; height:10px; border-radius:50%; box-shadow:inset 0 1px 1px rgba(255,255,255,.15); flex-shrink:0; }
     .browser-dot.r{ background:linear-gradient(180deg,#ff6b6b,#e74c3c); }
     .browser-dot.y{ background:linear-gradient(180deg,#ffd93d,#f1c40f); }
     .browser-dot.g{ background:linear-gradient(180deg,#6bcf7f,#27ae60); }
@@ -294,7 +309,7 @@
       border-bottom:none;
       font-size:11px;
       color:rgba(255,255,255,.7);
-      max-width:220px;
+      max-width:260px;
       min-width:0;
     }
     .browser-tab.active{
@@ -306,7 +321,7 @@
     .browser-tab-favicon{
       width:14px; height:14px;
       border-radius:3px;
-      background:linear-gradient(135deg, #9146ff, #ce1946);
+      background:linear-gradient(135deg, #ff7a3d, #9146ff);
       flex-shrink:0;
     }
     .browser-tab span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -333,7 +348,6 @@
       font-size:11px;
       color:rgba(255,255,255,.85);
       font-family:"SF Mono","Consolas",ui-monospace,monospace;
-      position:relative;
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='rgba(255,255,255,.35)'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E");
       background-repeat:no-repeat;
       background-position:10px 50%;
@@ -342,8 +356,8 @@
     .browser-body{
       display:grid;
       grid-template-columns:220px 1fr;
-      min-height:440px;
-      max-height:480px;
+      min-height:420px;
+      max-height:500px;
       overflow:hidden;
       background:#111315;
     }
@@ -357,6 +371,16 @@
       gap:2px;
     }
 
+    .member-badge{
+      font-size:9px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:rgba(255,255,255,.4);
+      margin-bottom:8px;
+      padding-left:2px;
+    }
+
     .member-header{
       display:flex;
       align-items:center;
@@ -364,8 +388,8 @@
       padding:12px 14px;
       margin-bottom:16px;
       border-radius:12px;
-      background:linear-gradient(135deg, rgba(145,70,255,.12) 0%, rgba(206,25,70,.08) 100%);
-      border:1px solid rgba(145,70,255,.25);
+      background:linear-gradient(135deg, rgba(255,107,61,.12) 0%, rgba(145,70,255,.08) 100%);
+      border:1px solid rgba(255,107,61,.28);
       box-shadow:0 4px 12px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.04);
       position:relative;
     }
@@ -379,21 +403,11 @@
       box-shadow:0 0 8px rgba(87,242,135,.6);
     }
 
-    .member-badge{
-      font-size:9px;
-      font-weight:800;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      color:rgba(255,255,255,.4);
-      margin-bottom:8px;
-      padding-left:2px;
-    }
-
     .member-avatar{
       width:40px;
       height:40px;
       border-radius:10px;
-      background:linear-gradient(135deg, #ce1946 0%, #9146ff 100%);
+      background:linear-gradient(135deg, #ce1946, #9146ff);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -410,9 +424,7 @@
     .member-role{ font-size:10px; color:rgba(255,255,255,.55); margin:3px 0 0; display:flex; align-items:center; gap:4px; }
     .member-role::before{ content:""; width:4px; height:4px; border-radius:50%; background:var(--gold); }
 
-    .sidebar-section{
-      margin-top:12px;
-    }
+    .sidebar-section{ margin-top:12px; }
 
     .sidebar-section-title{
       font-size:9px;
@@ -437,11 +449,11 @@
     }
 
     .sidebar-link.selected{
-      background:linear-gradient(135deg, rgba(87,242,135,.15) 0%, rgba(87,242,135,.08) 100%);
-      border:1px solid rgba(87,242,135,.25);
-      color:#7ef0a8;
+      background:linear-gradient(135deg, rgba(255,107,61,.18) 0%, rgba(255,107,61,.1) 100%);
+      border:1px solid rgba(255,107,61,.35);
+      color:#ffb088;
       font-weight:600;
-      box-shadow:0 0 20px rgba(87,242,135,.08);
+      box-shadow:0 0 20px rgba(255,107,61,.08);
     }
     .sidebar-link.selected::before{
       content:"";
@@ -451,8 +463,8 @@
       width:3px;
       height:20px;
       border-radius:0 3px 3px 0;
-      background:var(--green);
-      box-shadow:0 0 12px rgba(87,242,135,.5);
+      background:var(--orange);
+      box-shadow:0 0 12px rgba(255,107,61,.5);
     }
 
     .sidebar-link i{ font-size:13px; opacity:.85; width:18px; text-align:center; }
@@ -462,119 +474,196 @@
       overflow-y:auto;
       min-width:0;
       background:#111315;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
     }
-    .page-main-header{
+    .page-warn{
+      padding:14px 16px;
+      border-radius:12px;
+      margin-bottom:0;
+      background:linear-gradient(135deg, rgba(250,204,21,.12) 0%, rgba(250,204,21,.06) 100%);
+      border:1px solid rgba(250,204,21,.35);
       display:flex;
       align-items:flex-start;
-      justify-content:space-between;
-      margin-bottom:20px;
+      gap:12px;
     }
+    .page-warn i{ color:#fcd34d; font-size:18px; margin-top:1px; flex-shrink:0; }
+    .page-warn-content{}
+    .page-warn-title{ font-size:12px; font-weight:700; color:#fde68a; margin:0 0 4px; }
+    .page-warn-text{ font-size:11px; color:rgba(255,255,255,.85); margin:0; line-height:1.5; }
     .page-header{ margin-bottom:0; }
     .page-header h2{ margin:0; font-size:22px; font-weight:800; color:#fff; letter-spacing:-.03em; }
     .page-header p{ margin:6px 0 0; font-size:12px; color:rgba(255,255,255,.55); }
-    .page-month-select{
-      padding:8px 14px;
-      border-radius:10px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.1);
-      font-size:12px;
-      font-weight:600;
-      color:rgba(255,255,255,.9);
-      display:flex;
-      align-items:center;
-      gap:8px;
+    .page-form{
+      padding:20px;
+      border-radius:14px;
+      background:linear-gradient(135deg, rgba(139,92,246,.08) 0%, rgba(139,92,246,.04) 100%);
+      border:1px solid rgba(139,92,246,.3);
+      box-shadow:0 4px 20px rgba(0,0,0,.15);
     }
-    .page-stats{
-      display:grid;
-      grid-template-columns:repeat(4, 1fr);
-      gap:12px;
+    .page-form-steps{
+      display:flex;
+      gap:8px;
       margin-bottom:20px;
     }
-    .page-stat{
-      padding:16px;
-      border-radius:12px;
-      background:linear-gradient(135deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.02) 100%);
-      border:1px solid rgba(255,255,255,.06);
-      box-shadow:0 4px 12px rgba(0,0,0,.15);
-      transition:all .2s;
-    }
-    .page-stat:nth-child(1){ border-left:3px solid var(--green); }
-    .page-stat:nth-child(2){ border-left:3px solid #60a5fa; }
-    .page-stat:nth-child(3){ border-left:3px solid var(--gold); }
-    .page-stat:nth-child(4){ border-left:3px solid var(--orange); }
-    .page-stat-label{ font-size:10px; color:rgba(255,255,255,.5); text-transform:uppercase; letter-spacing:.08em; margin:0 0 6px; font-weight:600; }
-    .page-stat-value{ font-size:24px; font-weight:800; color:#fff; margin:0; letter-spacing:-.02em; }
-    .page-timeline-header{
+    .page-form-step{
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      margin-bottom:12px;
-    }
-    .page-timeline-title{ font-size:12px; font-weight:700; color:rgba(255,255,255,.9); margin:0; display:flex; align-items:center; gap:8px; }
-    .page-filter-btn{
-      padding:6px 12px;
-      border-radius:8px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
+      gap:6px;
       font-size:10px;
       font-weight:600;
-      color:rgba(255,255,255,.7);
+      color:rgba(255,255,255,.5);
+    }
+    .page-form-step.active{ color:#c4b5fd; }
+    .page-form-step-dot{
+      width:20px; height:20px;
+      border-radius:50%;
+      background:rgba(139,92,246,.2);
+      border:1px solid rgba(139,92,246,.4);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:11px;
+    }
+    .page-form-step.active .page-form-step-dot{
+      background:rgba(139,92,246,.4);
+      color:#fff;
+    }
+    .page-form-row{ margin-bottom:16px; }
+    .page-form-row:last-of-type{ margin-bottom:18px; }
+    .page-form-label{
+      font-size:11px;
+      font-weight:700;
+      color:rgba(255,255,255,.9);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      margin-bottom:8px;
       display:flex;
       align-items:center;
       gap:6px;
     }
-    .page-raid-list{ display:flex; flex-direction:column; gap:8px; }
-    .page-raid-row{
-      padding:12px 14px;
-      border-radius:12px;
-      background:linear-gradient(135deg, rgba(52,211,153,.06) 0%, rgba(52,211,153,.03) 100%);
-      border:1px solid rgba(52,211,153,.15);
-      font-size:12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      transition:all .2s;
-    }
-    .page-raid-row:hover{ border-color:rgba(52,211,153,.3); box-shadow:0 0 20px rgba(52,211,153,.06); }
-    .page-raid-left{ display:flex; align-items:center; gap:12px; }
-    .page-raid-avatar{
-      width:32px; height:32px;
-      border-radius:8px;
-      background:linear-gradient(135deg, #60a5fa, #9146ff);
+    .page-form-label .num{
+      width:22px; height:22px;
+      border-radius:6px;
+      background:rgba(139,92,246,.25);
       display:flex;
       align-items:center;
       justify-content:center;
-      font-weight:700;
       font-size:11px;
-      color:#fff;
+      color:#c4b5fd;
     }
-    .page-raid-info{}
-    .page-raid-row .target{ color:#fff; font-weight:600; display:block; }
-    .page-raid-row .meta{ color:rgba(255,255,255,.5); font-size:10px; margin-top:2px; }
-    .page-raid-badge{
+    .page-form-input{
+      width:100%;
+      padding:12px 14px 12px 40px;
+      border-radius:10px;
+      background:rgba(15,15,18,.95);
+      border:1px solid rgba(255,255,255,.12);
+      font-size:13px;
+      color:#fff;
+      box-sizing:border-box;
+      transition:all .2s;
+      position:relative;
+    }
+    .page-form-input:focus{ outline:none; border-color:rgba(139,92,246,.5); box-shadow:0 0 0 3px rgba(139,92,246,.15); }
+    .page-form-input::placeholder{ color:rgba(255,255,255,.35); }
+    .page-form-input-wrap{ position:relative; }
+    .page-form-input-wrap i{
+      position:absolute;
+      left:14px;
+      top:50%;
+      transform:translateY(-50%);
+      color:rgba(255,255,255,.4);
+      font-size:14px;
+      pointer-events:none;
+    }
+    .page-form-textarea{
+      width:100%;
+      min-height:64px;
+      padding:12px 14px;
+      border-radius:10px;
+      background:rgba(15,15,18,.95);
+      border:1px solid rgba(255,255,255,.12);
+      font-size:12px;
+      color:#fff;
+      resize:vertical;
+      box-sizing:border-box;
+      font-family:inherit;
+    }
+    .page-form-textarea::placeholder{ color:rgba(255,255,255,.35); }
+    .page-form-btn{
+      padding:14px 24px;
+      border-radius:10px;
+      background:linear-gradient(135deg, var(--orange) 0%, var(--violet) 100%);
+      border:none;
+      color:#fff;
+      font-size:13px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      box-shadow:0 8px 24px rgba(255,107,61,.35), 0 0 0 1px rgba(255,255,255,.1) inset;
       display:inline-flex;
       align-items:center;
-      gap:4px;
-      padding:4px 10px;
-      border-radius:6px;
+      gap:10px;
+      transition:all .2s;
+    }
+    .page-form-btn:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(255,107,61,.4); }
+    .page-recent{
+      margin-top:4px;
+      padding-top:16px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+    .page-recent-title{
+      font-size:10px;
+      font-weight:800;
+      color:rgba(255,255,255,.45);
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      margin:0 0 10px;
+    }
+    .page-recent-list{ display:flex; flex-direction:column; gap:8px; }
+    .page-recent-item{
+      padding:10px 14px;
+      border-radius:10px;
+      background:linear-gradient(135deg, rgba(52,211,153,.1) 0%, rgba(52,211,153,.05) 100%);
+      border:1px solid rgba(52,211,153,.2);
+      font-size:12px;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .page-recent-item .status{
       font-size:10px;
       font-weight:600;
-      background:rgba(87,242,135,.15);
-      color:#7ef0a8;
-      border:1px solid rgba(87,242,135,.25);
+      color:#34d399;
+      display:flex;
+      align-items:center;
+      gap:4px;
     }
+
+    .form-hint{
+      font-size:10px;
+      color:rgba(255,255,255,.45);
+      margin-top:6px;
+      display:flex;
+      align-items:flex-start;
+      gap:6px;
+    }
+    .form-hint i{ margin-top:1px; flex-shrink:0; opacity:.8; }
 
     .floating-emoji{
       position:absolute;
-      font-size:32px;
+      font-size:36px;
       z-index:9;
       filter:drop-shadow(0 5px 10px rgba(0,0,0,.3));
       animation:floatBounce 6s infinite ease-in-out;
       pointer-events:none;
     }
-    .e1{top:140px;right:80px}
-    .e2{bottom:160px;left:100px;animation-delay:1.4s}
-    .e3{top:220px;left:420px;animation-delay:2.3s}
+    .e1{top:130px;right:100px}
+    .e2{bottom:140px;left:120px;animation-delay:1.2s}
+    .e3{top:320px;left:380px;animation-delay:2s}
 
     .footer{
       position:absolute;
@@ -592,7 +681,7 @@
     .footer-left,.footer-right{ display:flex; align-items:center; gap:8px; min-width:0; }
     .footer-left span,.footer-right span:last-child{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .line{ width:30px; height:1px; background:rgba(255,255,255,.16); flex-shrink:0; }
-    .dot{ width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 12px rgba(87,242,135,.75); flex-shrink:0; }
+    .dot{ width:6px; height:6px; border-radius:50%; background:var(--orange); box-shadow:0 0 12px rgba(255,107,61,.75); flex-shrink:0; }
 
     @keyframes breathe{ 0%{opacity:.10;transform:scale(1)} 100%{opacity:.20;transform:scale(1.08)} }
     @keyframes rayMove{ 0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0} 50%{opacity:.06} 100%{transform:rotate(45deg) translate(200px,200px);opacity:0} }
@@ -636,34 +725,38 @@
         </div>
       </div>
 
-      <div class="tag-pill"><i class="fas fa-robot" style="margin-right:6px;"></i> Comptabilisation automatique</div>
+      <div class="tag-pill"><i class="fas fa-exclamation-circle" style="margin-right:6px;"></i> Raid non pris en compte ?</div>
     </header>
 
     <main class="content">
       <section class="left">
-        <div class="eyebrow">Suivi des raids</div>
+        <div class="eyebrow">Déclaration manuelle</div>
 
         <h1 class="title">
-          <span class="white">RAIDS</span>
-          <span class="violet">COMPTABILISÉS</span>
-          <span class="green">AUTOMATIQUEMENT</span>
+          <span class="white">SI VOTRE RAID</span>
+          <span class="orange">N'APPARAÎT PAS</span>
+          <span class="violet">SOUS 30 MIN</span>
         </h1>
 
         <p class="intro">
-          Les raids entre membres TENF sont désormais <strong>détectés et enregistrés automatiquement</strong> sur le site.
-          Chaque membre peut consulter son historique à tout moment dans son espace membre.
+          En cas de raid non comptabilisé automatiquement, utilisez le formulaire de déclaration sur le site.
+          L’équipe de modération vérifiera et validera votre signalement.
         </p>
 
-        <p class="intro" style="margin-top:20px;">
-          Connexion sécurisée via Discord pour accéder à l’espace membre.
-        </p>
+        <div class="timeline-note">
+          <i class="fas fa-clock"></i>
+          <div>
+            Attendez environ <strong>30 minutes</strong> après le raid avant de signaler. La plupart des raids sont pris en compte automatiquement sous ce délai.
+          </div>
+        </div>
       </section>
 
       <section class="right">
-        <div class="floating-emoji e1">🤖</div>
-        <div class="floating-emoji e2">📋</div>
-        <div class="floating-emoji e3">✅</div>
+        <div class="floating-emoji e1">⏱️</div>
+        <div class="floating-emoji e2">📝</div>
+        <div class="floating-emoji e3">✓</div>
 
+        <div class="browser-wrap">
         <div class="browser-mockup">
           <div class="browser-bar">
             <div class="browser-dot r"></div>
@@ -672,11 +765,11 @@
             <div class="browser-tabs">
               <div class="browser-tab active">
                 <span class="browser-tab-favicon"></span>
-                <span>Mes raids — tenf-community.com</span>
+                <span>Signaler un raid — tenf-community.com</span>
               </div>
               <div class="browser-tab-add">+</div>
             </div>
-            <div class="browser-url">https://tenf-community.com/member/raids/historique</div>
+            <div class="browser-url">https://tenf-community.com/member/raids/declarer</div>
           </div>
           <div class="browser-body">
             <aside class="page-sidebar">
@@ -698,9 +791,9 @@
 
               <div class="sidebar-section">
                 <div class="sidebar-section-title">Participation TENF</div>
-                <div class="sidebar-link selected"><i class="fas fa-history"></i> Mes raids</div>
+                <div class="sidebar-link"><i class="fas fa-history"></i> Mes raids</div>
                 <div class="sidebar-link"><i class="fas fa-chart-line"></i> Statistiques</div>
-                <div class="sidebar-link"><i class="fas fa-rocket"></i> Signaler un raid</div>
+                <div class="sidebar-link selected"><i class="fas fa-rocket"></i> Signaler un raid</div>
               </div>
 
               <div class="sidebar-section">
@@ -710,72 +803,62 @@
             </aside>
 
             <div class="page-main">
-              <div class="page-main-header">
-                <div class="page-header">
-                  <h2>Mes raids</h2>
-                  <p>Historique consolidé de tes raids du mois</p>
-                </div>
-                <div class="page-month-select">
-                  <i class="fas fa-calendar-alt"></i>
-                  Mars 2025
-                </div>
+            <div class="page-warn">
+              <i class="fas fa-triangle-exclamation"></i>
+              <div class="page-warn-content">
+                <p class="page-warn-title">Avant de signaler</p>
+                <p class="page-warn-text">Vérifie d’abord que le raid n’apparaît pas déjà dans « Mes raids ». La plupart des raids sont comptabilisés automatiquement sous 30 minutes.</p>
               </div>
-              <div class="page-stats">
-                <div class="page-stat">
-                  <p class="page-stat-label">Raids du mois</p>
-                  <p class="page-stat-value">12</p>
-                </div>
-                <div class="page-stat">
-                  <p class="page-stat-label">Raids valides</p>
-                  <p class="page-stat-value">10</p>
-                </div>
-                <div class="page-stat">
-                  <p class="page-stat-label">Points attribués</p>
-                  <p class="page-stat-value">8</p>
-                </div>
-                <div class="page-stat">
-                  <p class="page-stat-label">En attente</p>
-                  <p class="page-stat-value">2</p>
-                </div>
+            </div>
+            <div class="page-header">
+              <h2>Signaler un raid non comptabilisé</h2>
+              <p>Déclaration manuelle connectée au suivi staff</p>
+            </div>
+            <div class="page-form">
+              <div class="page-form-steps">
+                <div class="page-form-step active"><span class="page-form-step-dot">1</span> Cible</div>
+                <div class="page-form-step active"><span class="page-form-step-dot">2</span> Date</div>
+                <div class="page-form-step"><span class="page-form-step-dot">3</span> Note</div>
               </div>
-              <div class="page-timeline-header">
-                <div class="page-timeline-title"><i class="fas fa-clock-rotate-left"></i> Timeline des raids</div>
-                <div class="page-filter-btn"><i class="fas fa-filter"></i> Filtrer</div>
+              <div class="page-form-row">
+                <label class="page-form-label"><span class="num">1</span> Pseudo Twitch cible</label>
+                <div class="page-form-input-wrap">
+                  <i class="fas fa-user"></i>
+                  <input type="text" class="page-form-input" placeholder="Rechercher ou saisir le pseudo..." value="Undiaa" readonly />
+                </div>
+                <p class="form-hint"><i class="fas fa-info-circle"></i> Choisir dans l’autocomplétion ou saisir le pseudo du membre TENF raidé</p>
               </div>
-              <div class="page-raid-list">
-                <div class="page-raid-row">
-                  <div class="page-raid-left">
-                    <div class="page-raid-avatar">T</div>
-                    <div class="page-raid-info">
-                      <span class="target">Thony1384</span>
-                      <p class="meta">22 mars 2025 · 14:24</p>
-                    </div>
-                  </div>
-                  <span class="page-raid-badge"><i class="fas fa-check"></i> Validé</span>
+              <div class="page-form-row">
+                <label class="page-form-label"><span class="num">2</span> Date et heure du raid</label>
+                <div class="page-form-input-wrap">
+                  <i class="fas fa-calendar"></i>
+                  <input type="text" class="page-form-input" value="22 mars 2025 · 14:30" readonly />
                 </div>
-                <div class="page-raid-row">
-                  <div class="page-raid-left">
-                    <div class="page-raid-avatar">U</div>
-                    <div class="page-raid-info">
-                      <span class="target">Undiaa</span>
-                      <p class="meta">21 mars 2025 · 19:12</p>
-                    </div>
-                  </div>
-                  <span class="page-raid-badge"><i class="fas fa-check"></i> Validé</span>
+                <p class="form-hint"><i class="fas fa-clock"></i> Date et heure approximative du raid</p>
+              </div>
+              <div class="page-form-row">
+                <label class="page-form-label"><span class="num">3</span> Note (optionnel)</label>
+                <textarea class="page-form-textarea" placeholder="Ex: Raid après live Fortnite, fin de stream communautaire...">Raid après fin de stream communautaire</textarea>
+                <p class="form-hint"><i class="fas fa-pen"></i> Contexte utile pour la modération</p>
+              </div>
+              <button type="button" class="page-form-btn"><i class="fas fa-paper-plane"></i> Déclarer le raid</button>
+            </div>
+            <div class="page-recent">
+              <p class="page-recent-title">Dernières déclarations</p>
+              <div class="page-recent-list">
+                <div class="page-recent-item">
+                  Thony1384 — 21 mars 2025
+                  <span class="status"><i class="fas fa-circle-check"></i> Validé</span>
                 </div>
-                <div class="page-raid-row">
-                  <div class="page-raid-left">
-                    <div class="page-raid-avatar">A</div>
-                    <div class="page-raid-info">
-                      <span class="target">Antho62221</span>
-                      <p class="meta">20 mars 2025 · 13:59</p>
-                    </div>
-                  </div>
-                  <span class="page-raid-badge"><i class="fas fa-check"></i> Validé</span>
+                <div class="page-recent-item">
+                  Antho62221 — 20 mars 2025
+                  <span class="status"><i class="fas fa-circle-check"></i> Validé</span>
                 </div>
               </div>
             </div>
+            </div>
           </div>
+        </div>
         </div>
       </section>
     </main>
@@ -783,12 +866,12 @@
     <footer class="footer">
       <div class="footer-left">
         <div class="line"></div>
-        <span>Les raids apparaissent dans l’historique après comptabilisation automatique</span>
+        <span>Déclaration manuelle uniquement en complément du suivi automatique</span>
       </div>
 
       <div class="footer-right">
         <span class="dot"></span>
-        <span>Espace membre → Raids → Historique</span>
+        <span>Espace membre → Raids → Déclarer</span>
       </div>
     </footer>
   </div>

@@ -166,13 +166,13 @@
     }
 
     .brand img{
-      width:52px;
-      height:52px;
+      width:54px;
+      height:54px;
       border-radius:50%;
       object-fit:cover;
       flex-shrink:0;
       box-shadow:0 0 24px rgba(145,70,255,.24);
-      animation:floatLogo 4s ease-in-out infinite;
+      animation:logoPulse 4s ease-in-out infinite;
     }
 
     .brand-kicker{
@@ -193,15 +193,16 @@
     }
 
     .tag-pill{
-      padding:10px 14px;
+      padding:10px 15px;
       border-radius:999px;
       background:rgba(88,101,242,.12);
       border:1px solid rgba(88,101,242,.28);
       color:rgba(255,255,255,.92);
-      font-size:12px;
+      font-size:13px;
       font-weight:700;
       white-space:nowrap;
       box-shadow:0 0 24px rgba(88,101,242,.14);
+      animation:badgePulse 2.5s ease-in-out infinite;
     }
 
     .content{
@@ -209,10 +210,10 @@
       z-index:3;
       width:100%;
       height:100%;
-      padding:84px 28px 34px;
+      padding:90px 34px 44px;
       display:grid;
-      grid-template-columns:300px 1fr;
-      gap:18px;
+      grid-template-columns:400px 1fr;
+      gap:32px;
     }
 
     .left{
@@ -220,7 +221,8 @@
       flex-direction:column;
       justify-content:center;
       min-width:0;
-      padding-left:2px;
+      padding-left:4px;
+      padding-right:8px;
     }
 
     .eyebrow{
@@ -260,9 +262,9 @@
     .title .gold{color:var(--gold); text-shadow:0 0 20px rgba(255,209,102,.22)}
 
     .intro{
-      margin-top:14px;
-      max-width:282px;
-      font-size:13px;
+      margin-top:16px;
+      max-width:360px;
+      font-size:14px;
       line-height:1.58;
       color:rgba(255,255,255,.78);
     }
@@ -270,13 +272,64 @@
     .intro strong{color:#fff}
 
     .mini-card{
-      margin-top:16px;
-      padding:12px 14px;
-      border-radius:15px;
+      margin-top:18px;
+      padding:14px 16px;
+      border-radius:16px;
       background:rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.08);
-      box-shadow:0 10px 18px rgba(0,0,0,.16);
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      transition:transform .24s ease, box-shadow .24s ease, border-color .24s ease;
     }
+    .mini-card:hover{
+      transform:translateY(-3px);
+      border-color:rgba(88,101,242,.28);
+      box-shadow:0 14px 28px rgba(88,101,242,.16);
+    }
+
+    .steps-list{
+      margin-top:20px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .step-item{
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      transition:background .2s ease, border-color .2s ease;
+    }
+    .step-item:hover{
+      background:rgba(255,255,255,.05);
+      border-color:rgba(88,101,242,.25);
+    }
+
+    .step-num{
+      width:28px;
+      height:28px;
+      flex-shrink:0;
+      border-radius:10px;
+      background:linear-gradient(135deg, rgba(88,101,242,.25), rgba(145,70,255,.2));
+      border:1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      font-weight:800;
+      color:#fff;
+    }
+
+    .step-text{
+      font-size:13px;
+      line-height:1.5;
+      color:rgba(255,255,255,.85);
+      margin:0;
+    }
+    .step-text strong{color:#fff}
 
     .mini-card-title{
       font-size:10px;
@@ -305,9 +358,9 @@
 
     .discord-demo-wrap{
       position:relative;
-      width:920px;
-      height:530px;
-      animation:fadeUp .8s ease-out both;
+      width:880px;
+      max-width:100%;
+      height:500px;
     }
 
     .discord-frame{
@@ -669,49 +722,6 @@
       animation:badgePulse 3s infinite ease-in-out;
     }
 
-    .annotation{
-      position:absolute;
-      background:rgba(0,0,0,.84);
-      border:1px solid rgba(145,70,255,.35);
-      padding:8px 14px;
-      border-radius:10px;
-      font-size:13px;
-      font-weight:600;
-      color:#fff;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      box-shadow:0 8px 18px rgba(0,0,0,.35);
-      z-index:10;
-      backdrop-filter:blur(8px);
-      animation:fadeUp .6s ease-out forwards;
-      max-width:260px;
-    }
-
-    .annotation:hover{
-      transform:translateY(-4px);
-      border-color:var(--gold);
-      box-shadow:0 8px 22px rgba(255,209,102,.18);
-      transition:.25s ease;
-    }
-
-    .annotation-dot{
-      width:8px;
-      height:8px;
-      background:var(--gold);
-      border-radius:50%;
-      box-shadow:0 0 10px var(--gold);
-      flex-shrink:0;
-      animation:dotBounce 2s infinite ease-in-out;
-    }
-
-    .connector{
-      position:absolute;
-      background:rgba(255,255,255,.38);
-      z-index:9;
-      animation:fadeUp .6s ease-out forwards;
-    }
-
     .floating-emoji{
       position:absolute;
       font-size:30px;
@@ -767,6 +777,7 @@
       background:var(--discord);
       box-shadow:0 0 12px rgba(88,101,242,.75);
       flex-shrink:0;
+      animation:twinkle 2.5s ease-in-out infinite;
     }
 
     @keyframes breathe{
@@ -790,9 +801,30 @@
       50%{opacity:1;transform:scale(1.2);box-shadow:0 0 5px white}
     }
 
-    @keyframes floatLogo{
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-8px)}
+    @keyframes logoPulse{
+      0%,100%{box-shadow:0 0 18px rgba(145,70,255,.18)}
+      50%{box-shadow:0 0 28px rgba(145,70,255,.35)}
+    }
+
+    @keyframes badgePulse{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.05)}
+    }
+
+    .reveal{
+      opacity:0;
+      animation:revealFade .6s ease-out forwards;
+    }
+    .reveal.d1{animation-delay:.1s}
+    .reveal.d2{animation-delay:.2s}
+    .reveal.d3{animation-delay:.35s}
+    .reveal.d4{animation-delay:.5s}
+    .reveal.d5{animation-delay:.65s}
+    .reveal.d6{animation-delay:.8s}
+
+    @keyframes revealFade{
+      from{opacity:0;transform:translateY(12px)}
+      to{opacity:1;transform:translateY(0)}
     }
 
     @keyframes slideLeft{
@@ -842,6 +874,7 @@
         animation:none !important;
         transition:none !important;
       }
+      .reveal{opacity:1!important;transform:none!important}
     }
   </style>
 </head>
@@ -879,32 +912,46 @@
 
     <main class="content">
       <section class="left">
-        <div class="eyebrow">Bonus journalier</div>
+        <div class="eyebrow reveal d1">Bonus journalier</div>
 
-        <h1 class="title">
+        <h1 class="title reveal d2">
           <span class="white">UNE ACTION</span>
           <span class="discord">SIMPLE ET</span>
           <span class="gold">QUOTIDIENNE</span>
         </h1>
 
-        <p class="intro">
+        <p class="intro reveal d3">
           Dans le salon <strong>#bonus-journalier</strong>, il suffit d’utiliser la commande
           <strong>/journalier</strong> pour marquer sa présence quotidienne et récupérer automatiquement
           ses points du jour.
         </p>
 
-        <div class="mini-card">
+        <div class="steps-list reveal d4">
+          <div class="step-item">
+            <span class="step-num">1</span>
+            <p class="step-text">Repérer le salon <strong>#bonus-journalier</strong> dans la catégorie</p>
+          </div>
+          <div class="step-item">
+            <span class="step-num">2</span>
+            <p class="step-text">Taper ensuite simplement <strong>/journalier</strong></p>
+          </div>
+          <div class="step-item">
+            <span class="step-num">3</span>
+            <p class="step-text">Le bot crédite automatiquement <strong>500 points</strong></p>
+          </div>
+        </div>
+
+        <div class="mini-card-removed" style="display:none">
           <div class="mini-card-title">À montrer à l’oral</div>
           <div class="mini-card-text">
-            Ici, tu peux expliquer concrètement :
-            <strong>où trouver le salon</strong>, où taper la commande,
+            Expliquer concrètement où trouver le salon, où taper la commande,
             et que DraftBot crédite immédiatement <strong>500 points quotidiens</strong>.
           </div>
         </div>
       </section>
 
       <section class="right">
-        <div class="discord-demo-wrap">
+        <div class="discord-demo-wrap reveal d6">
           <div class="daily-badge">Bonus quotidien</div>
 
           <div class="floating-emoji e1">💜</div>
@@ -1038,23 +1085,6 @@
             </div>
           </div>
 
-          <div class="annotation" style="top:132px; left:-18px; animation-delay:1s;">
-            <div class="annotation-dot"></div>
-            <span>Repérer le salon <strong># bonus-journalier</strong> dans la catégorie</span>
-          </div>
-          <div class="connector" style="top:156px; left:170px; width:78px; height:1px; animation-delay:1s;"></div>
-
-          <div class="annotation" style="top:214px; left:260px; animation-delay:1.2s;">
-            <div class="annotation-dot"></div>
-            <span>Taper ensuite simplement <strong>/journalier</strong></span>
-          </div>
-          <div class="connector" style="top:240px; left:470px; width:60px; height:1px; animation-delay:1.2s;"></div>
-
-          <div class="annotation" style="right:-10px; top:286px; animation-delay:1.45s;">
-            <div class="annotation-dot"></div>
-            <span>Le bot crédite automatiquement <strong>500 points</strong></span>
-          </div>
-          <div class="connector" style="top:312px; right:190px; width:92px; height:1px; animation-delay:1.45s;"></div>
         </div>
       </section>
     </main>

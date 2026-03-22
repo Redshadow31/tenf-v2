@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 
   <style>
     :root {
@@ -21,6 +22,7 @@
       --violet: #9146ff;
       --red: #ce1946;
       --gold: #ffd166;
+      --lavender: #c4b5fd;
 
       --shadow-lg: 0 18px 50px rgba(0,0,0,0.40);
       --shadow-violet: 0 0 36px rgba(145,70,255,0.16);
@@ -132,6 +134,19 @@
     .s3 { bottom: 80px; right: 320px; width: 2px; height: 2px; animation-delay: 1.7s; }
     .s4 { bottom: 138px; left: 210px; width: 2px; height: 2px; animation-delay: 2.2s; }
 
+    .light-ray {
+      position: absolute;
+      width: 160px;
+      height: 1200px;
+      background: rgba(255, 255, 255, 0.035);
+      filter: blur(50px);
+      transform: rotate(45deg);
+      z-index: 0;
+      animation: rayMove 14s linear infinite;
+    }
+    .light-ray.r1 { top: -280px; left: 180px; }
+    .light-ray.r2 { top: -320px; right: 220px; animation-duration: 16s; animation-direction: reverse; }
+
     .topbar {
       position: absolute;
       top: 20px;
@@ -200,18 +215,20 @@
       z-index: 3;
       width: 100%;
       height: 100%;
-      padding: 92px 40px 74px;
+      padding: 88px 44px 70px;
       display: grid;
-      grid-template-columns: 500px 1fr;
-      gap: 24px;
+      grid-template-columns: 480px 1fr;
+      gap: 32px;
+      align-items: center;
     }
 
     .left {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding-left: 8px;
+      padding-left: 4px;
       min-width: 0;
+      gap: 0;
     }
 
     .eyebrow {
@@ -224,7 +241,6 @@
       font-weight: 700;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      animation: fadeUp .8s ease-out both;
     }
 
     .eyebrow::before {
@@ -243,7 +259,6 @@
       font-weight: 900;
       letter-spacing: -0.04em;
       text-transform: uppercase;
-      animation: fadeUp 1s ease-out both;
     }
 
     .title span {
@@ -266,12 +281,11 @@
     }
 
     .intro {
-      margin-top: 16px;
-      max-width: 450px;
-      font-size: 16px;
-      line-height: 1.55;
+      margin-top: 18px;
+      max-width: 420px;
+      font-size: 15px;
+      line-height: 1.58;
       color: var(--text-soft);
-      animation: fadeUp 1.15s ease-out both;
     }
 
     .intro strong {
@@ -282,8 +296,7 @@
     .stats-row {
       display: flex;
       gap: 12px;
-      margin-top: 20px;
-      animation: fadeUp 1.25s ease-out both;
+      margin-top: 26px;
     }
 
     .stat-pill {
@@ -313,7 +326,7 @@
 
     .stat-value.violet { color: var(--violet); }
     .stat-value.red { color: var(--red); }
-    .stat-value.gold { color: var(--gold); }
+    .stat-value.gold { color: var(--lavender); }
 
     .stat-label {
       font-size: 11px;
@@ -328,8 +341,9 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      gap: 10px;
+      gap: 12px;
       min-width: 0;
+      max-width: 680px;
     }
 
     .story-card {
@@ -341,9 +355,8 @@
       border: 1px solid var(--border);
       box-shadow: var(--shadow-lg), var(--shadow-violet), var(--shadow-red);
       backdrop-filter: blur(18px);
-      padding: 18px;
+      padding: 20px;
       overflow: hidden;
-      animation: fadeScale 1s ease-out both;
       transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
     }
 
@@ -401,15 +414,15 @@
 
     .timeline {
       display: grid;
-      gap: 9px;
+      gap: 10px;
     }
 
     .timeline-item {
       display: grid;
-      grid-template-columns: 96px 1fr;
-      gap: 12px;
+      grid-template-columns: 40px 100px 1fr;
+      gap: 14px;
       align-items: start;
-      padding: 10px 12px;
+      padding: 12px 14px 12px 12px;
       border-radius: 16px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
@@ -421,6 +434,13 @@
       border-color: rgba(145,70,255,0.26);
     }
 
+    .timeline-marker {
+      width: 40px;
+      height: 24px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
     .timeline-label {
       font-size: 11px;
       font-weight: 800;
@@ -429,6 +449,7 @@
       color: var(--text-muted);
       padding-top: 2px;
       line-height: 1.25;
+      min-width: 0;
     }
 
     .timeline-text {
@@ -455,17 +476,16 @@
     .values-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      animation: fadeScale 1.15s ease-out both;
+      gap: 10px;
     }
 
     .value-card {
-      border-radius: 18px;
-      padding: 13px 13px;
+      border-radius: 16px;
+      padding: 14px 14px;
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 10px 24px rgba(0,0,0,0.20);
-      min-height: 112px;
+      min-height: 108px;
       transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
     }
 
@@ -476,15 +496,14 @@
     }
 
     .value-icon {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 9px;
-      font-size: 18px;
-      font-weight: 900;
+      font-size: 16px;
       color: #fff;
       background: linear-gradient(135deg, rgba(145,70,255,0.26), rgba(206,25,70,0.18));
       border: 1px solid rgba(255,255,255,0.08);
@@ -509,16 +528,15 @@
     }
 
     .quote {
-      padding: 10px 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      font-size: 13px;
-      line-height: 1.4;
+      padding: 16px 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(145,70,255,0.12), rgba(206,25,70,0.08));
+      border: 1px solid rgba(145,70,255,0.3);
+      font-size: 15px;
+      line-height: 1.5;
       color: #e9dbff;
       font-weight: 600;
-      box-shadow: 0 10px 22px rgba(0,0,0,0.16);
-      animation: fadeUp 1.3s ease-out both;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.25), 0 0 24px rgba(145,70,255,0.08);
     }
 
     .quote strong {
@@ -619,11 +637,86 @@
       50% { transform: scale(1.07); }
     }
 
+    @keyframes rayMove {
+      0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+      50% { opacity: 0.08; }
+      100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+    }
+
+    /* Staggered reveal */
+    .reveal { opacity: 0; transform: translateY(20px); }
+    .eyebrow.reveal { animation: revealFade 0.55s ease-out 0.15s forwards; }
+    .title.reveal { animation: revealFade 0.6s ease-out 0.35s forwards; }
+    .intro.reveal { animation: revealFade 0.55s ease-out 0.6s forwards; }
+    .stats-row.reveal { animation: revealFade 0.55s ease-out 0.85s forwards; }
+    .story-card.reveal { animation: revealScale 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards; }
+    .timeline-item.reveal { animation: revealFade 0.5s ease-out forwards; }
+    .timeline-item.reveal:nth-child(1) { animation-delay: 0.65s; }
+    .timeline-item.reveal:nth-child(2) { animation-delay: 0.8s; }
+    .timeline-item.reveal:nth-child(3) { animation-delay: 0.95s; }
+    .value-card.reveal { animation: revealFade 0.5s ease-out forwards; }
+    .value-card.reveal:nth-child(1) { animation-delay: 1.1s; }
+    .value-card.reveal:nth-child(2) { animation-delay: 1.25s; }
+    .value-card.reveal:nth-child(3) { animation-delay: 1.4s; }
+    .quote.reveal { animation: revealFade 0.6s ease-out 1.5s forwards; }
+    @keyframes revealFade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes revealScale {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Timeline visuelle - ligne et points dans colonne dédiée (pas de chevauchement) */
+    .timeline {
+      position: relative;
+      padding-left: 0;
+    }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 19px;
+      top: 24px;
+      bottom: 24px;
+      width: 2px;
+      background: linear-gradient(to bottom,
+        rgba(145, 70, 255, 0.5),
+        rgba(206, 25, 70, 0.35),
+        rgba(196, 181, 253, 0.45));
+      border-radius: 2px;
+      z-index: 0;
+    }
+    .timeline-item {
+      position: relative;
+      z-index: 1;
+    }
+    .timeline-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+    .timeline-marker::after {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--violet);
+      box-shadow: 0 0 12px rgba(145, 70, 255, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      flex-shrink: 0;
+    }
+    .timeline-item:nth-child(2) .timeline-marker::after { background: var(--red); box-shadow: 0 0 12px rgba(206, 25, 70, 0.5); }
+    .timeline-item:nth-child(3) .timeline-marker::after { background: var(--lavender); box-shadow: 0 0 12px rgba(196, 181, 253, 0.5); }
+
     @media (prefers-reduced-motion: reduce) {
       * {
         animation: none !important;
         transition: none !important;
       }
+      .reveal { opacity: 1 !important; transform: none !important; }
     }
   </style>
 </head>
@@ -643,6 +736,9 @@
     <div class="star s3"></div>
     <div class="star s4"></div>
 
+    <div class="light-ray r1"></div>
+    <div class="light-ray r2"></div>
+
     <header class="topbar">
       <div class="brand">
         <img src="/Tenf.png" alt="Logo TENF">
@@ -657,45 +753,46 @@
 
     <main class="content">
       <section class="left">
-        <div class="eyebrow">Histoire & valeurs fondatrices</div>
+        <div class="eyebrow reveal">Histoire & valeurs fondatrices</div>
 
-        <h1 class="title">
+        <h1 class="title reveal">
           <span class="white">LES RACINES</span>
           <span class="red">DE LA</span>
           <span class="violet">NEW FAMILY</span>
         </h1>
 
-        <p class="intro">
+        <p class="intro reveal">
           La New Family est née d’un choix clair :
           <strong>préserver une entraide réelle</strong>, refuser la logique de visibilité payante
           et construire une communauté plus solide, plus humaine et plus cohérente.
         </p>
 
-        <div class="stats-row">
+        <div class="stats-row reveal">
           <div class="stat-pill">
             <span class="stat-value violet">42</span>
             <span class="stat-label">membres à la relance</span>
           </div>
           <div class="stat-pill">
-            <span class="stat-value red">560+</span>
+            <span class="stat-value red">600+</span>
             <span class="stat-label">membres aujourd’hui</span>
           </div>
           <div class="stat-pill">
-            <span class="stat-value gold">200+</span>
+            <span class="stat-value gold">240+</span>
             <span class="stat-label">engagés activement</span>
           </div>
         </div>
       </section>
 
       <section class="right">
-        <div class="story-card">
+        <div class="story-card reveal">
           <div class="story-top">
             <h2>Une histoire de continuité et de fidélité aux principes</h2>
             <div class="story-tag">L’humain avant tout</div>
           </div>
 
           <div class="timeline">
-            <div class="timeline-item">
+            <div class="timeline-item reveal">
+              <div class="timeline-marker" aria-hidden="true"></div>
               <div class="timeline-label">Au départ</div>
               <div class="timeline-text">
                 Le projet commence sous le nom de <strong>Twitch Entraide Family</strong>,
@@ -704,7 +801,8 @@
               </div>
             </div>
 
-            <div class="timeline-item">
+            <div class="timeline-item reveal">
+              <div class="timeline-marker" aria-hidden="true"></div>
               <div class="timeline-label">Point de rupture</div>
               <div class="timeline-text">
                 Une divergence apparaît quand l’idée de <span class="accent-red">faire payer l’entrée
@@ -713,7 +811,8 @@
               </div>
             </div>
 
-            <div class="timeline-item">
+            <div class="timeline-item reveal">
+              <div class="timeline-marker" aria-hidden="true"></div>
               <div class="timeline-label">Nouveau départ</div>
               <div class="timeline-text">
                 Les clés du projet sont confiées à une équipe restée fidèle à ces valeurs.
@@ -725,8 +824,8 @@
         </div>
 
         <div class="values-grid">
-          <div class="value-card">
-            <div class="value-icon">01</div>
+          <div class="value-card reveal">
+            <div class="value-icon"><i class="fas fa-hand-holding-heart"></i></div>
             <h3>Entraide réelle</h3>
             <p>
               La visibilité ne s’achète pas. Elle se construit par la présence,
@@ -734,8 +833,8 @@
             </p>
           </div>
 
-          <div class="value-card">
-            <div class="value-icon">02</div>
+          <div class="value-card reveal">
+            <div class="value-icon"><i class="fas fa-shield-halved"></i></div>
             <h3>Cadre assumé</h3>
             <p>
               Un cadre clair protège la communauté, sécurise les échanges
@@ -743,8 +842,8 @@
             </p>
           </div>
 
-          <div class="value-card">
-            <div class="value-icon">03</div>
+          <div class="value-card reveal">
+            <div class="value-icon"><i class="fas fa-arrow-trend-up"></i></div>
             <h3>Progression collective</h3>
             <p>
               Débutants, créateurs expérimentés et viewers engagés avancent ensemble :
@@ -753,7 +852,7 @@
           </div>
         </div>
 
-        <div class="quote">
+        <div class="quote reveal">
           Une communauté structurée qui <strong>avance ensemble</strong>, apprend ensemble
           et protège un principe essentiel : <strong>l’humain avant tout</strong>.
         </div>

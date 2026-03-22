@@ -1,343 +1,597 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=1280, height=720">
-<title>Reconnaissance des membres</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reconnaissance des membres</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 
-<style>
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --panel: rgba(20, 20, 28, 0.82);
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --text-soft: rgba(255,255,255,0.76);
+      --text-muted: rgba(255,255,255,0.45);
 
-html,body{
-margin:0;
-padding:0;
-width:100%;
-height:100%;
-overflow:hidden;
-background:#0F0F1A;
-font-family:'Poppins',sans-serif;
-}
+      --violet: #9146ff;
+      --red: #ce1946;
+      --gold: #ffd166;
+      --blue: #3b82f6;
 
-body{
-position:relative;
-display:block;
-color:white;
-}
+      --shadow-lg: 0 16px 42px rgba(0,0,0,0.36);
+      --shadow-violet: 0 0 30px rgba(145,70,255,0.14);
+      --shadow-red: 0 0 26px rgba(206,25,70,0.08);
+    }
 
-.slide{
-position:absolute;
-left:50%;
-top:50%;
-width:1600px;
-height:900px;
-transform-origin:center center;
-transform:translate(-50%, -50%) scale(1);
-overflow:hidden;
-will-change:transform;
-}
+    * { box-sizing: border-box; }
 
-.bg{
-position:absolute;
-width:100%;
-height:100%;
-background:radial-gradient(circle at 20% 20%,rgba(145,70,255,0.2),transparent 40%),
-radial-gradient(circle at 80% 80%,rgba(59,130,246,0.2),transparent 40%),
-#0F0F1A;
-z-index:0;
-}
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Poppins", sans-serif;
+      background: #19191d;
+    }
 
-.glow{
-position:absolute;
-border-radius:50%;
-filter:blur(120px);
-opacity:.15;
-animation:breathe 8s infinite alternate;
-}
+    body { position: relative; display: block; }
 
-.glow1{
-width:600px;
-height:600px;
-background:#9146FF;
-top:-200px;
-left:-150px;
-}
+    .viewport {
+      width: 1600px;
+      height: 900px;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      overflow: hidden;
+      transform-origin: center center;
+      transform: translate(-50%, -50%) scale(1);
+      background:
+        radial-gradient(circle at 14% 20%, rgba(206,25,70,0.12), transparent 28%),
+        radial-gradient(circle at 84% 80%, rgba(145,70,255,0.14), transparent 28%),
+        linear-gradient(135deg, #09090c 0%, #11131f 44%, #0d0e12 100%);
+      color: var(--text);
+      will-change: transform;
+    }
 
-.glow2{
-width:600px;
-height:600px;
-background:#3B82F6;
-bottom:-200px;
-right:-150px;
-animation-direction:alternate-reverse;
-}
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(255,255,255,0.18), transparent 88%);
+      z-index: 0;
+    }
 
-@keyframes breathe{
-0%{transform:scale(1)}
-100%{transform:scale(1.1)}
-}
+    .glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+      animation: breathe 8s ease-in-out infinite alternate;
+    }
+    .glow.red { width: 400px; height: 400px; top: -120px; left: -120px; background: rgba(206,25,70,0.13); }
+    .glow.violet { width: 420px; height: 420px; right: -90px; bottom: -120px; background: rgba(145,70,255,0.14); animation-delay: 1.2s; }
 
-.main{
-position:relative;
-z-index:10;
-width:100%;
-height:100%;
-padding:60px;
-box-sizing:border-box;
-display:grid;
-grid-template-columns:350px 1fr;
-gap:40px;
-}
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.75;
+      z-index: 0;
+      animation: drift 9s ease-in-out infinite;
+    }
+    .p1 { top: 90px; left: 180px; width: 5px; height: 5px; background: var(--gold); }
+    .p2 { top: 150px; right: 210px; width: 4px; height: 4px; background: var(--violet); animation-delay: 1s; }
+    .p3 { top: 290px; left: 70px; width: 3px; height: 3px; background: #fff; animation-delay: 2s; }
+    .p4 { bottom: 150px; right: 180px; width: 6px; height: 6px; background: var(--red); animation-delay: .8s; }
+    .p5 { bottom: 120px; left: 240px; width: 4px; height: 4px; background: var(--gold); animation-delay: 1.5s; }
 
-.logo{
-position:absolute;
-top:30px;
-left:30px;
-width:70px;
-}
+    .star-dot {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      z-index: 0;
+      opacity: 0.3;
+      animation: twinkle 3.4s ease-in-out infinite;
+    }
+    .star-dot.s1 { top: 72px; left: 360px; width: 2px; height: 2px; }
+    .star-dot.s2 { top: 106px; right: 190px; width: 3px; height: 3px; animation-delay: 1s; }
+    .star-dot.s3 { bottom: 94px; left: 240px; width: 2px; height: 2px; animation-delay: 1.7s; }
+    .star-dot.s4 { bottom: 150px; right: 300px; width: 2px; height: 2px; animation-delay: 2.3s; }
 
-.logo img{
-width:100%;
-animation:float 4s infinite ease-in-out;
-}
+    .light-ray {
+      position: absolute;
+      width: 160px;
+      height: 1200px;
+      background: rgba(255, 255, 255, 0.03);
+      filter: blur(50px);
+      transform: rotate(45deg);
+      z-index: 0;
+      animation: rayMove 14s linear infinite;
+    }
+    .light-ray.r1 { top: -280px; left: 180px; }
+    .light-ray.r2 { top: -320px; right: 200px; animation-duration: 16s; animation-direction: reverse; }
 
-@keyframes float{
-0%,100%{transform:translateY(0)}
-50%{transform:translateY(-8px)}
-}
+    .topbar {
+      position: absolute;
+      top: 22px;
+      left: 28px;
+      right: 28px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-.header{
-position:absolute;
-top:30px;
-right:40px;
-padding:8px 16px;
-border-radius:30px;
-border:1px solid rgba(145,70,255,.5);
-color:#fff;
-font-size:13px;
-}
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px 10px 10px;
+      border-radius: 18px;
+      background: rgba(16,16,24,0.55);
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-lg);
+    }
 
-.left h1{
-font-size:52px;
-line-height:1;
-font-weight:900;
-margin-bottom:20px;
-}
+    .brand img {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(206,25,70,0.24);
+      animation: logoPulse 4s ease-in-out infinite;
+    }
 
-.left h1 span:nth-child(1){color:white;}
-.left h1 span:nth-child(2){color:#9146FF;}
-.left h1 span:nth-child(3){color:#FFD166;}
+    .brand-kicker {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
 
-.left p{
-font-size:15px;
-line-height:1.6;
-color:#ddd;
-}
+    .brand-name { font-size: 17px; font-weight: 700; line-height: 1.2; }
 
-.idea{
-margin-top:25px;
-background:rgba(255,255,255,0.05);
-border:1px solid rgba(255,255,255,0.1);
-padding:16px;
-border-radius:12px;
-font-size:14px;
-}
+    .tag-pill {
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(145,70,255,0.12);
+      border: 1px solid rgba(145,70,255,0.28);
+      color: rgba(255,255,255,0.92);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: var(--shadow-violet);
+      animation: badgePulse 2.5s ease-in-out infinite;
+    }
 
-.cards{
-display:flex;
-flex-direction:column;
-gap:20px;
-justify-content:center;
-}
+    .content {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      padding: 90px 34px 44px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 28px;
+      align-items: center;
+    }
 
-.card{
-display:flex;
-align-items:center;
-gap:20px;
-padding:22px;
-border-radius:18px;
-background:rgba(255,255,255,0.05);
-border:1px solid rgba(255,255,255,0.08);
-transition:all .3s;
-}
+    .left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      padding-left: 4px;
+      padding-right: 8px;
+    }
 
-.card:hover{
-transform:translateY(-4px) scale(1.02);
-}
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
 
-.icon{
-width:80px;
-height:80px;
-display:flex;
-align-items:center;
-justify-content:center;
-border-radius:16px;
-background:rgba(255,255,255,0.05);
-border:1px solid rgba(255,255,255,0.1);
-font-size:32px;
-}
+    .eyebrow::before {
+      content: "";
+      width: 38px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--red), var(--violet));
+      box-shadow: 0 0 18px rgba(206,25,70,0.45);
+    }
 
-.card:nth-child(1) .icon{
-color:#FFD166;
-}
+    .title {
+      margin: 0;
+      font-size: 46px;
+      line-height: 0.95;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
 
-.card:nth-child(2) .icon{
-color:#CE1946;
-}
+    .title span { display: block; }
 
-.card:nth-child(3) .icon{
-color:#3B82F6;
-}
+    .title .white { color: #fff; text-shadow: 0 0 22px rgba(255,255,255,0.08); }
+    .title .violet { color: var(--violet); text-shadow: 0 0 24px rgba(145,70,255,0.24); }
+    .title .gold { color: var(--gold); text-shadow: 0 0 20px rgba(255,209,102,0.20); }
 
-.card-title{
-font-size:24px;
-font-weight:800;
-margin-bottom:5px;
-}
+    .intro {
+      margin-top: 16px;
+      max-width: 340px;
+      font-size: 14px;
+      line-height: 1.58;
+      color: var(--text-soft);
+    }
 
-.card-sub{
-font-size:15px;
-color:#FFD166;
-margin-bottom:5px;
-}
+    .intro strong { color: #fff; }
 
-.card-desc{
-font-size:14px;
-color:#ddd;
-line-height:1.5;
-}
+    .mini-card {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
 
-.footer{
-position:absolute;
-bottom:15px;
-left:40px;
-font-size:12px;
-color:#aaa;
-}
+    .mini-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(145,70,255,0.28);
+      box-shadow: 0 14px 28px rgba(145,70,255,0.16);
+    }
 
-</style>
+    .mini-card-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+    }
+
+    .mini-card-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-soft);
+    }
+
+    .mini-card-text strong { color: #fff; }
+
+    .right {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .card {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      transition: transform .26s ease, box-shadow .26s ease, border-color .26s ease;
+      min-width: 0;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      border-radius: 20px 20px 0 0;
+      background: var(--card-color);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--card-color) 45%, transparent);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(145,70,255,0.28);
+      box-shadow: 0 20px 34px rgba(145,70,255,0.14), var(--shadow-lg);
+    }
+
+    .card-icon {
+      width: 56px;
+      height: 56px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--card-color);
+      font-size: 22px;
+      animation: pulseIcon 3s ease-in-out infinite;
+    }
+
+    .card-content { min-width: 0; flex: 1; }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0 0 4px 0;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .card-sub {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--card-color);
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-soft);
+      margin: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .footer {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      bottom: 10px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .footer-left, .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .footer-left span, .footer-right span:last-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .line {
+      width: 34px;
+      height: 1px;
+      background: rgba(255,255,255,0.16);
+      flex-shrink: 0;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--violet);
+      box-shadow: 0 0 12px rgba(145,70,255,0.75);
+      flex-shrink: 0;
+      animation: twinkle 2.5s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      from { transform: scale(1); opacity: .85; }
+      to { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: .2; transform: scale(.85); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 18px rgba(206,25,70,0.18); }
+      50% { box-shadow: 0 0 28px rgba(206,25,70,0.35); }
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes pulseIcon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    @keyframes rayMove {
+      0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+      50% { opacity: 0.06; }
+      100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate(0,0); opacity: .55; }
+      50% { transform: translate(8px,-12px); opacity: 1; }
+    }
+
+    .reveal {
+      opacity: 0;
+      animation: revealFade 0.6s ease-out forwards;
+    }
+    .reveal.d1 { animation-delay: 0.1s; }
+    .reveal.d2 { animation-delay: 0.2s; }
+    .reveal.d3 { animation-delay: 0.35s; }
+    .reveal.d4 { animation-delay: 0.5s; }
+    .reveal.d5 { animation-delay: 0.65s; }
+    .reveal.d6 { animation-delay: 0.8s; }
+    .reveal.d7 { animation-delay: 0.95s; }
+
+    @keyframes revealFade {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+    }
+  </style>
 </head>
-
 <body>
-<div class="slide" id="slideRoot">
+  <div class="viewport" id="slideRoot">
+    <div class="grid-bg"></div>
+    <div class="glow red"></div>
+    <div class="glow violet"></div>
 
-<div class="bg"></div>
-<div class="glow glow1"></div>
-<div class="glow glow2"></div>
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+    <div class="star-dot s1"></div>
+    <div class="star-dot s2"></div>
+    <div class="star-dot s3"></div>
+    <div class="star-dot s4"></div>
+    <div class="light-ray r1"></div>
+    <div class="light-ray r2"></div>
 
-<div class="logo">
-<img src="/Tenf.png">
-</div>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/Tenf.png" alt="Logo TENF">
+        <div>
+          <span class="brand-kicker">Engagement & reconnaissance</span>
+          <div class="brand-name">Twitch Entraide New Family</div>
+        </div>
+      </div>
+      <div class="tag-pill">Valoriser l'engagement humain</div>
+    </header>
 
-<div class="header">
-Valoriser l'engagement humain
-</div>
+    <main class="content">
+      <section class="left">
+        <div class="eyebrow reveal d1">Reconnaissance des membres</div>
 
-<div class="main">
+        <h1 class="title reveal d2">
+          <span class="white">DES MEMBRES</span>
+          <span class="violet">QUI FONT</span>
+          <span class="gold">VIVRE LA COMMUNAUTÉ</span>
+        </h1>
 
-<div class="left">
+        <p class="intro reveal d3">
+          Dans la New Family, l'entraide ne repose pas uniquement sur le staff.
+          Ce qui fait vivre la communauté au quotidien, ce sont aussi les <strong>membres qui s'impliquent naturellement</strong> :
+          ceux qui passent sur les lives, accueillent les nouveaux et encouragent les autres créateurs.
+        </p>
 
-<h1>
-<span>DES MEMBRES</span><br>
-<span>QUI FONT</span><br>
-<span>VIVRE LA COMMUNAUTÉ</span>
-</h1>
+        <div class="mini-card reveal d4">
+          <div class="mini-card-title">Idée essentielle</div>
+          <div class="mini-card-text">
+            Les rôles de reconnaissance ne donnent pas du pouvoir.
+            Ils servent à mettre en lumière <strong>l'engagement humain</strong>, la constance et l'état d'esprit.
+          </div>
+        </div>
+      </section>
 
-<p>
-Dans la New Family, l'entraide ne repose pas uniquement sur le staff.
-Ce qui fait vivre la communauté au quotidien, ce sont aussi les <b>membres qui s'impliquent naturellement</b> :
-ceux qui passent sur les lives, accueillent les nouveaux et encouragent les autres créateurs.
-</p>
+      <section class="right">
+        <div class="card reveal d5" style="--card-color:#ffd166;">
+          <div class="card-icon"><i class="fa-solid fa-users"></i></div>
+          <div class="card-content">
+            <div class="card-title">Implication quotidienne</div>
+            <div class="card-sub">Des gestes simples qui comptent</div>
+            <p class="card-desc">
+              Passer sur les lives, participer aux événements, encourager un créateur ou accueillir un nouveau membre.
+              Ce sont ces gestes réguliers qui donnent sa force à la communauté.
+            </p>
+          </div>
+        </div>
 
-<div class="idea">
-<b>IDÉE ESSENTIELLE</b><br>
-Les rôles de reconnaissance ne donnent pas du pouvoir.
-Ils servent à mettre en lumière l'engagement humain, la constance et l'état d'esprit.
-</div>
+        <div class="card reveal d6" style="--card-color:#ce1946;">
+          <div class="card-icon"><i class="fa-solid fa-gem"></i></div>
+          <div class="card-content">
+            <div class="card-title">Rôle VIP TENF</div>
+            <div class="card-sub">Reconnaître la constance</div>
+            <p class="card-desc">
+              Le VIP ne crée pas une élite et ne s'achète pas.
+              Il valorise des membres fiables, positifs et impliqués régulièrement dans la vie collective.
+            </p>
+          </div>
+        </div>
 
-</div>
+        <div class="card reveal d7" style="--card-color:#3b82f6;">
+          <div class="card-icon"><i class="fa-solid fa-lightbulb"></i></div>
+          <div class="card-content">
+            <div class="card-title">Contributeur TENF</div>
+            <div class="card-sub">Une reconnaissance mensuelle</div>
+            <p class="card-desc">
+              Ce rôle met en valeur un membre incarnant particulièrement l'esprit TENF.
+              Attribué pour un mois, il permet de partager des idées et contribuer aux réflexions du serveur.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
 
-<div class="cards">
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="line"></div>
+        <span>La dynamique collective repose aussi sur les membres</span>
+      </div>
+      <div class="footer-right">
+        <span class="dot"></span>
+        <span>Reconnaître l'engagement humain</span>
+      </div>
+    </footer>
+  </div>
 
-<div class="card">
+  <script>
+    (function () {
+      const BASE_WIDTH = 1600;
+      const BASE_HEIGHT = 900;
+      const slide = document.getElementById("slideRoot");
+      if (!slide) return;
 
-<div class="icon">
-<i class="fas fa-users"></i>
-</div>
+      function applyScale() {
+        const scale = Math.min(
+          window.innerWidth / BASE_WIDTH,
+          window.innerHeight / BASE_HEIGHT
+        );
+        slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      }
 
-<div>
-<div class="card-title">IMPLICATION QUOTIDIENNE</div>
-<div class="card-sub">Des gestes simples qui comptent</div>
-<div class="card-desc">
-Passer sur les lives, participer aux événements, encourager un créateur ou accueillir un nouveau membre.
-Ce sont ces gestes réguliers qui donnent sa force à la communauté.
-</div>
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="icon">
-<i class="fas fa-gem"></i>
-</div>
-
-<div>
-<div class="card-title">RÔLE VIP TENF</div>
-<div class="card-sub">Reconnaître la constance</div>
-<div class="card-desc">
-Le VIP ne crée pas une élite et ne s'achète pas.
-Il valorise des membres fiables, positifs et impliqués régulièrement dans la vie collective.
-</div>
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="icon">
-<i class="fas fa-lightbulb"></i>
-</div>
-
-<div>
-<div class="card-title">CONTRIBUTEUR TENF</div>
-<div class="card-sub">Une reconnaissance mensuelle</div>
-<div class="card-desc">
-Ce rôle met en valeur un membre incarnant particulièrement l'esprit TENF.
-Attribué pour un mois, il permet de partager des idées et contribuer aux réflexions du serveur.
-</div>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="footer">
-La dynamique collective repose aussi sur les membres
-</div>
-
-</div>
-<script>
-// Scale global 16:9 (1600x900) pour conserver les proportions de presentation.
-(function(){
-  const BASE_WIDTH=1600;
-  const BASE_HEIGHT=900;
-  const slide=document.getElementById('slideRoot');
-  if(!slide) return;
-
-  function applyScale(){
-    const scale=Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
-    slide.style.transform=`translate(-50%, -50%) scale(${scale})`;
-  }
-
-  applyScale();
-  window.addEventListener('resize', applyScale);
-  window.addEventListener('orientationchange', applyScale);
-})();
-</script>
+      applyScale();
+      window.addEventListener("resize", applyScale);
+      window.addEventListener("orientationchange", applyScale);
+    })();
+  </script>
 </body>
 </html>

@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     :root{
       --bg:#0e0e10; --panel:rgba(20,20,28,.82); --border:rgba(255,255,255,.08);
@@ -52,6 +53,9 @@
     .s2{top:140px;right:160px;width:3px;height:3px;animation-delay:.8s}
     .s3{bottom:100px;left:300px;width:2px;height:2px;animation-delay:1.7s}
     .s4{bottom:180px;right:350px;width:2px;height:2px;animation-delay:2.3s}
+    .light-ray{position:absolute;width:160px;height:1200px;background:rgba(255,255,255,.03);filter:blur(50px);transform:rotate(45deg);z-index:0;animation:rayMove 14s linear infinite}
+    .light-ray.r1{top:-280px;left:180px}
+    .light-ray.r2{top:-320px;right:200px;animation-duration:16s;animation-direction:reverse}
     .topbar{position:absolute;top:22px;left:28px;right:28px;z-index:4;display:flex;align-items:center;justify-content:space-between}
     .brand{
       display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:18px;
@@ -68,33 +72,33 @@
       color:rgba(255,255,255,.92);font-size:13px;font-weight:700;white-space:nowrap;box-shadow:var(--shadow-violet);
       animation:badgePulse 2.6s ease-in-out infinite
     }
-    .content{position:relative;z-index:3;width:100%;height:100%;padding:90px 34px 42px;display:grid;grid-template-columns:330px 1fr;gap:18px}
-    .left{display:flex;flex-direction:column;justify-content:center;min-width:0;padding-left:4px}
+    .content{position:relative;z-index:3;width:100%;height:100%;padding:90px 34px 42px;display:grid;grid-template-columns:420px 1fr;gap:28px}
+    .left{display:flex;flex-direction:column;justify-content:center;min-width:0;padding-left:4px;padding-right:8px}
     .eyebrow{
       display:inline-flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--text-soft);font-size:12px;font-weight:700;
-      letter-spacing:.18em;text-transform:uppercase;animation:fadeUp .8s ease-out both
+      letter-spacing:.18em;text-transform:uppercase
     }
     .eyebrow::before{content:"";width:38px;height:2px;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--violet));box-shadow:0 0 18px rgba(206,25,70,.45)}
-    .title{margin:0;font-size:50px;line-height:.93;font-weight:900;letter-spacing:-.04em;text-transform:uppercase;animation:fadeUp 1s ease-out both}
+    .title{margin:0;font-size:50px;line-height:.93;font-weight:900;letter-spacing:-.04em;text-transform:uppercase}
     .title span{display:block}
     .title .white{color:#fff;text-shadow:0 0 22px rgba(255,255,255,.08)}
     .title .gold{color:var(--gold);text-shadow:0 0 20px rgba(255,209,102,.20)}
     .title .violet{color:var(--violet);text-shadow:0 0 24px rgba(145,70,255,.24)}
-    .intro{margin-top:16px;max-width:305px;font-size:14px;line-height:1.6;color:var(--text-soft);animation:fadeUp 1.15s ease-out both}
+    .intro{margin-top:16px;max-width:305px;font-size:14px;line-height:1.6;color:var(--text-soft)}
     .intro strong,.mini-card-text strong,.story-text strong{color:#fff}
     .mini-card{
       margin-top:18px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 22px rgba(0,0,0,.18);animation:fadeUp 1.25s ease-out both;
+      border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 22px rgba(0,0,0,.18);
       transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
     }
     .mini-card:hover{transform:translateY(-3px);border-color:rgba(145,70,255,.30);box-shadow:0 14px 28px rgba(145,70,255,.18)}
     .mini-card-title{font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px}
     .mini-card-text{font-size:13px;line-height:1.5;color:var(--text-soft)}
     .right{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0}
-    .roles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;animation:fadeScale 1s ease-out both}
+    .roles-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .role-card{
-      position:relative;min-height:122px;border-radius:18px;padding:13px 14px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),var(--panel);
-      border:1px solid var(--border);box-shadow:var(--shadow-lg),var(--shadow-violet),var(--shadow-red);overflow:hidden;display:flex;gap:12px;align-items:flex-start;
+      position:relative;min-height:130px;border-radius:18px;padding:13px 14px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),var(--panel);
+      border:1px solid var(--border);box-shadow:var(--shadow-lg),var(--shadow-violet),var(--shadow-red);overflow:hidden;display:flex;gap:12px;align-items:flex-start;min-width:0;
       transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
     }
     .role-card:hover{
@@ -107,13 +111,13 @@
       box-shadow:0 0 14px color-mix(in srgb, var(--role-color) 45%, transparent)
     }
     .role-icon{
-      width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-      font-size:18px;font-weight:900;color:var(--role-color);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+      width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      font-size:16px;color:var(--role-color);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
       box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);animation:pulseIcon 3.1s ease-in-out infinite
     }
     .role-content{min-width:0}
-    .role-card h3{margin:0 0 6px 0;font-size:15px;font-weight:800;line-height:1.2;color:#fff;letter-spacing:-.01em;word-break:break-word}
-    .role-card p{margin:0;font-size:12px;line-height:1.5;color:var(--text-soft)}
+    .role-card h3{margin:0 0 6px 0;font-size:14px;font-weight:800;line-height:1.25;color:#fff;letter-spacing:-.01em;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .role-card p{margin:0;font-size:11px;line-height:1.45;color:var(--text-soft);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
     .role-badge{
       display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;
       border:1px solid color-mix(in srgb, var(--role-color) 70%, transparent);color:var(--role-color);background:rgba(255,255,255,.03);
@@ -122,7 +126,7 @@
     .story-card{
       position:relative;border-radius:22px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),var(--panel);
       border:1px solid var(--border);box-shadow:var(--shadow-lg),var(--shadow-violet),var(--shadow-red);padding:16px 18px;overflow:hidden;
-      animation:fadeScale 1.15s ease-out both;transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
+      transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
     }
     .story-card:hover{transform:translateY(-3px);border-color:rgba(145,70,255,.30);box-shadow:0 18px 30px rgba(145,70,255,.16),var(--shadow-lg)}
     .story-card::before{
@@ -132,13 +136,13 @@
       pointer-events:none
     }
     .story-card > *{position:relative;z-index:1}
-    .story-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-    .story-top h2{margin:0;font-size:17px;font-weight:800;line-height:1.2;color:#fff}
+    .story-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap;min-width:0}
+    .story-top h2{margin:0;font-size:16px;font-weight:800;line-height:1.3;color:#fff;flex:1 1 240px;min-width:0}
     .story-pill{
       padding:7px 11px;border-radius:999px;background:rgba(206,25,70,.12);border:1px solid rgba(206,25,70,.24);font-size:10px;font-weight:700;
       text-transform:uppercase;letter-spacing:.08em;color:#fff;white-space:nowrap;animation:badgePulse 2.8s ease-in-out infinite
     }
-    .story-text{font-size:12px;line-height:1.62;color:var(--text-soft)}
+    .story-text{font-size:12px;line-height:1.55;color:var(--text-soft);min-width:0}
     .story-text .accent{color:#d9bcff;font-weight:700}
     .footer{
       position:absolute;left:34px;right:34px;bottom:10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -150,15 +154,18 @@
     .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);box-shadow:0 0 12px rgba(145,70,255,.75);flex-shrink:0;animation:twinkle 2.4s ease-in-out infinite}
     .role-affilie{--role-color:var(--affilie)} .role-dev{--role-color:var(--developpement)} .role-pause{--role-color:var(--pause)}
     .role-commu{--role-color:var(--communaute)} .role-jeunes{--role-color:var(--jeunes-createurs)} .role-ptits{--role-color:var(--ptits-jeunes)}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeScale{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
     @keyframes drift{0%,100%{transform:translate(0,0);opacity:.55}50%{transform:translate(8px,-12px);opacity:1}}
     @keyframes breathe{from{transform:scale(1);opacity:.8}to{transform:scale(1.08);opacity:1}}
     @keyframes twinkle{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.2)}}
     @keyframes logoPulse{0%,100%{box-shadow:0 0 18px rgba(206,25,70,.2)}50%{box-shadow:0 0 28px rgba(206,25,70,.38)}}
     @keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
     @keyframes pulseIcon{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-    @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+    @keyframes rayMove{0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0}50%{opacity:.06}100%{transform:rotate(45deg) translate(200px,200px);opacity:0}}
+    .reveal{opacity:0;animation:revealFade .6s ease-out forwards}
+    .reveal.d1{animation-delay:.1s}.reveal.d2{animation-delay:.2s}.reveal.d3{animation-delay:.35s}.reveal.d4{animation-delay:.5s}
+    .reveal.d5{animation-delay:.65s}.reveal.d6{animation-delay:.8s}.reveal.d7{animation-delay:.95s}.reveal.d8{animation-delay:1.1s}
+    @keyframes revealFade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}.reveal{opacity:1!important;transform:none!important}}
   </style>
 </head>
 <body>
@@ -170,6 +177,8 @@
     <div class="particle p1"></div><div class="particle p2"></div><div class="particle p3"></div>
     <div class="particle p4"></div><div class="particle p5"></div><div class="particle p6"></div>
     <div class="star s1"></div><div class="star s2"></div><div class="star s3"></div><div class="star s4"></div>
+    <div class="light-ray r1"></div>
+    <div class="light-ray r2"></div>
 
     <header class="topbar">
       <div class="brand">
@@ -184,18 +193,18 @@
 
     <main class="content">
       <section class="left">
-        <div class="eyebrow">Des rôles adaptés à chacun</div>
-        <h1 class="title">
+        <div class="eyebrow reveal d1">Des rôles adaptés à chacun</div>
+        <h1 class="title reveal d2">
           <span class="white">DES RÔLES</span>
           <span class="gold">PENSÉS POUR</span>
           <span class="violet">STRUCTURER</span>
         </h1>
-        <p class="intro">
+        <p class="intro reveal d3">
           Ici, les rôles ne servent pas à juger les personnes.
           Ils permettent de <strong>structurer le serveur</strong>, d’organiser la visibilité
           et de garder un fonctionnement plus juste pour tous.
         </p>
-        <div class="mini-card">
+        <div class="mini-card reveal d4">
           <div class="mini-card-title">Idée clé</div>
           <div class="mini-card-text">
             Les rôles <strong>évoluent</strong>. Rien n’est figé :
@@ -206,9 +215,9 @@
       </section>
 
       <section class="right">
-        <div class="roles-grid">
+        <div class="roles-grid reveal d5">
           <div class="role-card role-affilie">
-            <div class="role-icon">★</div>
+            <div class="role-icon"><i class="fa-solid fa-star"></i></div>
             <div class="role-content">
               <h3>Créateurs Affiliés</h3>
               <p>Streamers ayant obtenu le statut Twitch Affiliate.</p>
@@ -216,7 +225,7 @@
             </div>
           </div>
           <div class="role-card role-dev">
-            <div class="role-icon">↗</div>
+            <div class="role-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
             <div class="role-content">
               <h3>Créateurs en Développement</h3>
               <p>Créateurs en progression. Ici, c’est une étape, pas une comparaison.</p>
@@ -224,7 +233,7 @@
             </div>
           </div>
           <div class="role-card role-pause">
-            <div class="role-icon">⏸</div>
+            <div class="role-icon"><i class="fa-solid fa-pause"></i></div>
             <div class="role-content">
               <h3>Créateurs en Pause</h3>
               <p>Absence temporaire tout en restant lié à la communauté.</p>
@@ -232,7 +241,7 @@
             </div>
           </div>
           <div class="role-card role-commu">
-            <div class="role-icon">◎</div>
+            <div class="role-icon"><i class="fa-solid fa-users"></i></div>
             <div class="role-content">
               <h3>Communauté</h3>
               <p>Viewers engagés, streamers sans mise en avant, pauses longues ou implication réduite.</p>
@@ -240,7 +249,7 @@
             </div>
           </div>
           <div class="role-card role-jeunes">
-            <div class="role-icon">♥</div>
+            <div class="role-icon"><i class="fa-solid fa-child"></i></div>
             <div class="role-content">
               <h3>Jeunes Créateurs</h3>
               <p>Rôle dédié aux streamers mineurs pour adapter le cadre et la protection.</p>
@@ -248,7 +257,7 @@
             </div>
           </div>
           <div class="role-card role-ptits">
-            <div class="role-icon">✦</div>
+            <div class="role-icon"><i class="fa-solid fa-face-smile"></i></div>
             <div class="role-content">
               <h3>Les P'tits Jeunes</h3>
               <p>Rôle pour les viewers mineurs afin d’assurer un espace plus sûr.</p>
@@ -257,7 +266,7 @@
           </div>
         </div>
 
-        <div class="story-card">
+        <div class="story-card reveal d6">
           <div class="story-top">
             <h2>Le rôle Communauté n’est pas une sanction</h2>
             <div class="story-pill">Équilibre & visibilité</div>

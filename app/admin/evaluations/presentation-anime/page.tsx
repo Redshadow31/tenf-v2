@@ -14,6 +14,7 @@ const slides = [
   "slide8.html",
   "slide9.html",
   "slide10.html",
+  "slide10b.html",
   "slide11.html",
   "slide12.html",
   "slide13.html",

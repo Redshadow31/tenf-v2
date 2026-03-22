@@ -99,7 +99,7 @@
       filter: blur(90px);
       z-index: 0;
       pointer-events: none;
-      animation: glowDrift 8s ease-in-out infinite alternate;
+      animation: glowDrift 11s ease-in-out infinite alternate;
     }
 
     .glow-violet {
@@ -124,7 +124,7 @@
       border-radius: 50%;
       z-index: 0;
       opacity: 0.75;
-      animation: floatParticle 7s ease-in-out infinite;
+      animation: floatParticle 9s ease-in-out infinite;
     }
 
     .particle.p1 { top: 112px; left: 238px; width: 7px; height: 7px; background: var(--twitch); animation-delay: 0s; }
@@ -147,6 +147,19 @@
     .star.s2 { top: 200px; right: 150px; width: 3px; height: 3px; animation-delay: 1s; }
     .star.s3 { bottom: 110px; left: 375px; width: 2px; height: 2px; animation-delay: 1.8s; }
     .star.s4 { bottom: 200px; right: 450px; width: 2px; height: 2px; animation-delay: 2.4s; }
+
+    .light-ray {
+      position: absolute;
+      width: 160px;
+      height: 1200px;
+      background: rgba(255, 255, 255, 0.035);
+      filter: blur(50px);
+      transform: rotate(45deg);
+      z-index: 0;
+      animation: rayMove 14s linear infinite;
+    }
+    .light-ray.r1 { top: -280px; left: 180px; }
+    .light-ray.r2 { top: -320px; right: 220px; animation-duration: 16s; animation-direction: reverse; }
 
     .topbar {
       position: absolute;
@@ -282,9 +295,12 @@
     .title .white,
     .title .red,
     .title .violet {
-      animation: titleFlicker 5s ease-in-out infinite;
+      animation: titleFlicker 8s ease-in-out infinite;
+      animation-play-state: paused;
     }
-
+    .title.played .white,
+    .title.played .red,
+    .title.played .violet { animation-play-state: running; }
     .title .red { animation-delay: 0.4s; }
     .title .violet { animation-delay: 0.8s; }
 
@@ -418,7 +434,7 @@
       height: 262px;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(145, 70, 255, 0.22), rgba(145, 70, 255, 0.02) 62%, transparent 72%);
-      animation: ringPulse 3.5s ease-in-out infinite;
+      animation: ringPulse 4.2s ease-in-out infinite;
     }
 
     .icon-core {
@@ -436,11 +452,13 @@
       box-shadow: 0 0 32px rgba(145, 70, 255, 0.18);
     }
 
-    .icon-core svg {
-      width: 78px;
-      height: 78px;
-      fill: #fff;
+    .icon-core svg,
+    .icon-core-logo {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
     }
+    .icon-core svg { fill: #fff; }
 
     .floating-tag {
       position: absolute;
@@ -455,7 +473,7 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
       max-width: 170px;
       text-align: center;
-      animation: floatTag 4.5s ease-in-out infinite;
+      animation: floatTag 5.5s ease-in-out infinite;
     }
 
     .tag-1 { top: 20px; left: 6px; color: #d9c2ff; animation-delay: 0.2s; }
@@ -565,11 +583,43 @@
       50% { transform: translateY(-6px); }
     }
 
+    @keyframes rayMove {
+      0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
+      50% { opacity: 0.08; }
+      100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+    }
+
+    /* Staggered reveal au chargement */
+    .reveal { opacity: 0; transform: translateY(24px); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .eyebrow.reveal { animation: revealFade 0.6s ease-out 0.2s forwards; }
+    .title .white.reveal { animation: revealFade 0.6s ease-out 0.35s forwards; }
+    .title .red.reveal { animation: revealFade 0.6s ease-out 0.5s forwards; }
+    .title .violet.reveal { animation: revealFade 0.6s ease-out 0.65s forwards; }
+    .subtitle.reveal { animation: revealFade 0.6s ease-out 0.85s forwards; }
+    .chip.reveal { animation: revealFade 0.5s ease-out forwards; }
+    .chip.reveal:nth-child(1) { animation-delay: 1.2s; }
+    .chip.reveal:nth-child(2) { animation-delay: 1.35s; }
+    .chip.reveal:nth-child(3) { animation-delay: 1.5s; }
+    .chip.reveal:nth-child(4) { animation-delay: 1.65s; }
+    .hero-card.reveal { animation: revealScale 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards; }
+    @keyframes revealFade {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes revealScale {
+      from { opacity: 0; transform: scale(0.94) translateY(16px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .chip { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    .chip:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(145, 70, 255, 0.15); }
+
     @media (prefers-reduced-motion: reduce) {
       * {
         animation: none !important;
         transition: none !important;
       }
+      .reveal { opacity: 1 !important; transform: none !important; }
     }
   </style>
 </head>
@@ -591,6 +641,9 @@
       <div class="star s3"></div>
       <div class="star s4"></div>
 
+      <div class="light-ray r1"></div>
+      <div class="light-ray r2"></div>
+
       <header class="topbar">
         <div class="brand">
           <img src="/Tenf.png" alt="Logo TENF" />
@@ -605,29 +658,30 @@
 
       <main class="content">
         <section class="left">
-          <div class="eyebrow">Bienvenue dans la communauté</div>
+          <div class="eyebrow reveal">Bienvenue dans la communauté</div>
 
-          <h1 class="title">
-            <span class="white">TWITCH</span>
-            <span class="red">ENTRAIDE</span>
-            <span class="violet">NEW FAMILY</span>
+          <h1 class="title" id="titleEl">
+            <span class="white reveal">TWITCH</span>
+            <span class="red reveal">ENTRAIDE</span>
+            <span class="violet reveal">NEW FAMILY</span>
           </h1>
 
-          <p class="subtitle">
-            Une communauté francophone de <strong>streamers</strong>, de <strong>créateurs</strong> et de passionnés
-            qui avancent ensemble, avec un cadre humain, clair et construit sur l’
-            <strong>entraide réelle</strong>.
+          <p class="subtitle reveal">
+            Une communauté francophone de <strong>streamers</strong> et <strong>créateurs</strong>,
+            basée sur l’
+            <strong>entraide réelle</strong> et un cadre humain.
           </p>
 
           <div class="chips">
-            <span class="chip violet">Visibilité par implication</span>
-            <span class="chip red">Respect du collectif</span>
-            <span class="chip gold">Progression à votre rythme</span>
+            <span class="chip violet reveal">Streaming Twitch</span>
+            <span class="chip red reveal">Discord actif</span>
+            <span class="chip gold reveal">Événements mensuels</span>
+            <span class="chip violet reveal">Progression à votre rythme</span>
           </div>
         </section>
 
         <aside class="right">
-          <div class="hero-card">
+          <div class="hero-card reveal">
             <div class="hero-top">
               <div class="live-badge">
                 <span class="live-dot"></span>
@@ -643,18 +697,15 @@
               <div class="floating-tag tag-3">Entraide concrète</div>
 
               <div class="icon-core" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 0 1 0-2h3v-2.08A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"></path>
-                </svg>
+                <img src="/Tenf.png" alt="" class="icon-core-logo" />
               </div>
             </div>
 
             <div class="hero-message">
               <div class="hero-message-title">Ici, vous avez votre place.</div>
               <div class="hero-message-text">
-                Vous n’avez pas rejoint un Discord parmi tant d’autres. Vous entrez dans une
-                communauté où l’entraide fonctionne <strong>dans les deux sens</strong>, où le cadre protège
-                le groupe, et où chacun peut évoluer <strong>humainement et dans son streaming</strong>.
+                Entraide <strong>dans les deux sens</strong>, cadre qui protège
+                le groupe, évolution <strong>humaine et dans votre streaming</strong>.
               </div>
             </div>
           </div>
@@ -677,15 +728,13 @@
 
   <script>
     /*
-      Moteur de scale global reutilisable pour toutes les slides:
-      1) base fixe 1600x900
-      2) scale uniforme selon la fenetre
-      3) slide toujours centree
+      Moteur de scale global + déclenchement titleFlicker après le reveal
     */
     (function () {
       const BASE_WIDTH = 1600;
       const BASE_HEIGHT = 900;
       const slide = document.getElementById("slideRoot");
+      const titleEl = document.getElementById("titleEl");
 
       if (!slide) return;
 
@@ -700,6 +749,10 @@
       applyScale();
       window.addEventListener("resize", applyScale);
       window.addEventListener("orientationchange", applyScale);
+
+      if (titleEl) {
+        setTimeout(() => titleEl.classList.add("played"), 1600);
+      }
     })();
   </script>
 </body>
