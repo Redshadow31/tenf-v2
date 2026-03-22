@@ -1,10 +1,18 @@
 import "./globals.css";
 
 import dynamic from "next/dynamic";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 const ClientLayout = dynamic(() => import("./layout.client"), { ssr: false });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 0.95,
+  minimumScale: 0.5,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: {

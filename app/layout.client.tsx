@@ -88,15 +88,15 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       <ThemeProvider>
         <PwaSplashScreen />
         <ConnectionTracker />
-        <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
+        <div className="min-h-screen min-w-0 overflow-x-hidden" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
           <Header
             onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
             memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
             showMemberMenuInBurger={isMemberArea}
           />
-          <div className="flex">
+          <div className="flex min-w-0 overflow-x-hidden">
             {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
-            <main className="flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+            <main className="flex-1 min-w-0 mx-auto max-w-7xl w-full px-4 py-6 sm:px-6 lg:px-8">{children}</main>
           </div>
           {shouldRenderMobileSidebar ? (
             <div className="fixed inset-0 z-[70] xl:hidden flex" role="dialog" aria-modal="true" aria-label="Panneau membre">
