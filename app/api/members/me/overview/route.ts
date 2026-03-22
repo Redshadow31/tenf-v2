@@ -201,6 +201,16 @@ function buildSafeOverviewPayload(input: {
   member?: any | null;
 }) {
   const { discordId, monthKey, member } = input;
+  const now = new Date();
+  const last12MonthKeys = getLastMonthKeys(now, 12);
+  const monthlyHistory = last12MonthKeys.map((m) => ({
+    monthKey: m,
+    totalEvents: 0,
+    attendedEvents: 0,
+    attendanceRate: 0,
+  }));
+  const monthEventsByMonth = last12MonthKeys.map((m) => ({ monthKey: m, events: [] }));
+
   const role = String(member?.role || "Membre");
   const displayName = String(
     member?.displayName ||
@@ -266,9 +276,9 @@ function buildSafeOverviewPayload(input: {
     attendance: {
       currentMonthKey: monthKey,
       previousMonthKey: getPreviousMonthKey(new Date()),
-      monthlyHistory: [],
+      monthlyHistory,
       monthEvents: [],
-      monthEventsByMonth: [],
+      monthEventsByMonth,
       categoryBreakdown: [],
     },
   };
@@ -688,6 +698,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[members/me/overview] GET error:", error);
+    if (error instanceof Error) {
+      console.error("[members/me/overview] Error stack:", error.stack);
+    }
     try {
       const session = await getServerSession(authOptions);
       const discordId = session?.user?.discordId;
