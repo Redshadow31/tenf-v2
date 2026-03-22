@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { X, Users, UserPlus, CheckCircle2, RefreshCw, ArrowRight, Activity } from "lucide-react";
+import { X, UserPlus, CheckCircle2, RefreshCw, ArrowRight, Activity, UserMinus, Plus } from "lucide-react";
 
 type Integration = {
   id: string;
@@ -27,6 +27,33 @@ type IntegrationRegistration = {
   present?: boolean;
 };
 
+type MemberForIntegrate = {
+  id: string;
+  twitchLogin: string;
+  twitchChannelUrl: string;
+  displayName: string;
+  discordId?: string;
+  discordUsername?: string;
+  parrain?: string;
+  notes?: string;
+};
+
+type EditableMember = {
+  member: MemberForIntegrate;
+  role: "Affilié" | "Développement";
+  included: boolean;
+};
+
+type ApiMember = {
+  twitchLogin?: string;
+  twitchUrl?: string;
+  displayName?: string;
+  discordId?: string;
+  discordUsername?: string;
+  role?: string;
+  parrain?: string;
+};
+
 const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
 const sectionCardClass =
@@ -34,14 +61,37 @@ const sectionCardClass =
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
+function toMemberForIntegrate(reg: IntegrationRegistration): MemberForIntegrate {
+  return {
+    id: reg.id,
+    twitchLogin: reg.twitchLogin,
+    twitchChannelUrl: reg.twitchChannelUrl,
+    displayName: reg.displayName || reg.discordUsername || "",
+    discordId: reg.discordId,
+    discordUsername: reg.discordUsername,
+    parrain: reg.parrain,
+    notes: reg.notes,
+  };
+}
+
 export default function PresenceRetourPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [allRegistrations, setAllRegistrations] = useState<Record<string, IntegrationRegistration[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
-  const [presentMembers, setPresentMembers] = useState<IntegrationRegistration[]>([]);
+  const [editableMembers, setEditableMembers] = useState<EditableMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [integrating, setIntegrating] = useState(false);
+  const [nouveauxMembers, setNouveauxMembers] = useState<ApiMember[]>([]);
+  const [loadingNouveaux, setLoadingNouveaux] = useState(false);
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [addMode, setAddMode] = useState<"manual" | "nouveau">("nouveau");
+  const [manualForm, setManualForm] = useState({
+    displayName: "",
+    twitchLogin: "",
+    twitchChannelUrl: "",
+    parrain: "",
+  });
 
   useEffect(() => {
     loadData();
@@ -97,10 +147,86 @@ export default function PresenceRetourPage() {
   const handleOpenModal = (integration: Integration) => {
     setSelectedIntegration(integration);
     const registrations = allRegistrations[integration.id] || [];
-    // Filtrer uniquement les personnes présentes
-    const presentOnly = registrations.filter(reg => reg.present === true);
-    setPresentMembers(presentOnly);
+    const presentOnly = registrations.filter((reg) => reg.present === true);
+    setEditableMembers(
+      presentOnly.map((reg) => ({
+        member: toMemberForIntegrate(reg),
+        role: "Affilié" as const,
+        included: true,
+      }))
+    );
+    setShowAddSection(false);
+    setManualForm({ displayName: "", twitchLogin: "", twitchChannelUrl: "", parrain: "" });
     setIsModalOpen(true);
+  };
+
+  const includedCount = editableMembers.filter((e) => e.included).length;
+
+  const updateMember = (idx: number, updates: Partial<EditableMember>) => {
+    setEditableMembers((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, ...updates } : item))
+    );
+  };
+
+  const removeMember = (idx: number) => {
+    setEditableMembers((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const loadNouveauxMembers = async () => {
+    setLoadingNouveaux(true);
+    try {
+      const res = await fetch("/api/admin/members", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        const members: ApiMember[] = data.members || [];
+        const nouveaux = members.filter((m) => String(m.role || "").toLowerCase() === "nouveau");
+        setNouveauxMembers(nouveaux);
+      }
+    } catch {
+      setNouveauxMembers([]);
+    } finally {
+      setLoadingNouveaux(false);
+    }
+  };
+
+  const addFromNouveau = (m: ApiMember) => {
+    const login = (m.twitchLogin || "").toLowerCase();
+    const displayName = m.displayName || m.discordUsername || login;
+    if (!login || !displayName) return;
+    if (editableMembers.some((e) => e.member.twitchLogin.toLowerCase() === login)) return;
+    const newMember: MemberForIntegrate = {
+      id: `nouveau_${login}_${Date.now()}`,
+      twitchLogin: login,
+      twitchChannelUrl: m.twitchUrl || `https://www.twitch.tv/${login}`,
+      displayName,
+      discordId: m.discordId,
+      discordUsername: m.discordUsername,
+      parrain: m.parrain,
+    };
+    setEditableMembers((prev) => [
+      ...prev,
+      { member: newMember, role: "Affilié" as const, included: true },
+    ]);
+  };
+
+  const addManual = () => {
+    const displayName = manualForm.displayName.trim();
+    const twitchLogin = manualForm.twitchLogin.trim().toLowerCase();
+    if (!displayName || !twitchLogin) return;
+    if (editableMembers.some((e) => e.member.twitchLogin.toLowerCase() === twitchLogin)) return;
+    const url = manualForm.twitchChannelUrl.trim() || `https://www.twitch.tv/${twitchLogin}`;
+    const newMember: MemberForIntegrate = {
+      id: `manual_${twitchLogin}_${Date.now()}`,
+      twitchLogin,
+      twitchChannelUrl: url.startsWith("http") ? url : `https://www.twitch.tv/${twitchLogin}`,
+      displayName,
+      parrain: manualForm.parrain.trim() || undefined,
+    };
+    setEditableMembers((prev) => [
+      ...prev,
+      { member: newMember, role: "Affilié" as const, included: true },
+    ]);
+    setManualForm({ displayName: "", twitchLogin: "", twitchChannelUrl: "", parrain: "" });
   };
 
   const formatDate = (dateString: string) => {
@@ -150,42 +276,54 @@ export default function PresenceRetourPage() {
   }, [integrations, allRegistrations]);
 
   const handleIntegrateMembers = async () => {
-    if (!selectedIntegration || presentMembers.length === 0) return;
+    const toIntegrate = editableMembers.filter((e) => e.included);
+    if (!selectedIntegration || toIntegrate.length === 0) return;
 
-    if (!confirm(`Êtes-vous sûr de vouloir intégrer ${presentMembers.length} membre(s) au site et Discord ?`)) {
+    if (
+      !confirm(
+        `Êtes-vous sûr de vouloir intégrer ${toIntegrate.length} membre(s) au site et Discord ? Rôle et date d'intégration seront appliqués.`
+      )
+    ) {
       return;
     }
 
+    const integrationDate = selectedIntegration.date
+      ? new Date(selectedIntegration.date).toISOString().slice(0, 10)
+      : undefined;
+
     try {
       setIntegrating(true);
-      const response = await fetch('/api/admin/integrations/integrate-members', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/integrations/integrate-members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           integrationId: selectedIntegration.id,
-          members: presentMembers.map(m => ({
-            id: m.id,
-            discordUsername: m.displayName || m.discordUsername,
-            discordId: m.discordId,
-            twitchLogin: m.twitchLogin,
-            twitchChannelUrl: m.twitchChannelUrl,
-            parrain: m.parrain,
+          members: toIntegrate.map(({ member, role }) => ({
+            discordUsername: member.displayName || member.discordUsername,
+            discordId: member.discordId,
+            twitchLogin: member.twitchLogin,
+            twitchChannelUrl: member.twitchChannelUrl,
+            parrain: member.parrain,
+            role,
+            integrationDate,
           })),
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ ${data.message || `${data.integrated || 0} membre(s) intégré(s) avec succès !`}`);
+        alert(
+          `✅ ${data.message || `${data.integrated || 0} membre(s) intégré(s) avec succès !`}`
+        );
         await loadData();
         setIsModalOpen(false);
       } else {
         const error = await response.json();
-        alert(`❌ Erreur: ${error.error || 'Impossible d\'intégrer les membres'}`);
+        alert(`❌ Erreur: ${error.error || "Impossible d'intégrer les membres"}`);
       }
     } catch (error) {
-      console.error('Erreur intégration membres:', error);
-      alert('❌ Erreur lors de l\'intégration');
+      console.error("Erreur intégration membres:", error);
+      alert("❌ Erreur lors de l'intégration");
     } finally {
       setIntegrating(false);
     }
@@ -370,12 +508,13 @@ export default function PresenceRetourPage() {
             <div className="p-6 border-b border-[#353a50]">
               <h2 className="text-2xl font-bold text-white mb-2">{selectedIntegration.title}</h2>
               <p className="text-gray-400">
-                {formatDate(selectedIntegration.date)} • {presentMembers.length} membre{presentMembers.length > 1 ? 's' : ''} présent{presentMembers.length > 1 ? 's' : ''}
+                {formatDate(selectedIntegration.date)} • {editableMembers.length} dans la liste,{" "}
+                {includedCount} à intégrer
               </p>
             </div>
 
             {/* Bouton d'intégration */}
-            {presentMembers.length > 0 && (
+            {includedCount > 0 && (
               <div className="p-6 border-b border-[#353a50] bg-green-950/20">
                 <button
                   onClick={handleIntegrateMembers}
@@ -383,68 +522,231 @@ export default function PresenceRetourPage() {
                   className="flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/20 px-6 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30 disabled:opacity-50"
                 >
                   <UserPlus className="w-5 h-5" />
-                  {integrating ? "Intégration..." : `Intégrer ${presentMembers.length} membre(s) au site et Discord`}
+                  {integrating
+                    ? "Intégration..."
+                    : `Intégrer ${includedCount} membre(s) (rôle + statut actif + date d'intégration)`}
                 </button>
                 <p className="text-sm text-gray-400 mt-2">
-                  Les membres présents seront ajoutés au site et auront accès aux channels Discord appropriés
+                  Les membres cochés seront activés avec le rôle choisi et la date d'intégration
+                  enregistrée dans la gestion.
                 </p>
               </div>
             )}
 
-            {/* Liste des membres présents */}
+            {/* Section Ajouter un membre */}
+            <div className="p-6 border-b border-[#353a50]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddSection((s) => !s);
+                  if (!showAddSection && addMode === "nouveau") void loadNouveauxMembers();
+                }}
+                className="flex items-center gap-2 rounded-lg border border-indigo-300/35 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-500/20"
+              >
+                <Plus className="h-4 w-4" />
+                {showAddSection ? "Masquer" : "Ajouter un membre"}
+              </button>
+              {showAddSection && (
+                <div className="mt-4 space-y-4">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddMode("nouveau");
+                        void loadNouveauxMembers();
+                      }}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                        addMode === "nouveau"
+                          ? "bg-indigo-500/30 text-indigo-100"
+                          : "bg-[#0f1321] text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Sélectionner parmi les Nouveaux
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddMode("manual")}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                        addMode === "manual"
+                          ? "bg-indigo-500/30 text-indigo-100"
+                          : "bg-[#0f1321] text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Ajouter manuellement
+                    </button>
+                  </div>
+                  {addMode === "nouveau" && (
+                    <div>
+                      {loadingNouveaux ? (
+                        <p className="text-gray-400 text-sm">Chargement des membres Nouveau...</p>
+                      ) : nouveauxMembers.length === 0 ? (
+                        <p className="text-gray-400 text-sm">Aucun membre avec le rôle Nouveau.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {nouveauxMembers.map((m) => {
+                            const login = (m.twitchLogin || "").toLowerCase();
+                            const label = m.displayName || m.discordUsername || login;
+                            const already = editableMembers.some(
+                              (e) => e.member.twitchLogin.toLowerCase() === login
+                            );
+                            return (
+                              <button
+                                key={login}
+                                type="button"
+                                onClick={() => addFromNouveau(m)}
+                                disabled={already}
+                                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                                  already
+                                    ? "border-gray-600 bg-gray-800/50 text-gray-500 cursor-not-allowed"
+                                    : "border-indigo-400/40 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25"
+                                }`}
+                              >
+                                {label} {already && "(déjà ajouté)"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {addMode === "manual" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Pseudo Discord *"
+                        value={manualForm.displayName}
+                        onChange={(e) =>
+                          setManualForm((f) => ({ ...f, displayName: e.target.value }))
+                        }
+                        className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white placeholder-gray-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Pseudo Twitch *"
+                        value={manualForm.twitchLogin}
+                        onChange={(e) =>
+                          setManualForm((f) => ({ ...f, twitchLogin: e.target.value }))
+                        }
+                        className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white placeholder-gray-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Lien chaîne Twitch"
+                        value={manualForm.twitchChannelUrl}
+                        onChange={(e) =>
+                          setManualForm((f) => ({ ...f, twitchChannelUrl: e.target.value }))
+                        }
+                        className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white placeholder-gray-500 md:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Parrain TENF"
+                        value={manualForm.parrain}
+                        onChange={(e) =>
+                          setManualForm((f) => ({ ...f, parrain: e.target.value }))
+                        }
+                        className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-white placeholder-gray-500 md:col-span-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={addManual}
+                        disabled={!manualForm.displayName.trim() || !manualForm.twitchLogin.trim()}
+                        className="rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Ajouter à la liste
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Liste des membres */}
             <div className="p-6">
-              {presentMembers.length === 0 ? (
+              {editableMembers.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">
-                  Aucun membre présent pour cette réunion.
+                  Aucun membre. Ajoutez-en ou vérifiez les présences de la session.
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {presentMembers.map((member) => (
+                  {editableMembers.map((item, idx) => (
                     <div
-                      key={member.id}
-                      className="bg-[#0f1321] border border-green-500/30 rounded-lg p-4"
+                      key={item.member.id}
+                      className={`rounded-lg p-4 border ${
+                        item.included ? "border-green-500/30 bg-[#0f1321]" : "border-gray-600/50 bg-[#0f1321]/50 opacity-70"
+                      }`}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Pseudo Discord</div>
-                          <div className="text-white font-medium">
-                            {member.displayName || member.discordUsername || 'N/A'}
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1 min-w-0">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Pseudo Discord</div>
+                            <div className="text-white font-medium">
+                              {item.member.displayName || item.member.discordUsername || "N/A"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Lien Twitch</div>
+                            <div className="text-white">
+                              {item.member.twitchChannelUrl ? (
+                                <a
+                                  href={item.member.twitchChannelUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-300 hover:text-indigo-200 underline break-all"
+                                >
+                                  {item.member.twitchChannelUrl}
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">N/A</span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Parrain</div>
+                            <div className="text-white font-medium">
+                              {item.member.parrain || <span className="text-gray-400">N/A</span>}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Rôle à attribuer</div>
+                            <select
+                              value={item.role}
+                              onChange={(e) =>
+                                updateMember(idx, {
+                                  role: e.target.value as "Affilié" | "Développement",
+                                })
+                              }
+                              className="rounded-lg border border-[#353a50] bg-[#0f1321] px-3 py-2 text-sm text-white"
+                            >
+                              <option value="Affilié">Affilié</option>
+                              <option value="Développement">Développement</option>
+                            </select>
                           </div>
                         </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Lien de chaîne Twitch</div>
-                          <div className="text-white">
-                            {member.twitchChannelUrl ? (
-                              <a
-                                href={member.twitchChannelUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-300 hover:text-indigo-200 underline break-all"
-                              >
-                                {member.twitchChannelUrl}
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">N/A</span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Parrain TENF</div>
-                          <div className="text-white font-medium">
-                            {member.parrain || <span className="text-gray-400">N/A</span>}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Pseudo Twitch</div>
-                          <div className="text-white font-medium">
-                            {member.twitchLogin || <span className="text-gray-400">N/A</span>}
-                          </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={item.included}
+                              onChange={(e) => updateMember(idx, { included: e.target.checked })}
+                              className="rounded border-gray-500"
+                            />
+                            Inclure
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeMember(idx)}
+                            className="rounded-lg p-2 text-gray-400 hover:bg-rose-500/20 hover:text-rose-300 transition"
+                            title="Retirer de la liste"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                      {member.notes && (
+                      {item.member.notes && (
                         <div className="mt-3 pt-3 border-t border-gray-700">
                           <div className="text-xs text-gray-500 mb-1">Notes</div>
-                          <div className="text-gray-300 text-sm">{member.notes}</div>
+                          <div className="text-gray-300 text-sm">{item.member.notes}</div>
                         </div>
                       )}
                     </div>

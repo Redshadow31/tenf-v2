@@ -1,173 +1,160 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { findMemberByIdentifier, updateMemberData, createMemberData, getAllActiveMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 import type { MemberRole } from '@/lib/memberRoles';
 import { fetchCanonicalTwitchAvatarForLogin, hydrateTwitchStatusAvatar } from '@/lib/memberAvatar';
+type IntegrateMemberInput = {
+  id?: string;
+  discordUsername?: string;
+  discordId?: string;
+  twitchLogin?: string;
+  twitchChannelUrl?: string;
+  parrain?: string;
+  role?: 'Affilié' | 'Développement';
+  integrationDate?: string;
+};
 
 /**
  * POST - Intègre les membres présents au site et Discord
- * Crée ou met à jour les membres dans la base de données
+ * Crée ou met à jour les membres (Supabase) avec rôle, statut actif et date d'intégration
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authentification NextAuth + rôle admin requis
     const admin = await requireAdmin();
-    
+
     if (!admin) {
       return NextResponse.json({ error: 'Non authentifié ou accès refusé' }, { status: 401 });
     }
-    
+
     const body = await request.json();
-    const { integrationId, members } = body;
-    
+    const { integrationId, members } = body as { integrationId?: string; members?: IntegrateMemberInput[] };
+
     if (!members || !Array.isArray(members) || members.length === 0) {
       return NextResponse.json(
         { error: 'Aucun membre à intégrer' },
         { status: 400 }
       );
     }
-    
-    // Charger les données depuis le stockage
-    await loadMemberDataFromStorage();
-    const allMembers = getAllActiveMemberData();
-    
+
+    const integrationDateDefault = new Date();
     let integrated = 0;
     let updated = 0;
-    let errors: string[] = [];
-    
-    for (const member of members) {
+    const errors: string[] = [];
+
+    for (const member of members as IntegrateMemberInput[]) {
       try {
-        const { discordUsername, discordId, twitchLogin, twitchChannelUrl, parrain } = member;
-        
-        if (!twitchLogin || !discordUsername) {
-          errors.push(`${discordUsername || 'Membre inconnu'}: Données incomplètes (pseudo Discord et Twitch requis)`);
+        const {
+          discordUsername,
+          discordId,
+          twitchLogin,
+          twitchChannelUrl,
+          parrain,
+          role,
+          integrationDate: integrationDateStr,
+        } = member;
+
+        const displayName = discordUsername?.trim() || '';
+        const login = (twitchLogin || '').trim().toLowerCase();
+
+        if (!login || !displayName) {
+          errors.push(`${displayName || 'Membre inconnu'}: Pseudo Discord et Twitch requis`);
           continue;
         }
-        
-        if (!twitchChannelUrl) {
-          errors.push(`${discordUsername}: Lien de chaîne Twitch requis`);
-          continue;
-        }
-        
-        // Chercher si le membre existe déjà
+
+        const normalizedTwitchUrl = twitchChannelUrl?.trim()
+          ? twitchChannelUrl.startsWith('http')
+            ? twitchChannelUrl
+            : `https://www.twitch.tv/${login}`
+          : `https://www.twitch.tv/${login}`;
+
+        const targetRole: MemberRole = role === 'Développement' ? 'Développement' : 'Affilié';
+        const integrationDate = integrationDateStr
+          ? new Date(integrationDateStr)
+          : integrationDateDefault;
+
         let existingMember = null;
         if (discordId) {
-          existingMember = findMemberByIdentifier({ discordId });
+          existingMember = await memberRepository.findByDiscordId(discordId);
         }
-        if (!existingMember) {
-          existingMember = findMemberByIdentifier({ twitchLogin });
+        if (!existingMember && login) {
+          existingMember = await memberRepository.findByTwitchLogin(login);
         }
-        if (!existingMember) {
-          // Normaliser le pseudo Discord pour la recherche
-          const normalizedDiscordUsername = discordUsername.toLowerCase().replace(/\s+/g, '');
-          existingMember = allMembers.find(m => 
-            m.discordUsername?.toLowerCase().replace(/\s+/g, '') === normalizedDiscordUsername ||
-            m.displayName?.toLowerCase().replace(/\s+/g, '') === normalizedDiscordUsername
-          );
+        if (!existingMember && displayName) {
+          const allChunk = await memberRepository.findAll(2000, 0);
+          const normalized = displayName.toLowerCase().replace(/\s+/g, '');
+          existingMember = allChunk.find(
+            (m) =>
+              m.discordUsername?.toLowerCase().replace(/\s+/g, '') === normalized ||
+              m.displayName?.toLowerCase().replace(/\s+/g, '') === normalized
+          ) || null;
         }
-        
-        // Normaliser le lien Twitch
-        const normalizedTwitchUrl = twitchChannelUrl.startsWith('http') 
-          ? twitchChannelUrl 
-          : `https://www.twitch.tv/${twitchLogin}`;
-        
-        // Préparer les données du membre
-        const defaultRole: MemberRole = 'Affilié';
-        const memberData: {
-          twitchLogin: string;
-          twitchUrl: string;
-          displayName: string;
-          discordUsername?: string;
-          discordId?: string;
-          parrain?: string;
-          role: MemberRole;
-          integrationDate?: Date;
-          isActive: boolean;
-          isVip: boolean;
-        } = {
-          twitchLogin: twitchLogin.toLowerCase(),
-          twitchUrl: normalizedTwitchUrl,
-          displayName: discordUsername,
-          discordUsername: discordUsername,
-          parrain: parrain || undefined,
-          role: defaultRole, // Rôle par défaut pour les nouveaux membres
-          integrationDate: new Date(),
-          isActive: true,
-          isVip: false,
-        };
-        
-        if (discordId) {
-          memberData.discordId = discordId;
-        }
-        
-        const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(memberData.twitchLogin);
+
+        const fetchedAvatar = await fetchCanonicalTwitchAvatarForLogin(login);
 
         if (existingMember) {
-          // Mettre à jour le membre existant
           try {
-            updateMemberData(
-              existingMember.twitchLogin,
-              {
-                ...memberData,
-                // Conserver certaines données existantes si elles sont meilleures
-                displayName: memberData.displayName || existingMember.displayName,
-                discordId: memberData.discordId || existingMember.discordId,
-                discordUsername: memberData.discordUsername || existingMember.discordUsername,
-                parrain: memberData.parrain || existingMember.parrain,
-                integrationDate: existingMember.integrationDate || memberData.integrationDate,
-                twitchStatus: hydrateTwitchStatusAvatar(existingMember.twitchStatus, fetchedAvatar) as any,
-              },
-              admin.discordId
-            );
+            await memberRepository.update(existingMember.twitchLogin, {
+              displayName: displayName || existingMember.displayName,
+              discordId: discordId || existingMember.discordId,
+              discordUsername: displayName || existingMember.discordUsername,
+              parrain: parrain || existingMember.parrain,
+              twitchUrl: normalizedTwitchUrl,
+              role: targetRole,
+              roleManuallySet: true,
+              isActive: true,
+              integrationDate: existingMember.integrationDate || integrationDate,
+              twitchStatus: hydrateTwitchStatusAvatar(existingMember.twitchStatus, fetchedAvatar) as any,
+              updatedBy: admin.discordId || admin.id,
+            });
             updated++;
           } catch (updateError) {
-            console.error(`[Integrate Members] Erreur mise à jour ${discordUsername}:`, updateError);
-            errors.push(`${discordUsername}: Erreur lors de la mise à jour`);
+            console.error(`[Integrate Members] Erreur mise à jour ${displayName}:`, updateError);
+            errors.push(`${displayName}: Erreur lors de la mise à jour`);
           }
         } else {
-          // Créer un nouveau membre
           try {
-            // Résoudre le Twitch ID si possible
-            let twitchId: string | undefined = undefined;
+            let twitchId: string | undefined;
             try {
               const { resolveAndCacheTwitchId } = await import('@/lib/twitchIdResolver');
-              const resolvedId = await resolveAndCacheTwitchId(twitchLogin, false);
-              if (resolvedId) {
-                twitchId = resolvedId;
-              }
-            } catch (twitchError) {
-              console.warn(`[Integrate Members] Impossible de résoudre Twitch ID pour ${twitchLogin}:`, twitchError);
+              twitchId = await resolveAndCacheTwitchId(login, false) || undefined;
+            } catch {
+              // ignorer
             }
-            
-            await createMemberData(
-              {
-                twitchLogin: memberData.twitchLogin,
-                twitchId: twitchId,
-                twitchUrl: memberData.twitchUrl,
-                displayName: memberData.displayName,
-                discordId: memberData.discordId,
-                discordUsername: memberData.discordUsername,
-                role: memberData.role,
-                isActive: memberData.isActive,
-                isVip: memberData.isVip,
-                integrationDate: memberData.integrationDate,
-                parrain: memberData.parrain,
-                twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar) as any,
-              },
-              admin.discordId
-            );
+
+            await memberRepository.create({
+              twitchLogin: login,
+              twitchId,
+              twitchUrl: normalizedTwitchUrl,
+              displayName,
+              discordId: discordId || undefined,
+              discordUsername: displayName,
+              parrain: parrain || undefined,
+              role: targetRole,
+              roleManuallySet: true,
+              isActive: true,
+              isVip: false,
+              integrationDate,
+              badges: [],
+              twitchStatus: hydrateTwitchStatusAvatar(undefined, fetchedAvatar) as any,
+              profileValidationStatus: 'valide',
+              onboardingStatus: 'termine',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              updatedBy: admin.discordId || admin.id,
+            });
             integrated++;
           } catch (createError) {
-            console.error(`[Integrate Members] Erreur création ${discordUsername}:`, createError);
-            errors.push(`${discordUsername}: Erreur lors de la création`);
+            console.error(`[Integrate Members] Erreur création ${displayName}:`, createError);
+            errors.push(`${displayName}: Erreur lors de la création`);
           }
         }
       } catch (error) {
-        console.error(`[Integrate Members] Erreur pour ${member.discordUsername || 'membre inconnu'}:`, error);
-        errors.push(`${member.discordUsername || 'Membre inconnu'}: Erreur interne`);
+        const name = (member as IntegrateMemberInput).discordUsername || 'membre inconnu';
+        console.error(`[Integrate Members] Erreur pour ${name}:`, error);
+        errors.push(`${name}: Erreur interne`);
       }
     }
-    
+
     return NextResponse.json({
       success: true,
       integrated,
@@ -177,10 +164,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Integrate Members API] Erreur POST:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
