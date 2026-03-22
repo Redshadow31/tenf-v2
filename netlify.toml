@@ -19,8 +19,6 @@
 
 [functions]
   directory = "netlify/functions"
-  # Snapshot follow peut prendre 5+ min (Twitch API) - route maxDuration=300
-  timeout = 300
 
 [functions."raids-test-sync"]
   schedule = "*/2 * * * *"
