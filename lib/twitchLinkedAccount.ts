@@ -167,6 +167,50 @@ export async function getLinkedTwitchAccountByDiscordId(
   return mapRowToPublic(data);
 }
 
+/** Retourne l'ensemble des discord_id qui ont un compte Twitch lié (pour préfiltrage batch) */
+export async function getLinkedTwitchAccountDiscordIds(
+  discordIds: string[]
+): Promise<Set<string>> {
+  if (!discordIds.length) return new Set();
+  const result = new Set<string>();
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < discordIds.length; i += BATCH_SIZE) {
+    const chunk = discordIds.slice(i, i + BATCH_SIZE);
+    const { data, error } = await supabaseAdmin
+      .from(TABLE_NAME)
+      .select("discord_id")
+      .in("discord_id", chunk);
+    if (error) throw error;
+    for (const row of data || []) {
+      if (row.discord_id) result.add(row.discord_id);
+    }
+  }
+  return result;
+}
+
+/** Retourne les comptes liés (sans tokens) pour une liste de discord_id - évite N appels DB */
+export async function getLinkedTwitchAccountsByDiscordIds(
+  discordIds: string[]
+): Promise<Map<string, LinkedTwitchAccountPublic>> {
+  if (!discordIds.length) return new Map();
+  const result = new Map<string, LinkedTwitchAccountPublic>();
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < discordIds.length; i += BATCH_SIZE) {
+    const chunk = discordIds.slice(i, i + BATCH_SIZE);
+    const { data, error } = await supabaseAdmin
+      .from(TABLE_NAME)
+      .select("discord_id, twitch_user_id, twitch_login, twitch_display_name, twitch_avatar, token_expiry, scope, created_at, updated_at")
+      .in("discord_id", chunk);
+    if (error) throw error;
+    for (const row of data || []) {
+      if (row.discord_id) {
+        result.set(row.discord_id, mapRowToPublic(row));
+      }
+    }
+  }
+  return result;
+}
+
 export async function getLinkedTwitchAccountByTwitchUserId(
   twitchUserId: string
 ): Promise<LinkedTwitchAccountPublic | null> {

@@ -1,6 +1,8 @@
 import { memberRepository } from "@/lib/repositories";
 import {
   getLinkedTwitchAccountByDiscordId,
+  getLinkedTwitchAccountDiscordIds,
+  getLinkedTwitchAccountsByDiscordIds,
   getValidLinkedTwitchAccessToken,
   type LinkedTwitchAccountPublic,
 } from "@/lib/twitchLinkedAccount";
@@ -11,7 +13,9 @@ const MAX_ACTIVE_MEMBERS_PAGES = 100;
 const ACTIVE_MEMBERS_PAGE_SIZE = 1000;
 const MAX_TWITCH_PAGINATION_PAGES = 30;
 const TWITCH_PAGE_SIZE = 100;
-const FOLLOW_COMPUTE_CONCURRENCY = 4;
+const FOLLOW_COMPUTE_CONCURRENCY = 8;
+/** Twitch Helix ~600 req/min en pratique, on vise 10 req/s pour éviter 429 */
+const TWITCH_RATE_LIMIT_REQ_PER_SEC = 10;
 const TWITCH_LOGIN_REGEX = /^[a-zA-Z0-9_]{3,25}$/;
 const SNAPSHOT_METADATA_WINDOW = 400;
 const SNAPSHOT_MEMBERS_FALLBACK_LIMIT = 50000;
@@ -168,6 +172,17 @@ async function listActiveTenfChannels(): Promise<{
   return { channels, activeMembersCount };
 }
 
+let lastTwitchRequestTime = 0;
+async function throttleTwitchRequest(): Promise<void> {
+  const minIntervalMs = 1000 / TWITCH_RATE_LIMIT_REQ_PER_SEC;
+  const now = Date.now();
+  const elapsed = now - lastTwitchRequestTime;
+  if (elapsed < minIntervalMs && lastTwitchRequestTime > 0) {
+    await new Promise((r) => setTimeout(r, minIntervalMs - elapsed));
+  }
+  lastTwitchRequestTime = Date.now();
+}
+
 async function fetchAllFollowedChannels(
   accessToken: string,
   twitchUserId: string
@@ -182,18 +197,30 @@ async function fetchAllFollowedChannels(
   let cursor: string | null = null;
 
   for (let page = 0; page < MAX_TWITCH_PAGINATION_PAGES; page++) {
+    await throttleTwitchRequest();
     const url = new URL("https://api.twitch.tv/helix/channels/followed");
     url.searchParams.set("user_id", twitchUserId);
     url.searchParams.set("first", String(TWITCH_PAGE_SIZE));
     if (cursor) url.searchParams.set("after", cursor);
 
-    const response = await fetch(url.toString(), {
+    let response = await fetch(url.toString(), {
       headers: {
         "Client-Id": clientId,
         Authorization: `Bearer ${accessToken}`,
       },
       cache: "no-store",
     });
+
+    if (response.status === 429) {
+      await new Promise((r) => setTimeout(r, 5000));
+      response = await fetch(url.toString(), {
+        headers: {
+          "Client-Id": clientId,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
+    }
 
     if (!response.ok) {
       const details = await response.text().catch(() => "");
@@ -261,7 +288,8 @@ async function withConcurrency<T, R>(
 async function computeMemberOverviewRow(
   member: TenfChannel,
   allChannels: TenfChannel[],
-  generatedAtIso: string
+  generatedAtIso: string,
+  prefetchedLinked?: LinkedTwitchAccountPublic | null
 ): Promise<ComputedMemberSnapshot> {
   if (!member.discordId) {
     const row: FollowEngagementOverviewRow = {
@@ -280,7 +308,7 @@ async function computeMemberOverviewRow(
     return { row, followedChannels: [], notFollowedChannels: [] };
   }
 
-  const linked = await getLinkedTwitchAccountByDiscordId(member.discordId);
+  const linked = prefetchedLinked ?? (await getLinkedTwitchAccountByDiscordId(member.discordId));
   if (!linked) {
     const row: FollowEngagementOverviewRow = {
       discordId: member.discordId,
@@ -391,12 +419,72 @@ async function computeSnapshotPayload(): Promise<{
   const generatedAtIso = new Date().toISOString();
   const { channels, activeMembersCount } = await listActiveTenfChannels();
 
-  const rows = await withConcurrency(
-    channels,
-    FOLLOW_COMPUTE_CONCURRENCY,
-    async (member) => computeMemberOverviewRow(member, channels, generatedAtIso)
+  const discordIds = channels
+    .map((c) => c.discordId)
+    .filter((id): id is string => Boolean(id));
+  const linkedDiscordIds = await getLinkedTwitchAccountDiscordIds(discordIds);
+
+  const notLinkedRows: ComputedMemberSnapshot[] = [];
+  const toCompute: TenfChannel[] = [];
+  for (const member of channels) {
+    if (!member.discordId) {
+      notLinkedRows.push({
+        row: {
+          discordId: null,
+          displayName: member.displayName,
+          memberTwitchLogin: member.twitchLogin,
+          linkedTwitchLogin: null,
+          linkedTwitchDisplayName: null,
+          followedCount: null,
+          totalActiveTenfChannels: channels.length,
+          followRate: null,
+          lastCalculatedAt: null,
+          state: "calculation_impossible" as const,
+          reason: "missing_discord_id",
+        },
+        followedChannels: [],
+        notFollowedChannels: [],
+      });
+    } else if (!linkedDiscordIds.has(member.discordId)) {
+      notLinkedRows.push({
+        row: {
+          discordId: member.discordId,
+          displayName: member.displayName,
+          memberTwitchLogin: member.twitchLogin,
+          linkedTwitchLogin: null,
+          linkedTwitchDisplayName: null,
+          followedCount: null,
+          totalActiveTenfChannels: channels.length,
+          followRate: null,
+          lastCalculatedAt: null,
+          state: "not_linked" as const,
+          reason: "no_linked_twitch_account",
+        },
+        followedChannels: [],
+        notFollowedChannels: [],
+      });
+    } else {
+      toCompute.push(member);
+    }
+  }
+
+  const prefetchedLinkedMap = await getLinkedTwitchAccountsByDiscordIds(
+    toCompute.map((m) => m.discordId!).filter(Boolean)
   );
 
+  const computedRows = await withConcurrency(
+    toCompute,
+    FOLLOW_COMPUTE_CONCURRENCY,
+    async (member) =>
+      computeMemberOverviewRow(
+        member,
+        channels,
+        generatedAtIso,
+        member.discordId ? prefetchedLinkedMap.get(member.discordId) : undefined
+      )
+  );
+
+  const rows = [...notLinkedRows, ...computedRows];
   rows.sort((a, b) => {
     const aRate = a.row.followRate ?? -1;
     const bRate = b.row.followRate ?? -1;
