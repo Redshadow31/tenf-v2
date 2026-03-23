@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = (searchParams.get('status') || 'all').toLowerCase();
     const search = String(searchParams.get('search') || '').trim().toLowerCase();
+    const forceRefresh = ['1', 'true', 'yes'].includes(String(searchParams.get('force') || '').toLowerCase());
     const runId = searchParams.get('runId') || (await getActiveRaidTestRun())?.id || null;
     const limitRaw = Number.parseInt(searchParams.get('limit') || '300', 10);
     const limit = Number.isFinite(limitRaw) ? Math.min(500, Math.max(10, limitRaw)) : 300;
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const cached = reviewCache.get(cacheKey);
     let baseEvents: any[] = [];
     let cacheHeader = 'MISS';
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    if (!forceRefresh && cached && Date.now() - cached.at < CACHE_TTL_MS) {
       baseEvents = cached.events;
       cacheHeader = 'HIT';
     } else {
@@ -52,6 +53,9 @@ export async function GET(request: NextRequest) {
       }
       baseEvents = data || [];
       reviewCache.set(cacheKey, { at: Date.now(), events: baseEvents });
+      if (forceRefresh) {
+        cacheHeader = 'BYPASS';
+      }
     }
 
     let events = baseEvents;

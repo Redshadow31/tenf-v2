@@ -32,6 +32,8 @@ type CreateMemberDraft = {
 };
 
 const POINTS_DONE_TOKEN = "[points_discord_ok]";
+const CLIENT_CACHE_TTL_MS = 60_000;
+const reviewClientCache = new Map<string, { at: number; events: RaidSubEvent[] }>();
 
 const STATUS_LABELS: Record<"all" | "received" | "matched" | "ignored" | "duplicate" | "error", string> = {
   all: "Tous",
@@ -59,9 +61,12 @@ export default function AdminRaidsSubAValiderPage() {
   const [search, setSearch] = useState("");
   const [pointsFilter, setPointsFilter] = useState<"all" | "todo">("all");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState("");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [rows, setRows] = useState<RaidSubEvent[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [commentById, setCommentById] = useState<Record<string, string>>({});
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
   const [members, setMembers] = useState<MemberLite[]>([]);
@@ -76,38 +81,73 @@ export default function AdminRaidsSubAValiderPage() {
     twitchUrl: "",
   });
 
-  async function loadData() {
+  function buildCacheKey() {
+    return `${statusFilter}|${search.trim().toLowerCase()}`;
+  }
+
+  async function loadData(options?: { force?: boolean; silent?: boolean }) {
+    const force = options?.force === true;
+    const silent = options?.silent === true;
+    const cacheKey = buildCacheKey();
+
+    if (!force) {
+      const cached = reviewClientCache.get(cacheKey);
+      if (cached && Date.now() - cached.at < CLIENT_CACHE_TTL_MS) {
+        setRows(cached.events);
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    }
+
     try {
-      setLoading(true);
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
       const params = new URLSearchParams({
         status: statusFilter,
         search: search.trim(),
       });
+      if (force) {
+        params.set("force", "1");
+      }
       const response = await fetch(`/api/admin/engagement/raids-sub/review?${params.toString()}`, { cache: "no-store" });
       const body = await response.json();
       if (!response.ok) {
         setError(body.error || "Impossible de charger les events raids-sub.");
         return;
       }
-      setRows((body.events || []) as RaidSubEvent[]);
+      const events = (body.events || []) as RaidSubEvent[];
+      setRows(events);
+      reviewClientCache.set(cacheKey, { at: Date.now(), events });
       setLastRefreshAt(new Date());
     } catch {
       setError("Erreur reseau pendant le chargement.");
     } finally {
-      setLoading(false);
+      if (silent) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
     void loadData();
     const intervalId = window.setInterval(() => {
-      void loadData();
+      void loadData({ silent: true });
     }, 30_000);
 
     return () => window.clearInterval(intervalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  useEffect(() => {
+    setSelectedIds({});
+  }, [rows]);
 
   useEffect(() => {
     (async () => {
@@ -154,11 +194,75 @@ export default function AdminRaidsSubAValiderPage() {
   }, [rows, commentById]);
 
   const displayedRows = useMemo(() => {
-    if (pointsFilter === "todo") {
-      return rows.filter((item) => item.processing_status === "matched" && !isPointsDoneFromComment(getCommentValue(item)));
+    const base =
+      pointsFilter === "todo"
+        ? rows.filter((item) => item.processing_status === "matched" && !isPointsDoneFromComment(getCommentValue(item)))
+        : rows;
+
+    if (statusFilter !== "ignored") return base;
+
+    return [...base].sort((a, b) => {
+      const scoreA = Number(a.match_from_member && a.match_to_member);
+      const scoreB = Number(b.match_from_member && b.match_to_member);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return new Date(b.event_at).getTime() - new Date(a.event_at).getTime();
+    });
+  }, [rows, pointsFilter, commentById, statusFilter]);
+
+  const selectedCount = useMemo(() => {
+    const selectedSet = new Set(displayedRows.map((row) => row.id));
+    return Object.entries(selectedIds).filter(([id, selected]) => selected && selectedSet.has(id)).length;
+  }, [displayedRows, selectedIds]);
+
+  function toggleSelectAllDisplayed(checked: boolean) {
+    setSelectedIds((previous) => {
+      const next = { ...previous };
+      for (const row of displayedRows) {
+        if (checked) {
+          next[row.id] = true;
+        } else {
+          delete next[row.id];
+        }
+      }
+      return next;
+    });
+  }
+
+  async function deleteSelectedEvents() {
+    const ids = displayedRows.filter((row) => selectedIds[row.id]).map((row) => row.id);
+    if (ids.length === 0) return;
+
+    const confirmed = window.confirm(`Supprimer définitivement ${ids.length} event(s) sélectionné(s) ?`);
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const response = await fetch("/api/admin/engagement/raids-sub/review/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "Suppression multiple impossible.");
+        return;
+      }
+      setRows((previous) => previous.filter((row) => !ids.includes(row.id)));
+      setCommentById((previous) => {
+        const next = { ...previous };
+        for (const id of ids) {
+          delete next[id];
+        }
+        return next;
+      });
+      setSelectedIds({});
+      reviewClientCache.clear();
+    } catch {
+      setError("Erreur reseau pendant la suppression multiple.");
+    } finally {
+      setBulkDeleting(false);
     }
-    return rows;
-  }, [rows, pointsFilter, commentById]);
+  }
 
   async function updateStatus(id: string, processingStatus: RaidSubEvent["processing_status"]) {
     setSavingId(id);
@@ -177,6 +281,7 @@ export default function AdminRaidsSubAValiderPage() {
         return;
       }
       setRows((previous) => previous.map((item) => (item.id === id ? body.event : item)));
+      reviewClientCache.clear();
     } catch {
       setError("Erreur reseau pendant la mise a jour.");
     } finally {
@@ -204,6 +309,7 @@ export default function AdminRaidsSubAValiderPage() {
       }
       setRows((previous) => previous.map((row) => (row.id === item.id ? body.event : row)));
       setCommentById((previous) => ({ ...previous, [item.id]: staffComment }));
+      reviewClientCache.clear();
     } catch {
       setError("Erreur reseau pendant la mise a jour points Discord.");
     } finally {
@@ -231,6 +337,7 @@ export default function AdminRaidsSubAValiderPage() {
         return;
       }
       setRows((previous) => previous.map((item) => (item.id === id ? body.event : item)));
+      reviewClientCache.clear();
     } catch {
       setError("Erreur reseau pendant le forçage matched.");
     } finally {
@@ -260,6 +367,12 @@ export default function AdminRaidsSubAValiderPage() {
         delete next[item.id];
         return next;
       });
+      setSelectedIds((previous) => {
+        const next = { ...previous };
+        delete next[item.id];
+        return next;
+      });
+      reviewClientCache.clear();
     } catch {
       setError("Erreur reseau pendant la suppression.");
     } finally {
@@ -382,6 +495,7 @@ export default function AdminRaidsSubAValiderPage() {
         <p className="text-gray-400">Validation staff des events du système EventSub test uniquement.</p>
         <p className="mt-1 text-xs text-gray-500">
           Auto-refresh: 30s
+          {refreshing ? " • rafraichissement..." : ""}
           {lastRefreshAt ? ` • derniere mise a jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
         </p>
       </div>
@@ -434,10 +548,10 @@ export default function AdminRaidsSubAValiderPage() {
           />
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() => void loadData({ force: true })}
             className="rounded-lg bg-[#9146ff] px-3 py-2 text-sm font-semibold text-white hover:bg-[#7c3aed]"
           >
-            Rechercher
+            Rechercher / refresh force
           </button>
           <button
             type="button"
@@ -459,6 +573,26 @@ export default function AdminRaidsSubAValiderPage() {
       ) : null}
 
       <div className="rounded-lg border border-gray-700 bg-[#1a1a1d] p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-gray-700 bg-[#0e0e10] px-3 py-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={displayedRows.length > 0 && selectedCount === displayedRows.length}
+              onChange={(event) => toggleSelectAllDisplayed(event.target.checked)}
+            />
+            Tout sélectionner (liste affichée)
+          </label>
+          <span className="text-xs text-gray-400">{selectedCount} sélectionné(s)</span>
+          <button
+            type="button"
+            onClick={() => void deleteSelectedEvents()}
+            disabled={bulkDeleting || selectedCount === 0}
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+            style={{ borderColor: "rgba(248,113,113,0.55)", color: "#f87171" }}
+          >
+            {bulkDeleting ? "Suppression..." : "Supprimer la sélection"}
+          </button>
+        </div>
         {loading ? (
           <p className="text-sm text-gray-300">Chargement des events...</p>
         ) : displayedRows.length === 0 ? (
@@ -500,9 +634,26 @@ export default function AdminRaidsSubAValiderPage() {
               return (
                 <article key={item.id} className="rounded-lg border border-gray-700 bg-[#101014] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-base font-semibold text-white">
-                      {item.from_broadcaster_user_login} → {item.to_broadcaster_user_login}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedIds[item.id])}
+                        onChange={(event) =>
+                          setSelectedIds((prev) => {
+                            const next = { ...prev };
+                            if (event.target.checked) {
+                              next[item.id] = true;
+                            } else {
+                              delete next[item.id];
+                            }
+                            return next;
+                          })
+                        }
+                      />
+                      <p className="text-base font-semibold text-white">
+                        {item.from_broadcaster_user_login} → {item.to_broadcaster_user_login}
+                      </p>
+                    </div>
                     <span
                       className="inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold"
                       style={{ borderColor: badge.borderColor, color: badge.color, backgroundColor: badge.backgroundColor }}
@@ -510,6 +661,9 @@ export default function AdminRaidsSubAValiderPage() {
                       {item.processing_status}
                     </span>
                   </div>
+                  {statusFilter === "ignored" && item.match_from_member && item.match_to_member ? (
+                    <p className="mt-1 text-xs font-semibold text-emerald-300">Priorite: les 2 profils sont rattaches</p>
+                  ) : null}
 
                   <p className="mt-1 text-sm text-gray-400">
                     {new Date(item.event_at).toLocaleString("fr-FR")} • viewers: {item.viewers}
