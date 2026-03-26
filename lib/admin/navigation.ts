@@ -658,6 +658,22 @@ export const adminNavigationSimple: NavItem[] = [
         ],
       },
       {
+        href: "/admin/moderation",
+        label: "Modération",
+        children: [
+          { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
+          { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
+          { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
+          { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
+          { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices mensuels" },
+          { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Petit travaux - Mes soumissions" },
+          { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Petit travaux - Mes validations" },
+          { href: "/admin/moderation/staff/discord/tickets", label: "Discord - Tickets" },
+          { href: "/admin/moderation/staff/discord/incidents-streamers", label: "Discord - Incidents streamers" },
+          { href: "/admin/moderation/staff/discord/cas-sensibles", label: "Discord - Cas sensibles" },
+        ],
+      },
+      {
         href: "/admin/audit-logs",
         label: "Logs & conformité",
         children: [

@@ -6,8 +6,14 @@ import {
   upsertLinkedTwitchAccount,
 } from "@/lib/twitchLinkedAccount";
 import { logger, LogCategory, LogLevel } from "@/lib/logging/logger";
+import { cacheDelete, cacheGet, getRedisClient } from "@/lib/cache";
+import {
+  consumeTwitchMobileState,
+  peekTwitchMobileState,
+} from "@/lib/mobileAuthHandoff";
 
 const TWITCH_LINK_STATE_COOKIE = "twitch_link_oauth_state";
+const MOBILE_CALLBACK_SENTINEL = "__mobile__";
 
 function toSafeCallbackPath(raw: string | undefined): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
@@ -38,68 +44,105 @@ function buildLinkCallbackRedirectUri(request: NextRequest): string {
   return new URL("/api/auth/twitch/link/callback", request.nextUrl.origin).toString();
 }
 
+function mobileAppUrl(params: Record<string, string>): string {
+  const scheme = process.env.MOBILE_APP_SCHEME || "tenfmobile";
+  const u = new URL(`${scheme}://auth`);
+  for (const [k, v] of Object.entries(params)) {
+    u.searchParams.set(k, v);
+  }
+  return u.toString();
+}
+
+type MobilePayload = { discordId: string; callbackPath: string };
+
+async function peekMobilePayload(state: string | null): Promise<MobilePayload | null> {
+  if (!state) return null;
+  const redis = getRedisClient();
+  if (redis) {
+    return (await cacheGet<MobilePayload>(`twitch_mobile_state:${state}`)) ?? null;
+  }
+  return peekTwitchMobileState(state);
+}
+
+async function consumeMobilePayload(state: string | null): Promise<void> {
+  if (!state) return;
+  const redis = getRedisClient();
+  if (redis) {
+    await cacheDelete(`twitch_mobile_state:${state}`);
+  } else {
+    consumeTwitchMobileState(state);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const defaultTarget = "/member/profil";
   try {
-    const user = await requireUser();
-    if (!user?.discordId) {
-      const loginUrl = new URL("/auth/login", request.url);
-      loginUrl.searchParams.set("error", "twitch_link_requires_login");
-      return NextResponse.redirect(loginUrl);
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
     const oauthError = searchParams.get("error");
-    const state = searchParams.get("state");
+    const stateParam = searchParams.get("state");
 
     const cookieStore = await cookies();
     const stateCookie = cookieStore.get(TWITCH_LINK_STATE_COOKIE)?.value;
-    let parsedState: { state: string; callbackPath?: string } | null = null;
+    let parsedCookie: { state: string; callbackPath?: string } | null = null;
     if (stateCookie) {
       try {
-        parsedState = JSON.parse(stateCookie) as {
+        parsedCookie = JSON.parse(stateCookie) as {
           state: string;
           callbackPath?: string;
         };
       } catch {
-        parsedState = null;
+        parsedCookie = null;
       }
     }
 
-    const callbackPath = toSafeCallbackPath(parsedState?.callbackPath);
+    const cookieMatches =
+      Boolean(parsedCookie?.state && stateParam && parsedCookie.state === stateParam);
 
-    if (oauthError) {
+    const mobilePeek = await peekMobilePayload(stateParam);
+
+    let discordId: string | null = null;
+    let callbackPath = defaultTarget;
+    let isMobileFlow = false;
+
+    if (cookieMatches) {
+      const user = await requireUser();
+      if (!user?.discordId) {
+        const loginUrl = new URL("/auth/login", request.url);
+        loginUrl.searchParams.set("error", "twitch_link_requires_login");
+        return NextResponse.redirect(loginUrl);
+      }
+      discordId = user.discordId;
+      callbackPath = toSafeCallbackPath(parsedCookie?.callbackPath);
+    } else if (mobilePeek?.discordId) {
+      discordId = mobilePeek.discordId;
+      isMobileFlow = mobilePeek.callbackPath === MOBILE_CALLBACK_SENTINEL;
+      callbackPath = isMobileFlow ? MOBILE_CALLBACK_SENTINEL : toSafeCallbackPath(mobilePeek.callbackPath);
+    } else {
+      const target = appendStatusParam(defaultTarget, "twitch_error", "invalid_state");
+      return clearStateCookie(NextResponse.redirect(new URL(target, request.url)));
+    }
+
+    const redirectError = async (errKey: string) => {
+      await consumeMobilePayload(stateParam);
+      if (isMobileFlow) {
+        return clearStateCookie(
+          NextResponse.redirect(mobileAppUrl({ twitch_error: errKey }))
+        );
+      }
       return clearStateCookie(
         NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "oauth_error"),
-            request.url
-          )
+          new URL(appendStatusParam(callbackPath, "twitch_error", errKey), request.url)
         )
       );
+    };
+
+    if (oauthError) {
+      return redirectError("oauth_error");
     }
 
     if (!code) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "missing_code"),
-            request.url
-          )
-        )
-      );
-    }
-
-    if (!state || !parsedState?.state || state !== parsedState.state) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "invalid_state"),
-            request.url
-          )
-        )
-      );
+      return redirectError("missing_code");
     }
 
     const clientId = process.env.TWITCH_CLIENT_ID;
@@ -107,14 +150,7 @@ export async function GET(request: NextRequest) {
     const redirectUri = buildLinkCallbackRedirectUri(request);
 
     if (!clientId || !clientSecret) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "config_error"),
-            request.url
-          )
-        )
-      );
+      return redirectError("config_error");
     }
 
     const tokenResponse = await fetch("https://id.twitch.tv/oauth2/token", {
@@ -130,28 +166,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "token_exchange_failed"),
-            request.url
-          )
-        )
-      );
+      return redirectError("token_exchange_failed");
     }
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token as string | undefined;
     const refreshToken = tokenData.refresh_token as string | undefined;
     if (!accessToken || !refreshToken) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "invalid_token_payload"),
-            request.url
-          )
-        )
-      );
+      return redirectError("invalid_token_payload");
     }
 
     const meResponse = await fetch("https://api.twitch.tv/helix/users", {
@@ -162,27 +184,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!meResponse.ok) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "user_fetch_failed"),
-            request.url
-          )
-        )
-      );
+      return redirectError("user_fetch_failed");
     }
 
     const meData = await meResponse.json();
     const twitchUser = Array.isArray(meData?.data) ? meData.data[0] : null;
     if (!twitchUser?.id || !twitchUser?.login) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "invalid_user_payload"),
-            request.url
-          )
-        )
-      );
+      return redirectError("invalid_user_payload");
     }
 
     const existingForTwitchUser = await getLinkedTwitchAccountByTwitchUserId(
@@ -191,21 +199,14 @@ export async function GET(request: NextRequest) {
     if (
       existingForTwitchUser &&
       existingForTwitchUser.discordId &&
-      existingForTwitchUser.discordId !== user.discordId
+      existingForTwitchUser.discordId !== discordId
     ) {
-      return clearStateCookie(
-        NextResponse.redirect(
-          new URL(
-            appendStatusParam(callbackPath, "twitch_error", "already_linked_elsewhere"),
-            request.url
-          )
-        )
-      );
+      return redirectError("already_linked_elsewhere");
     }
 
     try {
       await upsertLinkedTwitchAccount({
-        discordId: user.discordId,
+        discordId: discordId!,
         twitchUserId: twitchUser.id,
         twitchLogin: twitchUser.login,
         twitchDisplayName: twitchUser.display_name || twitchUser.login,
@@ -227,14 +228,7 @@ export async function GET(request: NextRequest) {
         (errorMessage.includes("twitch_user_id") ||
           errorMessage.includes("linked_twitch_accounts_twitch_user_id_key"));
       if (isUniqueTwitchConflict) {
-        return clearStateCookie(
-          NextResponse.redirect(
-            new URL(
-              appendStatusParam(callbackPath, "twitch_error", "already_linked_elsewhere"),
-              request.url
-            )
-          )
-        );
+        return redirectError("already_linked_elsewhere");
       }
       throw upsertError;
     }
@@ -243,11 +237,11 @@ export async function GET(request: NextRequest) {
       category: LogCategory.TWITCH,
       level: LogLevel.INFO,
       message: "Liaison Twitch effectuee",
-      userId: user.discordId,
+      userId: discordId!,
       route: "/api/auth/twitch/link/callback",
       details: {
         action: "twitch_link_success",
-        discordId: user.discordId,
+        discordId: discordId!,
         twitchUserId: String(twitchUser.id),
         twitchLogin: String(twitchUser.login || "").toLowerCase(),
         twitchDisplayName: String(twitchUser.display_name || twitchUser.login || ""),
@@ -257,6 +251,14 @@ export async function GET(request: NextRequest) {
         resourceId: String(twitchUser.id),
       },
     });
+
+    await consumeMobilePayload(stateParam);
+
+    if (isMobileFlow) {
+      return clearStateCookie(
+        NextResponse.redirect(mobileAppUrl({ twitch_linked: "1" }))
+      );
+    }
 
     return clearStateCookie(
       NextResponse.redirect(
