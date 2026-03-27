@@ -90,8 +90,9 @@ async function resolveSpotlightEventIds(input: {
   const ids = new Set<string>();
   for (const row of candidateRows) {
     ids.add(row.id);
-    if ("legacyEventId" in row && row.legacyEventId) {
-      ids.add(row.legacyEventId);
+    const legacyEventId = "legacyEventId" in row ? row.legacyEventId : undefined;
+    if (typeof legacyEventId === "string" && legacyEventId) {
+      ids.add(legacyEventId);
     }
   }
 
