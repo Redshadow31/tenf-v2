@@ -19,15 +19,18 @@ export async function POST() {
 
     const started = await startFollowEngagementSnapshotJob(admin.discordId || null);
     if (!started.alreadyRunning) {
-      await executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null);
+      // Ne pas bloquer la reponse HTTP: le calcul peut depasser le timeout proxy (504).
+      void executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null).catch((error) => {
+        console.error("[Admin Follow Snapshot Run] Job async en echec:", error);
+      });
     }
 
     return NextResponse.json({
       success: true,
       snapshotId: started.snapshotId,
-      status: started.alreadyRunning ? "running" : "completed",
+      status: "running",
       alreadyRunning: started.alreadyRunning,
-    }, { status: 200 });
+    }, { status: 202 });
   } catch (error) {
     console.error("[Admin Follow Snapshot Run] Erreur:", error);
     return NextResponse.json(
