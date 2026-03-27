@@ -30,11 +30,18 @@ const WEEKDAY_OPTIONS = [
   { value: 0, shortLabel: "Dim", longLabel: "Dimanche" },
 ];
 
+function toLocalIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getDefaultDateTime(): Pick<StreamForm, "date" | "time"> {
   const now = new Date();
   const rounded = new Date(now.getTime() + 30 * 60 * 1000);
   rounded.setMinutes(rounded.getMinutes() >= 30 ? 30 : 0, 0, 0);
-  const date = rounded.toISOString().slice(0, 10);
+  const date = toLocalIsoDate(rounded);
   const time = `${String(rounded.getHours()).padStart(2, "0")}:${String(rounded.getMinutes()).padStart(2, "0")}`;
   return { date, time };
 }
@@ -42,7 +49,7 @@ function getDefaultDateTime(): Pick<StreamForm, "date" | "time"> {
 function formatPresetDate(offsetDays: number): string {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
+  return toLocalIsoDate(date);
 }
 
 function addDaysToIsoDate(isoDate: string, daysToAdd: number): string {
@@ -220,17 +227,23 @@ export default function MemberPlanningPage() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [showModal]);
 
+  function syncWeekdayFromDate(isoDate: string) {
+    if (!isoDate) return;
+    setSelectedWeekdays([getWeekdayFromIsoDate(isoDate)]);
+  }
+
   function openModal() {
     const defaults = getDefaultDateTime();
+    const baseDate = form.date || defaults.date;
     setForm((prev) => ({
-      date: prev.date || defaults.date,
+      date: baseDate,
       time: prev.time || defaults.time,
       liveType: prev.liveType,
       title: prev.title,
     }));
     setFormError(null);
     setRecurrenceWeeks(1);
-    setSelectedWeekdays([getWeekdayFromIsoDate(form.date || defaults.date)]);
+    setSelectedWeekdays([getWeekdayFromIsoDate(baseDate)]);
     setShowModal(true);
   }
 
@@ -708,7 +721,11 @@ export default function MemberPlanningPage() {
                     type="date"
                     required
                     value={form.date}
-                    onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      setForm((prev) => ({ ...prev, date: nextDate }));
+                      syncWeekdayFromDate(nextDate);
+                    }}
                     className="w-full rounded-lg border px-3 py-2"
                     style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
                   />
@@ -731,7 +748,11 @@ export default function MemberPlanningPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, date: formatPresetDate(0), time: "20:00" }))}
+                  onClick={() => {
+                    const nextDate = formatPresetDate(0);
+                    setForm((prev) => ({ ...prev, date: nextDate, time: "20:00" }));
+                    syncWeekdayFromDate(nextDate);
+                  }}
                   className="px-2.5 py-1 rounded-md border text-xs font-semibold"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
                 >
@@ -739,7 +760,11 @@ export default function MemberPlanningPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, date: formatPresetDate(1), time: "20:00" }))}
+                  onClick={() => {
+                    const nextDate = formatPresetDate(1);
+                    setForm((prev) => ({ ...prev, date: nextDate, time: "20:00" }));
+                    syncWeekdayFromDate(nextDate);
+                  }}
                   className="px-2.5 py-1 rounded-md border text-xs font-semibold"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
                 >
@@ -747,7 +772,11 @@ export default function MemberPlanningPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, date: formatPresetDate(2), time: "21:00" }))}
+                  onClick={() => {
+                    const nextDate = formatPresetDate(2);
+                    setForm((prev) => ({ ...prev, date: nextDate, time: "21:00" }));
+                    syncWeekdayFromDate(nextDate);
+                  }}
                   className="px-2.5 py-1 rounded-md border text-xs font-semibold"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
                 >

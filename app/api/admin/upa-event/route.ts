@@ -56,6 +56,15 @@ export async function PUT(request: Request) {
         ? body.content.staff
         : existingContent.staff;
 
+    const streamersInput = Array.isArray(body?.streamers)
+      ? body.streamers
+      : Array.isArray(body?.content?.streamers)
+        ? body.content.streamers
+        : existingContent.streamers;
+
+    const incomingStartDate = String(body?.startDate ?? body?.content?.general?.startDate ?? existingContent.general.startDate).trim();
+    const incomingEndDate = String(body?.endDate ?? body?.content?.general?.endDate ?? existingContent.general.endDate).trim();
+
     const normalizedStaffDraft = (staffInput as Array<Record<string, unknown>>)
       .map((item, index) => {
         const rawLogin = String(item?.twitchLogin ?? "").trim().replace(/^@/, "").toLowerCase();
@@ -77,8 +86,26 @@ export async function PUT(request: Request) {
         };
       }) as UpaEventContent["staff"];
 
+    const normalizedStreamersDraft = (streamersInput as Array<Record<string, unknown>>)
+      .map((item, index) => {
+        const rawLogin = String(item?.twitchLogin ?? "").trim().replace(/^@/, "").toLowerCase();
+        const fallbackDisplayName = String(item?.displayName ?? "").trim();
+        const orderRaw = Number.parseInt(String(item?.order ?? index + 1), 10);
+        const order = Number.isFinite(orderRaw) && orderRaw > 0 ? orderRaw : index + 1;
+        return {
+          id: String(item?.id || `streamer-${crypto.randomUUID()}`),
+          twitchLogin: rawLogin,
+          displayName: fallbackDisplayName || rawLogin || "Streamer UPA",
+          avatarUrl: "",
+          description: String(item?.description ?? "").trim(),
+          order,
+          isActive: item?.isActive === false ? false : true,
+        };
+      })
+      .filter((item) => item.twitchLogin.length > 0) as UpaEventContent["streamers"];
+
     const uniqueLogins = extractUniqueTwitchLogins(
-      normalizedStaffDraft.map((member) => ({ twitchLogin: member.twitchLogin }))
+      [...normalizedStaffDraft, ...normalizedStreamersDraft].map((member) => ({ twitchLogin: member.twitchLogin }))
     );
     const twitchUsers = await getTwitchUsers(uniqueLogins);
     const avatarMap = buildTwitchAvatarMap(twitchUsers);
@@ -93,14 +120,29 @@ export async function PUT(request: Request) {
       };
     });
 
+    const enrichedStreamers = normalizedStreamersDraft.map((member) => {
+      const user = twitchUserMap.get(member.twitchLogin);
+      return {
+        ...member,
+        displayName: user?.display_name || member.displayName || member.twitchLogin || "Streamer UPA",
+        avatarUrl: avatarMap.get(member.twitchLogin) || member.avatarUrl || "",
+      };
+    });
+
     const nextContent: UpaEventContent = {
       ...existingContent,
+      general: {
+        ...existingContent.general,
+        startDate: incomingStartDate || existingContent.general.startDate,
+        endDate: incomingEndDate || existingContent.general.endDate,
+      },
       socialProof: {
         ...existingContent.socialProof,
         totalRegistered,
         socialProofMessage: `Deja ${totalRegistered} participants inscrits`,
       },
       staff: enrichedStaff,
+      streamers: enrichedStreamers,
     };
 
     const content = await upaEventRepository.upsertContent("upa-event", nextContent, writeAdmin.discordId);

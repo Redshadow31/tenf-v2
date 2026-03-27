@@ -112,6 +112,99 @@ export class SpotlightRepository {
     return Array.from(aliases);
   }
 
+  private normalizeLogin(value?: string | null): string {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  private async resolveSpotlightEventIds(spotlightId: string): Promise<string[]> {
+    try {
+      const spotlight = await this.findById(spotlightId);
+      if (!spotlight) return [];
+
+      const startsAtIso = spotlight.startedAt instanceof Date ? spotlight.startedAt.toISOString() : new Date(spotlight.startedAt).toISOString();
+      const titleTokens = [spotlight.streamerDisplayName, spotlight.streamerTwitchLogin]
+        .map((v) => this.normalizeLogin(v))
+        .filter(Boolean);
+
+      const { data, error } = await supabaseAdmin
+        .from('community_events')
+        .select('id,title,category,starts_at,date')
+        .limit(50);
+      if (error || !data?.length) return [];
+
+      const spotlightLikeRows = data.filter((row: any) => {
+        const category = this.normalizeLogin(row.category);
+        const title = this.normalizeLogin(row.title);
+        return category.includes('spotlight') || title.includes('spotlight');
+      });
+      const dateScoped = spotlightLikeRows.length > 0 ? spotlightLikeRows : data;
+
+      const exactDateMatches = dateScoped.filter((row: any) => {
+        const rowDate = String(row.starts_at || row.date || '');
+        return rowDate === startsAtIso;
+      });
+      const pool = exactDateMatches.length > 0 ? exactDateMatches : dateScoped;
+
+      const filtered = pool.filter((row: any) => {
+        if (!titleTokens.length) return true;
+        const haystack = this.normalizeLogin(`${row.title || ''} ${row.category || ''}`);
+        return titleTokens.some((token) => haystack.includes(token));
+      });
+
+      const ids = (filtered.length > 0 ? filtered : pool)
+        .map((row: any) => String(row.id || ''))
+        .filter(Boolean);
+
+      return Array.from(new Set(ids));
+    } catch {
+      return [];
+    }
+  }
+
+  private async syncPresenceToEventPresences(params: {
+    spotlightId: string;
+    twitchLogin: string;
+    displayName?: string;
+    addedBy?: string;
+    remove?: boolean;
+  }): Promise<void> {
+    const eventIds = await this.resolveSpotlightEventIds(params.spotlightId);
+    if (!eventIds.length) return;
+
+    const normalizedLogin = this.normalizeLogin(params.twitchLogin);
+    if (!normalizedLogin) return;
+
+    if (params.remove) {
+      for (const eventId of eventIds) {
+        await supabaseAdmin
+          .from('event_presences')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('twitch_login', normalizedLogin);
+      }
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    for (const eventId of eventIds) {
+      await supabaseAdmin
+        .from('event_presences')
+        .upsert(
+          {
+            event_id: eventId,
+            twitch_login: normalizedLogin,
+            display_name: params.displayName || normalizedLogin,
+            is_registered: false,
+            present: true,
+            validated_at: nowIso,
+            validated_by: params.addedBy || 'spotlight-sync',
+            added_manually: true,
+          },
+          { onConflict: 'event_id,twitch_login', ignoreDuplicates: false }
+        );
+    }
+  }
+
   /**
    * Récupère le spotlight actif
    */
@@ -310,6 +403,13 @@ export class SpotlightRepository {
 
     if (error) throw error;
 
+    await this.syncPresenceToEventPresences({
+      spotlightId: String(presence.spotlightId || ''),
+      twitchLogin: String(presence.twitchLogin || ''),
+      displayName: presence.displayName,
+      addedBy: presence.addedBy,
+    });
+
     return this.mapToPresence(data);
   }
 
@@ -326,6 +426,12 @@ export class SpotlightRepository {
         .eq('twitch_login', twitchLogin.toLowerCase());
       if (error) throw error;
     }
+
+    await this.syncPresenceToEventPresences({
+      spotlightId,
+      twitchLogin,
+      remove: true,
+    });
   }
 
   /**
@@ -340,6 +446,16 @@ export class SpotlightRepository {
         .delete()
         .eq('spotlight_id', id);
       if (deleteError) throw deleteError;
+    }
+
+    const relatedEventIds = await this.resolveSpotlightEventIds(spotlightId);
+    if (relatedEventIds.length > 0) {
+      for (const eventId of relatedEventIds) {
+        await supabaseAdmin
+          .from('event_presences')
+          .delete()
+          .eq('event_id', eventId);
+      }
     }
 
     // Insérer les nouvelles présences
@@ -361,6 +477,16 @@ export class SpotlightRepository {
       .select();
 
     if (error) throw error;
+
+    for (const presence of presences) {
+      if (!presence?.twitchLogin) continue;
+      await this.syncPresenceToEventPresences({
+        spotlightId,
+        twitchLogin: String(presence.twitchLogin),
+        displayName: presence.displayName,
+        addedBy: presence.addedBy,
+      });
+    }
 
     return (data || []).map(this.mapToPresence);
   }

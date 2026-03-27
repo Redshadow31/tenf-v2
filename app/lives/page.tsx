@@ -59,6 +59,20 @@ type RaidMetrics = {
   raidedNewMember: boolean;
 };
 
+type UpaLiteContent = {
+  general?: {
+    startDate?: string;
+    endDate?: string;
+  };
+  streamers?: Array<{
+    twitchLogin?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    order?: number;
+    isActive?: boolean;
+  }>;
+};
+
 const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function LivesPage() {
@@ -78,6 +92,7 @@ export default function LivesPage() {
   const [sessionShuffleSeed] = useState(() => `${Date.now()}-${Math.random()}`);
   const [followStatuses, setFollowStatuses] = useState<Record<string, FollowState>>({});
   const [showFollowStatuses, setShowFollowStatuses] = useState(false);
+  const [upaContent, setUpaContent] = useState<UpaLiteContent | null>(null);
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
@@ -339,6 +354,18 @@ export default function LivesPage() {
             };
           });
           setRaidMetricsByLogin(serializedMetrics);
+
+          try {
+            const upaResponse = await fetchWithTimeout("/api/upa-event/content?slug=upa-event", { cache: "no-store" }, 10000);
+            if (upaResponse.ok) {
+              const upaBody = await upaResponse.json();
+              setUpaContent((upaBody?.content || null) as UpaLiteContent | null);
+            } else {
+              setUpaContent(null);
+            }
+          } catch {
+            setUpaContent(null);
+          }
         } catch (contextError) {
           console.warn("[Lives Page] Contexte indisponible:", contextError);
         }
@@ -463,6 +490,76 @@ export default function LivesPage() {
     }
   }, [filteredLives.length]);
 
+  const upaActiveRange = useMemo(() => {
+    const startRaw = upaContent?.general?.startDate || "";
+    const endRaw = upaContent?.general?.endDate || "";
+    if (!startRaw || !endRaw) return null;
+
+    const start = new Date(`${startRaw}T00:00:00`);
+    const end = new Date(`${endRaw}T23:59:59`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    return { start, end };
+  }, [upaContent?.general?.startDate, upaContent?.general?.endDate]);
+
+  const isUpaPeriodActive = useMemo(() => {
+    if (!upaActiveRange) return false;
+    const now = new Date();
+    return now.getTime() >= upaActiveRange.start.getTime() && now.getTime() <= upaActiveRange.end.getTime();
+  }, [upaActiveRange]);
+
+  const upaLiveMembers = useMemo(() => {
+    const withoutSpotlight = filteredLives.filter((live) => {
+      const normalizedLogin = normalizeLoginKey(live.twitchLogin);
+      const isSpotlightMatch =
+        (!!spotlightLogin && normalizedLogin === normalizeLoginKey(spotlightLogin)) ||
+        (!!spotlightDisplayName && normalizeText(live.displayName) === normalizeText(spotlightDisplayName));
+      return !isSpotlightMatch;
+    });
+
+    if (!isUpaPeriodActive) return [];
+    const upaLogins = new Set(
+      (upaContent?.streamers || [])
+        .filter((member) => member?.isActive !== false)
+        .map((member) => normalizeLoginKey(String(member?.twitchLogin || "")))
+        .filter(Boolean)
+    );
+    if (upaLogins.size === 0) return [];
+    return withoutSpotlight.filter((live) => upaLogins.has(normalizeLoginKey(live.twitchLogin)));
+  }, [filteredLives, isUpaPeriodActive, upaContent?.streamers, spotlightDisplayName, spotlightLogin]);
+
+  const spotlightLiveMembers = useMemo(() => {
+    if (!spotlightLogin && !spotlightDisplayName) return [];
+    return filteredLives.filter((live) => {
+      const normalizedLogin = normalizeLoginKey(live.twitchLogin);
+      const isSpotlightMatch =
+        (!!spotlightLogin && normalizedLogin === normalizeLoginKey(spotlightLogin)) ||
+        (!!spotlightDisplayName && normalizeText(live.displayName) === normalizeText(spotlightDisplayName));
+      return isSpotlightMatch;
+    });
+  }, [filteredLives, spotlightDisplayName, spotlightLogin]);
+
+  const regularLiveMembers = useMemo(() => {
+    const spotlightLogins = new Set(spotlightLiveMembers.map((live) => normalizeLoginKey(live.twitchLogin)));
+    const withoutSpotlight = filteredLives.filter((live) => !spotlightLogins.has(normalizeLoginKey(live.twitchLogin)));
+    if (!isUpaPeriodActive || upaLiveMembers.length === 0) return withoutSpotlight;
+    const upaLiveLogins = new Set(upaLiveMembers.map((live) => normalizeLoginKey(live.twitchLogin)));
+    return withoutSpotlight.filter((live) => !upaLiveLogins.has(normalizeLoginKey(live.twitchLogin)));
+  }, [filteredLives, isUpaPeriodActive, spotlightLiveMembers, upaLiveMembers]);
+
+  const upaDateRangeLabel = useMemo(() => {
+    if (!upaActiveRange) return "";
+    return `Du ${upaActiveRange.start.toLocaleDateString("fr-FR")} au ${upaActiveRange.end.toLocaleDateString("fr-FR")}`;
+  }, [upaActiveRange]);
+
+  const upaStatusLabel = useMemo(() => {
+    if (!upaActiveRange) return "";
+    const now = new Date();
+    const diffMs = upaActiveRange.end.getTime() - now.getTime();
+    const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    if (diffDays === 0) return "Dernier jour de la semaine caritative";
+    return `Encore ${diffDays} jour${diffDays > 1 ? "s" : ""} de mobilisation`;
+  }, [upaActiveRange]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -528,13 +625,121 @@ export default function LivesPage() {
         activeMembers={activeMembers}
       />
 
-      {filteredLives.length > 0 ? (
+      {spotlightLiveMembers.length > 0 ? (
+        <section
+          className="rounded-3xl border p-4 md:p-6 space-y-4"
+          style={{
+            borderColor: "rgba(145,70,255,0.45)",
+            background:
+              "radial-gradient(circle at 12% 15%, rgba(145,70,255,0.22), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,22,35,0.98), rgba(13,12,20,0.99))",
+            boxShadow: "0 22px 52px rgba(0,0,0,0.36)",
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p
+                className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em]"
+                style={{
+                  borderColor: "rgba(145,70,255,0.6)",
+                  color: "#d8c4ff",
+                  backgroundColor: "rgba(145,70,255,0.2)",
+                }}
+              >
+                SPOTLIGHT ACTIF
+              </p>
+              <h2 className="mt-2 text-2xl md:text-3xl font-bold" style={{ color: "#efe5ff" }}>
+                Mise en avant Spotlight TENF
+              </h2>
+              <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.82)" }}>
+                Bloc visible uniquement pendant la fenetre active du Spotlight programme.
+              </p>
+            </div>
+            <p className="text-sm font-semibold" style={{ color: "#cdb1ff" }}>
+              {spotlightLiveMembers.length} live spotlight en cours
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {spotlightLiveMembers.map((live) => (
+              <LiveCard key={`spotlight-${live.twitchLogin}-${live.startedAt}`} live={live} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {isUpaPeriodActive && upaLiveMembers.length > 0 ? (
+        <section
+          className="rounded-3xl border p-4 md:p-6 space-y-5"
+          style={{
+            borderColor: "rgba(212,175,55,0.42)",
+            background:
+              "radial-gradient(circle at 10% 20%, rgba(212,175,55,0.2), rgba(212,175,55,0) 42%), radial-gradient(circle at 85% 12%, rgba(145,70,255,0.14), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,24,34,0.97), rgba(12,12,18,0.99))",
+            boxShadow: "0 22px 52px rgba(0,0,0,0.38)",
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p
+                className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em]"
+                style={{
+                  borderColor: "rgba(212,175,55,0.55)",
+                  color: "#f5df9d",
+                  backgroundColor: "rgba(212,175,55,0.13)",
+                }}
+              >
+                SEMAINE CARITATIVE UPA
+              </p>
+              <h2 className="mt-2 text-2xl md:text-3xl font-bold" style={{ color: "#f7edd0" }}>
+                Lives caritatifs UPA en cours
+              </h2>
+              <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.8)" }}>
+                Mise en avant automatique pendant la periode UPA pour amplifier la visibilite des lives solidaires.
+              </p>
+            </div>
+            <div className="rounded-xl border px-3 py-2 text-right" style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(212,175,55,0.08)" }}>
+              <p className="text-sm font-semibold" style={{ color: "#f5df9d" }}>
+                {upaLiveMembers.length} live{upaLiveMembers.length > 1 ? "s" : ""} UPA actif{upaLiveMembers.length > 1 ? "s" : ""}
+              </p>
+              {upaStatusLabel ? (
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.72)" }}>
+                  {upaStatusLabel}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {upaDateRangeLabel ? (
+              <span
+                className="inline-flex items-center rounded-full border px-3 py-1"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.84)", backgroundColor: "rgba(255,255,255,0.08)" }}
+              >
+                {upaDateRangeLabel}
+              </span>
+            ) : null}
+            <span
+              className="inline-flex items-center rounded-full border px-3 py-1"
+              style={{ borderColor: "rgba(145,70,255,0.35)", color: "#d9c3ff", backgroundColor: "rgba(145,70,255,0.14)" }}
+            >
+              Priorite solidarite
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {upaLiveMembers.map((live) => (
+              <LiveCard key={`upa-${live.twitchLogin}-${live.startedAt}`} live={live} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {regularLiveMembers.length > 0 ? (
         <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredLives.map((live) => (
+          {regularLiveMembers.map((live) => (
             <LiveCard key={`${live.twitchLogin}-${live.startedAt}`} live={live} />
           ))}
         </section>
-      ) : (
+      ) : upaLiveMembers.length === 0 && spotlightLiveMembers.length === 0 ? (
         <section
           className="rounded-xl border p-8 text-center"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
@@ -546,7 +751,7 @@ export default function LivesPage() {
             Ajuste la recherche ou les filtres de jeu/role.
           </p>
         </section>
-      )}
+      ) : null}
 
       <UpcomingEventsSection events={upcomingEvents} allEventsHref="/events2" />
 

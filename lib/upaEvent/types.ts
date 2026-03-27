@@ -55,6 +55,16 @@ export interface UpaEventStaffMember {
   isActive: boolean;
 }
 
+export interface UpaEventStreamerMember {
+  id: string;
+  twitchLogin: string;
+  displayName: string;
+  avatarUrl?: string;
+  description?: string;
+  order: number;
+  isActive: boolean;
+}
+
 export interface UpaEventFaqItem {
   id: string;
   question: string;
@@ -114,6 +124,7 @@ export interface UpaEventContent {
   timeline: UpaEventTimelineItem[];
   editorialSections: UpaEventEditorialSection[];
   staff: UpaEventStaffMember[];
+  streamers: UpaEventStreamerMember[];
   faq: UpaEventFaqItem[];
   officialLinks: UpaEventOfficialLink[];
   partnerCommunities: UpaEventPartnerCommunity[];

@@ -21,6 +21,10 @@ type CommunityEvent = {
   image?: string;
   isPublished?: boolean;
   createdBy?: string;
+  spotlightStreamerLogin?: string;
+  spotlightStreamerDisplayName?: string;
+  seriesId?: string;
+  seriesName?: string;
 };
 
 type EventForm = {
@@ -30,6 +34,21 @@ type EventForm = {
   dateParisLocal: string;
   isPublished: boolean;
   imageUrl: string;
+  spotlightStreamerLogin: string;
+  spotlightStreamerDisplayName: string;
+  seriesId: string;
+  seriesName: string;
+};
+
+type MemberSearchResult = {
+  twitchLogin: string;
+  displayName: string;
+  isActive?: boolean;
+};
+
+type CategorySeriesOption = {
+  seriesId: string;
+  seriesName: string;
 };
 
 const DEFAULT_FORM: EventForm = {
@@ -39,6 +58,10 @@ const DEFAULT_FORM: EventForm = {
   dateParisLocal: "",
   isPublished: false,
   imageUrl: "",
+  spotlightStreamerLogin: "",
+  spotlightStreamerDisplayName: "",
+  seriesId: "",
+  seriesName: "",
 };
 
 const glassCardClass =
@@ -54,13 +77,37 @@ function normalizeResponsible(raw?: string): string {
 }
 
 function isFormValid(form: EventForm): boolean {
-  return Boolean(form.title.trim() && form.dateParisLocal);
+  if (!form.title.trim() || !form.dateParisLocal) return false;
+  if (form.category === "Spotlight") {
+    return Boolean(form.spotlightStreamerLogin.trim());
+  }
+  if (form.category === "Formation" || form.category === "Jeux communautaire") {
+    return Boolean(form.seriesName.trim());
+  }
+  return true;
+}
+
+function normalizeSeriesSeed(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildSeriesId(category: string, seriesName: string): string {
+  const categorySeed = normalizeSeriesSeed(category) || "event";
+  const nameSeed = normalizeSeriesSeed(seriesName) || "serie";
+  return `series-${categorySeed}-${nameSeed}`;
 }
 
 export default function CommunauteEvenementsCalendrierPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [allEventsCatalog, setAllEventsCatalog] = useState<CommunityEvent[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<"infos" | "publication" | "preview">("infos");
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -70,6 +117,9 @@ export default function CommunauteEvenementsCalendrierPage() {
   const [form, setForm] = useState<EventForm>(DEFAULT_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [spotlightSearch, setSpotlightSearch] = useState("");
+  const [spotlightResults, setSpotlightResults] = useState<MemberSearchResult[]>([]);
+  const [spotlightLoading, setSpotlightLoading] = useState(false);
 
   const loadEvents = async () => {
     try {
@@ -80,6 +130,7 @@ export default function CommunauteEvenementsCalendrierPage() {
       const payload = await response.json();
       const now = new Date();
       const incoming = Array.isArray(payload?.events) ? (payload.events as CommunityEvent[]) : [];
+      setAllEventsCatalog(incoming);
       const upcoming = incoming
         .filter((event) => new Date(event.startAtUtc || event.date).getTime() >= now.getTime())
         .sort((a, b) => new Date(a.startAtUtc || a.date).getTime() - new Date(b.startAtUtc || b.date).getTime());
@@ -95,12 +146,70 @@ export default function CommunauteEvenementsCalendrierPage() {
     void loadEvents();
   }, []);
 
+  useEffect(() => {
+    const shouldSearch = modalOpen && form.category === "Spotlight" && spotlightSearch.trim().length >= 2;
+    if (!shouldSearch) {
+      setSpotlightResults([]);
+      setSpotlightLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      try {
+        setSpotlightLoading(true);
+        const response = await fetch(
+          `/api/members/search?q=${encodeURIComponent(spotlightSearch.trim())}&includeInactive=false&includeCommunity=true`,
+          { cache: "no-store", signal: controller.signal }
+        );
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+        const members = Array.isArray(payload?.members) ? payload.members : [];
+        setSpotlightResults(
+          members.map((member: any) => ({
+            twitchLogin: String(member.twitchLogin || "").toLowerCase(),
+            displayName: String(member.displayName || member.twitchLogin || ""),
+            isActive: member.isActive !== false,
+          }))
+        );
+      } catch {
+        setSpotlightResults([]);
+      } finally {
+        setSpotlightLoading(false);
+      }
+    }, 200);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [modalOpen, form.category, spotlightSearch]);
+
+  const categorySeriesOptions = useMemo(() => {
+    if (form.category !== "Formation" && form.category !== "Jeux communautaire") return [];
+
+    const map = new Map<string, CategorySeriesOption>();
+    allEventsCatalog.forEach((event) => {
+      if (event.category !== form.category) return;
+      const seriesName = String(event.seriesName || event.title || "").trim();
+      if (!seriesName) return;
+      const seriesId = String(event.seriesId || buildSeriesId(form.category, seriesName)).trim();
+      if (!seriesId) return;
+      if (!map.has(seriesId)) {
+        map.set(seriesId, { seriesId, seriesName });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.seriesName.localeCompare(b.seriesName, "fr"));
+  }, [allEventsCatalog, form.category]);
+
   const openCreateModal = () => {
     setModalMode("create");
     setEditingEventId(null);
     setForm(DEFAULT_FORM);
     setImageFile(null);
     setImagePreview(null);
+    setSpotlightSearch("");
+    setSpotlightResults([]);
     setModalTab("infos");
     setModalOpen(true);
   };
@@ -115,9 +224,15 @@ export default function CommunauteEvenementsCalendrierPage() {
       dateParisLocal: utcIsoToParisDateTimeLocalInput(event.startAtUtc || event.date),
       isPublished: Boolean(event.isPublished),
       imageUrl: event.image || "",
+      spotlightStreamerLogin: event.spotlightStreamerLogin || "",
+      spotlightStreamerDisplayName: event.spotlightStreamerDisplayName || "",
+      seriesId: event.seriesId || "",
+      seriesName: event.seriesName || "",
     });
     setImageFile(null);
     setImagePreview(event.image || null);
+    setSpotlightSearch(event.spotlightStreamerLogin || "");
+    setSpotlightResults([]);
     setModalTab("infos");
     setModalOpen(true);
   };
@@ -151,6 +266,11 @@ export default function CommunauteEvenementsCalendrierPage() {
         finalImageUrl = String(uploadPayload?.imageUrl || "");
       }
       const startAtUtc = parisLocalDateTimeToUtcIso(form.dateParisLocal);
+      const isTrackedCategory = form.category === "Formation" || form.category === "Jeux communautaire";
+      const normalizedSeriesName = isTrackedCategory ? form.seriesName.trim() : "";
+      const normalizedSeriesId = isTrackedCategory
+        ? (form.seriesId.trim() || buildSeriesId(form.category, normalizedSeriesName))
+        : "";
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -160,6 +280,15 @@ export default function CommunauteEvenementsCalendrierPage() {
         date: startAtUtc,
         isPublished: form.isPublished,
         image: finalImageUrl || undefined,
+        spotlightStreamerLogin:
+          form.category === "Spotlight"
+            ? form.spotlightStreamerLogin.trim().replace(/^@/, "").toLowerCase()
+            : undefined,
+        spotlightStreamerDisplayName:
+          form.category === "Spotlight" ? form.spotlightStreamerDisplayName.trim() || undefined : undefined,
+        seriesId: isTrackedCategory ? normalizedSeriesId : undefined,
+        seriesName: isTrackedCategory ? normalizedSeriesName : undefined,
+        sourceEventId: isTrackedCategory && normalizedSeriesId ? editingEventId || undefined : undefined,
       };
       const response =
         modalMode === "create"
@@ -244,6 +373,10 @@ export default function CommunauteEvenementsCalendrierPage() {
             </button>
             <Link href="/admin/events/planification" className={subtleButtonClass}>
               Ouvrir edition complete
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/admin/communaute/evenements/spotlight/gestion" className={subtleButtonClass}>
+              Secours Spotlight manuel
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -362,6 +495,11 @@ export default function CommunauteEvenementsCalendrierPage() {
                         {event.category ? (
                           <span className="rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2 py-0.5 text-xs text-cyan-100">
                             {event.category}
+                          </span>
+                        ) : null}
+                        {event.seriesName ? (
+                          <span className="rounded-full border border-violet-300/35 bg-violet-300/10 px-2 py-0.5 text-xs text-violet-100">
+                            Serie: {event.seriesName}
                           </span>
                         ) : null}
                       </div>
@@ -518,7 +656,22 @@ export default function CommunauteEvenementsCalendrierPage() {
                     <label className="mb-1 block text-sm text-slate-300">Categorie *</label>
                     <select
                       value={form.category}
-                      onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                          spotlightStreamerLogin: e.target.value === "Spotlight" ? prev.spotlightStreamerLogin : "",
+                          spotlightStreamerDisplayName: e.target.value === "Spotlight" ? prev.spotlightStreamerDisplayName : "",
+                          seriesId:
+                            e.target.value === "Formation" || e.target.value === "Jeux communautaire"
+                              ? prev.seriesId
+                              : "",
+                          seriesName:
+                            e.target.value === "Formation" || e.target.value === "Jeux communautaire"
+                              ? prev.seriesName
+                              : "",
+                        }))
+                      }
                       className="w-full rounded-xl border border-[#353a50] bg-[#0f1424] px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-300/45"
                     >
                       <option value="Spotlight">Spotlight</option>
@@ -528,6 +681,119 @@ export default function CommunauteEvenementsCalendrierPage() {
                       <option value="Apero">Apero</option>
                     </select>
                   </div>
+                  {form.category === "Spotlight" ? (
+                    <div className="md:col-span-2 rounded-xl border border-indigo-300/30 bg-indigo-300/10 p-3">
+                      <label className="mb-2 block text-sm text-indigo-100">Membre mis en avant (Spotlight) *</label>
+                      {form.spotlightStreamerLogin ? (
+                        <div className="mb-2 flex items-center justify-between rounded-lg border border-indigo-200/35 bg-[#0f1424] px-3 py-2">
+                          <div>
+                            <p className="text-sm text-white">{form.spotlightStreamerDisplayName || form.spotlightStreamerLogin}</p>
+                            <p className="text-xs text-slate-400">@{form.spotlightStreamerLogin}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                spotlightStreamerLogin: "",
+                                spotlightStreamerDisplayName: "",
+                              }))
+                            }
+                            className="rounded-md border border-slate-500/40 px-2 py-1 text-xs text-slate-300 hover:text-white"
+                          >
+                            Changer
+                          </button>
+                        </div>
+                      ) : null}
+                      <input
+                        type="text"
+                        value={spotlightSearch}
+                        onChange={(e) => setSpotlightSearch(e.target.value)}
+                        className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-indigo-300/45"
+                        placeholder="Rechercher un membre (pseudo Twitch)"
+                      />
+                      {spotlightLoading ? (
+                        <p className="mt-2 text-xs text-slate-300">Recherche en cours...</p>
+                      ) : null}
+                      {spotlightResults.length > 0 ? (
+                        <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
+                          {spotlightResults.map((member) => (
+                            <button
+                              key={member.twitchLogin}
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  spotlightStreamerLogin: member.twitchLogin,
+                                  spotlightStreamerDisplayName: member.displayName,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-left hover:border-indigo-300/45"
+                            >
+                              <p className="text-sm text-white">{member.displayName}</p>
+                              <p className="text-xs text-slate-400">@{member.twitchLogin}</p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      <p className="mt-2 text-xs text-indigo-100/80">
+                        Si l'evenement est publie en categorie Spotlight, la mise en avant Lives est programmee automatiquement de l'heure de debut a +2h.
+                      </p>
+                    </div>
+                  ) : null}
+                  {form.category === "Formation" || form.category === "Jeux communautaire" ? (
+                    <div className="md:col-span-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3">
+                      <label className="mb-2 block text-sm text-cyan-100">
+                        {form.category === "Formation" ? "Parcours de formation" : "Jeu suivi"} *
+                      </label>
+                      <select
+                        value={form.seriesId}
+                        onChange={(e) => {
+                          const selected = categorySeriesOptions.find((item) => item.seriesId === e.target.value);
+                          setForm((prev) => ({
+                            ...prev,
+                            seriesId: e.target.value,
+                            seriesName: selected?.seriesName || prev.seriesName,
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/45"
+                      >
+                        <option value="">Nouvelle serie</option>
+                        {categorySeriesOptions.map((option) => (
+                          <option key={option.seriesId} value={option.seriesId}>
+                            {option.seriesName}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={form.seriesName}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              seriesName: e.target.value,
+                              seriesId:
+                                prev.seriesId ||
+                                buildSeriesId(
+                                  form.category,
+                                  e.target.value
+                                ),
+                            }))
+                          }
+                          className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/45"
+                          placeholder={
+                            form.category === "Formation"
+                              ? "Nom de la formation (ex: OBS debutant)"
+                              : "Nom du jeu (ex: Mario Kart 8)"
+                          }
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-cyan-100/85">
+                        Utilise une serie existante pour suivre l'evolution des sessions dans le temps (engagement, performances, tendances).
+                      </p>
+                    </div>
+                  ) : null}
                   <div>
                     <label className="mb-1 block text-sm text-slate-300">Date & heure (Paris) *</label>
                     <input
@@ -599,6 +865,16 @@ export default function CommunauteEvenementsCalendrierPage() {
                       : "Date non definie"}
                   </p>
                   <p className="mt-3 text-sm text-slate-300">{form.description || "Aucune description fournie."}</p>
+                  {form.category === "Spotlight" ? (
+                    <p className="mt-2 text-xs text-indigo-200">
+                      Membre Spotlight: {form.spotlightStreamerDisplayName || form.spotlightStreamerLogin || "Non selectionne"}
+                    </p>
+                  ) : null}
+                  {(form.category === "Formation" || form.category === "Jeux communautaire") ? (
+                    <p className="mt-2 text-xs text-cyan-200">
+                      Serie suivie: {form.seriesName || "Non renseignee"}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

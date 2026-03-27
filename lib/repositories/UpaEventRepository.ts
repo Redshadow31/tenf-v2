@@ -11,6 +11,7 @@ import type {
   UpaEventSocialProof,
   UpaEventStaffMember,
   UpaEventStatusMessages,
+  UpaEventStreamerMember,
   UpaEventTimelineItem,
   UpaRegistrationStatus,
   UpaTimelineStatus,
@@ -129,6 +130,7 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
       isActive: true,
     },
   ],
+  streamers: [],
   faq: [],
   officialLinks: [
     {
@@ -253,6 +255,24 @@ function normalizeStaff(value: unknown): UpaEventStaffMember[] {
   });
 }
 
+function normalizeStreamers(value: unknown): UpaEventStreamerMember[] {
+  const source = Array.isArray(value) ? value : [];
+  return source.map((item, index) => {
+    const obj = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    const rawLogin = trimText(obj.twitchLogin, trimText(obj.displayName, ""));
+    const twitchLogin = rawLogin.replace(/^@/, "").toLowerCase();
+    return {
+      id: trimText(obj.id, makeId("streamer")),
+      twitchLogin,
+      displayName: trimText(obj.displayName, twitchLogin || ""),
+      avatarUrl: trimText(obj.avatarUrl, ""),
+      description: trimText(obj.description, ""),
+      order: toInt(obj.order, index + 1),
+      isActive: toBool(obj.isActive, true),
+    };
+  });
+}
+
 function normalizeFaq(value: unknown): UpaEventFaqItem[] {
   const source = Array.isArray(value) ? value : [];
   return source.map((item, index) => {
@@ -344,6 +364,7 @@ function normalizeUpaEventContent(raw: any, slug: string): UpaEventContent {
     timeline: normalizeTimeline(raw?.timeline),
     editorialSections: normalizeEditorialSections(raw?.editorial_sections),
     staff: normalizeStaff(raw?.staff),
+    streamers: normalizeStreamers(raw?.streamers),
     faq: normalizeFaq(raw?.faq),
     officialLinks: normalizeOfficialLinks(raw?.official_links),
     partnerCommunities: normalizePartnerCommunities(raw?.partner_communities),
@@ -382,6 +403,7 @@ export class UpaEventRepository {
       timeline: normalizeTimeline(content.timeline),
       editorial_sections: normalizeEditorialSections(content.editorialSections),
       staff: normalizeStaff(content.staff),
+      streamers: normalizeStreamers(content.streamers),
       faq: normalizeFaq(content.faq),
       official_links: normalizeOfficialLinks(content.officialLinks),
       partner_communities: normalizePartnerCommunities(content.partnerCommunities),

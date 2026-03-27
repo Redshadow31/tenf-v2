@@ -9,6 +9,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
 import { loadEventSeriesMap, upsertEventSeriesMeta } from "@/lib/eventSeriesStorage";
+import { loadEventSpotlightMap, upsertEventSpotlightMeta } from "@/lib/eventSpotlightStorage";
+import { spotlightRepository } from "@/lib/repositories";
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
@@ -41,6 +43,16 @@ function normalizeCategory(value: string): string {
 function isMovieNightCategory(value: string): boolean {
   const normalized = normalizeCategory(value || "");
   return normalized === "soiree film";
+}
+
+function isSpotlightCategory(value: string): boolean {
+  const normalized = normalizeCategory(value || "");
+  return normalized === "spotlight";
+}
+
+function isTrackedSeriesCategory(value: string): boolean {
+  const normalized = normalizeCategory(value || "");
+  return normalized === "formation" || normalized === "jeux communautaire";
 }
 
 async function loadFilmPublicAnnouncement(): Promise<PublicAnnouncement> {
@@ -184,15 +196,17 @@ export async function GET(request: NextRequest) {
       })
       .filter((event): event is NonNullable<typeof event> => event !== null);
 
-    const seriesMap = await loadEventSeriesMap();
+    const [seriesMap, spotlightMap] = await Promise.all([loadEventSeriesMap(), loadEventSpotlightMap()]);
     const withSeriesEvents = formattedEvents.map((event) => {
       const meta = seriesMap[event.id];
-      if (!meta) return event;
+      const spotlightMeta = spotlightMap[event.id];
       return {
         ...event,
-        seriesId: meta.seriesId,
-        seriesName: meta.seriesName,
-        sourceEventId: meta.sourceEventId,
+        seriesId: meta?.seriesId,
+        seriesName: meta?.seriesName,
+        sourceEventId: meta?.sourceEventId,
+        spotlightStreamerLogin: spotlightMeta?.streamerTwitchLogin,
+        spotlightStreamerDisplayName: spotlightMeta?.streamerDisplayName,
       };
     });
 
@@ -278,6 +292,8 @@ export async function POST(request: NextRequest) {
       seriesId,
       seriesName,
       sourceEventId,
+      spotlightStreamerLogin,
+      spotlightStreamerDisplayName,
     } = body;
     
     if (!title || (!date && !startAtUtc && !startAtParisLocal) || !category) {
@@ -285,6 +301,26 @@ export async function POST(request: NextRequest) {
         { error: 'Titre, date et catégorie sont requis' },
         { status: 400 }
       );
+    }
+
+    if (isSpotlightCategory(String(category || ""))) {
+      const spotlightLogin = String(spotlightStreamerLogin || "").trim().replace(/^@/, "").toLowerCase();
+      if (!spotlightLogin) {
+        return NextResponse.json(
+          { error: "Pour un evenement Spotlight, la selection du membre est obligatoire." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (isTrackedSeriesCategory(String(category || ""))) {
+      const normalizedSeriesName = String(seriesName || "").trim();
+      if (!normalizedSeriesName) {
+        return NextResponse.json(
+          { error: "Pour Formation et Jeux communautaire, un nom de serie est obligatoire." },
+          { status: 400 }
+        );
+      }
     }
     
     const resolvedStartAtUtc =
@@ -347,6 +383,37 @@ export async function POST(request: NextRequest) {
         sourceEventId: typeof sourceEventId === "string" ? sourceEventId : undefined,
       });
     }
+
+    const categoryIsSpotlight = isSpotlightCategory(String(category || ""));
+    const normalizedSpotlightLogin = String(spotlightStreamerLogin || "").trim().replace(/^@/, "").toLowerCase();
+    if (categoryIsSpotlight && normalizedSpotlightLogin) {
+      const startDate = new Date(resolvedStartAtUtc);
+      const endsAt = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+      const streamerMember = await memberRepository.findByTwitchLogin(normalizedSpotlightLogin);
+      const finalDisplayName =
+        streamerMember?.displayName ||
+        String(spotlightStreamerDisplayName || "").trim() ||
+        normalizedSpotlightLogin;
+
+      const spotlight = await spotlightRepository.create({
+        streamerTwitchLogin: normalizedSpotlightLogin,
+        streamerDisplayName: finalDisplayName,
+        startedAt: startDate,
+        endsAt,
+        status: "active",
+        moderatorDiscordId: admin.discordId,
+        moderatorUsername: admin.username,
+        createdAt: new Date(),
+        createdBy: admin.discordId,
+      });
+
+      await upsertEventSpotlightMeta({
+        eventId: newEvent.id,
+        spotlightId: spotlight.id,
+        streamerTwitchLogin: normalizedSpotlightLogin,
+        streamerDisplayName: finalDisplayName,
+      });
+    }
     
     return NextResponse.json({
       event: {
@@ -354,6 +421,9 @@ export async function POST(request: NextRequest) {
         seriesId: typeof seriesId === "string" ? seriesId : undefined,
         seriesName: typeof seriesName === "string" ? seriesName : undefined,
         sourceEventId: typeof sourceEventId === "string" ? sourceEventId : undefined,
+        spotlightStreamerLogin: normalizedSpotlightLogin || undefined,
+        spotlightStreamerDisplayName:
+          typeof spotlightStreamerDisplayName === "string" ? spotlightStreamerDisplayName : undefined,
       },
       success: true,
     });

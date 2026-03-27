@@ -9,14 +9,15 @@ import type {
   UpaEventOfficialLink,
   UpaEventPartnerCommunity,
   UpaEventStaffMember,
+  UpaEventStreamerMember,
   UpaEventTimelineItem,
-  UpaRegistrationStatus,
   UpaTimelineStatus,
 } from "@/lib/upaEvent/types";
 
 type TabKey =
-  | "general"
+  | "settings"
   | "proof"
+  | "streamers"
   | "timeline"
   | "sections"
   | "staff"
@@ -111,6 +112,7 @@ function createDefaultContent(): UpaEventContent {
     timeline: [],
     editorialSections: [],
     staff: [],
+    streamers: [],
     faq: [],
     officialLinks: [],
     partnerCommunities: [],
@@ -142,13 +144,22 @@ function createDefaultContent(): UpaEventContent {
 }
 
 const tabs: { key: TabKey; label: string }[] = [
+  { key: "settings", label: "Periode UPA" },
   { key: "proof", label: "Participants" },
+  { key: "streamers", label: "Lives caritatifs UPA" },
   { key: "staff", label: "Staff UPA" },
 ];
 
+const premiumPanelStyle = {
+  borderColor: "rgba(212,175,55,0.28)",
+  background:
+    "radial-gradient(circle at 12% 18%, rgba(212,175,55,0.16), rgba(212,175,55,0) 42%), linear-gradient(155deg, rgba(27,27,35,0.98), rgba(14,14,20,0.98))",
+  boxShadow: "0 18px 40px rgba(0,0,0,0.32)",
+} as const;
+
 export default function AdminUpaEventPage() {
   const [content, setContent] = useState<UpaEventContent>(createDefaultContent());
-  const [activeTab, setActiveTab] = useState<TabKey>("proof");
+  const [activeTab, setActiveTab] = useState<TabKey>("settings");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -237,6 +248,14 @@ export default function AdminUpaEventPage() {
     });
   }
 
+  function updateStreamer(index: number, patch: Partial<UpaEventStreamerMember>) {
+    setContent((prev) => {
+      const next = [...prev.streamers];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, streamers: next };
+    });
+  }
+
   function updateFaq(index: number, patch: Partial<UpaEventFaqItem>) {
     setContent((prev) => {
       const next = [...prev.faq];
@@ -269,14 +288,17 @@ export default function AdminUpaEventPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          startDate: content.general.startDate,
+          endDate: content.general.endDate,
           totalRegistered: content.socialProof.totalRegistered,
+          streamers: content.streamers,
           staff: content.staff,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Erreur sauvegarde");
       setContent(data.content as UpaEventContent);
-      setFeedback("Participants et staff UPA enregistres avec succes.");
+      setFeedback("Periode, streamers et staff UPA enregistres avec succes.");
     } catch (error) {
       console.error("[admin/upa-event] save error:", error);
       setFeedback(error instanceof Error ? error.message : "Erreur lors de l'enregistrement.");
@@ -291,55 +313,76 @@ export default function AdminUpaEventPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Link href="/admin/events" className="text-sm mb-2 inline-block" style={{ color: "var(--color-text-secondary)" }}>
+      <div className="rounded-2xl border p-5 md:p-6" style={premiumPanelStyle}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p
+              className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-wide"
+              style={{
+                borderColor: "rgba(212,175,55,0.45)",
+                color: "#f6e0a5",
+                backgroundColor: "rgba(212,175,55,0.14)",
+              }}
+            >
+              PARTENARIAT TENF x UPA
+            </p>
+            <Link href="/admin/events" className="text-sm mt-3 mb-2 inline-block" style={{ color: "rgba(255,255,255,0.7)" }}>
             ← Retour au hub événements
-          </Link>
-          <h1 className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>
-            Gestion UPA Event
-          </h1>
-          <p style={{ color: "var(--color-text-secondary)" }}>
-            Edition ciblee: compteur participants et equipe staff (haut staff + moderateurs).
-          </p>
-          <p className="text-xs mt-2" style={{ color: "var(--color-text-secondary)" }}>
-            Derniere mise a jour: {lastUpdateLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={saveContent}
-            disabled={saving}
-            className="rounded-lg px-4 py-2 font-semibold disabled:opacity-60"
-            style={{
-              backgroundColor: "var(--color-primary)",
-              color: "var(--color-primary-foreground)",
-            }}
-          >
-            {saving ? "Enregistrement..." : "Enregistrer"}
-          </button>
+            </Link>
+            <h1 className="text-3xl font-bold" style={{ color: "#f8ecd0" }}>
+              Gestion UPA Event
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.76)" }}>
+              Pilote la periode active, les streamers caritatifs et l'equipe UPA depuis une seule interface.
+            </p>
+            <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Derniere mise a jour: {lastUpdateLabel}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveContent}
+              disabled={saving}
+              className="rounded-xl px-4 py-2 font-semibold disabled:opacity-60"
+              style={{
+                border: "1px solid rgba(212,175,55,0.45)",
+                background: "linear-gradient(160deg, #eac56a, #d4af37)",
+                color: "#1a1407",
+                boxShadow: "0 8px 20px rgba(212,175,55,0.28)",
+              }}
+            >
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </button>
+          </div>
         </div>
       </div>
 
       {feedback && (
         <div
           className="rounded-lg border px-4 py-3 text-sm"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          style={{
+            borderColor: feedback.toLowerCase().includes("erreur") ? "rgba(239,68,68,0.4)" : "rgba(16,185,129,0.35)",
+            color: "var(--color-text)",
+            backgroundColor: feedback.toLowerCase().includes("erreur") ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
+          }}
         >
           {feedback}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 rounded-xl border p-2" style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className="rounded-lg border px-3 py-2 text-sm font-medium"
+            className="rounded-lg border px-3 py-2 text-sm font-medium transition-transform hover:-translate-y-[1px]"
             style={{
-              borderColor: activeTab === tab.key ? "var(--color-primary)" : "var(--color-border)",
-              backgroundColor: activeTab === tab.key ? "var(--color-primary)" : "var(--color-card)",
-              color: activeTab === tab.key ? "var(--color-primary-foreground)" : "var(--color-text)",
+              borderColor: activeTab === tab.key ? "rgba(212,175,55,0.6)" : "var(--color-border)",
+              background:
+                activeTab === tab.key
+                  ? "linear-gradient(145deg, rgba(212,175,55,0.22), rgba(212,175,55,0.12))"
+                  : "var(--color-card)",
+              color: activeTab === tab.key ? "#f2d891" : "var(--color-text)",
             }}
           >
             {tab.label}
@@ -347,50 +390,24 @@ export default function AdminUpaEventPage() {
         ))}
       </div>
 
-      <div className="rounded-xl border p-4 md:p-6 space-y-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-        {activeTab === "general" && (
+      <div
+        className="rounded-2xl border p-4 md:p-6 space-y-4"
+        style={{
+          borderColor: "rgba(212,175,55,0.2)",
+          background:
+            "radial-gradient(circle at 90% 5%, rgba(212,175,55,0.08), rgba(212,175,55,0) 35%), linear-gradient(180deg, rgba(26,26,34,0.96), rgba(19,19,25,0.97))",
+          boxShadow: "0 16px 34px rgba(0,0,0,0.22)",
+        }}
+      >
+        {activeTab === "settings" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TextField label="Titre principal" value={content.general.title} onChange={(v) => setGeneralField("title", v)} />
-            <TextField label="Sous-titre" value={content.general.subtitle} onChange={(v) => setGeneralField("subtitle", v)} />
-            <TextField label="Slogan" value={content.general.slogan} onChange={(v) => setGeneralField("slogan", v)} />
-            <TextField
-              label="Badge partenariat"
-              value={content.general.partnershipBadge}
-              onChange={(v) => setGeneralField("partnershipBadge", v)}
-            />
             <TextField label="Date debut (YYYY-MM-DD)" value={content.general.startDate} onChange={(v) => setGeneralField("startDate", v)} />
             <TextField label="Date fin (YYYY-MM-DD)" value={content.general.endDate} onChange={(v) => setGeneralField("endDate", v)} />
-            <TextField label="Cause soutenue" value={content.general.causeSupported} onChange={(v) => setGeneralField("causeSupported", v)} />
-            <label className="block">
-              <span className="block text-sm font-medium mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                Statut des inscriptions
-              </span>
-              <select
-                value={content.general.registrationStatus}
-                onChange={(e) => setGeneralField("registrationStatus", e.target.value as UpaRegistrationStatus)}
-                className="w-full rounded-lg border px-3 py-2"
-                style={{
-                  borderColor: "var(--color-border)",
-                  backgroundColor: "var(--color-card)",
-                  color: "var(--color-text)",
-                }}
-              >
-                <option value="open">Ouvert</option>
-                <option value="soon">Bientot</option>
-                <option value="closed">Ferme</option>
-                <option value="ended">Termine</option>
-              </select>
-            </label>
-            <div className="md:col-span-2">
-              <TextAreaField label="Texte hero" value={content.general.heroText} onChange={(v) => setGeneralField("heroText", v)} />
-            </div>
-            <div className="md:col-span-2">
-              <TextAreaField
-                label="Message d'ambiance"
-                value={content.general.moodMessage}
-                onChange={(v) => setGeneralField("moodMessage", v)}
-                rows={3}
-              />
+            <div
+              className="md:col-span-2 rounded-lg border px-4 py-3 text-sm"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+            >
+              En dehors de cette periode, le bloc "Lives caritatifs UPA" ne sera pas affiche sur la page /lives.
             </div>
           </div>
         )}
@@ -408,6 +425,119 @@ export default function AdminUpaEventPage() {
             >
               Le message de preuve sociale est genere automatiquement a partir de cette valeur.
             </div>
+          </div>
+        )}
+
+        {activeTab === "streamers" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: "rgba(212,175,55,0.25)", backgroundColor: "rgba(212,175,55,0.06)" }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "#f2d891" }}>
+                  Streamers mis en avant sur /lives
+                </p>
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  Ajoute les logins Twitch a promouvoir pendant la periode UPA.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setContent((prev) => ({
+                    ...prev,
+                    streamers: [
+                      ...prev.streamers,
+                      {
+                        id: makeId("streamer"),
+                        twitchLogin: "",
+                        displayName: "",
+                        avatarUrl: "",
+                        description: "",
+                        order: prev.streamers.length + 1,
+                        isActive: true,
+                      },
+                    ],
+                  }))
+                }
+                className="rounded-lg border px-3 py-2 text-sm font-medium"
+                style={{
+                  borderColor: "rgba(212,175,55,0.45)",
+                  color: "#f2d891",
+                  backgroundColor: "rgba(212,175,55,0.14)",
+                }}
+              >
+                + Ajouter un streamer
+              </button>
+            </div>
+
+            {content.streamers.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                Aucun streamer configure pour le moment.
+              </p>
+            ) : (
+              content.streamers
+                .map((item, index) => ({ item, index }))
+                .sort((a, b) => a.item.order - b.item.order)
+                .map(({ item, index }) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border p-4 space-y-3"
+                    style={{
+                      borderColor: "rgba(255,255,255,0.14)",
+                      background: "linear-gradient(160deg, rgba(25,25,33,0.9), rgba(18,18,24,0.95))",
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <strong style={{ color: "var(--color-text)" }}>{item.twitchLogin || "Nouveau streamer"}</strong>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setContent((prev) => ({
+                            ...prev,
+                            streamers: prev.streamers.filter((x) => x.id !== item.id),
+                          }))
+                        }
+                        className="text-sm rounded-md border px-2 py-1"
+                        style={{ color: "#fca5a5", borderColor: "rgba(239,68,68,0.35)", backgroundColor: "rgba(239,68,68,0.12)" }}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <TextField
+                        label="Login Twitch"
+                        value={item.twitchLogin}
+                        onChange={(v) =>
+                          updateStreamer(index, {
+                            twitchLogin: v.trim().replace(/^@/, "").toLowerCase(),
+                            displayName: item.displayName || v.trim().replace(/^@/, ""),
+                          })
+                        }
+                        placeholder="ex: symaog"
+                      />
+                      <TextField
+                        label="Nom affiche"
+                        value={item.displayName}
+                        onChange={(v) => updateStreamer(index, { displayName: v })}
+                        placeholder="Nom public"
+                      />
+                      <TextField
+                        label="Ordre"
+                        value={String(item.order)}
+                        onChange={(v) => updateStreamer(index, { order: Number.parseInt(v || "0", 10) || 0 })}
+                      />
+                      <label className="flex items-center gap-2 mt-7">
+                        <input
+                          type="checkbox"
+                          checked={item.isActive}
+                          onChange={(e) => updateStreamer(index, { isActive: e.target.checked })}
+                        />
+                        <span style={{ color: "var(--color-text)" }}>Actif</span>
+                      </label>
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
         )}
 

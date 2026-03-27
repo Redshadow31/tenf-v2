@@ -5,6 +5,25 @@ import { eventRepository } from '@/lib/repositories';
 import { logAction, prepareAuditValues } from '@/lib/admin/logger';
 import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalInput } from '@/lib/timezone';
 import { deleteEventSeriesMeta, getEventSeriesMeta, upsertEventSeriesMeta } from '@/lib/eventSeriesStorage';
+import { deleteEventSpotlightMeta, getEventSpotlightMeta, upsertEventSpotlightMeta } from '@/lib/eventSpotlightStorage';
+import { memberRepository, spotlightRepository } from '@/lib/repositories';
+
+function normalizeCategory(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isSpotlightCategory(value: string): boolean {
+  return normalizeCategory(value || "") === "spotlight";
+}
+
+function isTrackedSeriesCategory(value: string): boolean {
+  const normalized = normalizeCategory(value || "");
+  return normalized === "formation" || normalized === "jeux communautaire";
+}
 
 /**
  * GET - Récupère un événement spécifique
@@ -39,7 +58,10 @@ export async function GET(
       );
     }
 
-    const seriesMeta = await getEventSeriesMeta(eventId);
+    const [seriesMeta, spotlightMeta] = await Promise.all([
+      getEventSeriesMeta(eventId),
+      getEventSpotlightMeta(eventId),
+    ]);
     const formattedEvent = {
       ...event,
       date: event.date instanceof Date ? event.date.toISOString() : event.date,
@@ -51,6 +73,8 @@ export async function GET(
       seriesId: seriesMeta?.seriesId,
       seriesName: seriesMeta?.seriesName,
       sourceEventId: seriesMeta?.sourceEventId,
+      spotlightStreamerLogin: spotlightMeta?.streamerTwitchLogin,
+      spotlightStreamerDisplayName: spotlightMeta?.streamerDisplayName,
     };
     return NextResponse.json({ event: formattedEvent });
   } catch (error) {
@@ -112,9 +136,83 @@ export async function PUT(
         seriesName: body.seriesName,
         sourceEventId: typeof body.sourceEventId === 'string' ? body.sourceEventId : undefined,
       });
+    } else if (!isTrackedSeriesCategory(String(body.category ?? updatedEvent.category ?? existingEvent.category ?? ""))) {
+      await deleteEventSeriesMeta(eventId);
     }
 
-    const seriesMeta = await getEventSeriesMeta(eventId);
+    const spotlightMeta = await getEventSpotlightMeta(eventId);
+    const nextCategory = String(body.category ?? updatedEvent.category ?? existingEvent.category ?? "");
+    const isSpotlight = isSpotlightCategory(nextCategory);
+    const nextDateIso =
+      typeof updates.date === "string"
+        ? updates.date
+        : updatedEvent.date instanceof Date
+          ? updatedEvent.date.toISOString()
+          : String(updatedEvent.date);
+    const providedSpotlightLogin = String(body.spotlightStreamerLogin || "").trim().replace(/^@/, "").toLowerCase();
+    const nextSpotlightLogin = providedSpotlightLogin || spotlightMeta?.streamerTwitchLogin || "";
+
+    if (isSpotlight && !nextSpotlightLogin) {
+      return NextResponse.json(
+        { error: "Un membre Spotlight est requis pour une categorie Spotlight." },
+        { status: 400 }
+      );
+    }
+
+    if (isSpotlight && nextSpotlightLogin) {
+      const startsAt = new Date(nextDateIso);
+      const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
+      const member = await memberRepository.findByTwitchLogin(nextSpotlightLogin);
+      const displayName =
+        member?.displayName ||
+        String(body.spotlightStreamerDisplayName || "").trim() ||
+        spotlightMeta?.streamerDisplayName ||
+        nextSpotlightLogin;
+
+      if (spotlightMeta?.spotlightId) {
+        await spotlightRepository.update(spotlightMeta.spotlightId, {
+          streamerTwitchLogin: nextSpotlightLogin,
+          streamerDisplayName: displayName,
+          startedAt: startsAt,
+          endsAt,
+          status: "active",
+        });
+        await upsertEventSpotlightMeta({
+          eventId,
+          spotlightId: spotlightMeta.spotlightId,
+          streamerTwitchLogin: nextSpotlightLogin,
+          streamerDisplayName: displayName,
+        });
+      } else {
+        const createdSpotlight = await spotlightRepository.create({
+          streamerTwitchLogin: nextSpotlightLogin,
+          streamerDisplayName: displayName,
+          startedAt: startsAt,
+          endsAt,
+          status: "active",
+          moderatorDiscordId: admin.discordId,
+          moderatorUsername: admin.username,
+          createdAt: new Date(),
+          createdBy: admin.discordId,
+        });
+        await upsertEventSpotlightMeta({
+          eventId,
+          spotlightId: createdSpotlight.id,
+          streamerTwitchLogin: nextSpotlightLogin,
+          streamerDisplayName: displayName,
+        });
+      }
+    }
+
+    if ((!isSpotlight || !nextSpotlightLogin) && spotlightMeta?.spotlightId) {
+      await spotlightRepository.update(spotlightMeta.spotlightId, { status: "cancelled" });
+      await deleteEventSpotlightMeta(eventId);
+    }
+
+    const [seriesMeta, nextSpotlightMeta] = await Promise.all([
+      getEventSeriesMeta(eventId),
+      getEventSpotlightMeta(eventId),
+    ]);
     const formattedEvent = {
       ...updatedEvent,
       date: updatedEvent.date instanceof Date ? updatedEvent.date.toISOString() : updatedEvent.date,
@@ -126,6 +224,8 @@ export async function PUT(
       seriesId: seriesMeta?.seriesId,
       seriesName: seriesMeta?.seriesName,
       sourceEventId: seriesMeta?.sourceEventId,
+      spotlightStreamerLogin: nextSpotlightMeta?.streamerTwitchLogin,
+      spotlightStreamerDisplayName: nextSpotlightMeta?.streamerDisplayName,
     };
 
     const { previousValue, newValue } = prepareAuditValues(existingEvent, formattedEvent);
@@ -173,6 +273,11 @@ export async function DELETE(
 
     await eventRepository.delete(eventId);
     await deleteEventSeriesMeta(eventId);
+    const spotlightMeta = await getEventSpotlightMeta(eventId);
+    if (spotlightMeta?.spotlightId) {
+      await spotlightRepository.update(spotlightMeta.spotlightId, { status: "cancelled" });
+      await deleteEventSpotlightMeta(eventId);
+    }
 
     const previousValue = prepareAuditValues(existingEvent, undefined).previousValue;
     await logAction({

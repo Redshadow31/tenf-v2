@@ -1406,7 +1406,7 @@ export default function CommunityDashboardPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <Link href="/admin/upa-event" className={quickLinkClass}>
+            <Link href="/admin/partenariat/upa" className={quickLinkClass}>
               Gestion UPA Event
             </Link>
           </div>
