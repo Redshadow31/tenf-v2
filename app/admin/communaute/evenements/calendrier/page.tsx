@@ -76,6 +76,14 @@ function normalizeResponsible(raw?: string): string {
   return raw;
 }
 
+function getEventResponsible(event: CommunityEvent): string {
+  if (event.category === "Spotlight") {
+    const spotlightResponsible = String(event.spotlightStreamerDisplayName || event.spotlightStreamerLogin || "").trim();
+    if (spotlightResponsible) return spotlightResponsible;
+  }
+  return normalizeResponsible(event.createdBy);
+}
+
 function isFormValid(form: EventForm): boolean {
   if (!form.title.trim() || !form.dateParisLocal) return false;
   if (form.category === "Spotlight") {
@@ -344,7 +352,7 @@ export default function CommunauteEvenementsCalendrierPage() {
     const topCategories = Object.entries(byCategory)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4);
-    const responsibleCount = new Set(events.map((event) => normalizeResponsible(event.createdBy))).size;
+    const responsibleCount = new Set(events.map((event) => getEventResponsible(event))).size;
     return { published, draft, topCategories, responsibleCount };
   }, [events]);
 
@@ -476,7 +484,7 @@ export default function CommunauteEvenementsCalendrierPage() {
           <div className="space-y-3 p-5">
             {events.map((event) => {
               const dateLabel = formatEventDateTimeInTimezone(event.startAtUtc || event.date, PARIS_TIMEZONE).fullLabel;
-              const responsible = normalizeResponsible(event.createdBy);
+              const responsible = getEventResponsible(event);
               return (
                 <article key={event.id} className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -836,7 +844,7 @@ export default function CommunauteEvenementsCalendrierPage() {
                   <div className="rounded-xl border border-amber-300/25 bg-amber-300/10 p-3 text-xs text-amber-100">
                     <p className="font-medium">Responsable</p>
                     <p className="mt-1">
-                      Le responsable affiche est associe au compte admin createur de l'evenement.
+                      Spotlight: responsable = membre selectionne. Sinon: responsable = compte admin createur.
                     </p>
                   </div>
                 </div>
