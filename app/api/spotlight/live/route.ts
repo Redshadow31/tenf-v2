@@ -53,7 +53,7 @@ export async function GET() {
         startedAt: current.startedAt.toISOString(),
         endsAt: current.endsAt?.toISOString(),
         text:
-          "Ce streamer est mis en avant par TENF aujourd'hui. Passe lui dire bonjour, reste quelques minutes et envoie de la force au chat !",
+          "Tu fais du super boulot, la communaute est derriere toi. Cote viewers, venez comme vous etes: un bonjour, un follow ou quelques minutes de soutien comptent enormement.",
       },
     });
   } catch (error) {

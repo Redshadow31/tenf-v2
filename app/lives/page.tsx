@@ -537,6 +537,7 @@ export default function LivesPage() {
       return isSpotlightMatch;
     });
   }, [filteredLives, spotlightDisplayName, spotlightLogin]);
+  const spotlightLive = spotlightLiveMembers[0] || null;
 
   const regularLiveMembers = useMemo(() => {
     const spotlightLogins = new Set(spotlightLiveMembers.map((live) => normalizeLoginKey(live.twitchLogin)));
@@ -625,9 +626,9 @@ export default function LivesPage() {
         activeMembers={activeMembers}
       />
 
-      {spotlightLiveMembers.length > 0 ? (
+      {spotlightLive ? (
         <section
-          className="rounded-3xl border p-4 md:p-6 space-y-4"
+          className="rounded-3xl border p-4 md:p-6"
           style={{
             borderColor: "rgba(145,70,255,0.45)",
             background:
@@ -635,8 +636,8 @@ export default function LivesPage() {
             boxShadow: "0 22px 52px rgba(0,0,0,0.36)",
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+            <div className="space-y-3">
               <p
                 className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em]"
                 style={{
@@ -645,24 +646,28 @@ export default function LivesPage() {
                   backgroundColor: "rgba(145,70,255,0.2)",
                 }}
               >
-                SPOTLIGHT ACTIF
+                SPOTLIGHT TENF EN COURS
               </p>
-              <h2 className="mt-2 text-2xl md:text-3xl font-bold" style={{ color: "#efe5ff" }}>
-                Mise en avant Spotlight TENF
+              <h2 className="text-2xl md:text-3xl font-bold" style={{ color: "#efe5ff" }}>
+                Mise en avant unique du moment
               </h2>
               <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.82)" }}>
-                Bloc visible uniquement pendant la fenetre active du Spotlight programme.
+                Un seul live est propulse a la fois pour concentrer toute la visibilite communautaire.
+              </p>
+              <p className="text-xs md:text-sm" style={{ color: "#cdb1ff" }}>
+                Au streamer spotlight: ta voix compte ici, on est avec toi et on soutient ton energie.
+              </p>
+              <p className="text-xs md:text-sm" style={{ color: "rgba(255,255,255,0.78)" }}>
+                A la communaute: viens comme tu es, un message bienveillant, un follow ou quelques minutes de presence
+                peuvent vraiment faire la difference.
               </p>
             </div>
-            <p className="text-sm font-semibold" style={{ color: "#cdb1ff" }}>
-              {spotlightLiveMembers.length} live spotlight en cours
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {spotlightLiveMembers.map((live) => (
-              <LiveCard key={`spotlight-${live.twitchLogin}-${live.startedAt}`} live={live} />
-            ))}
+            <div className="mx-auto w-full max-w-md">
+              <LiveCard
+                key={`spotlight-${spotlightLive.twitchLogin}-${spotlightLive.startedAt}`}
+                live={spotlightLive}
+              />
+            </div>
           </div>
         </section>
       ) : null}
