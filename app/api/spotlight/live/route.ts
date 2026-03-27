@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { spotlightRepository } from "@/lib/repositories";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET - Retourne le spotlight en cours (public).
  * Utilisé par la page /lives pour afficher la mise en avant programmée.

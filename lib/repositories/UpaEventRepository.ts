@@ -20,6 +20,12 @@ import type {
 const UPA_EVENT_TABLE = "upa_event_pages";
 const DEFAULT_SLUG = "upa-event";
 
+function isMissingColumnError(error: { code?: string; message?: string } | null | undefined, columnName: string): boolean {
+  if (!error) return false;
+  const message = String(error.message || "").toLowerCase();
+  return error.code === "42703" || (message.includes("column") && message.includes(columnName.toLowerCase()));
+}
+
 function trimText(value: unknown, fallback = ""): string {
   if (typeof value !== "string") return fallback;
   return value.trim();
@@ -414,11 +420,23 @@ export class UpaEventRepository {
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from(UPA_EVENT_TABLE)
       .upsert(normalized, { onConflict: "slug" })
       .select("*")
       .single();
+
+    if (error && isMissingColumnError(error, "streamers")) {
+      const legacyPayload = { ...normalized } as Record<string, unknown>;
+      delete legacyPayload.streamers;
+      const retry = await supabaseAdmin
+        .from(UPA_EVENT_TABLE)
+        .upsert(legacyPayload, { onConflict: "slug" })
+        .select("*")
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       throw error;
