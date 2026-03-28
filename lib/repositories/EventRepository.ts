@@ -827,6 +827,126 @@ export class EventRepository {
   }
 
   /**
+   * Toutes les lignes de présence pour un membre (twitch_login), avec métadonnées d'événement quand disponibles.
+   */
+  async getMemberPresencesWithEvents(twitchLogin: string): Promise<
+    Array<{
+      presence: any;
+      event: {
+        id: string;
+        title: string;
+        date: string;
+        category: string;
+        location?: string;
+      } | null;
+    }>
+  > {
+    const login = (twitchLogin || '').trim().toLowerCase();
+    if (!login) return [];
+
+    let { data: rows, error } = await supabaseAdmin
+      .from('event_presences')
+      .select('*')
+      .eq('twitch_login', login)
+      .order('validated_at', { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      const message = (error.message || '').toLowerCase();
+      if (
+        (message.includes('column') || message.includes('could not find')) &&
+        message.includes('validated_at')
+      ) {
+        const retry = await supabaseAdmin
+          .from('event_presences')
+          .select('*')
+          .eq('twitch_login', login)
+          .limit(5000);
+        rows = retry.data;
+        error = retry.error;
+      }
+    }
+
+    if (error) throw error;
+
+    const rawList = rows || [];
+    const byEvent = new Map<string, any>();
+    for (const row of rawList) {
+      const eid = String(row.event_id);
+      const existing = byEvent.get(eid);
+      if (!existing) {
+        byEvent.set(eid, row);
+        continue;
+      }
+      const ts = (r: any) =>
+        Math.max(
+          new Date(r.validated_at || r.created_at || 0).getTime(),
+          new Date(r.created_at || 0).getTime()
+        );
+      if (ts(row) >= ts(existing)) {
+        byEvent.set(eid, row);
+      }
+    }
+    const deduped = Array.from(byEvent.values());
+
+    const eventIds = [...new Set(deduped.map((r) => String(r.event_id)))];
+    const eventMap = new Map<
+      string,
+      { id: string; title: string; date: string; category: string; location?: string }
+    >();
+
+    const chunkSize = 150;
+    for (let i = 0; i < eventIds.length; i += chunkSize) {
+      const chunk = eventIds.slice(i, i + chunkSize);
+      const { data: evs, error: evErr } = await supabaseAdmin
+        .from(EVENTS_TABLE)
+        .select('id,title,starts_at,date,category,location,created_at')
+        .in('id', chunk);
+      if (!evErr && evs) {
+        for (const e of evs) {
+          const dateValue = e.starts_at || e.date;
+          const d = this.toSafeDate(dateValue, e.created_at);
+          eventMap.set(String(e.id), {
+            id: String(e.id),
+            title: e.title || 'Sans titre',
+            date: d.toISOString(),
+            category: e.category || 'Non classé',
+            location: e.location || undefined,
+          });
+        }
+      }
+    }
+
+    const missing = eventIds.filter((id) => !eventMap.has(id));
+    if (missing.length) {
+      for (let i = 0; i < missing.length; i += chunkSize) {
+        const chunk = missing.slice(i, i + chunkSize);
+        const { data: legacy, error: legErr } = await supabaseAdmin
+          .from('events')
+          .select('id,title,date,category,location,created_at')
+          .in('id', chunk);
+        if (!legErr && legacy) {
+          for (const e of legacy) {
+            const d = this.toSafeDate(e.date, e.created_at);
+            eventMap.set(String(e.id), {
+              id: String(e.id),
+              title: e.title || 'Sans titre',
+              date: d.toISOString(),
+              category: e.category || 'Non classé',
+              location: e.location || undefined,
+            });
+          }
+        }
+      }
+    }
+
+    return deduped.map((row) => ({
+      presence: this.mapToPresence(row),
+      event: eventMap.get(String(row.event_id)) || null,
+    }));
+  }
+
+  /**
    * Ajoute ou met à jour une présence
    */
   async upsertPresence(presence: {

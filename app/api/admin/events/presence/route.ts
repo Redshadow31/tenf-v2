@@ -49,8 +49,8 @@ function getMonthKey(year: number, month: number): string {
 }
 
 /**
- * GET - Récupère les présences pour un mois donné ou pour un événement spécifique
- * Query params: ?month=YYYY-MM ou ?eventId=xxx
+ * GET - Récupère les présences pour un mois donné, un événement ou un membre
+ * Query params: ?month=YYYY-MM | ?eventId=xxx | ?twitchLogin=xxx
  */
 export async function GET(request: NextRequest) {
   try {
@@ -67,6 +67,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
     const eventIdParam = searchParams.get('eventId');
+    const twitchLoginParam = searchParams.get('twitchLogin')?.trim();
+
+    if (twitchLoginParam) {
+      const login = twitchLoginParam.toLowerCase();
+      const joined = await eventRepository.getMemberPresencesWithEvents(login);
+      const displayName = joined[0]?.presence?.displayName || twitchLoginParam;
+
+      const rows = joined.map(({ presence, event }) => ({
+        eventId: presence.eventId,
+        eventTitle: event?.title ?? 'Événement inconnu ou supprimé',
+        eventDate: event?.date ?? null,
+        category: event?.category ?? '—',
+        location: event?.location,
+        present: !!presence.present,
+        isRegistered: !!presence.isRegistered,
+        addedManually: !!presence.addedManually,
+        note: presence.note,
+        validatedAt: presence.validatedAt,
+        createdAt: presence.createdAt,
+        presenceId: presence.id,
+      }));
+
+      return NextResponse.json({
+        twitchLogin: login,
+        displayName,
+        rows,
+      });
+    }
 
     if (eventIdParam) {
       // Récupérer les présences pour un événement spécifique
@@ -261,7 +289,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "month ou eventId requis" },
+      { error: "month, eventId ou twitchLogin requis" },
       { status: 400 }
     );
   } catch (error) {

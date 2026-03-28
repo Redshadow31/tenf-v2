@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown } from "lucide-react";
+import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown, User } from "lucide-react";
 
 const panelClass =
   "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
@@ -120,6 +120,21 @@ interface Member {
   displayName: string;
   discordId?: string;
   discordUsername?: string;
+}
+
+interface MemberPresenceRow {
+  eventId: string;
+  eventTitle: string;
+  eventDate: string | null;
+  category: string;
+  location?: string;
+  present: boolean;
+  isRegistered: boolean;
+  addedManually: boolean;
+  note?: string;
+  validatedAt?: string;
+  createdAt?: string;
+  presenceId: string;
 }
 
 function normalizeLogin(value?: string): string {
@@ -253,6 +268,16 @@ export default function EventPresencePage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [eventsViewTab, setEventsViewTab] = useState<"upcoming" | "past" | "all">("upcoming");
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [presencePageTab, setPresencePageTab] = useState<"byMonth" | "byMember">("byMonth");
+  const [memberLoginInput, setMemberLoginInput] = useState("");
+  const [memberPresenceRows, setMemberPresenceRows] = useState<MemberPresenceRow[]>([]);
+  const [memberPresenceMeta, setMemberPresenceMeta] = useState<{ twitchLogin: string; displayName: string } | null>(
+    null
+  );
+  const [memberPresenceLoading, setMemberPresenceLoading] = useState(false);
+  const [memberCategoryFilter, setMemberCategoryFilter] = useState<string>("");
+  const [memberSortBy, setMemberSortBy] = useState<"date" | "category">("date");
+  const [memberSortOrder, setMemberSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     async function checkAccess() {
@@ -293,9 +318,9 @@ export default function EventPresencePage() {
     return d.toISOString().slice(0, 7);
   }
 
-  // Charger les membres quand le modal s'ouvre (lazy loading)
+  // Charger les membres quand le modal ou l'onglet « par membre » est ouvert (lazy loading)
   useEffect(() => {
-    if (isEventModalOpen && allMembers.length === 0) {
+    if ((isEventModalOpen || presencePageTab === "byMember") && allMembers.length === 0) {
       async function loadMembers() {
         try {
           const membersResponse = await fetch("/api/admin/members", {
@@ -322,7 +347,7 @@ export default function EventPresencePage() {
       }
       loadMembers();
     }
-  }, [isEventModalOpen, allMembers.length]);
+  }, [isEventModalOpen, presencePageTab, allMembers.length]);
 
   async function loadData() {
     if (!selectedMonth) return;
@@ -494,6 +519,67 @@ export default function EventPresencePage() {
       return dateStr;
     }
   }
+
+  async function loadMemberPresences() {
+    const login = normalizeLogin(memberLoginInput);
+    if (!login) {
+      alert("Indiquez un pseudo Twitch (login) ou choisissez un membre dans la liste.");
+      return;
+    }
+    try {
+      setMemberPresenceLoading(true);
+      const res = await fetch(`/api/admin/events/presence?twitchLogin=${encodeURIComponent(login)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert((data as { error?: string }).error || "Impossible de charger les présences.");
+        setMemberPresenceRows([]);
+        setMemberPresenceMeta(null);
+        return;
+      }
+      setMemberPresenceMeta({
+        twitchLogin: (data as { twitchLogin?: string }).twitchLogin || login,
+        displayName: (data as { displayName?: string }).displayName || login,
+      });
+      setMemberPresenceRows((data as { rows?: MemberPresenceRow[] }).rows || []);
+      setMemberCategoryFilter("");
+    } catch (e) {
+      console.error(e);
+      alert("Erreur réseau lors du chargement des présences.");
+      setMemberPresenceRows([]);
+      setMemberPresenceMeta(null);
+    } finally {
+      setMemberPresenceLoading(false);
+    }
+  }
+
+  const memberCategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of memberPresenceRows) {
+      if (r.category && r.category !== "—") set.add(r.category);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [memberPresenceRows]);
+
+  const memberFilteredRows = useMemo(() => {
+    let list = memberCategoryFilter
+      ? memberPresenceRows.filter((r) => r.category === memberCategoryFilter)
+      : [...memberPresenceRows];
+
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (memberSortBy === "category") {
+        cmp = (a.category || "").localeCompare(b.category || "", "fr");
+      } else {
+        const ta = a.eventDate ? new Date(a.eventDate).getTime() : 0;
+        const tb = b.eventDate ? new Date(b.eventDate).getTime() : 0;
+        cmp = ta - tb;
+      }
+      return memberSortOrder === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [memberPresenceRows, memberCategoryFilter, memberSortBy, memberSortOrder]);
 
   async function handleTogglePresence(eventId: string, member: Member, isRegistered: boolean) {
     try {
@@ -870,6 +956,33 @@ export default function EventPresencePage() {
         </div>
       </div>
 
+      <div className={`p-2 ${panelClass}`}>
+        <div className="inline-flex flex-wrap gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+          <button
+            type="button"
+            onClick={() => setPresencePageTab("byMonth")}
+            className={`${tabBaseClass} ${presencePageTab === "byMonth" ? tabActiveClass : tabInactiveClass}`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Calendar className="h-4 w-4 opacity-90" />
+              Vue par mois
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPresencePageTab("byMember")}
+            className={`${tabBaseClass} ${presencePageTab === "byMember" ? tabActiveClass : tabInactiveClass}`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <User className="h-4 w-4 opacity-90" />
+              Recherche par membre
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {presencePageTab === "byMonth" && (
+      <>
       {/* Sélecteur de mois et tri */}
       <div className={`mb-1 p-4 ${sectionCardClass} flex flex-col md:flex-row items-start md:items-center gap-4`}>
         <div className="flex items-center gap-4">
@@ -1268,6 +1381,167 @@ export default function EventPresencePage() {
           );
         })()}
       </div>
+      </>
+      )}
+
+      {presencePageTab === "byMember" && (
+        <div className="space-y-4">
+          <div className={`p-5 ${sectionCardClass}`}>
+            <h2 className="text-lg font-semibold text-slate-100">Historique des présences par membre</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Sélectionnez un membre (liste TENF) ou saisissez son login Twitch exact, puis chargez toutes ses lignes de
+              présence enregistrées.
+            </p>
+            <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+              <div className="min-w-[min(100%,16rem)] flex-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-400">Membre</label>
+                <input
+                  list="presence-member-pick"
+                  value={memberLoginInput}
+                  onChange={(e) => setMemberLoginInput(e.target.value)}
+                  placeholder="Pseudo Twitch ou choix dans la liste…"
+                  className={`w-full ${controlClass}`}
+                />
+                <datalist id="presence-member-pick">
+                  {allMembers.map((m) => (
+                    <option key={m.twitchLogin} value={m.twitchLogin}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadMemberPresences()}
+                disabled={memberPresenceLoading}
+                className={`${actionPrimaryClass} inline-flex items-center justify-center gap-2 disabled:opacity-60`}
+              >
+                {memberPresenceLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Chargement…
+                  </span>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Afficher les présences
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {memberPresenceMeta && (
+            <div className={`p-5 ${panelClass}`}>
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-slate-400">Membre</p>
+                  <p className="text-xl font-semibold text-white">{memberPresenceMeta.displayName}</p>
+                  <p className="text-xs text-slate-500">@{memberPresenceMeta.twitchLogin}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-400">Type d&apos;événement</label>
+                    <select
+                      value={memberCategoryFilter}
+                      onChange={(e) => setMemberCategoryFilter(e.target.value)}
+                      className={controlClass}
+                    >
+                      <option value="">Tous</option>
+                      {memberCategoryOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-400">Trier par</label>
+                    <select
+                      value={memberSortBy}
+                      onChange={(e) => setMemberSortBy(e.target.value as "date" | "category")}
+                      className={controlClass}
+                    >
+                      <option value="date">Date de l&apos;événement</option>
+                      <option value="category">Type (catégorie)</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setMemberSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+                      className={`${actionSecondaryClass} flex items-center gap-1`}
+                      title={memberSortOrder === "asc" ? "Ordre croissant" : "Ordre décroissant"}
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      {memberSortOrder === "asc" ? "↑" : "↓"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {memberFilteredRows.length === 0 ? (
+                <p className="text-center text-slate-400">
+                  {memberPresenceRows.length === 0
+                    ? "Aucune présence enregistrée pour ce membre."
+                    : "Aucune ligne pour ce filtre de type d'événement."}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-white/10">
+                  <table className="min-w-full text-left text-sm text-slate-200">
+                    <thead className="border-b border-white/10 bg-black/20 text-xs uppercase tracking-wide text-slate-400">
+                      <tr>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2">Événement</th>
+                        <th className="px-3 py-2">Type</th>
+                        <th className="px-3 py-2">Présence</th>
+                        <th className="px-3 py-2">Inscrit</th>
+                        <th className="px-3 py-2">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {memberFilteredRows.map((row) => {
+                        const tone = getCategoryTone(row.category);
+                        return (
+                          <tr key={`${row.eventId}-${row.presenceId}`} className="border-b border-white/5 hover:bg-white/[0.03]">
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-300">
+                              {row.eventDate ? formatEventDate(row.eventDate) : "—"}
+                            </td>
+                            <td className="max-w-[14rem] px-3 py-2 font-medium text-white">
+                              <span className="line-clamp-2">{row.eventTitle}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className={`rounded-lg border px-2 py-0.5 text-xs ${tone.badgeClass}`}>
+                                {row.category}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.present ? (
+                                <span className="text-emerald-400">Présent</span>
+                              ) : (
+                                <span className="text-rose-300">Absent</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-slate-400">
+                              {row.isRegistered ? "Oui" : row.addedManually ? "Manuel" : "Non"}
+                            </td>
+                            <td className="max-w-[12rem] px-3 py-2 text-slate-400">
+                              <span className="line-clamp-2">{row.note || "—"}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="mt-3 text-xs text-slate-500">
+                {memberFilteredRows.length} ligne{memberFilteredRows.length > 1 ? "s" : ""} affichée
+                {memberFilteredRows.length > 1 ? "s" : ""}
+                {memberCategoryFilter ? " (filtrées)" : ""} sur {memberPresenceRows.length} au total.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal de gestion des présences pour un événement */}
       {isEventModalOpen && selectedEvent && (
