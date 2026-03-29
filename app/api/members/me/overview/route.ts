@@ -95,10 +95,6 @@ function getCurrentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function toIsoMonthKey(value: Date): string {
-  return value.toISOString().slice(0, 7);
-}
-
 function getMonthKeyFromDate(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -280,6 +276,7 @@ function buildSafeOverviewPayload(input: {
       monthEvents: [],
       monthEventsByMonth,
       categoryBreakdown: [],
+      discordPointsTrackingAvailable: false,
     },
   };
 }
@@ -526,17 +523,30 @@ export async function GET() {
 
     const memberPresences = memberPresenceRows.filter((row) => row.present);
 
-    const seenEvents = new Set<string>();
+    /** Toutes les clés d'event (legacy + UUID canonique) pour lesquelles le membre est compté présent */
+    const attendedEventKeys = new Set<string>();
     for (const presence of memberPresences) {
-      if (seenEvents.has(presence.event_id)) continue;
-      seenEvents.add(presence.event_id);
+      const rawId = String(presence.event_id || "");
+      if (!rawId) continue;
+      attendedEventKeys.add(rawId);
+      const resolved = eventById.get(rawId);
+      if (resolved?.id) attendedEventKeys.add(String(resolved.id));
+    }
 
-      const event = eventById.get(presence.event_id);
+    const seenForPresenceHistory = new Set<string>();
+    for (const presence of memberPresences) {
+      const rawId = String(presence.event_id || "");
+      if (!rawId) continue;
+      const event = eventById.get(rawId);
       if (!event) continue;
+      const canonicalId = String(event.id);
+      if (seenForPresenceHistory.has(canonicalId)) continue;
+      seenForPresenceHistory.add(canonicalId);
+
       const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
       if (Number.isNaN(eventDate.getTime())) continue;
 
-      const key = toIsoMonthKey(eventDate);
+      const key = getMonthKeyFromDate(eventDate);
       eventPresenceHistory.push({
         id: event.id,
         title: event.title,
@@ -569,11 +579,51 @@ export async function GET() {
       })
       .filter((event): event is { id: string; title: string; date: Date; category: string } => Boolean(event));
 
+    const memberTwitchRaw = String(
+      (member as { twitchLogin?: string; twitch_login?: string }).twitchLogin ||
+        (member as { twitch_login?: string }).twitch_login ||
+        ""
+    );
+    const memberTwitchLogin = normalize(memberTwitchRaw);
+    let discordPointsBackendAvailable = false;
+    let discordPointsEventIdsAwarded = new Set<string>();
+    if (memberTwitchLogin) {
+      try {
+        const { data: discordRows, error: discordErr } = await supabaseAdmin
+          .from("event_discord_points")
+          .select("event_id")
+          .eq("twitch_login", memberTwitchLogin)
+          .eq("status", "awarded")
+          .limit(3000);
+        if (discordErr) {
+          const msg = String(discordErr.message || "").toLowerCase();
+          const tableMissing =
+            msg.includes("does not exist") ||
+            msg.includes("42p01") ||
+            msg.includes("could not find the table") ||
+            msg.includes("schema cache");
+          if (!tableMissing) {
+            console.warn("[members/me/overview] event_discord_points:", discordErr.message);
+          }
+        } else {
+          discordPointsBackendAvailable = true;
+          discordPointsEventIdsAwarded = new Set(
+            (discordRows || []).map((row: { event_id?: string }) => String(row.event_id || "")).filter(Boolean)
+          );
+        }
+      } catch {
+        discordPointsBackendAvailable = false;
+      }
+    }
+
     const last12MonthKeys = getLastMonthKeys(now, 12);
     const monthlyHistory = last12MonthKeys.map((month) => {
-      const monthEvents = trackedEvents.filter((event) => toIsoMonthKey(event.date) === month);
+      const monthEvents = trackedEvents.filter((event) => getMonthKeyFromDate(event.date) === month);
       const totalEvents = monthEvents.length;
-      const attendedEvents = monthEvents.reduce((count, event) => count + (seenEvents.has(event.id) ? 1 : 0), 0);
+      const attendedEvents = monthEvents.reduce(
+        (count, event) => count + (attendedEventKeys.has(event.id) ? 1 : 0),
+        0
+      );
       const attendanceRate = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 0;
       return {
         monthKey: month,
@@ -586,17 +636,23 @@ export async function GET() {
     const monthEventsByMonth = last12MonthKeys.map((key) => ({
       monthKey: key,
       events: trackedEvents
-        .filter((event) => toIsoMonthKey(event.date) === key)
+        .filter((event) => getMonthKeyFromDate(event.date) === key)
         .sort((a, b) => b.date.getTime() - a.date.getTime())
         .map((event) => {
           const normalizedCategory = normalize(event.category);
+          const attended = attendedEventKeys.has(event.id);
+          let discordPointsStatus: "awarded" | "pending" | null = null;
+          if (attended && discordPointsBackendAvailable) {
+            discordPointsStatus = discordPointsEventIdsAwarded.has(event.id) ? "awarded" : "pending";
+          }
           return {
             id: event.id,
             title: event.title,
             date: event.date.toISOString(),
             category: event.category,
-            attended: seenEvents.has(event.id),
+            attended,
             isKeyEvent: normalizedCategory.includes("spotlight") || isFormationCategory(event.category),
+            discordPointsStatus,
           };
         }),
     }));
@@ -694,6 +750,7 @@ export async function GET() {
         monthEvents,
         monthEventsByMonth,
         categoryBreakdown,
+        discordPointsTrackingAvailable: discordPointsBackendAvailable,
       },
     });
   } catch (error) {

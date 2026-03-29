@@ -61,6 +61,8 @@ export type MemberOverview = {
       category: string;
       attended: boolean;
       isKeyEvent: boolean;
+      /** Points evenement Discord (+300) : null si non applicable ou suivi indisponible */
+      discordPointsStatus?: "awarded" | "pending" | null;
     }>;
     monthEventsByMonth: Array<{
       monthKey: string;
@@ -71,8 +73,11 @@ export type MemberOverview = {
         category: string;
         attended: boolean;
         isKeyEvent: boolean;
+        discordPointsStatus?: "awarded" | "pending" | null;
       }>;
     }>;
+    /** Table Supabase event_discord_points disponible (migration 0039) */
+    discordPointsTrackingAvailable?: boolean;
     categoryBreakdown: Array<{
       category: string;
       totalEvents: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Award, CalendarDays, ChevronRight, Flame, Star, Target, TrendingUp } from "lucide-react";
+import { Award, BadgeCheck, CalendarDays, ChevronRight, Clock, Flame, Star, Target, TrendingUp } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
@@ -13,6 +13,44 @@ type AttendanceEntry = {
   attendedEvents: number;
   attendanceRate: number;
 };
+
+type MonthEventRow = {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  attended: boolean;
+  isKeyEvent: boolean;
+  discordPointsStatus?: "awarded" | "pending" | null;
+};
+
+function DiscordPointsStatusBadge({ status }: { status?: MonthEventRow["discordPointsStatus"] }) {
+  if (status === "awarded") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
+        style={{ borderColor: "rgba(52,211,153,0.5)", color: "#6ee7b7", backgroundColor: "rgba(52,211,153,0.1)" }}
+        title="Les points Discord evenement ont ete enregistres par l equipe."
+      >
+        <BadgeCheck size={12} />
+        Points Discord OK
+      </span>
+    );
+  }
+  if (status === "pending") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
+        style={{ borderColor: "rgba(251,191,36,0.55)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
+        title="Presence validee : attribution des points Discord (+300) par l equipe en cours ou a venir."
+      >
+        <Clock size={12} />
+        Points en attente
+      </span>
+    );
+  }
+  return null;
+}
 
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
@@ -31,7 +69,8 @@ function getTier(rate: number): { label: string; color: string } {
 
 function getEncouragement(input: { rate: number; delta: number; remainingToTarget: number; totalEvents: number; targetEvents: number; attendedEvents: number }): string {
   const { rate, delta, remainingToTarget, totalEvents, targetEvents, attendedEvents } = input;
-  if (totalEvents === 0) return "Aucun evenement termine ce mois. Des qu'un event est passe, ton suivi se mettra a jour.";
+  if (totalEvents === 0)
+    return "Aucun evenement enregistre pour ce mois-ci dans le planning (calendrier du site, mois local). Des qu un event correspond, ton suivi se mettra a jour.";
   if (attendedEvents >= targetEvents) return delta >= 0 ? "Excellent rythme. Tu maintiens un niveau premium ce mois-ci." : "Objectif atteint. Garde cette regularite jusqu'a la fin du mois.";
   if (remainingToTarget <= 0) return "Objectif quasiment verrouille. Encore un petit effort pour passer au palier suivant.";
   if (delta > 0) return `Bonne dynamique: +${delta}% vs mois precedent. Encore ${remainingToTarget} evenement(s) pour atteindre ton objectif.`;
@@ -111,8 +150,39 @@ export default function MemberEventPresencesPage() {
     return history[idx - 1];
   }, [history, selectedAttendance]);
 
-  const selectedMonthEvents =
+  const selectedMonthEvents: MonthEventRow[] =
     data?.attendance?.monthEventsByMonth.find((entry) => entry.monthKey === selectedAttendance?.monthKey)?.events || [];
+
+  const discordPointsMonthCounts = useMemo(() => {
+    let awarded = 0;
+    let pending = 0;
+    for (const event of selectedMonthEvents) {
+      if (!event.attended) continue;
+      if (event.discordPointsStatus === "awarded") awarded += 1;
+      else if (event.discordPointsStatus === "pending") pending += 1;
+    }
+    return { awarded, pending };
+  }, [selectedMonthEvents]);
+
+  const discordHeaderExtras =
+    data?.attendance?.discordPointsTrackingAvailable === true ? (
+      <>
+        <span
+          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+          style={{ borderColor: "rgba(52,211,153,0.45)", color: "#6ee7b7", backgroundColor: "rgba(52,211,153,0.1)" }}
+        >
+          <BadgeCheck size={13} />
+          +300 attribues : {discordPointsMonthCounts.awarded}
+        </span>
+        <span
+          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+          style={{ borderColor: "rgba(251,191,36,0.5)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
+        >
+          <Clock size={13} />
+          +300 en attente : {discordPointsMonthCounts.pending}
+        </span>
+      </>
+    ) : null;
 
   const selectedCategoryBreakdown = useMemo(() => {
     const byCategory = new Map<string, { totalEvents: number; attendedEvents: number }>();
@@ -206,7 +276,12 @@ export default function MemberEventPresencesPage() {
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Mes presences" description="Un vrai espace de suivi premium, mois par mois." badge={tier.label} />
+      <MemberPageHeader
+        title="Mes presences"
+        description="Un vrai espace de suivi premium, mois par mois."
+        badge={tier.label}
+        extras={discordHeaderExtras}
+      />
 
       <section className="rounded-xl border p-3 md:p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -251,6 +326,12 @@ export default function MemberEventPresencesPage() {
               ))}
           </select>
         </div>
+        {data.attendance?.discordPointsTrackingAvailable ? (
+          <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Points Discord evenement (+300) : chaque ligne ou tu es marque present affiche si l equipe a deja enregistre
+            l attribution cote outil admin, ou si c est encore en attente.
+          </p>
+        ) : null}
       </section>
 
       {activeTab === "general" ? (
@@ -433,13 +514,14 @@ export default function MemberEventPresencesPage() {
                         {new Date(event.date).toLocaleString("fr-FR")} - {event.category}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {event.isKeyEvent ? (
                         <span className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs" style={{ borderColor: "rgba(240,201,107,0.45)", color: "#f0c96b" }}>
                           <Award size={12} />
                           Event cle
                         </span>
                       ) : null}
+                      <DiscordPointsStatusBadge status={event.discordPointsStatus} />
                       <span
                         className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
                         style={{
@@ -532,15 +614,18 @@ export default function MemberEventPresencesPage() {
                       {new Date(event.date).toLocaleString("fr-FR")}
                     </p>
                   </div>
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
-                    style={{
-                      borderColor: event.attended ? "rgba(240,201,107,0.5)" : "rgba(255,255,255,0.16)",
-                      color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
-                    }}
-                  >
-                    {event.attended ? "Spotlight present" : "Spotlight absent"}
-                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <DiscordPointsStatusBadge status={event.discordPointsStatus} />
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
+                      style={{
+                        borderColor: event.attended ? "rgba(240,201,107,0.5)" : "rgba(255,255,255,0.16)",
+                        color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
+                      }}
+                    >
+                      {event.attended ? "Spotlight present" : "Spotlight absent"}
+                    </span>
+                  </div>
                 </div>
               ))
             )}
@@ -567,15 +652,18 @@ export default function MemberEventPresencesPage() {
                       {new Date(event.date).toLocaleString("fr-FR")} - {formatMonthLabel(event.monthKey)}
                     </p>
                   </div>
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
-                    style={{
-                      borderColor: event.attended ? "rgba(240,201,107,0.5)" : "rgba(255,255,255,0.16)",
-                      color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
-                    }}
-                  >
-                    {event.attended ? "Spotlight present" : "Spotlight absent"}
-                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <DiscordPointsStatusBadge status={event.discordPointsStatus} />
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
+                      style={{
+                        borderColor: event.attended ? "rgba(240,201,107,0.5)" : "rgba(255,255,255,0.16)",
+                        color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
+                      }}
+                    >
+                      {event.attended ? "Spotlight present" : "Spotlight absent"}
+                    </span>
+                  </div>
                 </div>
               ))
             )}

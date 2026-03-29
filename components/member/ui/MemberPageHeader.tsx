@@ -1,13 +1,22 @@
+import type { ReactNode } from "react";
 import MemberBreadcrumbs from "@/components/member/ui/MemberBreadcrumbs";
 
 type MemberPageHeaderProps = {
   title: string;
   description?: string;
   badge?: string;
+  /** Badges ou libellés supplementaires a cote du titre (ex: suivi points Discord) */
+  extras?: ReactNode;
   showBreadcrumbs?: boolean;
 };
 
-export default function MemberPageHeader({ title, description, badge, showBreadcrumbs = true }: MemberPageHeaderProps) {
+export default function MemberPageHeader({
+  title,
+  description,
+  badge,
+  extras,
+  showBreadcrumbs = true,
+}: MemberPageHeaderProps) {
   return (
     <header className="rounded-xl border p-5 md:p-6" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
       {showBreadcrumbs ? <MemberBreadcrumbs /> : null}
@@ -23,6 +32,7 @@ export default function MemberPageHeader({ title, description, badge, showBreadc
             {badge}
           </span>
         ) : null}
+        {extras}
       </div>
       {description ? (
         <p className="mt-2 text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>

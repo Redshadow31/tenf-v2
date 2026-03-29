@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { eventRepository } from "@/lib/repositories";
-import { createEventDiscordPoint, listEventDiscordPoints } from "@/lib/eventDiscordPointsStorage";
+import {
+  createEventDiscordPoint,
+  findEventDiscordPointByPresenceKey,
+  listEventDiscordPoints,
+} from "@/lib/eventDiscordPointsStorage";
+
+function isMissingRelationError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("does not exist") || normalized.includes("42p01");
+}
 
 type EventTodoItem = {
   presence_key: string;
@@ -43,10 +52,10 @@ function inRange(iso: string, startIso: string, endIso: string): boolean {
   return iso >= startIso && iso < endIso;
 }
 
-async function buildTodoForMonth(month: string): Promise<EventTodoItem[]> {
+async function buildTodoForMonth(month: string, awardedKeys: Set<string>): Promise<EventTodoItem[]> {
   const { startIso, endIso } = monthRange(month);
   const events = await eventRepository.findAll(1000, 0);
-  const awarded = new Set(listEventDiscordPoints().map((item) => item.presenceKey));
+  const awarded = awardedKeys;
   const todos: EventTodoItem[] = [];
 
   for (const event of events) {
@@ -138,13 +147,31 @@ export async function GET(request: NextRequest) {
     const month = /^\d{4}-\d{2}$/.test(requestedMonth) ? requestedMonth : toMonthKey(new Date());
     const { startIso, endIso } = monthRange(month);
 
-    const allHistory = listEventDiscordPoints();
+    let allHistory: Awaited<ReturnType<typeof listEventDiscordPoints>> = [];
+    try {
+      allHistory = await listEventDiscordPoints();
+    } catch (err: unknown) {
+      const message = String((err as { message?: string })?.message || "");
+      if (isMissingRelationError(message)) {
+        return NextResponse.json({
+          backendReady: false,
+          warning: "Table manquante. Applique la migration 0039_event_discord_points.sql.",
+          month,
+          todo: [],
+          history: [],
+          counters: { todo: 0, history: 0 },
+        });
+      }
+      throw err;
+    }
+
+    const awardedKeys = new Set(allHistory.map((item) => item.presenceKey));
     const history = includeHistory
       ? allHistory
           .filter((item) => inRange(item.awardedAt, startIso, endIso))
           .sort((a, b) => new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime())
       : [];
-    const todo = includeTodo ? await buildTodoForMonth(month) : [];
+    const todo = includeTodo ? await buildTodoForMonth(month, awardedKeys) : [];
 
     return NextResponse.json({
       backendReady: true,
@@ -182,7 +209,20 @@ export async function POST(request: NextRequest) {
     const singlePresenceKey = String(body?.presenceKey || "").trim();
 
     if (presenceKeys.length > 0) {
-      const existingKeys = new Set(listEventDiscordPoints().map((item) => item.presenceKey));
+      let existingList: Awaited<ReturnType<typeof listEventDiscordPoints>>;
+      try {
+        existingList = await listEventDiscordPoints();
+      } catch (err: unknown) {
+        const message = String((err as { message?: string })?.message || "");
+        if (isMissingRelationError(message)) {
+          return NextResponse.json(
+            { error: "Table manquante. Applique la migration 0039_event_discord_points.sql." },
+            { status: 500 }
+          );
+        }
+        throw err;
+      }
+      const existingKeys = new Set(existingList.map((item) => item.presenceKey));
       let insertedCount = 0;
       let alreadyAwardedCount = 0;
       let invalidCount = 0;
@@ -203,21 +243,36 @@ export async function POST(request: NextRequest) {
           missingCount += 1;
           continue;
         }
-        createEventDiscordPoint({
-          presenceKey: candidate.presence_key,
-          eventId: candidate.event_id,
-          eventTitle: candidate.event_title,
-          eventAt: candidate.event_at,
-          twitchLogin: candidate.twitch_login,
-          displayName: candidate.display_name,
-          discordUsername: candidate.discord_username || undefined,
-          points,
-          note,
-          awardedByDiscordId: admin.discordId,
-          awardedByUsername: admin.username,
-        });
-        insertedCount += 1;
-        existingKeys.add(presenceKey);
+        try {
+          const { created } = await createEventDiscordPoint({
+            presenceKey: candidate.presence_key,
+            eventId: candidate.event_id,
+            eventTitle: candidate.event_title,
+            eventAt: candidate.event_at,
+            twitchLogin: candidate.twitch_login,
+            displayName: candidate.display_name,
+            discordUsername: candidate.discord_username || undefined,
+            points,
+            note,
+            awardedByDiscordId: admin.discordId,
+            awardedByUsername: admin.username,
+          });
+          if (!created) {
+            alreadyAwardedCount += 1;
+            continue;
+          }
+          insertedCount += 1;
+          existingKeys.add(presenceKey);
+        } catch (insertErr: unknown) {
+          const message = String((insertErr as { message?: string })?.message || "");
+          if (isMissingRelationError(message)) {
+            return NextResponse.json(
+              { error: "Table manquante. Applique la migration 0039_event_discord_points.sql." },
+              { status: 500 }
+            );
+          }
+          throw insertErr;
+        }
       }
 
       return NextResponse.json({
@@ -240,7 +295,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "presenceKey invalide" }, { status: 400 });
     }
 
-    const existing = listEventDiscordPoints().find((item) => item.presenceKey === singlePresenceKey);
+    let existing: Awaited<ReturnType<typeof findEventDiscordPointByPresenceKey>>;
+    try {
+      existing = await findEventDiscordPointByPresenceKey(singlePresenceKey);
+    } catch (err: unknown) {
+      const message = String((err as { message?: string })?.message || "");
+      if (isMissingRelationError(message)) {
+        return NextResponse.json(
+          { error: "Table manquante. Applique la migration 0039_event_discord_points.sql." },
+          { status: 500 }
+        );
+      }
+      throw err;
+    }
     if (existing) {
       return NextResponse.json({
         success: true,
@@ -257,24 +324,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const entry = createEventDiscordPoint({
-      presenceKey: candidate.presence_key,
-      eventId: candidate.event_id,
-      eventTitle: candidate.event_title,
-      eventAt: candidate.event_at,
-      twitchLogin: candidate.twitch_login,
-      displayName: candidate.display_name,
-      discordUsername: candidate.discord_username || undefined,
-      points,
-      note,
-      awardedByDiscordId: admin.discordId,
-      awardedByUsername: admin.username,
-    });
+    let createdResult: Awaited<ReturnType<typeof createEventDiscordPoint>>;
+    try {
+      createdResult = await createEventDiscordPoint({
+        presenceKey: candidate.presence_key,
+        eventId: candidate.event_id,
+        eventTitle: candidate.event_title,
+        eventAt: candidate.event_at,
+        twitchLogin: candidate.twitch_login,
+        displayName: candidate.display_name,
+        discordUsername: candidate.discord_username || undefined,
+        points,
+        note,
+        awardedByDiscordId: admin.discordId,
+        awardedByUsername: admin.username,
+      });
+    } catch (err: unknown) {
+      const message = String((err as { message?: string })?.message || "");
+      if (isMissingRelationError(message)) {
+        return NextResponse.json(
+          { error: "Table manquante. Applique la migration 0039_event_discord_points.sql." },
+          { status: 500 }
+        );
+      }
+      throw err;
+    }
+
+    if (!createdResult.created) {
+      return NextResponse.json({
+        success: true,
+        alreadyAwarded: true,
+        message: "Les points ont deja ete attribues pour cette presence.",
+      });
+    }
 
     return NextResponse.json({
       success: true,
       alreadyAwarded: false,
-      entry,
+      entry: createdResult.entry,
     });
   } catch (error) {
     console.error("[admin/events/points-discord] POST error:", error);
