@@ -26,4 +26,3 @@ create index if not exists idx_raid_declarations_status
 
 create index if not exists idx_raid_declarations_raid_at
   on public.raid_declarations (raid_at desc);
-
