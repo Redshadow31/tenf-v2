@@ -114,13 +114,17 @@ export async function GET(request: NextRequest) {
         })()
       : Promise.resolve({ data: [] as any[], error: null as any });
 
-    const pointsAwardedIdsPromise = includeTodo && !includeHistory && !!runId
-      ? supabaseAdmin
-          .from("raid_test_points")
-          .select("raid_test_event_id")
-          .eq("run_id", runId)
-          .limit(5000)
-      : Promise.resolve({ data: [] as any[], error: null as any });
+    // Toujours charger tous les event_id deja attribues pour ce run (tous mois),
+    // pas seulement ceux du mois de l'historique — sinon les validations passees
+    // reapparaissent dans "a faire" des que le mois affiche ne les contient pas.
+    const pointsAwardedIdsPromise =
+      includeTodo && !!runId
+        ? supabaseAdmin
+            .from("raid_test_points")
+            .select("raid_test_event_id")
+            .eq("run_id", runId)
+            .limit(5000)
+        : Promise.resolve({ data: [] as any[], error: null as any });
 
     const [eventsRes, pointsHistoryRes, pointsAwardedIdsRes] = await Promise.all([
       eventsPromise,
@@ -175,10 +179,9 @@ export async function GET(request: NextRequest) {
 
     const matchedEvents = (eventsRes.data || []) as RaidTestEventRow[];
     const history = (pointsHistoryRes.data || []) as RaidPointRow[];
-    const awardedEventRows = includeHistory
-      ? history.map((item) => ({ raid_test_event_id: item.raid_test_event_id }))
-      : (pointsAwardedIdsRes.data || []);
-    const awardedEventIds = new Set(awardedEventRows.map((item: any) => String(item.raid_test_event_id || "")));
+    const awardedEventIds = new Set(
+      (pointsAwardedIdsRes.data || []).map((item: any) => String(item.raid_test_event_id || ""))
+    );
     const todoBase = matchedEvents.filter((item) => !awardedEventIds.has(item.id));
 
     const uniqueRaiderLogins = Array.from(
