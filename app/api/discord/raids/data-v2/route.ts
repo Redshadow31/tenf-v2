@@ -6,10 +6,9 @@ import {
   getMonthKey,
   getCurrentMonthKey,
 } from '@/lib/raidStorage';
-import type { RaidFait, RaidRecu } from '@/lib/raidStorage';
 import { memberRepository } from '@/lib/repositories';
 import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { mergeMatchedRaidTestEventsForMonth } from '@/lib/raidEventsubMerge';
 
 export const dynamic = 'force-dynamic';
 const RAIDS_CURRENT_MONTH_TTL_SECONDS = 45;
@@ -80,12 +79,6 @@ export async function GET(request: NextRequest) {
       twitchLoginToMember.set(m.twitchLogin.toLowerCase(), info);
     });
 
-    const [yearStr, monthStr] = monthKey.split("-");
-    const year = Number(yearStr);
-    const month = Number(monthStr);
-    const monthStart = new Date(Date.UTC(year, month - 1, 1)).toISOString();
-    const monthEnd = new Date(Date.UTC(year, month, 1)).toISOString();
-
     // Charger les données
     let raidsFaits = await loadRaidsFaits(monthKey);
     let raidsRecus = await loadRaidsRecus(monthKey);
@@ -96,69 +89,9 @@ export async function GET(request: NextRequest) {
     raidsRecus = raidsRecus.filter(raid => raid.source !== "discord");
     alerts = alerts.filter(alert => alert.source !== "discord");
 
-    // Injecter les raids-sub valides (processing_status = matched) du mois
-    // pour qu'ils remontent dans /admin/raids.
-    const eventsubMatchedRes = await supabaseAdmin
-      .from("raid_test_events")
-      .select(
-        "id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status"
-      )
-      .eq("processing_status", "matched")
-      .gte("event_at", monthStart)
-      .lt("event_at", monthEnd)
-      .order("event_at", { ascending: false })
-      .limit(5000);
-
-    if (!eventsubMatchedRes.error) {
-      const eventsubRows = (eventsubMatchedRes.data || []) as Array<{
-        id: string;
-        from_broadcaster_user_login: string | null;
-        to_broadcaster_user_login: string | null;
-        event_at: string | null;
-        viewers: number | null;
-      }>;
-
-      const existingFaitsKeys = new Set(
-        raidsFaits.map((raid) => `${String(raid.raider || "").toLowerCase()}|${String(raid.target || "").toLowerCase()}|${raid.date}`)
-      );
-      const existingRecusKeys = new Set(
-        raidsRecus.map((raid) => `${String(raid.raider || "").toLowerCase()}|${String(raid.target || "").toLowerCase()}|${raid.date}`)
-      );
-
-      const eventsubFaits: RaidFait[] = eventsubRows
-        .filter((row) => row.from_broadcaster_user_login && row.to_broadcaster_user_login && row.event_at)
-        .map((row) => ({
-          raider: String(row.from_broadcaster_user_login || "").toLowerCase(),
-          target: String(row.to_broadcaster_user_login || "").toLowerCase(),
-          date: String(row.event_at || ""),
-          count: 1,
-          manual: false,
-          source: "raids_sub" as const,
-          viewers: typeof row.viewers === "number" ? row.viewers : undefined,
-          countFrom: true,
-          countTo: undefined,
-        }))
-        .filter((row) => !existingFaitsKeys.has(`${row.raider}|${row.target}|${row.date}`));
-
-      const eventsubRecus: RaidRecu[] = eventsubRows
-        .filter((row) => row.from_broadcaster_user_login && row.to_broadcaster_user_login && row.event_at)
-        .map((row) => ({
-          target: String(row.to_broadcaster_user_login || "").toLowerCase(),
-          raider: String(row.from_broadcaster_user_login || "").toLowerCase(),
-          date: String(row.event_at || ""),
-          manual: false,
-          source: "raids_sub" as const,
-          viewers: typeof row.viewers === "number" ? row.viewers : undefined,
-          countFrom: undefined,
-          countTo: true,
-        }))
-        .filter((row) => !existingRecusKeys.has(`${row.raider}|${row.target}|${row.date}`));
-
-      raidsFaits = [...raidsFaits, ...eventsubFaits];
-      raidsRecus = [...raidsRecus, ...eventsubRecus];
-    } else {
-      console.error("[raids/data-v2] Erreur chargement raids-sub matched:", eventsubMatchedRes.error);
-    }
+    const merged = await mergeMatchedRaidTestEventsForMonth(monthKey, raidsFaits, raidsRecus);
+    raidsFaits = merged.raidsFaits;
+    raidsRecus = merged.raidsRecus;
 
     const resolveMember = (id: string) =>
       discordIdToMember.get(id) || twitchLoginToMember.get(id?.toLowerCase?.() || '');

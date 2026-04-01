@@ -7,6 +7,7 @@ import {
   loadRaidsRecus,
   getMonthKey,
 } from '@/lib/raidStorage';
+import { mergeMatchedRaidTestEventsForMonth } from '@/lib/raidEventsubMerge';
 import { memberRepository, evaluationRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic';
  * - 4 raids faits = 3 points
  * - 5 raids faits = 4 points
  * - 6+ raids faits = 5 points (sur 5)
- * Utilise les mêmes données que /api/discord/raids/data-v2
+ * Utilise les mêmes données que /api/discord/raids/data-v2 (stockage mensuel + raids EventSub matched).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -61,13 +62,17 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Charger les données de raids (même logique que /api/discord/raids/data-v2)
+    // Charger les données de raids (aligné sur /api/discord/raids/data-v2 + historique-raids)
     let raidsFaits = await loadRaidsFaits(monthKey);
     let raidsRecus = await loadRaidsRecus(monthKey);
     
     // Filtrer les raids Discord (ne garder que twitch-live et manual)
     raidsFaits = raidsFaits.filter((raid: any) => raid.source !== "discord");
     raidsRecus = raidsRecus.filter((raid: any) => raid.source !== "discord");
+
+    const merged = await mergeMatchedRaidTestEventsForMonth(monthKey, raidsFaits, raidsRecus);
+    raidsFaits = merged.raidsFaits;
+    raidsRecus = merged.raidsRecus;
 
     // Calculer les statistiques par membre (même logique que la page A)
     const memberStatsMap = new Map<string, { done: number; received: number }>();

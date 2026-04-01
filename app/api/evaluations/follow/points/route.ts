@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/requireAdmin';
 import { memberRepository } from '@/lib/repositories';
 import { getAllFollowValidationsForMonth, getLastMonthWithData } from '@/lib/followStorage';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
+import { getLatestFollowEngagementOverview } from '@/lib/admin/followEngagement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,8 +96,10 @@ async function fetchAllMembersForEvaluation() {
 }
 
 /**
- * GET - Récupère les points Follow pour le mois demandé depuis /admin/follow
- * (validations followStorage = même source que https://tenf-community.com/admin/follow)
+ * GET - Points Follow pour la synthèse évaluation :
+ * - Feuilles staff (follow_validations) = même logique que /admin/communaute/engagement/feuilles-follow
+ * - Dernier snapshot engagement Twitch = même source que /admin/communaute/engagement/follow
+ * Si les deux sont disponibles : moyenne des deux notes (/5). Sinon la source disponible.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -138,20 +141,76 @@ export async function GET(request: NextRequest) {
     }));
 
     const scores = computeScores(memberLogins, sheets, 5);
+    const sheetScoreByLogin = new Map<string, number>();
+    scores.forEach(({ login, score }) => {
+      sheetScoreByLogin.set(login, score);
+    });
+
+    const totalSheets = sheets.length;
+    const snapshotScoreByLogin = new Map<string, number>();
+    try {
+      const overview = await getLatestFollowEngagementOverview();
+      for (const row of overview?.rows || []) {
+        const login = normalizeLogin(row?.memberTwitchLogin || "");
+        if (!login) continue;
+        if (row.state === "ok" && typeof row.followRate === "number") {
+          snapshotScoreByLogin.set(
+            login,
+            Math.round((row.followRate / 100) * 5 * 100) / 100
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("[API Evaluations Follow Points] Snapshot engagement indisponible:", e);
+    }
 
     const pointsMap: Record<string, number> = {};
-    scores.forEach(({ login, score }) => {
-      pointsMap[login] = score;
-    });
+    const hasSheets = totalSheets > 0;
+    const hasAnySnapshot = snapshotScoreByLogin.size > 0;
+
+    for (const login of memberLogins) {
+      const sheetPts = sheetScoreByLogin.get(login) ?? 0;
+      const snapPts = snapshotScoreByLogin.get(login);
+      let finalPts: number;
+      if (hasSheets && snapPts !== undefined) {
+        finalPts = Math.round(((sheetPts + snapPts) / 2) * 100) / 100;
+      } else if (hasSheets) {
+        finalPts = sheetPts;
+      } else if (snapPts !== undefined) {
+        finalPts = snapPts;
+      } else {
+        finalPts = 0;
+      }
+      pointsMap[login] = finalPts;
+    }
+
+    let blendHint = "";
+    if (hasSheets && hasAnySnapshot) {
+      blendHint = "Moyenne feuilles staff + dernier snapshot engagement Twitch.";
+    } else if (hasSheets) {
+      blendHint = "Feuilles staff uniquement (snapshot engagement indisponible ou vide).";
+    } else if (hasAnySnapshot) {
+      blendHint = "Snapshot engagement uniquement (aucune feuille staff pour ce mois).";
+    }
 
     return NextResponse.json({
       success: true,
       points: pointsMap,
       month: monthKey,
       dataSourceMonth: dataSourceMonth !== monthKey ? dataSourceMonth : undefined,
-      message: dataSourceMonth !== monthKey
-        ? `Données Follow du mois ${dataSourceMonth} (aucune donnée pour ${monthKey})`
-        : `Données Follow : ${monthKey}`,
+      followBlend: {
+        sheetsCount: totalSheets,
+        usedSnapshot: hasAnySnapshot,
+        blended: hasSheets && hasAnySnapshot,
+      },
+      message: [
+        dataSourceMonth !== monthKey
+          ? `Feuilles follow : mois ${dataSourceMonth} (aucune pour ${monthKey})`
+          : `Feuilles follow : ${monthKey}`,
+        blendHint || undefined,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   } catch (error) {
     console.error('[API Evaluations Follow Points GET] Erreur:', error);
