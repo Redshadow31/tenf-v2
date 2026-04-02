@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarHeart, Sparkles, Users } from "lucide-react";
+import { CalendarHeart, Search, Sparkles, Users } from "lucide-react";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 type TabKey = "birthday" | "affiliate";
 type Scope = "month" | "all";
@@ -12,6 +13,8 @@ type Member = {
   twitchLogin?: string;
   displayName?: string;
   discordUsername?: string;
+  discordId?: string;
+  role?: string;
   avatar?: string;
   birthday?: string;
   twitchAffiliateDate?: string;
@@ -61,13 +64,39 @@ function filterByCurrentMonth(list: Member[], key: "birthday" | "twitchAffiliate
   });
 }
 
-function formatDate(value?: string): string {
+/** Date complète avec année (anniversaire ou date d’affiliation). */
+function formatDateWithYear(value?: string): string {
   const date = safeDate(value);
   if (!date) return "Date non renseignée";
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
+    year: "numeric",
   }).format(date);
+}
+
+/** Âge en années complètes (référence : aujourd’hui, découpe calendaire UTC). */
+function computeAgeYears(iso?: string, ref: Date = new Date()): number | null {
+  const d = safeDate(iso);
+  if (!d) return null;
+  if (d.getTime() > ref.getTime()) return null;
+  let age = ref.getUTCFullYear() - d.getUTCFullYear();
+  const md = ref.getUTCMonth() - d.getUTCMonth();
+  if (md < 0 || (md === 0 && ref.getUTCDate() < d.getUTCDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+/** Années complètes depuis une date (ex. affiliation Twitch). */
+function formatAffiliationTenure(iso?: string, ref: Date = new Date()): string | null {
+  const d = safeDate(iso);
+  if (!d) return null;
+  if (d.getTime() > ref.getTime()) return null;
+  let years = ref.getUTCFullYear() - d.getUTCFullYear();
+  const md = ref.getUTCMonth() - d.getUTCMonth();
+  if (md < 0 || (md === 0 && ref.getUTCDate() < d.getUTCDate())) years -= 1;
+  if (years < 0) return null;
+  if (years === 0) return "Moins d'un an";
+  return years === 1 ? "1 an d'affiliation" : `${years} ans d'affiliation`;
 }
 
 function formatCurrentMonthLabel(): string {
@@ -77,6 +106,10 @@ function formatCurrentMonthLabel(): string {
 function MemberCard({ member, dateKey, badgeLabel }: { member: Member; dateKey: "birthday" | "twitchAffiliateDate"; badgeLabel: string }) {
   const memberLabel = member.displayName || member.twitchLogin || "Membre";
   const twitch = member.twitchLogin ? `@${member.twitchLogin}` : "Sans login Twitch";
+  const roleLabel = member.role ? getRoleBadgeLabel(member.role) : null;
+  const rawDate = member[dateKey];
+  const ageYears = dateKey === "birthday" ? computeAgeYears(rawDate) : null;
+  const affiliationLine = dateKey === "twitchAffiliateDate" ? formatAffiliationTenure(rawDate) : null;
 
   return (
     <div className="rounded-xl border border-[#353a50] bg-[#121623]/85 p-4 flex items-center gap-4 hover:border-indigo-300/35 transition-colors">
@@ -88,13 +121,26 @@ function MemberCard({ member, dateKey, badgeLabel }: { member: Member; dateKey: 
       <div className="min-w-0 flex-1">
         <p className="text-white font-semibold truncate">{memberLabel}</p>
         <p className="text-gray-400 text-sm truncate">{twitch}</p>
-        {member.discordUsername ? <p className="text-gray-500 text-xs truncate">{member.discordUsername}</p> : null}
+        {member.discordUsername ? <p className="text-gray-500 text-xs truncate">Discord : {member.discordUsername}</p> : null}
+        {roleLabel ? (
+          <p className="text-indigo-200/90 text-xs mt-0.5 truncate" title="Rôle issu de la fiche membre (sync Discord)">
+            Rôle : {roleLabel}
+          </p>
+        ) : (
+          <p className="text-gray-600 text-xs mt-0.5">Rôle : non renseigné</p>
+        )}
       </div>
-      <div className="text-right">
+      <div className="text-right shrink-0 max-w-[min(100%,11rem)]">
         <span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-[#2a2440] text-[#c4a8ff] border border-[#5f3fb0]">
           {badgeLabel}
         </span>
-        <p className="text-white text-sm mt-2">{formatDate(member[dateKey])}</p>
+        <p className="text-white text-sm mt-2 leading-snug">{formatDateWithYear(rawDate)}</p>
+        {dateKey === "birthday" && ageYears !== null ? (
+          <p className="text-sky-200/90 text-xs mt-1">Âge : {ageYears} ans</p>
+        ) : null}
+        {dateKey === "twitchAffiliateDate" && affiliationLine ? (
+          <p className="text-cyan-200/90 text-xs mt-1">{affiliationLine}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -111,6 +157,7 @@ export default function AnniversariesPage({
   const [activeTab, setActiveTab] = useState<TabKey>("birthday");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -157,6 +204,27 @@ export default function AnniversariesPage({
   const visibleList = activeTab === "birthday" ? birthdays : affiliateAnniversaries;
   const badgeLabel = activeTab === "birthday" ? "Anniversaire" : "Anniversaire d'affiliation";
   const dateKey = activeTab === "birthday" ? "birthday" : "twitchAffiliateDate";
+
+  const filteredVisibleList = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return visibleList;
+    return visibleList.filter((m) => {
+      const roleRaw = (m.role || "").toLowerCase();
+      const rolePretty = m.role ? getRoleBadgeLabel(m.role).toLowerCase() : "";
+      const haystack = [
+        m.displayName,
+        m.twitchLogin,
+        m.discordUsername,
+        m.discordId,
+        m.role,
+        rolePretty,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [visibleList, memberSearch]);
   const monthLabel = formatCurrentMonthLabel();
   const coveragePercent =
     birthdays.length + affiliateAnniversaries.length > 0
@@ -241,6 +309,25 @@ export default function AnniversariesPage({
         </article>
       </section>
 
+      <div className={`${sectionCardClass} space-y-3`}>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
+          <input
+            type="search"
+            value={memberSearch}
+            onChange={(e) => setMemberSearch(e.target.value)}
+            placeholder="Rechercher un membre (pseudo, Twitch, Discord, rôle…)"
+            className="w-full rounded-lg border border-[#3b3f54] bg-[#121623]/90 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-indigo-400/50 focus:outline-none focus:ring-1 focus:ring-indigo-400/30"
+            autoComplete="off"
+          />
+        </div>
+        {memberSearch.trim() && visibleList.length > 0 ? (
+          <p className="text-xs text-slate-400">
+            {filteredVisibleList.length} résultat{filteredVisibleList.length !== 1 ? "s" : ""} sur {visibleList.length} dans cet onglet
+          </p>
+        ) : null}
+      </div>
+
       <div className={`${sectionCardClass} flex gap-2`}>
         <button
           onClick={() => setActiveTab("birthday")}
@@ -273,9 +360,15 @@ export default function AnniversariesPage({
         </div>
       ) : null}
 
-      {!loading && !error && visibleList.length > 0 ? (
+      {!loading && !error && visibleList.length > 0 && filteredVisibleList.length === 0 ? (
+        <div className={`${sectionCardClass} text-amber-100/90`}>
+          Aucun membre ne correspond à « {memberSearch.trim()} ». Essaie un autre pseudo, login Twitch ou rôle.
+        </div>
+      ) : null}
+
+      {!loading && !error && filteredVisibleList.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {visibleList.map((member) => (
+          {filteredVisibleList.map((member) => (
             <MemberCard
               key={`${member.id || member.twitchLogin || member.displayName}-${member[dateKey] || "date"}`}
               member={member}
