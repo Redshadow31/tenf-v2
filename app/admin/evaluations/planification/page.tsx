@@ -1,9 +1,37 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Upload, X, Image as ImageIcon, Edit, Trash2, Copy } from "lucide-react";
+import {
+  Upload,
+  X,
+  Image as ImageIcon,
+  Edit,
+  Trash2,
+  Copy,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+} from "lucide-react";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from "date-fns";
+import { fr } from "date-fns/locale";
 import { LOCATION_OPTIONS } from "@/lib/locationOptions";
+import {
+  ONBOARDING_ACCUEIL_LOCATION_NAME,
+  ONBOARDING_ACCUEIL_VOCAL_URL,
+  ONBOARDING_SESSION_IMAGE_HEIGHT,
+  ONBOARDING_SESSION_IMAGE_WIDTH,
+} from "@/lib/onboardingSessionDefaults";
 
 interface CategoryConfig {
   value: string;
@@ -42,6 +70,29 @@ const getCategoryConfig = (categoryValue: string): CategoryConfig => {
   return categories.find(cat => cat.value === categoryValue) || categories[0];
 };
 
+const BANNER_W = ONBOARDING_SESSION_IMAGE_WIDTH;
+const BANNER_H = ONBOARDING_SESSION_IMAGE_HEIGHT;
+
+/** Redimensionne l’image en bannière 800×200 px avant envoi. */
+async function resizeToSessionBanner(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = BANNER_W;
+  canvas.height = BANNER_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non disponible");
+  ctx.drawImage(bitmap, 0, 0, BANNER_W, BANNER_H);
+  bitmap.close();
+  const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const quality = mime === "image/jpeg" ? 0.9 : undefined;
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Export image impossible"))), mime, quality);
+  });
+  const base = file.name.replace(/\.[^.]+$/, "") || "banniere";
+  const ext = mime === "image/png" ? "png" : "jpg";
+  return new File([blob], `${base}-${BANNER_W}x${BANNER_H}.${ext}`, { type: mime });
+}
+
 const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
 const sectionCardClass =
@@ -49,19 +100,21 @@ const sectionCardClass =
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
+const emptyForm = () => ({
+  title: "",
+  description: "",
+  category: "Intégration standard",
+  date: "",
+  location: "" as string,
+  locationName: ONBOARDING_ACCUEIL_LOCATION_NAME,
+  locationUrl: ONBOARDING_ACCUEIL_VOCAL_URL,
+  isPublished: false,
+  image: null as File | null,
+  imageUrl: null as string | null,
+});
+
 export default function PlanificationPage() {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "Intégration standard",
-    date: "",
-    location: "", // DÉPRÉCIÉ: pour compatibilité avec anciennes données
-    locationName: "",
-    locationUrl: "",
-    isPublished: false,
-    image: null as File | null,
-    imageUrl: "" as string | null,
-  });
+  const [formData, setFormData] = useState(emptyForm);
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,6 +122,11 @@ export default function PlanificationPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [editingIntegration, setEditingIntegration] = useState<any | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [multiDayMode, setMultiDayMode] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDateKeys, setSelectedDateKeys] = useState<Set<string>>(() => new Set());
+  const [sessionTime, setSessionTime] = useState("20:00");
+  const [bulkImageApplying, setBulkImageApplying] = useState(false);
 
   const stats = useMemo(() => {
     const total = integrations.length;
@@ -100,24 +158,31 @@ export default function PlanificationPage() {
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const raw = e.target.files?.[0];
+    e.target.value = "";
+    if (!raw) return;
 
-    // Vérifier le type de fichier
-    if (!file.type.startsWith('image/')) {
-      alert('❌ Le fichier doit être une image');
+    if (!raw.type.startsWith("image/")) {
+      alert("❌ Le fichier doit être une image");
       return;
     }
 
-    // Vérifier la taille (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('❌ L\'image ne doit pas dépasser 5MB');
+    if (raw.size > 5 * 1024 * 1024) {
+      alert("❌ L'image ne doit pas dépasser 5MB");
       return;
     }
 
-    setFormData({ ...formData, image: file });
+    let file: File;
+    try {
+      file = await resizeToSessionBanner(raw);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Impossible de traiter l'image. Essayez JPG ou PNG.");
+      return;
+    }
 
-    // Créer un aperçu
+    setFormData((prev) => ({ ...prev, image: file, imageUrl: null }));
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
@@ -171,19 +236,11 @@ export default function PlanificationPage() {
   const handleCancelEdit = () => {
     setEditingIntegration(null);
     setIsEditMode(false);
-    setFormData({
-      title: "",
-      description: "",
-      category: "Intégration standard",
-      date: "",
-      location: "",
-      locationName: "",
-      locationUrl: "",
-      isPublished: false,
-      image: null,
-      imageUrl: null,
-    });
+    setFormData(emptyForm());
     setImagePreview(null);
+    setMultiDayMode(false);
+    setSelectedDateKeys(new Set());
+    setCalendarMonth(startOfMonth(new Date()));
   };
 
   const handleDuplicate = (integration: any) => {
@@ -242,39 +299,50 @@ export default function PlanificationPage() {
     }
   };
 
+  const uploadSessionImage = async (file: File): Promise<string | null> => {
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", file);
+    const uploadResponse = await fetch("/api/admin/events/upload-image", {
+      method: "POST",
+      body: uploadFormData,
+    });
+    if (!uploadResponse.ok) {
+      const error = await uploadResponse.json();
+      throw new Error(error.error || "Impossible d'uploader l'image");
+    }
+    const uploadData = await uploadResponse.json();
+    return uploadData.imageUrl as string;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.date) {
-      alert("Veuillez remplir le titre et la date");
+    if (!formData.title) {
+      alert("Veuillez remplir le titre");
       return;
     }
 
-    // Si une image est sélectionnée mais pas encore uploadée, uploader d'abord
+    if (!isEditMode && multiDayMode) {
+      if (selectedDateKeys.size === 0) {
+        alert("Sélectionnez au moins un jour dans le calendrier");
+        return;
+      }
+    } else if (!isEditMode && !formData.date) {
+      alert("Veuillez choisir une date et une heure");
+      return;
+    }
+
+    const useMulti = !isEditMode && multiDayMode;
+
     let finalImageUrl = formData.imageUrl;
     if (formData.image && !formData.imageUrl) {
       try {
         setUploadingImage(true);
-        const uploadFormData = new FormData();
-        uploadFormData.append('image', formData.image);
-
-        // Utiliser l'API d'upload d'images des événements (ou créer une API spécifique)
-        const uploadResponse = await fetch('/api/admin/events/upload-image', {
-          method: 'POST',
-          body: uploadFormData,
-        });
-
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          finalImageUrl = uploadData.imageUrl;
-        } else {
-          const error = await uploadResponse.json();
-          alert(`❌ Erreur upload image: ${error.error || 'Impossible d\'uploader l\'image'}`);
-          setUploadingImage(false);
-          return;
-        }
+        finalImageUrl = await uploadSessionImage(formData.image);
       } catch (error) {
-        console.error('Erreur upload image:', error);
-        alert('❌ Erreur lors de l\'upload de l\'image');
+        console.error("Erreur upload image:", error);
+        alert(
+          `❌ Erreur upload image: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+        );
         setUploadingImage(false);
         return;
       } finally {
@@ -282,52 +350,151 @@ export default function PlanificationPage() {
       }
     }
 
+    const datesToSubmit: string[] = useMulti
+      ? Array.from(selectedDateKeys)
+          .sort()
+          .map((d) => `${d}T${sessionTime}:00`)
+      : [formData.date];
+
+    const basePayload = {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      location:
+        formData.locationName && formData.locationUrl
+          ? undefined
+          : formData.location || undefined,
+      locationName: formData.locationName || undefined,
+      locationUrl: formData.locationUrl || undefined,
+      isPublished: formData.isPublished,
+      image: finalImageUrl || undefined,
+    };
+
     try {
       setSaving(true);
-      
-      const integrationData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        date: formData.date,
-        // Pour compatibilité avec anciennes données, garder location si locationName/Url sont vides
-        location: formData.locationName && formData.locationUrl ? undefined : formData.location || undefined,
-        locationName: formData.locationName || undefined,
-        locationUrl: formData.locationUrl || undefined,
-        isPublished: formData.isPublished,
-        image: finalImageUrl || undefined,
-      };
 
-      let response;
       if (isEditMode && editingIntegration) {
-        // Mise à jour d'une intégration existante
-        response = await fetch(`/api/integrations/${editingIntegration.id}`, {
+        const integrationData = { ...basePayload, date: formData.date };
+        const response = await fetch(`/api/integrations/${editingIntegration.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(integrationData),
         });
-      } else {
-        // Création d'une nouvelle intégration
-        response = await fetch("/api/integrations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(integrationData),
-        });
+        if (response.ok) {
+          alert("✅ Intégration modifiée avec succès !");
+          handleCancelEdit();
+          await loadIntegrations();
+        } else {
+          const error = await response.json();
+          alert(`❌ Erreur: ${error.error || "Impossible de modifier l'intégration"}`);
+        }
+        return;
       }
 
-      if (response.ok) {
-        alert(isEditMode ? "✅ Intégration modifiée avec succès !" : "✅ Intégration créée avec succès !");
-        handleCancelEdit();
-        await loadIntegrations();
-      } else {
-        const error = await response.json();
-        alert(`❌ Erreur: ${error.error || (isEditMode ? "Impossible de modifier l'intégration" : "Impossible de créer l'intégration")}`);
+      let created = 0;
+      for (const date of datesToSubmit) {
+        const response = await fetch("/api/integrations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...basePayload, date }),
+        });
+        if (response.ok) {
+          created += 1;
+        } else {
+          const error = await response.json();
+          alert(
+            `❌ Erreur à la création (${date}): ${error.error || "Échec"} — ${created} session(s) déjà créée(s).`
+          );
+          await loadIntegrations();
+          return;
+        }
       }
+
+      alert(
+        created > 1
+          ? `✅ ${created} sessions créées avec les mêmes paramètres.`
+          : "✅ Intégration créée avec succès !"
+      );
+      handleCancelEdit();
+      await loadIntegrations();
     } catch (error) {
-      console.error(`Erreur ${isEditMode ? 'modification' : 'création'} intégration:`, error);
-      alert(`❌ Erreur lors de la ${isEditMode ? 'modification' : 'création'}`);
+      console.error(`Erreur ${isEditMode ? "modification" : "création"} intégration:`, error);
+      alert(`❌ Erreur lors de la ${isEditMode ? "modification" : "création"}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(calendarMonth), { weekStartsOn: 1 });
+    const end = endOfWeek(endOfMonth(calendarMonth), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end });
+  }, [calendarMonth]);
+
+  const toggleCalendarDay = useCallback((key: string) => {
+    setSelectedDateKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const applyAccueilVocalDefaults = () => {
+    setFormData((prev) => ({
+      ...prev,
+      locationName: ONBOARDING_ACCUEIL_LOCATION_NAME,
+      locationUrl: ONBOARDING_ACCUEIL_VOCAL_URL,
+    }));
+  };
+
+  const handleBulkImageToAll = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0];
+    e.target.value = "";
+    if (!raw) return;
+    if (integrations.length === 0) {
+      alert("Aucune session à mettre à jour.");
+      return;
+    }
+    if (!raw.type.startsWith("image/")) {
+      alert("❌ Le fichier doit être une image");
+      return;
+    }
+    if (
+      !confirm(
+        `Remplacer l'image de ${integrations.length} session(s) par cette bannière ${BANNER_W}×${BANNER_H} px ?`
+      )
+    ) {
+      return;
+    }
+    let file: File;
+    try {
+      file = await resizeToSessionBanner(raw);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Impossible de traiter l'image.");
+      return;
+    }
+    try {
+      setBulkImageApplying(true);
+      const imageUrl = await uploadSessionImage(file);
+      if (!imageUrl) throw new Error("URL manquante");
+      let ok = 0;
+      for (const integration of integrations) {
+        const res = await fetch(`/api/integrations/${integration.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageUrl }),
+        });
+        if (res.ok) ok += 1;
+      }
+      alert(`✅ Image appliquée à ${ok} / ${integrations.length} session(s).`);
+      await loadIntegrations();
+    } catch (error) {
+      console.error(error);
+      alert("❌ Erreur lors de l'application globale de l'image");
+    } finally {
+      setBulkImageApplying(false);
     }
   };
 
@@ -396,8 +563,11 @@ export default function PlanificationPage() {
             {/* Upload d'image */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Image de l'intégration
+                Image de l'intégration ({BANNER_W}×{BANNER_H} px)
               </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Import redimensionné automatiquement en bannière {BANNER_W}×{BANNER_H} px (ratio 4∶1).
+              </p>
               {!imagePreview && !formData.imageUrl ? (
                 <div className="border-2 border-dashed border-[#353a50] rounded-lg p-6 text-center hover:border-indigo-300/55 transition-colors">
                   <input
@@ -416,7 +586,7 @@ export default function PlanificationPage() {
                       Cliquez pour importer une image (webp, jpg, png)
                     </p>
                     <span className="text-xs text-gray-500">
-                      Taille max: 5MB
+                      Taille max: 5MB — export {BANNER_W}×{BANNER_H}
                     </span>
                   </label>
                 </div>
@@ -425,7 +595,7 @@ export default function PlanificationPage() {
                   <img
                     src={imagePreview || formData.imageUrl || ''}
                     alt="Aperçu"
-                    className="w-full h-48 object-cover rounded-lg border border-[#353a50]"
+                    className="w-full max-h-48 aspect-[4/1] object-cover rounded-lg border border-[#353a50]"
                   />
                   <button
                     type="button"
@@ -509,19 +679,112 @@ export default function PlanificationPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
-                Date *
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={multiDayMode}
+                  disabled={isEditMode}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setMultiDayMode(on);
+                    if (on && formData.date.includes("T")) {
+                      const t = formData.date.split("T")[1];
+                      if (t) setSessionTime(t.slice(0, 5));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-[#353a50] bg-[#0f1321] text-indigo-500 focus:ring-indigo-300/50 disabled:opacity-40"
+                />
+                <span className="flex items-center gap-1.5 font-semibold text-gray-300">
+                  <CalendarDays className="h-4 w-4 text-sky-300" />
+                  Programmer plusieurs jours (calendrier)
+                </span>
               </label>
-              <input
-                type="datetime-local"
-                value={formData.date}
-                onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
-                required
-              />
+
+              {!multiDayMode || isEditMode ? (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Date et heure *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formData.date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
+                    required={!isEditMode && !multiDayMode}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#353a50] bg-[#0a0d18] p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-white">
+                      {format(calendarMonth, "MMMM yyyy", { locale: fr })}
+                    </p>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setCalendarMonth((m) => subMonths(m, 1))}
+                        className="rounded-lg border border-[#353a50] p-2 text-gray-300 hover:bg-[#151a2e]"
+                        aria-label="Mois précédent"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCalendarMonth((m) => addMonths(m, 1))}
+                        className="rounded-lg border border-[#353a50] p-2 text-gray-300 hover:bg-[#151a2e]"
+                        aria-label="Mois suivant"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-gray-500">
+                    {["lun", "mar", "mer", "jeu", "ven", "sam", "dim"].map((d) => (
+                      <div key={d}>{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarDays.map((day) => {
+                      const key = format(day, "yyyy-MM-dd");
+                      const inMonth = isSameMonth(day, calendarMonth);
+                      const selected = selectedDateKeys.has(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleCalendarDay(key)}
+                          className={[
+                            "aspect-square rounded-lg text-sm transition",
+                            inMonth ? "text-white" : "text-gray-600",
+                            selected
+                              ? "bg-indigo-500/90 font-semibold text-white ring-1 ring-indigo-300"
+                              : "bg-[#151a2e] hover:bg-[#1f2540]",
+                          ].join(" ")}
+                        >
+                          {format(day, "d")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {selectedDateKeys.size} jour(s) sélectionné(s) — même horaire pour toutes les sessions créées.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                      Heure commune (tous les jours)
+                    </label>
+                    <input
+                      type="time"
+                      value={sessionTime}
+                      onChange={(e) => setSessionTime(e.target.value)}
+                      className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -557,19 +820,36 @@ export default function PlanificationPage() {
                   {/* Champ URL */}
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">
-                      URL de la localisation
+                      URL de la localisation (salon vocal / texte)
                     </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={applyAccueilVocalDefaults}
+                        className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25"
+                      >
+                        Salon accueil + vocal (prérempli)
+                      </button>
+                      <a
+                        href={ONBOARDING_ACCUEIL_VOCAL_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-3 py-1.5 text-xs font-medium text-indigo-100 transition hover:bg-indigo-500/25"
+                      >
+                        Ouvrir le vocal Discord
+                      </a>
+                    </div>
                     <input
                       type="url"
                       value={formData.locationUrl}
                       onChange={(e) =>
                         setFormData({ ...formData, locationUrl: e.target.value })
                       }
-                      placeholder="https://discord.com/channels/..."
+                      placeholder={ONBOARDING_ACCUEIL_VOCAL_URL}
                       className="w-full rounded-lg border border-[#353a50] bg-[#0f1321] px-4 py-2 text-white focus:outline-none focus:border-indigo-300/55"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Le nom sélectionné sera affiché comme lien vers cette URL côté public
+                      Par défaut : lien du salon vocal accueil / intégration. Le nom affiché pointe vers cette URL côté public.
                     </p>
                   </div>
 
@@ -611,19 +891,55 @@ export default function PlanificationPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || uploadingImage}
               className="w-full rounded-xl border border-indigo-300/35 bg-indigo-500/20 py-3 px-6 font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-50"
             >
-              {saving ? (isEditMode ? "Modification..." : "Création...") : (isEditMode ? "Enregistrer les modifications" : "Créer l'intégration")}
+              {saving || uploadingImage
+                ? uploadingImage
+                  ? "Upload image…"
+                  : isEditMode
+                    ? "Modification..."
+                    : "Création..."
+                : isEditMode
+                  ? "Enregistrer les modifications"
+                  : multiDayMode
+                    ? selectedDateKeys.size > 0
+                      ? `Créer ${selectedDateKeys.size} session(s)`
+                      : "Sélectionnez des jours dans le calendrier"
+                    : "Créer l'intégration"}
             </button>
           </form>
         </div>
 
         {/* Liste des intégrations */}
         <div className={`${sectionCardClass} p-6`}>
-          <h2 className="text-xl font-semibold text-white mb-6">
-            Intégrations créées
-          </h2>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
+            <h2 className="text-xl font-semibold text-white">
+              Intégrations créées
+            </h2>
+            <div className="flex flex-col items-stretch gap-2 sm:items-end">
+              <label className="text-xs text-gray-400">
+                Même image sur toutes les sessions ({BANNER_W}×{BANNER_H} px)
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBulkImageToAll}
+                  className="hidden"
+                  id="bulk-image-all"
+                  disabled={bulkImageApplying || loading}
+                />
+                <label
+                  htmlFor="bulk-image-all"
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/35 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/25 ${bulkImageApplying || loading ? "pointer-events-none opacity-50" : ""}`}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {bulkImageApplying ? "Application…" : "Choisir une bannière"}
+                </label>
+              </div>
+            </div>
+          </div>
           {loading ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
@@ -692,7 +1008,7 @@ export default function PlanificationPage() {
                           <img
                             src={integration.image}
                             alt={integration.title}
-                            className="w-full h-32 object-cover rounded-lg border border-[#353a50]"
+                            className="w-full aspect-[4/1] max-h-40 object-cover rounded-lg border border-[#353a50]"
                           />
                         </div>
                       )}

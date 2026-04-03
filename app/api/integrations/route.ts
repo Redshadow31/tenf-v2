@@ -45,7 +45,18 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, category, date, location, image, isPublished, invitedMembers } = body;
+    const {
+      title,
+      description,
+      category,
+      date,
+      location,
+      locationName,
+      locationUrl,
+      image,
+      isPublished,
+      invitedMembers,
+    } = body;
     
     if (!title || !date) {
       return NextResponse.json(
@@ -60,6 +71,8 @@ export async function POST(request: NextRequest) {
       category: category || 'Intégration standard',
       date,
       location: location || undefined,
+      locationName: locationName || undefined,
+      locationUrl: locationUrl || undefined,
       image: image || undefined,
       invitedMembers: invitedMembers || undefined,
       isPublished: isPublished ?? false,
