@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History, ArchiveRestore, Trash2 } from "lucide-react";
+import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History, ArchiveRestore, Trash2, Calendar } from "lucide-react";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
@@ -19,6 +19,7 @@ import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { calendarDayKey, indexIntegrationsByCalendarDay, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
 
 type MemberRole =
   | "Nouveau"
@@ -136,6 +137,28 @@ const sectionCardClass =
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
+function getPresetFilterDisplayLabel(preset: string): string {
+  switch (preset) {
+    case "nouveaux":
+      return "Nouveaux (< 30 jours)";
+    case "incomplets":
+      return "Incomplets";
+    case "sans_twitch_id":
+      return "Sans ID Twitch";
+    case "sans_integration":
+      return "Sans intégration";
+    case "integration_session_alignee":
+      return "Date intégration = session planifiée";
+    case "vip":
+      return "VIP";
+    case "inactifs":
+      return "Inactifs";
+    case "revue_due":
+      return "Revue due";
+    default:
+      return preset;
+  }
+}
 
 export default function GestionMembresPage() {
   const searchParams = useSearchParams();
@@ -157,8 +180,22 @@ export default function GestionMembresPage() {
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
   type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive" | "completude";
-  type PresetFilter = "all" | "nouveaux" | "incomplets" | "sans_twitch_id" | "sans_integration" | "vip" | "inactifs" | "revue_due";
+  type PresetFilter =
+    | "all"
+    | "nouveaux"
+    | "incomplets"
+    | "sans_twitch_id"
+    | "sans_integration"
+    | "integration_session_alignee"
+    | "vip"
+    | "inactifs"
+    | "revue_due";
   const [presetFilter, setPresetFilter] = useState<PresetFilter>("all");
+  const [sessionDayIndex, setSessionDayIndex] = useState<SessionDayIndex>({
+    dayKeys: new Set(),
+    titlesByDay: new Map(),
+  });
+  const [integrationSessionsLoaded, setIntegrationSessionsLoaded] = useState(false);
   const [roleFilter, setRoleFilter] = useState<"all" | MemberRole>("all");
   const [memberStatusFilter, setMemberStatusFilter] = useState<"all" | MemberStatus>("all");
   const [joinedAfterFilter, setJoinedAfterFilter] = useState("");
@@ -312,6 +349,32 @@ export default function GestionMembresPage() {
     }
   }, [currentAdmin?.id]); // Charger quand l'admin change (tous les admins ont accès maintenant)
 
+  // Index des jours de sessions d’intégration (pour pastilles + filtre « date = session »)
+  useEffect(() => {
+    if (!currentAdmin) return;
+    let cancelled = false;
+    setIntegrationSessionsLoaded(false);
+    (async () => {
+      try {
+        const res = await fetch("/api/integrations?admin=true", { cache: "no-store" });
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        const list = Array.isArray(data?.integrations) ? data.integrations : [];
+        if (!cancelled) {
+          setSessionDayIndex(indexIntegrationsByCalendarDay(list));
+          setIntegrationSessionsLoaded(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setSessionDayIndex({ dayKeys: new Set(), titlesByDay: new Map() });
+          setIntegrationSessionsLoaded(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAdmin]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SAVED_VIEWS_KEY);
@@ -327,7 +390,20 @@ export default function GestionMembresPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, presetFilter, statusTab, viewMode, sortColumn, sortDirection, roleFilter, memberStatusFilter, joinedAfterFilter, joinedBeforeFilter]);
+  }, [
+    searchQuery,
+    presetFilter,
+    statusTab,
+    viewMode,
+    sortColumn,
+    sortDirection,
+    roleFilter,
+    memberStatusFilter,
+    joinedAfterFilter,
+    joinedBeforeFilter,
+    integrationSessionsLoaded,
+    sessionDayIndex.dayKeys.size,
+  ]);
 
   useEffect(() => {
     if (!actionNotice) return;
@@ -959,6 +1035,12 @@ export default function GestionMembresPage() {
           return !member.twitchId;
         case "sans_integration":
           return !member.integrationDate;
+        case "integration_session_alignee": {
+          if (!integrationSessionsLoaded) return false;
+          if (!member.integrationDate) return false;
+          const dayK = calendarDayKey(member.integrationDate);
+          return !!dayK && sessionDayIndex.dayKeys.has(dayK);
+        }
         case "vip":
           return !!member.isVip;
         case "inactifs":
@@ -2337,6 +2419,7 @@ export default function GestionMembresPage() {
                 <option value="incomplets">Incomplets</option>
                 <option value="sans_twitch_id">Sans ID Twitch</option>
                 <option value="sans_integration">Sans intégration</option>
+                <option value="integration_session_alignee">Date intégration = session planifiée</option>
                 <option value="vip">VIP</option>
                 <option value="inactifs">Inactifs</option>
                 <option value="revue_due">Revue due</option>
@@ -2698,7 +2781,7 @@ export default function GestionMembresPage() {
           )}
           {presetFilter !== "all" && (
             <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
-              Filtre métier actif: {presetFilter}
+              Filtre métier actif : {getPresetFilterDisplayLabel(presetFilter)}
             </span>
           )}
           {roleFilter !== "all" && (
@@ -3096,10 +3179,41 @@ export default function GestionMembresPage() {
                     </td>
                     <td className="py-4 px-6">
                       {member.integrationDate ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Oui
-                        </span>
+                        <div className="flex flex-col gap-1.5 max-w-[200px]">
+                          <span className="text-sm text-slate-200 tabular-nums">
+                            {new Date(member.integrationDate).toLocaleDateString("fr-FR", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                              <CheckCircle2 className="w-3 h-3 shrink-0" />
+                              Renseignée
+                            </span>
+                            {integrationSessionsLoaded &&
+                              (() => {
+                                const dk = calendarDayKey(member.integrationDate);
+                                if (!dk || !sessionDayIndex.dayKeys.has(dk)) return null;
+                                const titles = sessionDayIndex.titlesByDay.get(dk) || [];
+                                const tip =
+                                  titles.length > 0
+                                    ? `Même jour qu’une session créée : ${titles.join(" · ")}`
+                                    : "Même jour calendaire qu’une session d’intégration planifiée";
+                                return (
+                                  <span
+                                    title={tip}
+                                    className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/25 text-violet-200 border border-violet-400/45"
+                                  >
+                                    <Calendar className="w-3 h-3 shrink-0 opacity-90" />
+                                    Session
+                                  </span>
+                                );
+                              })()}
+                          </div>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
                           <XCircle className="w-3 h-3" />

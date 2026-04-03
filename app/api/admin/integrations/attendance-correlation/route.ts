@@ -8,6 +8,7 @@ import {
   registerForIntegration,
   type IntegrationRegistration,
 } from "@/lib/integrationStorage";
+import { calendarDayKey, indexIntegrationsByCalendarDay } from "@/lib/integrationSessionCalendar";
 
 type CorrelationMember = {
   twitchLogin: string;
@@ -79,6 +80,8 @@ async function loadAllMembers(): Promise<any[]> {
 
 async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): Promise<CorrelationSnapshot> {
   const integrations = await loadIntegrations();
+  const { dayKeys: sessionDayKeys } = indexIntegrationsByCalendarDay(integrations);
+
   const nowTs = Date.now();
 
   const pastIntegrations = integrations
@@ -188,10 +191,23 @@ async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): 
     (candidate) => candidate.inMembersList && !candidate.consideredActivated
   ).length;
 
+  /** Membres TENF (base centrale) dont la date de réunion d’intégration tombe le même jour qu’une session créée. */
+  const integratedMemberKeys = new Set<string>(attendanceMap.keys());
+  for (const member of allMembers) {
+    const login = normalizeLogin(member?.twitchLogin);
+    if (!login) continue;
+    const integRaw = member?.integrationDate ?? member?.integration_date;
+    if (!integRaw) continue;
+    const dayKey = calendarDayKey(integRaw);
+    if (dayKey && sessionDayKeys.has(dayKey)) {
+      integratedMemberKeys.add(login);
+    }
+  }
+
   return {
     sessionsPastCount: pastIntegrations.length,
     totalAttendances,
-    integratedMembersCount: attendanceMap.size,
+    integratedMembersCount: integratedMemberKeys.size,
     targetIntegration: target
       ? {
           id: target.id,
