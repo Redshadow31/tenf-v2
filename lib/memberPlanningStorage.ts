@@ -326,6 +326,68 @@ export async function createMemberStreamPlanning(input: {
   return planning;
 }
 
+/**
+ * Crée plusieurs créneaux en une seule lecture/écriture du store (sync Twitch, etc.).
+ */
+export async function createMemberStreamPlanningsBulkForUser(
+  userId: string,
+  twitchLogin: string,
+  slots: Array<{ date: string; time: string; liveType: string; title?: string }>
+): Promise<{ created: MemberStreamPlanning[]; skippedDuplicates: number; skippedInvalid: number }> {
+  const normalizedUserId = userId.trim();
+  const normalizedLogin = twitchLogin.trim().toLowerCase();
+  const plannings = await loadMemberStreamPlannings();
+  const existingKeys = new Set(
+    plannings.filter((p) => p.userId === normalizedUserId).map((p) => `${p.date}|${p.time}`)
+  );
+  const created: MemberStreamPlanning[] = [];
+  let skippedDuplicates = 0;
+  let skippedInvalid = 0;
+  let slotIndex = 0;
+
+  for (const slot of slots) {
+    slotIndex += 1;
+    const date = String(slot.date || "").trim();
+    const time = String(slot.time || "").trim();
+    const liveType = trimAndLimit(String(slot.liveType || "").trim(), MAX_LIVE_TYPE_LENGTH) || "";
+    const title = trimAndLimit(slot.title, MAX_TITLE_LENGTH);
+    const key = `${date}|${time}`;
+
+    if (!isValidDate(date) || !isValidTime(time) || liveType.length < 3) {
+      skippedInvalid += 1;
+      continue;
+    }
+    if (Number.isNaN(toDateTimeMs(date, time))) {
+      skippedInvalid += 1;
+      continue;
+    }
+    if (existingKeys.has(key)) {
+      skippedDuplicates += 1;
+      continue;
+    }
+
+    const planning: MemberStreamPlanning = {
+      id: `member-planning-${Date.now()}-${slotIndex}-${Math.random().toString(36).slice(2, 10)}`,
+      userId: normalizedUserId,
+      twitchLogin: normalizedLogin,
+      date,
+      time,
+      liveType,
+      title,
+      createdAt: new Date().toISOString(),
+    };
+    plannings.push(planning);
+    existingKeys.add(key);
+    created.push(planning);
+  }
+
+  if (created.length > 0) {
+    await saveMemberStreamPlannings(plannings);
+  }
+
+  return { created, skippedDuplicates, skippedInvalid };
+}
+
 export async function deleteMemberStreamPlanning(planningId: string, userId: string): Promise<boolean> {
   const plannings = await loadMemberStreamPlannings();
   const before = plannings.length;

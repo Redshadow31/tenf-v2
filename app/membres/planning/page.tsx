@@ -180,7 +180,9 @@ function getRelativeDateLabel(isoDate: string): string {
 export default function MemberPlanningPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncingTwitch, setSyncingTwitch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [plannings, setPlannings] = useState<StreamPlanning[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -214,6 +216,12 @@ export default function MemberPlanningPage() {
   useEffect(() => {
     loadPlannings();
   }, []);
+
+  useEffect(() => {
+    if (!infoMessage) return;
+    const timer = window.setTimeout(() => setInfoMessage(null), 14000);
+    return () => window.clearTimeout(timer);
+  }, [infoMessage]);
 
   useEffect(() => {
     if (!showModal) return;
@@ -356,6 +364,52 @@ export default function MemberPlanningPage() {
       setFormError("Erreur de connexion.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSyncTwitch() {
+    setError(null);
+    setInfoMessage(null);
+    setSyncingTwitch(true);
+    try {
+      const response = await fetch("/api/members/me/stream-plannings/sync-twitch", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Synchronisation impossible.");
+        return;
+      }
+
+      const imported = Number(data.imported) || 0;
+      const skippedDup = Number(data.skippedDuplicates) || 0;
+      const skippedFiltered = Number(data.skippedCanceledOrPast) || 0;
+      const fromTwitch = Number(data.segmentsFromTwitch) || 0;
+
+      if (fromTwitch === 0) {
+        setInfoMessage(
+          "Aucun créneau dans ton planning Twitch (404 ou calendrier vide). Configure tes prochains streams sur Twitch, puis réessaie."
+        );
+      } else if (imported === 0 && skippedDup > 0) {
+        setInfoMessage(
+          `Aucun nouveau créneau : ${skippedDup} étaient déjà présents sur le site.` +
+            (skippedFiltered > 0 ? ` ${skippedFiltered} ignorés (passés ou annulés sur Twitch).` : "")
+        );
+      } else if (imported === 0 && skippedFiltered > 0 && skippedDup === 0) {
+        setInfoMessage(
+          "Twitch a renvoyé des segments, mais tous sont déjà passés ou annulés. Ajoute des dates futures sur Twitch."
+        );
+      } else {
+        const bits = [`${imported} créneau(x) ajouté(s).`];
+        if (skippedDup > 0) bits.push(`${skippedDup} déjà présent(s).`);
+        if (skippedFiltered > 0) bits.push(`${skippedFiltered} ignoré(s) (passés / annulés).`);
+        bits.push("Horaires importés en heure de Paris.");
+        setInfoMessage(bits.join(" "));
+      }
+
+      await loadPlannings();
+    } catch {
+      setError("Erreur de connexion.");
+    } finally {
+      setSyncingTwitch(false);
     }
   }
 
@@ -511,34 +565,75 @@ export default function MemberPlanningPage() {
             <span>🗓️</span>
             <span>Planning de mes streams</span>
           </h1>
-          <button
-            type="button"
-            onClick={openModal}
-            className="px-4 py-2 rounded-lg font-semibold text-white transition-colors"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            + Ajouter un stream
-          </button>
-          {process.env.NODE_ENV !== "production" ? (
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleGenerateDemoPlanning}
-              disabled={saving}
-              className="px-4 py-2 rounded-lg border text-sm font-semibold disabled:opacity-60"
-              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+              onClick={handleSyncTwitch}
+              disabled={loading || syncingTwitch}
+              title="Récupère les segments futurs du planning créateur Twitch (API Helix)"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:border-violet-400/55 hover:bg-violet-500/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor: "rgba(145, 70, 255, 0.42)",
+                color: "#ede9fe",
+                background: "rgba(145, 70, 255, 0.08)",
+              }}
             >
-              Generer un planning demo (local)
+              <span
+                className={`text-base leading-none opacity-90 inline-block ${syncingTwitch ? "motion-safe:animate-spin" : ""}`}
+                aria-hidden
+              >
+                ⟳
+              </span>
+              {syncingTwitch ? "Synchronisation…" : "Synchroniser avec Twitch"}
             </button>
-          ) : null}
+            <button
+              type="button"
+              onClick={openModal}
+              className="group relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.98]"
+              style={{
+                background: "linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 55%, #5b21b6 100%)",
+                boxShadow: "0 8px 28px rgba(145, 70, 255, 0.38), inset 0 1px 0 rgba(255,255,255,0.12)",
+              }}
+            >
+              <span className="text-base leading-none opacity-90 group-hover:opacity-100" aria-hidden>
+                +
+              </span>
+              Ajouter un stream
+            </button>
+            {process.env.NODE_ENV !== "production" ? (
+              <button
+                type="button"
+                onClick={handleGenerateDemoPlanning}
+                disabled={saving}
+                className="rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:border-violet-400/40 hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+              >
+                Generer un planning demo (local)
+              </button>
+            ) : null}
+          </div>
         </div>
         <p className="mt-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Ajoute manuellement tes prochains lives. Si ton planning est rempli, il sera visible dans ton modal sur la page Membres.
+          Ajoute tes prochains lives à la main, ou importe ceux définis dans ton{" "}
+          <span className="font-medium" style={{ color: "var(--color-text)" }}>
+            planning créateur Twitch
+          </span>{" "}
+          (créneaux futurs, fuseau Paris). Un planning rempli apparaît aussi sur la page Membres.
         </p>
       </div>
 
       {error ? (
         <div className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: "#ef4444", color: "#ef4444" }}>
           {error}
+        </div>
+      ) : null}
+
+      {infoMessage ? (
+        <div
+          className="rounded-lg border px-4 py-3 text-sm"
+          style={{ borderColor: "rgba(52, 211, 153, 0.45)", color: "#6ee7b7", backgroundColor: "rgba(16, 185, 129, 0.08)" }}
+        >
+          {infoMessage}
         </div>
       ) : null}
 
@@ -596,11 +691,19 @@ export default function MemberPlanningPage() {
                     key={mode.id}
                     type="button"
                     onClick={() => setQuickListMode(mode.id as QuickListFilterMode)}
-                    className="px-3 py-2 rounded-lg border text-xs font-semibold transition-colors"
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                      active
+                        ? "shadow-md ring-1 ring-violet-400/35"
+                        : "hover:border-violet-400/25 hover:bg-violet-500/5"
+                    }`}
                     style={{
-                      borderColor: active ? "rgba(145, 70, 255, 0.70)" : "var(--color-border)",
+                      borderWidth: 1,
+                      borderStyle: "solid",
+                      borderColor: active ? "rgba(167, 139, 250, 0.55)" : "var(--color-border)",
                       color: active ? "#ede9fe" : "var(--color-text-secondary)",
-                      backgroundColor: active ? "rgba(145, 70, 255, 0.20)" : "transparent",
+                      background: active
+                        ? "linear-gradient(145deg, rgba(145, 70, 255, 0.28), rgba(109, 40, 217, 0.12))"
+                        : "transparent",
                     }}
                   >
                     {mode.label}
@@ -658,8 +761,7 @@ export default function MemberPlanningPage() {
                     <button
                       type="button"
                       onClick={() => handleDelete(planning.id)}
-                      className="px-3 py-1.5 rounded-md text-xs font-semibold text-white"
-                      style={{ backgroundColor: "#dc2626" }}
+                      className="shrink-0 rounded-lg border border-red-500/45 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition-all duration-200 hover:border-red-400/60 hover:bg-red-500/20 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]"
                     >
                       Supprimer
                     </button>
@@ -674,35 +776,52 @@ export default function MemberPlanningPage() {
       {showModal ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.72)", backdropFilter: "blur(2px)" }}
+          style={{ backgroundColor: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}
           onClick={closeModal}
+          role="presentation"
         >
           <div
-            className="w-full max-w-xl rounded-2xl border overflow-hidden"
-            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+            className="w-full max-w-xl overflow-hidden rounded-2xl border shadow-2xl transition-transform duration-200"
+            style={{
+              borderColor: "rgba(167, 139, 250, 0.22)",
+              backgroundColor: "var(--color-card)",
+              boxShadow:
+                "0 0 0 1px rgba(145, 70, 255, 0.12), 0 25px 50px -12px rgba(0, 0, 0, 0.55), 0 0 80px -20px rgba(145, 70, 255, 0.35)",
+            }}
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="planning-modal-title"
           >
             <div
-              className="px-6 py-5 border-b"
+              className="relative border-b px-6 py-5"
               style={{
-                borderColor: "rgba(145, 70, 255, 0.26)",
+                borderColor: "rgba(145, 70, 255, 0.22)",
                 background:
-                  "linear-gradient(140deg, rgba(145, 70, 255, 0.20), rgba(145, 70, 255, 0.06) 55%, rgba(2, 132, 199, 0.10))",
+                  "linear-gradient(155deg, rgba(145, 70, 255, 0.24) 0%, rgba(91, 33, 182, 0.08) 42%, rgba(15, 23, 42, 0.4) 100%)",
               }}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle at 20% 0%, white 0, transparent 45%), radial-gradient(circle at 100% 80%, #a78bfa 0, transparent 40%)",
+                }}
+              />
+              <div className="relative flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-semibold" style={{ color: "var(--color-text)" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/90">Nouveau créneau</p>
+                  <h3 id="planning-modal-title" className="mt-1 text-xl font-bold tracking-tight" style={{ color: "var(--color-text)" }}>
                     Planifier un stream
                   </h3>
-                  <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  <p className="mt-1.5 max-w-md text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
                     Renseigne un créneau clair pour aider la communauté a s'organiser.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="h-8 w-8 rounded-full border text-sm transition-colors"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm transition-all duration-200 hover:border-violet-400/40 hover:bg-violet-500/15 hover:text-violet-100"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
                   aria-label="Fermer la fenetre"
                 >
@@ -753,8 +872,7 @@ export default function MemberPlanningPage() {
                     setForm((prev) => ({ ...prev, date: nextDate, time: "20:00" }));
                     syncWeekdayFromDate(nextDate);
                   }}
-                  className="px-2.5 py-1 rounded-md border text-xs font-semibold"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                  className="rounded-full border border-violet-500/20 bg-violet-500/[0.07] px-3 py-1.5 text-xs font-semibold text-violet-100/90 transition-all duration-200 hover:border-violet-400/40 hover:bg-violet-500/15"
                 >
                   Ce soir 20:00
                 </button>
@@ -765,8 +883,7 @@ export default function MemberPlanningPage() {
                     setForm((prev) => ({ ...prev, date: nextDate, time: "20:00" }));
                     syncWeekdayFromDate(nextDate);
                   }}
-                  className="px-2.5 py-1 rounded-md border text-xs font-semibold"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                  className="rounded-full border border-violet-500/20 bg-violet-500/[0.07] px-3 py-1.5 text-xs font-semibold text-violet-100/90 transition-all duration-200 hover:border-violet-400/40 hover:bg-violet-500/15"
                 >
                   Demain 20:00
                 </button>
@@ -777,8 +894,7 @@ export default function MemberPlanningPage() {
                     setForm((prev) => ({ ...prev, date: nextDate, time: "21:00" }));
                     syncWeekdayFromDate(nextDate);
                   }}
-                  className="px-2.5 py-1 rounded-md border text-xs font-semibold"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                  className="rounded-full border border-violet-500/20 bg-violet-500/[0.07] px-3 py-1.5 text-xs font-semibold text-violet-100/90 transition-all duration-200 hover:border-violet-400/40 hover:bg-violet-500/15"
                 >
                   Dans 2 jours 21:00
                 </button>
@@ -825,11 +941,16 @@ export default function MemberPlanningPage() {
                         key={day.value}
                         type="button"
                         onClick={() => toggleWeekday(day.value)}
-                        className="px-2.5 py-1 rounded-md border text-xs font-semibold transition-colors"
+                        className={`min-w-[2.5rem] rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                          selected ? "shadow-md ring-1 ring-violet-300/30" : "hover:border-violet-400/30"
+                        }`}
                         style={{
-                          borderColor: selected ? "var(--color-primary)" : "var(--color-border)",
-                          color: selected ? "white" : "var(--color-text-secondary)",
-                          backgroundColor: selected ? "var(--color-primary)" : "transparent",
+                          borderColor: selected ? "rgba(167, 139, 250, 0.65)" : "var(--color-border)",
+                          color: selected ? "#faf5ff" : "var(--color-text-secondary)",
+                          background: selected
+                            ? "linear-gradient(160deg, var(--color-primary), #5b21b6)"
+                            : "transparent",
+                          boxShadow: selected ? "0 6px 16px rgba(145, 70, 255, 0.28)" : undefined,
                         }}
                         aria-label={day.longLabel}
                         title={day.longLabel}
@@ -861,8 +982,8 @@ export default function MemberPlanningPage() {
                       key={suggestion}
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, liveType: suggestion }))}
-                      className="px-2.5 py-1 rounded-full border text-xs"
-                      style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                      className="rounded-full border border-slate-500/25 bg-slate-500/5 px-3 py-1 text-xs font-medium transition-all duration-200 hover:border-violet-400/35 hover:bg-violet-500/10"
+                      style={{ color: "var(--color-text-secondary)" }}
                     >
                       {suggestion}
                     </button>
@@ -943,11 +1064,11 @@ export default function MemberPlanningPage() {
                 </div>
               ) : null}
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex flex-wrap justify-end gap-3 border-t pt-5" style={{ borderColor: "rgba(148, 163, 184, 0.12)" }}>
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 rounded-lg border"
+                  className="rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:border-slate-400/35 hover:bg-slate-500/10"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
                 >
                   Annuler
@@ -955,8 +1076,11 @@ export default function MemberPlanningPage() {
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className="px-4 py-2 rounded-lg font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: "var(--color-primary)" }}
+                  className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:brightness-100"
+                  style={{
+                    background: "linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)",
+                    boxShadow: "0 6px 22px rgba(145, 70, 255, 0.35)",
+                  }}
                 >
                   {saving
                     ? "Ajout..."

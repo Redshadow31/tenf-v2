@@ -299,3 +299,92 @@ export async function getTwitchLoginsByIds(userIds: string[]): Promise<Map<strin
   return result;
 }
 
+export type TwitchHelixScheduleSegment = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  title: string;
+  canceled_until: string | null;
+  category: { id: string; name: string } | null;
+};
+
+type TwitchScheduleFetchResult =
+  | { ok: true; segments: TwitchHelixScheduleSegment[] }
+  | { ok: false; reason: "config" | "api"; message?: string };
+
+/**
+ * Récupère tous les segments du planning stream Twitch (Helix), avec pagination.
+ * 404 = aucun planning configuré sur la chaîne → segments vides.
+ */
+export async function fetchAllTwitchChannelScheduleSegments(
+  broadcasterId: string
+): Promise<TwitchScheduleFetchResult> {
+  const id = String(broadcasterId || "").trim();
+  if (!id) {
+    return { ok: false, reason: "config", message: "broadcaster_id manquant" };
+  }
+
+  const CLIENT_ID = process.env.TWITCH_CLIENT_ID || process.env.TWITCH_APP_CLIENT_ID;
+  if (!CLIENT_ID) {
+    return { ok: false, reason: "config", message: "TWITCH_CLIENT_ID non configuré" };
+  }
+
+  const accessToken = await getTwitchAccessToken();
+  if (!accessToken) {
+    return { ok: false, reason: "config", message: "Token Twitch indisponible" };
+  }
+
+  const segments: TwitchHelixScheduleSegment[] = [];
+  let cursor: string | undefined;
+
+  try {
+    for (let page = 0; page < 40; page += 1) {
+      const url = new URL(`${TWITCH_API_BASE}/schedule`);
+      url.searchParams.set("broadcaster_id", id);
+      url.searchParams.set("first", "25");
+      if (cursor) url.searchParams.set("after", cursor);
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          "Client-Id": CLIENT_ID,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.status === 404) {
+        return { ok: true, segments: [] };
+      }
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("[Twitch Helpers] Erreur GET /schedule:", response.status, text);
+        return {
+          ok: false,
+          reason: "api",
+          message: `Twitch API ${response.status}`,
+        };
+      }
+
+      const json = (await response.json()) as {
+        data?: {
+          segments?: TwitchHelixScheduleSegment[];
+        };
+        pagination?: { cursor?: string };
+      };
+
+      const batch = json.data?.segments;
+      if (Array.isArray(batch) && batch.length > 0) {
+        segments.push(...batch);
+      }
+
+      const nextCursor = json.pagination?.cursor;
+      if (!nextCursor) break;
+      cursor = nextCursor;
+    }
+
+    return { ok: true, segments };
+  } catch (error) {
+    console.error("[Twitch Helpers] Erreur fetch schedule:", error);
+    return { ok: false, reason: "api", message: "Erreur réseau" };
+  }
+}

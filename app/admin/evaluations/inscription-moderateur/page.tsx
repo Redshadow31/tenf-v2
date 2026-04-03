@@ -109,13 +109,13 @@ export default function InscriptionModerateurPage() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "Intégration standard":
-        return "bg-[#9146ff]";
+        return "from-violet-600 to-fuchsia-600";
       case "Intégration rapide":
-        return "bg-blue-500";
+        return "from-sky-500 to-blue-600";
       case "Intégration spéciale":
-        return "bg-green-500";
+        return "from-emerald-500 to-teal-600";
       default:
-        return "bg-gray-700";
+        return "from-zinc-600 to-zinc-800";
     }
   };
 
@@ -232,6 +232,11 @@ export default function InscriptionModerateurPage() {
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
+
+  const isSameCalendarDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const goToToday = () => setCurrentMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const staffingStats = useMemo(() => {
     const sessionCount = integrations.length;
     let covered = 0;
@@ -314,87 +319,131 @@ export default function InscriptionModerateurPage() {
       </section>
 
       {/* Calendrier */}
-      <div className={`${sectionCardClass} p-6`}>
-        {/* En-tête du calendrier */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div
+        className={`${sectionCardClass} relative overflow-hidden p-6 sm:p-8`}
+        style={{
+          boxShadow:
+            "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 64px rgba(2,6,23,0.5), 0 0 80px rgba(99,102,241,0.06)",
+        }}
+      >
+        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-cyan-500/5 blur-3xl" />
+
+        <div className="relative mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-indigo-200/60">Calendrier</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-white sm:text-2xl">Sessions & staffing</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center rounded-full border border-white/[0.08] bg-black/35 p-1 shadow-inner shadow-black/40 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                aria-label="Mois précédent"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                aria-label="Mois suivant"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            <div className="min-w-0 flex-1 rounded-2xl border border-white/[0.07] bg-[linear-gradient(160deg,rgba(99,102,241,0.12),rgba(15,17,28,0.92))] px-4 py-2.5 sm:min-w-[220px] sm:flex-initial">
+              <p className="truncate text-center text-base font-semibold tracking-tight text-white sm:text-lg">
+                {monthNames[currentMonth.getMonth()]}{" "}
+                <span className="text-indigo-200/90">{currentMonth.getFullYear()}</span>
+              </p>
+            </div>
             <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="rounded-lg bg-[#0f1321] border border-[#353a50] p-2 text-gray-400 hover:text-white transition-colors"
+              type="button"
+              onClick={goToToday}
+              className="rounded-full border border-indigo-400/25 bg-indigo-500/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-indigo-100/90 shadow-[0_0_24px_rgba(99,102,241,0.15)] transition hover:border-indigo-400/40 hover:bg-indigo-500/20"
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              Aujourd&apos;hui
             </button>
-            <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="rounded-lg bg-[#0f1321] border border-[#353a50] p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <span className="text-lg font-semibold text-white">
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </span>
           </div>
         </div>
 
-        {/* Jours de la semaine */}
-        <div className="mb-4 grid grid-cols-7 gap-2">
+        <div className="relative mb-3 grid grid-cols-7 gap-1.5 sm:gap-2">
           {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-400">
+            <div
+              key={day}
+              className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500 sm:text-xs sm:tracking-wider"
+            >
               {day}
             </div>
           ))}
         </div>
 
-        {/* Grille du calendrier */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="relative grid grid-cols-7 gap-1.5 sm:gap-2">
           {calendarDays.map((date, index) => {
             const integration = getIntegrationForDate(date);
             const stats = integration ? moderatorStats[integration.id] : null;
             const regStats = integration ? registrationStats[integration.id] : null;
             const hasEnoughAdmins = stats ? stats.adminCount >= 2 : false;
-            const moderatorCount = stats ? stats.total : 0;
             const normalCount = regStats ? regStats.normalCount : 0;
-            
+            const today = new Date();
+            const isToday = date ? isSameCalendarDay(date, today) : false;
+
+            const sessionTone = integration
+              ? hasEnoughAdmins
+                ? "border-emerald-500/45 bg-[linear-gradient(165deg,rgba(16,185,129,0.14),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(52,211,153,0.12)] hover:border-emerald-400/55 hover:shadow-[0_12px_40px_rgba(16,185,129,0.12)]"
+                : (stats?.adminCount || 0) === 1
+                  ? "border-amber-500/45 bg-[linear-gradient(165deg,rgba(245,158,11,0.12),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(251,191,36,0.1)] hover:border-amber-400/55 hover:shadow-[0_12px_40px_rgba(245,158,11,0.1)]"
+                  : "border-rose-500/45 bg-[linear-gradient(165deg,rgba(244,63,94,0.12),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(251,113,133,0.1)] hover:border-rose-400/55 hover:shadow-[0_12px_40px_rgba(244,63,94,0.1)]"
+              : "";
+
             return (
               <div
                 key={index}
-                className={`min-h-[80px] rounded-lg border p-2 transition-colors ${
+                className={`min-h-[88px] rounded-xl border p-2 transition-all duration-200 sm:min-h-[104px] sm:rounded-2xl sm:p-2.5 ${
                   date
                     ? integration
-                      ? hasEnoughAdmins
-                        ? "cursor-pointer border-green-500/60 bg-[#0f1321] hover:bg-[#182133]"
-                        : (stats?.adminCount || 0) === 1
-                        ? "cursor-pointer border-amber-500/60 bg-[#0f1321] hover:bg-[#182133]"
-                        : "cursor-pointer border-rose-500/60 bg-[#0f1321] hover:bg-[#182133]"
-                      : "border-gray-800 bg-[#0e0e10]"
-                    : "border-transparent"
-                }`}
+                      ? `cursor-pointer ${sessionTone}`
+                      : "border-white/[0.05] bg-black/25 shadow-inner shadow-black/20 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                    : "pointer-events-none border-transparent bg-transparent"
+                } ${isToday && date ? "ring-2 ring-indigo-400/35 ring-offset-2 ring-offset-[#0b0d14]" : ""}`}
                 onClick={() => integration && handleIntegrationClick(integration)}
               >
                 {date && (
                   <>
-                    <div className="mb-1 text-sm text-gray-400">{date.getDate()}</div>
+                    <div
+                      className={`mb-1 flex items-center justify-between gap-1 ${isToday ? "font-semibold text-indigo-200" : "text-zinc-500"}`}
+                    >
+                      <span className="text-xs tabular-nums sm:text-sm">{date.getDate()}</span>
+                      {isToday && (
+                        <span className="hidden rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-200/90 sm:inline">
+                          Now
+                        </span>
+                      )}
+                    </div>
                     {integration && (
                       <>
                         <div
-                          className={`rounded px-2 py-1 text-xs font-bold text-white mb-1 ${getCategoryColor(
+                          className={`mb-1 truncate rounded-md bg-gradient-to-r px-2 py-1 text-[10px] font-semibold leading-tight text-white shadow-md sm:text-xs ${getCategoryColor(
                             integration.category
                           )}`}
                         >
                           {integration.title}
                         </div>
-                        {/* Badge nombre d'inscrits normaux */}
-                        <div className="text-xs text-gray-400">
-                          Inscrits: {normalCount}
+                        <div className="text-[10px] text-zinc-500 sm:text-xs">
+                          <span className="text-zinc-400">Inscrits</span>{" "}
+                          <span className="font-medium text-zinc-300">{normalCount}</span>
                         </div>
-                        {/* Badge admins */}
                         {stats && (
-                          <div className={`text-xs mt-1 ${hasEnoughAdmins ? 'text-green-400 font-semibold' : 'text-gray-400'}`}>
-                            Admins: {stats.adminCount}/2
+                          <div
+                            className={`mt-1 text-[10px] font-medium sm:text-xs ${hasEnoughAdmins ? "text-emerald-300/95" : "text-zinc-500"}`}
+                          >
+                            Staff {stats.adminCount}/2
                           </div>
                         )}
                       </>

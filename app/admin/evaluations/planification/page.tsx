@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
+  Archive,
+  Info,
 } from "lucide-react";
 import {
   addMonths,
@@ -127,6 +129,7 @@ export default function PlanificationPage() {
   const [selectedDateKeys, setSelectedDateKeys] = useState<Set<string>>(() => new Set());
   const [sessionTime, setSessionTime] = useState("20:00");
   const [bulkImageApplying, setBulkImageApplying] = useState(false);
+  const [listTab, setListTab] = useState<"upcoming" | "archive">("upcoming");
 
   const stats = useMemo(() => {
     const total = integrations.length;
@@ -135,6 +138,37 @@ export default function PlanificationPage() {
     const withImage = integrations.filter((item) => Boolean(item.image)).length;
     return { total, published, upcoming, withImage };
   }, [integrations]);
+
+  const { upcomingIntegrations, archiveIntegrations } = useMemo(() => {
+    const now = Date.now();
+    const upcoming: any[] = [];
+    const archive: any[] = [];
+    for (const item of integrations) {
+      const t = new Date(item.date).getTime();
+      if (Number.isNaN(t)) {
+        upcoming.push(item);
+        continue;
+      }
+      if (t >= now) upcoming.push(item);
+      else archive.push(item);
+    }
+    const byDateAsc = (a: any, b: any) => {
+      const ta = new Date(a.date).getTime();
+      const tb = new Date(b.date).getTime();
+      const na = Number.isNaN(ta);
+      const nb = Number.isNaN(tb);
+      if (na && nb) return 0;
+      if (na) return 1;
+      if (nb) return -1;
+      return ta - tb;
+    };
+    upcoming.sort(byDateAsc);
+    archive.sort((a, b) => byDateAsc(b, a));
+    return { upcomingIntegrations: upcoming, archiveIntegrations: archive };
+  }, [integrations]);
+
+  const displayedIntegrations =
+    listTab === "upcoming" ? upcomingIntegrations : archiveIntegrations;
 
   useEffect(() => {
     loadIntegrations();
@@ -568,6 +602,27 @@ export default function PlanificationPage() {
               <p className="text-xs text-gray-500 mb-2">
                 Import redimensionné automatiquement en bannière {BANNER_W}×{BANNER_H} px (ratio 4∶1).
               </p>
+              <div className="mb-3 flex gap-3 rounded-xl border border-indigo-400/25 bg-[linear-gradient(90deg,rgba(99,102,241,0.14),rgba(6,182,212,0.08))] px-3 py-3 sm:px-4">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/25 text-indigo-200"
+                  aria-hidden
+                >
+                  <Info className="h-5 w-5" strokeWidth={2} />
+                </div>
+                <p className="text-xs leading-relaxed text-slate-300 sm:text-sm">
+                  <span className="font-semibold text-slate-100">
+                    Consigne importante — rendu côté membres
+                  </span>
+                  <br />
+                  Le visuel est prévu au format{" "}
+                  <strong className="text-white">
+                    {BANNER_W}×{BANNER_H} px
+                  </strong>{" "}
+                  (ratio 4∶1). Sur le site public, la bannière est affichée <strong className="text-white">sans recadrage</strong>,{" "}
+                  en entier. Pense à garder
+                  les éléments essentiels au centre : sur certains écrans les bords peuvent paraître moins visibles.
+                </p>
+              </div>
               {!imagePreview && !formData.imageUrl ? (
                 <div className="border-2 border-dashed border-[#353a50] rounded-lg p-6 text-center hover:border-indigo-300/55 transition-colors">
                   <input
@@ -913,9 +968,55 @@ export default function PlanificationPage() {
 
         {/* Liste des intégrations */}
         <div className={`${sectionCardClass} p-6`}>
+          <div
+            className="mb-4 flex gap-1 rounded-xl border border-[#353a50] bg-[#0a0d18] p-1"
+            role="tablist"
+            aria-label="Filtrer les sessions"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={listTab === "upcoming"}
+              onClick={() => setListTab("upcoming")}
+              className={[
+                "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
+                listTab === "upcoming"
+                  ? "bg-indigo-500/35 text-white shadow-sm ring-1 ring-indigo-300/40"
+                  : "text-slate-400 hover:bg-[#151a2e] hover:text-slate-200",
+              ].join(" ")}
+            >
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              À venir
+              {upcomingIntegrations.length > 0 && (
+                <span className="rounded-md bg-[#0f1321] px-1.5 py-0.5 text-xs font-medium text-slate-300">
+                  {upcomingIntegrations.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={listTab === "archive"}
+              onClick={() => setListTab("archive")}
+              className={[
+                "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
+                listTab === "archive"
+                  ? "bg-indigo-500/35 text-white shadow-sm ring-1 ring-indigo-300/40"
+                  : "text-slate-400 hover:bg-[#151a2e] hover:text-slate-200",
+              ].join(" ")}
+            >
+              <Archive className="h-4 w-4 shrink-0" />
+              Archive
+              {archiveIntegrations.length > 0 && (
+                <span className="rounded-md bg-[#0f1321] px-1.5 py-0.5 text-xs font-medium text-slate-300">
+                  {archiveIntegrations.length}
+                </span>
+              )}
+            </button>
+          </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">
-              Intégrations créées
+              {listTab === "upcoming" ? "Sessions à venir" : "Sessions passées"}
             </h2>
             <div className="flex flex-col items-stretch gap-2 sm:items-end">
               <label className="text-xs text-gray-400">
@@ -948,9 +1049,15 @@ export default function PlanificationPage() {
             <p className="text-gray-400 text-center py-8">
               Aucune intégration créée
             </p>
+          ) : displayedIntegrations.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">
+              {listTab === "upcoming"
+                ? "Aucune session à venir"
+                : "Aucune session dans l’archive"}
+            </p>
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {integrations.map((integration) => (
+              {displayedIntegrations.map((integration) => (
                 <div key={integration.id} className="rounded-lg border border-[#353a50] bg-[#0f1321] p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

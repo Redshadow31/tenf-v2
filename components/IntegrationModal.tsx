@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { X, Calendar, MapPin, Info } from "lucide-react";
+import { X, Calendar, MapPin } from "lucide-react";
 import {
   ONBOARDING_SESSION_IMAGE_HEIGHT,
   ONBOARDING_SESSION_IMAGE_WIDTH,
@@ -179,41 +179,6 @@ export default function IntegrationModal({
                   className="h-full w-full object-contain object-center"
                   decoding="async"
                 />
-              </div>
-              <div
-                className="flex gap-3 px-4 py-3.5 sm:px-5"
-                style={{
-                  background:
-                    "linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 14%, var(--color-card)) 0%, color-mix(in srgb, #06b6d4 8%, var(--color-card)) 100%)",
-                  borderTop: "1px solid rgba(145, 70, 255, 0.15)",
-                }}
-              >
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                  style={{
-                    backgroundColor: "color-mix(in srgb, var(--color-primary) 25%, transparent)",
-                    color: "var(--color-primary)",
-                  }}
-                  aria-hidden
-                >
-                  <Info className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <p
-                  className="text-xs leading-relaxed sm:text-sm"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
-                  <span className="font-semibold" style={{ color: "var(--color-text)" }}>
-                    Consigne importante — bannière affichée en entier
-                  </span>
-                  <br />
-                  Ce visuel est prévu au format{" "}
-                  <strong style={{ color: "var(--color-text)" }}>
-                    {ONBOARDING_SESSION_IMAGE_WIDTH}×{ONBOARDING_SESSION_IMAGE_HEIGHT} px
-                  </strong>{" "}
-                  (ratio 4∶1). Ici il est montré <strong style={{ color: "var(--color-text)" }}>sans recadrage</strong>{" "}
-                  pour que tu voies exactement ce que l&apos;équipe a préparé. Fais attention aux détails en bord
-                  d&apos;image sur d&apos;autres écrans : garde les éléments essentiels au centre de la bannière.
-                </p>
               </div>
             </div>
           ) : null}
