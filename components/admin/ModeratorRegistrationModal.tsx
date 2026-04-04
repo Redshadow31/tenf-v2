@@ -10,6 +10,14 @@ function adminRoleLabel(role: AdminRole | null | undefined): string {
   return roleLabelFromKey(role as OrgChartRoleKey);
 }
 
+type ModeratorRegistrationRow = {
+  id: string;
+  pseudo: string;
+  role: string;
+  placement: string;
+  registeredAt?: string;
+};
+
 type ModeratorRegistrationModalProps = {
   integration: {
     id: string;
@@ -38,6 +46,9 @@ export default function ModeratorRegistrationModal({
   isLoading = false,
 }: ModeratorRegistrationModalProps) {
   const { data: session, status: sessionStatus } = useSession();
+  const [staffRegistrations, setStaffRegistrations] = useState<ModeratorRegistrationRow[]>([]);
+  const [staffListLoading, setStaffListLoading] = useState(false);
+  const [staffListError, setStaffListError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     pseudo: "",
     role: "",
@@ -66,6 +77,39 @@ export default function ModeratorRegistrationModal({
       placement: "Animateur",
     });
   }, [isOpen, session?.user?.username, session?.user?.name, session?.user?.role]);
+
+  useEffect(() => {
+    if (!isOpen || !integration.id) return;
+    let cancelled = false;
+    async function loadStaffList() {
+      setStaffListLoading(true);
+      setStaffListError(null);
+      try {
+        const res = await fetch(`/api/integrations/${integration.id}/moderators`, {
+          cache: "no-store",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error || "Impossible de charger la liste du staff");
+        }
+        if (!cancelled) {
+          setStaffRegistrations((data.registrations || []) as ModeratorRegistrationRow[]);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setStaffListError(e instanceof Error ? e.message : "Erreur réseau");
+          setStaffRegistrations([]);
+        }
+      } finally {
+        if (!cancelled) setStaffListLoading(false);
+      }
+    }
+    loadStaffList();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, integration.id]);
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,6 +275,41 @@ export default function ModeratorRegistrationModal({
               )}
             </div>
           )}
+
+          <div className="mt-8 space-y-2 rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.07] p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-200/85">
+              Staff déjà inscrit sur cette session
+            </h3>
+            {staffListLoading && (
+              <p className="text-sm text-zinc-500">Chargement de la liste…</p>
+            )}
+            {staffListError && (
+              <p className="text-sm text-rose-300/90">{staffListError}</p>
+            )}
+            {!staffListLoading && !staffListError && staffRegistrations.length === 0 && (
+              <p className="text-sm text-zinc-500">
+                Personne pour l’instant — vous pouvez être le premier à vous inscrire.
+              </p>
+            )}
+            {!staffListLoading && staffRegistrations.length > 0 && (
+              <ul className="mt-1 max-h-48 divide-y divide-white/[0.06] overflow-y-auto overscroll-contain pr-1">
+                {staffRegistrations.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-col gap-1 py-2.5 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-white">{r.pseudo}</p>
+                      <p className="truncate text-xs text-zinc-400">{r.role}</p>
+                    </div>
+                    <span className="shrink-0 self-start rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-xs text-zinc-200">
+                      {r.placement}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <form onSubmit={handleSubmitForm} className="mt-8 space-y-5">
             <div>

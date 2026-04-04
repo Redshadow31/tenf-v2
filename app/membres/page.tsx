@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import MemberModal from "@/components/MemberModal";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
 interface PublicMember {
   twitchLogin: string;
@@ -501,7 +502,10 @@ export default function Page() {
   const discoverForYouMembers = useMemo(() => {
     if (!showFollowStatuses) return [];
     return [...memberCards]
-      .filter((member) => member.followState === "not_followed")
+      .filter(
+        (member) =>
+          member.followState === "not_followed" && !isExcludedFromMemberDiscover(member.role)
+      )
       .sort((a, b) => {
         const activityRank = (member: (typeof memberCards)[number]) =>
           member.activity === "live" ? 3 : member.activity === "week" ? 2 : 1;
@@ -568,7 +572,10 @@ export default function Page() {
       if (!showFollowStatuses) {
         filtered = [];
       } else {
-        filtered = filtered.filter((member) => member.followState === "not_followed");
+        filtered = filtered.filter(
+          (member) =>
+            member.followState === "not_followed" && !isExcludedFromMemberDiscover(member.role)
+        );
       }
     }
 

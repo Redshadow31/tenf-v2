@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { loginWithDiscord } from "@/lib/discord";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
+import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
 type FollowState = "followed" | "not_followed" | "unknown";
 
@@ -132,7 +133,10 @@ export default function MemberEngagementDiscoverPage() {
   const discoverMembers = useMemo(() => {
     if (notFollowedLogins.size === 0 || members.length === 0) return [];
     return members
-      .filter((member) => notFollowedLogins.has(member.twitchLogin))
+      .filter(
+        (member) =>
+          notFollowedLogins.has(member.twitchLogin) && !isExcludedFromMemberDiscover(member.role)
+      )
       .sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
   }, [members, notFollowedLogins]);
 

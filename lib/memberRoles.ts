@@ -69,6 +69,14 @@ export function toCanonicalMemberRole(role: string): MemberRole {
   return "Affilié";
 }
 
+/** Après passage Communauté : hors périmètre des listes « à découvrir » / engagement follow. */
+export function isExcludedFromMemberDiscover(role: string | undefined | null): boolean {
+  if (!role) return false;
+  const trimmed = role.trim();
+  if (trimmed === "Communauté (mineur)") return true;
+  return toCanonicalMemberRole(trimmed) === "Communauté";
+}
+
 export function toCanonicalBadgeLabel(badge: string): string {
   if (badge === "Communauté (mineur)") {
     return "Communauté";

@@ -5,6 +5,7 @@ import {
   getLinkedTwitchAccountByDiscordId,
   getValidLinkedTwitchAccessToken,
 } from "@/lib/twitchLinkedAccount";
+import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,6 +55,7 @@ async function listVisibleMembers(): Promise<
     for (const member of chunk) {
       // Aligner la population avec /membres : membres actifs + profil valide.
       if (member.profileValidationStatus !== "valide") continue;
+      if (isExcludedFromMemberDiscover(member.role)) continue;
       if (!member.twitchLogin) continue;
       members.push({
         twitchLogin: String(member.twitchLogin).toLowerCase(),
