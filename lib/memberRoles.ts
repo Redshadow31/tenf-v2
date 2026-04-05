@@ -133,7 +133,7 @@ const ADMINS_ADJOINTS = ["selena_akemi", "tabs_up", "loulangegaming", "jenny3120
 const MODOS_MENTORS = ["rebelle_7ds", "livio_on", "rubbycrea", "thedark_sand", "yaya_romali"].map(login => login.toLowerCase());
 
 // MODOS JUNIORS
-const MODOS_JUNIORS = ["face_bcd", "leb1nx", "lespydyverse", "nico_73_79", "sigurdson64", "simon_le7", "zylkao"].map(login => login.toLowerCase());
+const MODOS_JUNIORS = ["face_bcd", "leb1nx", "lespydyverse", "sigurdson64", "simon_le7", "zylkao"].map(login => login.toLowerCase());
 
 // Fonction pour déterminer le rôle d'un membre
 function getRoleForMember(login: string): MemberRole {

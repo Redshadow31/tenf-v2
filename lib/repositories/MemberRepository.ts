@@ -410,7 +410,8 @@ export class MemberRepository {
       role: row.role as any,
       isVip: row.is_vip,
       isActive: row.is_active,
-      badges: row.badges || undefined,
+      // Toujours un tableau : évite que la fusion legacy+Supabase garde d'anciens badges quand la colonne est null/absente.
+      badges: Array.isArray(row.badges) ? row.badges : [],
       listId: row.list_id || undefined,
       roleManuallySet: row.role_manually_set || undefined,
       twitchStatus: row.twitch_status || undefined,
