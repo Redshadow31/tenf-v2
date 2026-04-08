@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { getActiveRaidTestRun } from "@/lib/raidEventsubTest";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { buildDiscordUsernameByTwitchLoginMap } from "@/lib/adminDiscordUsernameLookup";
 
 type RaidTestEventRow = {
   id: string;
@@ -12,32 +13,6 @@ type RaidTestEventRow = {
   viewers: number;
   processing_status: string;
 };
-
-type MemberLiteRow = {
-  twitch_login: string;
-  discord_username: string | null;
-  discord_id: string | null;
-};
-
-/** Si discord_username est vide en Supabase mais discord_id est connu (souvent le cas alors que la gestion affiche le pseudo via Discord). */
-async function fetchDiscordUsernameByUserId(discordUserId: string): Promise<string | null> {
-  const id = String(discordUserId || "").trim();
-  if (!id) return null;
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) return null;
-  try {
-    const r = await fetch(`https://discord.com/api/v10/users/${encodeURIComponent(id)}`, {
-      headers: { Authorization: `Bot ${token}` },
-      cache: "no-store",
-    });
-    if (!r.ok) return null;
-    const data = (await r.json()) as { username?: string; global_name?: string | null };
-    const u = String(data.username || data.global_name || "").trim();
-    return u || null;
-  } catch {
-    return null;
-  }
-}
 
 type RaidPointRow = {
   id: string;
@@ -234,49 +209,10 @@ export async function GET(request: NextRequest) {
     const uniqueRaiderLogins = Array.from(
       new Set(todoBase.map((item) => String(item.from_broadcaster_user_login || "").toLowerCase()).filter(Boolean))
     );
-    let discordByTwitchLogin = new Map<string, string>();
-    if (uniqueRaiderLogins.length > 0) {
-      const memberRows: MemberLiteRow[] = [];
-      const chunkSize = 120;
-      for (let i = 0; i < uniqueRaiderLogins.length; i += chunkSize) {
-        const chunk = uniqueRaiderLogins.slice(i, i + chunkSize);
-        const membersRes = await supabaseAdmin
-          .from("members")
-          .select("twitch_login,discord_username,discord_id")
-          .in("twitch_login", chunk);
-        if (membersRes.error) {
-          console.warn("[raids-sub/points] members lookup chunk error:", membersRes.error.message);
-          continue;
-        }
-        memberRows.push(...((membersRes.data || []) as MemberLiteRow[]));
-      }
-
-      const discordIdsToResolve = new Set<string>();
-      for (const row of memberRows) {
-        const du = String(row.discord_username || "").trim();
-        const did = String(row.discord_id || "").trim();
-        if (!du && did) discordIdsToResolve.add(did);
-      }
-      const usernameByDiscordId = new Map<string, string>();
-      await Promise.all(
-        [...discordIdsToResolve].map(async (did) => {
-          const u = await fetchDiscordUsernameByUserId(did);
-          if (u) usernameByDiscordId.set(did, u);
-        })
-      );
-
-      for (const row of memberRows) {
-        const login = String(row.twitch_login || "").toLowerCase();
-        let discordUsername = String(row.discord_username || "").trim();
-        const did = String(row.discord_id || "").trim();
-        if (!discordUsername && did) {
-          discordUsername = usernameByDiscordId.get(did) || "";
-        }
-        if (login && discordUsername) {
-          discordByTwitchLogin.set(login, discordUsername);
-        }
-      }
-    }
+    const discordByTwitchLogin =
+      uniqueRaiderLogins.length > 0
+        ? await buildDiscordUsernameByTwitchLoginMap(uniqueRaiderLogins)
+        : new Map<string, string>();
 
     const todo = todoBase.map((item) => ({
       ...item,

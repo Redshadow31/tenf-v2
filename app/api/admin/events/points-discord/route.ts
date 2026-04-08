@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { buildDiscordUsernameByTwitchLoginMap } from "@/lib/adminDiscordUsernameLookup";
 import { eventRepository } from "@/lib/repositories";
 import {
   createEventDiscordPoint,
@@ -98,7 +99,20 @@ async function buildTodoForMonth(month: string, awardedKeys: Set<string>): Promi
     }
   }
 
-  return todos.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
+  const sorted = todos.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
+  const loginsSansDiscord = sorted
+    .filter((t) => !String(t.discord_username || "").trim())
+    .map((t) => t.twitch_login);
+  if (loginsSansDiscord.length === 0) {
+    return sorted;
+  }
+  const discordFromMembers = await buildDiscordUsernameByTwitchLoginMap(loginsSansDiscord);
+  return sorted.map((t) => {
+    if (String(t.discord_username || "").trim()) return t;
+    const fromMember = discordFromMembers.get(t.twitch_login);
+    if (!fromMember) return t;
+    return { ...t, discord_username: fromMember };
+  });
 }
 
 async function loadPresenceCandidate(eventId: string, twitchLogin: string): Promise<EventTodoItem | null> {
@@ -117,6 +131,14 @@ async function loadPresenceCandidate(eventId: string, twitchLogin: string): Prom
     (item) => String(item.twitchLogin || "").toLowerCase() === normalized
   );
   const eventAt = (event.date instanceof Date ? event.date : new Date(event.date)).toISOString();
+  let discordUsername =
+    String(presence.discordUsername || "").trim() ||
+    String(registration?.discordUsername || "").trim() ||
+    null;
+  if (!discordUsername) {
+    const fromMembers = await buildDiscordUsernameByTwitchLoginMap([normalized]);
+    discordUsername = fromMembers.get(normalized) || null;
+  }
   return {
     presence_key: `${eventId}::${normalized}`,
     event_id: eventId,
@@ -127,10 +149,7 @@ async function loadPresenceCandidate(eventId: string, twitchLogin: string): Prom
       String(presence.displayName || "").trim() ||
       String(registration?.displayName || "").trim() ||
       normalized,
-    discord_username:
-      String(presence.discordUsername || "").trim() ||
-      String(registration?.discordUsername || "").trim() ||
-      null,
+    discord_username: discordUsername,
     validated_at: presence.validatedAt || undefined,
   };
 }

@@ -78,6 +78,25 @@ const tabActiveTodoClass = `${tabBaseClass} border-amber-400/55 bg-amber-500/12 
 const tabActiveHistoryClass = `${tabBaseClass} border-emerald-400/55 bg-emerald-500/12 text-emerald-100 shadow-[0_8px_18px_rgba(16,185,129,0.18)]`;
 const tabInactiveClass = `${tabBaseClass} border-white/15 bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08]`;
 
+async function readApiJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    const hint =
+      response.status === 401 || response.status === 403
+        ? "Session expirée ou accès refusé : reconnecte-toi."
+        : response.status >= 500
+          ? `Erreur serveur (${response.status}). Réessaie plus tard.`
+          : `Réponse inattendue (HTTP ${response.status}).`;
+    throw new Error(hint);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("Réponse serveur invalide (JSON attendu).");
+  }
+}
+
 export default function EventDiscordPointsTab() {
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
@@ -111,7 +130,7 @@ export default function EventDiscordPointsTab() {
         params.set("month", month);
       }
       const response = await fetch(`/api/admin/events/points-discord?${params.toString()}`, { cache: "no-store" });
-      const body = (await response.json()) as EventPointsResponse & { error?: string };
+      const body = await readApiJson<EventPointsResponse & { error?: string }>(response);
       if (!response.ok) {
         throw new Error(body.error || "Impossible de charger les points evenement.");
       }
@@ -223,9 +242,9 @@ export default function EventDiscordPointsTab() {
           note: (noteByPresenceKey[presenceKey] || "").trim(),
         }),
       });
-      const body = await response.json();
+      const body = await readApiJson<{ error?: string } & Record<string, unknown>>(response);
       if (!response.ok) {
-        throw new Error(body.error || "Impossible d attribuer les points evenement.");
+        throw new Error(String((body as { error?: string }).error || "Impossible d attribuer les points evenement."));
       }
       await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     } catch (e) {
@@ -258,7 +277,13 @@ export default function EventDiscordPointsTab() {
           note: "Validation groupee depuis points-discord (events)",
         }),
       });
-      const body = await response.json();
+      const body = await readApiJson<{
+        error?: string;
+        insertedCount?: number;
+        alreadyAwardedCount?: number;
+        invalidCount?: number;
+        missingCount?: number;
+      }>(response);
       if (!response.ok) {
         throw new Error(body.error || "Impossible de valider toutes les presences.");
       }
@@ -300,7 +325,7 @@ export default function EventDiscordPointsTab() {
             1. On recupere les presences validees (`present=true`) sur les evenements du mois.
           </p>
           <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
-            2. On resolve le pseudo Discord depuis la presence, sinon depuis l&apos;inscription event.
+            2. Pseudo Discord : presence, inscription event, puis fiche membre (discord_username ou discord_id via API Bot).
           </p>
           <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
             3. Validation points: <strong>+300</strong> avec commande bot <strong>/event @pseudo</strong>.
