@@ -71,6 +71,57 @@ export async function listEventDiscordPoints(): Promise<EventDiscordPointsEntry[
   return ((data || []) as EventDiscordPointsRow[]).map(mapRow);
 }
 
+/** Toutes les clés déjà enregistrées (évite de réafficher des lignes « à faire » au-delà du cap de listEventDiscordPoints). */
+export async function listAllEventDiscordPresenceKeys(): Promise<Set<string>> {
+  const keys = new Set<string>();
+  const pageSize = 1000;
+  let from = 0;
+  const maxRows = 500_000;
+  for (;;) {
+    const { data, error } = await supabaseAdmin
+      .from("event_discord_points")
+      .select("presence_key")
+      .order("presence_key", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error("[eventDiscordPointsStorage] listAllPresenceKeys error:", error);
+      throw error;
+    }
+    const rows = (data || []) as { presence_key: string }[];
+    for (const row of rows) {
+      const k = String(row.presence_key || "").trim();
+      if (k) keys.add(k);
+    }
+    if (rows.length < pageSize) break;
+    from += pageSize;
+    if (from >= maxRows) break;
+  }
+  return keys;
+}
+
+export async function listEventDiscordPointsAwardedInRange(
+  startIso: string,
+  endIso: string,
+  limit = 5000
+): Promise<EventDiscordPointsEntry[]> {
+  const { data, error } = await supabaseAdmin
+    .from("event_discord_points")
+    .select(
+      "id,presence_key,event_id,event_title,event_at,twitch_login,display_name,discord_username,points,status,note,awarded_by_discord_id,awarded_by_username,awarded_at"
+    )
+    .gte("awarded_at", startIso)
+    .lt("awarded_at", endIso)
+    .order("awarded_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[eventDiscordPointsStorage] listAwardedInRange error:", error);
+    throw error;
+  }
+  return ((data || []) as EventDiscordPointsRow[]).map(mapRow);
+}
+
 export async function hasEventDiscordPointForPresence(presenceKey: string): Promise<boolean> {
   const row = await findEventDiscordPointByPresenceKey(presenceKey);
   return row !== null;

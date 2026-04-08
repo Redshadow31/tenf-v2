@@ -4,7 +4,9 @@ import { eventRepository } from "@/lib/repositories";
 import {
   createEventDiscordPoint,
   findEventDiscordPointByPresenceKey,
+  listAllEventDiscordPresenceKeys,
   listEventDiscordPoints,
+  listEventDiscordPointsAwardedInRange,
 } from "@/lib/eventDiscordPointsStorage";
 
 function isMissingRelationError(message: string): boolean {
@@ -147,9 +149,15 @@ export async function GET(request: NextRequest) {
     const month = /^\d{4}-\d{2}$/.test(requestedMonth) ? requestedMonth : toMonthKey(new Date());
     const { startIso, endIso } = monthRange(month);
 
-    let allHistory: Awaited<ReturnType<typeof listEventDiscordPoints>> = [];
+    let awardedKeys = new Set<string>();
+    let history: Awaited<ReturnType<typeof listEventDiscordPointsAwardedInRange>> = [];
     try {
-      allHistory = await listEventDiscordPoints();
+      if (includeTodo) {
+        awardedKeys = await listAllEventDiscordPresenceKeys();
+      }
+      if (includeHistory) {
+        history = await listEventDiscordPointsAwardedInRange(startIso, endIso);
+      }
     } catch (err: unknown) {
       const message = String((err as { message?: string })?.message || "");
       if (isMissingRelationError(message)) {
@@ -165,12 +173,6 @@ export async function GET(request: NextRequest) {
       throw err;
     }
 
-    const awardedKeys = new Set(allHistory.map((item) => item.presenceKey));
-    const history = includeHistory
-      ? allHistory
-          .filter((item) => inRange(item.awardedAt, startIso, endIso))
-          .sort((a, b) => new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime())
-      : [];
     const todo = includeTodo ? await buildTodoForMonth(month, awardedKeys) : [];
 
     return NextResponse.json({
