@@ -342,6 +342,44 @@ export default function AdminEngagementPointsDiscordPage() {
         </div>
       </div>
 
+      {(warning || error) && (
+        <div className="space-y-2">
+          {warning ? (
+            <div className="rounded-xl border border-yellow-500/50 bg-yellow-950/40 px-4 py-3 text-sm text-yellow-100">{warning}</div>
+          ) : null}
+          {error ? (
+            <div className="rounded-xl border border-red-500/50 bg-red-950/40 px-4 py-3 text-sm text-red-100">{error}</div>
+          ) : null}
+        </div>
+      )}
+
+      {sourceTab === "raids" && activeTab === "todo" && (bulkFeedback || missingRaiders.length > 0) ? (
+        <div className={`${panelClass} space-y-3 p-4`}>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">À lire en priorité</p>
+          {bulkFeedback ? (
+            <p className="text-sm text-emerald-200">
+              {bulkFeedback}
+              {/\b0 ajouté/i.test(bulkFeedback) && /\bdéjà attribué/i.test(bulkFeedback) ? (
+                <span className="mt-2 block text-xs text-slate-300">
+                  Tout était déjà enregistré côté serveur : après rafraîchissement, la liste « À faire » doit se vider pour ces raids. Si ce
+                  n’est pas le cas, signale-le (bug de synchro).
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {missingRaiders.length > 0 ? (
+            <div className="rounded-xl border border-amber-400/45 bg-amber-950/35 px-3 py-2">
+              <p className="text-sm font-semibold text-amber-100">
+                Pseudo Discord manquant pour : {missingRaiders.join(", ")}
+              </p>
+              <p className="mt-1 text-xs text-amber-200/95">
+                Ces comptes doivent être rapprochés côté fiche membre pour générer les commandes /raid et faciliter le suivi.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <section className={`${panelClass} p-5`}>
         <h2 className="text-base font-semibold text-slate-100">Explication du fonctionnement</h2>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
@@ -454,13 +492,6 @@ export default function AdminEngagementPointsDiscordPage() {
         </div>
       </div>
 
-      {warning ? (
-        <div className="rounded-xl border border-yellow-500/40 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200">{warning}</div>
-      ) : null}
-      {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div>
-      ) : null}
-
       <div className={`${panelClass} p-6`}>
         {loading ? (
           <p className="text-sm text-gray-300">Chargement des donnees...</p>
@@ -489,7 +520,6 @@ export default function AdminEngagementPointsDiscordPage() {
                   </div>
                 </div>
                 {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
-                {bulkFeedback ? <p className="mt-2 text-xs text-emerald-200">{bulkFeedback}</p> : null}
                 {raidCommands.length === 0 ? (
                   <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable trouvé sur les raids en attente.</p>
                 ) : (
@@ -499,18 +529,10 @@ export default function AdminEngagementPointsDiscordPage() {
                     className="mt-3 min-h-[84px] w-full rounded-xl border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100"
                   />
                 )}
-                {missingRaiders.length > 0 ? (
-                  <p className="mt-2 text-xs text-amber-200">Pseudo Discord manquant pour: {missingRaiders.join(", ")}</p>
-                ) : null}
+                <p className="mt-2 text-xs text-slate-500">
+                  Retour validation groupée et pseudos manquants : voir l’encart <strong>À lire en priorité</strong> en haut de page.
+                </p>
               </article>
-              {missingRaiders.length > 0 ? (
-                <article className="rounded-xl border border-amber-400/35 bg-amber-500/10 p-4">
-                  <p className="text-sm font-semibold text-amber-100">Raids sans pseudo Discord relié</p>
-                  <p className="mt-1 text-xs text-amber-200">
-                    Ces comptes doivent être rapprochés côté membres pour faciliter l’attribution automatique.
-                  </p>
-                </article>
-              ) : null}
               {sortedTodo.map((item) => (
                 <article key={item.id} className="rounded-xl border border-[#343a52] bg-[#111725]/85 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">

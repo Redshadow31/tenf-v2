@@ -16,7 +16,28 @@ type RaidTestEventRow = {
 type MemberLiteRow = {
   twitch_login: string;
   discord_username: string | null;
+  discord_id: string | null;
 };
+
+/** Si discord_username est vide en Supabase mais discord_id est connu (souvent le cas alors que la gestion affiche le pseudo via Discord). */
+async function fetchDiscordUsernameByUserId(discordUserId: string): Promise<string | null> {
+  const id = String(discordUserId || "").trim();
+  if (!id) return null;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return null;
+  try {
+    const r = await fetch(`https://discord.com/api/v10/users/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bot ${token}` },
+      cache: "no-store",
+    });
+    if (!r.ok) return null;
+    const data = (await r.json()) as { username?: string; global_name?: string | null };
+    const u = String(data.username || data.global_name || "").trim();
+    return u || null;
+  } catch {
+    return null;
+  }
+}
 
 type RaidPointRow = {
   id: string;
@@ -59,6 +80,35 @@ function monthRange(monthKey: string): { startIso: string; endIso: string } {
 function isMissingRelationError(message: string): boolean {
   const normalized = message.toLowerCase();
   return normalized.includes("does not exist") || normalized.includes("42p01");
+}
+
+/** Tous les raid_test_event_id déjà pointés pour ce run (la limite 5000 sans ordre faisait réapparaître des raids dans « à faire »). */
+async function fetchAllAwardedRaidEventIdsForRun(runId: string): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const pageSize = 1000;
+  let from = 0;
+  const maxRows = 500_000;
+  for (;;) {
+    const { data, error } = await supabaseAdmin
+      .from("raid_test_points")
+      .select("raid_test_event_id")
+      .eq("run_id", runId)
+      .order("raid_test_event_id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw error;
+    }
+    const rows = (data || []) as { raid_test_event_id: string }[];
+    for (const row of rows) {
+      const id = String(row.raid_test_event_id || "").trim();
+      if (id) ids.add(id);
+    }
+    if (rows.length < pageSize) break;
+    from += pageSize;
+    if (from >= maxRows) break;
+  }
+  return ids;
 }
 
 export async function GET(request: NextRequest) {
@@ -114,16 +164,12 @@ export async function GET(request: NextRequest) {
         })()
       : Promise.resolve({ data: [] as any[], error: null as any });
 
-    // Toujours charger tous les event_id deja attribues pour ce run (tous mois),
-    // pas seulement ceux du mois de l'historique — sinon les validations passees
-    // reapparaissent dans "a faire" des que le mois affiche ne les contient pas.
     const pointsAwardedIdsPromise =
       includeTodo && !!runId
-        ? supabaseAdmin
-            .from("raid_test_points")
-            .select("raid_test_event_id")
-            .eq("run_id", runId)
-            .limit(5000)
+        ? fetchAllAwardedRaidEventIdsForRun(runId).then(
+            (set) => ({ data: Array.from(set).map((raid_test_event_id) => ({ raid_test_event_id })), error: null as null }),
+            (err) => ({ data: [] as any[], error: err })
+          )
         : Promise.resolve({ data: [] as any[], error: null as any });
 
     const [eventsRes, pointsHistoryRes, pointsAwardedIdsRes] = await Promise.all([
@@ -163,7 +209,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (pointsAwardedIdsRes.error) {
-      const message = String(pointsAwardedIdsRes.error.message || "");
+      const raw = pointsAwardedIdsRes.error as { message?: string };
+      const message = String(raw?.message || pointsAwardedIdsRes.error || "");
       if (isMissingRelationError(message)) {
         return NextResponse.json({
           backendReady: false,
@@ -189,18 +236,44 @@ export async function GET(request: NextRequest) {
     );
     let discordByTwitchLogin = new Map<string, string>();
     if (uniqueRaiderLogins.length > 0) {
-      const membersRes = await supabaseAdmin
-        .from("members")
-        .select("twitch_login,discord_username")
-        .in("twitch_login", uniqueRaiderLogins);
+      const memberRows: MemberLiteRow[] = [];
+      const chunkSize = 120;
+      for (let i = 0; i < uniqueRaiderLogins.length; i += chunkSize) {
+        const chunk = uniqueRaiderLogins.slice(i, i + chunkSize);
+        const membersRes = await supabaseAdmin
+          .from("members")
+          .select("twitch_login,discord_username,discord_id")
+          .in("twitch_login", chunk);
+        if (membersRes.error) {
+          console.warn("[raids-sub/points] members lookup chunk error:", membersRes.error.message);
+          continue;
+        }
+        memberRows.push(...((membersRes.data || []) as MemberLiteRow[]));
+      }
 
-      if (!membersRes.error) {
-        for (const row of (membersRes.data || []) as MemberLiteRow[]) {
-          const login = String(row.twitch_login || "").toLowerCase();
-          const discordUsername = String(row.discord_username || "").trim();
-          if (login && discordUsername) {
-            discordByTwitchLogin.set(login, discordUsername);
-          }
+      const discordIdsToResolve = new Set<string>();
+      for (const row of memberRows) {
+        const du = String(row.discord_username || "").trim();
+        const did = String(row.discord_id || "").trim();
+        if (!du && did) discordIdsToResolve.add(did);
+      }
+      const usernameByDiscordId = new Map<string, string>();
+      await Promise.all(
+        [...discordIdsToResolve].map(async (did) => {
+          const u = await fetchDiscordUsernameByUserId(did);
+          if (u) usernameByDiscordId.set(did, u);
+        })
+      );
+
+      for (const row of memberRows) {
+        const login = String(row.twitch_login || "").toLowerCase();
+        let discordUsername = String(row.discord_username || "").trim();
+        const did = String(row.discord_id || "").trim();
+        if (!discordUsername && did) {
+          discordUsername = usernameByDiscordId.get(did) || "";
+        }
+        if (login && discordUsername) {
+          discordByTwitchLogin.set(login, discordUsername);
         }
       }
     }
