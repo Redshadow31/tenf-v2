@@ -246,10 +246,10 @@ export default function MemberFormationCatalogPage() {
               Parcours formations
             </p>
             <h2 className="mt-1 text-xl font-semibold" style={{ color: "var(--color-text)" }}>
-              Trouve la bonne session et suis tes demandes
+              Repère la bonne session et suis tes demandes
             </h2>
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Tout est centralisé: prochaines sessions, anciens contenus et demandes d intérêt.
+              Tout est centralisé : prochaines sessions, anciens contenus et demandes d'intérêt.
             </p>
             <div className="mt-2">
               <span
@@ -273,10 +273,10 @@ export default function MemberFormationCatalogPage() {
                 }}
               >
                 {twitchLinkState.loading
-                  ? "Verification Twitch..."
+                  ? "Vérification Twitch..."
                   : twitchLinkState.connected
-                    ? "Twitch lie"
-                    : "Twitch non lie"}
+                    ? "Twitch lié"
+                    : "Twitch non lié"}
               </span>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function MemberFormationCatalogPage() {
               <p className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{pastFormationsUnique.length}</p>
             </div>
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
-              <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>Interets</p>
+              <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>Intérêts</p>
               <p className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{interestedCount}</p>
             </div>
           </div>
@@ -342,7 +342,7 @@ export default function MemberFormationCatalogPage() {
         {loading ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement des prochaines sessions...</p>
         ) : upcomingFormations.length === 0 ? (
-          <p style={{ color: "var(--color-text-secondary)" }}>Aucune formation planifiee prochainement.</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>Aucune formation planifiée prochainement.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
             {upcomingFormations.slice(0, 6).map((formation) => (
@@ -369,7 +369,7 @@ export default function MemberFormationCatalogPage() {
                       color: registeredEventIds.has(formation.id) ? "#f87171" : "#c4b5fd",
                     }}
                   >
-                    {registeredEventIds.has(formation.id) ? "Se desinscrire" : "S'inscrire"}
+                    {registeredEventIds.has(formation.id) ? "Se désinscrire" : "S'inscrire"}
                     <ArrowRight size={14} />
                   </button>
                   <a
@@ -393,7 +393,7 @@ export default function MemberFormationCatalogPage() {
                       color: "var(--color-text)",
                     }}
                   >
-                    Voir details
+                    Voir détails
                   </button>
                 </div>
               </article>
@@ -440,13 +440,14 @@ export default function MemberFormationCatalogPage() {
         {loading ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement du catalogue...</p>
         ) : filteredPastFormations.length === 0 ? (
-          <EmptyFeatureCard title="Catalogue vide" description="Aucune ancienne formation detectee pour le moment." />
+          <EmptyFeatureCard title="Catalogue vide" description="Aucune ancienne formation détectée pour le moment." />
         ) : (
           <>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
               <p style={{ color: "var(--color-text-secondary)" }}>
-                {filteredPastFormations.length} formation{filteredPastFormations.length > 1 ? "s" : ""} trouvee
-                {showInterestedOnly ? " (interets uniquement)" : ""}.
+                {filteredPastFormations.length} formation{filteredPastFormations.length > 1 ? "s" : ""} trouvée
+                {filteredPastFormations.length > 1 ? "s" : ""}
+                {showInterestedOnly ? " (intérêts uniquement)" : ""}.
               </p>
               {catalogQuery.trim() ? (
                 <button

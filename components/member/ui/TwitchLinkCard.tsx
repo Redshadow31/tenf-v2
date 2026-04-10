@@ -32,9 +32,9 @@ export default function TwitchLinkCard() {
   const errorCode = searchParams.get("twitch_error");
   const errorMessage =
     errorCode === "already_linked_elsewhere"
-      ? "Ce compte Twitch est deja lie a un autre compte Discord TENF. Contacte un admin."
+      ? "Ce compte Twitch est déjà lié à un autre compte Discord TENF. Contacte un admin."
       : errorCode
-        ? `Liaison Twitch echouee (${errorCode}).`
+        ? `Liaison Twitch échouée (${errorCode}).`
         : null;
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function TwitchLinkCard() {
         headers: { "Content-Type": "application/json" },
       });
       if (!response.ok) {
-        alert("Impossible de deconnecter le compte Twitch.");
+        alert("Impossible de déconnecter le compte Twitch.");
         return;
       }
       setStatus({
@@ -94,7 +94,7 @@ export default function TwitchLinkCard() {
         displayName: null,
       });
     } catch {
-      alert("Erreur reseau pendant la deconnexion Twitch.");
+      alert("Erreur réseau pendant la déconnexion Twitch.");
     } finally {
       setDisconnecting(false);
     }
@@ -103,7 +103,7 @@ export default function TwitchLinkCard() {
   return (
     <MemberInfoCard title="Connexion Twitch">
       {linkedNow ? (
-        <p className="mb-3 text-sm text-green-500">Compte Twitch lie avec succes.</p>
+        <p className="mb-3 text-sm text-green-500">Compte Twitch lié avec succès.</p>
       ) : null}
       {errorMessage ? (
         <p className="mb-3 text-sm text-red-500">{errorMessage}</p>
@@ -111,12 +111,12 @@ export default function TwitchLinkCard() {
 
       {status.loading ? (
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Verification du lien Twitch...
+          Vérification du lien Twitch...
         </p>
       ) : status.connected ? (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            <span style={{ color: "var(--color-text)" }}>Compte Twitch connecte</span>
+            <span style={{ color: "var(--color-text)" }}>Compte Twitch connecté</span>
             {" : "}
             <span style={{ color: "var(--color-text)" }}>
               {status.displayName || status.login || "Twitch"}
@@ -138,14 +138,14 @@ export default function TwitchLinkCard() {
               className="rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
             >
-              {disconnecting ? "Deconnexion..." : "Deconnecter mon compte Twitch"}
+              {disconnecting ? "Déconnexion..." : "Déconnecter mon compte Twitch"}
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Connecte ton compte Twitch pour activer les fonctionnalites liees au suivi.
+            Connecte ton compte Twitch pour activer les fonctionnalités liées au suivi.
           </p>
           <a
             href={connectHref}

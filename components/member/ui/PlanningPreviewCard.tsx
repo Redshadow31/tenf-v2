@@ -23,11 +23,11 @@ export default function PlanningPreviewCard({ plannings, planningHref }: Plannin
   return (
     <MemberInfoCard title="Mon planning de live">
       <div className="mb-3">
-        <StatusBadge label={hasPlanning ? "Planning renseigne" : "Planning non defini"} tone={hasPlanning ? "success" : "warning"} />
+        <StatusBadge label={hasPlanning ? "Planning renseigné" : "Planning non défini"} tone={hasPlanning ? "success" : "warning"} />
       </div>
       {!hasPlanning ? (
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Aucun planning enregistre pour le moment.
+          Aucun planning enregistré pour le moment.
         </p>
       ) : (
         <div className="space-y-2">

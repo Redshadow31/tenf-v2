@@ -339,7 +339,7 @@ export default function MemberProfileCompletePage() {
                 <input type="date" value={form.birthday} onChange={(e) => setForm((prev) => ({ ...prev, birthday: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-300">Date d affiliation Twitch (optionnel)</label>
+                <label className="mb-1 block text-sm text-gray-300">Date d'affiliation Twitch (optionnel)</label>
                 <input type="date" value={form.twitchAffiliateDate} onChange={(e) => setForm((prev) => ({ ...prev, twitchAffiliateDate: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
                 <p className="mt-1 text-xs text-gray-400">
                   Procédure : Tableau de bord créateur {"->"} Paramètres {"->"} Chaîne {"->"} Événements de streaming.
@@ -614,7 +614,7 @@ export default function MemberProfileCompletePage() {
                   <input type="date" value={form.birthday} onChange={(e) => setForm((prev) => ({ ...prev, birthday: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d affiliation Twitch</label>
+                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d'affiliation Twitch</label>
                   <input type="date" value={form.twitchAffiliateDate} onChange={(e) => setForm((prev) => ({ ...prev, twitchAffiliateDate: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                   <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
                     Procédure : Tableau de bord créateur {">"} Paramètres {">"} Chaîne {">"} Événements de streaming.

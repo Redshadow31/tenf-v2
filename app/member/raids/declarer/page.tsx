@@ -540,7 +540,7 @@ export default function MemberDeclareRaidPage() {
               La moderation va traiter ton raid.
             </p>
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Merci pour ton soutien a la communaute TENF ❤
+              Merci pour ton soutien à la communauté TENF ❤
             </p>
             <button
               type="button"

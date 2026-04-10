@@ -203,10 +203,10 @@ export default function StreamPlanningCalendar({
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            Apercu du mois
+            Aperçu du mois
           </h4>
           <div className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            {plannings.length} live{plannings.length > 1 ? "s" : ""} planifie{plannings.length > 1 ? "s" : ""}
+            {plannings.length} live{plannings.length > 1 ? "s" : ""} planifié{plannings.length > 1 ? "s" : ""}
           </div>
         </div>
         {typeStats.length > 0 ? (

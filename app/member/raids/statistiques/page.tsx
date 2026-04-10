@@ -33,7 +33,7 @@ type RaidSummary = {
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
@@ -46,7 +46,7 @@ function getTier(score: number): { label: string; color: string } {
   if (score >= 12) return { label: "Pilier", color: "#60a5fa" };
   if (score >= 7) return { label: "Actif", color: "#34d399" };
   if (score >= 3) return { label: "En route", color: "#f59e0b" };
-  return { label: "Demarrage", color: "#f87171" };
+  return { label: "Démarrage", color: "#f87171" };
 }
 
 function getPreviousMonthKey(monthKey: string): string {

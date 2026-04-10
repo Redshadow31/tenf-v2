@@ -133,7 +133,7 @@ export default function MemberEventRegistrationsPage() {
     <MemberSurface>
       <MemberPageHeader
         title="Mon parcours événements"
-        description="Retrouve tes inscriptions TENF et vis chaque événement avec une dynamique bienveillante."
+        description="Retrouve tes inscriptions TENF et visite chaque événement avec une dynamique bienveillante."
       />
 
       <section
