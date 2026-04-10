@@ -14,7 +14,7 @@ type ProfileCompletionCardProps = {
 
 export default function ProfileCompletionCard({ items, percent, ctaHref }: ProfileCompletionCardProps) {
   return (
-    <MemberInfoCard title="Etat du profil">
+    <MemberInfoCard title="État du profil">
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.label} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
@@ -31,7 +31,7 @@ export default function ProfileCompletionCard({ items, percent, ctaHref }: Profi
       </div>
       <div className="mt-4">
         <div className="mb-1 flex items-center justify-between text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          <span>Profil complete</span>
+          <span>Profil complété</span>
           <span>{percent}%</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
@@ -44,7 +44,7 @@ export default function ProfileCompletionCard({ items, percent, ctaHref }: Profi
           className="mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white"
           style={{ backgroundColor: "var(--color-primary)" }}
         >
-          Completer mon profil
+          Compléter mon profil
         </Link>
       ) : null}
     </MemberInfoCard>

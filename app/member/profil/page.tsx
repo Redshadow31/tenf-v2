@@ -175,7 +175,7 @@ export default function MemberProfilePage() {
         headers: { "Content-Type": "application/json" },
       });
       if (!response.ok) {
-        alert("Impossible de deconnecter le compte Twitch.");
+        alert("Impossible de déconnecter le compte Twitch.");
         return;
       }
 
@@ -186,7 +186,7 @@ export default function MemberProfilePage() {
         displayName: null,
       });
     } catch {
-      alert("Erreur reseau pendant la deconnexion Twitch.");
+      alert("Erreur réseau pendant la déconnexion Twitch.");
     } finally {
       setDisconnectingTwitch(false);
     }
@@ -200,12 +200,12 @@ export default function MemberProfilePage() {
       { label: "Bio", status: member.bio ? "ok" : "warning" as const },
       { label: "Lien Twitch", status: member.socials.twitch ? "ok" : "missing" as const },
       {
-        label: "Reseaux sociaux",
+        label: "Réseaux sociaux",
         status: member.socials.instagram || member.socials.tiktok || member.socials.twitter ? "ok" : "warning" as const,
       },
       { label: "Planning live", status: plannings.length > 0 ? "ok" : "warning" as const },
       { label: "Jeux principaux", status: "warning" as const },
-      { label: "Presentation prete", status: member.bio ? "ok" : "warning" as const },
+      { label: "Présentation prête", status: member.bio ? "ok" : "warning" as const },
       {
         label: "Profil valide",
         status: member.profileValidationStatus === "valide" ? "ok" : "warning" as const,
@@ -306,7 +306,7 @@ export default function MemberProfilePage() {
     <MemberSurface>
       <MemberPageHeader
         title="Mon profil"
-        description="Un espace clair pour gerer ton identite, ton statut TENF, ta connexion Twitch et ton planning."
+        description="Un espace clair pour gérer ton identité, ton statut TENF, ta connexion Twitch et ton planning."
       />
 
       <section
@@ -341,13 +341,13 @@ export default function MemberProfilePage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full border px-2 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  Integr. {member.tenfSummary.integration.integrated ? "faite" : "a planifier"}
+                  Intégr. {member.tenfSummary.integration.integrated ? "faite" : "à planifier"}
                 </span>
                 <span className="rounded-full border px-2 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  {upcomingPlannings.length} live{upcomingPlannings.length > 1 ? "s" : ""} a venir
+                  {upcomingPlannings.length} live{upcomingPlannings.length > 1 ? "s" : ""} à venir
                 </span>
                 <span className="rounded-full border px-2 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  Completion {profilePercent}%
+                  Complétion {profilePercent}%
                 </span>
               </div>
             </div>
@@ -359,7 +359,7 @@ export default function MemberProfilePage() {
               className="rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "rgba(145, 70, 255, 0.55)", color: "var(--color-text)" }}
             >
-              Completer mon profil
+              Compléter mon profil
             </Link>
             <Link
               href={LIVE_PLANNING_ROUTE}
@@ -383,7 +383,7 @@ export default function MemberProfilePage() {
                 className="rounded-lg border px-3 py-2 text-sm opacity-65"
                 style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
               >
-                Fiche publique (A venir)
+                Fiche publique (À venir)
               </button>
             )}
           </div>
@@ -391,16 +391,16 @@ export default function MemberProfilePage() {
 
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
           <StatCard
-            title="Reunion integration"
+            title="Réunion d'intégration"
             value={member.tenfSummary.integration.integrated ? "Faite" : "Non faite"}
             subtitle={member.tenfSummary.integration.date || "Date non disponible"}
             icon={Calendar}
           />
-          <StatCard title="Role TENF" value={member.role} icon={UserCircle2} />
+          <StatCard title="Rôle TENF" value={member.role} icon={UserCircle2} />
           <StatCard
             title="VIP TENF"
             value={vip?.statusLabel || "Indisponible"}
-            subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validite precise indisponible"}
+            subtitle={vip?.startsAt && vip?.endsAt ? `${vip.startsAt} - ${vip.endsAt}` : "Validité précise indisponible"}
             icon={Crown}
           />
         </div>
@@ -411,19 +411,19 @@ export default function MemberProfilePage() {
           <div id="twitch-connection">
             <MemberInfoCard title="Connexion Twitch">
               {twitchLinkedNow ? (
-                <p className="mb-3 text-sm text-green-500">Compte Twitch lie avec succes.</p>
+                <p className="mb-3 text-sm text-green-500">Compte Twitch lié avec succès.</p>
               ) : null}
               {twitchError ? (
-                <p className="mb-3 text-sm text-red-500">Liaison Twitch echouee ({twitchError}).</p>
+                <p className="mb-3 text-sm text-red-500">Liaison Twitch échouée ({twitchError}).</p>
               ) : null}
               {twitchLinkStatus.loading ? (
                 <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                  Verification du lien Twitch...
+                  Vérification du lien Twitch...
                 </p>
               ) : twitchLinkStatus.connected ? (
                 <div className="space-y-3">
                   <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    <span style={{ color: "var(--color-text)" }}>Compte Twitch connecte</span>
+                    <span style={{ color: "var(--color-text)" }}>Compte Twitch connecté</span>
                     {" : "}
                     <span style={{ color: "var(--color-text)" }}>
                       {twitchLinkStatus.displayName || twitchLinkStatus.login || "Twitch"}
@@ -445,14 +445,14 @@ export default function MemberProfilePage() {
                       className="rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
                       style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                     >
-                      {disconnectingTwitch ? "Deconnexion..." : "Deconnecter mon compte Twitch"}
+                      {disconnectingTwitch ? "Déconnexion..." : "Déconnecter mon compte Twitch"}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    Connecte ton compte Twitch pour activer les fonctionnalites liees au suivi.
+                    Connecte ton compte Twitch pour activer les fonctionnalités liées au suivi.
                   </p>
                   <a
                     href={twitchStartHref}
@@ -467,9 +467,9 @@ export default function MemberProfilePage() {
           </div>
 
           {needsOnboarding ? (
-            <MemberInfoCard title="Creation / activation du profil">
+            <MemberInfoCard title="Création / activation du profil">
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Ton profil reste inactif tant qu il n est pas valide par le staff apres la reunion d integration.
+                Ton profil reste inactif tant qu'il n'est pas validé par le staff après la réunion d'intégration.
               </p>
               <div className="mt-4">
                 <Link
@@ -477,7 +477,7 @@ export default function MemberProfilePage() {
                   className="inline-flex rounded-lg border px-3 py-2 text-sm"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 >
-                  Completer mon profil
+                  Compléter mon profil
                 </Link>
               </div>
             </MemberInfoCard>
@@ -491,23 +491,23 @@ export default function MemberProfilePage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
               <div className="space-y-2 text-sm">
                 <p style={{ color: "var(--color-text)" }}>
-                  <strong>Identite createur</strong>
+                  <strong>Identité créateur</strong>
                 </p>
                 <p style={{ color: "var(--color-text-secondary)" }}>Pseudo Twitch : {member.twitchLogin}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Nom affiche : {member.displayName}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Role TENF : {member.role}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Nom affiché : {member.displayName}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Rôle TENF : {member.role}</p>
                 <p style={{ color: "var(--color-text-secondary)" }}>Statut serveur : {member.tenfSummary.status}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Fuseau horaire : {member.timezone || "Non renseigne"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Fuseau horaire : {member.timezone || "Non renseigné"}</p>
               </div>
               <div className="space-y-2 text-sm">
                 <p style={{ color: "var(--color-text)" }}>
                   <strong>Liens</strong>
                 </p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Twitch : {member.socials.twitch || "Non renseigne"}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Discord : {member.socials.discord || "Non renseigne"}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Instagram : {member.socials.instagram || "Non renseigne"}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>TikTok : {member.socials.tiktok || "Non renseigne"}</p>
-                <p style={{ color: "var(--color-text-secondary)" }}>Twitter : {member.socials.twitter || "Non renseigne"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Twitch : {member.socials.twitch || "Non renseigné"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Discord : {member.socials.discord || "Non renseigné"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Instagram : {member.socials.instagram || "Non renseigné"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>TikTok : {member.socials.tiktok || "Non renseigné"}</p>
+                <p style={{ color: "var(--color-text-secondary)" }}>Twitter : {member.socials.twitter || "Non renseigné"}</p>
               </div>
             </div>
             <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
@@ -524,14 +524,14 @@ export default function MemberProfilePage() {
                 <StatusBadge label={validationLabel} tone={validationTone} />
               </div>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Etat actuel de la fiche : {member.profileValidationStatus}. Derniere date de validation detaillee non disponible.
+                État actuel de la fiche : {member.profileValidationStatus}. Dernière date de validation détaillée non disponible.
               </p>
               <div className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Derniere mise a jour envoyee : indisponible - Derniere validation : indisponible
+                Dernière mise à jour envoyée : indisponible - Dernière validation : indisponible
               </div>
               <div className="mt-3 inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <ShieldCheck size={16} />
-                <span>Soumission des modifications deja connectee au flux de validation staff.</span>
+                <span>Soumission des modifications déjà connectée au flux de validation staff.</span>
               </div>
             </MemberInfoCard>
           </div>
@@ -540,20 +540,20 @@ export default function MemberProfilePage() {
         <div className="space-y-6">
           <ProfileCompletionCard items={completionChecklist} percent={profilePercent} ctaHref="/member/profil/completer" />
 
-          <MemberInfoCard title="Reperes rapides">
+          <MemberInfoCard title="Repères rapides">
             <div className="space-y-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
               <p>
                 <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Prochain live :</span>{" "}
                 {nextPlanning
-                  ? `${new Date(nextPlanning.date).toLocaleDateString("fr-FR")} a ${nextPlanning.time} (${nextPlanning.liveType})`
-                  : "Aucun live planifie"}
+                  ? `${new Date(nextPlanning.date).toLocaleDateString("fr-FR")} à ${nextPlanning.time} (${nextPlanning.liveType})`
+                  : "Aucun live planifié"}
               </p>
               <p>
-                <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Date integration :</span>{" "}
+                <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Date d'intégration :</span>{" "}
                 {formatDateFr(member.tenfSummary.integration.date)}
               </p>
               <p>
-                <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Twitch connecte :</span>{" "}
+                <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Twitch connecté :</span>{" "}
                 {twitchLinkStatus.connected ? "Oui" : "Non"}
               </p>
             </div>
@@ -561,7 +561,7 @@ export default function MemberProfilePage() {
 
           <MemberInfoCard title="Ma fiche publique">
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Apercu de ce que les visiteurs voient.
+              Aperçu de ce que les visiteurs voient.
             </p>
             <div className="mt-3 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)" }}>
               <div className="mb-2 flex items-center gap-3">
@@ -574,13 +574,13 @@ export default function MemberProfilePage() {
                 <div>
                   <p style={{ color: "var(--color-text)" }}>{member.displayName}</p>
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    Visibilite: en attente / incomplet
+                    Visibilité : en attente / incomplet
                   </p>
                 </div>
               </div>
-              <DiscordMarkdownPreview content={member.bio || ""} emptyFallback="Bio non renseignee" />
+              <DiscordMarkdownPreview content={member.bio || ""} emptyFallback="Bio non renseignée" />
               <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Liens publics: Twitch {member.socials.twitch ? "OK" : "non renseigne"} - Reseaux: en cours.
+                Liens publics : Twitch {member.socials.twitch ? "OK" : "non renseigné"} - Réseaux : en cours.
               </p>
             </div>
             {hasPublicProfileLink ? (
@@ -593,21 +593,21 @@ export default function MemberProfilePage() {
               </Link>
             ) : (
               <p className="mt-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Fiche publique detaillee : fonctionnalite a venir.
+                Fiche publique détaillée : fonctionnalité à venir.
               </p>
             )}
           </MemberInfoCard>
 
           <QuickActionsCard
             actions={[
-              { label: "Completer mon profil", href: "/member/profil/completer" },
+              { label: "Compléter mon profil", href: "/member/profil/completer" },
               { label: "Modifier mon planning", href: LIVE_PLANNING_ROUTE },
               hasPublicProfileLink
                 ? { label: "Voir ma fiche publique", href: publicProfileModalHref }
                 : { label: "Voir ma fiche publique", soon: true },
-              { label: "Declarer un raid", href: "/member/raids/declarer" },
+              { label: "Déclarer un raid", href: "/member/raids/declarer" },
               { label: "Voir mes formations", href: "/member/formations/validees" },
-              { label: "Voir mon activite", href: "/member/activite" },
+              { label: "Voir mon activité", href: "/member/activite" },
             ]}
           />
         </div>

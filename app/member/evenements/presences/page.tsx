@@ -30,7 +30,7 @@ function DiscordPointsStatusBadge({ status }: { status?: MonthEventRow["discordP
       <span
         className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
         style={{ borderColor: "rgba(52,211,153,0.5)", color: "#6ee7b7", backgroundColor: "rgba(52,211,153,0.1)" }}
-        title="Les points Discord evenement ont ete enregistres par l equipe."
+        title="Les points Discord événement ont été enregistrés par l'équipe."
       >
         <BadgeCheck size={12} />
         Points Discord OK
@@ -42,7 +42,7 @@ function DiscordPointsStatusBadge({ status }: { status?: MonthEventRow["discordP
       <span
         className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"
         style={{ borderColor: "rgba(251,191,36,0.55)", color: "#fcd34d", backgroundColor: "rgba(251,191,36,0.08)" }}
-        title="Presence validee : attribution des points Discord (+300) par l equipe en cours ou a venir."
+        title="Présence validée : attribution des points Discord (+300) par l'équipe en cours ou à venir."
       >
         <Clock size={12} />
         Points en attente
@@ -55,27 +55,27 @@ function DiscordPointsStatusBadge({ status }: { status?: MonthEventRow["discordP
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
 function getTier(rate: number): { label: string; color: string } {
   if (rate >= 90) return { label: "Pilier", color: "#d4af37" };
-  if (rate >= 75) return { label: "Engage", color: "#60a5fa" };
-  if (rate >= 50) return { label: "Regulier", color: "#34d399" };
+  if (rate >= 75) return { label: "Engagé", color: "#60a5fa" };
+  if (rate >= 50) return { label: "Régulier", color: "#34d399" };
   if (rate >= 25) return { label: "Lancement", color: "#f59e0b" };
-  return { label: "Demarrage", color: "#f87171" };
+  return { label: "Démarrage", color: "#f87171" };
 }
 
 function getEncouragement(input: { rate: number; delta: number; remainingToTarget: number; totalEvents: number; targetEvents: number; attendedEvents: number }): string {
   const { rate, delta, remainingToTarget, totalEvents, targetEvents, attendedEvents } = input;
   if (totalEvents === 0)
-    return "Aucun evenement enregistre pour ce mois-ci dans le planning (calendrier du site, mois local). Des qu un event correspond, ton suivi se mettra a jour.";
-  if (attendedEvents >= targetEvents) return delta >= 0 ? "Excellent rythme. Tu maintiens un niveau premium ce mois-ci." : "Objectif atteint. Garde cette regularite jusqu'a la fin du mois.";
-  if (remainingToTarget <= 0) return "Objectif quasiment verrouille. Encore un petit effort pour passer au palier suivant.";
-  if (delta > 0) return `Bonne dynamique: +${delta}% vs mois precedent. Encore ${remainingToTarget} evenement(s) pour atteindre ton objectif.`;
-  if (delta < 0) return `Legere baisse vs mois precedent (${delta}%). Tu peux corriger vite avec ${remainingToTarget} presence(s) supplementaire(s).`;
-  return `Tu es stable. Vise ${remainingToTarget} presence(s) de plus pour atteindre ton objectif du mois.`;
+    return "Aucun événement enregistré pour ce mois-ci dans le planning (calendrier du site, mois local). Dès qu'un event correspond, ton suivi se mettra à jour.";
+  if (attendedEvents >= targetEvents) return delta >= 0 ? "Excellent rythme. Tu maintiens un niveau premium ce mois-ci." : "Objectif atteint. Garde cette régularité jusqu'à la fin du mois.";
+  if (remainingToTarget <= 0) return "Objectif quasiment verrouillé. Encore un petit effort pour passer au palier suivant.";
+  if (delta > 0) return `Bonne dynamique : +${delta}% vs mois précédent. Encore ${remainingToTarget} événement(s) pour atteindre ton objectif.`;
+  if (delta < 0) return `Légère baisse vs mois précédent (${delta}%). Tu peux corriger vite avec ${remainingToTarget} présence(s) supplémentaire(s).`;
+  return `Tu es stable. Vise ${remainingToTarget} présence(s) de plus pour atteindre ton objectif du mois.`;
 }
 
 function getRemainingToTarget(attendedEvents: number, targetEvents: number): number {
@@ -119,7 +119,7 @@ function ProgressRing({ rate }: { rate: number }) {
           {clamped}%
         </p>
         <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--color-text-secondary)" }}>
-          Presence
+          Présence
         </p>
       </div>
     </div>
@@ -172,7 +172,7 @@ export default function MemberEventPresencesPage() {
           style={{ borderColor: "rgba(52,211,153,0.45)", color: "#6ee7b7", backgroundColor: "rgba(52,211,153,0.1)" }}
         >
           <BadgeCheck size={13} />
-          +300 attribues : {discordPointsMonthCounts.awarded}
+          +300 attribués : {discordPointsMonthCounts.awarded}
         </span>
         <span
           className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
@@ -214,16 +214,16 @@ export default function MemberEventPresencesPage() {
     [data?.attendance?.monthEventsByMonth]
   );
 
-  if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des presences...</p>;
+  if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des présences...</p>;
   if (error || !data) {
     return (
       <MemberSurface>
-        <MemberPageHeader title="Mes presences" description="Suivi mensuel de tes participations aux evenements." />
+        <MemberPageHeader title="Mes présences" description="Suivi mensuel de tes participations aux événements." />
         <section
           className="rounded-xl border p-4"
           style={{ borderColor: "rgba(248,113,113,0.4)", backgroundColor: "rgba(127,29,29,0.25)" }}
         >
-          <p className="text-sm text-red-200">{error || "Impossible de charger tes donnees de presence pour le moment."}</p>
+          <p className="text-sm text-red-200">{error || "Impossible de charger tes données de présence pour le moment."}</p>
         </section>
       </MemberSurface>
     );
@@ -232,10 +232,10 @@ export default function MemberEventPresencesPage() {
   if (!selectedAttendance) {
     return (
       <MemberSurface>
-        <MemberPageHeader title="Mes presences" description="Suivi mensuel de tes participations aux evenements." />
+        <MemberPageHeader title="Mes présences" description="Suivi mensuel de tes participations aux événements." />
         <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Ton espace de suivi se remplira des que des evenements seront disponibles.
+            Ton espace de suivi se remplira dès que des événements seront disponibles.
           </p>
         </section>
       </MemberSurface>
@@ -277,7 +277,7 @@ export default function MemberEventPresencesPage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="Mes presences"
+        title="Mes présences"
         description="Un vrai espace de suivi premium, mois par mois."
         badge={tier.label}
         extras={discordHeaderExtras}
@@ -295,7 +295,7 @@ export default function MemberEventPresencesPage() {
                 color: activeTab === "general" ? "var(--color-text)" : "var(--color-text-secondary)",
               }}
             >
-              General
+              Général
             </button>
             <button
               type="button"
@@ -328,8 +328,8 @@ export default function MemberEventPresencesPage() {
         </div>
         {data.attendance?.discordPointsTrackingAvailable ? (
           <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Points Discord evenement (+300) : chaque ligne ou tu es marque present affiche si l equipe a deja enregistre
-            l attribution cote outil admin, ou si c est encore en attente.
+            Points Discord événement (+300) : chaque ligne où tu es marqué présent affiche si l'équipe a déjà enregistré
+            l'attribution côté outil admin, ou si c'est encore en attente.
           </p>
         ) : null}
       </section>
@@ -352,7 +352,7 @@ export default function MemberEventPresencesPage() {
                     Mon mois TENF
                   </p>
                   <h2 className="mt-2 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-                    {attended}/{total} evenements suivis en {formatMonthLabel(selectedAttendance.monthKey)}
+                    {attended}/{total} événements suivis en {formatMonthLabel(selectedAttendance.monthKey)}
                   </h2>
                   <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                     {encouragement}
@@ -364,14 +364,14 @@ export default function MemberEventPresencesPage() {
                 <div className="rounded-xl border px-4 py-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(12,12,15,0.45)" }}>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                          Objectif presences (depuis /member/objectifs)
+                          Objectif présences (depuis /member/objectifs)
                     </span>
                     <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                      {goals.events} presences
+                      {goals.events} présences
                     </span>
                   </div>
                   <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    {remainingToTarget > 0 ? `Encore ${remainingToTarget} evenement(s) pour atteindre ton objectif.` : "Objectif atteint sur ce mois."}
+                    {remainingToTarget > 0 ? `Encore ${remainingToTarget} événement(s) pour atteindre ton objectif.` : "Objectif atteint sur ce mois."}
                   </p>
                 </div>
 
@@ -421,7 +421,7 @@ export default function MemberEventPresencesPage() {
           <div className="space-y-3">
             {sparklineData.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Pas assez de donnees pour afficher la tendance.
+                Pas assez de données pour afficher la tendance.
               </p>
             ) : (
               sparklineData.map((entry) => (
@@ -450,11 +450,11 @@ export default function MemberEventPresencesPage() {
         <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             <Target size={17} />
-            Repartition par categorie
+            Répartition par catégorie
           </h3>
           {selectedCategoryBreakdown.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Aucune categorie disponible sur ce mois.
+              Aucune catégorie disponible sur ce mois.
             </p>
           ) : (
             <div className="space-y-2">
@@ -490,12 +490,12 @@ export default function MemberEventPresencesPage() {
               </h3>
               <span className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
                 <Flame size={14} />
-                Vert = present, gris = absent
+                Vert = présent, gris = absent
               </span>
             </div>
             {selectedMonthEvents.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Aucun evenement passe sur ce mois pour le moment.
+                Aucun événement passé sur ce mois pour le moment.
               </p>
             ) : (
               <div className="space-y-2">
@@ -518,7 +518,7 @@ export default function MemberEventPresencesPage() {
                       {event.isKeyEvent ? (
                         <span className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs" style={{ borderColor: "rgba(240,201,107,0.45)", color: "#f0c96b" }}>
                           <Award size={12} />
-                          Event cle
+                          Événement clé
                         </span>
                       ) : null}
                       <DiscordPointsStatusBadge status={event.discordPointsStatus} />
@@ -529,7 +529,7 @@ export default function MemberEventPresencesPage() {
                           color: event.attended ? "#34d399" : "var(--color-text-secondary)",
                         }}
                       >
-                        {event.attended ? "Present" : "Absent"}
+                        {event.attended ? "Présent" : "Absent"}
                         <ChevronRight size={12} />
                       </span>
                     </div>
@@ -550,10 +550,10 @@ export default function MemberEventPresencesPage() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
               <Star size={17} />
-              Espace Spotlight (event phare)
+              Espace Spotlight (événement phare)
             </h3>
             <span className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: "rgba(240,201,107,0.45)", color: "#f0c96b" }}>
-              Categorie Spotlight uniquement
+              Catégorie Spotlight uniquement
             </span>
           </div>
 
@@ -568,7 +568,7 @@ export default function MemberEventPresencesPage() {
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
               <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                Presence / objectif
+                Présence / objectif
               </p>
               <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
                 {spotlightAttended}/{goals.spotlight}
@@ -576,7 +576,7 @@ export default function MemberEventPresencesPage() {
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
               <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                Delta vs mois precedent
+                Delta vs mois précédent
               </p>
               <p className="mt-1 text-2xl font-semibold" style={{ color: spotlightDelta >= 0 ? "#34d399" : "#f87171" }}>
                 {spotlightDelta >= 0 ? "+" : ""}
@@ -585,7 +585,7 @@ export default function MemberEventPresencesPage() {
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
               <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-                Serie Spotlight
+                Série Spotlight
               </p>
               <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
                 {spotlightStreak}
@@ -623,7 +623,7 @@ export default function MemberEventPresencesPage() {
                         color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
                       }}
                     >
-                      {event.attended ? "Spotlight present" : "Spotlight absent"}
+                      {event.attended ? "Spotlight présent" : "Spotlight absent"}
                     </span>
                   </div>
                 </div>
@@ -633,11 +633,11 @@ export default function MemberEventPresencesPage() {
 
           <div className="mt-5 space-y-2">
             <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-              Historique Spotlight recent
+              Historique Spotlight récent
             </p>
             {spotlightEventHistory.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Aucun evenement Spotlight enregistre pour le moment.
+                Aucun événement Spotlight enregistré pour le moment.
               </p>
             ) : (
               spotlightEventHistory.slice(0, 6).map((event) => (
@@ -661,7 +661,7 @@ export default function MemberEventPresencesPage() {
                         color: event.attended ? "#f0c96b" : "var(--color-text-secondary)",
                       }}
                     >
-                      {event.attended ? "Spotlight present" : "Spotlight absent"}
+                      {event.attended ? "Spotlight présent" : "Spotlight absent"}
                     </span>
                   </div>
                 </div>

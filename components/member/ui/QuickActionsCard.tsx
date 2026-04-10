@@ -34,7 +34,7 @@ export default function QuickActionsCard({ actions }: QuickActionsCardProps) {
               style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
             >
               {action.label}
-              {action.soon ? " (A venir)" : ""}
+              {action.soon ? " (À venir)" : ""}
             </button>
           )
         )}

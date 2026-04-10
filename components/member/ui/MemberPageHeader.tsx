@@ -5,7 +5,7 @@ type MemberPageHeaderProps = {
   title: string;
   description?: string;
   badge?: string;
-  /** Badges ou libellés supplementaires a cote du titre (ex: suivi points Discord) */
+  /** Badges ou libellés supplémentaires à côté du titre (ex: suivi points Discord) */
   extras?: ReactNode;
   showBreadcrumbs?: boolean;
 };

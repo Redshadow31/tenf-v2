@@ -21,33 +21,33 @@ const SCORE_CACHE_KEY = "member.engagement.score.v1";
 const TENF_ENGAGEMENT_VALUES = [
   {
     title: "Soutien bienveillant",
-    description: "Le follow est un signal de soutien durable pour aider chaque membre a progresser.",
+    description: "Le follow est un signal de soutien durable pour aider chaque membre à progresser.",
     icon: Heart,
   },
   {
     title: "Ouverture communautaire",
-    description: "On decouvre des univers differents et on donne de la visibilite a toute la communaute.",
+    description: "On découvre des univers différents et on donne de la visibilité à toute la communauté.",
     icon: Users,
   },
   {
     title: "Progression collective",
-    description: "Chaque follow renforce le reseau TENF et cree des opportunites de collaboration.",
+    description: "Chaque follow renforce le réseau TENF et crée des opportunités de collaboration.",
     icon: Compass,
   },
 ];
 
 const ENGAGEMENT_GUIDELINES = [
-  "Suivre regulierement les membres actifs pour maintenir un soutien concret.",
-  "Decouvrir les profils moins visibles et encourager leur progression.",
-  "Valoriser la constance: un follow utile dans le temps vaut plus qu un effet ponctuel.",
+  "Suivre régulièrement les membres actifs pour maintenir un soutien concret.",
+  "Découvrir les profils moins visibles et encourager leur progression.",
+  "Valoriser la constance : un follow utile dans le temps vaut plus qu'un effet ponctuel.",
   "Transformer ton score en impact humain, pas en simple statistique.",
 ];
 
 const COMMUNITY_GUIDELINES = [
-  "Partager les chaines tenf avec respect et sans pression.",
+  "Partager les chaînes TENF avec respect et sans pression.",
   "Favoriser des interactions positives quand tu passes sur un live membre.",
-  "Celebrer les progres de chacun, meme les petites etapes.",
-  "Construire une dynamique de soutien mutuel dans la duree.",
+  "Célébrer les progrès de chacun, même les petites étapes.",
+  "Construire une dynamique de soutien mutuel dans la durée.",
 ];
 
 type ScoreCachePayload = {
@@ -116,7 +116,7 @@ export default function MemberEngagementScorePage() {
         });
       } catch (err) {
         if (!active) return;
-        setError(err instanceof Error ? err.message : "Erreur reseau.");
+        setError(err instanceof Error ? err.message : "Erreur réseau.");
         setAuthenticated(false);
         setLinked(false);
         setStatuses({});
@@ -187,13 +187,13 @@ export default function MemberEngagementScorePage() {
       {!authenticated ? (
         <GateCard
           title="Connexion Discord requise"
-          description="Connecte-toi a Discord pour autoriser la consultation de ton score d'engagement."
+          description="Connecte-toi à Discord pour autoriser la consultation de ton score d'engagement."
           actionLabel="Se connecter avec Discord"
           onAction={loginWithDiscord}
         />
       ) : !linked ? (
         <GateCard
-          title="Compte Twitch non lie"
+          title="Compte Twitch non lié"
           description="Lie ton compte Twitch pour comparer tes follows avec les membres TENF actifs."
           actionLabel="Lier mon Twitch"
           href={connectTwitchHref}
@@ -230,13 +230,13 @@ export default function MemberEngagementScorePage() {
                   className="rounded-xl border px-4 py-2 text-sm font-semibold transition-all hover:-translate-y-[1px]"
                   style={{ borderColor: "rgba(221,191,255,0.35)", color: "#f5edff", backgroundColor: "rgba(255,255,255,0.05)" }}
                 >
-                  Voir les chaines a decouvrir
+                  Voir les chaînes à découvrir
                 </a>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs" style={{ color: "rgba(237,233,254,0.9)" }}>
-                  Derniere maj: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString("fr-FR") : "maintenant"}
+                  Dernière maj : {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString("fr-FR") : "maintenant"}
                 </p>
                 <button
                   type="button"
@@ -244,7 +244,7 @@ export default function MemberEngagementScorePage() {
                   className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
                   style={{ borderColor: "rgba(221,191,255,0.35)", color: "#f5edff" }}
                 >
-                  Forcer la mise a jour
+                  Forcer la mise à jour
                 </button>
               </div>
 
@@ -312,7 +312,7 @@ export default function MemberEngagementScorePage() {
               </h3>
             </div>
             <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Une ligne de conduite pour garder un engagement ouvert, bienveillant et utile a long terme.
+              Une ligne de conduite pour garder un engagement ouvert, bienveillant et utile à long terme.
             </p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
               {ENGAGEMENT_GUIDELINES.map((tip) => (
@@ -337,11 +337,11 @@ export default function MemberEngagementScorePage() {
             <div className="mb-2 flex items-center gap-2">
               <Users size={16} style={{ color: "#6ee7b7" }} />
               <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                Intention communaute TENF
+                Intention communauté TENF
               </h3>
             </div>
             <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Des reperes simples pour transformer ton score en vrai impact communautaire.
+              Des repères simples pour transformer ton score en vrai impact communautaire.
             </p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
               {COMMUNITY_GUIDELINES.map((tip) => (
@@ -362,25 +362,25 @@ export default function MemberEngagementScorePage() {
           >
             {analytics.perfect ? (
               <p className="text-sm" style={{ color: "#86efac" }}>
-                Excellent ! Tu follow deja tous les membres actifs du systeme.
+                Excellent ! Tu follow déjà tous les membres actifs du système.
               </p>
             ) : (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Tu peux encore augmenter ton score en suivant les membres listes dans{" "}
+                Tu peux encore augmenter ton score en suivant les membres listés dans{" "}
                 <a href={followCtaHref} className="underline decoration-dotted" style={{ color: "var(--color-text)" }}>
-                  A decouvrir
+                  À découvrir
                 </a>
                 .
               </p>
             )}
             {reason && reason !== "ok" ? (
               <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Info technique: {reason}
+                Info technique : {reason}
               </p>
             ) : null}
             {error ? (
               <p className="mt-2 text-xs" style={{ color: "#fca5a5" }}>
-                Erreur: {error}
+                Erreur : {error}
               </p>
             ) : null}
           </section>

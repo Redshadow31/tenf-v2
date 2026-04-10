@@ -227,7 +227,7 @@ export default function MemberRaidStatsPage() {
 
       {loadingOverview ? <p style={{ color: "var(--color-text-secondary)" }}>Chargement des statistiques...</p> : null}
       {!loadingOverview && (error || !overview) ? (
-        <EmptyFeatureCard title="Statistiques de raids" description={error || "Donnees indisponibles."} />
+        <EmptyFeatureCard title="Statistiques de raids" description={error || "Données indisponibles."} />
       ) : null}
 
       {overview ? (
@@ -299,7 +299,7 @@ export default function MemberRaidStatsPage() {
                         </span>
                       </div>
                       <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                        Modifie cet objectif depuis la page Objectifs pour garder la meme valeur partout.
+                        Modifie cet objectif depuis la page Objectifs pour garder la même valeur partout.
                       </p>
                     </div>
 
@@ -349,7 +349,7 @@ export default function MemberRaidStatsPage() {
                   <div className="space-y-3">
                     {historyLoading || sparklineData.length === 0 ? (
                       <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                        {historyLoading ? "Chargement de la tendance..." : "Pas assez de donnees pour afficher la tendance."}
+                        {historyLoading ? "Chargement de la tendance..." : "Pas assez de données pour afficher la tendance."}
                       </p>
                     ) : (
                       sparklineData.map((entry) => (

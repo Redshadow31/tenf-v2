@@ -8,14 +8,14 @@ import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
 export default function MemberActivityHistoryPage() {
   const { data, loading, error } = useMemberOverview();
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de l'historique...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Historique d'activite" description={error || "Donnees indisponibles."} />;
+  if (error || !data) return <EmptyFeatureCard title="Historique d'activité" description={error || "Données indisponibles."} />;
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Historique d'activite" description="Historique simple de tes presences en evenement." />
+      <MemberPageHeader title="Historique d'activité" description="Historique simple de tes présences en événement." />
       <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         {data.eventPresenceHistory.length === 0 ? (
-          <p style={{ color: "var(--color-text-secondary)" }}>Aucune activite enregistree pour le moment.</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>Aucune activité enregistrée pour le moment.</p>
         ) : (
           <div className="space-y-2">
             {data.eventPresenceHistory.map((item) => (

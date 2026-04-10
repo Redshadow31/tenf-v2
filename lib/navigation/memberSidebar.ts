@@ -43,7 +43,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Navigation",
         items: [
           { href: "/member/dashboard", label: "Dashboard", icon: LayoutDashboard },
-          { href: "/postuler", label: "Postuler moderateur / soutien TENF", icon: ClipboardList },
+          { href: "/postuler", label: "Postuler modérateur / soutien TENF", icon: ClipboardList },
           { href: "/member/evenements", label: "Planning TENF", icon: Calendar },
           { href: "/member/notifications", label: "Mes notifications", icon: Bell },
         ],
@@ -57,7 +57,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Profil",
         items: [
           { href: "/member/profil", label: "Mon profil", icon: UserCircle },
-          { href: "/member/profil/completer", label: "Completer mon profil", icon: ListChecks },
+          { href: "/member/profil/completer", label: "Compléter mon profil", icon: ListChecks },
         ],
       },
       {
@@ -80,33 +80,33 @@ export const memberSidebarSections: SidebarNavSection[] = [
         ],
       },
       {
-        title: "Evenements",
+        title: "Événements",
         items: [
-          { href: "/member/evenements", label: "Planning des evenements", icon: Calendar },
+          { href: "/member/evenements", label: "Planning des événements", icon: Calendar },
           { href: "/member/evenements/inscriptions", label: "Mes inscriptions", icon: ClipboardList },
-          { href: "/member/evenements/presences", label: "Mes presences", icon: Users },
+          { href: "/member/evenements/presences", label: "Mes présences", icon: Users },
         ],
       },
       {
         title: "Engagement",
         items: [
-          { href: "/member/engagement/score", label: "Mon score d'engagements", icon: Activity },
-          { href: "/member/engagement/a-decouvrir", label: "A decouvrir", icon: Flag },
-          { href: "/member/engagement/amis", label: "Mes Amis", icon: Users },
+          { href: "/member/engagement/score", label: "Mon score d'engagement", icon: Activity },
+          { href: "/member/engagement/a-decouvrir", label: "À découvrir", icon: Flag },
+          { href: "/member/engagement/amis", label: "Mes amis", icon: Users },
         ],
       },
     ],
   },
   {
-    title: "Objectifs & activite",
+    title: "Objectifs & activité",
     groups: [
       {
         title: "Suivi",
         items: [
           { href: "/member/objectifs", label: "Objectifs du mois", icon: Target },
           { href: "/member/progression", label: "Ma progression", icon: Activity },
-          { href: "/member/activite", label: "Mon activite du mois", icon: Calendar },
-          { href: "/member/activite/historique", label: "Historique d'activite", icon: History },
+          { href: "/member/activite", label: "Mon activité du mois", icon: Calendar },
+          { href: "/member/activite/historique", label: "Historique d'activité", icon: History },
         ],
       },
     ],
@@ -117,8 +117,8 @@ export const memberSidebarSections: SidebarNavSection[] = [
       {
         title: "TENF Academy",
         items: [
-          { href: "/member/academy", label: "Presentation Academy", icon: GraduationCap },
-          { href: "/member/academy/postuler", label: "Postuler a l'Academy", icon: ClipboardList },
+          { href: "/member/academy", label: "Présentation Academy", icon: GraduationCap },
+          { href: "/member/academy/postuler", label: "Postuler à l'Academy", icon: ClipboardList },
           { href: "/member/academy/parcours", label: "Suivi de mon parcours", icon: Flag },
         ],
       },
@@ -126,19 +126,19 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Formations",
         items: [
           { href: "/member/formations", label: "Catalogue des formations", icon: GraduationCap },
-          { href: "/member/formations/validees", label: "Mes formations validees", icon: ListChecks },
+          { href: "/member/formations/validees", label: "Mes formations validées", icon: ListChecks },
         ],
       },
     ],
   },
   {
-    title: "Evaluation",
+    title: "Évaluation",
     groups: [
       {
-        title: "Evaluation",
+        title: "Évaluation",
         items: [
-          { href: "/member/evaluations", label: "Mon evaluation", icon: ClipboardList },
-          { href: "/member/evaluations/historique", label: "Historique des evaluations", icon: History },
+          { href: "/member/evaluations", label: "Mon évaluation", icon: ClipboardList },
+          { href: "/member/evaluations/historique", label: "Historique des évaluations", icon: History },
         ],
       },
     ],
@@ -148,7 +148,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
     groups: [
       {
         title: "Compte",
-        items: [{ href: "/member/parametres", label: "Parametres", icon: Cog }],
+        items: [{ href: "/member/parametres", label: "Paramètres", icon: Cog }],
       },
     ],
   },
@@ -163,8 +163,8 @@ export const memberSidebarSections: SidebarNavSection[] = [
           { href: "/admin/membres/gestion", label: "Gestion membres", icon: Users, adminOnly: true },
           { href: "/admin/profils", label: "Gestion profils site", icon: UserCircle, adminOnly: true },
           { href: "/admin/engagement/raids-a-valider", label: "Gestion raids", icon: Rocket, adminOnly: true },
-          { href: "/admin/events", label: "Gestion evenements", icon: Calendar, adminOnly: true },
-          { href: "/admin/evaluations", label: "Gestion evaluations", icon: Shield, adminOnly: true },
+          { href: "/admin/events", label: "Gestion événements", icon: Calendar, adminOnly: true },
+          { href: "/admin/evaluations", label: "Gestion évaluations", icon: Shield, adminOnly: true },
         ],
       },
     ],

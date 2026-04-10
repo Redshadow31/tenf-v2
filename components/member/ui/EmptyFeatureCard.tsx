@@ -12,7 +12,7 @@ export default function EmptyFeatureCard({ title, description, icon: Icon = Cons
     <section className="rounded-xl border p-6" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
       <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "rgba(255,255,255,0.02)" }}>
         <Icon size={14} />
-        <span>Fonctionnalite a venir</span>
+        <span>Fonctionnalité à venir</span>
       </div>
       <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
         {title}

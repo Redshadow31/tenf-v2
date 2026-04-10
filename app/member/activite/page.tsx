@@ -8,14 +8,14 @@ import { useMemberOverview } from "@/components/member/hooks/useMemberOverview";
 
 export default function MemberMonthlyActivityPage() {
   const { data, loading } = useMemberOverview();
-  if (loading || !data) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de l'activite...</p>;
+  if (loading || !data) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de l'activité...</p>;
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Mon activite du mois" description="Raids + presences valides sur le mois en cours." />
+      <MemberPageHeader title="Mon activité du mois" description="Raids + présences validées sur le mois en cours." />
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <StatCard title="Raids" value={data.stats.raidsThisMonth} icon={Rocket} />
-        <StatCard title="Presences evenements" value={data.stats.eventPresencesThisMonth} icon={Users} />
+        <StatCard title="Présences événements" value={data.stats.eventPresencesThisMonth} icon={Users} />
         <StatCard title="Total actions du mois" value={data.stats.participationThisMonth} icon={Calendar} />
       </section>
     </MemberSurface>

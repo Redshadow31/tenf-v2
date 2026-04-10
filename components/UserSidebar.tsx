@@ -264,9 +264,9 @@ export default function UserSidebar({
                             href: twitchLinked ? "/member/profil" : directTwitchLinkHref,
                             label:
                               twitchLinked === null
-                                ? "Etat Twitch..."
+                                ? "État Twitch..."
                                 : twitchLinked
-                                  ? "Twitch lie"
+                                  ? "Twitch lié"
                                   : "Lier mon Twitch",
                           },
                         ]

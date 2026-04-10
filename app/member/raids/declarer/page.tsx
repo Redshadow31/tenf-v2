@@ -84,7 +84,7 @@ export default function MemberDeclareRaidPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
 
-  const quickNotes = ["Raid apres live Fortnite", "Soutien membre nouveau", "Fin de stream communautaire"];
+  const quickNotes = ["Raid après live Fortnite", "Soutien membre nouveau", "Fin de stream communautaire"];
 
   useEffect(() => {
     if (!toast) return;
@@ -203,7 +203,7 @@ export default function MemberDeclareRaidPage() {
     }
 
     if (!backendSubmissionEnabled) {
-      setError("Le module declarations raids n est pas encore actif.");
+      setError("Le module déclarations raids n'est pas encore actif.");
       return;
     }
 
@@ -223,10 +223,10 @@ export default function MemberDeclareRaidPage() {
         if (!response.ok) {
           if (response.status === 503) {
             setBackendSubmissionEnabled(false);
-            setError("Le module declarations raids n est pas encore actif.");
+            setError("Le module déclarations raids n'est pas encore actif.");
             return;
           }
-          setError(body.error || "Impossible de declarer ce raid.");
+          setError(body.error || "Impossible de déclarer ce raid.");
           setToast({ type: "error", message: body.error || "Erreur declaration raid." });
           return;
         }
@@ -241,13 +241,13 @@ export default function MemberDeclareRaidPage() {
         };
         setDeclaredRaids((prev) => [created, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setShowConfirmation(true);
-        setToast({ type: "success", message: "Raid enregistre et envoye a la moderation." });
+        setToast({ type: "success", message: "Raid enregistré et envoyé à la modération." });
         setForm((prev) => ({ ...prev, target: "", note: "" }));
         setShowAutocomplete(false);
         await loadMyDeclarations();
       } catch {
-        setError("Erreur reseau pendant la declaration.");
-        setToast({ type: "error", message: "Erreur reseau pendant la declaration." });
+        setError("Erreur réseau pendant la déclaration.");
+        setToast({ type: "error", message: "Erreur réseau pendant la déclaration." });
       }
     })();
   }
@@ -271,7 +271,7 @@ export default function MemberDeclareRaidPage() {
           Avertissement
         </p>
         <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Ne signale un raid que s il n apparait pas deja dans <strong>Mes raids</strong>.
+          Ne signale un raid que s'il n'apparaît pas déjà dans <strong>Mes raids</strong>.
         </p>
       </section>
 
@@ -308,7 +308,7 @@ export default function MemberDeclareRaidPage() {
                   </p>
                 ) : suggestions.length === 0 ? (
                   <p className="px-2 py-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    Aucun membre trouve. Tu peux saisir un pseudo libre.
+                    Aucun membre trouvé. Tu peux saisir un pseudo libre.
                   </p>
                 ) : (
                   <div className="max-h-[220px] space-y-2 overflow-y-auto">
@@ -344,7 +344,7 @@ export default function MemberDeclareRaidPage() {
               </div>
             ) : null}
             <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Le pseudo saisi est accepte meme si le streamer n'est pas membre TENF. Un raid vers quelqu'un qui ne fait pas partie de la communaute TENF sera refuse.
+              Le pseudo saisi est accepté même si le streamer n'est pas membre TENF. Un raid vers quelqu'un qui ne fait pas partie de la communauté TENF sera refusé.
             </p>
           </div>
 
@@ -426,7 +426,7 @@ export default function MemberDeclareRaidPage() {
             onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
             className="mt-1 w-full rounded-lg border px-3 py-2"
             style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "rgba(10,10,14,0.62)", color: "var(--color-text)" }}
-            placeholder="Ex: Raid apres live Fortnite"
+            placeholder="Ex : Raid après live Fortnite"
           />
         </div>
 
@@ -485,7 +485,7 @@ export default function MemberDeclareRaidPage() {
           </p>
         ) : declaredRaids.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Aucun raid declare pour le moment.
+            Aucun raid déclaré pour le moment.
           </p>
         ) : (
           <div className="space-y-2">

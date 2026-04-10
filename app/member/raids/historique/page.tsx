@@ -36,33 +36,33 @@ type RaidHistoryResponse = {
 const TENF_VALUES = [
   {
     title: "Bienveillance active",
-    description: "Chaque raid est un geste de soutien concret. On celebre les efforts, pas la perfection.",
+    description: "Chaque raid est un geste de soutien concret. On célèbre les efforts, pas la perfection.",
     icon: Heart,
   },
   {
     title: "Ouverture et inclusion",
-    description: "On valorise la diversite des styles, des tailles de chaine et des parcours de streaming.",
+    description: "On valorise la diversité des styles, des tailles de chaîne et des parcours de streaming.",
     icon: Users,
   },
   {
     title: "Esprit de progression",
-    description: "Un raid construit des ponts durables: decouverte, entraide et evolution collective.",
+    description: "Un raid construit des ponts durables : découverte, entraide et évolution collective.",
     icon: Compass,
   },
 ];
 
 const RAID_GUIDELINES = [
-  "Presenter la cible avec respect et contexte avant le raid.",
-  "Encourager le chat a adopter une attitude positive et accueillante.",
-  "Favoriser les createurs peu raides pour amplifier la solidarite TENF.",
-  "Transformer chaque raid en opportunite de connexion humaine.",
+  "Présenter la cible avec respect et contexte avant le raid.",
+  "Encourager le chat à adopter une attitude positive et accueillante.",
+  "Favoriser les créateurs peu raidés pour amplifier la solidarité TENF.",
+  "Transformer chaque raid en opportunité de connexion humaine.",
 ];
 
 const RECEIVED_RAID_GUIDELINES = [
-  "Accueillir la communaute entrante avec un message chaleureux et inclusif.",
-  "Prendre 20 secondes pour remercier publiquement le streamer raider.",
-  "Presenter l univers de la chaine sans surjouer: naturel, clair et authentique.",
-  "Inviter les nouveaux a interagir sans pression et avec bienveillance.",
+  "Accueillir la communauté entrante avec un message chaleureux et inclusif.",
+  "Prendre 20 secondes pour remercier publiquement le streamer raideur.",
+  "Présenter l'univers de la chaîne sans surjouer : naturel, clair et authentique.",
+  "Inviter les nouveaux à interagir sans pression et avec bienveillance.",
 ];
 
 function getCurrentMonthKey(): string {
@@ -73,7 +73,7 @@ function getCurrentMonthKey(): string {
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
@@ -97,14 +97,14 @@ function statusPointsBadge(status: RaidEntry["pointsStatus"]) {
 function sourceBadge(source: RaidEntry["source"]) {
   if (source === "manual") {
     return {
-      label: "Source: declaration manuelle",
+      label: "Source : déclaration manuelle",
       border: "rgba(250,204,21,0.45)",
       bg: "rgba(250,204,21,0.12)",
       color: "#fde68a",
     };
   }
   return {
-    label: "Source: raids-sub automatique",
+    label: "Source : raids-sub automatique",
     border: "rgba(96,165,250,0.45)",
     bg: "rgba(96,165,250,0.12)",
     color: "#93c5fd",
@@ -156,7 +156,7 @@ export default function MemberRaidHistoryPage() {
         const body = (await response.json()) as RaidHistoryResponse & { error?: string };
         if (!response.ok) {
           if (response.status === 401) {
-            throw new Error("Tu dois etre connecte pour voir ton historique.");
+            throw new Error("Tu dois être connecté pour voir ton historique.");
           }
           if (response.status === 404) {
             throw new Error("Profil membre introuvable. Contacte un admin TENF.");
@@ -170,7 +170,7 @@ export default function MemberRaidHistoryPage() {
         setLoading(false);
       }
     })().catch((e) => {
-      setError(e instanceof Error ? e.message : "Erreur reseau.");
+      setError(e instanceof Error ? e.message : "Erreur réseau.");
       setRaids([]);
       setSummary(null);
       setMonths([]);
@@ -300,11 +300,11 @@ export default function MemberRaidHistoryPage() {
         <div className="mb-2 flex items-center gap-2">
           <Users size={16} style={{ color: "#6ee7b7" }} />
           <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            Intention d accueil raid recu TENF
+            Intention d'accueil raid reçu TENF
           </h3>
         </div>
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          Quand un streamer nous raid, on transforme ce moment en experience positive, ouverte et memorable.
+          Quand un streamer nous raid, on transforme ce moment en expérience positive, ouverte et mémorable.
         </p>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {RECEIVED_RAID_GUIDELINES.map((tip) => (
@@ -330,9 +330,9 @@ export default function MemberRaidHistoryPage() {
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement des raids...</p>
         ) : raids.length === 0 ? (
           <div className="rounded-lg border px-4 py-4 text-sm" style={{ borderColor: "rgba(148,163,184,0.35)", backgroundColor: "rgba(15,23,42,0.4)" }}>
-            <p style={{ color: "var(--color-text)" }}>Aucun raid trouve pour ce mois.</p>
+            <p style={{ color: "var(--color-text)" }}>Aucun raid trouvé pour ce mois.</p>
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Prochaine etape: cible un streamer a soutenir et partage la vibe TENF avec ton chat.
+              Prochaine étape : cible un streamer à soutenir et partage la vibe TENF avec ton chat.
             </p>
           </div>
         ) : (

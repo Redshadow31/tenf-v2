@@ -64,16 +64,16 @@ export default function MemberEventsPlanningPage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="Planning des evenements"
-        description="Retrouve les prochains evenements communautaires TENF."
+        title="Planning des événements"
+        description="Retrouve les prochains événements communautaires TENF."
       />
       <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         {loading ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement du planning...</p>
         ) : events.length === 0 ? (
           <EmptyFeatureCard
-            title="Planning des evenements"
-            description="Aucun evenement a venir pour le moment."
+            title="Planning des événements"
+            description="Aucun événement à venir pour le moment."
           />
         ) : (
           <div className="space-y-2">

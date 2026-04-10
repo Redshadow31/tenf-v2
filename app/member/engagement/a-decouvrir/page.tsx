@@ -119,7 +119,7 @@ export default function MemberEngagementDiscoverPage() {
         });
       } catch (err) {
         if (!active) return;
-        setError(err instanceof Error ? err.message : "Erreur reseau.");
+        setError(err instanceof Error ? err.message : "Erreur réseau.");
       } finally {
         if (active) setLoading(false);
       }
@@ -184,8 +184,8 @@ export default function MemberEngagementDiscoverPage() {
     return (
       <MemberSurface>
         <MemberPageHeader
-          title="A decouvrir"
-          description="Chargement des chaines TENF que tu ne suis pas encore."
+          title="À découvrir"
+          description="Chargement des chaînes TENF que tu ne suis pas encore."
           badge="Engagement"
         />
         <section className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -213,7 +213,7 @@ export default function MemberEngagementDiscoverPage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="A decouvrir"
+        title="À découvrir"
         description="Liste des membres TENF actifs que ton compte Twitch ne suit pas encore."
         badge="Engagement"
       />
@@ -221,13 +221,13 @@ export default function MemberEngagementDiscoverPage() {
       {!authenticated ? (
         <GateCard
           title="Connexion Discord requise"
-          description="Connecte-toi a Discord pour acceder a la liste personnalisee des chaines a suivre."
+          description="Connecte-toi à Discord pour accéder à la liste personnalisée des chaînes à suivre."
           actionLabel="Se connecter avec Discord"
           onAction={loginWithDiscord}
         />
       ) : !linked ? (
         <GateCard
-          title="Compte Twitch non lie"
+          title="Compte Twitch non lié"
           description="Lie ton compte Twitch pour afficher uniquement les membres que tu ne suis pas encore."
           actionLabel="Lier mon Twitch"
           href={connectTwitchHref}
@@ -248,10 +248,10 @@ export default function MemberEngagementDiscoverPage() {
                   Recommandations follows
                 </p>
                 <h2 className="mt-1 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-                  {filteredDiscoverMembers.length} chaine(s) a decouvrir
+                  {filteredDiscoverMembers.length} chaîne(s) à découvrir
                 </h2>
                 <p className="mt-1 text-xs" style={{ color: "rgba(224,203,255,0.85)" }}>
-                  Derniere maj: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString("fr-FR") : "maintenant"}
+                  Dernière maj : {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString("fr-FR") : "maintenant"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -262,7 +262,7 @@ export default function MemberEngagementDiscoverPage() {
                   className="rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ borderColor: "rgba(224,203,255,0.4)", color: "var(--color-text)" }}
                 >
-                  {openingBatch ? "Ouverture..." : "Ouvrir 3 chaines"}
+                  {openingBatch ? "Ouverture..." : "Ouvrir 3 chaînes"}
                 </button>
                 <a
                   href="/member/engagement/score"
@@ -277,7 +277,7 @@ export default function MemberEngagementDiscoverPage() {
                   className="rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5"
                   style={{ borderColor: "rgba(224,203,255,0.4)", color: "var(--color-text)" }}
                 >
-                  Forcer la mise a jour
+                  Forcer la mise à jour
                 </button>
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function MemberEngagementDiscoverPage() {
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Rechercher un pseudo, login ou role..."
+                placeholder="Rechercher un pseudo, login ou rôle..."
                 className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none"
                 style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
               />
@@ -297,8 +297,8 @@ export default function MemberEngagementDiscoverPage() {
                 {[
                   { key: "all", label: "Tous" },
                   { key: "staff", label: "Staff" },
-                  { key: "affilie", label: "Affilies" },
-                  { key: "developpement", label: "Developpement" },
+                  { key: "affilie", label: "Affiliés" },
+                  { key: "developpement", label: "Développement" },
                   { key: "other", label: "Autres" },
                 ].map((item) => (
                   <button
@@ -322,8 +322,8 @@ export default function MemberEngagementDiscoverPage() {
           {filteredDiscoverMembers.length === 0 ? (
             <section className="rounded-2xl border p-6 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
               {discoverMembers.length === 0
-                ? "Tu sembles deja suivre tous les membres actifs references ici. Bravo 💜"
-                : "Aucun resultat avec ces filtres. Essaie une recherche ou un role different."}
+                ? "Tu sembles déjà suivre tous les membres actifs référencés ici. Bravo 💜"
+                : "Aucun résultat avec ces filtres. Essaie une recherche ou un rôle différent."}
             </section>
           ) : (
             <section className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -366,7 +366,7 @@ export default function MemberEngagementDiscoverPage() {
                     className="inline-flex rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                     style={{ backgroundColor: "var(--color-primary)" }}
                   >
-                    Aller suivre la chaine
+                    Aller suivre la chaîne
                   </a>
                 </article>
               ))}
@@ -375,7 +375,7 @@ export default function MemberEngagementDiscoverPage() {
 
           {error ? (
             <section className="rounded-2xl border p-4 text-xs" style={{ borderColor: "rgba(248,113,113,0.4)", backgroundColor: "rgba(127,29,29,0.22)", color: "#fecaca" }}>
-              Erreur de chargement: {error}
+              Erreur de chargement : {error}
             </section>
           ) : null}
         </>

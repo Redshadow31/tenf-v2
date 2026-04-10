@@ -142,13 +142,13 @@ export default function MemberFormationCatalogPage() {
       });
       const body = await response.json();
       if (!response.ok) {
-        setFeedback(body.error || "Impossible d enregistrer ta demande.");
+        setFeedback(body.error || "Impossible d'enregistrer ta demande.");
         return;
       }
       setPendingTitles((previous) => new Set([...Array.from(previous), formationTitle]));
-      setFeedback(body.created ? "Demande enregistree. Merci, on remonte ca a l equipe formation." : "Demande deja enregistree pour cette formation.");
+      setFeedback(body.created ? "Demande enregistrée. Merci, on remonte ça à l'équipe formation." : "Demande déjà enregistrée pour cette formation.");
     } catch {
-      setFeedback("Erreur reseau. Reessaie dans quelques instants.");
+      setFeedback("Erreur réseau. Réessaie dans quelques instants.");
     } finally {
       setSubmittingTitle("");
     }
@@ -178,16 +178,16 @@ export default function MemberFormationCatalogPage() {
         });
         setFeedback(
           isRegistered
-            ? body.message || "Desinscription enregistree."
+            ? body.message || "Désinscription enregistrée."
             : response.status === 409
-              ? "Tu es deja inscrit a cette formation."
-              : body.message || "Inscription enregistree."
+              ? "Tu es déjà inscrit à cette formation."
+              : body.message || "Inscription enregistrée."
         );
         return;
       }
-      setFeedback(body.error || "Impossible de mettre a jour ton inscription.");
+      setFeedback(body.error || "Impossible de mettre à jour ton inscription.");
     } catch {
-      setFeedback("Erreur reseau. Reessaie dans quelques instants.");
+      setFeedback("Erreur réseau. Réessaie dans quelques instants.");
     } finally {
       setRegisteringEventId("");
     }
@@ -214,7 +214,7 @@ export default function MemberFormationCatalogPage() {
     <MemberSurface>
       <MemberPageHeader
         title="Catalogue des formations"
-        description="Mise en avant des prochaines sessions, puis catalogue des formations deja passees."
+        description="Mise en avant des prochaines sessions, puis catalogue des formations déjà passées."
         badge="Academy TENF"
       />
 
@@ -282,7 +282,7 @@ export default function MemberFormationCatalogPage() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
-              <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>A venir</p>
+              <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>À venir</p>
               <p className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{upcomingFormations.length}</p>
             </div>
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
@@ -493,7 +493,7 @@ export default function MemberFormationCatalogPage() {
                             backgroundColor: isPending ? "rgba(52,211,153,0.10)" : "transparent",
                           }}
                         >
-                          {isPending ? "Interet deja envoye" : "Disponible a la demande"}
+                          {isPending ? "Intérêt déjà envoyé" : "Disponible à la demande"}
                         </span>
                         <span className="inline-flex rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                           Ancienne session

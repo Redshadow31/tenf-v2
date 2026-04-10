@@ -4,7 +4,7 @@ export default function MemberAcademyPage() {
   return (
     <MemberComingSoonPage
       title="Presentation Academy"
-      description="Presentation du parcours TENF Academy et de ses etapes a venir."
+      description="Présentation du parcours TENF Academy et de ses étapes à venir."
     />
   );
 }

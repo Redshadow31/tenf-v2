@@ -3,7 +3,7 @@ type ComingSoonPanelProps = {
   title?: string;
 };
 
-export default function ComingSoonPanel({ items, title = "Fonctionnalites a venir" }: ComingSoonPanelProps) {
+export default function ComingSoonPanel({ items, title = "Fonctionnalités à venir" }: ComingSoonPanelProps) {
   return (
     <section className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
       <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>

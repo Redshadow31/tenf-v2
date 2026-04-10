@@ -12,9 +12,9 @@ import { useMemberMonthlyGoals } from "@/components/member/hooks/useMemberMonthl
 function getTier(score: number): { label: string; color: string } {
   if (score >= 90) return { label: "Elite TENF", color: "#d4af37" };
   if (score >= 75) return { label: "Pilier", color: "#60a5fa" };
-  if (score >= 55) return { label: "Regulier", color: "#34d399" };
+  if (score >= 55) return { label: "Régulier", color: "#34d399" };
   if (score >= 35) return { label: "En progression", color: "#f59e0b" };
-  return { label: "Demarrage", color: "#f87171" };
+  return { label: "Démarrage", color: "#f87171" };
 }
 
 function clampPercent(value: number): number {
@@ -25,7 +25,7 @@ function clampPercent(value: number): number {
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
@@ -81,7 +81,7 @@ export default function MemberProgressionPage() {
       id: `formation-${item.id}-${item.date}`,
       title: item.title,
       date: item.date,
-      subtitle: "Formation validee",
+      subtitle: "Formation validée",
     }));
 
     const presences = (data.eventPresenceHistory || []).map((item) => ({
@@ -89,7 +89,7 @@ export default function MemberProgressionPage() {
       id: `presence-${item.id}-${item.date}`,
       title: item.title,
       date: item.date,
-      subtitle: item.category || "Evenement",
+      subtitle: item.category || "Événement",
     }));
 
     return [...formations, ...presences]
@@ -98,7 +98,7 @@ export default function MemberProgressionPage() {
   }, [data]);
 
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement de ta progression...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Ma progression" description={error || "Donnees indisponibles."} />;
+  if (error || !data) return <EmptyFeatureCard title="Ma progression" description={error || "Données indisponibles."} />;
 
   const formationsThisMonth =
     data.stats.formationsValidatedThisMonth ??
@@ -117,7 +117,7 @@ export default function MemberProgressionPage() {
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Ma progression" description="Une vue claire et premium de ton evolution membre." badge={tier.label} />
+      <MemberPageHeader title="Ma progression" description="Une vue claire et premium de ton évolution membre." badge={tier.label} />
 
       <section
         className="rounded-2xl border p-5 md:p-6"
@@ -138,7 +138,7 @@ export default function MemberProgressionPage() {
                 {totalScore}% de tes objectifs atteints
               </h2>
               <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Mois suivi: {formatMonthLabel(monthKey)} - continue sur ce rythme pour consolider ton niveau.
+                Mois suivi : {formatMonthLabel(monthKey)} - continue sur ce rythme pour consolider ton niveau.
               </p>
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function MemberProgressionPage() {
               </div>
               <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
                 <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  Presences
+                  Présences
                 </p>
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                   {data.stats.eventPresencesThisMonth}
@@ -187,7 +187,7 @@ export default function MemberProgressionPage() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <ProgressGoalCard label="Objectif raids du mois" current={data.stats.raidsThisMonth} target={goals.raids} />
-        <ProgressGoalCard label="Objectif presences du mois" current={data.stats.eventPresencesThisMonth} target={goals.events} />
+        <ProgressGoalCard label="Objectif présences du mois" current={data.stats.eventPresencesThisMonth} target={goals.events} />
         <ProgressGoalCard label="Objectif formations du mois" current={formationsThisMonth} target={goals.formations} />
         <ProgressGoalCard label="Profil complet" current={data.profile.percent} target={100} />
       </section>
@@ -197,7 +197,7 @@ export default function MemberProgressionPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
               <TrendingUp size={17} />
-              Tendance de presence
+              Tendance de présence
             </h3>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
               6 derniers mois
@@ -206,7 +206,7 @@ export default function MemberProgressionPage() {
           <div className="space-y-3">
             {trendData.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Pas assez de donnees pour afficher ta tendance.
+                Pas assez de données pour afficher ta tendance.
               </p>
             ) : (
               trendData.map((entry) => (
@@ -240,7 +240,7 @@ export default function MemberProgressionPage() {
           <div className="space-y-2">
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Raids pour atteindre l objectif
+                Raids pour atteindre l'objectif
               </p>
               <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                 {Math.max(0, goals.raids - data.stats.raidsThisMonth)} restant(s)
@@ -248,7 +248,7 @@ export default function MemberProgressionPage() {
             </div>
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Presences pour atteindre l objectif
+                Présences pour atteindre l'objectif
               </p>
               <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                 {Math.max(0, goals.events - data.stats.eventPresencesThisMonth)} restant(s)
@@ -256,7 +256,7 @@ export default function MemberProgressionPage() {
             </div>
             <div className="rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Formations pour atteindre l objectif
+                Formations pour atteindre l'objectif
               </p>
               <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
                 {Math.max(0, goals.formations - formationsThisMonth)} restante(s)
@@ -270,11 +270,11 @@ export default function MemberProgressionPage() {
         <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             <CalendarDays size={17} />
-            Prochains evenements
+            Prochains événements
           </h3>
           {data.upcomingEvents.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Aucun evenement a venir pour le moment.
+              Aucun événement à venir pour le moment.
             </p>
           ) : (
             <div className="space-y-2">
@@ -293,11 +293,11 @@ export default function MemberProgressionPage() {
         <article className="rounded-xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
             <Award size={17} />
-            Moments recents
+            Moments récents
           </h3>
           {recentMoments.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Pas encore d activite recente a afficher.
+              Pas encore d'activité récente à afficher.
             </p>
           ) : (
             <div className="space-y-2">
@@ -324,7 +324,7 @@ export default function MemberProgressionPage() {
                     }}
                   >
                     {item.type === "formation" ? <Rocket size={12} /> : <ChevronRight size={12} />}
-                    {item.type === "formation" ? "Formation" : "Presence"}
+                    {item.type === "formation" ? "Formation" : "Présence"}
                   </span>
                 </div>
               ))}

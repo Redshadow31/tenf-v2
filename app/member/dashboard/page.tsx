@@ -59,7 +59,7 @@ function resolveAccent(role: string | undefined, vipActive: boolean, discordId?:
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "Non planifiee";
+  if (!value) return "Non planifiée";
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
@@ -100,22 +100,22 @@ function getProgressPercent(current: number, target: number): number {
 function getEncouragementByProgress(progress: number, segment: "newbie" | "growth" | "development" | "vip"): string {
   if (progress >= 100) {
     if (segment === "vip") return "Objectifs atteints. Niveau VIP confirme, bravo.";
-    if (segment === "newbie") return "Objectifs valides. Excellent demarrage, bravo.";
+    if (segment === "newbie") return "Objectifs valides. Excellent démarrage, bravo.";
     if (segment === "development") return "Objectifs valides. Progression solide ce mois-ci.";
-    return "Objectifs valides. Super regularite, bravo.";
+    return "Objectifs valides. Super régularité, bravo.";
   }
-  if (progress >= 80) return "Tu es dans la derniere ligne droite. Continue comme ca.";
-  if (progress >= 50) return "Tres bon rythme. Encore un effort pour valider le mois.";
-  return "Le mois est bien lance. Une action maintenant fera la difference.";
+  if (progress >= 80) return "Tu es dans la dernière ligne droite. Continue comme ça.";
+  if (progress >= 50) return "Très bon rythme. Encore un effort pour valider le mois.";
+  return "Le mois est bien lancé. Une action maintenant fera la différence.";
 }
 
 function getCardFeedback(current: number, target: number, remaining: number): string {
   const progress = getProgressPercent(current, target);
-  if (remaining <= 0) return "Bravo, objectif valide ce mois-ci.";
-  if (remaining === 1) return "Felicitations pour ta progression: plus qu une etape.";
-  if (progress >= 75) return "Tres bien joue: tu approches du palier final.";
-  if (progress >= 40) return "Belle dynamique, continue comme ca.";
-  return "C est le bon moment pour lancer cet objectif cette semaine.";
+  if (remaining <= 0) return "Bravo, objectif validé ce mois-ci.";
+  if (remaining === 1) return "Félicitations pour ta progression : plus qu'une étape.";
+  if (progress >= 75) return "Très bien joué : tu approches du palier final.";
+  if (progress >= 40) return "Belle dynamique, continue comme ça.";
+  return "C'est le bon moment pour lancer cet objectif cette semaine.";
 }
 
 function getImpactTone(impact: number): { label: string; bg: string; border: string; text: string } {
@@ -129,7 +129,7 @@ function getImpactTone(impact: number): { label: string; bg: string; border: str
   }
   if (impact >= 100) {
     return {
-      label: "Impact eleve",
+      label: "Impact élevé",
       bg: "rgba(245, 158, 11, 0.16)",
       border: "rgba(245, 158, 11, 0.4)",
       text: "#fcd34d",
@@ -262,7 +262,7 @@ export default function MemberDashboardPage() {
             Dashboard ultra premium
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Synthese de ton activite et de tes prochaines actions.
+            Synthèse de ton activité et de tes prochaines actions.
           </p>
         </section>
         <EmptyFeatureCard title="Dashboard indisponible" description={error || "Impossible de charger les informations membre."} />
@@ -270,7 +270,7 @@ export default function MemberDashboardPage() {
     );
   }
 
-  const integrationLabel = data.member.integrationDate ? `Faite le ${formatDate(data.member.integrationDate)}` : "Non faite";
+  const integrationLabel = data.member.integrationDate ? `Effectuée le ${formatDate(data.member.integrationDate)}` : "Non effectuée";
   const displayName = data.member.displayName || data.member.twitchLogin;
   const firstName = displayName.split(" ")[0] || "Membre";
   const vipActive = Boolean(data.vip?.activeThisMonth);
@@ -295,7 +295,7 @@ export default function MemberDashboardPage() {
 
   const remainingCards = [
     {
-      label: "Raids a faire",
+      label: "Raids à faire",
       current: data.stats.raidsThisMonth,
       target: raidsTarget,
       remaining: raidsRemaining,
@@ -303,7 +303,7 @@ export default function MemberDashboardPage() {
       icon: Rocket,
     },
     {
-      label: "Presences a faire",
+      label: "Présences à faire",
       current: data.stats.eventPresencesThisMonth,
       target: presencesTarget,
       remaining: presencesRemaining,
@@ -311,7 +311,7 @@ export default function MemberDashboardPage() {
       icon: Calendar,
     },
     {
-      label: "Profil a completer",
+      label: "Profil à compléter",
       current: data.profile.percent,
       target: 100,
       remaining: profileRemaining,
@@ -319,7 +319,7 @@ export default function MemberDashboardPage() {
       icon: UserCircle2,
     },
     {
-      label: "Engagement a booster",
+      label: "Engagement à booster",
       current: engagementCurrent,
       target: engagementTarget,
       remaining: engagementRemaining,
@@ -337,7 +337,7 @@ export default function MemberDashboardPage() {
           impact: 140,
           href: "/member/raids/historique",
           label: "Faire un raid cette semaine",
-          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}. Consulte tes raids pour voir ou tu en es et continue sur ta belle dynamique.`,
+          detail: `${raidsRemaining} raid(s) restant(s) avant le ${monthDeadline}. Consulte tes raids pour voir où tu en es et continue sur ta belle dynamique.`,
         }
       : null,
     vipActive
@@ -345,14 +345,14 @@ export default function MemberDashboardPage() {
           impact: 130,
           href: "/member/vip",
           label: "Consulter ton acces prioritaire",
-          detail: "Ton statut VIP est actif ce mois: profite de ton espace VIP dedie.",
+          detail: "Ton statut VIP est actif ce mois : profite de ton espace VIP dédié.",
         }
       : null,
     !data.profile.completed
       ? {
           impact: 100,
           href: "/member/profil/completer",
-          label: "Completer ton profil",
+          label: "Compléter ton profil",
           detail: `Il te reste ${profileRemaining}% pour finaliser ton profil.`,
         }
       : null,
@@ -360,8 +360,8 @@ export default function MemberDashboardPage() {
       ? {
           impact: 90,
           href: "/member/evenements",
-          label: "Planifier ta prochaine presence",
-          detail: `${presencesRemaining} presence(s) restante(s) avant le ${monthDeadline}.`,
+          label: "Planifier ta prochaine présence",
+          detail: `${presencesRemaining} présence(s) restante(s) avant le ${monthDeadline}.`,
         }
       : null,
     segment === "newbie"
@@ -369,7 +369,7 @@ export default function MemberDashboardPage() {
           impact: 88,
           href: "/member/profil/completer",
           label: "Finaliser ton onboarding",
-          detail: "Active ton profil et tes infos de base pour bien demarrer.",
+          detail: "Active ton profil et tes infos de base pour bien démarrer.",
         }
       : null,
     segment === "development"
@@ -377,14 +377,14 @@ export default function MemberDashboardPage() {
           impact: 87,
           href: "/member/formations",
           label: "Continuer tes formations",
-          detail: "Passe un jalon formation cette semaine pour accelerer ta progression.",
+          detail: "Passe un jalon formation cette semaine pour accélérer ta progression.",
         }
       : null,
     recommendedEvent
       ? {
           impact: 85,
           href: "/member/evenements",
-          label: "T inscrire au prochain evenement",
+          label: "T'inscrire au prochain événement",
           detail: `${recommendedEvent.title} - ${formatDateTime(recommendedEvent.date)}.`,
         }
       : null,
@@ -412,14 +412,14 @@ export default function MemberDashboardPage() {
       id: `formation-${item.id}-${item.date}`,
       date: item.date,
       title: item.title,
-      type: "Formation validee",
+      type: "Formation validée",
       color: "rgba(34, 197, 94, 0.28)",
     })),
     ...data.eventPresenceHistory.map((item) => ({
       id: `presence-${item.id}-${item.date}`,
       date: item.date,
       title: item.title,
-      type: `Presence - ${item.category}`,
+      type: `Présence - ${item.category}`,
       color: "rgba(59, 130, 246, 0.28)",
     })),
   ]
@@ -439,8 +439,8 @@ export default function MemberDashboardPage() {
   }).length;
   const weekEncouragement =
     validatedThisWeek > 0
-      ? `Bravo: ${validatedThisWeek} action(s) validee(s) sur les 7 derniers jours.`
-      : "Aucune action validee cette semaine: choisis une priorite et lance-toi.";
+      ? `Bravo : ${validatedThisWeek} action(s) validée(s) sur les 7 derniers jours.`
+      : "Aucune action validée cette semaine : choisis une priorité et lance-toi.";
 
   return (
     <MemberSurface>
@@ -462,13 +462,13 @@ export default function MemberDashboardPage() {
               Bonjour {firstName}, bienvenue dans ton espace membre.
             </h1>
             <p className="mt-3 text-sm md:text-base" style={{ color: "rgba(236, 236, 239, 0.84)" }}>
-              Etat du mois: {mainAction.detail}
+              État du mois : {mainAction.detail}
             </p>
             <p className="mt-2 text-sm" style={{ color: "rgba(236,236,239,0.78)" }}>
               {encouragement} {weekEncouragement}
             </p>
             <p className="mt-2 text-xs" style={{ color: "rgba(229,229,235,0.74)" }}>
-              Objectifs actifs du mois: {raidsTarget} raids, {presencesTarget} presences.
+              Objectifs actifs du mois : {raidsTarget} raids, {presencesTarget} présences.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span
@@ -503,17 +503,17 @@ export default function MemberDashboardPage() {
                 }}
               >
                 <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                  Bienvenue dans la communaute TENF.
+                  Bienvenue dans la communauté TENF.
                 </p>
                 <p className="mt-1 text-sm" style={{ color: "rgba(236,236,239,0.82)" }}>
-                  Pour bien demarrer, inscris-toi a une reunion d integration.
+                  Pour bien démarrer, inscris-toi à une réunion d'intégration.
                 </p>
                 <a
                   href="https://tenf-community.com/integration"
                   className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-[1px]"
                   style={{ backgroundColor: hexToRgba(accent, 0.95), color: "#201b12" }}
                 >
-                  S inscrire a une reunion d integration
+                  S'inscrire à une réunion d'intégration
                   <ArrowUpRight size={14} />
                 </a>
               </div>
@@ -536,7 +536,7 @@ export default function MemberDashboardPage() {
                   color: hexToRgba(accent, 0.95),
                 }}
               >
-                Conseil du moment: fais un raid cette semaine
+                Conseil du moment : fais un raid cette semaine
               </div>
             ) : (
               <Link
@@ -549,7 +549,7 @@ export default function MemberDashboardPage() {
               </Link>
             )}
             <p className="mt-2 text-xs text-center" style={{ color: "rgba(229, 229, 235, 0.76)" }}>
-              Objectifs mensuels a valider avant le {monthDeadline}
+              Objectifs mensuels à valider avant le {monthDeadline}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {isRaidAdviceMainAction ? (
@@ -611,7 +611,7 @@ export default function MemberDashboardPage() {
               />
             </div>
             <p className="mt-2 text-xs" style={{ color: "rgba(214, 214, 224, 0.72)" }}>
-              {item.label === "Engagement a booster"
+              {item.label === "Engagement à booster"
                 ? followStats.loading
                   ? "Chargement du score follow..."
                   : !followStats.authenticated
@@ -622,7 +622,7 @@ export default function MemberDashboardPage() {
                 : getCardFeedback(item.current, item.target, item.remaining)}
             </p>
             <Link href={item.href} className="mt-3 inline-flex items-center gap-1 text-xs hover:opacity-85" style={{ color: hexToRgba(accent, 0.9) }}>
-              Passer a l action
+              Passer à l'action
               <ArrowUpRight size={12} />
             </Link>
           </article>
@@ -639,7 +639,7 @@ export default function MemberDashboardPage() {
         >
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-              Priorites de cette semaine
+              Priorités de cette semaine
             </h2>
             <span className="inline-flex items-center gap-1 text-xs" style={{ color: hexToRgba(accent, 0.88) }}>
               <ListTodo size={14} />
@@ -649,7 +649,7 @@ export default function MemberDashboardPage() {
           <div className="mt-4 space-y-4">
             {prioritizedActions.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Tu es a jour cette semaine. Garde le rythme.
+                Tu es à jour cette semaine. Garde le rythme.
               </p>
             ) : (
               prioritizedActions.map((action, index) => (
@@ -696,32 +696,32 @@ export default function MemberDashboardPage() {
           <div className="mt-4 rounded-lg border px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
             <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
               <Flag size={14} style={{ color: hexToRgba(accent, 0.92) }} />
-              Score d engagement: {data.stats.participationThisMonth}
+              Score d'engagement : {data.stats.participationThisMonth}
             </p>
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Actions validees ce mois (raids + presences).
+              Actions validées ce mois (raids + présences).
             </p>
             <Link href="/member/engagement/score" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold hover:opacity-85" style={{ color: hexToRgba(accent, 0.92) }}>
-              Voir le detail du score
+              Voir le détail du score
               <ArrowUpRight size={12} />
             </Link>
           </div>
           <div className="mt-4 space-y-2">
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
               Il te reste <strong style={{ color: "var(--color-text)" }}>{raidsRemaining} raid(s)</strong> et{" "}
-              <strong style={{ color: "var(--color-text)" }}>{presencesRemaining} presence(s)</strong> avant la fin du mois.
+              <strong style={{ color: "var(--color-text)" }}>{presencesRemaining} présence(s)</strong> avant la fin du mois.
             </p>
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
-              Recommandation: {recommendedEvent ? "inscris-toi au prochain evenement conseille." : "consulte le planning pour bloquer un creneau."}
+              Recommandation : {recommendedEvent ? "inscris-toi au prochain événement conseillé." : "consulte le planning pour bloquer un créneau."}
             </p>
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
-              Formations validees ce mois: <strong style={{ color: "var(--color-text)" }}>{formationsThisMonth}</strong>.
+              Formations validées ce mois : <strong style={{ color: "var(--color-text)" }}>{formationsThisMonth}</strong>.
             </p>
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
-              Integrations: <strong style={{ color: "var(--color-text)" }}>{integrationLabel}</strong>.
+              Intégrations : <strong style={{ color: "var(--color-text)" }}>{integrationLabel}</strong>.
             </p>
             <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" }}>
-              Progression globale du mois: <strong style={{ color: "var(--color-text)" }}>{globalProgress}%</strong>. {encouragement}
+              Progression globale du mois : <strong style={{ color: "var(--color-text)" }}>{globalProgress}%</strong>. {encouragement}
             </p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -747,7 +747,7 @@ export default function MemberDashboardPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-2xl border p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-            Prochain evenement conseille
+            Prochain événement conseillé
           </h2>
           {recommendedEvent ? (
             <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
@@ -758,15 +758,15 @@ export default function MemberDashboardPage() {
                 {formatDateTime(recommendedEvent.date)} - {recommendedEvent.category}
               </p>
               <p className="mt-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Recommandation: reserve ce creneau pour avancer sur tes objectifs du mois.
+                Recommandation : réserve ce créneau pour avancer sur tes objectifs du mois.
               </p>
               <Link href="/member/evenements" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold hover:opacity-85" style={{ color: hexToRgba(accent, 0.9) }}>
-                Ouvrir le planning et s inscrire
+                Ouvrir le planning et s'inscrire
                 <ArrowUpRight size={14} />
               </Link>
             </div>
           ) : (
-            <EmptyFeatureCard title="Prochain evenement conseille" description="Aucun evenement publie pour le moment." icon={Clock3} />
+            <EmptyFeatureCard title="Prochain événement conseillé" description="Aucun événement publié pour le moment." icon={Clock3} />
           )}
         </article>
 
@@ -777,7 +777,7 @@ export default function MemberDashboardPage() {
           <div className="mt-3 space-y-2">
             {recentTimeline.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Pas encore d actions validees a afficher.
+                Pas encore d'actions validées à afficher.
               </p>
             ) : (
               recentTimeline.map((entry) => (

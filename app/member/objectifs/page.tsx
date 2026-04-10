@@ -15,7 +15,7 @@ function isSpotlightCategory(category?: string): boolean {
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
@@ -35,18 +35,18 @@ function progressPercent(current: number, target: number): number {
 function objectiveMessage(current: number, target: number): string {
   const remaining = Math.max(0, target - current);
   const progress = progressPercent(current, target);
-  if (remaining <= 0) return "Objectif valide, excellent travail.";
-  if (remaining === 1) return "Plus qu une action pour valider cet objectif.";
-  if (progress >= 75) return "Tu es proche du palier, continue comme ca.";
+  if (remaining <= 0) return "Objectif validé, excellent travail.";
+  if (remaining === 1) return "Plus qu'une action pour valider cet objectif.";
+  if (progress >= 75) return "Tu es proche du palier, continue comme ça.";
   if (progress >= 40) return "Bonne dynamique, garde le rythme.";
-  return "Priorite du mois: lance cet objectif des maintenant.";
+  return "Priorité du mois : lance cet objectif dès maintenant.";
 }
 
 function globalObjectiveMessage(score: number): string {
   if (score >= 100) return "Tous tes objectifs de ce mois sont atteints. Bravo.";
-  if (score >= 80) return "Derniere ligne droite: tu peux valider ce mois rapidement.";
-  if (score >= 50) return "Tres belle progression. Encore un effort pour finaliser le mois.";
-  return "Le mois est en cours: une action aujourd hui peut tout lancer.";
+  if (score >= 80) return "Dernière ligne droite : tu peux valider ce mois rapidement.";
+  if (score >= 50) return "Très belle progression. Encore un effort pour finaliser le mois.";
+  return "Le mois est en cours : une action aujourd'hui peut tout lancer.";
 }
 
 type GoalKey = "events" | "spotlight" | "raids" | "formations";
@@ -128,10 +128,10 @@ export default function MemberGoalsPage() {
   const globalScore = Math.round((eventsProgress + spotlightProgress + raidsProgress + formationsProgress) / 4);
   const globalMessage = globalObjectiveMessage(globalScore);
   const objectives = [
-    { key: "events" as const, label: "Presence evenements (general)", current: eventsCurrent, target: goals.events, progress: eventsProgress },
-    { key: "spotlight" as const, label: "Presence spotlight", current: spotlightCurrent, target: goals.spotlight, progress: spotlightProgress },
+    { key: "events" as const, label: "Présence événements (général)", current: eventsCurrent, target: goals.events, progress: eventsProgress },
+    { key: "spotlight" as const, label: "Présence spotlight", current: spotlightCurrent, target: goals.spotlight, progress: spotlightProgress },
     { key: "raids" as const, label: "Raids TENF", current: raidsForMonth, target: goals.raids, progress: raidsProgress },
-    { key: "formations" as const, label: "Formations a valider", current: formationsCurrent, target: goals.formations, progress: formationsProgress },
+    { key: "formations" as const, label: "Formations à valider", current: formationsCurrent, target: goals.formations, progress: formationsProgress },
   ];
   const validatedCount = objectives.filter((objective) => Boolean(validatedGoals[objective.key])).length;
   const validationProgress = Math.round((validatedCount / objectives.length) * 100);
@@ -158,8 +158,8 @@ export default function MemberGoalsPage() {
     <MemberSurface>
       <MemberPageHeader
         title="Objectifs du mois"
-        description="Definis tes objectifs mensuels depuis un seul espace: presences, spotlight, raids TENF et formations."
-        badge="Objectifs personnalises"
+        description="Définis tes objectifs mensuels depuis un seul espace : présences, spotlight, raids TENF et formations."
+        badge="Objectifs personnalisés"
       />
 
       <section className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
@@ -167,10 +167,10 @@ export default function MemberGoalsPage() {
           <div>
             <p className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
               <Flag size={14} style={{ color: "var(--color-primary)" }} />
-              Encadre engagement
+              Repères d'engagement
             </p>
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Consulte ton score d engagement et son detail pour ajuster tes objectifs du mois.
+              Consulte ton score d'engagement et son détail pour ajuster tes objectifs du mois.
             </p>
           </div>
           <Link
@@ -178,7 +178,7 @@ export default function MemberGoalsPage() {
             className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold hover:opacity-85"
             style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
           >
-            Ouvrir mon score d engagement
+            Ouvrir mon score d'engagement
             <ArrowUpRight size={12} />
           </Link>
         </div>
@@ -188,7 +188,7 @@ export default function MemberGoalsPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <label className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Mois a parametrer
+              Mois à paramétrer
             </label>
             <select
               value={selectedMonth}
@@ -212,13 +212,13 @@ export default function MemberGoalsPage() {
             className="rounded-lg border px-3 py-2 text-sm font-semibold"
             style={{ borderColor: "rgba(255,255,255,0.18)", color: "var(--color-text-secondary)" }}
           >
-            Reinitialiser les objectifs de ce mois
+            Réinitialiser les objectifs de ce mois
           </button>
         </div>
 
         <div className="rounded-lg border p-3" style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}>
           <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            Progression globale: {globalScore}%
+            Progression globale : {globalScore}%
           </p>
           <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
             {globalMessage}
@@ -243,7 +243,7 @@ export default function MemberGoalsPage() {
               className="rounded-full border px-2.5 py-1 hover:opacity-85"
               style={{ borderColor: "rgba(255,255,255,0.2)", color: "var(--color-text)" }}
             >
-              Reinitialiser validations
+              Réinitialiser validations
             </button>
           </div>
           <div className="mt-2 h-2 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
@@ -280,7 +280,7 @@ export default function MemberGoalsPage() {
                       style={{ borderColor: "rgba(16,185,129,0.35)", color: "#9ae6b4", backgroundColor: "rgba(16,185,129,0.12)" }}
                     >
                       <ShieldCheck size={12} />
-                      Valide
+                      Validé
                     </span>
                   ) : null}
                 </div>
@@ -309,7 +309,7 @@ export default function MemberGoalsPage() {
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <span className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
-                    {validatedAt ? `Valide le ${new Date(validatedAt).toLocaleDateString("fr-FR")}` : "Non valide"}
+                    {validatedAt ? `Validé le ${new Date(validatedAt).toLocaleDateString("fr-FR")}` : "Non validé"}
                   </span>
                   <button
                     type="button"

@@ -165,7 +165,7 @@ export default function MemberProfileCompletePage() {
     () =>
       [
         (publicProfileForm.description || "").trim(),
-        publicProfileForm.games.trim() ? `Jeux proposes sur la chaine: ${publicProfileForm.games.trim()}` : "",
+        publicProfileForm.games.trim() ? `Jeux proposés sur la chaîne : ${publicProfileForm.games.trim()}` : "",
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -186,7 +186,7 @@ export default function MemberProfileCompletePage() {
   const activeTabIndex = TAB_ORDER.indexOf(activeTab);
   const identityChecks = [
     { label: "Pseudo Discord", done: form.discordUsername.trim().length > 0 },
-    { label: "Nom createur", done: form.creatorName.trim().length > 0 },
+    { label: "Nom créateur", done: form.creatorName.trim().length > 0 },
     { label: "Lien Twitch", done: form.twitchChannelUrl.trim().length > 0 },
     { label: "Parrain TENF", done: form.parrain.trim().length > 0 },
     { label: "Fuseau horaire", done: form.timezone.trim().length > 0 },
@@ -210,7 +210,7 @@ export default function MemberProfileCompletePage() {
     setCreateProfileSuccess(false);
     try {
       if (descriptionWithGames.length > MAX_DESCRIPTION) {
-        alert(`La description finale depasse ${MAX_DESCRIPTION} caracteres.`);
+        alert(`La description finale dépasse ${MAX_DESCRIPTION} caractères.`);
         return false;
       }
 
@@ -221,7 +221,7 @@ export default function MemberProfileCompletePage() {
       });
       const body = await res.json();
       if (!res.ok) {
-        alert(body.error || "Erreur lors de la creation du profil");
+        alert(body.error || "Erreur lors de la création du profil");
         return false;
       }
 
@@ -260,7 +260,7 @@ export default function MemberProfileCompletePage() {
   }
 
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement...</p>;
-  if (error) return <EmptyFeatureCard title="Completer mon profil" description={error} />;
+  if (error) return <EmptyFeatureCard title="Compléter mon profil" description={error} />;
 
   return (
     <MemberSurface>
@@ -276,10 +276,10 @@ export default function MemberProfileCompletePage() {
               <X size={16} />
             </button>
             <div className="mb-5 rounded-xl border border-emerald-400/20 bg-gradient-to-r from-emerald-500/20 via-cyan-400/10 to-purple-500/20 p-4">
-              <p className="text-xs uppercase tracking-[0.12em] text-emerald-300">Communaute TENF</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">Bienvenue dans la creation de ton Espace TENF</h2>
+              <p className="text-xs uppercase tracking-[0.12em] text-emerald-300">Communauté TENF</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">Bienvenue dans la création de ton Espace TENF</h2>
               <p className="mt-2 text-sm text-gray-200">
-                Complete d abord les infos essentielles. Le reste peut etre ajuste ensuite dans ton profil membre.
+                Complète d'abord les infos essentielles. Le reste peut être ajusté ensuite dans ton profil membre.
               </p>
             </div>
 
@@ -297,12 +297,12 @@ export default function MemberProfileCompletePage() {
                 <input value={form.twitchChannelUrl} onChange={(e) => setForm((prev) => ({ ...prev, twitchChannelUrl: e.target.value }))} placeholder="https://www.twitch.tv/pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-300">Nom du createur *</label>
+                <label className="mb-1 block text-sm text-gray-300">Nom du créateur *</label>
                 <input value={form.creatorName} onChange={(e) => setForm((prev) => ({ ...prev, creatorName: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-300">Parrain TENF * (pseudo ou nom du reseau social via lequel tu as decouvert TENF)</label>
-                <input value={form.parrain} onChange={(e) => setForm((prev) => ({ ...prev, parrain: e.target.value }))} placeholder="Ex: pseudo Twitch ou nom du reseau social" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
+                <label className="mb-1 block text-sm text-gray-300">Parrain TENF * (pseudo ou nom du réseau social via lequel tu as découvert TENF)</label>
+                <input value={form.parrain} onChange={(e) => setForm((prev) => ({ ...prev, parrain: e.target.value }))} placeholder="Ex : pseudo Twitch ou nom du réseau social" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-300">Fuseau horaire *</label>
@@ -335,14 +335,14 @@ export default function MemberProfileCompletePage() {
 
             <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm text-gray-300">Date d anniversaire (optionnel)</label>
+                <label className="mb-1 block text-sm text-gray-300">Date d'anniversaire (optionnel)</label>
                 <input type="date" value={form.birthday} onChange={(e) => setForm((prev) => ({ ...prev, birthday: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-300">Date d affiliation Twitch (optionnel)</label>
                 <input type="date" value={form.twitchAffiliateDate} onChange={(e) => setForm((prev) => ({ ...prev, twitchAffiliateDate: e.target.value }))} className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
                 <p className="mt-1 text-xs text-gray-400">
-                  Procedure: Tableau de bord createur {"->"} Parametres {"->"} Chaine {"->"} Evenements de streaming.
+                  Procédure : Tableau de bord créateur {"->"} Paramètres {"->"} Chaîne {"->"} Événements de streaming.
                 </p>
               </div>
             </div>
@@ -361,10 +361,10 @@ export default function MemberProfileCompletePage() {
                 <input value={publicProfileForm.twitter} onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, twitter: e.target.value }))} placeholder="pseudo" className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-400">Ces liens sont optionnels, mais utiles pour completer ton profil public.</p>
+            <p className="mt-2 text-xs text-gray-400">Ces liens sont optionnels, mais utiles pour compléter ton profil public.</p>
 
             <div className="mt-3">
-              <label className="mb-1 block text-sm text-gray-300">Descriptif de chaine (optionnel)</label>
+              <label className="mb-1 block text-sm text-gray-300">Descriptif de chaîne (optionnel)</label>
               <textarea
                 value={publicProfileForm.description}
                 onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -372,7 +372,7 @@ export default function MemberProfileCompletePage() {
                 placeholder="Tu peux aussi le remplir plus tard."
                 className="w-full rounded-lg border border-gray-700 bg-[#0f1317] px-3 py-2 text-white"
               />
-              <p className="mt-1 text-xs text-gray-400">Tu pourras revenir dessus plus tard sans bloquer ta creation d espace.</p>
+              <p className="mt-1 text-xs text-gray-400">Tu pourras revenir dessus plus tard sans bloquer ta création d'espace.</p>
             </div>
 
             <div className="sticky bottom-0 mt-5 flex flex-wrap gap-2 border-t border-white/10 bg-[#11161a]/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-[#11161a]/80">
@@ -403,16 +403,16 @@ export default function MemberProfileCompletePage() {
       ) : null}
 
       <MemberPageHeader
-        title="Completer mon profil"
-        description="Un seul formulaire pour activer et mettre a jour ton profil TENF."
+        title="Compléter mon profil"
+        description="Un seul formulaire pour activer et mettre à jour ton profil TENF."
       />
       {showWelcomeSuccessMessage ? (
         <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/15 p-4">
           <p className="text-sm font-semibold text-emerald-200">
-            Profil bien recu, et surtout : bienvenue officiellement dans la New Family TENF.
+            Profil bien reçu, et surtout : bienvenue officiellement dans la New Family TENF.
           </p>
           <p className="mt-1 text-xs text-emerald-100/90">
-            Ton espace membre est maintenant cree et pret a evoluer avec toi. Le staff prend le relais pour la validation finale, puis tu pourras profiter pleinement de toutes les fonctionnalites de la communaute.
+            Ton espace membre est maintenant créé et prêt à évoluer avec toi. Le staff prend le relais pour la validation finale, puis tu pourras profiter pleinement de toutes les fonctionnalités de la communauté.
           </p>
         </div>
       ) : null}
@@ -434,18 +434,18 @@ export default function MemberProfileCompletePage() {
               Termine les infos essentielles pour activer ton espace
             </h2>
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Tu peux soumettre meme si la bio publique est vide, puis enrichir plus tard.
+              Tu peux soumettre même si la bio publique est vide, puis enrichir plus tard.
             </p>
           </div>
           <div className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
-            Progression actuelle: <strong>{completionPercent}%</strong>
+            Progression actuelle : <strong>{completionPercent}%</strong>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
           <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <div className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               <UserCircle2 size={14} />
-              Identite
+              Identité
             </div>
             <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
               {identityDoneCount}/{identityChecks.length} champs obligatoires
@@ -457,7 +457,7 @@ export default function MemberProfileCompletePage() {
               Fiche publique
             </div>
             <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
-              {hasPublicDescription ? "Description ajoutee" : "Description optionnelle"}
+              {hasPublicDescription ? "Description ajoutée" : "Description optionnelle"}
             </p>
           </div>
           <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
@@ -471,9 +471,9 @@ export default function MemberProfileCompletePage() {
           </div>
         </div>
       </section>
-      <MemberInfoCard title="Parcours de completion">
+      <MemberInfoCard title="Parcours de complétion">
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Remplis les 2 onglets dans l ordre, puis envoie une seule soumission. Les changements restent en attente de validation staff.
+          Remplis les 2 onglets dans l'ordre, puis envoie une seule soumission. Les changements restent en attente de validation staff.
         </p>
         <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "rgba(145, 70, 255, 0.35)", backgroundColor: "var(--color-surface)" }}>
           <div className="mb-2 flex items-center justify-between text-sm">
@@ -490,13 +490,13 @@ export default function MemberProfileCompletePage() {
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2">
           <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-              Etape 1
+              Étape 1
             </p>
             <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
-              Identite TENF
+              Identité TENF
             </p>
             <p className="mt-1 text-xs" style={{ color: requiredIdentityReady ? "#22c55e" : "var(--color-text-secondary)" }}>
-              {requiredIdentityReady ? "Champs obligatoires completes." : "Completer les champs obligatoires (*)."}
+              {requiredIdentityReady ? "Champs obligatoires complétés." : "Compléter les champs obligatoires (*)."}
             </p>
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               {identityDoneCount}/{identityChecks.length} requis valides
@@ -504,13 +504,13 @@ export default function MemberProfileCompletePage() {
           </div>
           <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
             <p className="text-xs uppercase tracking-[0.08em]" style={{ color: "var(--color-text-secondary)" }}>
-              Etape 2
+              Étape 2
             </p>
             <p className="mt-1 text-sm font-medium" style={{ color: "var(--color-text)" }}>
               Fiche publique
             </p>
             <p className="mt-1 text-xs" style={{ color: hasPublicDescription ? "#22c55e" : "var(--color-text-secondary)" }}>
-              {hasPublicDescription ? "Description ajoutee (optionnelle)." : "Description optionnelle, tu peux la completer plus tard."}
+              {hasPublicDescription ? "Description ajoutée (optionnelle)." : "Description optionnelle, tu peux la compléter plus tard."}
             </p>
           </div>
         </div>
@@ -529,12 +529,12 @@ export default function MemberProfileCompletePage() {
             <span className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-2">
                 <UserCircle2 size={16} />
-                Onglet 1 - Identite TENF
+                Onglet 1 - Identité TENF
               </span>
               {requiredIdentityReady ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
             </span>
             <span className="mt-1 block text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Coordonnees, lien Twitch, parrainage, localisation.
+              Coordonnées, lien Twitch, parrainage, localisation.
             </span>
           </button>
           <button
@@ -555,7 +555,7 @@ export default function MemberProfileCompletePage() {
               {hasPublicDescription ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
             </span>
             <span className="mt-1 block text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Description, jeux proposes, et reseaux visibles.
+              Description, jeux proposés, et réseaux visibles.
             </span>
           </button>
         </div>
@@ -565,14 +565,14 @@ export default function MemberProfileCompletePage() {
             <section className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                  Identite TENF
+                  Identité TENF
                 </p>
                 <span className="text-xs rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                   {identityDoneCount}/{identityChecks.length} obligatoires
                 </span>
               </div>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Renseigne les informations d identification et d activation membre.
+                Renseigne les informations d'identification et d'activation membre.
               </p>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
                 <div>
@@ -580,7 +580,7 @@ export default function MemberProfileCompletePage() {
                   <input required value={form.discordUsername} onChange={(e) => setForm((prev) => ({ ...prev, discordUsername: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Nom du createur *</label>
+                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Nom du créateur *</label>
                   <input required value={form.creatorName} onChange={(e) => setForm((prev) => ({ ...prev, creatorName: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                 </div>
                 <div>
@@ -610,14 +610,14 @@ export default function MemberProfileCompletePage() {
                   <input value={form.parrain} onChange={(e) => setForm((prev) => ({ ...prev, parrain: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d anniversaire</label>
+                  <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d'anniversaire</label>
                   <input type="date" value={form.birthday} onChange={(e) => setForm((prev) => ({ ...prev, birthday: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Date d affiliation Twitch</label>
                   <input type="date" value={form.twitchAffiliateDate} onChange={(e) => setForm((prev) => ({ ...prev, twitchAffiliateDate: e.target.value }))} className="w-full rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }} />
                   <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    Procedure: Tableau de bord createur {">"} Parametres {">"} Chaine {">"} Evenements de streaming.
+                    Procédure : Tableau de bord créateur {">"} Paramètres {">"} Chaîne {">"} Événements de streaming.
                   </p>
                 </div>
               </div>
@@ -651,7 +651,7 @@ export default function MemberProfileCompletePage() {
                   Fiche publique
                 </p>
                 <span className="text-xs rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: hasPublicDescription ? "#22c55e" : "var(--color-text-secondary)" }}>
-                  {hasPublicDescription ? "Description ajoutee" : "Description optionnelle"}
+                  {hasPublicDescription ? "Description ajoutée" : "Description optionnelle"}
                 </span>
               </div>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -659,7 +659,7 @@ export default function MemberProfileCompletePage() {
               </p>
               <div>
                 <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                  Descriptif chaine (Markdown Discord) ({descriptionWithGames.length}/{MAX_DESCRIPTION})
+                  Descriptif chaîne (Markdown Discord) ({descriptionWithGames.length}/{MAX_DESCRIPTION})
                 </label>
                 <textarea
                   value={publicProfileForm.description}
@@ -670,11 +670,11 @@ export default function MemberProfileCompletePage() {
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)", minHeight: "220px" }}
                 />
                 <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  Supporte le Markdown Discord: **gras**, *italique*, __souligne__, &gt; citation.
+                  Supporte le Markdown Discord : **gras**, *italique*, __souligné__, &gt; citation.
                 </p>
               </div>
               <div>
-                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Jeux proposes sur la chaine</label>
+                <label className="mb-1 block text-sm" style={{ color: "var(--color-text-secondary)" }}>Jeux proposés sur la chaîne</label>
                 <input
                   value={publicProfileForm.games}
                   onChange={(e) => setPublicProfileForm((prev) => ({ ...prev, games: e.target.value }))}
@@ -725,7 +725,7 @@ export default function MemberProfileCompletePage() {
                 </div>
               </div>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Astuce: privilegie une description concise de ton style, ta frequence et tes jeux.
+                Astuce : privilégie une description concise de ton style, ta fréquence et tes jeux.
               </p>
               <div className="pt-1">
                 <button
@@ -734,7 +734,7 @@ export default function MemberProfileCompletePage() {
                   className="rounded-lg border px-4 py-2 text-sm"
                   style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                 >
-                  Revenir a l identite
+                  Revenir à l'identité
                 </button>
               </div>
             </section>
@@ -742,18 +742,18 @@ export default function MemberProfileCompletePage() {
 
           <div className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
             <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              Verification avant envoi: {requiredIdentityReady ? "Identite OK" : "Identite incomplete"} - {hasPublicDescription ? "Fiche publique enrichie" : "Fiche publique optionnelle"}
+              Vérification avant envoi : {requiredIdentityReady ? "Identité OK" : "Identité incomplète"} - {hasPublicDescription ? "Fiche publique enrichie" : "Fiche publique optionnelle"}
             </p>
             {!canSubmit ? (
               <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Remplis les champs obligatoires (*). La description de chaine peut etre ajoutee plus tard.
+                Remplis les champs obligatoires (*). La description de chaîne peut être ajoutée plus tard.
               </p>
             ) : null}
             {createProfileSuccess ? (
               <p className="mt-2 text-sm text-green-500">
                 {profileAlreadyCreated
-                  ? "Mise a jour enregistree avec succes. Merci pour ta confiance : l'equipe TENF traite maintenant ta demande."
-                  : "Creation terminee avec succes. Bienvenue officiellement dans la New Family TENF : ton aventure commence ici."}
+                  ? "Mise à jour enregistrée avec succès. Merci pour ta confiance : l'équipe TENF traite maintenant ta demande."
+                  : "Création terminée avec succès. Bienvenue officiellement dans la New Family TENF : ton aventure commence ici."}
               </p>
             ) : null}
           </div>
@@ -768,7 +768,7 @@ export default function MemberProfileCompletePage() {
               className="rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
               style={{ borderColor: "rgba(145, 70, 255, 0.60)", color: "var(--color-text)" }}
             >
-              {creatingProfile ? "Envoi..." : "Envoyer mon profil a valider"}
+              {creatingProfile ? "Envoi..." : "Envoyer mon profil à valider"}
             </button>
           </div>
         </form>

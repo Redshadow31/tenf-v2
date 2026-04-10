@@ -29,7 +29,7 @@ export default function MemberEngagementFriendsPage() {
             Mes Amis arrive bientot
           </h2>
           <p className="max-w-2xl text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-            Cette page accueillera prochainement tes connexions privilegiees TENF: membres favoris, suivi relationnel, et parcours d'entraide personnalise.
+            Cette page accueillera prochainement tes connexions privilégiées TENF : membres favoris, suivi relationnel, et parcours d'entraide personnalisé.
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <MiniPill label="Favoris" value="Bientot" />

@@ -31,7 +31,7 @@ function isFormationCategory(category?: string): boolean {
 function formatMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const monthIndex = Number(month) - 1;
-  const monthNames = ["Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   return `${monthNames[monthIndex] || "Mois"} ${year}`;
 }
 
@@ -46,9 +46,9 @@ function getLast12Months(): string[] {
 function getTier(validatedCount: number): { label: string; color: string } {
   if (validatedCount >= 4) return { label: "Masterclass", color: "#d4af37" };
   if (validatedCount >= 3) return { label: "Pilier", color: "#60a5fa" };
-  if (validatedCount >= 2) return { label: "Regulier", color: "#34d399" };
+  if (validatedCount >= 2) return { label: "Régulier", color: "#34d399" };
   if (validatedCount >= 1) return { label: "En route", color: "#f59e0b" };
-  return { label: "Demarrage", color: "#f87171" };
+  return { label: "Démarrage", color: "#f87171" };
 }
 
 function ProgressRing({ value }: { value: number }) {
@@ -171,11 +171,11 @@ export default function MemberValidatedFormationsPage() {
   const maxValidated = Math.max(1, ...sparklineData.map((item) => item.validated));
 
   if (loading) return <p style={{ color: "var(--color-text-secondary)" }}>Chargement des formations...</p>;
-  if (error || !data) return <EmptyFeatureCard title="Mes formations validees" description={error || "Donnees indisponibles."} />;
+  if (error || !data) return <EmptyFeatureCard title="Mes formations validées" description={error || "Données indisponibles."} />;
 
   return (
     <MemberSurface>
-      <MemberPageHeader title="Mes formations validees" description="Un espace premium pour suivre ta progression formation." badge={tier.label} />
+      <MemberPageHeader title="Mes formations validées" description="Un espace premium pour suivre ta progression formation." badge={tier.label} />
 
       <section className="rounded-xl border p-3 md:p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -217,7 +217,7 @@ export default function MemberValidatedFormationsPage() {
                 Mon mois formation
               </p>
               <h2 className="mt-2 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-                {currentMonthValidated} formation(s) validee(s) en {formatMonthLabel(selectedMonth)}
+                {currentMonthValidated} formation(s) validée(s) en {formatMonthLabel(selectedMonth)}
               </h2>
               <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 {remainingToTarget > 0
@@ -238,7 +238,7 @@ export default function MemberValidatedFormationsPage() {
                 </span>
               </div>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Modifie cet objectif depuis la page Objectifs pour garder la meme valeur partout.
+                Modifie cet objectif depuis la page Objectifs pour garder la même valeur partout.
               </p>
             </div>
 
@@ -288,14 +288,14 @@ export default function MemberValidatedFormationsPage() {
           <div className="space-y-3">
             {sparklineData.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Pas assez de donnees pour afficher la tendance.
+                Pas assez de données pour afficher la tendance.
               </p>
             ) : (
               sparklineData.map((entry) => (
                 <div key={entry.monthKey}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span style={{ color: "var(--color-text)" }}>{formatMonthLabel(entry.monthKey)}</span>
-                    <span style={{ color: "var(--color-text-secondary)" }}>{entry.validated} validee(s)</span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>{entry.validated} validée(s)</span>
                   </div>
                   <div className="h-2.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
                     <div
@@ -336,7 +336,7 @@ export default function MemberValidatedFormationsPage() {
             </div>
             <div className="rounded-lg border px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Total valide depuis le debut
+                Total validé depuis le début
               </p>
               <p className="mt-1 text-xl font-semibold" style={{ color: "var(--color-text)" }}>
                 {data.stats.formationsValidated}
@@ -354,12 +354,12 @@ export default function MemberValidatedFormationsPage() {
           </h3>
           <span className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
             <Flame size={14} />
-            Presences validees en formation
+            Présences validées en formation
           </span>
         </div>
         {selectedFormations.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Aucune formation validee sur {formatMonthLabel(selectedMonth)}.
+            Aucune formation validée sur {formatMonthLabel(selectedMonth)}.
           </p>
         ) : (
           <div className="space-y-2">
@@ -381,7 +381,7 @@ export default function MemberValidatedFormationsPage() {
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs" style={{ borderColor: "rgba(240,201,107,0.45)", color: "#f0c96b" }}>
                     <Award size={12} />
-                    Validee
+                    Validée
                   </span>
                   <span
                     className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold"

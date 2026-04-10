@@ -15,34 +15,34 @@ type CommunityEvent = {
 
 const TENF_EVENT_VALUES = [
   {
-    title: "Respect et ecoute",
-    description: "Chaque evenement est un espace ou chacun peut s exprimer et etre entendu.",
+    title: "Respect et écoute",
+    description: "Chaque événement est un espace où chacun peut s'exprimer et être entendu.",
     icon: Heart,
   },
   {
     title: "Ouverture communautaire",
-    description: "On favorise la rencontre entre profils differents pour enrichir la dynamique TENF.",
+    description: "On favorise la rencontre entre profils différents pour enrichir la dynamique TENF.",
     icon: Users,
   },
   {
     title: "Progression collective",
-    description: "Les evenements servent a apprendre ensemble, partager, et faire monter tout le monde.",
+    description: "Les événements servent à apprendre ensemble, partager, et faire monter tout le monde.",
     icon: Compass,
   },
 ];
 
 const EVENT_PARTICIPATION_GUIDELINES = [
   "Venir avec une posture positive, curieuse et respectueuse des autres membres.",
-  "Participer au rythme de chacun: contribuer sans pression ni jugement.",
-  "Encourager les nouveaux participants pour renforcer le sentiment d appartenance.",
-  "Valoriser les apprentissages partages, meme les plus simples.",
+  "Participer au rythme de chacun : contribuer sans pression ni jugement.",
+  "Encourager les nouveaux participants pour renforcer le sentiment d'appartenance.",
+  "Valoriser les apprentissages partagés, même les plus simples.",
 ];
 
 const EVENT_COMMUNITY_GUIDELINES = [
-  "Favoriser des echanges clairs et bienveillants dans le chat et en vocal.",
-  "Respecter les timings et les consignes pour fluidifier l experience de groupe.",
-  "Mettre en avant l entraide plutot que la performance individuelle.",
-  "Faire de chaque evenement un moment utile, inclusif et motivant.",
+  "Favoriser des échanges clairs et bienveillants dans le chat et en vocal.",
+  "Respecter les timings et les consignes pour fluidifier l'expérience de groupe.",
+  "Mettre en avant l'entraide plutôt que la performance individuelle.",
+  "Faire de chaque événement un moment utile, inclusif et motivant.",
 ];
 
 function categoryBadge(category: string): { bg: string; color: string; border: string } {
@@ -93,7 +93,7 @@ export default function MemberEventRegistrationsPage() {
           throw new Error("Impossible de charger tes inscriptions.");
         }
         if (!eventsResponse.ok) {
-          throw new Error("Impossible de charger les evenements.");
+          throw new Error("Impossible de charger les événements.");
         }
 
         const [registrationsBody, eventsBody] = await Promise.all([registrationsResponse.json(), eventsResponse.json()]);
@@ -132,8 +132,8 @@ export default function MemberEventRegistrationsPage() {
   return (
     <MemberSurface>
       <MemberPageHeader
-        title="Mon parcours evenements"
-        description="Retrouve tes inscriptions TENF et vis chaque evenement avec une dynamique bienveillante."
+        title="Mon parcours événements"
+        description="Retrouve tes inscriptions TENF et vis chaque événement avec une dynamique bienveillante."
       />
 
       <section
@@ -147,13 +147,13 @@ export default function MemberEventRegistrationsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.16em]" style={{ color: "rgba(240, 201, 107, 0.88)" }}>
-              Evenements TENF
+              Événements TENF
             </p>
             <h2 className="mt-2 text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
               Tes inscriptions, ton impact communautaire
             </h2>
             <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Suis tes evenements a venir, revis les temps forts passes, et incarne les valeurs TENF a chaque session.
+              Suis tes événements à venir, revois les temps forts passés, et incarne les valeurs TENF à chaque session.
             </p>
           </div>
         </div>
@@ -161,8 +161,8 @@ export default function MemberEventRegistrationsPage() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Inscriptions totales" value={registeredEvents.length} icon={<Ticket size={15} />} />
-        <StatCard label="Evenements a venir" value={upcoming.length} icon={<CalendarDays size={15} />} />
-        <StatCard label="Evenements termines" value={past.length} icon={<CheckCircle2 size={15} />} />
+        <StatCard label="Événements à venir" value={upcoming.length} icon={<CalendarDays size={15} />} />
+        <StatCard label="Événements terminés" value={past.length} icon={<CheckCircle2 size={15} />} />
         <StatCard label="Engagement TENF" value={registeredEvents.length > 0 ? 100 : 0} suffix="%" icon={<Sparkles size={15} />} />
       </section>
 
@@ -206,7 +206,7 @@ export default function MemberEventRegistrationsPage() {
           </h3>
         </div>
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          Une ligne de conduite simple pour vivre chaque evenement avec ouverture, respect et esprit d equipe.
+          Une ligne de conduite simple pour vivre chaque événement avec ouverture, respect et esprit d'équipe.
         </p>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {EVENT_PARTICIPATION_GUIDELINES.map((tip) => (
@@ -231,11 +231,11 @@ export default function MemberEventRegistrationsPage() {
         <div className="mb-2 flex items-center gap-2">
           <Users size={16} style={{ color: "#6ee7b7" }} />
           <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            Intention communautaire evenement TENF
+            Intention communautaire événement TENF
           </h3>
         </div>
         <p className="mb-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          Ces repères aident a faire des evenements TENF des moments utiles, inclusifs et memorables.
+          Ces repères aident à faire des événements TENF des moments utiles, inclusifs et mémorables.
         </p>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
           {EVENT_COMMUNITY_GUIDELINES.map((tip) => (
@@ -254,15 +254,15 @@ export default function MemberEventRegistrationsPage() {
         {loading ? (
           <p style={{ color: "var(--color-text-secondary)" }}>Chargement des inscriptions...</p>
         ) : error ? (
-          <EmptyFeatureCard title="Mon parcours evenements" description={error} />
+          <EmptyFeatureCard title="Mon parcours événements" description={error} />
         ) : registeredEvents.length === 0 ? (
-          <EmptyFeatureCard title="Mon parcours evenements" description="Tu n'es inscrit a aucun evenement pour le moment." />
+          <EmptyFeatureCard title="Mon parcours événements" description="Tu n'es inscrit à aucun événement pour le moment." />
         ) : (
           <div className="space-y-6">
             {upcoming.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                  Prochains evenements
+                  Prochains événements
                 </h3>
                 {upcoming.map((event) => {
                   const categoryStyles = categoryBadge(event.category);
@@ -309,7 +309,7 @@ export default function MemberEventRegistrationsPage() {
             {past.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                  Evenements termines
+                  Événements terminés
                 </h3>
                 {past.map((event) => (
                   <div
