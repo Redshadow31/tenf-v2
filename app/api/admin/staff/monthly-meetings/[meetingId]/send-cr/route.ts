@@ -99,6 +99,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
     let emailSentCount = 0;
     let emailSkippedNoAddress = 0;
     let emailFailedCount = 0;
+    const emailFailureMessages: string[] = [];
+
+    function pushFailureMessage(message: string) {
+      const m = message.trim().slice(0, 400);
+      if (!m || emailFailureMessages.includes(m)) return;
+      if (emailFailureMessages.length < 6) emailFailureMessages.push(m);
+    }
 
     if (isResendConfigured()) {
       const byDiscord = await memberRepository.findStaffNotificationEmailsByDiscordIds(uniqueRecipients);
@@ -132,6 +139,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
         if (result.ok) emailSentCount += 1;
         else {
           emailFailedCount += 1;
+          pushFailureMessage(result.message || `HTTP ${result.status}`);
           console.error(
             "[send-cr] E-mail non délivré pour",
             recipientDiscordId,
@@ -150,6 +158,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
             emailSentCount,
             emailSkippedNoAddress,
             emailFailedCount,
+            emailFailureMessages: emailFailureMessages.length ? emailFailureMessages : undefined,
             emailDisabled: false,
           }
         : { emailSentCount: 0, emailDisabled: true }),

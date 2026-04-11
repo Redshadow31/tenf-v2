@@ -54,8 +54,14 @@ export async function sendResendEmail(input: {
   if (!res.ok) {
     let message = res.statusText || "Erreur Resend";
     try {
-      const j = (await res.json()) as { message?: string };
+      const j = (await res.json()) as {
+        message?: string | string[];
+        error?: { message?: string } | string;
+      };
       if (typeof j?.message === "string" && j.message.trim()) message = j.message.trim();
+      else if (Array.isArray(j?.message) && j.message.length) message = j.message.map(String).join("; ");
+      else if (typeof j?.error === "object" && j.error?.message) message = String(j.error.message);
+      else if (typeof j?.error === "string" && j.error.trim()) message = j.error.trim();
     } catch {
       /* ignore */
     }

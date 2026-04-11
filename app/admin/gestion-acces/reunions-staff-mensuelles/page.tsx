@@ -502,8 +502,22 @@ export default function ReunionsStaffMensuellesPage() {
         const sk = typeof data.emailSkippedNoAddress === "number" ? data.emailSkippedNoAddress : 0;
         const fl = typeof data.emailFailedCount === "number" ? data.emailFailedCount : 0;
         if (es > 0) msg += ` Copie e-mail envoyée : ${es}.`;
-        if (sk > 0) msg += ` Sans e-mail (adresse non renseignée sur Mon compte) : ${sk}.`;
-        if (fl > 0) msg += ` Échec d’envoi e-mail : ${fl} (voir logs serveur).`;
+        if (sk > 0) {
+          msg += ` Sans e-mail (aucune adresse « notifications staff » en base pour ce compte : Admin → Mon compte) : ${sk}.`;
+        }
+        if (es === 0 && sk === n && fl === 0) {
+          msg +=
+            " Aucune copie mail : chaque destinataire doit enregistrer son e-mail sur Admin → Mon compte (et la migration base `staff_notification_email` doit être appliquée).";
+        }
+        if (fl > 0) {
+          msg += ` Échec d’envoi e-mail : ${fl}.`;
+          const errs = data.emailFailureMessages;
+          if (Array.isArray(errs) && errs.length > 0) {
+            msg += ` Resend : ${errs.join(" — ")}`;
+          } else {
+            msg += " Voir les logs Netlify (fonction send-cr).";
+          }
+        }
       }
       setFeedback(msg);
       setSendCrMeeting(null);
