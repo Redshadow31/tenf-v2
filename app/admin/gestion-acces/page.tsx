@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Users, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle2, X, Pencil } from "lucide-react";
+import {
+  Users,
+  Plus,
+  Trash2,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+  X,
+  Pencil,
+  Mail,
+  ScrollText,
+} from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AdminAccess {
@@ -13,6 +24,14 @@ interface AdminAccess {
   adminAlias?: string;
   avatar?: string;
   addedByUsername?: string; // Nom d'utilisateur de la personne qui a ajouté l'accès
+  /** Fiche `members` Supabase liée au Discord */
+  memberInSupabase?: boolean;
+  /** E-mail notifications staff (Admin → Mon compte) */
+  hasStaffNotificationEmail?: boolean;
+  /** Validation charte modération (stockage dédié) */
+  moderationCharterValidated?: boolean;
+  moderationCharterValidatedAt?: string | null;
+  moderationCharterVersion?: string | null;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -309,6 +328,9 @@ export default function GestionAccesPage() {
     const aliasCount = accessList.filter((entry) => String(entry.adminAlias || "").trim().length > 0).length;
     const noAliasCount = accessList.length - aliasCount;
     const noAvatarCount = accessList.filter((entry) => !entry.avatar).length;
+    const staffEmailCount = accessList.filter((entry) => entry.hasStaffNotificationEmail === true).length;
+    const charterOkCount = accessList.filter((entry) => entry.moderationCharterValidated === true).length;
+    const noSupabaseMemberCount = accessList.filter((entry) => entry.memberInSupabase === false).length;
 
     return {
       total: accessList.length,
@@ -317,6 +339,9 @@ export default function GestionAccesPage() {
       aliasCount,
       noAliasCount,
       noAvatarCount,
+      staffEmailCount,
+      charterOkCount,
+      noSupabaseMemberCount,
     };
   }, [accessList]);
 
@@ -370,7 +395,8 @@ export default function GestionAccesPage() {
                 Gestion des comptes administrateurs
               </h1>
               <p className="mt-3 text-sm text-slate-300">
-                Centre de contrôle des accès: attribution des rôles, gestion des pseudos admin et vérification des comptes verrouillés.
+                Centre de contrôle des accès: rôles, pseudos admin, e-mail staff et validation charte (Mon compte / charte
+                modération).
               </p>
             </div>
             <button
@@ -382,7 +408,7 @@ export default function GestionAccesPage() {
               {verifyingAccess ? "Vérification..." : "Vérifier les accès"}
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <article className={`${sectionCardClass} p-4`}>
               <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Comptes autorisés</p>
               <p className="mt-2 text-3xl font-semibold text-white">{accessMetrics.total}</p>
@@ -402,6 +428,18 @@ export default function GestionAccesPage() {
             <article className={`${sectionCardClass} p-4`}>
               <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sans avatar</p>
               <p className="mt-2 text-3xl font-semibold text-rose-200">{accessMetrics.noAvatarCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">E-mail staff renseigné</p>
+              <p className="mt-2 text-3xl font-semibold text-cyan-200">{accessMetrics.staffEmailCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Charte validée</p>
+              <p className="mt-2 text-3xl font-semibold text-teal-200">{accessMetrics.charterOkCount}</p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sans fiche Supabase</p>
+              <p className="mt-2 text-3xl font-semibold text-orange-200">{accessMetrics.noSupabaseMemberCount}</p>
             </article>
           </div>
         </section>
@@ -644,7 +682,10 @@ export default function GestionAccesPage() {
             </div>
           </div>
           <p className="px-4 pb-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            L'accès au dashboard admin est accordé uniquement aux personnes présentes dans cette liste. Alertes rapides: {accessMetrics.noAliasCount} sans alias, {accessMetrics.noAvatarCount} sans avatar.
+            L&apos;accès au dashboard admin est accordé uniquement aux personnes présentes dans cette liste. Colonnes{" "}
+            <strong className="text-slate-300">E-mail staff</strong> et <strong className="text-slate-300">Charte</strong>{" "}
+            : données Mon compte (Supabase) et validations charte (stockage TENF). {accessMetrics.noAliasCount} sans alias,{" "}
+            {accessMetrics.noAvatarCount} sans avatar.
           </p>
 
           {loading ? (
@@ -665,6 +706,18 @@ export default function GestionAccesPage() {
                     </th>
                     <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                       Rôle
+                    </th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                      <span className="inline-flex items-center justify-center gap-1" title="E-mail notifications staff (Mon compte)">
+                        <Mail className="h-3.5 w-3.5 opacity-80" />
+                        E-mail staff
+                      </span>
+                    </th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                      <span className="inline-flex items-center justify-center gap-1" title="Validation charte modération">
+                        <ScrollText className="h-3.5 w-3.5 opacity-80" />
+                        Charte
+                      </span>
                     </th>
                     <th className="text-left py-3 px-6 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                       Ajouté le
@@ -725,6 +778,42 @@ export default function GestionAccesPage() {
                         <span className={getRoleBadgeClass(access.role)}>
                           {ROLE_LABELS[access.role] || access.role}
                         </span>
+                      </td>
+                      <td className="py-4 px-4 text-center align-middle">
+                        {access.memberInSupabase === false ? (
+                          <span className="text-xs text-amber-400/95" title="Aucune ligne members pour ce Discord : Mon compte indisponible">
+                            Pas de fiche
+                          </span>
+                        ) : access.hasStaffNotificationEmail ? (
+                          <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-400" aria-label="E-mail staff renseigné" />
+                        ) : (
+                          <span className="text-xs text-slate-500" title="Admin → Mon compte : e-mail staff vide">
+                            Non
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-center align-middle">
+                        {access.moderationCharterValidated ? (
+                          <span
+                            className="inline-flex flex-col items-center gap-0.5"
+                            title={
+                              access.moderationCharterValidatedAt
+                                ? `Validée le ${new Date(access.moderationCharterValidatedAt).toLocaleString("fr-FR")}${access.moderationCharterVersion ? ` · ${access.moderationCharterVersion}` : ""}`
+                                : "Charte validée"
+                            }
+                          >
+                            <CheckCircle2 className="mx-auto h-5 w-5 text-teal-400" aria-label="Charte validée" />
+                            {access.moderationCharterValidatedAt ? (
+                              <span className="max-w-[5.5rem] truncate text-[10px] text-slate-500">
+                                {new Date(access.moderationCharterValidatedAt).toLocaleDateString("fr-FR")}
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-500" title="Aucune validation enregistrée pour ce membre">
+                            Non
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                         {access.addedAt && new Date(access.addedAt).getTime() > 0

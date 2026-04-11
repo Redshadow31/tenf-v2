@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  listModerationCharterValidations,
+  type ModerationCharterValidationEntry,
+} from '@/lib/moderationCharterValidationsStorage';
 import { requireRole } from '@/lib/requireAdmin';
 import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, normalizeAdminRole, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache } from '@/lib/adminAccessCache';
+import { memberRepository } from '@/lib/repositories';
 import { getBlobStore, getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
 const ACCESS_STORE = 'tenf-admin-access';
@@ -52,6 +57,19 @@ function parseStoredAccessEntries(parsed: StoredAdminAccessEntry[]): AdminAccess
 
 function getStoredEntryByDiscordId(storedAccessList: AdminAccess[], discordId: string): AdminAccess | undefined {
   return storedAccessList.find((entry) => entry.discordId === discordId);
+}
+
+/** Dernière validation charte par membre (liste déjà triée du plus récent au plus ancien). */
+function buildLatestCharterValidationByDiscordId(
+  entries: ModerationCharterValidationEntry[],
+): Map<string, { validatedAt: string; charterVersion: string }> {
+  const m = new Map<string, { validatedAt: string; charterVersion: string }>();
+  for (const e of entries) {
+    const id = String(e.validatedMemberDiscordId || "").trim();
+    if (!id || m.has(id)) continue;
+    m.set(id, { validatedAt: e.validatedAt, charterVersion: e.charterVersion || "" });
+  }
+  return m;
 }
 
 /**
@@ -237,7 +255,37 @@ export async function GET() {
         })
       );
 
-      return NextResponse.json({ accessList: enrichedList });
+      let monCompteFlags = new Map<
+        string,
+        { memberInSupabase: boolean; staffNotificationEmailConfigured: boolean }
+      >();
+      let charterByDiscord = new Map<string, { validatedAt: string; charterVersion: string }>();
+      try {
+        const ids = enrichedList.map((a) => a.discordId);
+        const [flags, charterEntries] = await Promise.all([
+          memberRepository.findAdminMonCompteFlagsByDiscordIds(ids),
+          listModerationCharterValidations(),
+        ]);
+        monCompteFlags = flags;
+        charterByDiscord = buildLatestCharterValidationByDiscordId(charterEntries);
+      } catch (enrichErr) {
+        console.warn('[Admin Access] Enrichissement Mon compte / charte ignoré:', enrichErr);
+      }
+
+      const withCompliance = enrichedList.map((access) => {
+        const f = monCompteFlags.get(access.discordId);
+        const ch = charterByDiscord.get(access.discordId);
+        return {
+          ...access,
+          memberInSupabase: f?.memberInSupabase ?? false,
+          hasStaffNotificationEmail: f?.staffNotificationEmailConfigured ?? false,
+          moderationCharterValidated: !!ch,
+          moderationCharterValidatedAt: ch?.validatedAt ?? null,
+          moderationCharterVersion: ch?.charterVersion ?? null,
+        };
+      });
+
+      return NextResponse.json({ accessList: withCompliance });
     } catch (error) {
       console.error('[Admin Access] Error enriching admin access list:', error);
       // En cas d'erreur, retourner la liste sans enrichissement plutôt que de tout casser

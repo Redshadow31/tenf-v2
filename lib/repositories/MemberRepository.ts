@@ -193,6 +193,39 @@ export class MemberRepository {
   }
 
   /**
+   * Pour chaque discord_id : présence en base + e-mail notifications staff renseigné (Mon compte admin).
+   */
+  async findAdminMonCompteFlagsByDiscordIds(
+    discordIds: string[],
+  ): Promise<Map<string, { memberInSupabase: boolean; staffNotificationEmailConfigured: boolean }>> {
+    const unique = [...new Set(discordIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    const out = new Map<string, { memberInSupabase: boolean; staffNotificationEmailConfigured: boolean }>();
+    for (const id of unique) {
+      out.set(id, { memberInSupabase: false, staffNotificationEmailConfigured: false });
+    }
+    if (unique.length === 0) return out;
+
+    const { data, error } = await supabaseAdmin
+      .from("members")
+      .select("discord_id, staff_notification_email")
+      .in("discord_id", unique);
+
+    if (error) throw error;
+
+    for (const row of data || []) {
+      const rec = row as { discord_id?: string | null; staff_notification_email?: string | null };
+      const id = typeof rec.discord_id === "string" ? rec.discord_id.trim() : "";
+      if (!id) continue;
+      const em = typeof rec.staff_notification_email === "string" ? rec.staff_notification_email.trim() : "";
+      out.set(id, {
+        memberInSupabase: true,
+        staffNotificationEmailConfigured: em.length > 0,
+      });
+    }
+    return out;
+  }
+
+  /**
    * Récupère les membres actifs avec pagination
    */
   async findActive(limit = 50, offset = 0): Promise<MemberData[]> {
