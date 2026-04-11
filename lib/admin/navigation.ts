@@ -29,6 +29,12 @@ export const adminNavigation: NavItem[] = [
     ],
   },
   {
+    href: "/admin/mon-compte",
+    label: "Mon compte",
+    icon: "👤",
+    sectionLabel: "COMPTE",
+  },
+  {
     href: "/admin/membres",
     label: "Gestion des membres",
     icon: "👥",
@@ -266,6 +272,7 @@ export const adminNavigation: NavItem[] = [
     sectionLabel: "MODÉRATION",
     children: [
       { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
+      { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
       { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
       { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
       { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
@@ -321,6 +328,7 @@ export const adminNavigation: NavItem[] = [
         label: "Modération",
         children: [
           { href: "/admin/moderation", label: "Dashboard modération" },
+          { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
           { href: "/admin/moderation/config/navigation-labels", label: "Config - Labels navigation" },
           { href: "/admin/moderation/config/roles-permissions", label: "Config - Rôles & permissions" },
           { href: "/admin/moderation/config/parametres", label: "Config - Paramètres" },
@@ -378,6 +386,11 @@ export const adminNavigationSimple: NavItem[] = [
       { href: "/admin/pilotage/data-health", label: "Qualité des données" },
       { href: "/admin/pilotage/release-readiness", label: "Préparation release" },
     ],
+  },
+  {
+    href: "/admin/mon-compte",
+    label: "Mon compte",
+    icon: "👤",
   },
   {
     href: "/admin/membres",
@@ -596,6 +609,7 @@ export const adminNavigationSimple: NavItem[] = [
     icon: "🛡️",
     children: [
       { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
+      { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
       {
         href: "/admin/moderation/staff/info",
         label: "Info",
@@ -668,6 +682,7 @@ export const adminNavigationSimple: NavItem[] = [
         label: "Modération",
         children: [
           { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
+          { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
           { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
           { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
           { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },

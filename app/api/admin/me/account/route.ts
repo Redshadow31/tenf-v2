@@ -101,15 +101,29 @@ export async function GET() {
     admin.username ||
     null;
 
+  const integrationDateIso = member?.integrationDate
+    ? (member.integrationDate instanceof Date
+        ? member.integrationDate.toISOString()
+        : new Date(member.integrationDate).toISOString())
+    : null;
+  const memberCreatedAtIso = member?.createdAt
+    ? (member.createdAt instanceof Date ? member.createdAt.toISOString() : new Date(member.createdAt).toISOString())
+    : null;
+
   const payload = {
     hasAdvancedAdminView: canViewSensitive,
     displayName: member?.displayName || admin.username,
+    siteUsername: member?.siteUsername ?? null,
     siteRole: member?.role ?? null,
     adminRole: admin.role,
     adminRoleLabel: labelForAdminRole(admin.role),
     discordUsername: discordUsernameDisplay,
     twitchLogin,
+    twitchDisplayNameLinked: linkedTwitch?.twitchDisplayName ?? null,
+    hasLinkedTwitchAccount: !!linkedTwitch,
     twitchUrl: member?.twitchUrl || (twitchLogin ? `https://www.twitch.tv/${twitchLogin}` : null),
+    integrationDateIso,
+    memberCreatedAtIso,
     charter: {
       currentVersion: CHARTER_VERSION,
       accepted: charterAccepted,
