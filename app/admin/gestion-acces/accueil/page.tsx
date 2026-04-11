@@ -65,6 +65,12 @@ const structureCards: QuickCard[] = [
     badge: "Organisation",
   },
   {
+    href: "/admin/gestion-acces/reunions-staff-mensuelles",
+    title: "Réunions mensuelles staff",
+    description: "Consigner chaque réunion avec la date et les discours (intervenants, contenus).",
+    badge: "Staff",
+  },
+  {
     href: "/admin/follow/config",
     title: "Configuration follow staff",
     description: "Piloter la configuration des feuilles de suivi staff.",

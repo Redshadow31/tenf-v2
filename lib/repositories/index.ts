@@ -11,3 +11,5 @@ export { vipRepository, VipRepository } from './VipRepository';
 export type { VipHistoryEntry } from './VipRepository';
 export { upaEventRepository, UpaEventRepository } from "./UpaEventRepository";
 export { staffOrgChartRepository, StaffOrgChartRepository } from "./StaffOrgChartRepository";
+export { staffMonthlyMeetingRepository, StaffMonthlyMeetingRepository } from "./StaffMonthlyMeetingRepository";
+export type { StaffMonthlyMeetingUpsertInput } from "./StaffMonthlyMeetingRepository";

@@ -310,6 +310,7 @@ export const adminNavigation: NavItem[] = [
         label: "Organisation staff",
         children: [
           { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
+          { href: "/admin/gestion-acces/reunions-staff-mensuelles", label: "Réunions mensuelles staff" },
           { href: "/admin/follow/config", label: "Configuration follow staff" },
         ],
       },
@@ -654,6 +655,7 @@ export const adminNavigationSimple: NavItem[] = [
         label: "Organisation staff",
         children: [
           { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
+          { href: "/admin/gestion-acces/reunions-staff-mensuelles", label: "Réunions mensuelles staff" },
           { href: "/admin/follow/config", label: "Configuration follow staff" },
         ],
       },
