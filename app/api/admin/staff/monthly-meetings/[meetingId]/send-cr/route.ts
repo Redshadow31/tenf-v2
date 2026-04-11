@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAllAdminIdsFromCache, loadAdminAccessCache } from "@/lib/adminAccessCache";
 import { requirePermission, requireSectionAccess } from "@/lib/requireAdmin";
+import { getDiscordIdsWithStaffModerationAccess } from "@/lib/staff/staffModerationRecipients";
 import { getBaseUrl } from "@/lib/config";
 import { isResendConfigured, sendResendEmail } from "@/lib/email/resendSend";
 import { generateMeetingCrMarkdown } from "@/lib/staff/generateMeetingCrMarkdown";
@@ -53,11 +53,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
       return NextResponse.json({ error: "Selectionne au moins un destinataire" }, { status: 400 });
     }
 
-    await loadAdminAccessCache();
-    const allowed = new Set(getAllAdminIdsFromCache());
+    const allowed = new Set(await getDiscordIdsWithStaffModerationAccess());
     const invalid = uniqueRecipients.filter((id) => !allowed.has(id));
     if (invalid.length > 0) {
-      return NextResponse.json({ error: "Destinataire non reconnu comme acces admin" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Destinataire sans accès modération staff (permissions par section)" },
+        { status: 400 },
+      );
     }
 
     const meeting = await staffMonthlyMeetingRepository.getById(meetingId);

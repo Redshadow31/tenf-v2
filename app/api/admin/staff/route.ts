@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminRoleFromCache, getAllAdminIdsFromCache, loadAdminAccessCache } from '@/lib/adminAccessCache';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { getAdminRole } from '@/lib/adminRoles';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import {
+  getDiscordIdsWithStaffModerationAccess,
+  resolveAdminRoleForDiscord,
+} from '@/lib/staff/staffModerationRecipients';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,27 +21,37 @@ export async function GET(request: NextRequest) {
     }
 
     await loadMemberDataFromStorage();
-    await loadAdminAccessCache();
     const allMembers = getAllMemberData();
-    const adminIdSet = new Set(getAllAdminIdsFromCache());
+    const staffAccessIds = new Set(await getDiscordIdsWithStaffModerationAccess());
 
-    // Filtrer les membres qui ont un accès admin (fondateurs + liste Gestion des accès)
-    const staffMembers = allMembers
-      .filter(member => {
-        if (!member.discordId) return false;
-        return adminIdSet.has(member.discordId);
-      })
-      .map(member => {
-        const role = getAdminRole(member.discordId!) ?? getAdminRoleFromCache(member.discordId!) ?? 'MODERATEUR_EN_FORMATION';
+    const fromMembers = allMembers
+      .filter((member) => member.discordId && staffAccessIds.has(member.discordId))
+      .map((member) => {
+        const role = resolveAdminRoleForDiscord(member.discordId!) ?? 'MODERATEUR_EN_FORMATION';
         return {
-          discordId: member.discordId,
+          discordId: member.discordId!,
           discordUsername: member.discordUsername || '',
           displayName: member.displayName || member.twitchLogin,
           twitchLogin: member.twitchLogin,
           role,
         };
-      })
-      .sort((a, b) => {
+      });
+
+    const seen = new Set(fromMembers.map((s) => s.discordId));
+    const withoutMemberRow: typeof fromMembers = [];
+    for (const discordId of staffAccessIds) {
+      if (seen.has(discordId)) continue;
+      const role = resolveAdminRoleForDiscord(discordId) ?? 'MODERATEUR_EN_FORMATION';
+      withoutMemberRow.push({
+        discordId,
+        discordUsername: '',
+        displayName: `Admin (hors liste membres · …${discordId.slice(-4)})`,
+        twitchLogin: '',
+        role,
+      });
+    }
+
+    const staffMembers = [...fromMembers, ...withoutMemberRow].sort((a, b) => {
         // Trier par rôle (FONDATEUR > ADMIN_COORDINATEUR > MODERATEUR > MODERATEUR_EN_FORMATION > MODERATEUR_EN_PAUSE > SOUTIEN_TENF)
         const roleOrder: Record<string, number> = {
           'FONDATEUR': 0,
