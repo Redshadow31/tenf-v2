@@ -46,6 +46,7 @@ const eventModules = [
 ];
 
 const quickActions = [
+  { href: "/admin/communaute/evenements/suivi", label: "Suivi par type", tone: "amber" },
   { href: "/admin/communaute/evenements/liste", label: "Liste des evenements", tone: "indigo" },
   { href: "/admin/communaute/evenements/propositions", label: "Propositions", tone: "sky" },
   { href: "/admin/communaute/evenements/liens-vocaux", label: "Liens vocaux", tone: "cyan" },
