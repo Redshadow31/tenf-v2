@@ -298,26 +298,37 @@ export default function ReunionsStaffMensuellesPage() {
     setSendBodyPreview(crBodyForMeeting(sendCrMeeting));
     setSendPreviewOpen(false);
     setSendStaffLoading(true);
+    let cancelled = false;
     void (async () => {
       try {
         const res = await fetch("/api/admin/staff", { cache: "no-store" });
         const data = await res.json();
         const staff = Array.isArray(data.staff) ? data.staff : [];
-        setSendStaff(
-          staff.map((s: { discordId: string; displayName?: string; role?: string }) => ({
-            discordId: String(s.discordId || ""),
+        const normalized = staff
+          .map((s: { discordId: string; displayName?: string; role?: string }) => ({
+            discordId: String(s.discordId || "").trim(),
             displayName: String(s.displayName || s.discordId || ""),
             role: String(s.role || ""),
-          })),
-        );
-        setSendSelectedIds([]);
+          }))
+          .filter((s) => s.discordId.length > 0);
+        if (cancelled) return;
+        setSendStaff(normalized);
+        /* Tout le staff : boîte sur le site pour chacun ; e-mail Resend seulement si adresse renseignée sur Mon compte. */
+        setSendSelectedIds([...new Set(normalized.map((s) => s.discordId))]);
       } catch {
-        setSendStaff([]);
-        setFeedback("Erreur : impossible de charger la liste du staff pour l’envoi.");
+        if (!cancelled) {
+          setSendStaff([]);
+          setSendSelectedIds([]);
+          setFeedback("Erreur : impossible de charger la liste du staff pour l’envoi.");
+        }
       } finally {
-        setSendStaffLoading(false);
+        if (!cancelled) setSendStaffLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+      setSendStaffLoading(false);
+    };
   }, [sendCrMeeting]);
 
   function openBrowseDiscoursFromMeeting(m: StaffMonthlyMeeting) {
@@ -1394,15 +1405,24 @@ export default function ReunionsStaffMensuellesPage() {
 
               <div>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#e6c980]">Destinataires</p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#e6c980]">Destinataires</p>
+                    {sendStaff.length > 0 ? (
+                      <p className="mt-1 text-[11px] leading-snug text-gray-500">
+                        Par défaut : <strong className="text-gray-400">tout le staff</strong> reçoit le CR sur le site.
+                        Une copie <strong className="text-gray-400">e-mail</strong> part en plus pour chaque personne qui
+                        a renseigné son adresse sur Admin → Mon compte (si Resend est configuré).
+                      </p>
+                    ) : null}
+                  </div>
                   {sendStaff.length > 0 ? (
-                    <div className="flex gap-2">
+                    <div className="flex shrink-0 flex-wrap justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => setSendSelectedIds(sendStaff.map((s) => s.discordId))}
                         className="text-[11px] text-gray-400 hover:text-white"
                       >
-                        Tout sélectionner
+                        Tout le staff
                       </button>
                       <button
                         type="button"
@@ -1473,12 +1493,20 @@ export default function ReunionsStaffMensuellesPage() {
               </button>
               <button
                 type="button"
-                disabled={sendSaving || sendStaffLoading || !sendBodyPreview.trim()}
+                disabled={
+                  sendSaving ||
+                  sendStaffLoading ||
+                  !sendBodyPreview.trim() ||
+                  sendSelectedIds.length === 0
+                }
                 onClick={() => void submitSendCr()}
                 className="inline-flex items-center gap-2 rounded-lg border border-[#d4af37]/45 bg-[#d4af37]/15 px-4 py-2 text-sm font-medium text-[#f4db97] hover:bg-[#d4af37]/25 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {sendSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Envoyer
+                {sendSelectedIds.length > 0 ? (
+                  <span className="text-xs font-normal text-gray-400">({sendSelectedIds.length})</span>
+                ) : null}
               </button>
             </div>
           </div>
