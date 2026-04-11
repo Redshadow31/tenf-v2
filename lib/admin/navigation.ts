@@ -269,6 +269,7 @@ export const adminNavigation: NavItem[] = [
       { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
       { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
       { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
+      { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Info - Comptes rendus de réunion" },
       { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices mensuels" },
       { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Petit travaux - Mes soumissions" },
       { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Petit travaux - Mes validations" },
@@ -602,6 +603,7 @@ export const adminNavigationSimple: NavItem[] = [
           { href: "/admin/moderation/staff/info/annonces-staff", label: "Annonces staff" },
           { href: "/admin/moderation/staff/info/charte", label: "Charte modération" },
           { href: "/admin/moderation/staff/info/validation-charte", label: "Validation charte" },
+          { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Comptes rendus de réunion" },
         ],
       },
       {
@@ -669,6 +671,7 @@ export const adminNavigationSimple: NavItem[] = [
           { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
           { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
           { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
+          { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Info - Comptes rendus de réunion" },
           { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices mensuels" },
           { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Petit travaux - Mes soumissions" },
           { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Petit travaux - Mes validations" },

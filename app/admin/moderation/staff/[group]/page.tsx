@@ -8,6 +8,7 @@ const groups = {
       { slug: "annonces-staff", label: "Annonces staff" },
       { slug: "charte", label: "Charte" },
       { slug: "validation-charte", label: "Validation charte" },
+      { slug: "comptes-rendus-reunions", label: "Comptes rendus de réunion" },
     ],
   },
   "petits-travaux": {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CharteModerationPage from "./CharteModerationPage";
+import StaffMeetingCrInboxPage from "./StaffMeetingCrInboxPage";
 import StaffMonthlyExercisesPage from "./StaffMonthlyExercisesPage";
 
 const moduleLabels: Record<string, Record<string, string>> = {
@@ -8,6 +9,7 @@ const moduleLabels: Record<string, Record<string, string>> = {
     "annonces-staff": "Annonces staff",
     charte: "Charte de la modération",
     "validation-charte": "Validation de la charte",
+    "comptes-rendus-reunions": "Comptes rendus de réunion",
   },
   "petits-travaux": {
     "exercices-mensuels": "Exercices mensuels",
@@ -35,6 +37,9 @@ export default function AdminModerationStaffModulePage({ params }: AdminModerati
 
   if (params.group === "info" && params.module === "charte") {
     return <CharteModerationPage />;
+  }
+  if (params.group === "info" && params.module === "comptes-rendus-reunions") {
+    return <StaffMeetingCrInboxPage />;
   }
   if (
     params.group === "petits-travaux" &&

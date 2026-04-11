@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
@@ -16,6 +17,7 @@ import {
   Save,
   Scan,
   ScrollText,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -131,6 +133,14 @@ export default function ReunionsStaffMensuellesPage() {
   /** Aperçu du CR déjà enregistré (lecture seule) */
   const [storedCrPreviewMarkdown, setStoredCrPreviewMarkdown] = useState<string | null>(null);
   const [compteRendu, setCompteRendu] = useState("");
+  /** Envoi du CR vers la boîte modération staff */
+  const [sendCrMeeting, setSendCrMeeting] = useState<StaffMonthlyMeeting | null>(null);
+  const [sendStaff, setSendStaff] = useState<{ discordId: string; displayName: string; role: string }[]>([]);
+  const [sendStaffLoading, setSendStaffLoading] = useState(false);
+  const [sendSelectedIds, setSendSelectedIds] = useState<string[]>([]);
+  const [sendSaving, setSendSaving] = useState(false);
+  const [sendBodyPreview, setSendBodyPreview] = useState("");
+  const [sendPreviewOpen, setSendPreviewOpen] = useState(false);
 
   const isEditing = editingId !== null;
 
@@ -260,12 +270,56 @@ export default function ReunionsStaffMensuellesPage() {
     [discours]
   );
 
+  function crBodyForMeeting(m: StaffMonthlyMeeting): string {
+    const stored = (m.compteRendu ?? "").trim();
+    if (stored) return stored;
+    return generateMeetingCrMarkdown({
+      meetingDate: m.meetingDate,
+      title: m.title,
+      discours: m.discours,
+    }).trim();
+  }
+
+  useEffect(() => {
+    if (!sendCrMeeting) {
+      setSendStaff([]);
+      setSendSelectedIds([]);
+      setSendBodyPreview("");
+      setSendPreviewOpen(false);
+      return;
+    }
+    setSendBodyPreview(crBodyForMeeting(sendCrMeeting));
+    setSendPreviewOpen(false);
+    setSendStaffLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/staff", { cache: "no-store" });
+        const data = await res.json();
+        const staff = Array.isArray(data.staff) ? data.staff : [];
+        setSendStaff(
+          staff.map((s: { discordId: string; displayName?: string; role?: string }) => ({
+            discordId: String(s.discordId || ""),
+            displayName: String(s.displayName || s.discordId || ""),
+            role: String(s.role || ""),
+          })),
+        );
+        setSendSelectedIds([]);
+      } catch {
+        setSendStaff([]);
+        setFeedback("Erreur : impossible de charger la liste du staff pour l’envoi.");
+      } finally {
+        setSendStaffLoading(false);
+      }
+    })();
+  }, [sendCrMeeting]);
+
   useEffect(() => {
     const locked =
       modalDiscoursIndex !== null ||
       crMarkdown !== null ||
       extractModalText !== null ||
-      storedCrPreviewMarkdown !== null;
+      storedCrPreviewMarkdown !== null ||
+      sendCrMeeting !== null;
     if (!locked) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -284,6 +338,10 @@ export default function ReunionsStaffMensuellesPage() {
         setCrMarkdown(null);
         return;
       }
+      if (sendCrMeeting !== null) {
+        setSendCrMeeting(null);
+        return;
+      }
       setModalDiscoursIndex(null);
     };
     window.addEventListener("keydown", onKey);
@@ -291,7 +349,7 @@ export default function ReunionsStaffMensuellesPage() {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [modalDiscoursIndex, crMarkdown, extractModalText, storedCrPreviewMarkdown]);
+  }, [modalDiscoursIndex, crMarkdown, extractModalText, storedCrPreviewMarkdown, sendCrMeeting]);
 
   function openCrFromForm() {
     setCrCopied(false);
@@ -302,20 +360,6 @@ export default function ReunionsStaffMensuellesPage() {
     });
     if (!md.trim()) {
       setFeedback("Erreur : ajoute une date de réunion ou du contenu dans les discours pour générer un CR.");
-      return;
-    }
-    setCrMarkdown(md);
-  }
-
-  function openCrFromMeeting(m: StaffMonthlyMeeting) {
-    setCrCopied(false);
-    const md = generateMeetingCrMarkdown({
-      meetingDate: m.meetingDate,
-      title: m.title,
-      discours: m.discours,
-    });
-    if (!md.trim()) {
-      setFeedback("Erreur : impossible de générer un CR (réunion vide).");
       return;
     }
     setCrMarkdown(md);
@@ -402,6 +446,40 @@ export default function ReunionsStaffMensuellesPage() {
       setFeedback(e instanceof Error ? e.message : "Erreur enregistrement");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitSendCr() {
+    if (!sendCrMeeting) return;
+    const body = crBodyForMeeting(sendCrMeeting);
+    if (!body.trim()) {
+      setFeedback("Erreur : aucun contenu à envoyer pour cette réunion.");
+      return;
+    }
+    if (sendSelectedIds.length === 0) {
+      setFeedback("Erreur : sélectionne au moins un destinataire.");
+      return;
+    }
+    try {
+      setSendSaving(true);
+      const res = await fetch(
+        `/api/admin/staff/monthly-meetings/${encodeURIComponent(sendCrMeeting.id)}/send-cr`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipientDiscordIds: sendSelectedIds }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Erreur envoi");
+      setFeedback(
+        `Compte rendu envoyé à ${typeof data.sentCount === "number" ? data.sentCount : sendSelectedIds.length} personne(s). Les destinataires le retrouvent sous Modération staff → Comptes rendus de réunion.`,
+      );
+      setSendCrMeeting(null);
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : "Erreur envoi");
+    } finally {
+      setSendSaving(false);
     }
   }
 
@@ -801,11 +879,11 @@ export default function ReunionsStaffMensuellesPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => openCrFromMeeting(m)}
+                        onClick={() => setSendCrMeeting(m)}
                         className="inline-flex items-center gap-1 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/10 px-3 py-1.5 text-sm font-medium text-[#f4db97] hover:bg-[#d4af37]/20"
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                        CR
+                        <Send className="h-3.5 w-3.5" />
+                        Envoyer le CR
                       </button>
                       <button
                         type="button"
@@ -1085,6 +1163,157 @@ export default function ReunionsStaffMensuellesPage() {
               <div className="rounded-xl border border-white/10 bg-[#0a0c12] p-4 sm:p-5">
                 <MeetingMdPreview markdown={storedCrPreviewMarkdown} size="lg" />
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {sendCrMeeting ? (
+        <div
+          className="fixed inset-0 z-[88] flex items-center justify-center p-3 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="send-cr-modal-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            onClick={() => setSendCrMeeting(null)}
+            aria-label="Fermer"
+          />
+          <div
+            className="relative z-[89] flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border shadow-2xl"
+            style={{ borderColor: "rgba(212,175,55,0.45)", background: "rgba(14,16,24,0.98)" }}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+              <div className="min-w-0">
+                <h2 id="send-cr-modal-title" className="text-lg font-semibold text-white sm:text-xl">
+                  Envoyer le compte rendu
+                </h2>
+                <p className="mt-1 text-xs text-gray-400">
+                  {formatFrDate(sendCrMeeting.meetingDate)}
+                  {sendCrMeeting.title ? ` · ${sendCrMeeting.title}` : ""}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {(sendCrMeeting.compteRendu ?? "").trim()
+                    ? "Le texte envoyé est le compte-rendu enregistré avec la réunion."
+                    : "Aucun CR enregistré : le texte envoyé sera le CR auto-généré (comme l’ancien bouton « Générer le CR »)."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSendCrMeeting(null)}
+                className="shrink-0 rounded-lg border border-white/15 p-2 text-gray-300 hover:bg-white/10"
+                aria-label="Fermer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setSendPreviewOpen((o) => !o)}
+                  className="text-xs font-medium text-[#d4af37] underline-offset-2 hover:underline"
+                >
+                  {sendPreviewOpen ? "Masquer l’aperçu du message" : "Aperçu du message qui sera envoyé"}
+                </button>
+                {sendPreviewOpen ? (
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-black/25 p-3">
+                    <MeetingMdPreview markdown={sendBodyPreview} label="Contenu" />
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#e6c980]">Destinataires</p>
+                  {sendStaff.length > 0 ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSendSelectedIds(sendStaff.map((s) => s.discordId))}
+                        className="text-[11px] text-gray-400 hover:text-white"
+                      >
+                        Tout sélectionner
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSendSelectedIds([])}
+                        className="text-[11px] text-gray-400 hover:text-white"
+                      >
+                        Aucun
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                {sendStaffLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-7 w-7 animate-spin text-[#d4af37]" />
+                  </div>
+                ) : sendStaff.length === 0 ? (
+                  <p className="text-xs text-amber-200/90">Aucun membre staff trouvé pour l’envoi.</p>
+                ) : (
+                  <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                    {sendStaff.map((s) => {
+                      const checked = sendSelectedIds.includes(s.discordId);
+                      return (
+                        <li key={s.discordId}>
+                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#0f1118] px-3 py-2 text-sm text-gray-200 hover:border-white/20">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const on = e.target.checked;
+                                setSendSelectedIds((prev) =>
+                                  on
+                                    ? [...new Set([...prev, s.discordId])]
+                                    : prev.filter((id) => id !== s.discordId),
+                                );
+                              }}
+                            />
+                            <span className="min-w-0 flex-1 truncate">
+                              {s.displayName}
+                              <span className="ml-1 text-xs text-gray-500">({s.role})</span>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <p className="text-[11px] text-gray-500">
+                Réception côté staff :{" "}
+                <Link
+                  href="/admin/moderation/staff/info/comptes-rendus-reunions"
+                  className="text-[#d4af37] underline-offset-2 hover:underline"
+                  onClick={() => setSendCrMeeting(null)}
+                >
+                  Modération staff → Comptes rendus de réunion
+                </Link>
+              </p>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-white/10 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setSendCrMeeting(null)}
+                className="rounded-lg border border-white/15 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={sendSaving || sendStaffLoading || !sendBodyPreview.trim()}
+                onClick={() => void submitSendCr()}
+                className="inline-flex items-center gap-2 rounded-lg border border-[#d4af37]/45 bg-[#d4af37]/15 px-4 py-2 text-sm font-medium text-[#f4db97] hover:bg-[#d4af37]/25 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {sendSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Envoyer
+              </button>
             </div>
           </div>
         </div>

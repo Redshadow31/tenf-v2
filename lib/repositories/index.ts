@@ -13,3 +13,5 @@ export { upaEventRepository, UpaEventRepository } from "./UpaEventRepository";
 export { staffOrgChartRepository, StaffOrgChartRepository } from "./StaffOrgChartRepository";
 export { staffMonthlyMeetingRepository, StaffMonthlyMeetingRepository } from "./StaffMonthlyMeetingRepository";
 export type { StaffMonthlyMeetingUpsertInput } from "./StaffMonthlyMeetingRepository";
+export { staffMeetingCrInboxRepository, StaffMeetingCrInboxRepository } from "./StaffMeetingCrInboxRepository";
+export type { StaffMeetingCrInboxRow } from "./StaffMeetingCrInboxRepository";
