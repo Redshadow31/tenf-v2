@@ -2,19 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { ArrowLeft, BarChart3, Percent } from "lucide-react";
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
+  Legend,
 } from "recharts";
 
 const sectionCardClass =
@@ -40,19 +37,53 @@ const tooltipStyle = {
   borderRadius: 8,
 };
 
+type CatMonthRow = {
+  category: string;
+  eventCount: number;
+  rate: number | null;
+};
+
 type SuiviPayload = {
   timezone: string;
   referenceMonth: string;
   previousMonth: string;
   last3MonthKeys: string[];
   monthLabels: Record<string, string>;
-  totalCurrentMonth: number;
-  currentMonthByCategory: { category: string; count: number }[];
-  prevMonthComparison: { category: string; current: number; previous: number }[];
-  comparisonForChart: { category: string; values: Record<string, number> }[];
-  last3ForChart: { category: string; values: Record<string, number> }[];
+  metricDescription: string;
+  globalCurrentMonth: { rate: number | null; eventCount: number };
+  currentMonthByCategory: CatMonthRow[];
+  prevMonthComparison: {
+    category: string;
+    currentRate: number | null;
+    previousRate: number | null;
+    currentEventCount: number;
+    previousEventCount: number;
+  }[];
+  comparisonForChart: { category: string; values: { current: number | null; previous: number | null } }[];
+  last3ForChart: { category: string; values: Record<string, number | null> }[];
   eventCount: number;
+  eventsInWindow: number;
+  eventsReferenceMonth: number;
+  eventsReferenceMonthWithRate: number;
 };
+
+/** Regroupe les types les moins représentés : moyenne pondérée par le nombre d’événements dans « Autres ». */
+function collapseCurrentByEvents(rows: CatMonthRow[], max: number): CatMonthRow[] {
+  if (rows.length <= max) return rows;
+  const head = rows.slice(0, max - 1);
+  const tail = rows.slice(max - 1);
+  const valid = tail.filter((r) => r.rate !== null && r.eventCount > 0);
+  const nTotal = valid.reduce((s, r) => s + r.eventCount, 0);
+  const rate =
+    nTotal > 0 ? Math.round(valid.reduce((s, r) => s + (r.rate as number) * r.eventCount, 0) / nTotal) : null;
+  const eventCount = tail.reduce((s, r) => s + r.eventCount, 0);
+  return [...head, { category: "Autres", eventCount, rate }];
+}
+
+function fmtRate(v: number | null): string {
+  if (v === null) return "—";
+  return `${v} %`;
+}
 
 export default function CommunauteEvenementsSuiviPage() {
   const [data, setData] = useState<SuiviPayload | null>(null);
@@ -84,12 +115,14 @@ export default function CommunauteEvenementsSuiviPage() {
     void load();
   }, [load]);
 
-  const pieData = useMemo(() => {
+  const currentBarData = useMemo(() => {
     const raw = data?.currentMonthByCategory ?? [];
-    if (raw.length <= 8) return raw;
-    const head = raw.slice(0, 7);
-    const autres = raw.slice(7).reduce((sum, r) => sum + r.count, 0);
-    return [...head, { category: "Autres", count: autres }];
+    return collapseCurrentByEvents(raw, 8).map((r) => ({
+      category: r.category,
+      rate: r.rate ?? 0,
+      rateDisplay: r.rate,
+      eventCount: r.eventCount,
+    }));
   }, [data]);
 
   const barPrevData = useMemo(() => {
@@ -98,13 +131,15 @@ export default function CommunauteEvenementsSuiviPage() {
       category: r.category,
       "Mois en cours": r.values.current ?? 0,
       "Mois précédent": r.values.previous ?? 0,
+      _c: r.values.current,
+      _p: r.values.previous,
     }));
   }, [data]);
 
   const barLast3Data = useMemo(() => {
     if (!data) return [];
     return data.last3ForChart.map((r) => {
-      const row: Record<string, string | number> = { category: r.category };
+      const row: Record<string, string | number | null> = { category: r.category };
       for (const mk of data.last3MonthKeys) {
         row[data.monthLabels[mk] || mk] = r.values[mk] ?? 0;
       }
@@ -116,6 +151,21 @@ export default function CommunauteEvenementsSuiviPage() {
     if (!data) return [] as string[];
     return data.last3MonthKeys.map((mk) => data.monthLabels[mk] || mk);
   }, [data]);
+
+  const rateTooltip = (label: string, payload: any[]) => {
+    if (!payload?.length) return null;
+    const p = payload[0]?.payload;
+    if (p?.eventCount != null) {
+      return (
+        <div className="rounded-md border border-[#2a2a2d] bg-[#121218] px-3 py-2 text-xs text-slate-200">
+          <div className="font-medium text-slate-100">{label}</div>
+          <div>Taux moyen : {fmtRate(p.rateDisplay)}</div>
+          <div className="text-slate-400">Moyenne sur {p.eventCount} événement{p.eventCount > 1 ? "s" : ""} (≥1 inscription)</div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6 text-white">
@@ -130,12 +180,14 @@ export default function CommunauteEvenementsSuiviPage() {
           </Link>
           <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Communauté · Événements</p>
           <h1 className="mt-1 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-            Suivi par type
+            Suivi présence par type
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Répartition des événements par catégorie (date de l’événement, fuseau {data?.timezone ?? "Europe/Paris"}).
-            Comparaison avec le mois précédent ou tendance sur les trois derniers mois civils.
+            Moyenne des taux de présence par événement (présents / inscriptions sur chaque événement avec au moins une
+            inscription), puis moyenne arithmétique par type et par mois civil (fuseau{" "}
+            {data?.timezone ?? "Europe/Paris"}). Comparaison au mois précédent ou sur les trois derniers mois.
           </p>
+          {data?.metricDescription ? <p className="mt-1 text-xs text-slate-500">{data.metricDescription}</p> : null}
         </div>
         <button
           type="button"
@@ -152,60 +204,64 @@ export default function CommunauteEvenementsSuiviPage() {
         <p className="text-sm text-rose-300">{error}</p>
       ) : data ? (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <article className={`${sectionCardClass} p-4`}>
               <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Mois de référence</p>
               <p className="mt-1 text-lg font-semibold text-slate-100">{data.monthLabels[data.referenceMonth]}</p>
               <p className="text-xs text-slate-500">{data.referenceMonth}</p>
             </article>
             <article className={`${sectionCardClass} p-4`}>
-              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements ce mois-ci</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-300">{data.totalCurrentMonth}</p>
-              <p className="text-xs text-slate-500">Total par date d’événement</p>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Moyenne globale ce mois-ci</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-300">{fmtRate(data.globalCurrentMonth.rate)}</p>
+              <p className="text-xs text-slate-500">
+                Moyenne sur {data.globalCurrentMonth.eventCount} événement
+                {data.globalCurrentMonth.eventCount > 1 ? "s" : ""} (≥1 inscription)
+              </p>
             </article>
             <article className={`${sectionCardClass} p-4`}>
-              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements fusionnés (sources)</p>
-              <p className="mt-1 text-2xl font-semibold text-sky-300">{data.eventCount}</p>
-              <p className="text-xs text-slate-500">community_events + legacy dédoublonnés</p>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements (mois ref.)</p>
+              <p className="mt-1 text-2xl font-semibold text-sky-300">{data.eventsReferenceMonth}</p>
+              <p className="text-xs text-slate-500">
+                dont {data.eventsReferenceMonthWithRate} pris en compte dans la moyenne (≥1 inscription)
+              </p>
+            </article>
+            <article className={`${sectionCardClass} p-4`}>
+              <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements analysés (fenêtre)</p>
+              <p className="mt-1 text-2xl font-semibold text-indigo-200">{data.eventsInWindow}</p>
+              <p className="text-xs text-slate-500">{data.eventCount} événements fusionnés au total (sources)</p>
             </article>
           </div>
 
           <section className={`${sectionCardClass} p-5`}>
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <PieChartIcon className="h-5 w-5 text-indigo-300" />
-              <h2 className="text-lg font-semibold text-slate-100">Ce mois-ci par type</h2>
+              <Percent className="h-5 w-5 text-indigo-300" />
+              <h2 className="text-lg font-semibold text-slate-100">Moyenne par type — mois en cours</h2>
             </div>
-            {pieData.length === 0 ? (
-              <p className="text-sm text-slate-400">Aucun événement sur le mois de référence.</p>
+            {currentBarData.length === 0 ? (
+              <p className="text-sm text-slate-400">Aucune inscription sur le mois de référence (taux non calculable).</p>
             ) : (
-              <div className="h-80 w-full min-h-[320px]">
+              <div
+                className="w-full min-h-[280px]"
+                style={{ height: Math.min(640, 140 + currentBarData.length * 44) }}
+              >
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="count"
-                      nameKey="category"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={110}
-                      label={(props) => {
-                        const pct = typeof props.percent === "number" ? Math.round(props.percent * 100) : 0;
-                        return `${pct}%`;
-                      }}
-                    >
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#0b1020" strokeWidth={1} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [v, "Événements"]} />
-                    <Legend />
-                  </PieChart>
+                  <BarChart layout="vertical" data={currentBarData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#32323a" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} stroke="#9ca3af" tickLine={false} unit=" %" />
+                    <YAxis type="category" dataKey="category" stroke="#9ca3af" tickLine={false} width={120} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      content={({ label, payload }) => rateTooltip(String(label ?? ""), payload || [])}
+                      cursor={{ fill: "rgba(99,102,241,0.08)" }}
+                    />
+                    <Bar dataKey="rate" name="Taux (%)" fill="#6366f1" radius={[0, 4, 4, 0]} maxBarSize={22} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
-            {pieData.length > 0 && data && data.currentMonthByCategory.length > 8 ? (
+            {data.currentMonthByCategory.length > 7 ? (
               <p className="mt-2 text-xs text-slate-500">
-                Plus de huit types ce mois-ci : les types les moins fréquents sont regroupés sous « Autres » dans ce graphique.
+                Plus de sept types avec événements pris en compte : les types les moins représentés sont regroupés sous «
+                Autres ».
               </p>
             ) : null}
           </section>
@@ -214,7 +270,7 @@ export default function CommunauteEvenementsSuiviPage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-cyan-300" />
-                <h2 className="text-lg font-semibold text-slate-100">Comparaison</h2>
+                <h2 className="text-lg font-semibold text-slate-100">Comparaison des taux (%)</h2>
               </div>
               <div className="flex rounded-lg border border-[#353a50] bg-[#121623]/80 p-1 text-xs font-medium">
                 <button
@@ -244,8 +300,16 @@ export default function CommunauteEvenementsSuiviPage() {
                   <BarChart data={barPrevData} margin={{ top: 8, right: 8, left: 0, bottom: 64 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#32323a" />
                     <XAxis dataKey="category" stroke="#9ca3af" tickLine={false} interval={0} angle={-28} textAnchor="end" height={72} tick={{ fontSize: 11 }} />
-                    <YAxis stroke="#9ca3af" tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <YAxis stroke="#9ca3af" tickLine={false} domain={[0, 100]} allowDecimals={false} unit=" %" />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(value: number, name: string, item: { payload?: Record<string, unknown> }) => {
+                        const row = item?.payload;
+                        const raw = name === "Mois en cours" ? row?._c : row?._p;
+                        const suffix = raw === null ? " (aucun événement avec inscription)" : "";
+                        return [`${value} %${suffix}`, name];
+                      }}
+                    />
                     <Legend />
                     <Bar dataKey="Mois en cours" fill="#6366f1" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Mois précédent" fill="#22d3ee" radius={[4, 4, 0, 0]} />
@@ -254,8 +318,8 @@ export default function CommunauteEvenementsSuiviPage() {
                   <BarChart data={barLast3Data} margin={{ top: 8, right: 8, left: 0, bottom: 64 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#32323a" />
                     <XAxis dataKey="category" stroke="#9ca3af" tickLine={false} interval={0} angle={-28} textAnchor="end" height={72} tick={{ fontSize: 11 }} />
-                    <YAxis stroke="#9ca3af" tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <YAxis stroke="#9ca3af" tickLine={false} domain={[0, 100]} allowDecimals={false} unit=" %" />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} %`, ""]} />
                     <Legend />
                     {last3BarKeys.map((name, i) => (
                       <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
@@ -265,35 +329,41 @@ export default function CommunauteEvenementsSuiviPage() {
               </ResponsiveContainer>
             </div>
             <p className="mt-3 text-xs text-slate-500">
-              Les graphiques en barres regroupent au plus dix types explicites ; le reste est agrégé sous « Autres ».
+              Barres : au plus dix types (nombre d’événements pris en compte sur la période) ; le reste sous « Autres ».
+              0 % peut indiquer aucun événement avec inscription sur ce mois pour ce type.
             </p>
           </section>
 
           <section className={`${sectionCardClass} overflow-hidden`}>
             <div className="border-b border-[#2f3244] px-5 py-3">
-              <h2 className="text-base font-semibold text-slate-100">Tableau mois en cours vs précédent</h2>
+              <h2 className="text-base font-semibold text-slate-100">Tableau — moyennes et effectifs</h2>
             </div>
             <div className="overflow-x-auto p-5">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#353a50] text-left text-xs uppercase tracking-[0.08em] text-slate-400">
                     <th className="px-2 py-2">Type</th>
-                    <th className="px-2 py-2">{data.monthLabels[data.referenceMonth]}</th>
-                    <th className="px-2 py-2">{data.monthLabels[data.previousMonth]}</th>
-                    <th className="px-2 py-2">Écart</th>
+                    <th className="px-2 py-2">Taux {data.monthLabels[data.referenceMonth]}</th>
+                    <th className="px-2 py-2">Taux {data.monthLabels[data.previousMonth]}</th>
+                    <th className="px-2 py-2">Écart (points)</th>
+                    <th className="px-2 py-2">Événements dans la moyenne (mois ref.)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.prevMonthComparison.map((row) => {
-                    const delta = row.current - row.previous;
+                    const c = row.currentRate;
+                    const p = row.previousRate;
+                    const delta =
+                      c !== null && p !== null ? c - p : c !== null ? c : p !== null ? -p : null;
                     return (
                       <tr key={row.category} className="border-b border-white/5">
                         <td className="px-2 py-2 text-slate-200">{row.category}</td>
-                        <td className="px-2 py-2 text-slate-300">{row.current}</td>
-                        <td className="px-2 py-2 text-slate-300">{row.previous}</td>
-                        <td className={`px-2 py-2 font-medium ${delta >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                          {delta >= 0 ? `+${delta}` : delta}
+                        <td className="px-2 py-2 text-slate-300">{fmtRate(c)}</td>
+                        <td className="px-2 py-2 text-slate-300">{fmtRate(p)}</td>
+                        <td className={`px-2 py-2 font-medium ${delta === null ? "text-slate-500" : delta >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {delta === null ? "—" : delta >= 0 ? `+${delta}` : delta}
                         </td>
+                        <td className="px-2 py-2 text-slate-400">{row.currentEventCount > 0 ? row.currentEventCount : "—"}</td>
                       </tr>
                     );
                   })}

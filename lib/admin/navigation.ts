@@ -117,7 +117,7 @@ export const adminNavigation: NavItem[] = [
         label: "Événements & animation",
         children: [
           { href: "/admin/communaute/evenements", label: "Pilotage événements" },
-          { href: "/admin/communaute/evenements/suivi", label: "Suivi par type" },
+          { href: "/admin/communaute/evenements/suivi", label: "Suivi présence (types)" },
           { href: "/admin/communaute/evenements/calendrier", label: "Calendrier & planification" },
           { href: "/admin/communaute/evenements/participation", label: "Participation & présences" },
           { href: "/admin/communaute/evenements/propositions", label: "Événements proposés" },
@@ -462,7 +462,7 @@ export const adminNavigationSimple: NavItem[] = [
         label: "Événements & animation",
         children: [
           { href: "/admin/communaute/evenements", label: "Pilotage événements" },
-          { href: "/admin/communaute/evenements/suivi", label: "Suivi par type" },
+          { href: "/admin/communaute/evenements/suivi", label: "Suivi présence (types)" },
           { href: "/admin/communaute/evenements/calendrier", label: "Calendrier & planification" },
           { href: "/admin/communaute/evenements/participation", label: "Participation & présences" },
           { href: "/admin/communaute/evenements/propositions", label: "Événements proposés" },

@@ -4,6 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { fr } from "date-fns/locale";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { loadMergedAdminEventsLite } from "@/lib/admin/mergedAdminEvents";
+import { eventRepository } from "@/lib/repositories";
 import { PARIS_TIMEZONE } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -27,30 +28,88 @@ function addCalendarMonths(ym: string, delta: number): string {
   return `${ny}-${String(nm).padStart(2, "0")}`;
 }
 
-function bump(map: Map<string, number>, key: string, n = 1) {
-  map.set(key, (map.get(key) || 0) + n);
+/** Somme des taux individuels et nombre d’événements (≥1 inscription) pour une moyenne arithmétique. */
+type AvgCell = { sumRate: number; n: number };
+
+function perEventRate(registered: number, present: number): number | null {
+  if (registered <= 0) return null;
+  return Math.round((100 * present) / registered);
+}
+
+function bumpAvg(map: Map<string, Map<string, AvgCell>>, category: string, monthKey: string, rate: number | null) {
+  if (rate === null) return;
+  if (!map.has(category)) map.set(category, new Map());
+  const byM = map.get(category)!;
+  const cur = byM.get(monthKey) || { sumRate: 0, n: 0 };
+  cur.sumRate += rate;
+  cur.n += 1;
+  byM.set(monthKey, cur);
+}
+
+function avgFromCell(c?: AvgCell): number | null {
+  if (!c || c.n === 0) return null;
+  return Math.round(c.sumRate / c.n);
+}
+
+function mergeAvgCells(a: AvgCell, b: AvgCell): AvgCell {
+  return { sumRate: a.sumRate + b.sumRate, n: a.n + b.n };
+}
+
+function cellEventTotal(byMonth: Map<string, AvgCell>, monthKeys: string[]): number {
+  return monthKeys.reduce((s, mk) => s + (byMonth.get(mk)?.n || 0), 0);
 }
 
 const MAX_CHART_CATEGORIES = 10;
 
-function collapseToTop(
-  rows: { category: string; values: Record<string, number> }[],
-  valueKeys: string[]
-): { category: string; values: Record<string, number> }[] {
-  if (rows.length <= MAX_CHART_CATEGORIES) return rows;
-
-  const score = (r: { category: string; values: Record<string, number> }) =>
-    valueKeys.reduce((acc, k) => acc + (r.values[k] || 0), 0);
-
-  const sorted = [...rows].sort((a, b) => score(b) - score(a));
-  const head = sorted.slice(0, MAX_CHART_CATEGORIES - 1);
-  const tail = sorted.slice(MAX_CHART_CATEGORIES - 1);
-  if (!tail.length) return head;
-  const autres: Record<string, number> = {};
-  for (const k of valueKeys) {
-    autres[k] = tail.reduce((acc, r) => acc + (r.values[k] || 0), 0);
+/**
+ * Garde les types avec le plus d’événements (sur les mois demandés) et regroupe le reste en « Autres ».
+ */
+function collapseCategoriesByEventVolume(
+  byCategoryMonth: Map<string, Map<string, AvgCell>>,
+  monthKeys: string[],
+  maxCategories: number
+): { category: string; byMonth: Map<string, AvgCell> }[] {
+  const scored = Array.from(byCategoryMonth.entries()).map(([category, byMonth]) => ({
+    category,
+    byMonth,
+    score: cellEventTotal(byMonth, monthKeys),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  if (scored.length <= maxCategories) {
+    return scored.map(({ category, byMonth }) => ({ category, byMonth }));
   }
-  return [...head, { category: "Autres", values: autres }];
+  const head = scored.slice(0, maxCategories - 1);
+  const tail = scored.slice(maxCategories - 1);
+  const mergedByMonth = new Map<string, AvgCell>();
+  for (const mk of monthKeys) {
+    mergedByMonth.set(mk, { sumRate: 0, n: 0 });
+  }
+  for (const row of tail) {
+    for (const mk of monthKeys) {
+      const acc = mergedByMonth.get(mk)!;
+      const add = row.byMonth.get(mk) || { sumRate: 0, n: 0 };
+      mergedByMonth.set(mk, mergeAvgCells(acc, add));
+    }
+  }
+  return [...head.map(({ category, byMonth }) => ({ category, byMonth })), { category: "Autres", byMonth: mergedByMonth }];
+}
+
+function toAvgRateRow(category: string, byMonth: Map<string, AvgCell>, monthKeys: string[]) {
+  const values: Record<string, number | null> = {};
+  for (const mk of monthKeys) {
+    values[mk] = avgFromCell(byMonth.get(mk));
+  }
+  return { category, values };
+}
+
+async function mapInChunks<T, R>(items: T[], chunkSize: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    const part = await Promise.all(chunk.map(fn));
+    out.push(...part);
+  }
+  return out;
 }
 
 export async function GET() {
@@ -71,59 +130,96 @@ export async function GET() {
       monthLabels[mk] = monthLabelParis(mk);
     }
 
-    const currentByCat = new Map<string, number>();
-    const previousByCat = new Map<string, number>();
-    const last3ByCatMonth = new Map<string, Map<string, number>>();
+    const windowMonthSet = new Set([referenceMonth, previousMonth, ...last3MonthKeys]);
+    const eventsInWindow = events.filter((ev) => windowMonthSet.has(monthKeyParis(ev.date)));
 
-    for (const ev of events) {
-      const mk = monthKeyParis(ev.date);
-      const cat = ev.category || "Non classé";
+    const perEventStats = await mapInChunks(eventsInWindow, 20, async (ev) => {
+      try {
+        const [registrations, presences] = await Promise.all([
+          eventRepository.getRegistrations(ev.id),
+          eventRepository.getPresences(ev.id),
+        ]);
+        const registered = registrations?.length ?? 0;
+        const present = (presences || []).filter((p: any) => p?.present === true).length;
+        const rate = perEventRate(registered, present);
+        return {
+          category: ev.category || "Non classé",
+          monthKey: monthKeyParis(ev.date),
+          registered,
+          rate,
+        };
+      } catch {
+        return {
+          category: ev.category || "Non classé",
+          monthKey: monthKeyParis(ev.date),
+          registered: 0,
+          rate: null as number | null,
+        };
+      }
+    });
 
-      if (mk === referenceMonth) {
-        bump(currentByCat, cat);
-      }
-      if (mk === previousMonth) {
-        bump(previousByCat, cat);
-      }
-
-      if (last3MonthKeys.includes(mk)) {
-        if (!last3ByCatMonth.has(cat)) last3ByCatMonth.set(cat, new Map());
-        bump(last3ByCatMonth.get(cat)!, mk);
-      }
+    const byCategoryMonth = new Map<string, Map<string, AvgCell>>();
+    for (const row of perEventStats) {
+      bumpAvg(byCategoryMonth, row.category, row.monthKey, row.rate);
     }
 
-    const allCats = new Set<string>([...currentByCat.keys(), ...previousByCat.keys()]);
+    const refRates = perEventStats
+      .filter((r) => r.monthKey === referenceMonth && r.rate !== null)
+      .map((r) => r.rate as number);
+    const globalRefRate = refRates.length ? Math.round(refRates.reduce((a, b) => a + b, 0) / refRates.length) : null;
+
+    const currentMonthByCategory = Array.from(byCategoryMonth.entries())
+      .map(([category, byM]) => {
+        const c = byM.get(referenceMonth);
+        return {
+          category,
+          eventCount: c?.n ?? 0,
+          rate: avgFromCell(c),
+        };
+      })
+      .filter((r) => r.eventCount > 0)
+      .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+
+    const allCats = new Set<string>([...byCategoryMonth.keys()]);
     const prevMonthComparison = Array.from(allCats)
-      .map((category) => ({
-        category,
-        current: currentByCat.get(category) || 0,
-        previous: previousByCat.get(category) || 0,
-      }))
-      .sort((a, b) => b.current + b.previous - (a.current + a.previous));
+      .map((category) => {
+        const byM = byCategoryMonth.get(category)!;
+        const cur = byM.get(referenceMonth);
+        const prev = byM.get(previousMonth);
+        return {
+          category,
+          currentRate: avgFromCell(cur),
+          previousRate: avgFromCell(prev),
+          currentEventCount: cur?.n ?? 0,
+          previousEventCount: prev?.n ?? 0,
+        };
+      })
+      .filter((r) => r.currentEventCount > 0 || r.previousEventCount > 0)
+      .sort((a, b) => b.currentEventCount + b.previousEventCount - (a.currentEventCount + a.previousEventCount));
 
-    const currentMonthByCategory = Array.from(currentByCat.entries())
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count);
+    const cmpMonths = [referenceMonth, previousMonth];
+    const collapsedCmp = collapseCategoriesByEventVolume(byCategoryMonth, cmpMonths, MAX_CHART_CATEGORIES);
+    const comparisonForChart = collapsedCmp.map(({ category, byMonth }) => ({
+      category,
+      values: {
+        current: avgFromCell(byMonth.get(referenceMonth)),
+        previous: avgFromCell(byMonth.get(previousMonth)),
+      },
+    }));
 
-    const last3RowsRaw = Array.from(last3ByCatMonth.entries()).map(([category, m]) => {
-      const values: Record<string, number> = {};
-      for (const k of last3MonthKeys) {
-        values[k] = m.get(k) || 0;
-      }
-      return { category, values };
-    });
-    const last3ForChart = collapseToTop(last3RowsRaw, last3MonthKeys);
+    const collapsedLast3 = collapseCategoriesByEventVolume(byCategoryMonth, last3MonthKeys, MAX_CHART_CATEGORIES);
+    const last3ForChart = collapsedLast3.map(({ category, byMonth }) => toAvgRateRow(category, byMonth, last3MonthKeys));
 
-    const comparisonForChart = collapseToTop(
-      prevMonthComparison.map((r) => ({
-        category: r.category,
-        values: { current: r.current, previous: r.previous },
-      })),
-      ["current", "previous"]
-    );
+    const last3ByCategory = Array.from(byCategoryMonth.entries())
+      .map(([category, byMonth]) => toAvgRateRow(category, byMonth, last3MonthKeys))
+      .sort(
+        (a, b) =>
+          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(b.category)?.get(mk)?.n || 0), 0) -
+          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(a.category)?.get(mk)?.n || 0), 0)
+      );
 
-    let totalCurrentMonth = 0;
-    for (const v of currentByCat.values()) totalCurrentMonth += v;
+    const eventsRefMonth = events.filter((e) => monthKeyParis(e.date) === referenceMonth).length;
+    const eventsRefWithRate = perEventStats.filter((r) => r.monthKey === referenceMonth && r.rate !== null).length;
 
     return NextResponse.json({
       timezone: PARIS_TIMEZONE,
@@ -131,17 +227,22 @@ export async function GET() {
       previousMonth,
       last3MonthKeys,
       monthLabels,
-      totalCurrentMonth,
+      metric: "mean_presence_rate_per_event",
+      metricDescription:
+        "Pour chaque événement avec au moins une inscription : taux = présents / inscriptions. La valeur par type est la moyenne arithmétique de ces taux sur les événements du mois (Europe/Paris).",
+      globalCurrentMonth: {
+        rate: globalRefRate,
+        eventCount: eventsRefWithRate,
+      },
       currentMonthByCategory,
       prevMonthComparison,
       comparisonForChart,
-      last3ByCategory: last3RowsRaw.sort(
-        (a, b) =>
-          last3MonthKeys.reduce((s, k) => s + (b.values[k] || 0), 0) -
-          last3MonthKeys.reduce((s, k) => s + (a.values[k] || 0), 0)
-      ),
+      last3ByCategory,
       last3ForChart,
       eventCount: events.length,
+      eventsInWindow: eventsInWindow.length,
+      eventsReferenceMonth: eventsRefMonth,
+      eventsReferenceMonthWithRate: eventsRefWithRate,
     });
   } catch (e) {
     console.error("[admin/events/suivi-stats]", e);
