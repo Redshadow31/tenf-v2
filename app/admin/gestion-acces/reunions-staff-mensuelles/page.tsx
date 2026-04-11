@@ -304,13 +304,14 @@ export default function ReunionsStaffMensuellesPage() {
         const res = await fetch("/api/admin/staff", { cache: "no-store" });
         const data = await res.json();
         const staff = Array.isArray(data.staff) ? data.staff : [];
-        const normalized = staff
+        type StaffSendRow = { discordId: string; displayName: string; role: string };
+        const normalized: StaffSendRow[] = staff
           .map((s: { discordId: string; displayName?: string; role?: string }) => ({
             discordId: String(s.discordId || "").trim(),
             displayName: String(s.displayName || s.discordId || ""),
             role: String(s.role || ""),
           }))
-          .filter((s) => s.discordId.length > 0);
+          .filter((s: StaffSendRow) => s.discordId.length > 0);
         if (cancelled) return;
         setSendStaff(normalized);
         /* Tout le staff : boîte sur le site pour chacun ; e-mail Resend seulement si adresse renseignée sur Mon compte. */
