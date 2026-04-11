@@ -16,6 +16,8 @@ import {
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 import { loadSectionPermissionsCache, hasSectionAccess } from "./sectionPermissions";
 import { hasAdvancedAdminAccess } from "./advancedAccess";
+import { adminModerationCharterAccessBlocked } from "./adminModerationCharterGate";
+import { isAdminPathAllowedDuringCharterBlock } from "./adminModerationCharterGatePaths";
 
 export interface AuthenticatedAdmin {
   id: string; // Alias de discordId pour compatibilité avec le code legacy
@@ -24,6 +26,11 @@ export interface AuthenticatedAdmin {
   avatar: string | null;
   role: AdminRole;
 }
+
+export type RequireAdminOptions = {
+  /** Réservé aux routes « charte » : laisser passer si la charte bloquerait sinon tout le dashboard */
+  bypassModerationCharterGate?: boolean;
+};
 
 /**
  * Récupère l'admin actuellement authentifié via NextAuth
@@ -134,7 +141,7 @@ export async function requireAuth(): Promise<AuthenticatedAdmin | null> {
  * Retourne l'admin authentifié avec rôle ou null
  * À utiliser dans les routes API : si null, retourner 403
  */
-export async function requireAdmin(): Promise<AuthenticatedAdmin | null> {
+export async function requireAdmin(options?: RequireAdminOptions): Promise<AuthenticatedAdmin | null> {
   const admin = await getAuthenticatedAdmin();
   
   if (!admin) {
@@ -145,6 +152,10 @@ export async function requireAdmin(): Promise<AuthenticatedAdmin | null> {
   const hasAccess = hasAdminDashboardAccess(admin.discordId) || admin.role !== null;
   
   if (!hasAccess) {
+    return null;
+  }
+
+  if (!options?.bypassModerationCharterGate && (await adminModerationCharterAccessBlocked(admin.discordId))) {
     return null;
   }
 
@@ -209,6 +220,10 @@ export async function checkPermission(requiredPermission: Permission): Promise<b
     return false;
   }
 
+  if (await adminModerationCharterAccessBlocked(admin.discordId)) {
+    return false;
+  }
+
   // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
   if (await hasAdvancedAdminAccess(admin.discordId)) {
     return true;
@@ -244,6 +259,12 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
     return false;
   }
 
+  if (await adminModerationCharterAccessBlocked(admin.discordId)) {
+    if (!isAdminPathAllowedDuringCharterBlock(sectionHref)) {
+      return false;
+    }
+  }
+
   // Bypass total des permissions par section
   if (await hasAdvancedAdminAccess(admin.discordId)) {
     return true;
@@ -268,7 +289,9 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
  * À utiliser dans les routes API : si null, retourner 403
  */
 export async function requireSectionAccess(sectionHref: string): Promise<AuthenticatedAdmin | null> {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin({
+    bypassModerationCharterGate: isAdminPathAllowedDuringCharterBlock(sectionHref),
+  });
 
   if (!admin) {
     return null;

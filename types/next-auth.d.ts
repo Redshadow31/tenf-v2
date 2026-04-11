@@ -13,6 +13,12 @@ declare module "next-auth" {
       username: string;
       avatar: string | null;
       role: AdminRole | null;
+      /** Nom d'affichage Discord (global_name), si présent */
+      discordGlobalName?: string | null;
+      /** Identifiant Discord (handle sans @) */
+      discordHandle?: string | null;
+      /** True si l'accès admin général est bloqué (charte modération non validée après le délai) */
+      moderationCharterBlocked?: boolean;
     };
   }
 
@@ -34,5 +40,13 @@ declare module "next-auth/jwt" {
     username?: string;
     avatar?: string | null;
     role?: AdminRole | null;
+    discordGlobalName?: string | null;
+    discordHandle?: string | null;
+    discordAccessToken?: string;
+    discordRefreshToken?: string;
+    discordAccessTokenExpiresAt?: number;
+    discordProfileFetchedAt?: number;
+    moderationCharterBlocked?: boolean;
+    charterGateEvaluatedAt?: number;
   }
 }

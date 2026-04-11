@@ -15,6 +15,7 @@ type AdminTopBarProps = {
 
 const HUB_PRIORITY_ORDER = [
   "/admin/pilotage",
+  "/admin/mon-compte",
   "/admin/membres",
   "/admin/onboarding",
   "/admin/communaute",

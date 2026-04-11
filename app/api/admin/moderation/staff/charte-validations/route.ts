@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin({ bypassModerationCharterGate: true });
   if (!admin) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin({ bypassModerationCharterGate: true });
   if (!admin) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }

@@ -12,6 +12,7 @@ type DbRow = {
   meeting_date: string;
   title: string;
   discours: unknown;
+  compte_rendu?: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -44,6 +45,7 @@ function normalizeDiscours(raw: unknown): StaffMeetingDiscoursItem[] {
       const id = typeof o.id === "string" && o.id.trim() ? o.id.trim() : makeDiscoursId();
       const intervenant = String(o.intervenant ?? o.speaker ?? "").trim();
       const titre = String(o.titre ?? o.title ?? "").trim();
+      const musiqueUrl = String(o.musiqueUrl ?? o.audioUrl ?? o.musicUrl ?? "").trim();
 
       let sections: StaffMeetingDiscoursSection[] = [];
       if (Array.isArray(o.sections)) {
@@ -66,10 +68,11 @@ function normalizeDiscours(raw: unknown): StaffMeetingDiscoursItem[] {
         sections.push({ id: makeSectionId(), tabTitle: "", corps: "", conseil: "" });
       }
 
-      return { id, intervenant, titre, sections };
+      return { id, intervenant, titre, musiqueUrl: musiqueUrl || undefined, sections };
     })
     .filter((d) => {
       if (d.intervenant.length > 0 || d.titre.length > 0) return true;
+      if (d.musiqueUrl && d.musiqueUrl.length > 0) return true;
       return d.sections.some((s) => s.tabTitle.length > 0 || s.corps.length > 0 || s.conseil.length > 0);
     });
 }
@@ -80,6 +83,7 @@ function mapRow(row: DbRow): StaffMonthlyMeeting {
     meetingDate: row.meeting_date,
     title: row.title || "",
     discours: normalizeDiscours(row.discours),
+    compteRendu: row.compte_rendu != null ? String(row.compte_rendu) : "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: row.created_by,
@@ -92,6 +96,8 @@ export interface StaffMonthlyMeetingUpsertInput {
   title?: string;
   /** Objets partiels acceptés ; normalisation côté repository */
   discours?: unknown;
+  /** Compte-rendu (Markdown ou texte libre) */
+  compteRendu?: string;
 }
 
 export class StaffMonthlyMeetingRepository {
@@ -123,6 +129,7 @@ export class StaffMonthlyMeetingRepository {
       meeting_date: meetingDate,
       title: String(input.title ?? "").trim(),
       discours: normalizeDiscours(Array.isArray(input.discours) ? input.discours : []),
+      compte_rendu: String(input.compteRendu ?? "").trim(),
       created_by: updatedBy,
       updated_by: updatedBy,
       updated_at: new Date().toISOString(),
@@ -143,6 +150,7 @@ export class StaffMonthlyMeetingRepository {
       meeting_date: meetingDate,
       title: String(input.title ?? "").trim(),
       discours: normalizeDiscours(Array.isArray(input.discours) ? input.discours : []),
+      compte_rendu: String(input.compteRendu ?? "").trim(),
       updated_by: updatedBy,
       updated_at: new Date().toISOString(),
     };

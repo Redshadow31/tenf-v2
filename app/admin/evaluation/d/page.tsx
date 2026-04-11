@@ -104,6 +104,25 @@ function getPreviousMonthKey(monthKey: string): string {
   return `${prevYear}-${prevMonth}`;
 }
 
+/** Limite la taille d’un POST (snapshots) pour limiter 413 / timeouts sur l’hébergeur. */
+const SYNTHESIS_SNAPSHOT_CHUNK_SIZE = 350;
+
+function synthesisSaveErrorMessage(
+  status: number,
+  bodyText: string,
+  parsed: Record<string, unknown>
+): string {
+  const e = parsed.error;
+  const m = parsed.message;
+  const d = parsed.details;
+  if (typeof e === "string" && e.trim()) return e;
+  if (typeof m === "string" && m.trim()) return m;
+  if (typeof d === "string" && d.trim()) return d;
+  const snippet = bodyText.replace(/\s+/g, " ").trim().slice(0, 180);
+  if (snippet) return `HTTP ${status}: ${snippet}`;
+  return `HTTP ${status}`;
+}
+
 // ============================================
 // COMPOSANTS
 // ============================================
@@ -625,19 +644,42 @@ export default function EvaluationDPage() {
           };
         });
 
-        const response = await fetch('/api/evaluations/synthesis/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            month: selectedMonth,
-            updates,
-            snapshots,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Erreur lors de la sauvegarde des notes finales et statuts');
+        const snapshotChunks: typeof snapshots[] = [];
+        for (let i = 0; i < snapshots.length; i += SYNTHESIS_SNAPSHOT_CHUNK_SIZE) {
+          snapshotChunks.push(snapshots.slice(i, i + SYNTHESIS_SNAPSHOT_CHUNK_SIZE));
+        }
+        const chunksToSend = snapshotChunks.length > 0 ? snapshotChunks : [[] as typeof snapshots];
+
+        const synthesisWarnings: string[] = [];
+        for (let i = 0; i < chunksToSend.length; i++) {
+          const response = await fetch('/api/evaluations/synthesis/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              month: selectedMonth,
+              updates: i === 0 ? updates : [],
+              snapshots: chunksToSend[i],
+            }),
+          });
+          const bodyText = await response.text();
+          let parsed: Record<string, unknown> = {};
+          try {
+            parsed = bodyText ? (JSON.parse(bodyText) as Record<string, unknown>) : {};
+          } catch {
+            throw new Error(
+              synthesisSaveErrorMessage(response.status, bodyText, {})
+            );
+          }
+          if (!response.ok) {
+            throw new Error(synthesisSaveErrorMessage(response.status, bodyText, parsed));
+          }
+          const batchErrors = (parsed.results as { errors?: string[] } | undefined)?.errors;
+          if (Array.isArray(batchErrors) && batchErrors.length > 0) {
+            synthesisWarnings.push(...batchErrors);
+          }
+        }
+        if (synthesisWarnings.length > 0) {
+          console.warn('[synthèse] Avertissements sauvegarde:', synthesisWarnings);
         }
       }
       
@@ -767,10 +809,15 @@ export default function EvaluationDPage() {
           updates,
         }),
       });
-      
+      const bodyText = await response.text();
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = bodyText ? (JSON.parse(bodyText) as Record<string, unknown>) : {};
+      } catch {
+        throw new Error(synthesisSaveErrorMessage(response.status, bodyText, {}));
+      }
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erreur lors de la sauvegarde des notes finales manuelles');
+        throw new Error(synthesisSaveErrorMessage(response.status, bodyText, parsed));
       }
       
       // Recharger les données

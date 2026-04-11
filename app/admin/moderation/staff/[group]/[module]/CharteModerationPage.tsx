@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type CharteSection = {
   id: number;
@@ -225,6 +226,7 @@ const MIN_SECONDS_BETWEEN_BLOCK_VALIDATIONS = 8;
 const MIN_MS_BETWEEN_BLOCK_VALIDATIONS = MIN_SECONDS_BETWEEN_BLOCK_VALIDATIONS * 1000;
 
 export default function CharteModerationPage() {
+  const { update: updateSession } = useSession();
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [validated, setValidated] = useState<Record<number, boolean>>({});
   const [globalEngagement, setGlobalEngagement] = useState(false);
@@ -326,6 +328,11 @@ export default function CharteModerationPage() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body?.success) {
         throw new Error(body?.error || "Impossible de valider la charte.");
+      }
+      try {
+        await updateSession?.();
+      } catch {
+        // Le JWT sera rafraîchi au prochain tour même sans update explicite.
       }
       setSubmitted(true);
       const entry = body.entry;

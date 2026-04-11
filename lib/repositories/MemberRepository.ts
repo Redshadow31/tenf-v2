@@ -437,6 +437,7 @@ export class MemberRepository {
       nextReviewAt: row.next_review_at ? new Date(row.next_review_at) : undefined,
       roleHistory: row.role_history || undefined,
       parrain: row.parrain || undefined,
+      staffNotificationEmail: row.staff_notification_email ?? undefined,
     };
   }
 
@@ -508,6 +509,12 @@ export class MemberRepository {
     }
     if (member.roleHistory !== undefined) record.role_history = member.roleHistory;
     if (member.parrain !== undefined) record.parrain = member.parrain;
+    if (member.staffNotificationEmail !== undefined) {
+      record.staff_notification_email =
+        member.staffNotificationEmail === null || member.staffNotificationEmail === ""
+          ? null
+          : String(member.staffNotificationEmail).trim().slice(0, 320);
+    }
     if (member.createdAt !== undefined) {
       record.created_at = member.createdAt instanceof Date 
         ? member.createdAt.toISOString() 

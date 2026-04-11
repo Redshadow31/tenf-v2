@@ -124,6 +124,7 @@ export const members = pgTable('members', {
     reason?: string;
   }>>().default([]),
   parrain: text('parrain'),
+  staffNotificationEmail: text('staff_notification_email'),
 });
 
 // Table: linked_twitch_accounts

@@ -126,6 +126,8 @@ export interface MemberData {
     reason?: string;
   }>;
   parrain?: string; // Pseudo/nom du membre parrain
+  /** E-mail pour notifications staff importantes (saisi sur Mon compte admin) */
+  staffNotificationEmail?: string | null;
 }
 
 export interface ArchivedMemberEntry {

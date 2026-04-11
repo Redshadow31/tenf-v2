@@ -15,6 +15,8 @@ export type StaffMeetingDiscoursItem = {
   intervenant: string;
   /** Sujet ou titre global du discours */
   titre: string;
+  /** URL directe vers un fichier audio (mp3, ogg, wav…) ou flux compatible navigateur */
+  musiqueUrl?: string;
   /** Parties découpées en onglets */
   sections: StaffMeetingDiscoursSection[];
 };
@@ -24,6 +26,8 @@ export type StaffMonthlyMeeting = {
   meetingDate: string;
   title: string;
   discours: StaffMeetingDiscoursItem[];
+  /** Compte-rendu final (souvent Markdown), ex. collé après génération externe */
+  compteRendu?: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;

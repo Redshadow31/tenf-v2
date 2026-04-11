@@ -103,7 +103,7 @@ export class EvaluationRepository {
     const { data, error } = await supabaseAdmin
       .from(this.tableName)
       .upsert(evalRecord, {
-        onConflict: 'twitch_login,month_key',
+        onConflict: 'month_key,twitch_login',
       })
       .select()
       .single();

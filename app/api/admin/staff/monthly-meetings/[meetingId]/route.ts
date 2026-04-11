@@ -51,6 +51,7 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
       meetingDate?: string;
       title?: string;
       discours?: unknown;
+      compteRendu?: string;
     };
 
     const meeting = await staffMonthlyMeetingRepository.update(
@@ -59,6 +60,7 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
         meetingDate: String(body?.meetingDate || ""),
         title: typeof body?.title === "string" ? body.title : "",
         discours: Array.isArray(body?.discours) ? body.discours : [],
+        compteRendu: typeof body?.compteRendu === "string" ? body.compteRendu : "",
       },
       writeAdmin.discordId || "admin"
     );

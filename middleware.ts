@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { normalizeAdminRole } from "@/lib/adminRoles";
+import { isAdminPathAllowedDuringCharterBlock } from "@/lib/adminModerationCharterGatePaths";
 
 /**
  * Middleware Next.js pour protéger les routes admin
@@ -32,6 +33,12 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL("/api/auth/signin", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (token.moderationCharterBlocked === true && !isAdminPathAllowedDuringCharterBlock(pathname)) {
+      const charterUrl = new URL("/admin/moderation/staff/info/charte", request.url);
+      charterUrl.searchParams.set("charter", "required");
+      return NextResponse.redirect(charterUrl);
     }
 
     // Vérification spécifique pour la page de gestion des accès (réservée aux fondateurs uniquement)

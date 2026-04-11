@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { getAdminRole, normalizeAdminRole, AdminRole } from "./adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache } from "./adminAccessCache";
 import { memberRepository } from "./repositories";
+import { adminModerationCharterAccessBlocked } from "./adminModerationCharterGate";
 
 const discordClientId = process.env.DISCORD_CLIENT_ID;
 const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
@@ -11,6 +12,143 @@ const hasDiscordOAuthConfig = Boolean(discordClientId && discordClientSecret);
 const devAuthEnabled =
   process.env.NODE_ENV !== "production" &&
   (process.env.ENABLE_DEV_AUTH !== "false");
+
+const DISCORD_PROFILE_REFRESH_MS = 10 * 60 * 1000;
+const CHARTER_JWT_EVAL_MS = 5 * 60 * 1000;
+
+/** Aligné sur le middleware : en dev auth souple, ne pas figer charte / appels Discord dans le JWT */
+function skipDiscordRefreshAndCharterJwtCoercion(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_AUTH !== "false";
+}
+
+async function ensureDiscordAccessToken(token: Record<string, unknown>): Promise<string | null> {
+  let accessToken = typeof token.discordAccessToken === "string" ? token.discordAccessToken : null;
+  const expMs = typeof token.discordAccessTokenExpiresAt === "number" ? token.discordAccessTokenExpiresAt : 0;
+  const now = Date.now();
+  const refresh = typeof token.discordRefreshToken === "string" ? token.discordRefreshToken : null;
+
+  const tokenLikelyExpired = !accessToken || (expMs > 0 && now >= expMs - 120_000);
+  if (!tokenLikelyExpired) {
+    return accessToken;
+  }
+
+  if (!refresh || !discordClientId || !discordClientSecret) {
+    return accessToken;
+  }
+
+  const body = new URLSearchParams({
+    client_id: discordClientId,
+    client_secret: discordClientSecret,
+    grant_type: "refresh_token",
+    refresh_token: refresh,
+  });
+  try {
+    const res = await fetch("https://discord.com/api/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!res.ok) {
+      return accessToken;
+    }
+    const data = (await res.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
+    if (data.access_token) {
+      token.discordAccessToken = data.access_token;
+    }
+    if (data.refresh_token) {
+      token.discordRefreshToken = data.refresh_token;
+    }
+    if (typeof data.expires_in === "number") {
+      token.discordAccessTokenExpiresAt = Date.now() + data.expires_in * 1000;
+    }
+    return typeof token.discordAccessToken === "string" ? token.discordAccessToken : null;
+  } catch {
+    return accessToken;
+  }
+}
+
+async function refreshDiscordProfileIfStale(token: Record<string, unknown>) {
+  if (skipDiscordRefreshAndCharterJwtCoercion()) {
+    return;
+  }
+  if ((token as { devBypass?: boolean }).devBypass) {
+    return;
+  }
+  if (!token.discordId) {
+    return;
+  }
+  const last = typeof token.discordProfileFetchedAt === "number" ? token.discordProfileFetchedAt : 0;
+  if (Date.now() - last < DISCORD_PROFILE_REFRESH_MS) {
+    return;
+  }
+
+  const accessToken = await ensureDiscordAccessToken(token);
+  if (!accessToken) {
+    return;
+  }
+
+  try {
+    const res = await fetch("https://discord.com/api/v10/users/@me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      return;
+    }
+    const u = (await res.json()) as {
+      global_name?: string | null;
+      username?: string;
+      avatar?: string | null;
+    };
+    token.discordGlobalName =
+      typeof u.global_name === "string" && u.global_name.trim().length > 0 ? u.global_name.trim() : null;
+    token.discordHandle =
+      typeof u.username === "string" && u.username.trim().length > 0 ? u.username.trim() : null;
+    token.username = (token.discordGlobalName || token.discordHandle || token.username || "Unknown") as string;
+    if (u.avatar && token.discordId) {
+      token.avatar = `https://cdn.discordapp.com/avatars/${String(token.discordId)}/${u.avatar}.png`;
+    }
+    token.discordProfileFetchedAt = Date.now();
+  } catch {
+    // ignore
+  }
+}
+
+async function refreshModerationCharterFlagOnToken(
+  token: Record<string, unknown>,
+  forceReevaluate = false
+) {
+  if (skipDiscordRefreshAndCharterJwtCoercion()) {
+    token.moderationCharterBlocked = false;
+    return;
+  }
+  if ((token as { devBypass?: boolean }).devBypass) {
+    token.moderationCharterBlocked = false;
+    return;
+  }
+  const discordId = typeof token.discordId === "string" ? token.discordId.trim() : "";
+  if (!discordId) {
+    return;
+  }
+  const lastEval = typeof token.charterGateEvaluatedAt === "number" ? token.charterGateEvaluatedAt : 0;
+  if (
+    !forceReevaluate &&
+    Date.now() - lastEval < CHARTER_JWT_EVAL_MS &&
+    typeof token.moderationCharterBlocked === "boolean"
+  ) {
+    return;
+  }
+
+  try {
+    token.moderationCharterBlocked = await adminModerationCharterAccessBlocked(discordId);
+  } catch {
+    token.moderationCharterBlocked = false;
+  }
+  token.charterGateEvaluatedAt = Date.now();
+}
 
 export const authOptions: NextAuthOptions = {
   // Active les logs détaillés si NEXTAUTH_DEBUG=true (utile pour diagnostiquer OAuthCallback).
@@ -137,7 +275,7 @@ export const authOptions: NextAuthOptions = {
         return true;
       }
     },
-    async jwt({ token, account, profile, user }) {
+    async jwt({ token, account, profile, user, trigger }) {
       // Lors de la connexion initiale, account et profile sont disponibles
       if (account && profile) {
         // Le profil Discord a un champ 'id' mais TypeScript ne le reconnaît pas par défaut
@@ -145,11 +283,34 @@ export const authOptions: NextAuthOptions = {
         const discordId = discordProfile.id as string;
         const username = (discordProfile.username || discordProfile.global_name || "Unknown") as string;
         const avatar = discordProfile.image as string | undefined;
+        const globalName =
+          typeof discordProfile.global_name === "string" && discordProfile.global_name.trim().length > 0
+            ? discordProfile.global_name.trim()
+            : null;
+        const handle =
+          typeof discordProfile.username === "string" && discordProfile.username.trim().length > 0
+            ? discordProfile.username.trim()
+            : null;
 
         // Ajouter les informations Discord au token
         token.discordId = discordId;
         token.username = username;
         token.avatar = avatar;
+        token.discordGlobalName = globalName;
+        token.discordHandle = handle;
+        token.discordProfileFetchedAt = Date.now();
+
+        if (account?.provider === "discord") {
+          if (typeof account.access_token === "string") {
+            token.discordAccessToken = account.access_token;
+          }
+          if (typeof account.refresh_token === "string") {
+            token.discordRefreshToken = account.refresh_token;
+          }
+          if (typeof account.expires_at === "number") {
+            token.discordAccessTokenExpiresAt = account.expires_at * 1000;
+          }
+        }
 
         // Récupérer le rôle admin (hardcodé d'abord, puis cache Blobs)
         let role = getAdminRole(discordId);
@@ -177,13 +338,14 @@ export const authOptions: NextAuthOptions = {
           token.username = String(devUser.username || devUser.name || "Dev Local");
           token.avatar = (devUser.avatar || null) as string | null;
           token.role = normalizeAdminRole(devUser.role) || "ADMIN_COORDINATEUR";
+          token.discordGlobalName = null;
+          token.discordHandle = null;
           (token as any).devBypass = true;
         }
       }
 
-      // À chaque requête, on peut mettre à jour le rôle depuis le cache si nécessaire
-      // (optionnel, pour éviter de refaire la vérification à chaque fois)
-      // Pour l'instant, on garde le rôle tel qu'il était au moment du login
+      await refreshDiscordProfileIfStale(token);
+      await refreshModerationCharterFlagOnToken(token, trigger === "update");
 
       return token;
     },
@@ -194,6 +356,9 @@ export const authOptions: NextAuthOptions = {
         session.user.username = (token.username || "Unknown") as string;
         session.user.avatar = (token.avatar || null) as string | null;
         session.user.role = normalizeAdminRole((token.role as string | null | undefined) || null);
+        session.user.discordGlobalName = (token.discordGlobalName as string | null | undefined) ?? null;
+        session.user.discordHandle = (token.discordHandle as string | null | undefined) ?? null;
+        session.user.moderationCharterBlocked = token.moderationCharterBlocked === true;
         (session.user as any).devBypass = (token as any).devBypass === true;
       }
 

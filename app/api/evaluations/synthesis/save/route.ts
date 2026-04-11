@@ -8,6 +8,8 @@ import { supabaseAdmin } from '@/lib/db/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/** Sauvegarde batch (snapshots) : éviter les 504 sur Vercel avec beaucoup de membres. */
+export const maxDuration = 60;
 
 interface SynthesisSaveRequest {
   month: string; // YYYY-MM
@@ -43,7 +45,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const body: SynthesisSaveRequest = await request.json();
+    let body: SynthesisSaveRequest;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Corps de requête JSON invalide ou trop volumineux' },
+        { status: 400 }
+      );
+    }
     const { month, updates, snapshots } = body;
 
     if (!month || !Array.isArray(updates)) {
@@ -199,7 +209,7 @@ export async function POST(request: NextRequest) {
 
         const { error } = await supabaseAdmin
           .from('monthly_evaluations')
-          .upsert(rows, { onConflict: 'twitch_login,month_key' });
+          .upsert(rows, { onConflict: 'month_key,twitch_login' });
 
         if (error) {
           console.error('[API Evaluations Synthesis Save] Erreur batch snapshot:', error);
@@ -231,8 +241,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     logApi.error('/api/evaluations/synthesis/save', error instanceof Error ? error : new Error(String(error)));
+    const message =
+      error instanceof Error ? error.message : 'Erreur interne du serveur';
     return NextResponse.json(
-      { error: 'Erreur interne du serveur' },
+      { error: 'Erreur interne du serveur', details: message },
       { status: 500 }
     );
   }
