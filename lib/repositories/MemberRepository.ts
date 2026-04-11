@@ -168,6 +168,31 @@ export class MemberRepository {
   }
 
   /**
+   * E-mails « notifications staff » (fiche Mon compte admin), indexés par discord_id.
+   */
+  async findStaffNotificationEmailsByDiscordIds(discordIds: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    const unique = [...new Set(discordIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    if (unique.length === 0) return out;
+
+    const { data, error } = await supabaseAdmin
+      .from("members")
+      .select("discord_id, staff_notification_email")
+      .in("discord_id", unique);
+
+    if (error) throw error;
+
+    for (const row of data || []) {
+      const rec = row as { discord_id?: string | null; staff_notification_email?: string | null };
+      const id = typeof rec.discord_id === "string" ? rec.discord_id.trim() : "";
+      const em =
+        typeof rec.staff_notification_email === "string" ? rec.staff_notification_email.trim() : "";
+      if (id && em) out.set(id, em);
+    }
+    return out;
+  }
+
+  /**
    * Récupère les membres actifs avec pagination
    */
   async findActive(limit = 50, offset = 0): Promise<MemberData[]> {

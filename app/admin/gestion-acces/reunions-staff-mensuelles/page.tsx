@@ -492,9 +492,20 @@ export default function ReunionsStaffMensuellesPage() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Erreur envoi");
-      setFeedback(
-        `Compte rendu envoyé à ${typeof data.sentCount === "number" ? data.sentCount : sendSelectedIds.length} personne(s). Les destinataires le retrouvent sous Modération staff → Comptes rendus de réunion.`,
-      );
+      const n = typeof data.sentCount === "number" ? data.sentCount : sendSelectedIds.length;
+      let msg = `Compte rendu envoyé à ${n} personne(s). Les destinataires le retrouvent sous Modération staff → Comptes rendus de réunion.`;
+      if (data.emailDisabled) {
+        msg +=
+          " E-mail : désactivé (configure RESEND_API_KEY sur le serveur pour notifier aussi par mail les adresses « Mon compte »).";
+      } else {
+        const es = typeof data.emailSentCount === "number" ? data.emailSentCount : 0;
+        const sk = typeof data.emailSkippedNoAddress === "number" ? data.emailSkippedNoAddress : 0;
+        const fl = typeof data.emailFailedCount === "number" ? data.emailFailedCount : 0;
+        if (es > 0) msg += ` Copie e-mail envoyée : ${es}.`;
+        if (sk > 0) msg += ` Sans e-mail (adresse non renseignée sur Mon compte) : ${sk}.`;
+        if (fl > 0) msg += ` Échec d’envoi e-mail : ${fl} (voir logs serveur).`;
+      }
+      setFeedback(msg);
       setSendCrMeeting(null);
     } catch (e) {
       setFeedback(e instanceof Error ? e.message : "Erreur envoi");
