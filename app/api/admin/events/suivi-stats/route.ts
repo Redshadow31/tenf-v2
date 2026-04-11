@@ -28,47 +28,38 @@ function addCalendarMonths(ym: string, delta: number): string {
   return `${ny}-${String(nm).padStart(2, "0")}`;
 }
 
-/** Somme des taux individuels et nombre d’événements (≥1 inscription) pour une moyenne arithmétique. */
-type AvgCell = { sumRate: number; n: number };
+/** Somme des présents et nombre d’événements (tous les événements du type sur le mois). */
+type PresenceCell = { sumPresent: number; events: number };
 
-function perEventRate(registered: number, present: number): number | null {
-  if (registered <= 0) return null;
-  return Math.round((100 * present) / registered);
-}
-
-function bumpAvg(map: Map<string, Map<string, AvgCell>>, category: string, monthKey: string, rate: number | null) {
-  if (rate === null) return;
+function bumpPresence(map: Map<string, Map<string, PresenceCell>>, category: string, monthKey: string, present: number) {
   if (!map.has(category)) map.set(category, new Map());
   const byM = map.get(category)!;
-  const cur = byM.get(monthKey) || { sumRate: 0, n: 0 };
-  cur.sumRate += rate;
-  cur.n += 1;
+  const cur = byM.get(monthKey) || { sumPresent: 0, events: 0 };
+  cur.sumPresent += present;
+  cur.events += 1;
   byM.set(monthKey, cur);
 }
 
-function avgFromCell(c?: AvgCell): number | null {
-  if (!c || c.n === 0) return null;
-  return Math.round(c.sumRate / c.n);
+function avgPresentPerEvent(c?: PresenceCell): number | null {
+  if (!c || c.events === 0) return null;
+  return Math.round((c.sumPresent * 10) / c.events) / 10;
 }
 
-function mergeAvgCells(a: AvgCell, b: AvgCell): AvgCell {
-  return { sumRate: a.sumRate + b.sumRate, n: a.n + b.n };
+function mergePresenceCells(a: PresenceCell, b: PresenceCell): PresenceCell {
+  return { sumPresent: a.sumPresent + b.sumPresent, events: a.events + b.events };
 }
 
-function cellEventTotal(byMonth: Map<string, AvgCell>, monthKeys: string[]): number {
-  return monthKeys.reduce((s, mk) => s + (byMonth.get(mk)?.n || 0), 0);
+function cellEventTotal(byMonth: Map<string, PresenceCell>, monthKeys: string[]): number {
+  return monthKeys.reduce((s, mk) => s + (byMonth.get(mk)?.events || 0), 0);
 }
 
 const MAX_CHART_CATEGORIES = 10;
 
-/**
- * Garde les types avec le plus d’événements (sur les mois demandés) et regroupe le reste en « Autres ».
- */
 function collapseCategoriesByEventVolume(
-  byCategoryMonth: Map<string, Map<string, AvgCell>>,
+  byCategoryMonth: Map<string, Map<string, PresenceCell>>,
   monthKeys: string[],
   maxCategories: number
-): { category: string; byMonth: Map<string, AvgCell> }[] {
+): { category: string; byMonth: Map<string, PresenceCell> }[] {
   const scored = Array.from(byCategoryMonth.entries()).map(([category, byMonth]) => ({
     category,
     byMonth,
@@ -80,24 +71,24 @@ function collapseCategoriesByEventVolume(
   }
   const head = scored.slice(0, maxCategories - 1);
   const tail = scored.slice(maxCategories - 1);
-  const mergedByMonth = new Map<string, AvgCell>();
+  const mergedByMonth = new Map<string, PresenceCell>();
   for (const mk of monthKeys) {
-    mergedByMonth.set(mk, { sumRate: 0, n: 0 });
+    mergedByMonth.set(mk, { sumPresent: 0, events: 0 });
   }
   for (const row of tail) {
     for (const mk of monthKeys) {
       const acc = mergedByMonth.get(mk)!;
-      const add = row.byMonth.get(mk) || { sumRate: 0, n: 0 };
-      mergedByMonth.set(mk, mergeAvgCells(acc, add));
+      const add = row.byMonth.get(mk) || { sumPresent: 0, events: 0 };
+      mergedByMonth.set(mk, mergePresenceCells(acc, add));
     }
   }
   return [...head.map(({ category, byMonth }) => ({ category, byMonth })), { category: "Autres", byMonth: mergedByMonth }];
 }
 
-function toAvgRateRow(category: string, byMonth: Map<string, AvgCell>, monthKeys: string[]) {
+function toAvgRow(category: string, byMonth: Map<string, PresenceCell>, monthKeys: string[]) {
   const values: Record<string, number | null> = {};
   for (const mk of monthKeys) {
-    values[mk] = avgFromCell(byMonth.get(mk));
+    values[mk] = avgPresentPerEvent(byMonth.get(mk));
   }
   return { category, values };
 }
@@ -135,63 +126,58 @@ export async function GET() {
 
     const perEventStats = await mapInChunks(eventsInWindow, 20, async (ev) => {
       try {
-        const [registrations, presences] = await Promise.all([
-          eventRepository.getRegistrations(ev.id),
-          eventRepository.getPresences(ev.id),
-        ]);
-        const registered = registrations?.length ?? 0;
+        const presences = await eventRepository.getPresences(ev.id);
         const present = (presences || []).filter((p: any) => p?.present === true).length;
-        const rate = perEventRate(registered, present);
         return {
           category: ev.category || "Non classé",
           monthKey: monthKeyParis(ev.date),
-          registered,
-          rate,
+          present,
         };
       } catch {
         return {
           category: ev.category || "Non classé",
           monthKey: monthKeyParis(ev.date),
-          registered: 0,
-          rate: null as number | null,
+          present: 0,
         };
       }
     });
 
-    const byCategoryMonth = new Map<string, Map<string, AvgCell>>();
+    const byCategoryMonth = new Map<string, Map<string, PresenceCell>>();
     for (const row of perEventStats) {
-      bumpAvg(byCategoryMonth, row.category, row.monthKey, row.rate);
+      bumpPresence(byCategoryMonth, row.category, row.monthKey, row.present);
     }
 
-    const refRates = perEventStats
-      .filter((r) => r.monthKey === referenceMonth && r.rate !== null)
-      .map((r) => r.rate as number);
-    const globalRefRate = refRates.length ? Math.round(refRates.reduce((a, b) => a + b, 0) / refRates.length) : null;
+    const refRows = perEventStats.filter((r) => r.monthKey === referenceMonth);
+    const globalSumPresent = refRows.reduce((s, r) => s + r.present, 0);
+    const globalEventCount = refRows.length;
+    const globalAvgPresent =
+      globalEventCount > 0 ? Math.round((globalSumPresent * 10) / globalEventCount) / 10 : null;
 
     const currentMonthByCategory = Array.from(byCategoryMonth.entries())
       .map(([category, byM]) => {
-        const c = byM.get(referenceMonth);
+        const c = byM.get(referenceMonth) || { sumPresent: 0, events: 0 };
         return {
           category,
-          eventCount: c?.n ?? 0,
-          rate: avgFromCell(c),
+          eventCount: c.events,
+          totalPresent: c.sumPresent,
+          avgPresent: avgPresentPerEvent(c),
         };
       })
       .filter((r) => r.eventCount > 0)
-      .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+      .sort((a, b) => (b.avgPresent ?? -1) - (a.avgPresent ?? -1));
 
     const allCats = new Set<string>([...byCategoryMonth.keys()]);
     const prevMonthComparison = Array.from(allCats)
       .map((category) => {
         const byM = byCategoryMonth.get(category)!;
-        const cur = byM.get(referenceMonth);
-        const prev = byM.get(previousMonth);
+        const cur = byM.get(referenceMonth) || { sumPresent: 0, events: 0 };
+        const prev = byM.get(previousMonth) || { sumPresent: 0, events: 0 };
         return {
           category,
-          currentRate: avgFromCell(cur),
-          previousRate: avgFromCell(prev),
-          currentEventCount: cur?.n ?? 0,
-          previousEventCount: prev?.n ?? 0,
+          currentAvg: avgPresentPerEvent(cur),
+          previousAvg: avgPresentPerEvent(prev),
+          currentEventCount: cur.events,
+          previousEventCount: prev.events,
         };
       })
       .filter((r) => r.currentEventCount > 0 || r.previousEventCount > 0)
@@ -202,24 +188,23 @@ export async function GET() {
     const comparisonForChart = collapsedCmp.map(({ category, byMonth }) => ({
       category,
       values: {
-        current: avgFromCell(byMonth.get(referenceMonth)),
-        previous: avgFromCell(byMonth.get(previousMonth)),
+        current: avgPresentPerEvent(byMonth.get(referenceMonth)),
+        previous: avgPresentPerEvent(byMonth.get(previousMonth)),
       },
     }));
 
     const collapsedLast3 = collapseCategoriesByEventVolume(byCategoryMonth, last3MonthKeys, MAX_CHART_CATEGORIES);
-    const last3ForChart = collapsedLast3.map(({ category, byMonth }) => toAvgRateRow(category, byMonth, last3MonthKeys));
+    const last3ForChart = collapsedLast3.map(({ category, byMonth }) => toAvgRow(category, byMonth, last3MonthKeys));
 
     const last3ByCategory = Array.from(byCategoryMonth.entries())
-      .map(([category, byMonth]) => toAvgRateRow(category, byMonth, last3MonthKeys))
+      .map(([category, byMonth]) => toAvgRow(category, byMonth, last3MonthKeys))
       .sort(
         (a, b) =>
-          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(b.category)?.get(mk)?.n || 0), 0) -
-          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(a.category)?.get(mk)?.n || 0), 0)
+          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(b.category)?.get(mk)?.events || 0), 0) -
+          last3MonthKeys.reduce((s, mk) => s + (byCategoryMonth.get(a.category)?.get(mk)?.events || 0), 0)
       );
 
     const eventsRefMonth = events.filter((e) => monthKeyParis(e.date) === referenceMonth).length;
-    const eventsRefWithRate = perEventStats.filter((r) => r.monthKey === referenceMonth && r.rate !== null).length;
 
     return NextResponse.json({
       timezone: PARIS_TIMEZONE,
@@ -227,12 +212,13 @@ export async function GET() {
       previousMonth,
       last3MonthKeys,
       monthLabels,
-      metric: "mean_presence_rate_per_event",
+      metric: "mean_present_count_per_event",
       metricDescription:
-        "Pour chaque événement avec au moins une inscription : taux = présents / inscriptions. La valeur par type est la moyenne arithmétique de ces taux sur les événements du mois (Europe/Paris).",
+        "Pour chaque type et chaque mois : moyenne = total des présents (lignes « présent ») ÷ nombre d’événements de ce type sur le mois (Europe/Paris). Tous les événements du type sont comptés au dénominateur.",
       globalCurrentMonth: {
-        rate: globalRefRate,
-        eventCount: eventsRefWithRate,
+        avgPresent: globalAvgPresent,
+        eventCount: globalEventCount,
+        totalPresent: globalSumPresent,
       },
       currentMonthByCategory,
       prevMonthComparison,
@@ -242,7 +228,6 @@ export async function GET() {
       eventCount: events.length,
       eventsInWindow: eventsInWindow.length,
       eventsReferenceMonth: eventsRefMonth,
-      eventsReferenceMonthWithRate: eventsRefWithRate,
     });
   } catch (e) {
     console.error("[admin/events/suivi-stats]", e);
