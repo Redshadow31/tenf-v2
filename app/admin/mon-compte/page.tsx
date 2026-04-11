@@ -17,7 +17,7 @@ import {
   RefreshCw,
   Shield,
   Sparkles,
-  UserRound,
+  User,
   Video,
 } from "lucide-react";
 
@@ -128,7 +128,7 @@ function StatTile({
   value,
   tone = "neutral" as "neutral" | "ok" | "warn" | "danger",
 }: {
-  icon: typeof UserRound;
+  icon: typeof User;
   label: string;
   value: string;
   tone?: "neutral" | "ok" | "warn" | "danger";
@@ -175,7 +175,7 @@ const QUICK_LINKS = [
     href: "/admin/membres",
     title: "Membres",
     desc: "Gestion communauté",
-    icon: UserRound,
+    icon: User,
   },
 ] as const;
 
@@ -445,7 +445,7 @@ export default function AdminMonComptePage() {
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-white">Identité & chaîne</h2>
-              <UserRound className="h-5 w-5 text-[#c9a227]/80" aria-hidden />
+              <User className="h-5 w-5 text-[#c9a227]/80" aria-hidden />
             </div>
             <p className="mt-1 text-xs text-zinc-500">
               Données liées à ta fiche membre TENF (synchronisées avec Discord / la base).
