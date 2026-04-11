@@ -6,6 +6,8 @@ import {
   BookOpen,
   CalendarPlus,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Eye,
   FileText,
@@ -124,6 +126,11 @@ export default function ReunionsStaffMensuellesPage() {
   const [sectionTabByDiscoursId, setSectionTabByDiscoursId] = useState<Record<string, number>>({});
   /** Index du discours affiché en modale plein écran (aperçu agrandi) */
   const [modalDiscoursIndex, setModalDiscoursIndex] = useState<number | null>(null);
+  /** Discours d’une réunion enregistrée (liste), lecture seule plein écran */
+  const [browseDiscoursModal, setBrowseDiscoursModal] = useState<{
+    meeting: StaffMonthlyMeeting;
+    index: number;
+  } | null>(null);
   /** Markdown du compte-rendu auto ; ouverture modale si non null */
   const [crMarkdown, setCrMarkdown] = useState<string | null>(null);
   const [crCopied, setCrCopied] = useState(false);
@@ -313,9 +320,18 @@ export default function ReunionsStaffMensuellesPage() {
     })();
   }, [sendCrMeeting]);
 
+  function openBrowseDiscoursFromMeeting(m: StaffMonthlyMeeting) {
+    if (!m.discours || m.discours.length === 0) {
+      setFeedback("Cette réunion n’a aucun discours à afficher.");
+      return;
+    }
+    setBrowseDiscoursModal({ meeting: m, index: 0 });
+  }
+
   useEffect(() => {
     const locked =
       modalDiscoursIndex !== null ||
+      browseDiscoursModal !== null ||
       crMarkdown !== null ||
       extractModalText !== null ||
       storedCrPreviewMarkdown !== null ||
@@ -342,6 +358,10 @@ export default function ReunionsStaffMensuellesPage() {
         setSendCrMeeting(null);
         return;
       }
+      if (browseDiscoursModal !== null) {
+        setBrowseDiscoursModal(null);
+        return;
+      }
       setModalDiscoursIndex(null);
     };
     window.addEventListener("keydown", onKey);
@@ -349,7 +369,7 @@ export default function ReunionsStaffMensuellesPage() {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [modalDiscoursIndex, crMarkdown, extractModalText, storedCrPreviewMarkdown, sendCrMeeting]);
+  }, [modalDiscoursIndex, browseDiscoursModal, crMarkdown, extractModalText, storedCrPreviewMarkdown, sendCrMeeting]);
 
   function openCrFromForm() {
     setCrCopied(false);
@@ -499,6 +519,115 @@ export default function ReunionsStaffMensuellesPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function renderBrowseDiscoursModal() {
+    if (!browseDiscoursModal) return null;
+    const { meeting, index } = browseDiscoursModal;
+    const list = meeting.discours;
+    if (list.length === 0) return null;
+    const safeIdx = Math.max(0, Math.min(index, list.length - 1));
+    const row = list[safeIdx];
+    if (!row) return null;
+    const n = list.length;
+    return (
+      <div
+        className="fixed inset-0 z-[82] flex items-center justify-center p-3 sm:p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="browse-discours-modal-title"
+      >
+        <button
+          type="button"
+          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          onClick={() => setBrowseDiscoursModal(null)}
+          aria-label="Fermer la fenêtre"
+        />
+        <div
+          className="relative z-[83] flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border shadow-2xl"
+          style={{ borderColor: "rgba(212,175,55,0.45)", background: "rgba(14,16,24,0.98)" }}
+        >
+          <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                {formatFrDate(meeting.meetingDate)}
+                {meeting.title ? ` · ${meeting.title}` : ""}
+              </p>
+              <h2 id="browse-discours-modal-title" className="mt-1 truncate text-xl font-semibold text-white sm:text-2xl">
+                {row.titre.trim() || `Discours ${safeIdx + 1}`}
+              </h2>
+              {row.intervenant.trim() ? <p className="mt-1 text-sm text-[#d4af37]">{row.intervenant}</p> : null}
+              {n > 1 ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={safeIdx <= 0}
+                    onClick={() =>
+                      setBrowseDiscoursModal((prev) =>
+                        prev ? { ...prev, index: Math.max(0, prev.index - 1) } : prev,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs text-gray-200 hover:bg-white/10 disabled:opacity-35"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Discours {safeIdx + 1} / {n}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeIdx >= n - 1}
+                    onClick={() =>
+                      setBrowseDiscoursModal((prev) =>
+                        prev ? { ...prev, index: Math.min(n - 1, prev.index + 1) } : prev,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs text-gray-200 hover:bg-white/10 disabled:opacity-35"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setBrowseDiscoursModal(null)}
+              className="shrink-0 rounded-lg border border-white/15 p-2 text-gray-300 hover:bg-white/10"
+              aria-label="Fermer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            {audioUrlLooksPlayable(row.musiqueUrl || "") ? (
+              <div className="mb-8 rounded-xl border border-[#d4af37]/25 bg-black/35 p-4">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c9a962]">Lecteur audio</p>
+                <audio controls preload="metadata" src={(row.musiqueUrl || "").trim()} className="w-full">
+                  Lecture audio non supportée.
+                </audio>
+              </div>
+            ) : null}
+            {row.sections.map((sec, si) => (
+              <article key={sec.id} className={si > 0 ? "mt-10 border-t border-white/10 pt-10" : ""}>
+                <h3 className="text-lg font-semibold text-[#f0e6d2] sm:text-xl">
+                  {sec.tabTitle.trim() || `Partie ${si + 1}`}
+                </h3>
+                <div className="mt-4">
+                  <MeetingMdPreview markdown={sec.corps} label="Corps" size="lg" />
+                </div>
+                {sec.conseil.trim() ? (
+                  <div className="mt-8 rounded-xl border border-[#d4af37]/25 bg-[#d4af37]/5 p-4 sm:p-5">
+                    <MeetingMdPreview markdown={sec.conseil} label="Conseil" size="lg" />
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -879,6 +1008,16 @@ export default function ReunionsStaffMensuellesPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
+                        disabled={!m.discours?.length}
+                        title={!m.discours?.length ? "Aucun discours sur cette réunion" : undefined}
+                        onClick={() => openBrowseDiscoursFromMeeting(m)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-1.5 text-sm font-medium text-[#f4db97] hover:bg-[#d4af37]/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        Discours plein écran
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setSendCrMeeting(m)}
                         className="inline-flex items-center gap-1 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/10 px-3 py-1.5 text-sm font-medium text-[#f4db97] hover:bg-[#d4af37]/20"
                       >
@@ -997,6 +1136,8 @@ export default function ReunionsStaffMensuellesPage() {
           </div>
         </div>
       ) : null}
+
+      {renderBrowseDiscoursModal()}
 
       {crMarkdown ? (
         <div
