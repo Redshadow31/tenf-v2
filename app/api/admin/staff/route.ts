@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAdminRoleFromCache, getAllAdminIdsFromCache, loadAdminAccessCache } from '@/lib/adminAccessCache';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { getAllAdminIds, getAdminRole } from '@/lib/adminRoles';
+import { getAdminRole } from '@/lib/adminRoles';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
 
 export const dynamic = 'force-dynamic';
@@ -18,23 +19,24 @@ export async function GET(request: NextRequest) {
     }
 
     await loadMemberDataFromStorage();
+    await loadAdminAccessCache();
     const allMembers = getAllMemberData();
-    const allAdminIds = getAllAdminIds();
+    const adminIdSet = new Set(getAllAdminIdsFromCache());
 
-    // Filtrer les membres qui sont dans le staff (admins, modos)
+    // Filtrer les membres qui ont un accès admin (fondateurs + liste Gestion des accès)
     const staffMembers = allMembers
       .filter(member => {
         if (!member.discordId) return false;
-        return allAdminIds.includes(member.discordId);
+        return adminIdSet.has(member.discordId);
       })
       .map(member => {
-        const role = getAdminRole(member.discordId!);
+        const role = getAdminRole(member.discordId!) ?? getAdminRoleFromCache(member.discordId!) ?? 'MODERATEUR_EN_FORMATION';
         return {
           discordId: member.discordId,
           discordUsername: member.discordUsername || '',
           displayName: member.displayName || member.twitchLogin,
           twitchLogin: member.twitchLogin,
-          role: role || 'MODERATEUR_EN_FORMATION',
+          role,
         };
       })
       .sort((a, b) => {
