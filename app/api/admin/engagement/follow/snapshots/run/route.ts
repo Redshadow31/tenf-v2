@@ -4,6 +4,7 @@ import {
   executeFollowEngagementSnapshotJob,
   startFollowEngagementSnapshotJob,
 } from "@/lib/admin/followEngagement";
+import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +31,74 @@ export async function POST() {
       );
     }
 
-    // Sur Netlify/serverless, un travail lance avec `void` apres le return est en general coupe
-    // quand l'invocation se termine : le snapshot reste "running" puis echoue (stale).
-    // On execute donc le job dans cette requete jusqu'au maxDuration de la route.
+    const netlifyEnv = process.env.NETLIFY;
+    const isNetlify = netlifyEnv === "true" || Boolean(netlifyEnv);
+    const bgSecret = process.env.NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET;
+    const siteOrigin = (
+      process.env.URL ||
+      process.env.DEPLOY_PRIME_URL ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      process.env.NEXTAUTH_URL ||
+      ""
+    ).replace(/\/$/, "");
+
+    // En production Netlify, la route Next est coupee par le CDN (~60s) avant la fin du job -> 504.
+    // Une Netlify Background Function tourne jusqu'a ~15 min apres la reponse au declencheur.
+    if (isNetlify && bgSecret && siteOrigin) {
+      const bgUrl = `${siteOrigin}/.netlify/functions/follow-engagement-snapshot-background`;
+      const trigger = await fetch(bgUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          snapshotId: started.snapshotId,
+          generatedByDiscordId: admin.discordId || null,
+          secret: bgSecret,
+        }),
+        cache: "no-store",
+      });
+
+      if (!trigger.ok && trigger.status !== 202) {
+        const detail = await trigger.text().catch(() => "");
+        console.error(
+          "[Admin Follow Snapshot Run] Echec declenchement background Netlify:",
+          trigger.status,
+          detail
+        );
+        await supabaseAdmin
+          .from("follow_engagement_snapshots")
+          .update({ status: "failed" })
+          .eq("id", started.snapshotId);
+        return NextResponse.json(
+          {
+            error:
+              "Impossible de lancer le snapshot en arriere-plan. Consulter les logs Netlify (fonction follow-engagement-snapshot-background).",
+          },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          snapshotId: started.snapshotId,
+          status: "running" as const,
+          alreadyRunning: false,
+        },
+        { status: 202 }
+      );
+    }
+
+    if (isNetlify && (!bgSecret || !siteOrigin)) {
+      return NextResponse.json(
+        {
+          error:
+            "Configuration Netlify manquante : definir NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET (secret partage) et s'assurer que URL ou NEXT_PUBLIC_BASE_URL est disponible pour declencher la fonction background.",
+        },
+        { status: 503 }
+      );
+    }
+
+    // Local (next dev) ou hors Netlify : execution synchrone dans la route.
     await executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null);
 
     return NextResponse.json(
