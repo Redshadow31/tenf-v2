@@ -70,6 +70,8 @@ export const members = pgTable('members', {
   role: memberRoleEnum('role').notNull().default('Affilié'),
   isVip: boolean('is_vip').default(false),
   isActive: boolean('is_active').default(true),
+  /** Hors périmètre suivi (ex. EventSub raids) ; distinct de is_active (communauté inactive). */
+  isArchived: boolean('is_archived').default(false),
   badges: jsonb('badges').$type<string[]>().default([]),
   listId: integer('list_id'), // 1, 2, ou 3
   roleManuallySet: boolean('role_manually_set').default(false),

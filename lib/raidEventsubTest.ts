@@ -153,7 +153,7 @@ function normalizeLogin(value: string | null | undefined): string {
   return String(value || '').trim().toLowerCase();
 }
 
-async function findActiveSupabaseMemberByEventIdentity(input: {
+async function findRaidTrackedSupabaseMemberByEventIdentity(input: {
   twitchId: string;
   twitchLogin: string;
 }): Promise<MatchedMember | null> {
@@ -163,7 +163,7 @@ async function findActiveSupabaseMemberByEventIdentity(input: {
     const { data: byId, error: byIdError } = await supabaseAdmin
       .from('members')
       .select('twitch_login,twitch_id,is_active')
-      .eq('is_active', true)
+      .eq('is_archived', false)
       .eq('twitch_id', input.twitchId)
       .limit(1);
     if (byIdError) {
@@ -183,7 +183,7 @@ async function findActiveSupabaseMemberByEventIdentity(input: {
     const { data: byLogin, error: byLoginError } = await supabaseAdmin
       .from('members')
       .select('twitch_login,twitch_id,is_active')
-      .eq('is_active', true)
+      .eq('is_archived', false)
       .eq('twitch_login', normalizedLogin)
       .limit(1);
     if (byLoginError) {
@@ -456,13 +456,13 @@ async function createToBroadcasterRaidSubscription(
 }
 
 async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
-  // Périmètre EventSub raids-sub:
-  // - tous les membres actifs (pas seulement les profils validés publics)
-  // Cela permet d'aligner la base suivie avec l'effectif actif global côté admin.
+  // Périmètre EventSub raids-sub (candidats avant filtre live + grâce) :
+  // - tous les membres non archivés, actifs ou inactifs côté communauté (is_active),
+  // - hors is_archived (retirés du suivi type départ définitif / archivage staff).
   const { data, error } = await supabaseAdmin
     .from('members')
     .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at')
-    .eq('is_active', true)
+    .eq('is_archived', false)
     .not('twitch_login', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(5000);
@@ -744,12 +744,12 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
   }
   const run = ensuredRun.run;
 
-  // Source de vérité: Supabase members (actifs), puis fallback legacy pour compatibilité.
-  let fromMember: MatchedMember | null = await findActiveSupabaseMemberByEventIdentity({
+  // Source de vérité: Supabase members (non archivés, actif ou inactif), puis fallback legacy pour compatibilité.
+  let fromMember: MatchedMember | null = await findRaidTrackedSupabaseMemberByEventIdentity({
     twitchId: input.event.from_broadcaster_user_id,
     twitchLogin: input.event.from_broadcaster_user_login,
   });
-  let toMember: MatchedMember | null = await findActiveSupabaseMemberByEventIdentity({
+  let toMember: MatchedMember | null = await findRaidTrackedSupabaseMemberByEventIdentity({
     twitchId: input.event.to_broadcaster_user_id,
     twitchLogin: input.event.to_broadcaster_user_login,
   });
@@ -761,7 +761,7 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     if (!fromMember) {
       const fallbackFrom = allMembers.find(
         (m) =>
-          m.isActive &&
+          m.isArchived !== true &&
           ((!!m.twitchId && m.twitchId === input.event.from_broadcaster_user_id) ||
             m.twitchLogin?.toLowerCase() === input.event.from_broadcaster_user_login.toLowerCase())
       );
@@ -777,7 +777,7 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
     if (!toMember) {
       const fallbackTo = allMembers.find(
         (m) =>
-          m.isActive &&
+          m.isArchived !== true &&
           ((!!m.twitchId && m.twitchId === input.event.to_broadcaster_user_id) ||
             m.twitchLogin?.toLowerCase() === input.event.to_broadcaster_user_login.toLowerCase())
       );

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
+import { isoToParisYmd, parisMonthKeyFromDate, parisMonthKeyFromIso } from "@/lib/parisCalendar";
 
 type SummaryData = {
   testEnabled: boolean;
@@ -69,10 +70,8 @@ export default function AdminRaidsSubPage() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">("all");
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState(() => parisMonthKeyFromDate(new Date()));
+  const statsMonthBootstrapped = useRef(false);
   const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [syncMessage, setSyncMessage] = useState("");
@@ -195,6 +194,43 @@ export default function AdminRaidsSubPage() {
     [reviewEvents]
   );
 
+  const latestEventMonthKey = useMemo(() => {
+    let best: string | null = null;
+    let bestTime = -Infinity;
+    for (const event of nonDuplicateEvents) {
+      const value = String(event.event_at || "");
+      if (!value) continue;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) continue;
+      const t = date.getTime();
+      if (t > bestTime) {
+        bestTime = t;
+        const key = parisMonthKeyFromIso(value);
+        if (key) best = key;
+      }
+    }
+    return best;
+  }, [nonDuplicateEvents]);
+
+  useEffect(() => {
+    if (statsMonthBootstrapped.current || loading) return;
+    const currentKey = parisMonthKeyFromDate(new Date());
+    const currentMonthHasData = nonDuplicateEvents.some((event) => {
+      const value = String(event.event_at || "");
+      if (!value) return false;
+      return parisMonthKeyFromIso(value) === currentKey;
+    });
+    if (currentMonthHasData) {
+      statsMonthBootstrapped.current = true;
+      return;
+    }
+    if (latestEventMonthKey) {
+      setSelectedMonth(latestEventMonthKey);
+      setSelectedChartDay(null);
+    }
+    statsMonthBootstrapped.current = true;
+  }, [loading, latestEventMonthKey, nonDuplicateEvents]);
+
   const sentRanking = useMemo(() => {
     const map = new Map<string, number>();
     for (const event of nonDuplicateEvents) {
@@ -244,15 +280,12 @@ export default function AdminRaidsSubPage() {
 
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
-    const now = new Date();
-    set.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    set.add(parisMonthKeyFromDate(new Date()));
     for (const event of nonDuplicateEvents) {
       const value = String(event.event_at || "");
       if (!value) continue;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) continue;
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      set.add(key);
+      const key = parisMonthKeyFromIso(value);
+      if (key) set.add(key);
     }
     return Array.from(set).sort((a, b) => (a < b ? 1 : -1));
   }, [nonDuplicateEvents]);
@@ -262,7 +295,7 @@ export default function AdminRaidsSubPage() {
     const [yearStr, monthStr] = selectedMonth.split("-");
     const year = Number(yearStr);
     const month = Number(monthStr);
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const byDay = new Map<number, DailyRaidPoint>();
     for (let day = 1; day <= daysInMonth; day++) {
       byDay.set(day, { day, raidsFaits: 0, raidsRecus: 0 });
@@ -270,10 +303,9 @@ export default function AdminRaidsSubPage() {
     for (const event of nonDuplicateEvents) {
       const value = String(event.event_at || "");
       if (!value) continue;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) continue;
-      if (date.getFullYear() !== year || date.getMonth() + 1 !== month) continue;
-      const point = byDay.get(date.getDate());
+      const cal = isoToParisYmd(value);
+      if (!cal || cal.y !== year || cal.m !== month) continue;
+      const point = byDay.get(cal.d);
       if (!point) continue;
       if (event.from_broadcaster_user_login) {
         point.raidsFaits += 1;
@@ -288,10 +320,15 @@ export default function AdminRaidsSubPage() {
   const previousDailyChartData = useMemo((): DailyRaidPoint[] => {
     if (!/^\d{4}-\d{2}$/.test(selectedMonth)) return [];
     const [yearStr, monthStr] = selectedMonth.split("-");
-    const previousDate = new Date(Number(yearStr), Number(monthStr) - 2, 1);
-    const prevYear = previousDate.getFullYear();
-    const prevMonth = previousDate.getMonth() + 1;
-    const daysInMonth = new Date(prevYear, prevMonth, 0).getDate();
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    let prevYear = year;
+    let prevMonthNum = month - 1;
+    if (prevMonthNum < 1) {
+      prevMonthNum = 12;
+      prevYear -= 1;
+    }
+    const daysInMonth = new Date(Date.UTC(prevYear, prevMonthNum, 0)).getUTCDate();
     const byDay = new Map<number, DailyRaidPoint>();
     for (let day = 1; day <= daysInMonth; day++) {
       byDay.set(day, { day, raidsFaits: 0, raidsRecus: 0 });
@@ -299,10 +336,9 @@ export default function AdminRaidsSubPage() {
     for (const event of nonDuplicateEvents) {
       const value = String(event.event_at || "");
       if (!value) continue;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) continue;
-      if (date.getFullYear() !== prevYear || date.getMonth() + 1 !== prevMonth) continue;
-      const point = byDay.get(date.getDate());
+      const cal = isoToParisYmd(value);
+      if (!cal || cal.y !== prevYear || cal.m !== prevMonthNum) continue;
+      const point = byDay.get(cal.d);
       if (!point) continue;
       if (event.from_broadcaster_user_login) {
         point.raidsFaits += 1;
@@ -315,14 +351,24 @@ export default function AdminRaidsSubPage() {
   }, [nonDuplicateEvents, selectedMonth]);
 
   const selectedDaySummary = useMemo(() => {
-    if (!selectedChartDay) return null;
+    if (!selectedChartDay || !/^\d{4}-\d{2}$/.test(selectedMonth)) return null;
     const point = dailyChartData.find((item) => item.day === selectedChartDay);
     if (!point) return null;
+    const [ys, ms] = selectedMonth.split("-");
+    const y = Number(ys);
+    const mo = Number(ms);
+    let eventCount = 0;
+    for (const event of nonDuplicateEvents) {
+      const cal = isoToParisYmd(String(event.event_at || ""));
+      if (!cal || cal.y !== y || cal.m !== mo || cal.d !== selectedChartDay) continue;
+      eventCount++;
+    }
     return {
       sent: point.raidsFaits,
       received: point.raidsRecus,
+      eventCount,
     };
-  }, [dailyChartData, selectedChartDay]);
+  }, [dailyChartData, selectedChartDay, selectedMonth, nonDuplicateEvents]);
 
   return (
     <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
@@ -351,7 +397,12 @@ export default function AdminRaidsSubPage() {
         </h1>
         <p className="max-w-4xl text-sm text-slate-300">
           Cette page pilote le flux EventSub de bout en bout: surveillance des subscriptions, suivi des statuts de traitement,
-          analyse des volumes quotidiens et corrections rapides des raids mal classés.
+          analyse des volumes quotidiens et corrections rapides des raids mal classés. Périmètre membres :{" "}
+          <span className="text-slate-100">non archivés</span> (<span className="font-mono text-xs">members.is_archived</span>
+          ), actifs ou inactifs côté communauté. La sync ne garde des subscriptions
+          <span className="text-slate-100"> channel.raid</span> que pour ceux qui sont en live (Helix) ou dans la fenêtre de
+          grâce après fin de live (<span className="font-mono text-xs text-slate-200">GRACE_PERIOD_MINUTES</span> dans{" "}
+          <span className="font-mono text-xs text-slate-200">lib/raidEventsubTest.ts</span>).
         </p>
       </section>
 
@@ -569,13 +620,23 @@ export default function AdminRaidsSubPage() {
                   </option>
                 ))}
               </select>
+              <p className="w-full text-xs text-slate-400 md:w-auto md:flex-1 md:min-w-[280px]">
+                Jours regroupés en{" "}
+                <span className="text-slate-200">Europe/Paris</span>. Chaque événement raid (A→B) compte une fois en « faits »
+                (côté raideur) et une fois en « reçus » (côté cible) : ne pas additionner les deux courbes pour obtenir un nombre
+                d&apos;événements.
+              </p>
             </div>
             <RaidDailyChart month={selectedMonth} data={dailyChartData} previousData={previousDailyChartData} onDaySelect={setSelectedChartDay} />
             {selectedDaySummary ? (
               <div className="mb-4 rounded-lg border border-gray-700 bg-[#101014] p-3">
-                <p className="text-sm font-semibold text-white">Detail du jour {selectedChartDay}</p>
-                <p className="text-xs text-gray-400">
-                  {selectedDaySummary.sent} raid(s) fait(s) et {selectedDaySummary.received} raid(s) recu(s)
+                <p className="text-sm font-semibold text-white">Détail du jour {selectedChartDay} (Paris)</p>
+                <p className="mt-1 text-xs text-emerald-200/90">
+                  {selectedDaySummary.eventCount} événement(s) raid distinct(s) ce jour-là (tous statuts confondus dans ce run).
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  {selectedDaySummary.sent} lecture(s) « faits » et {selectedDaySummary.received} lecture(s) « reçus » (souvent
+                  égales si chaque ligne a raideur et cible).
                 </p>
               </div>
             ) : null}

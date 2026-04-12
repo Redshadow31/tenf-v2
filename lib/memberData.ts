@@ -73,6 +73,8 @@ export interface MemberData {
   role: MemberRole;
   isVip: boolean;
   isActive: boolean;
+  /** Membre archivé : exclu du suivi raids EventSub. Faux / absent si non archivé. */
+  isArchived?: boolean;
   badges?: string[]; // Badges personnalisés (ex: "VIP Élite", "Modérateur Junior", etc.)
   listId?: number; // ID de la liste (1, 2, ou 3) - pour gérer 3 listes séparées modifiables depuis le dashboard
   roleManuallySet?: boolean; // Si true, le rôle ne sera pas écrasé par la synchronisation Discord

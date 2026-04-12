@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Area, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -127,13 +127,21 @@ export default function RaidDailyChart({ month, data, previousData, onDaySelect 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-bold text-white">Raids par jour - {formatMonth(month)}</h3>
-          <p className="text-sm text-slate-400">Vue pilotage : series, cumul, tendance 7j et comparaison M-1.</p>
+          <p className="text-sm text-slate-400">
+            Vue pilotage : séries, cumul, tendance 7 jours et comparaison M-1. Les jours suivent le calendrier{" "}
+            <span className="text-slate-200">Europe/Paris</span>. Les totaux « Faits » et « Reçus » comptent le même raid sous
+            deux angles (ne pas les additionner pour le nombre d&apos;événements).
+          </p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl border border-[#3a4059] bg-[#101523]/75 px-3 py-2"><p className="text-[11px] text-slate-400">Faits</p><p className="text-lg font-semibold text-violet-200">{totals.currentSentTotal}</p></div>
           <div className="rounded-xl border border-[#3a4059] bg-[#101523]/75 px-3 py-2"><p className="text-[11px] text-slate-400">Recus</p><p className="text-lg font-semibold text-emerald-200">{totals.currentReceivedTotal}</p></div>
           <div className="rounded-xl border border-[#3a4059] bg-[#101523]/75 px-3 py-2"><p className="text-[11px] text-slate-400">Delta</p><p className="text-lg font-semibold" style={{ color: totals.deltaPct == null ? "#cbd5e1" : totals.deltaPct >= 0 ? "#6ee7b7" : "#fca5a5" }}>{totals.deltaPct == null ? "N/A" : `${totals.deltaPct >= 0 ? "+" : ""}${totals.deltaPct.toFixed(1)}%`}</p></div>
         </div>
+        <p className="mt-2 max-w-3xl text-[11px] leading-snug text-slate-500">
+          Somme du mois : « Faits » + « Reçus » n&apos;est pas le nombre de raids (souvent proche du double). Utilisez le détail
+          d&apos;un jour sur la page stats pour voir le nombre d&apos;événements distincts.
+        </p>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#3a4059] bg-[#101523]/60 p-2">
