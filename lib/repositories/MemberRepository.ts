@@ -168,6 +168,59 @@ export class MemberRepository {
   }
 
   /**
+   * Récupère un membre par son identifiant Twitch numérique (colonne twitch_id).
+   */
+  async findByTwitchId(twitchId: string): Promise<MemberData | null> {
+    const tid = String(twitchId || "").trim();
+    if (!/^\d+$/.test(tid)) return null;
+
+    const cacheKeyStr = cacheKey("members", "twitch_id", tid);
+    const cached = await cacheGet<MemberData>(cacheKeyStr);
+    if (cached) {
+      return cached;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("members")
+      .select("*")
+      .eq("twitch_id", tid)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") throw error;
+
+    const member = data ? this.mapToMemberData(data) : null;
+    if (member) {
+      await cacheSetWithNamespace("members", cacheKeyStr, member, CACHE_TTL.MEMBERS_ACTIVE);
+    }
+    return member;
+  }
+
+  /**
+   * Égalité insensible à la casse sur display_name ou site_username (évite les trous vs la fiche 360 lazy).
+   */
+  async findByDisplayNameOrSiteUsernameExactCI(value: string): Promise<MemberData | null> {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const escapeIlike = (s: string) =>
+      s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const pattern = escapeIlike(raw);
+
+    for (const column of ["display_name", "site_username"] as const) {
+      const { data, error } = await supabaseAdmin
+        .from("members")
+        .select("*")
+        .ilike(column, pattern)
+        .limit(2);
+
+      if (error) throw error;
+      if (data?.length === 1) {
+        return this.mapToMemberData(data[0]);
+      }
+    }
+    return null;
+  }
+
+  /**
    * E-mails « notifications staff » (fiche Mon compte admin), indexés par discord_id.
    */
   async findStaffNotificationEmailsByDiscordIds(discordIds: string[]): Promise<Map<string, string>> {

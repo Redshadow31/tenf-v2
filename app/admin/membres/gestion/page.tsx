@@ -1232,8 +1232,16 @@ export default function GestionMembresPage() {
     }
     return { overdue, dueSoon };
   })();
+  /** Tous les comptes marqués actifs (is_active), y compris rôle Nouveau — aligné sur la base / Discord. */
   const totalActiveMembers = members.filter(
+    (m) => m.statut === "Actif" || isStaffRole(m.role)
+  ).length;
+  /** Même périmètre que l’onglet « Actifs » (hors pipeline Nouveau). */
+  const totalActiveMembersIntegrated = members.filter(
     (m) => (m.statut === "Actif" || isStaffRole(m.role)) && m.role !== "Nouveau"
+  ).length;
+  const totalActiveNewRoleMembers = members.filter(
+    (m) => m.role === "Nouveau" && m.statut === "Actif"
   ).length;
   const verifyDiscordRows = Object.values(verifyDiscordResultsByLogin).sort((a, b) =>
     String(a.displayName || a.twitchLogin).localeCompare(String(b.displayName || b.twitchLogin), "fr")
@@ -2351,6 +2359,13 @@ export default function GestionMembresPage() {
             <div className="rounded-xl border border-green-500/25 bg-green-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-green-200">Actifs</p>
               <p className="mt-1 text-xl font-semibold text-green-300">{totalActiveMembers}</p>
+              {totalActiveNewRoleMembers > 0 ? (
+                <p className="mt-1 text-[10px] leading-snug text-green-200/80">
+                  {totalActiveMembersIntegrated} intégrés (onglet Actifs) ·{" "}
+                  {totalActiveNewRoleMembers}{" "}
+                  {totalActiveNewRoleMembers > 1 ? "nouveaux actifs (onglet Nouveaux)" : "nouveau actif (onglet Nouveaux)"}
+                </p>
+              ) : null}
             </div>
             <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-red-200">Suivi communauté</p>

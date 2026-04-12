@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { getAllMemberData, loadMemberDataFromStorage, findMemberByIdentifier, getArchivedMemberEntries } from "@/lib/memberData";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
+import { memberRepository } from "@/lib/repositories";
 
 /**
  * GET - Récupère les données complètes d'un membre pour la fiche 360°
@@ -43,12 +44,16 @@ export async function GET(
       member = findMemberByIdentifier({ twitchId: decodedId });
     }
     
-    // Si toujours pas trouvé, essayer par displayName
+    // Si toujours pas trouvé, essayer par displayName ou pseudo site (aligné fiche 360 / recherche)
     if (!member) {
+      const idLower = decodedId.toLowerCase();
       const allMembers = getAllMemberData();
-      member = allMembers.find(
-        (m) => m.displayName?.toLowerCase() === decodedId.toLowerCase()
-      );
+      member =
+        allMembers.find(
+          (m) =>
+            m.displayName?.toLowerCase() === idLower ||
+            m.siteUsername?.toLowerCase() === idLower
+        ) || null;
     }
 
     // Fallback archives (profil supprimé mais conservé dans l'onglet Archivé)
@@ -74,6 +79,16 @@ export async function GET(
           archiveReason: archive.deleteReason,
         } as any;
       }
+    }
+
+    // Membres uniquement Supabase (recherche admin « legacy + Supabase ») — absents du JSON memberData
+    if (!member) {
+      const idLower = decodedId.toLowerCase();
+      member =
+        (await memberRepository.findByTwitchLogin(idLower)) ||
+        (await memberRepository.findByDiscordId(decodedId)) ||
+        (await memberRepository.findByTwitchId(decodedId)) ||
+        (await memberRepository.findByDisplayNameOrSiteUsernameExactCI(decodedId));
     }
 
     if (!member) {
