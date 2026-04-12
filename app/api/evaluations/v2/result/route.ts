@@ -8,7 +8,8 @@ import { getDiscordEngagementData } from "@/lib/discordEngagementStorage";
 import { getDiscordActivityForMonth } from "@/lib/discordActivityStorage";
 import { getAllFollowValidationsForMonth } from "@/lib/followStorage";
 import { getLatestFollowEngagementOverview } from "@/lib/admin/followEngagement";
-import { loadRaidsFaits } from "@/lib/raidStorage";
+import { loadRaidsFaits, loadRaidsRecus } from "@/lib/raidStorage";
+import { mergeMatchedRaidTestEventsForMonth } from "@/lib/raidEventsubMerge";
 import { getEvaluationV2OverridesBySystem } from "@/lib/evaluationV2ManualStorage";
 import { saveEvaluationEvidence } from "@/lib/evaluationV2EvidenceStorage";
 import { loadMonthlyEvaluationSummary, saveMonthlyEvaluationSummary } from "@/lib/evaluationV2SummaryStorage";
@@ -61,6 +62,15 @@ function parseMonthOrCurrent(rawMonth: string | null): string {
 
 function parseSystem(rawSystem: string | null): "legacy" | "new" {
   return rawSystem === "new" ? "new" : "legacy";
+}
+
+/** Même pipeline que `/api/discord/raids/data-v2` et `/api/evaluations/raids/points` (stockage + EventSub matched). */
+async function loadRaidsFaitsMergedForEvaluation(monthKey: string) {
+  const [faits, recus] = await Promise.all([loadRaidsFaits(monthKey), loadRaidsRecus(monthKey)]);
+  const faitsNoDiscord = (faits || []).filter((r: { source?: string }) => r.source !== "discord");
+  const recusNoDiscord = (recus || []).filter((r: { source?: string }) => r.source !== "discord");
+  const merged = await mergeMatchedRaidTestEventsForMonth(monthKey, faitsNoDiscord, recusNoDiscord);
+  return merged.raidsFaits;
 }
 
 async function fetchAllMembers(): Promise<any[]> {
@@ -226,7 +236,7 @@ export async function GET(request: NextRequest) {
       fetchAllMembers(),
       evaluationRepository.findByMonth(month, 3000, 0),
       getAllBonuses(month),
-      loadRaidsFaits(month),
+      loadRaidsFaitsMergedForEvaluation(month),
       eventRepository.findAll(1000, 0),
       getEvaluationV2OverridesBySystem(month, system),
       loadEvaluationV2ValidationMeta(month, system),
