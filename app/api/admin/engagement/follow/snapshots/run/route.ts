@@ -18,19 +18,32 @@ export async function POST() {
     }
 
     const started = await startFollowEngagementSnapshotJob(admin.discordId || null);
-    if (!started.alreadyRunning) {
-      // Ne pas bloquer la reponse HTTP: le calcul peut depasser le timeout proxy (504).
-      void executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null).catch((error) => {
-        console.error("[Admin Follow Snapshot Run] Job async en echec:", error);
-      });
+    if (started.alreadyRunning) {
+      return NextResponse.json(
+        {
+          success: true,
+          snapshotId: started.snapshotId,
+          status: "running" as const,
+          alreadyRunning: true,
+        },
+        { status: 202 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      snapshotId: started.snapshotId,
-      status: "running",
-      alreadyRunning: started.alreadyRunning,
-    }, { status: 202 });
+    // Sur Netlify/serverless, un travail lance avec `void` apres le return est en general coupe
+    // quand l'invocation se termine : le snapshot reste "running" puis echoue (stale).
+    // On execute donc le job dans cette requete jusqu'au maxDuration de la route.
+    await executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null);
+
+    return NextResponse.json(
+      {
+        success: true,
+        snapshotId: started.snapshotId,
+        status: "completed" as const,
+        alreadyRunning: false,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[Admin Follow Snapshot Run] Erreur:", error);
     return NextResponse.json(
