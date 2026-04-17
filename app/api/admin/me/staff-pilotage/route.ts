@@ -54,6 +54,7 @@ function upcomingEventsForPilotage() {
         location: e.location ?? null,
         isPublished: e.isPublished,
       }));
+    return sorted;
   });
 }
 
