@@ -174,17 +174,22 @@ async function loadEventsWithoutCache(): Promise<
 }
 
 function profileCompletion(member: any): { completed: boolean; percent: number } {
+  const twitchLogin = String(member?.twitchLogin || member?.twitch_login || "");
   const hasTwitchLinked =
-    !!member?.twitchLogin &&
-    !String(member.twitchLogin).toLowerCase().startsWith("nouveau_") &&
-    !String(member.twitchLogin).toLowerCase().startsWith("nouveau-");
+    !!twitchLogin &&
+    !twitchLogin.toLowerCase().startsWith("nouveau_") &&
+    !twitchLogin.toLowerCase().startsWith("nouveau-");
+  const displayName = member?.displayName || member?.display_name;
+  const discordUsername = member?.discordUsername || member?.discord_username;
+  const description = member?.description || member?.customBio || member?.custom_bio;
+  const timezone = member?.timezone;
   const checks = [
-    !!member?.displayName,
+    !!displayName,
     hasTwitchLinked,
-    !!member?.discordUsername,
+    !!discordUsername,
     !!member?.parrain,
-    !!member?.description,
-    !!member?.timezone,
+    !!description,
+    !!timezone,
   ];
   const passed = checks.filter(Boolean).length;
   const percent = Math.round((passed / checks.length) * 100);
@@ -308,12 +313,31 @@ export async function GET() {
     if (!member) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
+    const rawMember = member as any;
+    const memberDiscordId = String(member.discordId || rawMember.discord_id || discordId || "");
+    const memberTwitchLogin = String(member.twitchLogin || rawMember.twitch_login || "");
+    const memberTwitchId = member.twitchId || rawMember.twitch_id ? String(member.twitchId || rawMember.twitch_id) : null;
+    const memberDisplayName = String(
+      member.displayName || rawMember.display_name || member.siteUsername || rawMember.site_username || memberTwitchLogin || "Membre"
+    );
+    const memberRole = String(member.role || "Membre");
+    const memberDiscordUsername = String(member.discordUsername || rawMember.discord_username || "");
+    const memberProfileStatus = String(member.profileValidationStatus || rawMember.profile_validation_status || "non_soumis");
+    const memberOnboardingStatus = String(member.onboardingStatus || rawMember.onboarding_status || "");
+    const memberIsVip = Boolean(member.isVip || rawMember.is_vip);
+    const memberIntegrationRaw = member.integrationDate || rawMember.integration_date || null;
+    const memberIntegrationDateIso = memberIntegrationRaw
+      ? new Date(memberIntegrationRaw).toISOString()
+      : null;
+    const memberDescription = String(member.description || member.customBio || rawMember.custom_bio || "");
+    const memberSiteUsername = String(member.siteUsername || rawMember.site_username || "");
+
     const authenticatedAdmin = await getAuthenticatedAdmin();
     const effectiveRole =
-      (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || member.role;
+      (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || memberRole;
 
     const identity = new Set<string>();
-    [member.twitchLogin, member.discordId, member.discordUsername, member.displayName, member.siteUsername]
+    [memberTwitchLogin, memberDiscordId, memberDiscordUsername, memberDisplayName, memberSiteUsername]
       .forEach((value) => getIdentityAliases(value).forEach((alias) => identity.add(alias)));
 
     const now = new Date();
@@ -336,8 +360,8 @@ export async function GET() {
 
     try {
       const { startIso, endIso } = monthRange(monthKey);
-      const normalizedLogin = normalize(member.twitchLogin);
-      const normalizedTwitchId = member.twitchId ? String(member.twitchId) : null;
+      const normalizedLogin = normalize(memberTwitchLogin);
+      const normalizedTwitchId = memberTwitchId;
 
       const [manualRes, eventsubRes] = await Promise.all([
         supabaseAdmin
@@ -578,20 +602,15 @@ export async function GET() {
       })
       .filter((event): event is { id: string; title: string; date: Date; category: string } => Boolean(event));
 
-    const memberTwitchRaw = String(
-      (member as { twitchLogin?: string; twitch_login?: string }).twitchLogin ||
-        (member as { twitch_login?: string }).twitch_login ||
-        ""
-    );
-    const memberTwitchLogin = normalize(memberTwitchRaw);
+    const memberTwitchLoginNormalized = normalize(memberTwitchLogin);
     let discordPointsBackendAvailable = false;
     let discordPointsEventIdsAwarded = new Set<string>();
-    if (memberTwitchLogin) {
+    if (memberTwitchLoginNormalized) {
       try {
         const { data: discordRows, error: discordErr } = await supabaseAdmin
           .from("event_discord_points")
           .select("event_id")
-          .eq("twitch_login", memberTwitchLogin)
+          .eq("twitch_login", memberTwitchLoginNormalized)
           .eq("status", "awarded")
           .limit(3000);
         if (discordErr) {
@@ -682,37 +701,37 @@ export async function GET() {
     let vipSource: "vip_history" | "member_flag" | "none" = "none";
     try {
       const vipMonthEntries = await vipRepository.findByMonth(monthKey);
-      vipActiveThisMonth = vipMonthEntries.some((entry) => normalize(entry.twitchLogin) === normalize(member.twitchLogin));
+      vipActiveThisMonth = vipMonthEntries.some((entry) => normalize(entry.twitchLogin) === normalize(memberTwitchLogin));
       if (vipActiveThisMonth) vipSource = "vip_history";
     } catch {
       // Fallback sur le flag membre si l'historique VIP n'est pas accessible
-      vipActiveThisMonth = !!member.isVip;
+      vipActiveThisMonth = memberIsVip;
       vipSource = vipActiveThisMonth ? "member_flag" : "none";
     }
 
-    if (!vipActiveThisMonth && member.isVip) {
+    if (!vipActiveThisMonth && memberIsVip) {
       vipActiveThisMonth = true;
       vipSource = "member_flag";
     }
 
-    const normalizedRole = normalize(member.role);
+    const normalizedRole = normalize(memberRole);
     const computedOnboardingStatus =
-      member.onboardingStatus || (normalizedRole.includes("nouveau") ? "a_faire" : "termine");
+      memberOnboardingStatus || (normalizedRole.includes("nouveau") ? "a_faire" : "termine");
 
     return NextResponse.json({
       member: {
-        discordId: member.discordId || null,
-        twitchLogin: member.twitchLogin,
-        displayName: member.displayName || member.siteUsername || member.twitchLogin,
+        discordId: memberDiscordId || null,
+        twitchLogin: memberTwitchLogin,
+        displayName: memberDisplayName,
         role: effectiveRole,
-        profileValidationStatus: member.profileValidationStatus || "non_soumis",
+        profileValidationStatus: memberProfileStatus || "non_soumis",
         onboardingStatus: computedOnboardingStatus,
-        integrationDate: member.integrationDate ? member.integrationDate.toISOString() : null,
+        integrationDate: memberIntegrationDateIso,
         parrain: member.parrain || null,
-        bio: member.description || member.customBio || "",
+        bio: memberDescription,
         socials: {
-          twitch: member.twitchLogin ? `https://www.twitch.tv/${member.twitchLogin}` : "",
-          discord: member.discordUsername || "",
+          twitch: memberTwitchLogin ? `https://www.twitch.tv/${memberTwitchLogin}` : "",
+          discord: memberDiscordUsername || "",
           instagram: member.instagram || "",
           tiktok: member.tiktok || "",
           twitter: member.twitter || "",
