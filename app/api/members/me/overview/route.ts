@@ -324,8 +324,8 @@ export async function GET() {
       const raidsCurrentMonth = await loadRaidsFaits(monthKey);
       raidsThisMonth = raidsCurrentMonth
         .filter((raid) => {
-          const source = raid.source || (raid.manual ? "manual" : "twitch-live");
-          if (source === "discord") return false;
+          // countFrom=false signifie explicitement "ne pas compter ce raid fait" (imports/migrations/ajustements).
+          if (raid.countFrom === false) return false;
           const raiderAliases = getIdentityAliases(raid.raider);
           return raiderAliases.some((alias) => identity.has(alias));
         })
@@ -396,8 +396,7 @@ export async function GET() {
       });
       const totals = await Promise.all(last12.map((key) => loadRaidsFaits(key)));
       raidsTotal = totals.flat().reduce((sum, raid) => {
-        const source = raid.source || (raid.manual ? "manual" : "twitch-live");
-        if (source === "discord") return sum;
+        if (raid.countFrom === false) return sum;
         const raiderAliases = getIdentityAliases(raid.raider);
         return raiderAliases.some((alias) => identity.has(alias)) ? sum + (raid.count || 1) : sum;
       }, 0);

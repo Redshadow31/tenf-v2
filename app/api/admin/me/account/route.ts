@@ -9,7 +9,10 @@ import {
   CHARTER_VERSION,
   getLatestModerationCharterValidationForMember,
 } from "@/lib/moderationCharterValidationsStorage";
+import { listStaffMissionsForAssignee } from "@/lib/staffMissionAssignments";
 import type { AdminRole } from "@/lib/adminRoles";
+import { getAdminRole, isFounder } from "@/lib/adminRoles";
+import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from "@/lib/adminAccessCache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,6 +35,57 @@ function isValidEmail(value: string): boolean {
   const v = value.trim();
   if (v.length > 320) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function resolvedStaffAdminRole(discordId: string): AdminRole | null {
+  if (isFounder(discordId)) return "FONDATEUR";
+  return getAdminRole(discordId) || getAdminRoleFromCache(discordId);
+}
+
+async function loadStaffSnapshot(): Promise<{
+  activeCommunityMembers: number | null;
+  moderatorsActive: number;
+  moderatorsPaused: number;
+  staffWithDashboardAccess: number;
+}> {
+  let activeCommunityMembers: number | null = null;
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("members")
+      .select("*", { count: "exact", head: true })
+      .eq("is_active", true)
+      .eq("is_archived", false);
+    if (!error && typeof count === "number") activeCommunityMembers = count;
+  } catch (e) {
+    console.warn("[admin/me/account] members count:", e);
+  }
+
+  let moderatorsActive = 0;
+  let moderatorsPaused = 0;
+  try {
+    await loadAdminAccessCache();
+    const ids = getAllAdminIdsFromCache();
+    for (const id of ids) {
+      const role = resolvedStaffAdminRole(id);
+      if (!role) continue;
+      if (role === "MODERATEUR" || role === "MODERATEUR_EN_FORMATION") moderatorsActive += 1;
+      else if (role === "MODERATEUR_EN_PAUSE") moderatorsPaused += 1;
+    }
+    return {
+      activeCommunityMembers,
+      moderatorsActive,
+      moderatorsPaused,
+      staffWithDashboardAccess: ids.length,
+    };
+  } catch (e) {
+    console.warn("[admin/me/account] staff snapshot:", e);
+    return {
+      activeCommunityMembers,
+      moderatorsActive: 0,
+      moderatorsPaused: 0,
+      staffWithDashboardAccess: 0,
+    };
+  }
 }
 
 export async function GET() {
@@ -110,6 +164,26 @@ export async function GET() {
     ? (member.createdAt instanceof Date ? member.createdAt.toISOString() : new Date(member.createdAt).toISOString())
     : null;
 
+  let staffSnapshot = null as Awaited<ReturnType<typeof loadStaffSnapshot>> | null;
+  try {
+    staffSnapshot = await loadStaffSnapshot();
+  } catch (e) {
+    console.warn("[admin/me/account] staffSnapshot:", e);
+  }
+
+  let staffMissions: { id: string; title: string; description: string | null; sortOrder: number }[] = [];
+  try {
+    const rows = await listStaffMissionsForAssignee(admin.discordId);
+    staffMissions = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      sortOrder: r.sortOrder,
+    }));
+  } catch (e) {
+    console.warn("[admin/me/account] staffMissions:", e);
+  }
+
   const payload = {
     hasAdvancedAdminView: canViewSensitive,
     displayName: member?.displayName || admin.username,
@@ -134,6 +208,8 @@ export async function GET() {
       graceElapsed: isCharterGraceElapsed,
     },
     staffNotificationEmail: member?.staffNotificationEmail?.trim() || "",
+    staffSnapshot,
+    staffMissions,
     sensitive: canViewSensitive
       ? {
           discordId: admin.discordId,

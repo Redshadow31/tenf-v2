@@ -285,3 +285,45 @@ function getMonthKey(date: Date): string {
   return `${year}-${month}`;
 }
 
+/** Types de ressource auditées considérées comme « activité staff » (fil Mon compte / cockpit). */
+export const STAFF_ACTIVITY_AUDIT_RESOURCE_TYPES = [
+  "member",
+  "admin_access",
+  "admin_advanced_access",
+  "event",
+  "evaluation",
+] as const;
+
+/**
+ * Dernières lignes d’audit filtrées « métier staff », sur plusieurs mois récents.
+ * Exclut les actions annulées (`reverted`). Ne renvoie pas les payloads sensibles — mapper côté appelant.
+ */
+export async function getStaffActivityAuditLogs(
+  maxMonths = 6,
+  limit = 30
+): Promise<AuditLog[]> {
+  const store = getStore(AUDIT_STORE_NAME);
+  const allow = new Set<string>(STAFF_ACTIVITY_AUDIT_RESOURCE_TYPES as unknown as string[]);
+  const now = new Date();
+  const merged: AuditLog[] = [];
+
+  for (let i = 0; i < maxMonths; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = getMonthKey(date);
+    const key = `audit-${monthKey}`;
+    try {
+      const monthLogs = (await store.get(key, { type: "json" }) as AuditLog[]) || [];
+      for (const log of monthLogs) {
+        if (log.reverted) continue;
+        if (!allow.has(log.resourceType)) continue;
+        merged.push(log);
+      }
+    } catch {
+      // Mois absent ou erreur de lecture : ignorer
+    }
+  }
+
+  merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return merged.slice(0, limit);
+}
+
