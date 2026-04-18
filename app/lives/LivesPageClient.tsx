@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import CharityProgressBar from "@/components/lives/CharityProgressBar";
 import CommunityStatsSection from "@/components/lives/CommunityStatsSection";
 import JoinTENFSection from "@/components/lives/JoinTENFSection";
 import LiveCard from "@/components/lives/LiveCard";
@@ -59,6 +60,13 @@ type RaidMetrics = {
   raidedNewMember: boolean;
 };
 
+type CharityStatsPayload = {
+  available: boolean;
+  raised?: number;
+  displayGoal?: number;
+  currency?: string;
+};
+
 type UpaLiteContent = {
   general?: {
     startDate?: string;
@@ -95,6 +103,7 @@ export default function LivesPageClient() {
   const [showFollowStatuses, setShowFollowStatuses] = useState(false);
   const [upaContent, setUpaContent] = useState<UpaLiteContent | null>(null);
   const [streamlabsGoalWidgetSrc, setStreamlabsGoalWidgetSrc] = useState("");
+  const [charityStats, setCharityStats] = useState<CharityStatsPayload | null>(null);
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
@@ -159,6 +168,35 @@ export default function LivesPageClient() {
     loadStreamlabsWidgetSrc();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCharityStats() {
+      try {
+        const response = await fetch("/api/lives/streamlabs-charity-stats", { cache: "no-store" });
+        const data = (await response.json()) as CharityStatsPayload;
+        if (cancelled) return;
+        if (
+          data?.available === true &&
+          typeof data.raised === "number" &&
+          typeof data.displayGoal === "number" &&
+          typeof data.currency === "string"
+        ) {
+          setCharityStats(data);
+        } else {
+          setCharityStats({ available: false });
+        }
+      } catch {
+        if (!cancelled) setCharityStats({ available: false });
+      }
+    }
+    loadCharityStats();
+    const intervalId = setInterval(loadCharityStats, 120_000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -761,6 +799,32 @@ export default function LivesPageClient() {
               Priorite solidarite
             </span>
           </div>
+
+          {charityStats?.available === true &&
+          typeof charityStats.raised === "number" &&
+          typeof charityStats.displayGoal === "number" &&
+          typeof charityStats.currency === "string" ? (
+            <div
+              className="rounded-2xl border px-4 py-5"
+              style={{
+                borderColor: "rgba(212,175,55,0.42)",
+                background:
+                  "linear-gradient(165deg, rgba(212,175,55,0.12), rgba(145,70,255,0.06) 45%, rgba(0,0,0,0.2))",
+              }}
+            >
+              <p className="text-xs font-semibold tracking-wide" style={{ color: "#f5df9d" }}>
+                Cagnotte en direct
+              </p>
+              <CharityProgressBar
+                raised={charityStats.raised}
+                displayGoal={charityStats.displayGoal}
+                currency={charityStats.currency}
+              />
+              <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
+                Donnees via l&apos;API publique Streamlabs Charity ; mise a jour automatique environ toutes les 2 minutes.
+              </p>
+            </div>
+          ) : null}
 
           {upaCharityCampaignHref ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

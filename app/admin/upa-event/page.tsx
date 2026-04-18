@@ -572,14 +572,18 @@ export default function AdminUpaEventPage() {
                 label="Lien cagnotte caritative (Streamlabs Charity, etc.)"
                 value={content.general.charityCampaignUrl}
                 onChange={(v) => setGeneralField("charityCampaignUrl", v)}
-                placeholder="https://streamlabscharity.com/..."
+                placeholder="https://streamlabscharity.com/@ton-equipe/slug-campagne"
               />
               <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                URL publique de la campagne (sans jeton). Ne pas y coller le lien widget Streamlabs (
+                URL publique (sans jeton). Pour la barre de progression sur /lives, privilégie le format{" "}
+                <code className="text-[11px]">streamlabscharity.com/@equipe/slug</code> : le serveur en deduit l&apos;API
+                des montants. Sinon, variable Netlify{" "}
+                <code className="text-[11px]">STREAMLABS_CHARITY_STATS_API_URL</code> (URL API{" "}
+                <code className="text-[11px]">/api/v1/teams/...</code>
+                ). Ne pas coller le lien widget (
                 <code className="text-[11px]">streamlabs.com/widgets/...token=</code>
-                ) : il serait visible via l&apos;API publique UPA. Pour le widget objectif sur /lives, configure{" "}
-                <code className="text-[11px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code> (Netlify / env) : charge via{" "}
-                <code className="text-[11px]">/api/lives/streamlabs-charity-widget</code> au runtime.
+                ) ici. Widget objectif :{" "}
+                <code className="text-[11px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code>.
               </p>
             </div>
             <div
