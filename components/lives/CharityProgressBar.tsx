@@ -4,9 +4,11 @@ type CharityProgressBarProps = {
   raised: number;
   displayGoal: number;
   currency: string;
+  /** Objectif déclaré sur la campagne (ex. 100 k€) quand la barre est calibrée plus bas. */
+  campaignGoal?: number;
 };
 
-export default function CharityProgressBar({ raised, displayGoal, currency }: CharityProgressBarProps) {
+export default function CharityProgressBar({ raised, displayGoal, currency, campaignGoal }: CharityProgressBarProps) {
   const safeGoal = displayGoal > 0 ? displayGoal : 1;
   const pct = Math.min(100, Math.max(0, (raised / safeGoal) * 100));
   const fmt = (value: number) =>
@@ -29,13 +31,19 @@ export default function CharityProgressBar({ raised, displayGoal, currency }: Ch
         </div>
         <div className="text-right">
           <p className="text-sm font-semibold tabular-nums" style={{ color: "#f5df9d" }}>
-            objectif {fmt(displayGoal)}
+            palier barre {fmt(displayGoal)}
           </p>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
-            {pct >= 100 ? "Objectif atteint ou depasse" : `${Math.round(pct)} %`}
+            {pct >= 100 ? "Palier barre atteint" : `${Math.round(pct)} % du palier`}
           </p>
         </div>
       </div>
+      {typeof campaignGoal === "number" && campaignGoal > displayGoal ? (
+        <p className="text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.58)" }}>
+          Objectif campagne Streamlabs : {fmt(campaignGoal)} — la barre est volontairement calibrée sur {fmt(displayGoal)}{" "}
+          pour un rendu plus lisible.
+        </p>
+      ) : null}
       <div
         className="h-4 w-full overflow-hidden rounded-full border"
         style={{

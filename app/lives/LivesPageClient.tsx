@@ -65,6 +65,7 @@ type CharityStatsPayload = {
   raised?: number;
   displayGoal?: number;
   currency?: string;
+  campaignGoal?: number;
 };
 
 type UpaLiteContent = {
@@ -819,6 +820,7 @@ export default function LivesPageClient() {
                 raised={charityStats.raised}
                 displayGoal={charityStats.displayGoal}
                 currency={charityStats.currency}
+                campaignGoal={typeof charityStats.campaignGoal === "number" ? charityStats.campaignGoal : undefined}
               />
               <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
                 Donnees via l&apos;API publique Streamlabs Charity ; mise a jour automatique environ toutes les 2 minutes.

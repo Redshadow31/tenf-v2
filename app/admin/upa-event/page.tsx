@@ -583,7 +583,9 @@ export default function AdminUpaEventPage() {
                 ). Ne pas coller le lien widget (
                 <code className="text-[11px]">streamlabs.com/widgets/...token=</code>
                 ) ici. Widget objectif :{" "}
-                <code className="text-[11px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code>.
+                <code className="text-[11px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code>. Barre sur un palier plus bas
+                que la campagne (ex. 10 k€ visibles pour une campagne 100 k€) :{" "}
+                <code className="text-[11px]">STREAMLABS_CHARITY_BAR_GOAL_EUROS=10000</code> sur Netlify.
               </p>
             </div>
             <div

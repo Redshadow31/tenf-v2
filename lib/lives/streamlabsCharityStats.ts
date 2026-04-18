@@ -31,10 +31,21 @@ export function isAllowedStreamlabsCharityStatsApiUrl(url: string): boolean {
 
 export type StreamlabsCharityTeamStats = {
   raised: number;
-  /** Objectif affiché (API ou env ou 10 000 €). */
+  /** Objectif utilisé pour la largeur de la barre (souvent 10 k€ pour l’impact). */
   displayGoal: number;
   currency: string;
+  /** Objectif déclaré sur la campagne Streamlabs quand il diffère de la barre (ex. 100 k€). */
+  campaignGoal?: number;
 };
+
+/** Priorité : BAR_GOAL_EUROS puis GOAL_EUROS (rétrocompat). 0 = laisser withDisplayGoal décider. */
+export function readStreamlabsCharityBarGoalEnv(): number {
+  const bar = Number.parseInt(String(process.env.STREAMLABS_CHARITY_BAR_GOAL_EUROS || "").trim(), 10);
+  if (Number.isFinite(bar) && bar > 0) return bar;
+  const legacy = Number.parseInt(String(process.env.STREAMLABS_CHARITY_GOAL_EUROS || "").trim(), 10);
+  if (Number.isFinite(legacy) && legacy > 0) return legacy;
+  return 0;
+}
 
 function parseCurrency(raw: unknown): string {
   const c = String(raw || "EUR")
@@ -72,18 +83,25 @@ export function parseStreamlabsCharityTeamJson(data: unknown): ParsedSlcTeamPayl
   };
 }
 
-export function withDisplayGoal(parsed: ParsedSlcTeamPayload, envGoalEuros: number): StreamlabsCharityTeamStats {
+export function withDisplayGoal(parsed: ParsedSlcTeamPayload, forcedBarGoalEuros: number): StreamlabsCharityTeamStats {
   const defaultGoal = 10_000;
-  const env = Number.isFinite(envGoalEuros) && envGoalEuros > 0 ? envGoalEuros : 0;
-  const displayGoal = env > 0 ? env : parsed.apiGoal > 0 ? parsed.apiGoal : defaultGoal;
+  const forced = Number.isFinite(forcedBarGoalEuros) && forcedBarGoalEuros > 0 ? forcedBarGoalEuros : 0;
+  const displayGoal = forced > 0 ? forced : parsed.apiGoal > 0 ? parsed.apiGoal : defaultGoal;
+  const campaignGoal =
+    parsed.apiGoal > 0 && Math.abs(parsed.apiGoal - displayGoal) > 0.5 ? parsed.apiGoal : undefined;
   return {
     raised: parsed.raised,
     displayGoal,
     currency: parsed.currency,
+    campaignGoal,
   };
 }
 
-export async function fetchStreamlabsCharityTeamStats(statsUrl: string, timeoutMs = 10000): Promise<StreamlabsCharityTeamStats | null> {
+export async function fetchStreamlabsCharityTeamStats(
+  statsUrl: string,
+  forcedBarGoalEuros: number,
+  timeoutMs = 10000
+): Promise<StreamlabsCharityTeamStats | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -97,8 +115,7 @@ export async function fetchStreamlabsCharityTeamStats(statsUrl: string, timeoutM
     const json: unknown = await res.json();
     const parsed = parseStreamlabsCharityTeamJson(json);
     if (!parsed) return null;
-    const envGoal = Number.parseInt(String(process.env.STREAMLABS_CHARITY_GOAL_EUROS || "").trim(), 10);
-    return withDisplayGoal(parsed, envGoal);
+    return withDisplayGoal(parsed, forcedBarGoalEuros);
   } catch {
     return null;
   } finally {

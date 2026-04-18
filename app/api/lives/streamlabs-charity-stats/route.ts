@@ -3,6 +3,7 @@ import { upaEventRepository } from "@/lib/repositories";
 import {
   fetchStreamlabsCharityTeamStats,
   isAllowedStreamlabsCharityStatsApiUrl,
+  readStreamlabsCharityBarGoalEnv,
   streamlabsCharityPageToTeamApiUrl,
 } from "@/lib/lives/streamlabsCharityStats";
 
@@ -29,7 +30,7 @@ export async function GET() {
       return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const stats = await fetchStreamlabsCharityTeamStats(statsUrl);
+    const stats = await fetchStreamlabsCharityTeamStats(statsUrl, readStreamlabsCharityBarGoalEnv());
     if (!stats) {
       return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
     }
@@ -40,6 +41,7 @@ export async function GET() {
         raised: stats.raised,
         displayGoal: stats.displayGoal,
         currency: stats.currency,
+        ...(typeof stats.campaignGoal === "number" ? { campaignGoal: stats.campaignGoal } : {}),
       },
       { headers: { "Cache-Control": "no-store" } }
     );
