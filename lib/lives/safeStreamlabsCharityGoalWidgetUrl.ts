@@ -8,7 +8,8 @@ export function safeStreamlabsCharityGoalWidgetUrl(raw: string | undefined): str
     const host = parsed.hostname.toLowerCase();
     if (host !== "streamlabs.com" && !host.endsWith(".streamlabs.com")) return "";
     if (!parsed.pathname.toLowerCase().includes("/widgets/")) return "";
-    return parsed.toString();
+    // Ne pas utiliser parsed.toString() : la reserialisation peut alterer le token (ex. +, %).
+    return trimmed;
   } catch {
     return "";
   }

@@ -797,7 +797,6 @@ export default function LivesPageClient() {
                 src={streamlabsGoalWidgetSrc}
                 className="h-[200px] w-full border-0 sm:h-[220px]"
                 loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           ) : null}
