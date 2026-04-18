@@ -63,6 +63,8 @@ export interface UpaEventStreamerMember {
   displayName: string;
   avatarUrl?: string;
   description?: string;
+  /** Discord ID de la fiche membre TENF (gestion centralisée), pour rattachement et résolution du login Twitch à l’enregistrement. */
+  linkedMemberDiscordId?: string;
   order: number;
   isActive: boolean;
 }

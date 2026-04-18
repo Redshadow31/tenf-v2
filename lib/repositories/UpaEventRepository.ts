@@ -281,12 +281,14 @@ function normalizeStreamers(value: unknown): UpaEventStreamerMember[] {
     const obj = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
     const rawLogin = trimText(obj.twitchLogin, trimText(obj.displayName, ""));
     const twitchLogin = rawLogin.replace(/^@/, "").toLowerCase();
+    const linkedMemberDiscordId = trimText(obj.linkedMemberDiscordId, "");
     return {
       id: trimText(obj.id, makeId("streamer")),
       twitchLogin,
       displayName: trimText(obj.displayName, twitchLogin || ""),
       avatarUrl: trimText(obj.avatarUrl, ""),
       description: trimText(obj.description, ""),
+      ...(linkedMemberDiscordId ? { linkedMemberDiscordId } : {}),
       order: toInt(obj.order, index + 1),
       isActive: toBool(obj.isActive, true),
     };

@@ -83,6 +83,168 @@ function TextAreaField({
   );
 }
 
+type TenfMemberSearchHit = {
+  discordId?: string;
+  twitchLogin?: string;
+  displayName?: string;
+  avatar?: string;
+  discordUsername?: string;
+  role?: string;
+};
+
+function isPlaceholderTwitchLogin(login: string | undefined): boolean {
+  const v = String(login || "").trim().toLowerCase();
+  return !v || v.startsWith("nouveau_");
+}
+
+function UpaStreamerTenfLinker({
+  linkedMemberDiscordId,
+  onAttach,
+}: {
+  linkedMemberDiscordId?: string;
+  onAttach: (patch: Partial<UpaEventStreamerMember>) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<TenfMemberSearchHit[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setResults([]);
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        setSearching(true);
+        try {
+          const res = await fetch(
+            `/api/admin/search/members?q=${encodeURIComponent(term)}&limit=14`,
+            { cache: "no-store" }
+          );
+          const data = (await res.json().catch(() => ({}))) as { members?: TenfMemberSearchHit[] };
+          setResults(res.ok && Array.isArray(data.members) ? data.members : []);
+        } catch {
+          setResults([]);
+        } finally {
+          setSearching(false);
+        }
+      })();
+    }, 320);
+    return () => window.clearTimeout(handle);
+  }, [q]);
+
+  return (
+    <div
+      className="rounded-lg border p-3 space-y-2"
+      style={{ borderColor: "rgba(212,175,55,0.22)", backgroundColor: "rgba(212,175,55,0.05)" }}
+    >
+      <p className="text-xs font-semibold" style={{ color: "#e8d69a" }}>
+        Membre TENF (fiche gestion centralisée)
+      </p>
+      <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+        Recherche parmi les membres enregistrés : la sélection remplit le Twitch et enregistre le lien Discord vers la
+        fiche membre.
+      </p>
+      {linkedMemberDiscordId ? (
+        <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+          <span>
+            Rattaché — Discord{" "}
+            <code className="text-[10px] px-1 rounded" style={{ backgroundColor: "rgba(0,0,0,0.35)" }}>
+              {linkedMemberDiscordId}
+            </code>
+          </span>
+          <button
+            type="button"
+            onClick={() => onAttach({ linkedMemberDiscordId: undefined })}
+            className="rounded border px-2 py-0.5 text-[11px]"
+            style={{ borderColor: "rgba(255,255,255,0.2)", color: "#fca5a5" }}
+          >
+            Détacher la fiche
+          </button>
+        </div>
+      ) : null}
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Pseudo Twitch, Discord ou prénom (min. 2 car.)"
+        className="w-full rounded-lg border px-3 py-2 text-sm"
+        style={{
+          borderColor: "var(--color-border)",
+          backgroundColor: "var(--color-card)",
+          color: "var(--color-text)",
+        }}
+      />
+      {searching ? (
+        <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+          Recherche…
+        </p>
+      ) : null}
+      {results.length > 0 ? (
+        <ul className="max-h-44 overflow-y-auto space-y-1 pr-1">
+          {results.map((m, i) => {
+            const key = `${m.discordId || ""}-${m.twitchLogin || ""}-${i}`;
+            const label = [m.displayName, m.twitchLogin && `@${m.twitchLogin}`, m.discordUsername]
+              .filter(Boolean)
+              .join(" · ");
+            const badTwitch = isPlaceholderTwitchLogin(m.twitchLogin);
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  disabled={badTwitch}
+                  onClick={() => {
+                    if (badTwitch) return;
+                    const login = String(m.twitchLogin || "")
+                      .trim()
+                      .replace(/^@/, "")
+                      .toLowerCase();
+                    const discord = String(m.discordId || "").trim();
+                    onAttach({
+                      ...(discord ? { linkedMemberDiscordId: discord } : {}),
+                      twitchLogin: login,
+                      displayName: (m.displayName || m.twitchLogin || "").trim() || login,
+                      avatarUrl: m.avatar || "",
+                    });
+                    setQ("");
+                    setResults([]);
+                  }}
+                  className="w-full text-left rounded-md border px-2 py-2 text-xs disabled:opacity-45"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.12)",
+                    color: "var(--color-text)",
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                  }}
+                >
+                  {m.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.avatar} alt="" className="inline-block h-7 w-7 rounded-full mr-2 align-middle" />
+                  ) : null}
+                  <span className="align-middle">{label || "Sans nom"}</span>
+                  {m.role ? (
+                    <span className="block text-[10px] mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+                      {m.role}
+                      {badTwitch ? " — pas de Twitch valide sur la fiche" : ""}
+                    </span>
+                  ) : badTwitch ? (
+                    <span className="block text-[10px] mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+                      Pas de Twitch valide sur la fiche
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : q.trim().length >= 2 && !searching ? (
+        <p className="text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+          Aucun résultat.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function makeId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -453,7 +615,7 @@ export default function AdminUpaEventPage() {
                   Streamers mis en avant sur /lives
                 </p>
                 <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  Ajoute les logins Twitch a promouvoir pendant la periode UPA.
+                  Ajoute les logins Twitch ou rattache une fiche membre TENF (recherche ci-dessous dans chaque ligne).
                 </p>
               </div>
               <button
@@ -519,6 +681,11 @@ export default function AdminUpaEventPage() {
                         Supprimer
                       </button>
                     </div>
+
+                    <UpaStreamerTenfLinker
+                      linkedMemberDiscordId={item.linkedMemberDiscordId}
+                      onAttach={(patch) => updateStreamer(index, patch)}
+                    />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <TextField

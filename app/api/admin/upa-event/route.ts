@@ -4,6 +4,12 @@ import { upaEventRepository } from "@/lib/repositories/UpaEventRepository";
 import type { UpaEventContent } from "@/lib/upaEvent/types";
 import { getTwitchUsers } from "@/lib/twitch";
 import { buildTwitchAvatarMap, extractUniqueTwitchLogins } from "@/lib/memberAvatar";
+import { memberRepository } from "@/lib/repositories/MemberRepository";
+
+function isDiscordPlaceholderTwitchLogin(value: string): boolean {
+  const login = value.trim().toLowerCase();
+  return login.startsWith("nouveau_");
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,23 +106,53 @@ export async function PUT(request: Request) {
         };
       }) as UpaEventContent["staff"];
 
-    const normalizedStreamersDraft = (streamersInput as Array<Record<string, unknown>>)
-      .map((item, index) => {
-        const rawLogin = String(item?.twitchLogin ?? "").trim().replace(/^@/, "").toLowerCase();
-        const fallbackDisplayName = String(item?.displayName ?? "").trim();
-        const orderRaw = Number.parseInt(String(item?.order ?? index + 1), 10);
-        const order = Number.isFinite(orderRaw) && orderRaw > 0 ? orderRaw : index + 1;
-        return {
-          id: String(item?.id || `streamer-${crypto.randomUUID()}`),
-          twitchLogin: rawLogin,
-          displayName: fallbackDisplayName || rawLogin || "Streamer UPA",
-          avatarUrl: "",
-          description: String(item?.description ?? "").trim(),
-          order,
-          isActive: item?.isActive === false ? false : true,
-        };
-      })
-      .filter((item) => item.twitchLogin.length > 0) as UpaEventContent["streamers"];
+    const streamersRows = streamersInput as Array<Record<string, unknown>>;
+    const normalizedStreamersDraft: UpaEventContent["streamers"] = [];
+
+    for (let index = 0; index < streamersRows.length; index++) {
+      const item = streamersRows[index];
+      let rawLogin = String(item?.twitchLogin ?? "").trim().replace(/^@/, "").toLowerCase();
+      let fallbackDisplayName = String(item?.displayName ?? "").trim();
+      const linkedMemberDiscordId = String(item?.linkedMemberDiscordId ?? "").trim();
+      const orderRaw = Number.parseInt(String(item?.order ?? index + 1), 10);
+      const order = Number.isFinite(orderRaw) && orderRaw > 0 ? orderRaw : index + 1;
+
+      if (
+        linkedMemberDiscordId &&
+        (!rawLogin || isDiscordPlaceholderTwitchLogin(rawLogin))
+      ) {
+        try {
+          const linked = await memberRepository.findByDiscordId(linkedMemberDiscordId);
+          const fromDb = String(linked?.twitchLogin ?? "")
+            .trim()
+            .replace(/^@/, "")
+            .toLowerCase();
+          if (fromDb && !isDiscordPlaceholderTwitchLogin(fromDb)) {
+            rawLogin = fromDb;
+            if (!fallbackDisplayName) {
+              fallbackDisplayName = String(linked?.displayName ?? "").trim() || fromDb;
+            }
+          }
+        } catch (err) {
+          console.warn("[API admin/upa-event PUT] Résolution membre lié:", err);
+        }
+      }
+
+      if (!rawLogin || isDiscordPlaceholderTwitchLogin(rawLogin)) {
+        continue;
+      }
+
+      normalizedStreamersDraft.push({
+        id: String(item?.id || `streamer-${crypto.randomUUID()}`),
+        twitchLogin: rawLogin,
+        displayName: fallbackDisplayName || rawLogin || "Streamer UPA",
+        avatarUrl: "",
+        description: String(item?.description ?? "").trim(),
+        ...(linkedMemberDiscordId ? { linkedMemberDiscordId } : {}),
+        order,
+        isActive: item?.isActive === false ? false : true,
+      });
+    }
 
     const uniqueLogins = extractUniqueTwitchLogins(
       [...normalizedStaffDraft, ...normalizedStreamersDraft].map((member) => ({ twitchLogin: member.twitchLogin }))
