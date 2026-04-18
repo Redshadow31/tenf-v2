@@ -61,6 +61,31 @@ function parseCurrency(raw: unknown): string {
   return c.length === 3 ? c : "EUR";
 }
 
+/** Nombre depuis API (virgule ou point). */
+export function parseAmountToNumber(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  const s = String(raw ?? "")
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".");
+  const n = Number.parseFloat(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/**
+ * Streamlabs renvoie parfois le montant collecte en centimes (107125) alors que l objectif est en euros (100000).
+ * On ne convertit que si leve > objectif en brut mais leve/100 redevient coherent (et centimes non nuls sur le dernier bloc).
+ */
+export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number): number {
+  if (!Number.isFinite(raised) || !Number.isFinite(apiGoal) || apiGoal <= 0) return raised;
+  if (!Number.isInteger(raised)) return raised;
+  if (raised <= apiGoal) return raised;
+  if (raised % 100 === 0) return raised;
+  const asMajor = raised / 100;
+  if (asMajor <= apiGoal * 1.15) return asMajor;
+  return raised;
+}
+
 export type ParsedSlcTeamPayload = { raised: number; currency: string; apiGoal: number };
 
 export function parseStreamlabsCharityTeamJson(data: unknown): ParsedSlcTeamPayload | null {
@@ -69,7 +94,7 @@ export function parseStreamlabsCharityTeamJson(data: unknown): ParsedSlcTeamPayl
   const campaign = root.campaign && typeof root.campaign === "object" ? (root.campaign as Record<string, unknown>) : null;
 
   const raisedRaw = campaign?.amount_raised ?? root.amount_raised;
-  const raised = typeof raisedRaw === "number" ? raisedRaw : Number.parseFloat(String(raisedRaw ?? ""));
+  const raised = parseAmountToNumber(raisedRaw);
   if (!Number.isFinite(raised) || raised < 0) return null;
 
   const goalBlock =
@@ -79,13 +104,16 @@ export function parseStreamlabsCharityTeamJson(data: unknown): ParsedSlcTeamPayl
         ? (root.goal as Record<string, unknown>)
         : null;
   const goalRaw = goalBlock?.amount;
-  const apiGoal = typeof goalRaw === "number" ? goalRaw : Number.parseFloat(String(goalRaw ?? ""));
+  const apiGoal = parseAmountToNumber(goalRaw);
   const currency = parseCurrency(campaign?.currency ?? root.currency);
 
+  const safeGoal = Number.isFinite(apiGoal) && apiGoal > 0 ? apiGoal : 0;
+  const raisedNorm = normalizeRaisedCentsVsMajorGoal(raised, safeGoal);
+
   return {
-    raised,
+    raised: raisedNorm,
     currency,
-    apiGoal: Number.isFinite(apiGoal) && apiGoal > 0 ? apiGoal : 0,
+    apiGoal: safeGoal,
   };
 }
 
@@ -150,38 +178,42 @@ export function extractCharityDonationGoalWidgetToken(widgetUrl: string): string
 function extractGoalFromSerializedText(s: string): ParsedSlcTeamPayload | null {
   if (!s || s.length < 20) return null;
 
+  const num = "([0-9]+(?:[.,][0-9]+)?)";
   const pair =
-    s.match(/"current_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,400}?"goal_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
-    s.match(/"currentAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,400}?"goalAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
-    s.match(/"current"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,200}?"goal"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+    s.match(new RegExp(`"current_amount"\\s*:\\s*${num}[\\s\\S]{0,400}?"goal_amount"\\s*:\\s*${num}`, "i")) ||
+    s.match(new RegExp(`"currentAmount"\\s*:\\s*${num}[\\s\\S]{0,400}?"goalAmount"\\s*:\\s*${num}`)) ||
+    s.match(new RegExp(`"current"\\s*:\\s*${num}[\\s\\S]{0,200}?"goal"\\s*:\\s*${num}`));
 
   if (pair) {
-    const raised = Number.parseFloat(pair[1]);
-    const apiGoal = Number.parseFloat(pair[2]);
+    const raised = parseAmountToNumber(pair[1]);
+    const apiGoal = parseAmountToNumber(pair[2]);
     if (Number.isFinite(raised) && raised >= 0 && Number.isFinite(apiGoal) && apiGoal > 0) {
-      return { raised, currency: "EUR", apiGoal };
+      const raisedNorm = normalizeRaisedCentsVsMajorGoal(raised, apiGoal);
+      return { raised: raisedNorm, currency: "EUR", apiGoal };
     }
   }
 
   const raisedM =
-    s.match(/"amount_raised"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
-    s.match(/"current_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
-    s.match(/"currentAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
-    s.match(/"current"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+    s.match(/"amount_raised"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/) ||
+    s.match(/"current_amount"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/i) ||
+    s.match(/"currentAmount"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/) ||
+    s.match(/"current"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/);
   const goalM =
-    s.match(/"goal"\s*:\s*\{[^}]{0,800}?"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
-    s.match(/"goal_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
-    s.match(/"goalAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
-    s.match(/"target"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+    s.match(/"goal"\s*:\s*\{[^}]{0,800}?"amount"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/) ||
+    s.match(/"goal_amount"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/i) ||
+    s.match(/"goalAmount"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/) ||
+    s.match(/"target"\s*:\s*([0-9]+(?:[.,][0-9]+)?)/);
 
   if (!raisedM) return null;
-  const raised = Number.parseFloat(raisedM[1]);
-  const apiGoal = goalM ? Number.parseFloat(goalM[1]) : 0;
+  const raised = parseAmountToNumber(raisedM[1]);
+  const apiGoal = goalM ? parseAmountToNumber(goalM[1]) : 0;
   if (!Number.isFinite(raised) || raised < 0) return null;
+  const safeGoal = Number.isFinite(apiGoal) && apiGoal > 0 ? apiGoal : 0;
+  const raisedNorm = normalizeRaisedCentsVsMajorGoal(raised, safeGoal);
   return {
-    raised,
+    raised: raisedNorm,
     currency: "EUR",
-    apiGoal: Number.isFinite(apiGoal) && apiGoal > 0 ? apiGoal : 0,
+    apiGoal: safeGoal,
   };
 }
 

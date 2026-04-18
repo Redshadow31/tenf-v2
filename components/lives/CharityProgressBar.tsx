@@ -15,7 +15,8 @@ export default function CharityProgressBar({ raised, displayGoal, currency, camp
     new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: currency.length === 3 ? currency : "EUR",
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(value);
 
   return (
