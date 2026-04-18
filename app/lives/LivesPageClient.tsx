@@ -76,27 +76,7 @@ type UpaLiteContent = {
 
 const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-function safeStreamlabsGoalWidgetUrl(raw: string | undefined): string {
-  const trimmed = String(raw || "").trim();
-  if (!trimmed) return "";
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "https:") return "";
-    const host = parsed.hostname.toLowerCase();
-    if (host !== "streamlabs.com" && !host.endsWith(".streamlabs.com")) return "";
-    if (!parsed.pathname.toLowerCase().includes("/widgets/")) return "";
-    return parsed.toString();
-  } catch {
-    return "";
-  }
-}
-
-export type LivesPageClientProps = {
-  /** URL complète du widget objectif Streamlabs Charity (jeton) — uniquement via env serveur, pas dans l'API UPA. */
-  streamlabsCharityGoalWidgetUrl?: string;
-};
-
-export default function LivesPageClient({ streamlabsCharityGoalWidgetUrl = "" }: LivesPageClientProps) {
+export default function LivesPageClient() {
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<PublicEventItem[]>([]);
   const [totalMembers, setTotalMembers] = useState<number | null>(null);
@@ -114,6 +94,7 @@ export default function LivesPageClient({ streamlabsCharityGoalWidgetUrl = "" }:
   const [followStatuses, setFollowStatuses] = useState<Record<string, FollowState>>({});
   const [showFollowStatuses, setShowFollowStatuses] = useState(false);
   const [upaContent, setUpaContent] = useState<UpaLiteContent | null>(null);
+  const [streamlabsGoalWidgetSrc, setStreamlabsGoalWidgetSrc] = useState("");
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
@@ -160,6 +141,25 @@ export default function LivesPageClient({ streamlabsCharityGoalWidgetUrl = "" }:
     }
 
     loadFollowStatuses();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStreamlabsWidgetSrc() {
+      try {
+        const response = await fetch("/api/lives/streamlabs-charity-widget", { cache: "no-store" });
+        if (!response.ok || cancelled) return;
+        const data = (await response.json()) as { widgetSrc?: string };
+        if (cancelled || typeof data?.widgetSrc !== "string") return;
+        setStreamlabsGoalWidgetSrc(data.widgetSrc);
+      } catch {
+        /* widget optionnel */
+      }
+    }
+    loadStreamlabsWidgetSrc();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -592,11 +592,6 @@ export default function LivesPageClient({ streamlabsCharityGoalWidgetUrl = "" }:
       return "";
     }
   }, [upaContent?.general?.charityCampaignUrl]);
-
-  const streamlabsGoalWidgetSrc = useMemo(
-    () => safeStreamlabsGoalWidgetUrl(streamlabsCharityGoalWidgetUrl),
-    [streamlabsCharityGoalWidgetUrl]
-  );
 
   if (loading) {
     return (

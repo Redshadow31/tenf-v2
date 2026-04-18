@@ -1,12 +1,6 @@
 import LivesPageClient from "./LivesPageClient";
 
-/**
- * Widget objectif Streamlabs Charity (URL avec token) : ne pas mettre dans le JSON UPA (API publique).
- * Définir uniquement côté serveur (.env / hébergeur).
- */
+/** Widget Streamlabs : URL lue au runtime via /api/lives/streamlabs-charity-widget (voir .env.example). */
 export default function LivesPage() {
-  const streamlabsCharityGoalWidgetUrl =
-    process.env.STREAMLABS_CHARITY_GOAL_WIDGET_URL?.trim() || "";
-
-  return <LivesPageClient streamlabsCharityGoalWidgetUrl={streamlabsCharityGoalWidgetUrl} />;
+  return <LivesPageClient />;
 }
