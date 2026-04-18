@@ -4,11 +4,9 @@ type CharityProgressBarProps = {
   raised: number;
   displayGoal: number;
   currency: string;
-  /** Objectif déclaré sur la campagne (ex. 100 k€) quand la barre est calibrée plus bas. */
-  campaignGoal?: number;
 };
 
-export default function CharityProgressBar({ raised, displayGoal, currency, campaignGoal }: CharityProgressBarProps) {
+export default function CharityProgressBar({ raised, displayGoal, currency }: CharityProgressBarProps) {
   const safeGoal = displayGoal > 0 ? displayGoal : 1;
   const pct = Math.min(100, Math.max(0, (raised / safeGoal) * 100));
   const fmt = (value: number) =>
@@ -39,12 +37,10 @@ export default function CharityProgressBar({ raised, displayGoal, currency, camp
           </p>
         </div>
       </div>
-      {typeof campaignGoal === "number" && campaignGoal > displayGoal ? (
-        <p className="text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.58)" }}>
-          Objectif campagne Streamlabs : {fmt(campaignGoal)} — la barre est volontairement calibrée sur {fmt(displayGoal)}{" "}
-          pour un rendu plus lisible.
-        </p>
-      ) : null}
+      <p className="text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.58)" }}>
+        Merci pour chaque don et chaque message d&apos;encouragement : votre générosité et votre bienveillance font une
+        réelle différence, avec toute notre gratitude.
+      </p>
       <div
         className="h-4 w-full overflow-hidden rounded-full border"
         style={{

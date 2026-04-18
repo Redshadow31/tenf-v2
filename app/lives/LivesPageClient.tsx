@@ -771,6 +771,9 @@ export default function LivesPageClient() {
               <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.8)" }}>
                 Mise en avant automatique pendant la periode UPA pour amplifier la visibilite des lives solidaires.
               </p>
+              <p className="mt-2 text-sm font-semibold" style={{ color: "#e9d79a" }}>
+                Cause soutenue : Ligue contre le cancer
+              </p>
             </div>
             <div className="rounded-xl border px-3 py-2 text-right" style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(212,175,55,0.08)" }}>
               <p className="text-sm font-semibold" style={{ color: "#f5df9d" }}>
@@ -816,12 +819,7 @@ export default function LivesPageClient() {
               <p className="text-xs font-semibold tracking-wide" style={{ color: "#f5df9d" }}>
                 Cagnotte en direct
               </p>
-              <CharityProgressBar
-                raised={charityStats.raised}
-                displayGoal={charityStats.displayGoal}
-                currency={charityStats.currency}
-                campaignGoal={typeof charityStats.campaignGoal === "number" ? charityStats.campaignGoal : undefined}
-              />
+              <CharityProgressBar raised={charityStats.raised} displayGoal={charityStats.displayGoal} currency={charityStats.currency} />
               {streamlabsGoalWidgetSrc ? (
                 <p className="mt-2 text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>
                   <a
