@@ -73,17 +73,43 @@ export function parseAmountToNumber(raw: unknown): number {
 }
 
 /**
- * Streamlabs renvoie parfois le montant collecte en centimes (107125) alors que l objectif est en euros (100000).
- * On ne convertit que si leve > objectif en brut mais leve/100 redevient coherent (et centimes non nuls sur le dernier bloc).
+ * Streamlabs renvoie souvent `amount_raised` en centimes alors que `goal` est en euros.
+ * Si l objectif API est tres eleve (ex. 1 M€), le brut peut rester < objectif tout en etant des centimes (107125 → 1071,25 €).
  */
 export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number): number {
   if (!Number.isFinite(raised) || !Number.isFinite(apiGoal) || apiGoal <= 0) return raised;
   if (!Number.isInteger(raised)) return raised;
-  if (raised <= apiGoal) return raised;
-  if (raised % 100 === 0) return raised;
+
   const asMajor = raised / 100;
+
+  if (raised <= apiGoal) {
+    if (raised % 100 !== 0 && asMajor >= 1 && asMajor <= apiGoal * 1.15) {
+      const rawFrac = raised / apiGoal;
+      const majorFrac = asMajor / apiGoal;
+      if (rawFrac < 0.15 && majorFrac < 0.015) return asMajor;
+    }
+    return raised;
+  }
+
+  if (raised % 100 === 0) return raised;
   if (asMajor <= apiGoal * 1.15) return asMajor;
   return raised;
+}
+
+/**
+ * Quand l objectif API est intermediaire (ex. 200 k€), 107125 peut rester non corrige ; si le palier barre est bas (10 k€),
+ * un brut 8x–11,5x le palier avec centimes non nuls correspond en pratique a des centimes pour un total ~1–2 k€.
+ */
+function normalizeRaisedCentsAgainstBarPalier(raised: number, displayGoal: number): number {
+  if (!Number.isFinite(raised) || !Number.isFinite(displayGoal) || displayGoal <= 0) return raised;
+  if (!Number.isInteger(raised)) return raised;
+  if (raised % 100 === 0) return raised;
+  const asMajor = raised / 100;
+  if (asMajor < 1 || asMajor > displayGoal * 2.5) return raised;
+  const loExclusive = displayGoal * 8;
+  const hiInclusive = displayGoal * 11.5;
+  if (raised <= loExclusive || raised > hiInclusive) return raised;
+  return asMajor;
 }
 
 export type ParsedSlcTeamPayload = { raised: number; currency: string; apiGoal: number };
@@ -121,10 +147,14 @@ export function withDisplayGoal(parsed: ParsedSlcTeamPayload, forcedBarGoalEuros
   const defaultGoal = 10_000;
   const forced = Number.isFinite(forcedBarGoalEuros) && forcedBarGoalEuros > 0 ? forcedBarGoalEuros : 0;
   const displayGoal = forced > 0 ? forced : parsed.apiGoal > 0 ? parsed.apiGoal : defaultGoal;
+  const raisedNorm = normalizeRaisedCentsAgainstBarPalier(
+    normalizeRaisedCentsVsMajorGoal(parsed.raised, parsed.apiGoal),
+    displayGoal,
+  );
   const campaignGoal =
     parsed.apiGoal > 0 && Math.abs(parsed.apiGoal - displayGoal) > 0.5 ? parsed.apiGoal : undefined;
   return {
-    raised: parsed.raised,
+    raised: raisedNorm,
     displayGoal,
     currency: parsed.currency,
     campaignGoal,
