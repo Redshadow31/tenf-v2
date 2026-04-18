@@ -871,12 +871,34 @@ export default function LivesPageClient() {
               <p className="text-xs font-semibold" style={{ color: "#f5df9d" }}>
                 Objectif Streamlabs (widget externe)
               </p>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>
-                Les chiffres ne s&apos;affichent pas encore ici : ajoute un lien campagne{" "}
-                <code className="text-[10px]">streamlabscharity.com/@equipe/slug</code> dans l&apos;admin UPA, ou verifie
-                que <code className="text-[10px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code> est bien configure. En
-                attendant, ouvre le widget dans un nouvel onglet.
-              </p>
+              <div className="mt-2 space-y-2 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.78)" }}>
+                <p className="font-semibold" style={{ color: "#f5df9d" }}>
+                  Pour afficher le montant sur cette page (sans clic obligatoire)
+                </p>
+                <ol className="list-decimal space-y-1.5 pl-4">
+                  <li>
+                    Ouvre ta campagne sur{" "}
+                    <strong>streamlabscharity.com</strong> (pas seulement le widget streamlabs.com).
+                  </li>
+                  <li>
+                    Copie l&apos;URL de la page publique : elle doit ressembler à{" "}
+                    <code className="rounded bg-black/30 px-1 text-[10px]">
+                      https://streamlabscharity.com/@nom-equipe/slug-campagne
+                    </code>
+                  </li>
+                  <li>
+                    Colle-la dans <strong>Admin → UPA → Lien cagnotte caritative</strong>, puis Enregistrer.
+                  </li>
+                  <li>
+                    Option Netlify : <code className="text-[10px]">STREAMLABS_CHARITY_STATS_API_URL</code> = l&apos;URL
+                    exacte d&apos;un appel <code className="text-[10px]">.../api/v1/teams/@...</code> (onglet Reseau F12
+                    sur la page campagne).
+                  </li>
+                </ol>
+                <p style={{ color: "rgba(255,255,255,0.6)" }}>
+                  Le bouton ci-dessous reste un secours si l&apos;API ne repond pas encore apres deploiement.
+                </p>
+              </div>
               <a
                 href={streamlabsGoalWidgetSrc}
                 target="_blank"

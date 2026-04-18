@@ -1,4 +1,4 @@
-/** URL page campagne du type https://streamlabscharity.com/@equipe/slug-campagne */
+/** URL page campagne : https://streamlabscharity.com/@equipe/slug ou .../donate/@equipe/slug */
 export function streamlabsCharityPageToTeamApiUrl(pageUrl: string): string | null {
   const trimmed = String(pageUrl || "").trim();
   if (!trimmed) return null;
@@ -6,7 +6,10 @@ export function streamlabsCharityPageToTeamApiUrl(pageUrl: string): string | nul
     const u = new URL(trimmed);
     const host = u.hostname.toLowerCase();
     if (host !== "streamlabscharity.com" && host !== "www.streamlabscharity.com") return null;
-    const path = u.pathname.replace(/\/$/, "");
+    let path = u.pathname.replace(/\/$/, "");
+    if (/\/donate\//i.test(path)) {
+      path = path.replace(/^\/donate\//i, "/");
+    }
     const match = path.match(/^\/@([^/]+)\/([^/]+)$/);
     if (!match) return null;
     const team = encodeURIComponent(match[1]);
@@ -140,19 +143,30 @@ export function extractCharityDonationGoalWidgetToken(widgetUrl: string): string
   }
 }
 
-/** Parse des reponses JSON variables (widget dashboard / API interne). */
-function parseLooseDonationGoalPayload(data: unknown): ParsedSlcTeamPayload | null {
-  const fromTeam = parseStreamlabsCharityTeamJson(data);
-  if (fromTeam) return fromTeam;
+/** Extrait raised / goal depuis JSON serialise ou HTML de widget (chaine brute). */
+function extractGoalFromSerializedText(s: string): ParsedSlcTeamPayload | null {
+  if (!s || s.length < 20) return null;
 
-  const s = typeof data === "object" && data !== null ? JSON.stringify(data) : "";
+  const pair =
+    s.match(/"current_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,400}?"goal_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+    s.match(/"currentAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,400}?"goalAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"current"\s*:\s*([0-9]+(?:\.[0-9]+)?)[\s\S]{0,200}?"goal"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+
+  if (pair) {
+    const raised = Number.parseFloat(pair[1]);
+    const apiGoal = Number.parseFloat(pair[2]);
+    if (Number.isFinite(raised) && raised >= 0 && Number.isFinite(apiGoal) && apiGoal > 0) {
+      return { raised, currency: "EUR", apiGoal };
+    }
+  }
+
   const raisedM =
     s.match(/"amount_raised"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
     s.match(/"current_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
     s.match(/"currentAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
     s.match(/"current"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
   const goalM =
-    s.match(/"goal"\s*:\s*\{[^}]{0,400}?"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"goal"\s*:\s*\{[^}]{0,800}?"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
     s.match(/"goal_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
     s.match(/"goalAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
     s.match(/"target"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
@@ -168,10 +182,21 @@ function parseLooseDonationGoalPayload(data: unknown): ParsedSlcTeamPayload | nu
   };
 }
 
+/** Parse des reponses JSON variables (widget dashboard / API interne) ou HTML. */
+function parseLooseDonationGoalPayload(data: unknown): ParsedSlcTeamPayload | null {
+  if (typeof data === "string") {
+    return extractGoalFromSerializedText(data);
+  }
+  const fromTeam = parseStreamlabsCharityTeamJson(data);
+  if (fromTeam) return fromTeam;
+  return extractGoalFromSerializedText(JSON.stringify(data));
+}
+
 const WIDGET_STATS_URLS = (token: string) =>
   [
     `https://streamlabs.com/api/v5/slobs/widget/streamlabs-charity-donation-goal?token=${encodeURIComponent(token)}`,
     `https://streamlabs.com/api/v5/widget/streamlabs-charity-donation-goal?token=${encodeURIComponent(token)}`,
+    `https://streamlabs.com/api/v6/slobs/widget/streamlabs-charity-donation-goal?token=${encodeURIComponent(token)}`,
     `https://streamlabscharity.com/api/v1/widgets/streamlabs-charity-donation-goal/${encodeURIComponent(token)}`,
   ] as const;
 
@@ -209,6 +234,36 @@ export async function fetchStreamlabsCharityStatsFromDonationGoalWidget(
         /* essai suivant */
       }
     }
+
+    try {
+      const res = await fetch(widgetPageUrl, {
+        method: "GET",
+        headers: {
+          Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const next = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (next) {
+          try {
+            const parsed = parseLooseDonationGoalPayload(JSON.parse(next[1]));
+            if (parsed) return withDisplayGoal(parsed, forcedBarGoalEuros);
+          } catch {
+            /* */
+          }
+        }
+        const fromHtml = parseLooseDonationGoalPayload(html);
+        if (fromHtml) return withDisplayGoal(fromHtml, forcedBarGoalEuros);
+      }
+    } catch {
+      /* */
+    }
+
     return null;
   } finally {
     clearTimeout(timer);
