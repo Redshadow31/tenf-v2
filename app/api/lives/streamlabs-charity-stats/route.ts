@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { upaEventRepository } from "@/lib/repositories";
 import {
+  fetchStreamlabsCharityStatsFromDonationGoalWidget,
   fetchStreamlabsCharityTeamStats,
   isAllowedStreamlabsCharityStatsApiUrl,
   readStreamlabsCharityBarGoalEnv,
@@ -26,11 +27,16 @@ export async function GET() {
       statsUrl = streamlabsCharityPageToTeamApiUrl(pageUrl) || "";
     }
 
-    if (!statsUrl) {
-      return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
+    const forcedBar = readStreamlabsCharityBarGoalEnv();
+
+    let stats =
+      statsUrl ? await fetchStreamlabsCharityTeamStats(statsUrl, forcedBar) : null;
+
+    if (!stats) {
+      const widgetUrl = process.env.STREAMLABS_CHARITY_GOAL_WIDGET_URL?.trim() || "";
+      stats = await fetchStreamlabsCharityStatsFromDonationGoalWidget(widgetUrl, forcedBar);
     }
 
-    const stats = await fetchStreamlabsCharityTeamStats(statsUrl, readStreamlabsCharityBarGoalEnv());
     if (!stats) {
       return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
     }

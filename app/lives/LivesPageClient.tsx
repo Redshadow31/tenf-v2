@@ -822,8 +822,21 @@ export default function LivesPageClient() {
                 currency={charityStats.currency}
                 campaignGoal={typeof charityStats.campaignGoal === "number" ? charityStats.campaignGoal : undefined}
               />
+              {streamlabsGoalWidgetSrc ? (
+                <p className="mt-2 text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <a
+                    href={streamlabsGoalWidgetSrc}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:opacity-90"
+                    style={{ color: "#e9d79a" }}
+                  >
+                    Voir le meme objectif dans le widget Streamlabs
+                  </a>
+                </p>
+              ) : null}
               <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
-                Donnees via l&apos;API publique Streamlabs Charity ; mise a jour automatique environ toutes les 2 minutes.
+                Donnees synchronisees automatiquement (environ toutes les 2 minutes).
               </p>
             </div>
           ) : null}
@@ -850,16 +863,19 @@ export default function LivesPageClient() {
             </div>
           ) : null}
 
-          {streamlabsGoalWidgetSrc ? (
+          {streamlabsGoalWidgetSrc && charityStats !== null && charityStats.available === false ? (
             <div
               className="rounded-2xl border px-4 py-4"
               style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(0,0,0,0.22)" }}
             >
               <p className="text-xs font-semibold" style={{ color: "#f5df9d" }}>
-                Objectif de dons (temps reel)
+                Objectif Streamlabs (widget externe)
               </p>
               <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>
-                Streamlabs ne sert souvent pas ce widget dans une page integree : le meme lien fonctionne en plein ecran. Ouvre-le dans un nouvel onglet pour suivre le total en direct.
+                Les chiffres ne s&apos;affichent pas encore ici : ajoute un lien campagne{" "}
+                <code className="text-[10px]">streamlabscharity.com/@equipe/slug</code> dans l&apos;admin UPA, ou verifie
+                que <code className="text-[10px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code> est bien configure. En
+                attendant, ouvre le widget dans un nouvel onglet.
               </p>
               <a
                 href={streamlabsGoalWidgetSrc}
@@ -873,7 +889,7 @@ export default function LivesPageClient() {
                   boxShadow: "0 12px 28px rgba(212,175,55,0.22)",
                 }}
               >
-                Ouvrir l&apos;objectif Streamlabs
+                Ouvrir le widget Streamlabs
               </a>
             </div>
           ) : null}

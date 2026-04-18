@@ -122,3 +122,95 @@ export async function fetchStreamlabsCharityTeamStats(
     clearTimeout(timer);
   }
 }
+
+/** Jeton query du widget objectif (meme variable que l iframe). */
+export function extractCharityDonationGoalWidgetToken(widgetUrl: string): string | null {
+  const trimmed = String(widgetUrl || "").trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    if (u.hostname.toLowerCase() !== "streamlabs.com" && !u.hostname.toLowerCase().endsWith(".streamlabs.com")) {
+      return null;
+    }
+    if (!u.pathname.toLowerCase().includes("streamlabs-charity-donation-goal")) return null;
+    const token = u.searchParams.get("token");
+    return token && token.length > 20 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Parse des reponses JSON variables (widget dashboard / API interne). */
+function parseLooseDonationGoalPayload(data: unknown): ParsedSlcTeamPayload | null {
+  const fromTeam = parseStreamlabsCharityTeamJson(data);
+  if (fromTeam) return fromTeam;
+
+  const s = typeof data === "object" && data !== null ? JSON.stringify(data) : "";
+  const raisedM =
+    s.match(/"amount_raised"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"current_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+    s.match(/"currentAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"current"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+  const goalM =
+    s.match(/"goal"\s*:\s*\{[^}]{0,400}?"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"goal_amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+    s.match(/"goalAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/) ||
+    s.match(/"target"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+
+  if (!raisedM) return null;
+  const raised = Number.parseFloat(raisedM[1]);
+  const apiGoal = goalM ? Number.parseFloat(goalM[1]) : 0;
+  if (!Number.isFinite(raised) || raised < 0) return null;
+  return {
+    raised,
+    currency: "EUR",
+    apiGoal: Number.isFinite(apiGoal) && apiGoal > 0 ? apiGoal : 0,
+  };
+}
+
+const WIDGET_STATS_URLS = (token: string) =>
+  [
+    `https://streamlabs.com/api/v5/slobs/widget/streamlabs-charity-donation-goal?token=${encodeURIComponent(token)}`,
+    `https://streamlabs.com/api/v5/widget/streamlabs-charity-donation-goal?token=${encodeURIComponent(token)}`,
+    `https://streamlabscharity.com/api/v1/widgets/streamlabs-charity-donation-goal/${encodeURIComponent(token)}`,
+  ] as const;
+
+/**
+ * Fallback lorsque l API equipe (/api/v1/teams/@...) n est pas configuree :
+ * meme jeton que STREAMLABS_CHARITY_GOAL_WIDGET_URL.
+ */
+export async function fetchStreamlabsCharityStatsFromDonationGoalWidget(
+  widgetPageUrl: string,
+  forcedBarGoalEuros: number,
+  timeoutMs = 9000
+): Promise<StreamlabsCharityTeamStats | null> {
+  const token = extractCharityDonationGoalWidgetToken(widgetPageUrl);
+  if (!token) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    for (const url of WIDGET_STATS_URLS(token)) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { Accept: "application/json", "User-Agent": "TENF-V2/charity-stats" },
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) continue;
+        const json: unknown = await res.json();
+        const parsed = parseLooseDonationGoalPayload(json);
+        if (parsed) {
+          return withDisplayGoal(parsed, forcedBarGoalEuros);
+        }
+      } catch {
+        /* essai suivant */
+      }
+    }
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
