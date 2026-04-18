@@ -786,18 +786,29 @@ export default function LivesPageClient() {
 
           {streamlabsGoalWidgetSrc ? (
             <div
-              className="overflow-hidden rounded-2xl border"
-              style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(0,0,0,0.25)" }}
+              className="rounded-2xl border px-4 py-4"
+              style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(0,0,0,0.22)" }}
             >
-              <p className="border-b px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(212,175,55,0.25)", color: "#f5df9d" }}>
+              <p className="text-xs font-semibold" style={{ color: "#f5df9d" }}>
                 Objectif de dons (temps reel)
               </p>
-              <iframe
-                title="Streamlabs Charity — objectif de dons"
-                src={streamlabsGoalWidgetSrc}
-                className="h-[200px] w-full border-0 sm:h-[220px]"
-                loading="lazy"
-              />
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>
+                Streamlabs ne sert souvent pas ce widget dans une page integree : le meme lien fonctionne en plein ecran. Ouvre-le dans un nouvel onglet pour suivre le total en direct.
+              </p>
+              <a
+                href={streamlabsGoalWidgetSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition-all hover:-translate-y-[1px] sm:w-auto"
+                style={{
+                  borderColor: "rgba(212,175,55,0.55)",
+                  color: "#1a1407",
+                  background: "linear-gradient(160deg, #f0dc8f, #d4af37)",
+                  boxShadow: "0 12px 28px rgba(212,175,55,0.22)",
+                }}
+              >
+                Ouvrir l&apos;objectif Streamlabs
+              </a>
             </div>
           ) : null}
 
