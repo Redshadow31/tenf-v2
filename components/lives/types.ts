@@ -39,6 +39,8 @@ export interface LiveMember {
   isBalancedSupport?: boolean;
   followState?: "followed" | "not_followed" | "unknown";
   integrationDate?: string;
+  /** Lien annuaire (/membres?member=) quand la fiche doit être mise en avant (ex. bloc UPA). */
+  memberAnnuaireHref?: string;
 }
 
 export interface PublicEventItem {

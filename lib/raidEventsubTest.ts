@@ -12,7 +12,13 @@ import {
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 const CONDITION_TYPE = 'to_broadcaster';
 const GRACE_PERIOD_MINUTES = 15;
+/** Fenêtre de grâce plus large pour le rôle « Nouveau » (membre souvent inactif côté site mais en live Twitch). */
+const NOUVEAU_GRACE_PERIOD_MINUTES = 360;
 const DROP_NO_RAID_WINDOW_MINUTES = 30;
+
+function isNouveauMemberRole(role: string | null | undefined): boolean {
+  return String(role || '').trim() === 'Nouveau';
+}
 
 type RaidTestRunStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled';
 type RaidTestSubscriptionStatus = 'pending' | 'active' | 'revoked' | 'failed' | 'expired';
@@ -30,6 +36,7 @@ interface EligibleMember {
   twitchLogin: string;
   twitchId: string;
   wasRecentlyLive: boolean;
+  role: string | null;
 }
 
 interface SyncResult {
@@ -461,7 +468,7 @@ async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
   // - hors is_archived (retirés du suivi type départ définitif / archivage staff).
   const { data, error } = await supabaseAdmin
     .from('members')
-    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at')
+    .select('discord_id,twitch_login,twitch_id,twitch_status,updated_at,role')
     .eq('is_archived', false)
     .not('twitch_login', 'is', null)
     .order('updated_at', { ascending: false })
@@ -477,6 +484,7 @@ async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
     twitch_id?: string | null;
     twitch_status?: { isLive?: boolean } | null;
     updated_at?: string | null;
+    role?: string | null;
   }>;
 
   const missingIdLogins = rows
@@ -489,8 +497,6 @@ async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
     resolvedMap = await getTwitchUserIdsByLogins(missingIdLogins);
   }
 
-  const graceLimit = Date.now() - GRACE_PERIOD_MINUTES * 60 * 1000;
-
   return rows
     .map((row) => {
       const twitchLogin = String(row.twitch_login || '').toLowerCase().trim();
@@ -500,10 +506,14 @@ async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
       if (!twitchId) return null;
       const status = (row.twitch_status || {}) as { isLive?: boolean };
       const updatedAt = String(row.updated_at || '').trim();
+      const roleRaw = row.role != null ? String(row.role) : null;
+      const graceMinutes = isNouveauMemberRole(roleRaw) ? NOUVEAU_GRACE_PERIOD_MINUTES : GRACE_PERIOD_MINUTES;
+      const graceLimit = Date.now() - graceMinutes * 60 * 1000;
       return {
         discordId: row.discord_id ? String(row.discord_id) : null,
         twitchLogin,
         twitchId,
+        role: roleRaw,
         wasRecentlyLive:
           status?.isLive === true ||
           (status?.isLive === false && !!updatedAt && new Date(updatedAt).getTime() >= graceLimit),

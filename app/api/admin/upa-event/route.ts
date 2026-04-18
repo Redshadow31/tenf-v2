@@ -64,6 +64,20 @@ export async function PUT(request: Request) {
 
     const incomingStartDate = String(body?.startDate ?? body?.content?.general?.startDate ?? existingContent.general.startDate).trim();
     const incomingEndDate = String(body?.endDate ?? body?.content?.general?.endDate ?? existingContent.general.endDate).trim();
+    const rawCharityUrl = String(
+      body?.charityCampaignUrl ?? body?.content?.general?.charityCampaignUrl ?? existingContent.general.charityCampaignUrl ?? ""
+    ).trim();
+    let charityCampaignUrl = "";
+    if (rawCharityUrl) {
+      try {
+        const parsed = new URL(rawCharityUrl);
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+          charityCampaignUrl = parsed.toString();
+        }
+      } catch {
+        charityCampaignUrl = "";
+      }
+    }
 
     const normalizedStaffDraft = (staffInput as Array<Record<string, unknown>>)
       .map((item, index) => {
@@ -135,6 +149,7 @@ export async function PUT(request: Request) {
         ...existingContent.general,
         startDate: incomingStartDate || existingContent.general.startDate,
         endDate: incomingEndDate || existingContent.general.endDate,
+        charityCampaignUrl,
       },
       socialProof: {
         ...existingContent.socialProof,

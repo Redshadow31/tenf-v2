@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { LiveMember } from "@/components/lives/types";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -177,15 +178,26 @@ export default function LiveCard({ live }: LiveCardProps) {
           </span>
         </div>
 
-        <a
-          href={live.twitchUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
-          style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
-        >
-          {isDiscoverCta ? "Decouvrir le createur" : "Rejoindre le live"}
-        </a>
+        <div className="mt-auto flex flex-col gap-2">
+          <a
+            href={live.twitchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
+            style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
+          >
+            {isDiscoverCta ? "Decouvrir le createur" : "Rejoindre le live"}
+          </a>
+          {live.memberAnnuaireHref ? (
+            <Link
+              href={live.memberAnnuaireHref}
+              className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5 md:py-2.5"
+              style={{ borderColor: "rgba(212,175,55,0.45)", color: "#f5e6b8" }}
+            >
+              Fiche membre TENF
+            </Link>
+          ) : null}
+        </div>
       </div>
     </article>
   );

@@ -24,21 +24,22 @@ function findMemberByTwitchIdOrLogin(
   twitchLogin: string,
   allMembers: any[]
 ): any | null {
+  const eligible = (m: any) =>
+    m.isArchived !== true && (m.isActive === true || m.role === "Nouveau");
+
   // PRIORITÉ 1: Chercher par Twitch ID (MANDATORY pour EventSub)
   if (twitchId) {
-    const memberById = allMembers.find(m => 
-      m.isActive && m.twitchId === twitchId
-    );
+    const memberById = allMembers.find((m) => eligible(m) && m.twitchId === twitchId);
     if (memberById) {
       console.log(`[Twitch Raid] ✅ Membre trouvé par ID: ${twitchId} -> ${memberById.twitchLogin}`);
       return memberById;
     }
   }
-  
+
   // FALLBACK: Chercher par login (si ID non trouvé ou non fourni)
   if (twitchLogin) {
-    const memberByLogin = allMembers.find(m => 
-      m.isActive && m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
+    const memberByLogin = allMembers.find(
+      (m) => eligible(m) && m.twitchLogin?.toLowerCase() === twitchLogin.toLowerCase()
     );
     if (memberByLogin) {
       console.log(`[Twitch Raid] ⚠️ Membre trouvé par login (ID manquant): ${twitchLogin}`);

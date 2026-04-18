@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 import { isoToParisYmd, parisMonthKeyFromDate, parisMonthKeyFromIso } from "@/lib/parisCalendar";
@@ -43,6 +43,32 @@ type ReviewEvent = {
   processing_status: "received" | "matched" | "ignored" | "duplicate" | "error";
 };
 
+type UpaRaidEventRow = {
+  id: string;
+  from_broadcaster_user_login?: string | null;
+  to_broadcaster_user_login?: string | null;
+  event_at?: string | null;
+  viewers?: number | null;
+  processing_status?: string | null;
+  error_reason?: string | null;
+};
+
+type UpaStreamerReport = {
+  twitchLogin: string;
+  displayName: string;
+  upaCardActive: boolean;
+  raidsReceivedCount: number;
+  raidsSentCount: number;
+  raidsReceived: UpaRaidEventRow[];
+  raidsSent: UpaRaidEventRow[];
+};
+
+type UpaReportResponse = {
+  period: { startDate: string; endDate: string; startIsoUtc: string; endIsoUtc: string };
+  streamers: UpaStreamerReport[];
+  meta: { eventsLoaded: number; streamerCardsConfigured: number };
+};
+
 function formatLiveDuration(minutes: number): string {
   const safeMinutes = Math.max(0, Math.floor(minutes));
   const hours = Math.floor(safeMinutes / 60);
@@ -64,7 +90,7 @@ export default function AdminRaidsSubPage() {
 
   const [loading, setLoading] = useState(true);
   const [runningAction, setRunningAction] = useState<"" | "refresh" | "sync">("");
-  const [activeTab, setActiveTab] = useState<"overview" | "stats" | "history">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "stats" | "history" | "upa">("overview");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent">("sent");
   const [statsPage, setStatsPage] = useState(1);
   const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "received" | "matched" | "ignored" | "duplicate" | "error">("all");
@@ -78,6 +104,27 @@ export default function AdminRaidsSubPage() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [reviewEvents, setReviewEvents] = useState<ReviewEvent[]>([]);
   const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
+  const [upaReport, setUpaReport] = useState<UpaReportResponse | null>(null);
+  const [upaLoading, setUpaLoading] = useState(false);
+  const [upaError, setUpaError] = useState("");
+
+  const loadUpaReport = useCallback(async () => {
+    setUpaLoading(true);
+    setUpaError("");
+    try {
+      const response = await fetch("/api/admin/engagement/raids-sub/upa-report", { cache: "no-store" });
+      const body = (await response.json()) as UpaReportResponse & { error?: string };
+      if (!response.ok) {
+        throw new Error(body.error || "Impossible de charger le rapport UPA.");
+      }
+      setUpaReport(body);
+    } catch (e) {
+      setUpaError(e instanceof Error ? e.message : "Erreur reseau.");
+      setUpaReport(null);
+    } finally {
+      setUpaLoading(false);
+    }
+  }, []);
 
   async function loadData(options?: { silent?: boolean }) {
     const silent = Boolean(options?.silent);
@@ -180,6 +227,12 @@ export default function AdminRaidsSubPage() {
 
     return () => window.clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "upa") {
+      void loadUpaReport();
+    }
+  }, [activeTab, loadUpaReport]);
 
   useEffect(() => {
     setStatsPage(1);
@@ -401,7 +454,8 @@ export default function AdminRaidsSubPage() {
           <span className="text-slate-100">non archivés</span> (<span className="font-mono text-xs">members.is_archived</span>
           ), actifs ou inactifs côté communauté. La sync ne garde des subscriptions
           <span className="text-slate-100"> channel.raid</span> que pour ceux qui sont en live (Helix) ou dans la fenêtre de
-          grâce après fin de live (<span className="font-mono text-xs text-slate-200">GRACE_PERIOD_MINUTES</span> dans{" "}
+          grâce après fin de live (<span className="font-mono text-xs text-slate-200">GRACE_PERIOD_MINUTES</span>, plus long pour
+          le rôle <span className="text-slate-100">Nouveau</span>, dans{" "}
           <span className="font-mono text-xs text-slate-200">lib/raidEventsubTest.ts</span>).
         </p>
       </section>
@@ -465,6 +519,18 @@ export default function AdminRaidsSubPage() {
             }}
           >
             Historique des raids
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("upa")}
+            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+            style={{
+              borderColor: activeTab === "upa" ? "rgba(212,175,55,0.65)" : "rgba(255,255,255,0.2)",
+              color: activeTab === "upa" ? "#f2d891" : "#cbd5e1",
+              backgroundColor: activeTab === "upa" ? "rgba(212,175,55,0.12)" : "transparent",
+            }}
+          >
+            UPA (Lives caritatifs)
           </button>
           <button
             type="button"
@@ -712,6 +778,133 @@ export default function AdminRaidsSubPage() {
                 ) : null}
               </div>
             )}
+          </div>
+        ) : activeTab === "upa" ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-amber-100">Raids EventSub — période UPA</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Streamers = liste « Lives caritatifs UPA » dans{" "}
+                  <Link href="/admin/upa-event" className="text-amber-200 underline-offset-2 hover:underline">
+                    /admin/upa-event
+                  </Link>{" "}
+                  (toutes les fiches avec login, quel que soit le interrupteur « Actif » sur la carte UPA). Fenêtre temporelle =
+                  dates de l&apos;événement (Europe/Paris).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadUpaReport()}
+                disabled={upaLoading}
+                className="rounded-lg border border-amber-400/40 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50"
+              >
+                {upaLoading ? "Chargement..." : "Rafraîchir"}
+              </button>
+            </div>
+
+            {upaError ? (
+              <div className="rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{upaError}</div>
+            ) : null}
+
+            {upaLoading && !upaReport ? (
+              <p className="text-sm text-slate-400">Chargement du rapport UPA...</p>
+            ) : null}
+
+            {upaReport ? (
+              <>
+                <p className="text-sm text-slate-300">
+                  Du <span className="text-white">{upaReport.period.startDate}</span> au{" "}
+                  <span className="text-white">{upaReport.period.endDate}</span> (Paris, minuit → fin de journée).{" "}
+                  <span className="text-slate-500">
+                    {upaReport.meta.streamerCardsConfigured} streamer(s) configuré(s), {upaReport.meta.eventsLoaded}{" "}
+                    événement(s) raid dans la fenêtre (hors doublons / erreurs).
+                  </span>
+                </p>
+
+                {upaReport.streamers.length === 0 ? (
+                  <p className="text-sm text-slate-400">
+                    Aucun login Twitch dans « Lives caritatifs UPA ». Ajoutez des participants dans l&apos;admin UPA.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {upaReport.streamers.map((s) => (
+                      <details
+                        key={s.twitchLogin}
+                        className="group rounded-xl border border-amber-500/20 bg-[#12100a]/90 px-4 py-3 open:border-amber-400/35"
+                      >
+                        <summary className="cursor-pointer list-none font-semibold text-amber-50 [&::-webkit-details-marker]:hidden">
+                          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>
+                              {s.displayName}{" "}
+                              <span className="font-mono text-sm font-normal text-amber-200/90">({s.twitchLogin})</span>
+                            </span>
+                            <span className="text-xs font-normal text-slate-400">
+                              Reçus: <span className="text-emerald-300">{s.raidsReceivedCount}</span> · Faits:{" "}
+                              <span className="text-sky-300">{s.raidsSentCount}</span>
+                              {!s.upaCardActive ? (
+                                <span className="ml-2 rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-slate-500">
+                                  carte UPA désactivée
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                        </summary>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <div>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-200/90">
+                              Raids reçus (cible = ce streamer)
+                            </p>
+                            {s.raidsReceived.length === 0 ? (
+                              <p className="text-xs text-slate-500">Aucun dans la période.</p>
+                            ) : (
+                              <ul className="max-h-64 space-y-2 overflow-y-auto text-xs">
+                                {s.raidsReceived.map((r) => (
+                                  <li key={r.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-slate-200">
+                                    <span className="font-mono text-amber-100/90">{r.from_broadcaster_user_login || "?"}</span>
+                                    {" → "}
+                                    <span className="font-mono">{r.to_broadcaster_user_login || "?"}</span>
+                                    <span className="block text-[11px] text-slate-500">
+                                      {r.event_at ? new Date(r.event_at).toLocaleString("fr-FR") : ""}
+                                      {typeof r.viewers === "number" ? ` · ${r.viewers} viewers` : ""}
+                                      {r.processing_status ? ` · ${r.processing_status}` : ""}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sky-200/90">
+                              Raids faits (raideur = ce streamer)
+                            </p>
+                            {s.raidsSent.length === 0 ? (
+                              <p className="text-xs text-slate-500">Aucun dans la période.</p>
+                            ) : (
+                              <ul className="max-h-64 space-y-2 overflow-y-auto text-xs">
+                                {s.raidsSent.map((r) => (
+                                  <li key={r.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-slate-200">
+                                    <span className="font-mono text-sky-100/90">{r.from_broadcaster_user_login || "?"}</span>
+                                    {" → "}
+                                    <span className="font-mono">{r.to_broadcaster_user_login || "?"}</span>
+                                    <span className="block text-[11px] text-slate-500">
+                                      {r.event_at ? new Date(r.event_at).toLocaleString("fr-FR") : ""}
+                                      {typeof r.viewers === "number" ? ` · ${r.viewers} viewers` : ""}
+                                      {r.processing_status ? ` · ${r.processing_status}` : ""}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
         ) : (
           <div>

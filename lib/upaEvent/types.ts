@@ -12,6 +12,8 @@ export interface UpaEventGeneralInfo {
   heroText: string;
   registrationStatus: UpaRegistrationStatus;
   moodMessage: string;
+  /** Page publique de la campagne (ex. Streamlabs Charity) — affichée sur /lives pendant l'UPA si renseignée. */
+  charityCampaignUrl: string;
 }
 
 export interface UpaEventSocialProof {

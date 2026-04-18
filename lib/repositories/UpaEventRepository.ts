@@ -31,6 +31,18 @@ function trimText(value: unknown, fallback = ""): string {
   return value.trim();
 }
 
+function sanitizePublicHttpUrl(raw: unknown): string {
+  const trimmed = trimText(raw, "");
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
 function toInt(value: unknown, fallback = 0): number {
   const parsed = Number.parseInt(String(value), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
@@ -74,6 +86,7 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
       "Pendant 9 jours, streamers et benevoles se mobilisent pour soutenir une cause essentielle.",
     registrationStatus: "open",
     moodMessage: "La mobilisation est lancee.",
+    charityCampaignUrl: "",
   },
   socialProof: {
     totalRegistered: 23,
@@ -189,6 +202,7 @@ function normalizeGeneral(value: unknown): UpaEventGeneralInfo {
     heroText: trimText(source.heroText, base.heroText),
     registrationStatus: toRegistrationStatus(source.registrationStatus, base.registrationStatus),
     moodMessage: trimText(source.moodMessage, base.moodMessage),
+    charityCampaignUrl: sanitizePublicHttpUrl(source.charityCampaignUrl) || base.charityCampaignUrl,
   };
 }
 

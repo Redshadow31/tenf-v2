@@ -118,18 +118,21 @@ export async function POST(request: NextRequest) {
 
       // PRIORITÉ: Chercher par twitch_user_id d'abord (obligatoire pour EventSub)
       // FALLBACK: chercher par twitch_username seulement si ID non trouvé
-      const fromMember = allMembers.find(m => 
-        m.isActive && (
-          (event.from_broadcaster_user_id && m.twitchId === event.from_broadcaster_user_id) ||
-          (!m.twitchId && m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase())
-        )
+      // Membres actifs OU rôle « Nouveau » (souvent inactifs côté site mais à suivre pour les raids).
+      const fromMember = allMembers.find(
+        (m) =>
+          m.isArchived !== true &&
+          (m.isActive === true || m.role === "Nouveau") &&
+          ((event.from_broadcaster_user_id && m.twitchId === event.from_broadcaster_user_id) ||
+            (!m.twitchId && m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase()))
       );
 
-      const toMember = allMembers.find(m => 
-        m.isActive && (
-          (event.to_broadcaster_user_id && m.twitchId === event.to_broadcaster_user_id) ||
-          (!m.twitchId && m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase())
-        )
+      const toMember = allMembers.find(
+        (m) =>
+          m.isArchived !== true &&
+          (m.isActive === true || m.role === "Nouveau") &&
+          ((event.to_broadcaster_user_id && m.twitchId === event.to_broadcaster_user_id) ||
+            (!m.twitchId && m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase()))
       );
 
       // Si membres trouvés mais IDs manquants, les mettre à jour automatiquement

@@ -101,6 +101,7 @@ function createDefaultContent(): UpaEventContent {
       heroText: "",
       registrationStatus: "open",
       moodMessage: "",
+      charityCampaignUrl: "",
     },
     socialProof: {
       totalRegistered: 23,
@@ -290,6 +291,7 @@ export default function AdminUpaEventPage() {
         body: JSON.stringify({
           startDate: content.general.startDate,
           endDate: content.general.endDate,
+          charityCampaignUrl: content.general.charityCampaignUrl,
           totalRegistered: content.socialProof.totalRegistered,
           streamers: content.streamers,
           staff: content.staff,
@@ -403,6 +405,20 @@ export default function AdminUpaEventPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextField label="Date debut (YYYY-MM-DD)" value={content.general.startDate} onChange={(v) => setGeneralField("startDate", v)} />
             <TextField label="Date fin (YYYY-MM-DD)" value={content.general.endDate} onChange={(v) => setGeneralField("endDate", v)} />
+            <div className="md:col-span-2">
+              <TextField
+                label="Lien cagnotte caritative (Streamlabs Charity, etc.)"
+                value={content.general.charityCampaignUrl}
+                onChange={(v) => setGeneralField("charityCampaignUrl", v)}
+                placeholder="https://streamlabscharity.com/..."
+              />
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                URL publique de la campagne (sans jeton). Ne pas y coller le lien widget Streamlabs (
+                <code className="text-[11px]">streamlabs.com/widgets/...token=</code>
+                ) : il serait visible via l&apos;API publique UPA. Pour le widget objectif integre sur /lives, utilise la variable serveur{" "}
+                <code className="text-[11px]">STREAMLABS_CHARITY_GOAL_WIDGET_URL</code>.
+              </p>
+            </div>
             <div
               className="md:col-span-2 rounded-lg border px-4 py-3 text-sm"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
