@@ -1,4 +1,4 @@
-/** URL page campagne : https://streamlabscharity.com/@equipe/slug ou .../donate/@equipe/slug */
+/** URL page campagne : /@equipe/slug, /teams/@equipe/slug, ou .../donate/@... */
 export function streamlabsCharityPageToTeamApiUrl(pageUrl: string): string | null {
   const trimmed = String(pageUrl || "").trim();
   if (!trimmed) return null;
@@ -7,6 +7,9 @@ export function streamlabsCharityPageToTeamApiUrl(pageUrl: string): string | nul
     const host = u.hostname.toLowerCase();
     if (host !== "streamlabscharity.com" && host !== "www.streamlabscharity.com") return null;
     let path = u.pathname.replace(/\/$/, "");
+    if (path.toLowerCase().startsWith("/teams/")) {
+      path = path.replace(/^\/teams\//i, "/");
+    }
     if (/\/donate\//i.test(path)) {
       path = path.replace(/^\/donate\//i, "/");
     }
