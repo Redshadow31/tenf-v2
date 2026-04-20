@@ -13,6 +13,10 @@ test("normalizeRaisedCentsVsMajorGoal : centimes vs objectif 1 M€ (brut < obje
   assert.equal(normalizeRaisedCentsVsMajorGoal(107_125, 1_000_000), 1071.25);
 });
 
+test("normalizeRaisedCentsVsMajorGoal : convertit 162403 avec objectif 1 M€", () => {
+  assert.equal(normalizeRaisedCentsVsMajorGoal(162_403, 1_000_000), 1624.03);
+});
+
 test("normalizeRaisedCentsVsMajorGoal : ne pas convertir un montant euros coherent (50125 € / 60 k€)", () => {
   assert.equal(normalizeRaisedCentsVsMajorGoal(50_125, 60_000), 50_125);
 });
@@ -30,6 +34,11 @@ test("withDisplayGoal : palier 10 k€ corrige 107125 quand l objectif API est 2
 test("withDisplayGoal : corrige aussi les montants en centimes finissant par 00", () => {
   const out = withDisplayGoal({ raised: 107_100, currency: "EUR", apiGoal: 200_000 }, 10_000);
   assert.equal(out.raised, 1071);
+});
+
+test("withDisplayGoal : corrige 162403 avec palier 10 k€", () => {
+  const out = withDisplayGoal({ raised: 162_403, currency: "EUR", apiGoal: 1_000_000 }, 10_000);
+  assert.equal(out.raised, 1624.03);
 });
 
 test("withDisplayGoal : ne pas toucher 60000 € avec palier 10 k€", () => {
