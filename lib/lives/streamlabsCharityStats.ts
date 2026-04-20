@@ -81,18 +81,18 @@ export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number)
   if (!Number.isInteger(raised)) return raised;
 
   const asMajor = raised / 100;
+  const rawFrac = raised / apiGoal;
+  const majorFrac = asMajor / apiGoal;
+  const likelyCentsWhenBelowGoal = asMajor >= 1 && asMajor <= apiGoal * 1.15 && rawFrac < 0.15 && majorFrac < 0.015;
+  const likelyCentsWhenSlightlyAboveGoal =
+    asMajor >= 1 && asMajor <= apiGoal * 1.15 && rawFrac > 1 && rawFrac <= 1.12 && majorFrac < 0.2;
 
   if (raised <= apiGoal) {
-    if (raised % 100 !== 0 && asMajor >= 1 && asMajor <= apiGoal * 1.15) {
-      const rawFrac = raised / apiGoal;
-      const majorFrac = asMajor / apiGoal;
-      if (rawFrac < 0.15 && majorFrac < 0.015) return asMajor;
-    }
+    if (likelyCentsWhenBelowGoal) return asMajor;
     return raised;
   }
 
-  if (raised % 100 === 0) return raised;
-  if (asMajor <= apiGoal * 1.15) return asMajor;
+  if (likelyCentsWhenSlightlyAboveGoal) return asMajor;
   return raised;
 }
 
@@ -103,7 +103,6 @@ export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number)
 function normalizeRaisedCentsAgainstBarPalier(raised: number, displayGoal: number): number {
   if (!Number.isFinite(raised) || !Number.isFinite(displayGoal) || displayGoal <= 0) return raised;
   if (!Number.isInteger(raised)) return raised;
-  if (raised % 100 === 0) return raised;
   const asMajor = raised / 100;
   if (asMajor < 1 || asMajor > displayGoal * 2.5) return raised;
   const loExclusive = displayGoal * 8;
