@@ -133,7 +133,10 @@ export default function CommunauteEvenementsCalendrierPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/events?admin=true", { cache: "no-store" });
+      const response = await fetch("/api/events?admin=true", {
+        cache: "no-store",
+        credentials: "include",
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       const now = new Date();
@@ -683,7 +686,7 @@ export default function CommunauteEvenementsCalendrierPage() {
                       className="w-full rounded-xl border border-[#353a50] bg-[#0f1424] px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-300/45"
                     >
                       <option value="Spotlight">Spotlight</option>
-                      <option value="Soiree Film">Soiree Film</option>
+                      <option value="Soirée Film">Soirée Film</option>
                       <option value="Formation">Formation</option>
                       <option value="Jeux communautaire">Jeux communautaire</option>
                       <option value="Apero">Apero</option>

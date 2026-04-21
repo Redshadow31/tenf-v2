@@ -139,7 +139,8 @@ export default function PlanificationPage() {
     try {
       setLoading(true);
       const response = await fetch("/api/events?admin=true", {
-        cache: 'no-store',
+        cache: "no-store",
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();

@@ -15,6 +15,8 @@ import { spotlightRepository } from "@/lib/repositories";
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
 export const revalidate = 60;
+/** Pas de cache statique du handler : évite toute confusion entre GET public et GET ?admin=true (soirées film). */
+export const dynamic = "force-dynamic";
 
 type PublicAnnouncement = {
   title: string;
@@ -119,7 +121,8 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   try {
     const { searchParams } = new URL(request.url);
-    const adminOnly = searchParams.get('admin') === 'true';
+    const adminParam = searchParams.get("admin");
+    const adminOnly = adminParam === "true" || adminParam === "1";
     
     // Vérifier si c'est une requête admin
     let isAdmin = false;
@@ -210,25 +213,26 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const publicFilmAnnouncement =
-      !isAdmin && !canViewFullFilmEvents ? await loadFilmPublicAnnouncement() : null;
+    // Masquage « soirée film » : public uniquement (visiteurs / membres non actifs).
+    // Réponses admin (?admin=true + droits planification) : toujours les données réelles.
+    const maskFilmDetailsForAudience = !isAdmin && !canViewFullFilmEvents;
+    const publicFilmAnnouncement = maskFilmDetailsForAudience ? await loadFilmPublicAnnouncement() : null;
 
-    const audienceEvents =
-      !isAdmin && !canViewFullFilmEvents
-        ? withSeriesEvents.map((event) => {
-            if (!isMovieNightCategory(String(event.category || ""))) return event;
-            return {
-              ...event,
-              title: publicFilmAnnouncement?.title || DEFAULT_FILM_ANNOUNCEMENT.title,
-              description: publicFilmAnnouncement?.description || DEFAULT_FILM_ANNOUNCEMENT.description,
-              image: publicFilmAnnouncement?.image || undefined,
-              location: undefined,
-              ctaLabel: publicFilmAnnouncement?.ctaLabel || undefined,
-              ctaUrl: publicFilmAnnouncement?.ctaUrl || undefined,
-              isMaskedForAudience: true,
-            };
-          })
-        : withSeriesEvents;
+    const audienceEvents = maskFilmDetailsForAudience
+      ? withSeriesEvents.map((event) => {
+          if (!isMovieNightCategory(String(event.category || ""))) return event;
+          return {
+            ...event,
+            title: publicFilmAnnouncement?.title || DEFAULT_FILM_ANNOUNCEMENT.title,
+            description: publicFilmAnnouncement?.description || DEFAULT_FILM_ANNOUNCEMENT.description,
+            image: publicFilmAnnouncement?.image || undefined,
+            location: undefined,
+            ctaLabel: publicFilmAnnouncement?.ctaLabel || undefined,
+            ctaUrl: publicFilmAnnouncement?.ctaUrl || undefined,
+            isMaskedForAudience: true,
+          };
+        })
+      : withSeriesEvents;
     
     // Trier par date (plus récent en premier)
     audienceEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

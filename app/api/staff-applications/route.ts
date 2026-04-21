@@ -140,9 +140,6 @@ function parseAnswers(payload: any): { ok: true; answers: StaffApplicationAnswer
     if (!["non", "oui_legere", "oui_importante"].includes(payload?.periode_impact)) {
       return { ok: false, error: "Valeur invalide pour periode_impact." };
     }
-    if (!["cadre", "humain", "mix"].includes(payload?.preference_cadre)) {
-      return { ok: false, error: "Valeur invalide pour preference_cadre." };
-    }
     if (![1, 2, 3, 4, 5].includes(niveauDiscord)) {
       return { ok: false, error: "niveau_discord doit être compris entre 1 et 5." };
     }
@@ -216,7 +213,11 @@ function parseAnswers(payload: any): { ok: true; answers: StaffApplicationAnswer
     reaction_stress_autre: isNonEmptyString(payload?.reaction_stress_autre)
       ? payload.reaction_stress_autre.trim()
       : undefined,
-    preference_cadre: isModeratorTrack ? payload.preference_cadre : defaultsForSupport.preference_cadre,
+    preference_cadre: isModeratorTrack
+      ? ["cadre", "humain", "mix"].includes(payload?.preference_cadre)
+        ? payload.preference_cadre
+        : "mix"
+      : defaultsForSupport.preference_cadre,
     preference_cadre_detail: isNonEmptyString(payload?.preference_cadre_detail)
       ? payload.preference_cadre_detail.trim()
       : undefined,

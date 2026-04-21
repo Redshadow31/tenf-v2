@@ -37,6 +37,8 @@ type FormState = {
   motivation_560: string;
   style_communication: "direct" | "empathique" | "structure" | "mixte" | "autre" | "";
   style_communication_autre: string;
+  /** Preférence d'animation staff (parcours modérateur uniquement, requis par l'API). */
+  preference_cadre: "cadre" | "humain" | "mix";
   engagement_hebdo: "2h" | "4h" | "6h" | "variable" | "";
   engagement_hebdo_variable: string;
   poles_interet: string[];
@@ -92,6 +94,7 @@ const INITIAL_FORM: FormState = {
   motivation_560: "",
   style_communication: "",
   style_communication_autre: "",
+  preference_cadre: "mix",
   engagement_hebdo: "",
   engagement_hebdo_variable: "",
   poles_interet: [],
@@ -186,6 +189,9 @@ function toFormFromAnswers(answers: Record<string, any>, username: string): Form
     motivation_560: answers.motivation_560 || "",
     style_communication: answers.style_communication || "",
     style_communication_autre: answers.style_communication_autre || "",
+    preference_cadre: ["cadre", "humain", "mix"].includes(answers.preference_cadre)
+      ? answers.preference_cadre
+      : "mix",
     engagement_hebdo: answers.engagement_hebdo || "",
     engagement_hebdo_variable: answers.engagement_hebdo_variable || "",
     poles_interet: Array.isArray(answers.poles_interet) ? answers.poles_interet : [],
@@ -760,6 +766,11 @@ export default function PostulerPage() {
                   <option value="">Style de communication *</option>
                   <option value="direct">Direct</option><option value="empathique">Empathique</option><option value="structure">Structure</option><option value="mixte">Mixte</option><option value="autre">Autre</option>
                 </select>
+                <select value={form.preference_cadre} onChange={(e) => setField("preference_cadre", e.target.value as FormState["preference_cadre"])} className="rounded-lg border border-white/15 bg-[#0f1118] px-3 py-2.5">
+                  <option value="mix">Posture staff: equilibre cadre + humain</option>
+                  <option value="cadre">Plutot cadre / regles claires</option>
+                  <option value="humain">Plutot humain / ecoute</option>
+                </select>
                 <select value={form.energie_mentale} onChange={(e) => setField("energie_mentale", e.target.value as FormState["energie_mentale"])} className="rounded-lg border border-white/15 bg-[#0f1118] px-3 py-2.5">
                   <option value="">Energie mentale (1-5) *</option>
                   <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
@@ -848,6 +859,12 @@ export default function PostulerPage() {
                   <p><strong>Pseudo:</strong> {form.pseudo_discord || "-"}</p>
                   <p><strong>Disponibilites:</strong> {form.disponibilites || "-"}</p>
                   <p><strong>Engagement:</strong> {form.engagement_hebdo || "-"}</p>
+                  {form.role_postule === "moderateur" || form.role_postule === "les_deux" ? (
+                    <p>
+                      <strong>Posture (cadre / humain):</strong>{" "}
+                      {form.preference_cadre === "cadre" ? "Cadre / regles" : form.preference_cadre === "humain" ? "Humain / ecoute" : "Mix equilibre"}
+                    </p>
+                  ) : null}
                 </div>
                 <label className="flex items-start gap-2 text-sm text-gray-300">
                   <input type="checkbox" checked={form.accepte_confidentialite} onChange={(e) => setField("accepte_confidentialite", e.target.checked)} className="mt-1" />
