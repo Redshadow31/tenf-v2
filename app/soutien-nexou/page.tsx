@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Send } from "lucide-react";
-
-const MAX_MESSAGE = 500;
-const MIN_MESSAGE = 10;
+import ReviewMessageMarkdown from "@/components/reviews/ReviewMessageMarkdown";
+import {
+  MAX_REVIEW_MESSAGE_LENGTH as MAX_MESSAGE,
+  MIN_REVIEW_MESSAGE_LENGTH as MIN_MESSAGE,
+} from "@/lib/reviewsMessageLimits";
 
 interface Review {
   id: string;
@@ -212,9 +214,9 @@ export default function SoutienNexouPage() {
                 <div className="font-semibold mb-2" style={{ color: "var(--color-text)" }}>
                   {r.pseudo}
                 </div>
-                <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--color-text-secondary)" }}>
-                  {r.message}
-                </p>
+                <div className="text-sm [&_.prose]:text-[color:var(--color-text-secondary)] [&_.prose_strong]:text-[color:var(--color-text)]">
+                  <ReviewMessageMarkdown source={r.message} />
+                </div>
                 <p className="text-xs mt-2" style={{ color: "var(--color-text-secondary)", opacity: 0.7 }}>
                   {new Date(r.created_at).toLocaleDateString("fr-FR", {
                     day: "numeric",

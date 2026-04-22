@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import {
+  MAX_REVIEW_MESSAGE_LENGTH as MAX_MESSAGE_LENGTH,
+  MIN_REVIEW_MESSAGE_LENGTH as MIN_MESSAGE_LENGTH,
+} from "@/lib/reviewsMessageLimits";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const MAX_MESSAGE_LENGTH = 500;
-const MIN_MESSAGE_LENGTH = 10;
 
 /** GET - Liste les avis/soutiens par type */
 export async function GET(request: NextRequest) {

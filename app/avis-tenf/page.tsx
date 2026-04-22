@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Heart, Send, Sparkles, X } from "lucide-react";
-
-const MAX_MESSAGE = 500;
-const MIN_MESSAGE = 10;
+import ReviewMessageMarkdown from "@/components/reviews/ReviewMessageMarkdown";
+import {
+  MAX_REVIEW_MESSAGE_LENGTH as MAX_MESSAGE,
+  MIN_REVIEW_MESSAGE_LENGTH as MIN_MESSAGE,
+} from "@/lib/reviewsMessageLimits";
 
 interface Review {
   id: string;
@@ -92,6 +94,10 @@ export default function AvisTenfPage() {
       const finalMessage = selectedPrompt
         ? `${selectedPrompt}:\n${message.trim()}`
         : message.trim();
+      if (finalMessage.length > MAX_MESSAGE) {
+        setError(`Le message ne doit pas dépasser ${MAX_MESSAGE} caractères`);
+        return;
+      }
 
       const res = await fetch("/api/reviews", {
         method: "POST",
@@ -124,11 +130,14 @@ export default function AvisTenfPage() {
     }
   }
 
-  const remaining = MAX_MESSAGE - message.length;
+  const promptPrefixLength = selectedPrompt ? selectedPrompt.length + 2 : 0;
+  const maxMessageInputLength = Math.max(0, MAX_MESSAGE - promptPrefixLength);
+  const remaining = maxMessageInputLength - message.length;
   const canSubmit =
     pseudo.trim().length >= 2 &&
     message.trim().length >= MIN_MESSAGE &&
-    message.length <= MAX_MESSAGE;
+    message.length <= maxMessageInputLength &&
+    maxMessageInputLength >= MIN_MESSAGE;
 
   const stats = useMemo(() => {
     const total = reviews.length;
@@ -272,7 +281,9 @@ export default function AvisTenfPage() {
                     <p className="text-sm font-semibold text-white">{r.pseudo}</p>
                     <HeartsBadge hearts={Number(r.hearts || 0)} size="sm" />
                   </div>
-                  <p className="line-clamp-4 text-sm text-gray-300">{r.message}</p>
+                  <div className="max-h-[5.5rem] overflow-hidden text-sm text-gray-300">
+                    <ReviewMessageMarkdown source={r.message} className="text-gray-300" />
+                  </div>
                 </article>
               ))}
             </div>
@@ -328,9 +339,7 @@ export default function AvisTenfPage() {
                   <span className="font-semibold text-white">{r.pseudo}</span>
                   <HeartsBadge hearts={Number(r.hearts || 0)} size="md" />
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
-                  {r.message}
-                </p>
+                <ReviewMessageMarkdown source={r.message} className="text-gray-300" />
                 <p className="mt-2 text-xs text-gray-400">
                   {new Date(r.created_at).toLocaleDateString("fr-FR", {
                     day: "numeric",
@@ -425,19 +434,22 @@ export default function AvisTenfPage() {
               <label className="block">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs uppercase tracking-[0.09em] text-gray-300">Ton message</span>
-                  <span className="text-xs text-gray-400">{remaining} caracteres restants</span>
+                  <span className="text-xs text-gray-400">
+                    {Math.max(0, remaining)} caracteres restants
+                  </span>
                 </div>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Ex: TENF m'a aide a sortir de l'isolement sur Twitch..."
-                  maxLength={MAX_MESSAGE}
-                  rows={6}
+                  maxLength={maxMessageInputLength || MAX_MESSAGE}
+                  rows={8}
                   required
                   className="w-full resize-none rounded-lg border border-white/12 bg-[#0e1220] px-3 py-2.5 text-sm text-white"
                 />
                 <p className="mt-1 text-xs text-gray-400">
-                  Minimum {MIN_MESSAGE} caracteres. Reste concret: ce qui t&apos;a aide, ce qui est utile, ce qui change.
+                  Minimum {MIN_MESSAGE} caracteres, maximum {MAX_MESSAGE} au total (y compris l&apos;aide a la redaction).
+                  Retours a la ligne conserves. Mise en forme type Discord : **gras**, *italique*, listes, `code`.
                 </p>
               </label>
 
