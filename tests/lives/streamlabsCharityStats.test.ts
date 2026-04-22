@@ -25,6 +25,18 @@ test("normalizeRaisedCentsVsMajorGoal : montant entier euros > objectif mais pas
   assert.equal(normalizeRaisedCentsVsMajorGoal(120_000, 100_000), 120_000);
 });
 
+test("normalizeRaisedCentsVsMajorGoal : 271903 centimes vs objectif 100 k€ (brut > 1,12× objectif)", () => {
+  assert.equal(normalizeRaisedCentsVsMajorGoal(271_903, 100_000), 2719.03);
+});
+
+test("normalizeRaisedCentsVsMajorGoal : ne pas convertir 250000 € réels / 100 k€ (multiple rond)", () => {
+  assert.equal(normalizeRaisedCentsVsMajorGoal(250_000, 100_000), 250_000);
+});
+
+test("normalizeRaisedCentsVsMajorGoal : 271900 centimes (cents .00) vs 100 k€", () => {
+  assert.equal(normalizeRaisedCentsVsMajorGoal(271_900, 100_000), 2719);
+});
+
 test("withDisplayGoal : palier 10 k€ corrige 107125 quand l objectif API est 200 k€", () => {
   const out = withDisplayGoal({ raised: 107_125, currency: "EUR", apiGoal: 200_000 }, 10_000);
   assert.equal(out.raised, 1071.25);

@@ -87,12 +87,23 @@ export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number)
   const likelyCentsWhenSlightlyAboveGoal =
     asMajor >= 1 && asMajor <= apiGoal * 1.15 && rawFrac > 1 && rawFrac <= 1.12 && majorFrac < 0.2;
 
+  /** Ex. 271903 centimes vs objectif 100 k€ en euros : brut > objectif mais montant majeur encore << objectif. */
+  const roundThousandMajorEurosGuess = raised % 1000 === 0 && raised % 100 === 0;
+  const likelyCentsWhenRawWellAboveGoalEuroMix =
+    !roundThousandMajorEurosGuess &&
+    asMajor >= 1 &&
+    asMajor <= apiGoal * 1.2 &&
+    rawFrac > 1.12 &&
+    rawFrac < 80 &&
+    majorFrac < 0.08;
+
   if (raised <= apiGoal) {
     if (likelyCentsWhenBelowGoal) return asMajor;
     return raised;
   }
 
   if (likelyCentsWhenSlightlyAboveGoal) return asMajor;
+  if (likelyCentsWhenRawWellAboveGoalEuroMix) return asMajor;
   return raised;
 }
 
