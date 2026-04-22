@@ -13,6 +13,10 @@ test("normalizeRaisedCentsVsMajorGoal : centimes vs objectif 1 M€ (brut < obje
   assert.equal(normalizeRaisedCentsVsMajorGoal(107_125, 1_000_000), 1071.25);
 });
 
+test("normalizeRaisedCentsVsMajorGoal : 272503 centimes vs objectif 1 M€ (rawFrac > 0,25)", () => {
+  assert.equal(normalizeRaisedCentsVsMajorGoal(272_503, 1_000_000), 2725.03);
+});
+
 test("normalizeRaisedCentsVsMajorGoal : convertit 162403 avec objectif 1 M€", () => {
   assert.equal(normalizeRaisedCentsVsMajorGoal(162_403, 1_000_000), 1624.03);
 });

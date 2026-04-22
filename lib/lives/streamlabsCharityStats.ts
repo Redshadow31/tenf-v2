@@ -83,7 +83,12 @@ export function normalizeRaisedCentsVsMajorGoal(raised: number, apiGoal: number)
   const asMajor = raised / 100;
   const rawFrac = raised / apiGoal;
   const majorFrac = asMajor / apiGoal;
-  const likelyCentsWhenBelowGoal = asMajor >= 1 && asMajor <= apiGoal * 1.15 && rawFrac < 0.25 && majorFrac < 0.02;
+  /** Sous objectif : si brut % 100 !== 0, souvent des centimes avec objectif campagne tres haut (272503 / 1 M€, rawFrac ~0,27 > 0,25). */
+  const likelyCentsWhenBelowGoal =
+    asMajor >= 1 &&
+    asMajor <= apiGoal * 1.15 &&
+    majorFrac < 0.02 &&
+    (rawFrac < 0.25 || (raised % 100 !== 0 && rawFrac < 0.36));
   const likelyCentsWhenSlightlyAboveGoal =
     asMajor >= 1 && asMajor <= apiGoal * 1.15 && rawFrac > 1 && rawFrac <= 1.12 && majorFrac < 0.2;
 
