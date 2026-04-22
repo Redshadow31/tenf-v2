@@ -20,29 +20,48 @@ export async function mergeMatchedRaidTestEventsForMonth(
   const monthStart = new Date(Date.UTC(year, month - 1, 1)).toISOString();
   const monthEnd = new Date(Date.UTC(year, month, 1)).toISOString();
 
-  const eventsubMatchedRes = await supabaseAdmin
-    .from("raid_test_events")
-    .select(
-      "id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status"
-    )
-    .eq("processing_status", "matched")
-    .gte("event_at", monthStart)
-    .lt("event_at", monthEnd)
-    .order("event_at", { ascending: false })
-    .limit(5000);
+  // Charger tout le mois par pages (l'ancien .limit(5000) + tri desc excluait les événements
+  // les plus anciens du mois, d'où des jours vides en début de mois si > 5000 raids).
+  const PAGE_SIZE = 1000;
+  const MAX_ROWS = 250_000;
 
-  if (eventsubMatchedRes.error) {
-    console.error("[raidEventsubMerge] Erreur chargement raid_test_events:", eventsubMatchedRes.error);
-    return { raidsFaits, raidsRecus };
-  }
-
-  const eventsubRows = (eventsubMatchedRes.data || []) as Array<{
+  type EventsubRow = {
     id: string;
     from_broadcaster_user_login: string | null;
     to_broadcaster_user_login: string | null;
     event_at: string | null;
     viewers: number | null;
-  }>;
+  };
+
+  const eventsubRows: EventsubRow[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await supabaseAdmin
+      .from("raid_test_events")
+      .select(
+        "id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status"
+      )
+      .eq("processing_status", "matched")
+      .gte("event_at", monthStart)
+      .lt("event_at", monthEnd)
+      .order("event_at", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      console.error("[raidEventsubMerge] Erreur chargement raid_test_events:", error);
+      return { raidsFaits, raidsRecus };
+    }
+
+    const chunk = (data || []) as EventsubRow[];
+    eventsubRows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+
+  if (eventsubRows.length >= MAX_ROWS) {
+    console.warn(
+      `[raidEventsubMerge] Plafond ${MAX_ROWS} lignes atteint pour ${monthKey} — des raids EventSub peuvent manquer.`
+    );
+  }
 
   const existingFaitsKeys = new Set(
     raidsFaits.map(
