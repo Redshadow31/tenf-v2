@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
+import { loadMemberDataFromStorage, getAllMemberData, type MemberData } from '@/lib/memberData';
+import { memberRepository } from '@/lib/repositories';
 
 export const dynamic = 'force-dynamic';
+
+function toSearchMemberPayload(member: MemberData) {
+  return {
+    discordId: member.discordId,
+    displayName: member.displayName,
+    twitchLogin: member.twitchLogin,
+    discordUsername: member.discordUsername,
+    role: member.role,
+    isActive: member.isActive !== false,
+  };
+}
 
 /**
  * GET - Recherche de membres pour autocomplétion
@@ -32,9 +44,8 @@ export async function GET(request: NextRequest) {
         .toLowerCase()
         .trim();
     };
-    
-    // Filtrer les membres qui correspondent à la recherche
-    const matches = allMembers
+
+    const blobMatches = allMembers
       .filter(member => {
         if (!includeInactive && member.isActive === false) return false;
         if (!includeCommunity && member.role === "Communauté") return false;
@@ -50,16 +61,33 @@ export async function GET(request: NextRequest) {
                twitchLogin.includes(normalizedQuery) ||
                discordUsername.includes(normalizedQuery) ||
                discordId.includes(query); // Discord ID sans normalisation
-      })
-      .slice(0, 20) // Limiter à 20 résultats
-      .map(member => ({
-        discordId: member.discordId,
-        displayName: member.displayName,
-        twitchLogin: member.twitchLogin,
-        discordUsername: member.discordUsername,
-        role: member.role,
-        isActive: member.isActive !== false,
-      }));
+      });
+
+    let supabaseMatches: MemberData[] = [];
+    try {
+      supabaseMatches = await memberRepository.searchMembersForAutocomplete(query, {
+        includeInactive,
+        includeCommunity,
+        limit: 24,
+      });
+    } catch (supabaseErr) {
+      console.warn("[members/search] Supabase indisponible ou erreur:", supabaseErr);
+    }
+
+    /** Supabase en premier (fiche admin à jour), puis legacy pour les logins absents de la base. */
+    const byLogin = new Map<string, ReturnType<typeof toSearchMemberPayload>>();
+    for (const member of supabaseMatches) {
+      const login = String(member.twitchLogin || "").trim().toLowerCase();
+      if (!login) continue;
+      byLogin.set(login, toSearchMemberPayload(member));
+    }
+    for (const member of blobMatches) {
+      const login = String(member.twitchLogin || "").trim().toLowerCase();
+      if (!login || byLogin.has(login)) continue;
+      byLogin.set(login, toSearchMemberPayload(member));
+    }
+
+    const matches = Array.from(byLogin.values()).slice(0, 20);
     
     return NextResponse.json({
       members: matches,

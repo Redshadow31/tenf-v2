@@ -579,6 +579,7 @@ export default function LivesPageClient() {
     if (!isUpaPeriodActive) return [];
     const upaLogins = new Set(
       (upaContent?.streamers || [])
+        .filter((member) => member?.isActive !== false)
         .map((member) => normalizeLoginKey(String(member?.twitchLogin || "")))
         .filter(Boolean)
     );

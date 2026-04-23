@@ -221,6 +221,57 @@ export class MemberRepository {
   }
 
   /**
+   * Recherche textuelle sur la table members (Supabase) pour autocomplétion.
+   * Utile quand une fiche existe en base admin mais pas encore dans le store legacy (blobs) utilisé ailleurs.
+   */
+  async searchMembersForAutocomplete(
+    rawQuery: string,
+    opts: { includeInactive: boolean; includeCommunity: boolean; limit?: number }
+  ): Promise<MemberData[]> {
+    const q = String(rawQuery || "").trim();
+    if (q.length < 2) return [];
+    const limit = Math.min(Math.max(opts.limit ?? 20, 1), 40);
+    const escapeIlike = (s: string) =>
+      s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const pat = `%${escapeIlike(q.toLowerCase())}%`;
+
+    try {
+      const cols = ["twitch_login", "display_name", "discord_username", "site_username"] as const;
+      const rowsByLogin = new Map<string, Record<string, unknown>>();
+
+      for (const col of cols) {
+        const { data, error } = await supabaseAdmin
+          .from("members")
+          .select("*")
+          .ilike(col, pat)
+          .limit(limit);
+
+        if (error) {
+          logDatabase.error("SELECT", "members", error);
+          continue;
+        }
+        for (const row of data || []) {
+          const login = String((row as { twitch_login?: string }).twitch_login || "").toLowerCase();
+          if (login && !rowsByLogin.has(login)) rowsByLogin.set(login, row as Record<string, unknown>);
+        }
+      }
+
+      const merged = Array.from(rowsByLogin.values()).map((row) => this.mapToMemberData(row));
+
+      return merged
+        .filter((member) => {
+          if (!opts.includeInactive && member.isActive === false) return false;
+          if (!opts.includeCommunity && member.role === "Communauté") return false;
+          return true;
+        })
+        .slice(0, limit);
+    } catch (error) {
+      console.warn("[MemberRepository] searchMembersForAutocomplete:", error);
+      return [];
+    }
+  }
+
+  /**
    * E-mails « notifications staff » (fiche Mon compte admin), indexés par discord_id.
    */
   async findStaffNotificationEmailsByDiscordIds(discordIds: string[]): Promise<Map<string, string>> {

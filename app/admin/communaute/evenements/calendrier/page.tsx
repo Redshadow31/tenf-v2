@@ -111,6 +111,13 @@ function buildSeriesId(category: string, seriesName: string): string {
   return `series-${categorySeed}-${nameSeed}`;
 }
 
+/** Login Twitch normalisé (4–25 caractères, alphanum + underscore). */
+function parseTwitchLoginInput(raw: string): string | null {
+  const cleaned = raw.trim().toLowerCase().replace(/^@+/, "");
+  if (!/^[a-z0-9_]{4,25}$/.test(cleaned)) return null;
+  return cleaned;
+}
+
 export default function CommunauteEvenementsCalendrierPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +177,7 @@ export default function CommunauteEvenementsCalendrierPage() {
       try {
         setSpotlightLoading(true);
         const response = await fetch(
-          `/api/members/search?q=${encodeURIComponent(spotlightSearch.trim())}&includeInactive=false&includeCommunity=true`,
+          `/api/members/search?q=${encodeURIComponent(spotlightSearch.trim())}&includeInactive=true&includeCommunity=true`,
           { cache: "no-store", signal: controller.signal }
         );
         const payload = await response.json();
@@ -358,6 +365,32 @@ export default function CommunauteEvenementsCalendrierPage() {
     const responsibleCount = new Set(events.map((event) => getEventResponsible(event))).size;
     return { published, draft, topCategories, responsibleCount };
   }, [events]);
+
+  const spotlightManualLogin = useMemo(() => parseTwitchLoginInput(spotlightSearch), [spotlightSearch]);
+
+  const spotlightExactMatch = useMemo(
+    () =>
+      Boolean(
+        spotlightManualLogin &&
+          spotlightResults.some((m) => m.twitchLogin.toLowerCase() === spotlightManualLogin)
+      ),
+    [spotlightManualLogin, spotlightResults]
+  );
+
+  const showSpotlightManualButton =
+    form.category === "Spotlight" &&
+    !form.spotlightStreamerLogin &&
+    !spotlightLoading &&
+    spotlightManualLogin !== null &&
+    !spotlightExactMatch;
+
+  const showSpotlightSpellHint =
+    form.category === "Spotlight" &&
+    !form.spotlightStreamerLogin &&
+    !spotlightLoading &&
+    spotlightSearch.trim().length >= 2 &&
+    spotlightManualLogin === null &&
+    spotlightResults.length === 0;
 
   return (
     <div className="space-y-6 text-white">
@@ -723,6 +756,9 @@ export default function CommunauteEvenementsCalendrierPage() {
                         className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-indigo-300/45"
                         placeholder="Rechercher un membre (pseudo Twitch)"
                       />
+                      <p className="mt-1 text-xs text-slate-400">
+                        Cliquez une ligne dans les resultats pour valider le membre. La saisie seule ne suffit pas.
+                      </p>
                       {spotlightLoading ? (
                         <p className="mt-2 text-xs text-slate-300">Recherche en cours...</p>
                       ) : null}
@@ -745,6 +781,40 @@ export default function CommunauteEvenementsCalendrierPage() {
                               <p className="text-xs text-slate-400">@{member.twitchLogin}</p>
                             </button>
                           ))}
+                        </div>
+                      ) : null}
+                      {showSpotlightManualButton ? (
+                        <div className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                          <p>
+                            {spotlightResults.length === 0
+                              ? "Aucun membre TENF ne correspond exactement a ce login."
+                              : "Ce login exact n&apos;apparait pas dans les resultats ci-dessus."}{" "}
+                            Pour une interview sur une chaine invitee ou partenaire, vous pouvez l&apos;associer manuellement.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!spotlightManualLogin) return;
+                              const display = spotlightSearch.trim().replace(/^@+/, "");
+                              setForm((prev) => ({
+                                ...prev,
+                                spotlightStreamerLogin: spotlightManualLogin,
+                                spotlightStreamerDisplayName: display,
+                              }));
+                              setSpotlightSearch("");
+                              setSpotlightResults([]);
+                            }}
+                            className="mt-2 rounded-md border border-amber-200/40 bg-amber-200/10 px-2 py-1 text-xs font-medium text-amber-50 hover:bg-amber-200/20"
+                          >
+                            Utiliser @{spotlightManualLogin} comme chaine mise en avant
+                          </button>
+                        </div>
+                      ) : null}
+                      {showSpotlightSpellHint ? (
+                        <div className="mt-2 rounded-lg border border-slate-600/40 bg-slate-800/50 px-3 py-2 text-xs text-slate-300">
+                          Aucun resultat. Verifiez l&apos;orthographe du login Twitch (4 a 25 caracteres, minuscules, chiffres,
+                          underscore) ou ajoutez la fiche membre dans l&apos;admin. Le nom reel de la chaine peut differer (ex.{" "}
+                          <span className="text-slate-200">upa_events</span>).
                         </div>
                       ) : null}
                       <p className="mt-2 text-xs text-indigo-100/80">
