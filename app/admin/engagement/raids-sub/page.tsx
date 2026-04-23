@@ -46,9 +46,12 @@ type ReviewEvent = {
 type UpaRaidEventRow = {
   id: string;
   from_broadcaster_user_login?: string | null;
+  from_broadcaster_user_name?: string | null;
   to_broadcaster_user_login?: string | null;
+  to_broadcaster_user_name?: string | null;
   event_at?: string | null;
   viewers?: number | null;
+  raider_live_duration_minutes?: number | null;
   processing_status?: string | null;
   error_reason?: string | null;
 };
@@ -77,6 +80,102 @@ function formatLiveDuration(minutes: number): string {
     return `${remainingMinutes} min`;
   }
   return `${hours}h${String(remainingMinutes).padStart(2, "0")}`;
+}
+
+const UPA_CSV_SEP = ";";
+
+function upaCsvEscape(value: string | number | boolean | null | undefined): string {
+  const raw = value === null || value === undefined ? "" : String(value);
+  if (raw.includes(UPA_CSV_SEP) || raw.includes('"') || raw.includes("\n") || raw.includes("\r")) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+  return raw;
+}
+
+function stringifyUpaCsv(rows: (string | number | boolean | null | undefined)[][]): string {
+  return `\ufeff${rows.map((row) => row.map(upaCsvEscape).join(UPA_CSV_SEP)).join("\r\n")}`;
+}
+
+function triggerTextDownload(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildUpaDetailCsvRows(report: UpaReportResponse): (string | number | boolean | null | undefined)[][] {
+  const header = [
+    "fiche_streamer_login",
+    "fiche_streamer_display",
+    "carte_upa_active",
+    "sens_raid",
+    "event_id",
+    "from_login",
+    "from_display",
+    "to_login",
+    "to_display",
+    "event_at_iso",
+    "viewers",
+    "duree_live_raideur_minutes",
+    "processing_status",
+    "error_reason",
+    "periode_upa_debut",
+    "periode_upa_fin",
+  ];
+  const rows: (string | number | boolean | null | undefined)[][] = [header];
+  for (const s of report.streamers) {
+    const pushRow = (direction: "recu" | "fait", r: UpaRaidEventRow) => {
+      rows.push([
+        s.twitchLogin,
+        s.displayName,
+        s.upaCardActive,
+        direction,
+        r.id,
+        r.from_broadcaster_user_login ?? "",
+        r.from_broadcaster_user_name ?? "",
+        r.to_broadcaster_user_login ?? "",
+        r.to_broadcaster_user_name ?? "",
+        r.event_at ?? "",
+        r.viewers ?? "",
+        r.raider_live_duration_minutes ?? "",
+        r.processing_status ?? "",
+        r.error_reason ?? "",
+        report.period.startDate,
+        report.period.endDate,
+      ]);
+    };
+    for (const r of s.raidsReceived) pushRow("recu", r);
+    for (const r of s.raidsSent) pushRow("fait", r);
+  }
+  return rows;
+}
+
+function buildUpaSummaryCsvRows(report: UpaReportResponse): (string | number | boolean | null | undefined)[][] {
+  const header = [
+    "fiche_streamer_login",
+    "fiche_streamer_display",
+    "carte_upa_active",
+    "nb_raids_recus",
+    "nb_raids_faits",
+    "periode_upa_debut",
+    "periode_upa_fin",
+  ];
+  const rows: (string | number | boolean | null | undefined)[][] = [header];
+  for (const s of report.streamers) {
+    rows.push([
+      s.twitchLogin,
+      s.displayName,
+      s.upaCardActive,
+      s.raidsReceivedCount,
+      s.raidsSentCount,
+      report.period.startDate,
+      report.period.endDate,
+    ]);
+  }
+  return rows;
 }
 
 export default function AdminRaidsSubPage() {
@@ -793,14 +892,62 @@ export default function AdminRaidsSubPage() {
                   dates de l&apos;événement (Europe/Paris).
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => void loadUpaReport()}
-                disabled={upaLoading}
-                className="rounded-lg border border-amber-400/40 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50"
-              >
-                {upaLoading ? "Chargement..." : "Rafraîchir"}
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadUpaReport()}
+                  disabled={upaLoading}
+                  className="rounded-lg border border-amber-400/40 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50"
+                >
+                  {upaLoading ? "Chargement..." : "Rafraîchir"}
+                </button>
+                {upaReport && !upaLoading ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerTextDownload(
+                          `upa-raids-detail_${upaReport.period.startDate}_${upaReport.period.endDate}.csv`,
+                          stringifyUpaCsv(buildUpaDetailCsvRows(upaReport)),
+                          "text/csv;charset=utf-8;"
+                        );
+                      }}
+                      className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100"
+                      title="Une ligne par raid (reçu ou fait) avec viewers, logins, statuts — séparateur point-virgule pour Excel (FR)"
+                    >
+                      CSV détail raids
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerTextDownload(
+                          `upa-raids-synthese-streamers_${upaReport.period.startDate}_${upaReport.period.endDate}.csv`,
+                          stringifyUpaCsv(buildUpaSummaryCsvRows(upaReport)),
+                          "text/csv;charset=utf-8;"
+                        );
+                      }}
+                      className="rounded-lg border border-sky-500/35 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100"
+                      title="Une ligne par streamer UPA : compteurs raids reçus / faits"
+                    >
+                      CSV synthèse streamers
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerTextDownload(
+                          `upa-raids-report_${upaReport.period.startDate}_${upaReport.period.endDate}.json`,
+                          JSON.stringify(upaReport, null, 2),
+                          "application/json;charset=utf-8;"
+                        );
+                      }}
+                      className="rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-slate-200"
+                      title="Export JSON brut du rapport (scripts, sauvegarde)"
+                    >
+                      JSON complet
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </div>
 
             {upaError ? (
@@ -868,6 +1015,9 @@ export default function AdminRaidsSubPage() {
                                     <span className="block text-[11px] text-slate-500">
                                       {r.event_at ? new Date(r.event_at).toLocaleString("fr-FR") : ""}
                                       {typeof r.viewers === "number" ? ` · ${r.viewers} viewers` : ""}
+                                      {typeof r.raider_live_duration_minutes === "number"
+                                        ? ` · live: ${formatLiveDuration(r.raider_live_duration_minutes)}`
+                                        : ""}
                                       {r.processing_status ? ` · ${r.processing_status}` : ""}
                                     </span>
                                   </li>
@@ -891,6 +1041,9 @@ export default function AdminRaidsSubPage() {
                                     <span className="block text-[11px] text-slate-500">
                                       {r.event_at ? new Date(r.event_at).toLocaleString("fr-FR") : ""}
                                       {typeof r.viewers === "number" ? ` · ${r.viewers} viewers` : ""}
+                                      {typeof r.raider_live_duration_minutes === "number"
+                                        ? ` · live: ${formatLiveDuration(r.raider_live_duration_minutes)}`
+                                        : ""}
                                       {r.processing_status ? ` · ${r.processing_status}` : ""}
                                     </span>
                                   </li>

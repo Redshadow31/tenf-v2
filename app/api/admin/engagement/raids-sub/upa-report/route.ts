@@ -57,7 +57,7 @@ export async function GET() {
     const { data: rawEvents, error } = await supabaseAdmin
       .from("raid_test_events")
       .select(
-        "id,from_broadcaster_user_login,to_broadcaster_user_login,event_at,viewers,processing_status,error_reason"
+        "id,from_broadcaster_user_login,from_broadcaster_user_name,to_broadcaster_user_login,to_broadcaster_user_name,event_at,viewers,raider_live_duration_minutes,processing_status,error_reason"
       )
       .gte("event_at", range.startIso)
       .lte("event_at", range.endIso)
