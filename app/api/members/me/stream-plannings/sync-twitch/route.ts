@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
-import { createMemberStreamPlanningsBulkForUser } from "@/lib/memberPlanningStorage";
+import {
+  createMemberStreamPlanningsBulkForUser,
+  replaceMemberStreamPlanningsForUser,
+} from "@/lib/memberPlanningStorage";
 import {
   fetchAllTwitchChannelScheduleSegments,
   getTwitchUserIdByLogin,
@@ -62,7 +65,7 @@ async function getAuthenticatedMember() {
   return { member, discordId: session.user.discordId };
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const auth = await getAuthenticatedMember();
     if (!auth) {
@@ -118,14 +121,34 @@ export async function POST() {
       slots.push(slot);
     }
 
-    const { created, skippedDuplicates, skippedInvalid } = await createMemberStreamPlanningsBulkForUser(
-      auth.discordId,
-      twitchLogin,
-      slots
-    );
+    const { searchParams } = new URL(request.url);
+    const replaceAll = searchParams.get("replaceAll") === "true";
+
+    if (replaceAll) {
+      const { created, skippedInvalid, removedCount } = await replaceMemberStreamPlanningsForUser(
+        auth.discordId,
+        twitchLogin,
+        slots
+      );
+
+      return NextResponse.json({
+        success: true,
+        mode: "replace",
+        imported: created.length,
+        skippedDuplicates: 0,
+        skippedInvalid,
+        removedCount,
+        skippedCanceledOrPast: skippedFiltered,
+        segmentsFromTwitch: segments.length,
+        timezoneNote: DISPLAY_TIMEZONE,
+      });
+    }
+
+    const { created, skippedDuplicates, skippedInvalid } = await createMemberStreamPlanningsBulkForUser(auth.discordId, twitchLogin, slots);
 
     return NextResponse.json({
       success: true,
+      mode: "append",
       imported: created.length,
       skippedDuplicates,
       skippedInvalid,

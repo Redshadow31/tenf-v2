@@ -367,12 +367,20 @@ export default function MemberPlanningPage() {
     }
   }
 
-  async function handleSyncTwitch() {
+  async function handleSyncTwitch(replaceAll = false) {
+    if (replaceAll) {
+      const confirmed = confirm(
+        "Cette action va supprimer tous tes lives actuels et les remplacer par ceux du planning Twitch. Continuer ?"
+      );
+      if (!confirmed) return;
+    }
+
     setError(null);
     setInfoMessage(null);
     setSyncingTwitch(true);
     try {
-      const response = await fetch("/api/members/me/stream-plannings/sync-twitch", { method: "POST" });
+      const query = replaceAll ? "?replaceAll=true" : "";
+      const response = await fetch(`/api/members/me/stream-plannings/sync-twitch${query}`, { method: "POST" });
       const data = await response.json();
       if (!response.ok) {
         setError(data.error || "Synchronisation impossible.");
@@ -383,11 +391,19 @@ export default function MemberPlanningPage() {
       const skippedDup = Number(data.skippedDuplicates) || 0;
       const skippedFiltered = Number(data.skippedCanceledOrPast) || 0;
       const fromTwitch = Number(data.segmentsFromTwitch) || 0;
+      const removedCount = Number(data.removedCount) || 0;
+      const mode = String(data.mode || "append");
 
       if (fromTwitch === 0) {
         setInfoMessage(
           "Aucun créneau dans ton planning Twitch (404 ou calendrier vide). Configure tes prochains streams sur Twitch, puis réessaie."
         );
+      } else if (mode === "replace") {
+        const bits = [`${imported} créneau(x) importé(s) depuis Twitch.`];
+        bits.push(`${removedCount} ancien(s) live(s) remplacé(s).`);
+        if (skippedFiltered > 0) bits.push(`${skippedFiltered} ignoré(s) (passés / annulés).`);
+        bits.push("Horaires importés en heure de Paris.");
+        setInfoMessage(bits.join(" "));
       } else if (imported === 0 && skippedDup > 0) {
         setInfoMessage(
           `Aucun nouveau créneau : ${skippedDup} étaient déjà présents sur le site.` +
@@ -568,9 +584,9 @@ export default function MemberPlanningPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleSyncTwitch}
+              onClick={() => handleSyncTwitch(false)}
               disabled={loading || syncingTwitch}
-              title="Récupère les segments futurs du planning créateur Twitch (API Helix)"
+              title="Ajoute les segments futurs Twitch sans supprimer les lives existants"
               className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:border-violet-400/55 hover:bg-violet-500/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 borderColor: "rgba(145, 70, 255, 0.42)",
@@ -585,6 +601,20 @@ export default function MemberPlanningPage() {
                 ⟳
               </span>
               {syncingTwitch ? "Synchronisation…" : "Synchroniser avec Twitch"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSyncTwitch(true)}
+              disabled={loading || syncingTwitch}
+              title="Supprime tous les lives actuels puis réimporte depuis Twitch"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:border-red-400/50 hover:bg-red-500/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor: "rgba(248, 113, 113, 0.42)",
+                color: "#fecaca",
+                background: "rgba(239, 68, 68, 0.10)",
+              }}
+            >
+              {syncingTwitch ? "Synchronisation…" : "Remplacer par Twitch"}
             </button>
             <button
               type="button"
@@ -618,7 +648,7 @@ export default function MemberPlanningPage() {
           <span className="font-medium" style={{ color: "var(--color-text)" }}>
             planning créateur Twitch
           </span>{" "}
-          (créneaux futurs, fuseau Paris). Un planning rempli apparaît aussi sur la page Membres.
+          (créneaux futurs, fuseau Paris). Tu peux aussi remplacer tout ton planning actuel par celui de Twitch.
         </p>
       </div>
 

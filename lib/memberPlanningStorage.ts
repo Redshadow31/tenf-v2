@@ -388,6 +388,64 @@ export async function createMemberStreamPlanningsBulkForUser(
   return { created, skippedDuplicates, skippedInvalid };
 }
 
+/**
+ * Remplace tous les créneaux d'un membre par une nouvelle liste (sync full).
+ */
+export async function replaceMemberStreamPlanningsForUser(
+  userId: string,
+  twitchLogin: string,
+  slots: Array<{ date: string; time: string; liveType: string; title?: string }>
+): Promise<{ created: MemberStreamPlanning[]; skippedInvalid: number; removedCount: number }> {
+  const normalizedUserId = userId.trim();
+  const normalizedLogin = twitchLogin.trim().toLowerCase();
+  const allPlannings = await loadMemberStreamPlannings();
+  const keptForOthers = allPlannings.filter((p) => p.userId !== normalizedUserId);
+  const removedCount = allPlannings.length - keptForOthers.length;
+
+  const dedupKeys = new Set<string>();
+  const created: MemberStreamPlanning[] = [];
+  let skippedInvalid = 0;
+  let slotIndex = 0;
+
+  for (const slot of slots) {
+    slotIndex += 1;
+    const date = String(slot.date || "").trim();
+    const time = String(slot.time || "").trim();
+    const liveType = trimAndLimit(String(slot.liveType || "").trim(), MAX_LIVE_TYPE_LENGTH) || "";
+    const title = trimAndLimit(slot.title, MAX_TITLE_LENGTH);
+    const key = `${date}|${time}`;
+
+    if (!isValidDate(date) || !isValidTime(time) || liveType.length < 3) {
+      skippedInvalid += 1;
+      continue;
+    }
+    if (Number.isNaN(toDateTimeMs(date, time))) {
+      skippedInvalid += 1;
+      continue;
+    }
+    if (dedupKeys.has(key)) {
+      continue;
+    }
+
+    const planning: MemberStreamPlanning = {
+      id: `member-planning-${Date.now()}-${slotIndex}-${Math.random().toString(36).slice(2, 10)}`,
+      userId: normalizedUserId,
+      twitchLogin: normalizedLogin,
+      date,
+      time,
+      liveType,
+      title,
+      createdAt: new Date().toISOString(),
+    };
+    created.push(planning);
+    dedupKeys.add(key);
+  }
+
+  await saveMemberStreamPlannings([...keptForOthers, ...created]);
+
+  return { created, skippedInvalid, removedCount };
+}
+
 export async function deleteMemberStreamPlanning(planningId: string, userId: string): Promise<boolean> {
   const plannings = await loadMemberStreamPlannings();
   const before = plannings.length;
