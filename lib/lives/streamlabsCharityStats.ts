@@ -44,6 +44,15 @@ export type StreamlabsCharityTeamStats = {
   campaignGoal?: number;
 };
 
+function isStreamlabsCharityDebugEnabled(): boolean {
+  return String(process.env.DEBUG_STREAMLABS_CHARITY_STATS || "").trim() === "1";
+}
+
+function debugStreamlabsCharity(label: string, payload: Record<string, unknown>): void {
+  if (!isStreamlabsCharityDebugEnabled()) return;
+  console.info(`[streamlabs-charity-debug] ${label}`, payload);
+}
+
 /** Priorité : BAR_GOAL_EUROS puis GOAL_EUROS (rétrocompat). 0 = laisser withDisplayGoal décider. */
 export function readStreamlabsCharityBarGoalEnv(): number {
   const bar = Number.parseInt(String(process.env.STREAMLABS_CHARITY_BAR_GOAL_EUROS || "").trim(), 10);
@@ -126,8 +135,18 @@ function normalizeRaisedCentsAgainstBarPalier(raised: number, displayGoal: numbe
   if (asMajor < 1 || asMajor > displayGoal * 2.5) return raised;
   const loExclusive = displayGoal * 8;
   const hiInclusive = displayGoal * 25;
-  if (raised <= loExclusive || raised > hiInclusive) return raised;
-  return asMajor;
+  if (raised > loExclusive && raised <= hiInclusive) return asMajor;
+
+  /**
+   * Cas observe: objectif API absent/invalide + palier force (10 k€),
+   * montant renvoye en centimes tres au-dessus du palier (ex. 365203 -> 3652,03 €).
+   * On ne corrige que si le brut contient des centimes non nuls pour eviter
+   * de toucher des totaux euros "ronds" potentiellement legitimes.
+   */
+  const extendedHiInclusive = displayGoal * 80;
+  if (raised > hiInclusive && raised <= extendedHiInclusive && raised % 100 !== 0) return asMajor;
+
+  return raised;
 }
 
 export type ParsedSlcTeamPayload = { raised: number; currency: string; apiGoal: number };
@@ -195,9 +214,34 @@ export async function fetchStreamlabsCharityTeamStats(
     });
     if (!res.ok) return null;
     const json: unknown = await res.json();
+    const root = json && typeof json === "object" ? (json as Record<string, unknown>) : null;
+    const campaign =
+      root?.campaign && typeof root.campaign === "object" ? (root.campaign as Record<string, unknown>) : null;
+    const rawRaisedSource = campaign?.amount_raised ?? root?.amount_raised;
+    const rawRaisedNumeric = parseAmountToNumber(rawRaisedSource);
+    const goalBlock =
+      campaign?.goal && typeof campaign.goal === "object"
+        ? (campaign.goal as Record<string, unknown>)
+        : root?.goal && typeof root.goal === "object"
+          ? (root.goal as Record<string, unknown>)
+          : null;
+    const apiGoalRaw = parseAmountToNumber(goalBlock?.amount);
     const parsed = parseStreamlabsCharityTeamJson(json);
     if (!parsed) return null;
-    return withDisplayGoal(parsed, forcedBarGoalEuros);
+    const out = withDisplayGoal(parsed, forcedBarGoalEuros);
+    debugStreamlabsCharity("team-api", {
+      statsUrl,
+      rawRaisedSource,
+      rawRaisedNumeric: Number.isFinite(rawRaisedNumeric) ? rawRaisedNumeric : null,
+      parsedRaised: parsed.raised,
+      apiGoalRaw: Number.isFinite(apiGoalRaw) ? apiGoalRaw : null,
+      parsedApiGoal: parsed.apiGoal,
+      forcedBarGoalEuros,
+      outputRaised: out.raised,
+      outputDisplayGoal: out.displayGoal,
+      outputCurrency: out.currency,
+    });
+    return out;
   } catch {
     return null;
   } finally {
@@ -311,7 +355,17 @@ export async function fetchStreamlabsCharityStatsFromDonationGoalWidget(
         const json: unknown = await res.json();
         const parsed = parseLooseDonationGoalPayload(json);
         if (parsed) {
-          return withDisplayGoal(parsed, forcedBarGoalEuros);
+          const out = withDisplayGoal(parsed, forcedBarGoalEuros);
+          debugStreamlabsCharity("goal-widget-api", {
+            url,
+            parsedRaised: parsed.raised,
+            parsedApiGoal: parsed.apiGoal,
+            forcedBarGoalEuros,
+            outputRaised: out.raised,
+            outputDisplayGoal: out.displayGoal,
+            outputCurrency: out.currency,
+          });
+          return out;
         }
       } catch {
         /* essai suivant */
@@ -335,13 +389,37 @@ export async function fetchStreamlabsCharityStatsFromDonationGoalWidget(
         if (next) {
           try {
             const parsed = parseLooseDonationGoalPayload(JSON.parse(next[1]));
-            if (parsed) return withDisplayGoal(parsed, forcedBarGoalEuros);
+            if (parsed) {
+              const out = withDisplayGoal(parsed, forcedBarGoalEuros);
+              debugStreamlabsCharity("goal-widget-html-next-data", {
+                widgetPageUrl,
+                parsedRaised: parsed.raised,
+                parsedApiGoal: parsed.apiGoal,
+                forcedBarGoalEuros,
+                outputRaised: out.raised,
+                outputDisplayGoal: out.displayGoal,
+                outputCurrency: out.currency,
+              });
+              return out;
+            }
           } catch {
             /* */
           }
         }
         const fromHtml = parseLooseDonationGoalPayload(html);
-        if (fromHtml) return withDisplayGoal(fromHtml, forcedBarGoalEuros);
+        if (fromHtml) {
+          const out = withDisplayGoal(fromHtml, forcedBarGoalEuros);
+          debugStreamlabsCharity("goal-widget-html-fallback", {
+            widgetPageUrl,
+            parsedRaised: fromHtml.raised,
+            parsedApiGoal: fromHtml.apiGoal,
+            forcedBarGoalEuros,
+            outputRaised: out.raised,
+            outputDisplayGoal: out.displayGoal,
+            outputCurrency: out.currency,
+          });
+          return out;
+        }
       }
     } catch {
       /* */

@@ -71,3 +71,13 @@ test("withDisplayGoal : ne pas toucher 60000 € avec palier 10 k€", () => {
   const out = withDisplayGoal({ raised: 60_000, currency: "EUR", apiGoal: 200_000 }, 10_000);
   assert.equal(out.raised, 60_000);
 });
+
+test("withDisplayGoal : corrige 365203 quand objectif API absent et palier 10 k€", () => {
+  const out = withDisplayGoal({ raised: 365_203, currency: "EUR", apiGoal: 0 }, 10_000);
+  assert.equal(out.raised, 3652.03);
+});
+
+test("withDisplayGoal : garde 360000 si montant rond avec objectif API absent", () => {
+  const out = withDisplayGoal({ raised: 360_000, currency: "EUR", apiGoal: 0 }, 10_000);
+  assert.equal(out.raised, 360_000);
+});
