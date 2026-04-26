@@ -68,11 +68,30 @@ if (result.type === "success" && result.url) {
 }
 ```
 
+## Cas typique : « ça marche sur le site » mais l’app affiche « connexion annulée »
+
+Tu es **connecté dans le navigateur in-app** (tu vois l’espace membre sur `https://…`), puis tu reviens à l’app : elle affiche **échec / connexion annulée**.
+
+**Pourquoi** : `openAuthSessionAsync` ne se termine en **succès** que si la **dernière** URL de la fenêtre correspond au `redirectUri` passé à Expo (ex. `tenfmobile://auth?code=…`). Si NextAuth termine sur une **page web** (`/member/dashboard`, etc.), la session est bien créée **dans ce navigateur**, mais **aucun deep link** n’est retourné à l’app → Expo considère souvent la session comme **annulée** à la fermeture.
+
+**Cause la plus fréquente** : l’URL ouverte n’est **pas** le flux recommandé, ou le `callbackUrl` Discord pointe encore vers **`/member/dashboard`** au lieu de passer par **`/auth/mobile-handoff`**.
+
+**À faire côté app** :
+
+1. Ouvre **uniquement**  
+   `{BASE}/api/auth/mobile/discord/start?redirect_uri=…`  
+   (ce endpoint redirige déjà vers Discord avec `callbackUrl=/auth/mobile-handoff`).
+2. N’enchaîne **pas** dans le même onglet un lien « Se connecter » du **site classique** qui utiliserait un autre `callbackUrl` (ex. dashboard) : tu garderais la session web mais tu perdrais le retour vers l’app.
+3. Pour ouvrir le **dashboard membre après** login, utilise le paramètre optionnel **`returnUrl=/member/dashboard`** sur `/start` : il sera renvoyé **sur le deep link** (`…?code=…&returnUrl=…`) pour que **l’app** affiche la bonne section avec le jeton obtenu via `/exchange`, pas le site dans le navigateur in-app.
+
+**Secours côté serveur (TENF-V2)** : si un cookie mobile `tenf_mo_handoff` est encore présent et que tu arrives sur **`/member/dashboard`** avec une session Discord valide, le **middleware** te renvoie vers **`/auth/mobile-handoff`** pour tenter d’émettre le `code` et fermer le flux vers l’app. Ce filet ne s’applique pas si l’app n’a **jamais** appelé `/start` (pas de cookie).
+
 ## Dépannage (captures « Connexion annulée » / page web « Erreur Discord »)
 
 | Symptôme | Cause fréquente | Action |
 |----------|-----------------|--------|
 | App : « Connexion annulée ou échouée » | `openAuthSessionAsync` reçoit `dismiss` / pas de retour sur le même `redirectUri` que celui envoyé au serveur | Utiliser **exactement** `Linking.createURL("auth")` (ou équivalent) pour **les deux** : query `redirect_uri` vers `/start` **et** 2e argument de `openAuthSessionAsync`. |
+| Session OK **dans le navigateur** mais app « annulé » | Dernier redirect = page **HTTPS** membre, pas `tenfmobile://…` | Voir section ci-dessus : **`/api/auth/mobile/discord/start`** + ne pas mélanger avec un login web au `callbackUrl` dashboard. |
 | Web : « Erreur lors de la connexion Discord » (`error=discord`) | Échec OAuth (config Discord, `NEXTAUTH_URL`, secret, utilisateur annule) | Vérifier redirect Discord = `https://<domaine>/api/auth/callback/discord` ; `NEXTAUTH_URL` sans slash final = origine du site. |
 | Erreur web alors que l’app devrait reprendre la main | Ancienne URL sans `/api/auth/mobile/discord/start` → pas de cookie `tenf_mo_handoff` | Migrer l’app vers **`/api/auth/mobile/discord/start`** ; le middleware renvoie aussi vers le deep link si tu arrives sur `/auth/login?error=…` **avec** ce cookie. |
 

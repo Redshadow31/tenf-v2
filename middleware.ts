@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt";
 import { normalizeAdminRole } from "@/lib/adminRoles";
 import { isAdminPathAllowedDuringCharterBlock } from "@/lib/adminModerationCharterGatePaths";
 import { redirectAuthLoginOAuthErrorToMobileIfPossible } from "@/lib/mobileAuthLoginErrorRedirect";
+import { redirectMemberDashboardToHandoffIfMobileContext } from "@/lib/mobileDashboardHandoffRecover";
 
 /**
  * Middleware Next.js pour protéger les routes admin
@@ -15,6 +16,9 @@ export async function middleware(request: NextRequest) {
 
   const mobileLoginHandoff = redirectAuthLoginOAuthErrorToMobileIfPossible(request);
   if (mobileLoginHandoff) return mobileLoginHandoff;
+
+  const dashboardRecover = await redirectMemberDashboardToHandoffIfMobileContext(request);
+  if (dashboardRecover) return dashboardRecover;
 
   const devAuthBypassEnabled =
     process.env.NODE_ENV !== "production" &&
@@ -68,6 +72,7 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/auth/login",
+    "/member/dashboard",
   ],
 };
 
