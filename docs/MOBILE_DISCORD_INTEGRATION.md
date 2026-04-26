@@ -68,6 +68,14 @@ if (result.type === "success" && result.url) {
 }
 ```
 
+## Dépannage (captures « Connexion annulée » / page web « Erreur Discord »)
+
+| Symptôme | Cause fréquente | Action |
+|----------|-----------------|--------|
+| App : « Connexion annulée ou échouée » | `openAuthSessionAsync` reçoit `dismiss` / pas de retour sur le même `redirectUri` que celui envoyé au serveur | Utiliser **exactement** `Linking.createURL("auth")` (ou équivalent) pour **les deux** : query `redirect_uri` vers `/start` **et** 2e argument de `openAuthSessionAsync`. |
+| Web : « Erreur lors de la connexion Discord » (`error=discord`) | Échec OAuth (config Discord, `NEXTAUTH_URL`, secret, utilisateur annule) | Vérifier redirect Discord = `https://<domaine>/api/auth/callback/discord` ; `NEXTAUTH_URL` sans slash final = origine du site. |
+| Erreur web alors que l’app devrait reprendre la main | Ancienne URL sans `/api/auth/mobile/discord/start` → pas de cookie `tenf_mo_handoff` | Migrer l’app vers **`/api/auth/mobile/discord/start`** ; le middleware renvoie aussi vers le deep link si tu arrives sur `/auth/login?error=…` **avec** ce cookie. |
+
 ## Contrat `POST /api/auth/mobile/exchange`
 
 - Corps : `{ "code": "<code_one_time>" }`

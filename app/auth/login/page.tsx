@@ -72,7 +72,12 @@ export default function LoginPage() {
               {error === "user_fetch_failed" && "Impossible de récupérer les informations utilisateur"}
               {error === "oauth_error" && "Erreur lors de la connexion Discord"}
               {error === "discord" && "Erreur lors de la connexion Discord"}
-              {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error", "discord"].includes(error) && `Erreur: ${error}`}
+              {error === "OAuthCallback" &&
+                "Échec du retour Discord (souvent NEXTAUTH_URL, secret client ou redirect enregistré côté Discord)."}
+              {error === "Configuration" &&
+                "Problème de configuration NextAuth (NEXTAUTH_URL, NEXTAUTH_SECRET ou fournisseurs)."}
+              {error === "AccessDenied" && "Connexion refusée ou annulée côté Discord."}
+              {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error", "discord", "OAuthCallback", "Configuration", "AccessDenied"].includes(error) && `Erreur: ${error}`}
             </p>
             {searchParams.get("details") && (
               <p className="text-red-300 text-xs mt-2 font-mono break-all">
@@ -101,6 +106,17 @@ export default function LoginPage() {
                   <li>Nettoyez les cookies du navigateur et réessayez</li>
                 </ol>
               </div>
+            )}
+            {(error === "discord" ||
+              error === "oauth_error" ||
+              error === "OAuthCallback" ||
+              error === "Configuration") && (
+              <p className="mt-3 text-xs text-gray-400">
+                App mobile : ouvre la connexion via{" "}
+                <span className="font-mono text-gray-300">/api/auth/mobile/discord/start</span> (voir{" "}
+                <span className="font-mono">docs/MOBILE_DISCORD_INTEGRATION.md</span>
+                ). Sinon l’erreur peut rester sur cette page web au lieu de revenir dans l’app.
+              </p>
             )}
           </div>
         )}
