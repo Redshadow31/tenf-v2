@@ -15,6 +15,17 @@ type FollowStatusesResponse = {
   statuses?: Record<string, { state?: FollowState }>;
 };
 
+function getUserFriendlyReason(reason: string | null): string | null {
+  if (!reason || reason === "ok") return null;
+  if (reason === "unauthorized" || reason === "not_authenticated") {
+    return "Connecte-toi pour consulter ton score d'engagement.";
+  }
+  if (reason === "twitch_not_linked") {
+    return "Lie ton compte Twitch pour activer le suivi d'engagement.";
+  }
+  return "Certaines informations d'engagement ne sont pas disponibles pour le moment.";
+}
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SCORE_CACHE_KEY = "member.engagement.score.v1";
 
@@ -373,14 +384,14 @@ export default function MemberEngagementScorePage() {
                 .
               </p>
             )}
-            {reason && reason !== "ok" ? (
+            {getUserFriendlyReason(reason) ? (
               <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Info technique : {reason}
+                {getUserFriendlyReason(reason)}
               </p>
             ) : null}
             {error ? (
               <p className="mt-2 text-xs" style={{ color: "#fca5a5" }}>
-                Erreur : {error}
+                Une erreur est survenue pendant le chargement. Réessaie dans quelques instants.
               </p>
             ) : null}
           </section>

@@ -381,7 +381,8 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/login",
-    error: "/auth/login",
+    // Flux mobile : cookie tenf_mo_handoff → deep link avec error=... (voir /auth/oauth-error-bridge)
+    error: "/auth/oauth-error-bridge",
   },
 };
 

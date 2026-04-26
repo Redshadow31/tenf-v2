@@ -40,7 +40,7 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
   try {
     const devAuthBypassEnabled =
       process.env.NODE_ENV !== "production" &&
-      process.env.ENABLE_DEV_AUTH !== "false";
+      process.env.ENABLE_DEV_AUTH === "true";
     const session = await getServerSession(authOptions);
 
     // Bypass total en local/dev : force un profil admin fondateur

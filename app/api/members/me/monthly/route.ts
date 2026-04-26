@@ -146,20 +146,17 @@ function formatMinutesToHHMM(totalMinutes: number): string {
  * GET - Récupère les stats du mois en cours pour le membre
  * Utilise les mêmes sources que l'admin : raids (raidStorage), Discord (discordActivityStorage)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const twitchLoginParam = searchParams.get("twitchLogin");
-
-    let member = null;
     const session = await getServerSession(authOptions);
+    if (!session?.user?.discordId) {
+      return NextResponse.json(
+        { error: "Authentification requise" },
+        { status: 401 }
+      );
+    }
 
-    if (session?.user?.discordId) {
-      member = await memberRepository.findByDiscordId(session.user.discordId);
-    }
-    if (!member && twitchLoginParam) {
-      member = await memberRepository.findByTwitchLogin(twitchLoginParam);
-    }
+    const member = await memberRepository.findByDiscordId(session.user.discordId);
 
     if (!member) {
       return NextResponse.json(

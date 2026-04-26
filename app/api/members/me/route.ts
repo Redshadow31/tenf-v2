@@ -23,27 +23,20 @@ const ADMIN_ROLE_TO_MEMBER_ROLE: Record<string, string> = {
 };
 
 /**
- * GET - Récupère le profil du membre connecté ou par twitchLogin
- * Si session Discord : cherche par discordId
- * Sinon : ?twitchLogin=xxx requis
+ * GET - Récupère le profil du membre connecté
+ * Authentification Discord requise
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const twitchLoginParam = searchParams.get("twitchLogin");
-
-    let member = null;
-
-    // Essayer d'abord par session Discord
     const session = await getServerSession(authOptions);
-    if (session?.user?.discordId) {
-      member = await memberRepository.findByDiscordId(session.user.discordId);
+    if (!session?.user?.discordId) {
+      return NextResponse.json(
+        { error: "Authentification requise" },
+        { status: 401 }
+      );
     }
 
-    // Sinon par twitchLogin si fourni
-    if (!member && twitchLoginParam) {
-      member = await memberRepository.findByTwitchLogin(twitchLoginParam);
-    }
+    let member = await memberRepository.findByDiscordId(session.user.discordId);
 
     if (!member && session?.user?.discordId) {
       const discordId = String(session.user.discordId).trim();
@@ -91,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     if (!member) {
       return NextResponse.json(
-        { error: "Membre non trouvé. Connecte-toi avec Discord ou indique ton pseudo Twitch." },
+        { error: "Membre non trouvé pour la session active." },
         { status: 404 }
       );
     }

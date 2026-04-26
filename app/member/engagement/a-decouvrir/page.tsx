@@ -375,7 +375,7 @@ export default function MemberEngagementDiscoverPage() {
 
           {error ? (
             <section className="rounded-2xl border p-4 text-xs" style={{ borderColor: "rgba(248,113,113,0.4)", backgroundColor: "rgba(127,29,29,0.22)", color: "#fecaca" }}>
-              Erreur de chargement : {error}
+              Une erreur est survenue pendant le chargement des recommandations. Réessaie dans quelques instants.
             </section>
           ) : null}
         </>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadMemberDataFromStorage, getAllMemberData } from "@/lib/memberData";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 // Désactiver le cache pour cette route
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,14 @@ export const revalidate = 0;
  */
 export async function GET() {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Accès refusé" },
+        { status: 403 }
+      );
+    }
+
     // Charger et fusionner les données depuis le stockage
     await loadMemberDataFromStorage();
     

@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const devAuthBypassEnabled =
     process.env.NODE_ENV !== "production" &&
-    process.env.ENABLE_DEV_AUTH !== "false";
+    process.env.ENABLE_DEV_AUTH === "true";
 
   // Vérifier si c'est une route admin
   if (pathname.startsWith("/admin")) {

@@ -23,16 +23,17 @@ function normalizeDateInput(value?: string): string | null {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const body = await request.json();
-    const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, timezone, twitchLogin } = body;
+    if (!session?.user?.discordId) {
+      return NextResponse.json(
+        { error: "Authentification requise" },
+        { status: 401 }
+      );
+    }
 
-    let member = null;
-    if (session?.user?.discordId) {
-      member = await memberRepository.findByDiscordId(session.user.discordId);
-    }
-    if (!member && twitchLogin) {
-      member = await memberRepository.findByTwitchLogin(twitchLogin);
-    }
+    const body = await request.json();
+    const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, timezone } = body;
+
+    const member = await memberRepository.findByDiscordId(session.user.discordId);
 
     if (!member) {
       return NextResponse.json(
