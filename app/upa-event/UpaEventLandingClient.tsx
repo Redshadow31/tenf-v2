@@ -199,7 +199,9 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   );
   const editorialSections = useMemo(
     () =>
-      [...content.editorialSections].filter((item) => item.isActive && item.content.trim()).sort((a, b) => a.order - b.order),
+      [...content.editorialSections]
+        .filter((item) => item.isActive && (item.content.trim().length > 0 || item.title.trim().length > 0))
+        .sort((a, b) => a.order - b.order),
     [content.editorialSections]
   );
   const totalParticipants = Math.max(content.socialProof.totalRegistered || 0, 0);
@@ -212,7 +214,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   const hasTimeline = content.displaySettings.showTimeline && timeline.length > 0;
   const hasStaff = content.displaySettings.showStaff && staff.length > 0;
   const showEditorial =
-    content.displaySettings.showEditorialSections !== false && editorialSections.length > 0;
+    (content.displaySettings?.showEditorialSections ?? true) && editorialSections.length > 0;
 
   function renderDiscoverTab() {
     return (
@@ -654,7 +656,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                 >
                   {section.title ? <h3 className="upa-editorial-card-title">{section.title}</h3> : null}
                   {section.subtitle ? <p className="upa-editorial-card-subtitle">{section.subtitle}</p> : null}
-                  <EditorialBody text={section.content} />
+                  {section.content.trim() ? <EditorialBody text={section.content} /> : null}
                 </article>
               ))}
             </div>

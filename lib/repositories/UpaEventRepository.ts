@@ -275,12 +275,20 @@ function normalizeEditorialSections(value: unknown): UpaEventEditorialSection[] 
     const obj = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
     const variantRaw = trimText(obj.variant, "default");
     const variant = variantRaw === "highlight" || variantRaw === "soft" ? variantRaw : "default";
+    const rawBody =
+      typeof obj.content === "string"
+        ? obj.content
+        : typeof obj.body === "string"
+          ? obj.body
+          : typeof obj.text === "string"
+            ? obj.text
+            : "";
     return {
       id: trimText(obj.id, makeId("editorial")),
       key: trimText(obj.key, `section-${index + 1}`),
       title: trimText(obj.title, ""),
       subtitle: trimText(obj.subtitle, ""),
-      content: trimText(obj.content, ""),
+      content: trimText(rawBody, ""),
       order: toInt(obj.order, index + 1),
       variant,
       isActive: toBool(obj.isActive, true),

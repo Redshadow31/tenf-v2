@@ -13,6 +13,7 @@ import type {
   UpaEventTimelineItem,
   UpaTimelineStatus,
 } from "@/lib/upaEvent/types";
+import { DEFAULT_UPA_EVENT_CONTENT } from "@/lib/repositories/UpaEventRepository";
 
 type TabKey =
   | "settings"
@@ -342,7 +343,15 @@ export default function AdminUpaEventPage() {
         const response = await fetch("/api/admin/upa-event", { cache: "no-store" });
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || "Erreur chargement");
-        setContent(data.content as UpaEventContent);
+        const loaded = data.content as UpaEventContent;
+        setContent({
+          ...loaded,
+          displaySettings: {
+            ...DEFAULT_UPA_EVENT_CONTENT.displaySettings,
+            ...loaded.displaySettings,
+          },
+          editorialSections: Array.isArray(loaded.editorialSections) ? loaded.editorialSections : [],
+        });
       } catch (error) {
         console.error("[admin/upa-event] load error:", error);
         setFeedback("Impossible de charger la configuration UPA Event.");
@@ -903,7 +912,12 @@ export default function AdminUpaEventPage() {
                     <span style={{ color: "var(--color-text)" }}>Actif</span>
                   </label>
                 </div>
-                <TextAreaField label="Contenu" value={item.content} onChange={(v) => updateEditorial(index, { content: v })} rows={5} />
+                <TextAreaField
+                  label="Contenu (obligatoire pour l'affichage du bloc)"
+                  value={item.content}
+                  onChange={(v) => updateEditorial(index, { content: v })}
+                  rows={8}
+                />
               </div>
             ))}
           </div>

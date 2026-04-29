@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requirePermission, requireSectionAccess } from "@/lib/requireAdmin";
 import { upaEventRepository } from "@/lib/repositories/UpaEventRepository";
 import type { UpaEventContent } from "@/lib/upaEvent/types";
@@ -245,6 +246,12 @@ export async function PUT(request: Request) {
         };
 
     const content = await upaEventRepository.upsertContent("upa-event", nextContent, writeAdmin.discordId);
+
+    try {
+      revalidatePath("/upa-event");
+    } catch {
+      /* ignore si hors contexte Next */
+    }
 
     return NextResponse.json({ success: true, content });
   } catch (error) {
