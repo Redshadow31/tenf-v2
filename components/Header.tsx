@@ -18,10 +18,7 @@ type DropdownGroup = {
   items: NavLeaf[];
 };
 
-const directLinks: NavLeaf[] = [
-  { href: "/upa-event", label: "UPA Events" },
-  { href: "/boutique", label: "Boutique" },
-];
+const directLinks: NavLeaf[] = [{ href: "/boutique", label: "Boutique" }];
 
 const dropdownGroups: DropdownGroup[] = [
   {
@@ -30,7 +27,7 @@ const dropdownGroups: DropdownGroup[] = [
       { href: "/a-propos", label: "À propos de TENF" },
       { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
-      { href: "/communaute/partenaires", label: "Partenaires" },
+      { href: "/upa-event", label: "UPA Event" },
       { href: "/organisation-staff", label: "Organisation du staff" },
       { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
     ],

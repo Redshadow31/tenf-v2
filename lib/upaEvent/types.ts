@@ -108,6 +108,8 @@ export interface UpaEventCtaContent {
 export interface UpaEventDisplaySettings {
   showSocialProof: boolean;
   showTimeline: boolean;
+  /** Blocs bilan / discours (contenus éditoriaux gérés dans l’admin). */
+  showEditorialSections: boolean;
   showStaff: boolean;
   showFaq: boolean;
   showPartnerCommunities: boolean;

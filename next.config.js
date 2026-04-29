@@ -6,6 +6,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/communaute/partenaires',
+        destination: '/upa-event',
+        permanent: true,
+      },
+      {
         source: '/admin/onboarding/presentation',
         destination: '/admin/onboarding/presentation-anime',
         permanent: true,

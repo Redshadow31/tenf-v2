@@ -788,6 +788,76 @@
   opacity: 0.95;
 }
 
+/* Bilan / blocs editoriaux */
+.upa-page .upa-editorial-section {
+  padding-bottom: 8px;
+}
+
+.upa-page .upa-editorial-partner-note {
+  margin: 8px 0 22px;
+  max-width: 72ch;
+  font-size: 0.98rem;
+  color: var(--upa-muted);
+  line-height: 1.55;
+}
+
+.upa-page .upa-editorial-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upa-page .upa-editorial-card {
+  border-radius: var(--upa-radius-lg);
+  border: 1px solid rgba(0, 74, 173, 0.22);
+  padding: 22px 22px 18px;
+  background: var(--upa-white);
+  box-shadow: var(--upa-shadow);
+}
+
+.upa-page .upa-editorial-variant-highlight {
+  border-color: rgba(0, 74, 173, 0.42);
+  background: linear-gradient(135deg, #f5f9ff 0%, #f6fff8 100%);
+}
+
+.upa-page .upa-editorial-variant-soft {
+  border-color: rgba(0, 170, 0, 0.22);
+  background: linear-gradient(180deg, #f9fff9 0%, #ffffff 100%);
+}
+
+.upa-page .upa-editorial-variant-default {
+  background: var(--upa-white);
+}
+
+.upa-page .upa-editorial-card-title {
+  margin: 0 0 6px;
+  font-size: clamp(1.15rem, 2.4vw, 1.35rem);
+  color: var(--upa-blue-deep);
+  letter-spacing: -0.02em;
+}
+
+.upa-page .upa-editorial-card-subtitle {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--upa-muted);
+}
+
+.upa-page .upa-editorial-p {
+  margin: 0 0 12px;
+  line-height: 1.65;
+  color: var(--upa-ink);
+}
+
+.upa-page .upa-editorial-p:last-child {
+  margin-bottom: 0;
+}
+
+.upa-page .upa-editorial-p strong {
+  color: var(--upa-blue-deep);
+  font-weight: 700;
+}
+
 @media (max-width: 1024px) {
   .upa-page .upa-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));

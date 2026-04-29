@@ -290,6 +290,7 @@ function createDefaultContent(): UpaEventContent {
     displaySettings: {
       showSocialProof: true,
       showTimeline: true,
+      showEditorialSections: true,
       showStaff: true,
       showFaq: true,
       showPartnerCommunities: true,
@@ -310,7 +311,14 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "settings", label: "Periode UPA" },
   { key: "proof", label: "Participants" },
   { key: "streamers", label: "Lives caritatifs UPA" },
+  { key: "timeline", label: "Timeline" },
+  { key: "sections", label: "Bilan / textes" },
   { key: "staff", label: "Staff UPA" },
+  { key: "faq", label: "FAQ" },
+  { key: "links", label: "Liens officiels" },
+  { key: "partners", label: "Communautes partenaires" },
+  { key: "cta", label: "CTA final" },
+  { key: "display", label: "Affichage" },
 ];
 
 const premiumPanelStyle = {
@@ -450,19 +458,12 @@ export default function AdminUpaEventPage() {
       const response = await fetch("/api/admin/upa-event", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: content.general.startDate,
-          endDate: content.general.endDate,
-          charityCampaignUrl: content.general.charityCampaignUrl,
-          totalRegistered: content.socialProof.totalRegistered,
-          streamers: content.streamers,
-          staff: content.staff,
-        }),
+        body: JSON.stringify({ content }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Erreur sauvegarde");
       setContent(data.content as UpaEventContent);
-      setFeedback("Periode, streamers et staff UPA enregistres avec succes.");
+      setFeedback("Configuration UPA Event enregistree avec succes.");
     } catch (error) {
       console.error("[admin/upa-event] save error:", error);
       setFeedback(error instanceof Error ? error.message : "Erreur lors de l'enregistrement.");
@@ -819,6 +820,9 @@ export default function AdminUpaEventPage() {
 
         {activeTab === "sections" && (
           <div className="space-y-4">
+            <p className="text-sm rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+              Contenu affiche sur <code className="text-xs">/upa-event</code> sous le titre « Bilan de l&apos;evenement ». Separer les paragraphes par une ligne vide. Pour le gras, entourer le passage de doubles etoiles, ex. <code className="text-xs">**merci**</code>. Pensez a crediter UPA et les benevoles comme sur vos canaux officiels.
+            </p>
             <button
               type="button"
               onClick={() =>
@@ -1304,6 +1308,7 @@ export default function AdminUpaEventPage() {
               [
                 ["showSocialProof", "Afficher la preuve sociale"],
                 ["showTimeline", "Afficher la timeline"],
+                ["showEditorialSections", "Afficher le bilan / blocs editoriaux"],
                 ["showStaff", "Afficher le staff"],
                 ["showFaq", "Afficher la FAQ"],
                 ["showPartnerCommunities", "Afficher les communautes partenaires"],

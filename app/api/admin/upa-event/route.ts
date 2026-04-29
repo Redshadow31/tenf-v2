@@ -11,6 +11,11 @@ function isDiscordPlaceholderTwitchLogin(value: string): boolean {
   return login.startsWith("nouveau_");
 }
 
+function trimSocialProofMessage(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -46,9 +51,16 @@ export async function PUT(request: Request) {
     const body = await request.json();
 
     const existingContent = await upaEventRepository.getContent("upa-event");
+    const draftContent =
+      body?.content && typeof body.content === "object" ? (body.content as UpaEventContent) : null;
 
     const incomingTotalRegistered = Number.parseInt(
-      String(body?.totalRegistered ?? body?.content?.socialProof?.totalRegistered ?? existingContent.socialProof.totalRegistered),
+      String(
+        body?.totalRegistered ??
+          draftContent?.socialProof?.totalRegistered ??
+          body?.content?.socialProof?.totalRegistered ??
+          existingContent.socialProof.totalRegistered
+      ),
       10
     );
     const totalRegistered =
@@ -56,22 +68,34 @@ export async function PUT(request: Request) {
         ? incomingTotalRegistered
         : existingContent.socialProof.totalRegistered;
 
-    const staffInput = Array.isArray(body?.staff)
-      ? body.staff
-      : Array.isArray(body?.content?.staff)
-        ? body.content.staff
-        : existingContent.staff;
+    const staffInput = Array.isArray(draftContent?.staff)
+      ? draftContent.staff
+      : Array.isArray(body?.staff)
+        ? body.staff
+        : Array.isArray(body?.content?.staff)
+          ? body.content.staff
+          : existingContent.staff;
 
-    const streamersInput = Array.isArray(body?.streamers)
-      ? body.streamers
-      : Array.isArray(body?.content?.streamers)
-        ? body.content.streamers
-        : existingContent.streamers;
+    const streamersInput = Array.isArray(draftContent?.streamers)
+      ? draftContent.streamers
+      : Array.isArray(body?.streamers)
+        ? body.streamers
+        : Array.isArray(body?.content?.streamers)
+          ? body.content.streamers
+          : existingContent.streamers;
 
-    const incomingStartDate = String(body?.startDate ?? body?.content?.general?.startDate ?? existingContent.general.startDate).trim();
-    const incomingEndDate = String(body?.endDate ?? body?.content?.general?.endDate ?? existingContent.general.endDate).trim();
+    const incomingStartDate = String(
+      body?.startDate ?? draftContent?.general?.startDate ?? body?.content?.general?.startDate ?? existingContent.general.startDate
+    ).trim();
+    const incomingEndDate = String(
+      body?.endDate ?? draftContent?.general?.endDate ?? body?.content?.general?.endDate ?? existingContent.general.endDate
+    ).trim();
     const rawCharityUrl = String(
-      body?.charityCampaignUrl ?? body?.content?.general?.charityCampaignUrl ?? existingContent.general.charityCampaignUrl ?? ""
+      body?.charityCampaignUrl ??
+        draftContent?.general?.charityCampaignUrl ??
+        body?.content?.general?.charityCampaignUrl ??
+        existingContent.general.charityCampaignUrl ??
+        ""
     ).trim();
     let charityCampaignUrl = "";
     if (rawCharityUrl) {
@@ -179,22 +203,46 @@ export async function PUT(request: Request) {
       };
     });
 
-    const nextContent: UpaEventContent = {
-      ...existingContent,
-      general: {
-        ...existingContent.general,
-        startDate: incomingStartDate || existingContent.general.startDate,
-        endDate: incomingEndDate || existingContent.general.endDate,
-        charityCampaignUrl,
-      },
-      socialProof: {
-        ...existingContent.socialProof,
-        totalRegistered,
-        socialProofMessage: `Deja ${totalRegistered} participants inscrits`,
-      },
-      staff: enrichedStaff,
-      streamers: enrichedStreamers,
-    };
+    const baseGeneral = draftContent?.general ?? existingContent.general;
+    const baseSocial = draftContent?.socialProof ?? existingContent.socialProof;
+    const proofMessage =
+      trimSocialProofMessage(draftContent?.socialProof?.socialProofMessage) ||
+      trimSocialProofMessage(existingContent.socialProof.socialProofMessage) ||
+      `Deja ${totalRegistered} participants inscrits`;
+
+    const nextContent: UpaEventContent = draftContent
+      ? {
+          ...draftContent,
+          general: {
+            ...baseGeneral,
+            startDate: incomingStartDate || baseGeneral.startDate,
+            endDate: incomingEndDate || baseGeneral.endDate,
+            charityCampaignUrl: charityCampaignUrl || baseGeneral.charityCampaignUrl,
+          },
+          socialProof: {
+            ...baseSocial,
+            totalRegistered,
+            socialProofMessage: proofMessage,
+          },
+          staff: enrichedStaff,
+          streamers: enrichedStreamers,
+        }
+      : {
+          ...existingContent,
+          general: {
+            ...existingContent.general,
+            startDate: incomingStartDate || existingContent.general.startDate,
+            endDate: incomingEndDate || existingContent.general.endDate,
+            charityCampaignUrl,
+          },
+          socialProof: {
+            ...existingContent.socialProof,
+            totalRegistered,
+            socialProofMessage: proofMessage,
+          },
+          staff: enrichedStaff,
+          streamers: enrichedStreamers,
+        };
 
     const content = await upaEventRepository.upsertContent("upa-event", nextContent, writeAdmin.discordId);
 

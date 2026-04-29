@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { UpaEventContent } from "@/lib/upaEvent/types";
 
 type TabKey = "discover" | "event" | "staff" | "faq";
@@ -143,6 +143,29 @@ function getCountdownLabel(startDate: string): string {
   return "Evenement en cours ou deja lance";
 }
 
+function renderInlineFormatting(text: string): ReactNode[] {
+  const segments = text.split(/(\*\*[^*]+\*\*)/g);
+  return segments.map((segment, index) => {
+    if (segment.startsWith("**") && segment.endsWith("**") && segment.length >= 4) {
+      return <strong key={index}>{segment.slice(2, -2)}</strong>;
+    }
+    return segment;
+  });
+}
+
+function EditorialBody({ text }: { text: string }) {
+  const blocks = text.split(/\n\s*\n/).filter((b) => b.trim().length > 0);
+  return (
+    <>
+      {blocks.map((block, i) => (
+        <p key={i} className="upa-editorial-p">
+          {renderInlineFormatting(block.trim())}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export default function UpaEventLandingClient({ initialContent }: { initialContent: UpaEventContent }) {
   const [activeTab, setActiveTab] = useState<TabKey>("discover");
   const [mobileOpenTab, setMobileOpenTab] = useState<TabKey>("discover");
@@ -174,14 +197,22 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     () => [...content.partnerCommunities].filter((item) => item.isActive).sort((a, b) => a.order - b.order),
     [content.partnerCommunities]
   );
+  const editorialSections = useMemo(
+    () =>
+      [...content.editorialSections].filter((item) => item.isActive && item.content.trim()).sort((a, b) => a.order - b.order),
+    [content.editorialSections]
+  );
   const totalParticipants = Math.max(content.socialProof.totalRegistered || 0, 0);
   const totalParticipantsLabel =
     totalParticipants > 0 ? `${totalParticipants} participants` : "Participants en cours de confirmation";
   const dateRange = formatDateRange(content.general.startDate, content.general.endDate);
-  const countdownLabel = getCountdownLabel(content.general.startDate);
+  const countdownLabel =
+    content.general.registrationStatus === "ended" ? "Evenement termine" : getCountdownLabel(content.general.startDate);
 
   const hasTimeline = content.displaySettings.showTimeline && timeline.length > 0;
   const hasStaff = content.displaySettings.showStaff && staff.length > 0;
+  const showEditorial =
+    content.displaySettings.showEditorialSections !== false && editorialSections.length > 0;
 
   function renderDiscoverTab() {
     return (
@@ -604,6 +635,32 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
           )}
         </div>
       </header>
+
+      {showEditorial && (
+        <section className="upa-section upa-editorial-section" aria-labelledby="upa-editorial-heading">
+          <div className="upa-container">
+            <h2 id="upa-editorial-heading" className="upa-section-title">
+              Bilan de l&apos;evenement
+            </h2>
+            <p className="upa-editorial-partner-note">
+              Tour d&apos;horizon apres la premiere edition commune <strong>TENF</strong> et{" "}
+              <strong>Unis pour l&apos;Avenir (UPA)</strong> — merci aux equipes, benevoles et communautes impliquees.
+            </p>
+            <div className="upa-editorial-stack">
+              {editorialSections.map((section) => (
+                <article
+                  key={section.id}
+                  className={`upa-editorial-card upa-editorial-variant-${section.variant}`}
+                >
+                  {section.title ? <h3 className="upa-editorial-card-title">{section.title}</h3> : null}
+                  {section.subtitle ? <p className="upa-editorial-card-subtitle">{section.subtitle}</p> : null}
+                  <EditorialBody text={section.content} />
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {hasTimeline && (
         <section className="upa-section">
