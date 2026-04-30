@@ -281,9 +281,9 @@ export default function MemberProfilePage() {
     member.role === "Nouveau" ||
     member.twitchLogin.startsWith("nouveau_") ||
     member.twitchLogin.startsWith("nouveau-") ||
-    searchParams.get("onboarding") === "1";
-  const twitchLinkedNow = searchParams.get("twitch_linked") === "1";
-  const twitchError = searchParams.get("twitch_error");
+    searchParams?.get("onboarding") === "1";
+  const twitchLinkedNow = searchParams?.get("twitch_linked") === "1";
+  const twitchError = searchParams?.get("twitch_error");
   const twitchStartHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(
     TWITCH_LINK_CALLBACK
   )}`;

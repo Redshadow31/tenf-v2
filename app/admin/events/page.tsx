@@ -245,7 +245,7 @@ function resolveEngagementBasePath(pathname: string): string {
 }
 
 export default function CommunityDashboardPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<EventRegistrationEntry[]>([]);
   const [proposals, setProposals] = useState<ProposalLite[]>([]);

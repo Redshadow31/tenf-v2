@@ -17,7 +17,7 @@ const iconByHref: Record<string, typeof BookOpen> = {
 };
 
 export default function GuideEspaceMembreLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const currentStep = getGuideMemberStepIndex(pathname);
   const isGuideHome = pathname === "/rejoindre/guide-espace-membre";
   const lastUpdated = "17 mars 2026";

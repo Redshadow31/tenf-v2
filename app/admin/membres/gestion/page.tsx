@@ -266,7 +266,7 @@ export default function GestionMembresPage() {
 
   // Lire le paramètre search de l'URL au chargement
   useEffect(() => {
-    const searchParam = searchParams.get("search");
+    const searchParam = searchParams?.get("search");
     if (searchParam) {
       setSearchQuery(decodeURIComponent(searchParam));
     }

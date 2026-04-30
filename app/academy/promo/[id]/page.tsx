@@ -6,7 +6,12 @@ import Link from "next/link";
 
 export default function AcademyPromoPage() {
   const params = useParams();
-  const promoId = params.id as string;
+  const promoId =
+    params && typeof params.id === "string"
+      ? params.id
+      : Array.isArray(params?.id)
+        ? params.id[0]
+        : "";
   const [promo, setPromo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

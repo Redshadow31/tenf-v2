@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 export default function MerciPostulationPage() {
   const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const id = searchParams?.get("id");
 
   return (
     <div className="min-h-screen bg-[#0e0e10] text-white p-8">

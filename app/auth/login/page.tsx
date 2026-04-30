@@ -8,13 +8,13 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
-  const error = searchParams.get("error");
-  const callbackUrlParam = searchParams.get("callbackUrl");
+  const error = searchParams?.get("error");
+  const callbackUrlParam = searchParams?.get("callbackUrl");
   const callbackUrl =
     callbackUrlParam && callbackUrlParam.startsWith("/") && !callbackUrlParam.startsWith("//")
       ? callbackUrlParam
       : "/member/dashboard";
-  const shouldAutoStart = searchParams.get("autostart") === "1";
+  const shouldAutoStart = searchParams?.get("autostart") === "1";
   const [isLoading, setIsLoading] = useState(false);
   const [devDiscordId, setDevDiscordId] = useState("333001130705420299");
   const [devUsername, setDevUsername] = useState("Dev Local");
@@ -79,9 +79,9 @@ export default function LoginPage() {
               {error === "AccessDenied" && "Connexion refusée ou annulée côté Discord."}
               {!["missing_code_or_state", "invalid_state", "server_config_error", "token_exchange_failed", "user_fetch_failed", "oauth_error", "discord", "OAuthCallback", "Configuration", "AccessDenied"].includes(error) && `Erreur: ${error}`}
             </p>
-            {searchParams.get("details") && (
+            {searchParams?.get("details") && (
               <p className="text-red-300 text-xs mt-2 font-mono break-all">
-                Détails: {searchParams.get("details")}
+                Détails: {searchParams?.get("details")}
               </p>
             )}
             {error === "token_exchange_failed" && (

@@ -16,7 +16,7 @@ const iconByHref: Record<string, typeof BookOpen> = {
 };
 
 export default function GuidePublicLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const currentStep = getStepIndex(pathname);
   const isGuideHome = pathname === "/rejoindre/guide-public";
   const lastUpdated = "17 mars 2026";

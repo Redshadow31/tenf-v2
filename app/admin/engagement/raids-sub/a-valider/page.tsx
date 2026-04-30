@@ -46,7 +46,7 @@ const STATUS_LABELS: Record<"all" | "received" | "matched" | "ignored" | "duplic
 
 export default function AdminRaidsSubAValiderPage() {
   const searchParams = useSearchParams();
-  const statusFromQuery = (searchParams.get("status") || "").toLowerCase();
+  const statusFromQuery = (searchParams?.get("status") || "").toLowerCase();
   const initialStatus =
     statusFromQuery === "received" ||
     statusFromQuery === "matched" ||

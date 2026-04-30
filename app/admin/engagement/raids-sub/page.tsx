@@ -179,7 +179,7 @@ function buildUpaSummaryCsvRows(report: UpaReportResponse): (string | number | b
 }
 
 export default function AdminRaidsSubPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const isCommunity = pathname.startsWith("/admin/communaute");
   const backHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
   const historyHref = isCommunity ? "/admin/communaute/engagement/historique-raids" : "/admin/engagement/historique-raids";

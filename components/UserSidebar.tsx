@@ -63,7 +63,7 @@ export default function UserSidebar({
   onRequestClose,
   showMobileCloseButton = false,
 }: UserSidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -289,7 +289,7 @@ export default function UserSidebar({
                             key={`${group.title}-${item.href}`}
                             href={item.href}
                             label={item.label}
-                            active={pathname === item.href || pathname?.startsWith(`${item.href}/`)}
+                            active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
                             icon={item.icon}
                             showUnreadDot={item.href === "/member/notifications" && unreadNotifications > 0}
                             onNavigate={onNavigate}

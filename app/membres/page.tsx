@@ -697,7 +697,7 @@ export default function Page() {
     if (queryModalHandled) return;
     if (activeMembers.length === 0) return;
 
-    const requestedLogin = normalizeText(searchParams.get("member"));
+    const requestedLogin = normalizeText(searchParams?.get("member"));
     if (!requestedLogin) {
       setQueryModalHandled(true);
       return;

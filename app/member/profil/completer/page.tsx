@@ -118,7 +118,7 @@ export default function MemberProfileCompletePage() {
         const onboardingStatus = String(data.member.onboardingStatus || "").toLowerCase();
         const shouldShowFromState = onboardingStatus === "a_faire";
         setShowWelcomeModal(
-          isPlaceholder || shouldShowFromState || searchParams.get("onboarding") === "1"
+          isPlaceholder || shouldShowFromState || searchParams?.get("onboarding") === "1"
         );
         setForm((prev) => ({
           ...prev,

@@ -50,7 +50,12 @@ interface SectionAData {
 export default function SectionAPage() {
   const params = useParams();
   const router = useRouter();
-  const monthKey = params.month as string;
+  const monthKey =
+    params && typeof params.month === "string"
+      ? params.month
+      : Array.isArray(params?.month)
+        ? params.month[0]
+        : "";
 
   const [data, setData] = useState<SectionAData | null>(null);
   const [loading, setLoading] = useState(true);

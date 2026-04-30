@@ -81,7 +81,7 @@ const tabActiveHistoryClass = `${tabBaseClass} border-emerald-400/55 bg-emerald-
 const tabInactiveClass = `${tabBaseClass} border-white/15 bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08]`;
 
 export default function AdminEngagementPointsDiscordPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const [sourceTab, setSourceTab] = useState<"raids" | "events">("raids");
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
@@ -100,7 +100,7 @@ export default function AdminEngagementPointsDiscordPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
   const historyLoadedAtRef = useRef<Record<string, number>>({});
   const availableMonths = useMemo(() => getLast12Months(), []);
-  const backHref = pathname.startsWith("/admin/communaute")
+  const backHref = (pathname ?? "").startsWith("/admin/communaute")
     ? "/admin/communaute/engagement/historique-raids"
     : "/admin/raids";
 

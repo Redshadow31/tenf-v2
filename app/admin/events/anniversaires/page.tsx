@@ -32,7 +32,7 @@ const birthdaySections = [
 ];
 
 export default function EventsAnniversairesHubPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const isCommunity = pathname.startsWith("/admin/communaute");
   const backHref = isCommunity ? "/admin/communaute/evenements" : "/admin/events";
   const modulesCount = birthdaySections.length;

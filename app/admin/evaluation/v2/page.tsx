@@ -338,7 +338,7 @@ function confidenceTone(value: number): {
 
 export default function EvaluationV2Page() {
   const searchParams = useSearchParams();
-  const initialSystem = searchParams.get("system") === "new" ? "new" : "legacy";
+  const initialSystem = searchParams?.get("system") === "new" ? "new" : "legacy";
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [selectedSystem, setSelectedSystem] = useState<"legacy" | "new">(initialSystem);
   const [loading, setLoading] = useState(true);

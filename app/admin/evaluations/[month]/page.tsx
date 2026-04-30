@@ -7,7 +7,12 @@ import Link from "next/link";
 export default function EvaluationMonthPage() {
   const params = useParams();
   const router = useRouter();
-  const monthKey = params.month as string;
+  const monthKey =
+    params && typeof params.month === "string"
+      ? params.month
+      : Array.isArray(params?.month)
+        ? params.month[0]
+        : "";
   
   const [currentMonth, setCurrentMonth] = useState<string>(monthKey || getCurrentMonthKey());
 

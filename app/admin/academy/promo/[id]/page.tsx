@@ -42,7 +42,12 @@ interface AccessWithMember extends Access {
 export default function PromoManagementPage() {
   const params = useParams();
   const router = useRouter();
-  const promoId = params.id as string;
+  const promoId =
+    params && typeof params.id === "string"
+      ? params.id
+      : Array.isArray(params?.id)
+        ? params.id[0]
+        : "";
   
   const [promo, setPromo] = useState<Promo | null>(null);
   const [accesses, setAccesses] = useState<AccessWithMember[]>([]);

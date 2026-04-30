@@ -98,7 +98,7 @@ function normalizeEventItem(item: any) {
 }
 
 export default function RecapPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const [data, setData] = useState<RecapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("all");

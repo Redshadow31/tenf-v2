@@ -275,7 +275,7 @@ export default function PostulerPage() {
       if (discordUser) {
         setForm((prev) => ({ ...prev, pseudo_discord: discordUser.username }));
         await loadMyApplications();
-        if (searchParams.get("submitted") === "1") {
+        if (searchParams?.get("submitted") === "1") {
           setSuccess("Candidature envoyee avec succes. Merci pour ton implication, le staff TENF revient vers toi.");
         }
       }

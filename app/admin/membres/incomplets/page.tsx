@@ -97,7 +97,7 @@ export default function IncompletsMembresPage() {
   }, [currentAdmin]);
 
   useEffect(() => {
-    const mode = searchParams.get("vue");
+    const mode = searchParams?.get("vue");
     if (mode === "erreurs") {
       setViewMode("erreurs");
     }

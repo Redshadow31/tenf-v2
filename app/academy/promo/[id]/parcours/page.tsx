@@ -24,7 +24,12 @@ interface FormResponse {
 export default function ParcoursPage() {
   const params = useParams();
   const router = useRouter();
-  const promoId = params.id as string;
+  const promoId =
+    params && typeof params.id === "string"
+      ? params.id
+      : Array.isArray(params?.id)
+        ? params.id[0]
+        : "";
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [user, setUser] = useState<any>(null);

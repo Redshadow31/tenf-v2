@@ -28,8 +28,8 @@ export default function TwitchLinkCard() {
   }, [pathname]);
 
   const connectHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(callbackPath)}`;
-  const linkedNow = searchParams.get("twitch_linked") === "1";
-  const errorCode = searchParams.get("twitch_error");
+  const linkedNow = searchParams?.get("twitch_linked") === "1";
+  const errorCode = searchParams?.get("twitch_error");
   const errorMessage =
     errorCode === "already_linked_elsewhere"
       ? "Ce compte Twitch est déjà lié à un autre compte Discord TENF. Contacte un admin."
