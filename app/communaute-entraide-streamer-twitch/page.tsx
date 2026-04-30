@@ -79,7 +79,7 @@ export default function CommunauteEntraideStreamerPage() {
             Rejoindre la communaute
           </Link>
           <Link
-            href="/fonctionnement-tenf"
+            href="/fonctionnement-tenf/decouvrir"
             className="rounded-xl border border-slate-500/40 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-indigo-300/40 hover:text-white"
           >
             Voir le fonctionnement

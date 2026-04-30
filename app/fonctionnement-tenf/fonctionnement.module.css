@@ -1,19 +1,662 @@
+/* ——— TENF Fonctionnement — design system (dark SaaS / gaming) ——— */
+
 .fonctionnementPage {
   position: relative;
   isolation: isolate;
+  --fn-purple: #9146ff;
+  --fn-blue: #5da9ff;
+  --fn-glow-soft: 0 0 42px color-mix(in srgb, var(--fn-purple) 22%, transparent);
+  --fn-card-bg: color-mix(in srgb, var(--color-card) 94%, #0a0614);
 }
 
 .fonctionnementPage::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(900px 420px at 12% -8%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 62%),
-    radial-gradient(820px 380px at 88% 0%, color-mix(in srgb, #6bb8ff 10%, transparent), transparent 58%);
+    radial-gradient(1000px 520px at 8% -12%, color-mix(in srgb, var(--fn-purple) 18%, transparent), transparent 58%),
+    radial-gradient(880px 480px at 92% 8%, color-mix(in srgb, var(--fn-blue) 14%, transparent), transparent 55%),
+    radial-gradient(600px 320px at 50% 100%, color-mix(in srgb, var(--fn-purple) 8%, transparent), transparent 62%),
+    linear-gradient(180deg, #050308 0%, var(--color-bg) 38%, #070510 100%);
 }
 
+/* Navigation pill rail */
+.fnNavBar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 40;
+  overflow-x: auto;
+  border-radius: 1rem;
+  padding: 0.65rem 0.75rem;
+  backdrop-filter: blur(14px);
+  background: color-mix(in srgb, #11081f 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 22%, var(--color-border));
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+
+.fnNavList {
+  display: flex;
+  min-width: min-content;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.fnNavLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 14%, var(--color-border));
+  padding: 0.45rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--color-text-secondary) 94%, var(--color-text));
+  background: color-mix(in srgb, #fff 3%, transparent);
+  transition:
+    color 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+
+@media (min-width: 640px) {
+  .fnNavLink {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.fnNavLink:hover:not(.fnNavLinkActive) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--fn-purple) 38%, var(--color-border));
+  color: var(--color-text);
+}
+
+.fnNavLinkActive {
+  color: #fff !important;
+  border-color: color-mix(in srgb, var(--fn-purple) 55%, #6b21d8) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 92%, #5b21b8), color-mix(in srgb, #6366f1 75%, var(--fn-purple)));
+  box-shadow:
+    0 8px 28px color-mix(in srgb, var(--fn-purple) 35%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+}
+
+.fnNavIcon {
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.fnNavLinkActive .fnNavIcon {
+  opacity: 1;
+}
+
+/* Page hero */
+.fnPageHero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 28%, var(--color-border));
+  padding: 2rem 1.5rem;
+  background:
+    radial-gradient(620px 280px at 18% 12%, color-mix(in srgb, var(--fn-purple) 22%, transparent), transparent 62%),
+    radial-gradient(520px 240px at 88% 28%, color-mix(in srgb, var(--fn-blue) 18%, transparent), transparent 58%),
+    linear-gradient(165deg, color-mix(in srgb, #1a0f2e 95%, transparent), color-mix(in srgb, var(--color-card) 88%, #090513));
+  box-shadow:
+    var(--fn-glow-soft),
+    0 18px 48px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
+}
+
+@media (min-width: 768px) {
+  .fnPageHero {
+    padding: 2.75rem 2.5rem;
+  }
+}
+
+.fnPageHero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--fn-purple) 12%, transparent) 52%, transparent 72%);
+  opacity: 0.55;
+}
+
+.fnPageHeroInner {
+  position: relative;
+  z-index: 1;
+}
+
+.fnEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fn-purple) 88%, #fff);
+}
+
+.fnHeroTitle {
+  margin-top: 0.75rem;
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--color-text);
+  text-shadow: 0 2px 28px color-mix(in srgb, var(--fn-purple) 35%, transparent);
+}
+
+.fnHeroSubtitle {
+  margin-top: 1rem;
+  max-width: 42rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  font-weight: 450;
+  color: color-mix(in srgb, var(--color-text-secondary) 94%, #c4b5fd);
+}
+
+.fnHeroActions {
+  margin-top: 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.fnBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.75rem;
+  padding: 0.72rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--fn-purple), color-mix(in srgb, #6366f1 80%, var(--fn-purple)));
+  border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+  box-shadow:
+    0 10px 32px color-mix(in srgb, var(--fn-purple) 38%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    filter 0.22s ease;
+}
+
+.fnBtnPrimary:hover {
+  transform: translateY(-2px) scale(1.01);
+  filter: brightness(1.06);
+  box-shadow:
+    0 14px 40px color-mix(in srgb, var(--fn-purple) 48%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+}
+
+.fnBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.75rem;
+  padding: 0.72rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-text) 94%, #fff);
+  background: color-mix(in srgb, #fff 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 28%, var(--color-border));
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.fnBtnGhost:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--fn-purple) 48%, var(--color-border));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+/* Cards */
+.fnCard {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, var(--fn-purple) 12%);
+  background: linear-gradient(165deg, var(--fn-card-bg), color-mix(in srgb, var(--color-card) 96%, #0c0718));
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.fnCardPad {
+  padding: 1.25rem 1.35rem;
+}
+
+@media (min-width: 640px) {
+  .fnCardPad {
+    padding: 1.5rem 1.65rem;
+  }
+}
+
+.fnCardInteractive:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--fn-purple) 38%, var(--color-border));
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--fn-purple) 22%, transparent),
+    var(--fn-glow-soft);
+}
+
+.fnSectionTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .fnSectionTitle {
+    font-size: 1.25rem;
+  }
+}
+
+.fnSectionLead {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.fnMutedCard {
+  border-radius: 1rem;
+  border: 1px dashed color-mix(in srgb, var(--fn-purple) 22%, var(--color-border));
+  background: color-mix(in srgb, var(--color-card) 65%, transparent);
+  padding: 1.35rem 1.5rem;
+}
+
+/* Footer nav row */
+.fnFlowFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 2rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--fn-purple) 15%, var(--color-border));
+}
+
+.fnFlowLink {
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.fnFlowLink:hover {
+  opacity: 0.92;
+}
+
+/* Vertical stepper (Comment ça marche) */
+.fnStepList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .fnStepList {
+    gap: 2rem;
+  }
+}
+
+.fnStepRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.25rem;
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  .fnStepRow {
+    gap: 1.25rem 1.75rem;
+  }
+}
+
+.fnStepRail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 3rem;
+  flex-shrink: 0;
+}
+
+.fnStepBadge {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid color-mix(in srgb, var(--fn-purple) 55%, transparent);
+  background: radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--fn-purple) 35%, transparent), color-mix(in srgb, #0f081c 92%, transparent));
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--fn-purple) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+}
+
+.fnStepLine {
+  flex: 1;
+  width: 2px;
+  min-height: 2.25rem;
+  margin-top: 0.45rem;
+  margin-bottom: -0.35rem;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fn-purple) 65%, transparent), color-mix(in srgb, var(--fn-blue) 35%, transparent));
+  opacity: 0.65;
+}
+
+.fnDetailsLite {
+  margin-top: 1.15rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 18%, var(--color-border));
+  background: color-mix(in srgb, #06040d 88%, var(--fn-purple));
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.fnDetailsLite summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.85rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--fn-purple) 92%, #fff);
+}
+
+.fnDetailsLite summary::-webkit-details-marker {
+  display: none;
+}
+
+.fnDetailsLite[open] {
+  border-color: color-mix(in srgb, var(--fn-purple) 42%, var(--color-border));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--fn-purple) 18%, transparent);
+}
+
+.fnDetailsInner {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--fn-purple));
+  padding: 1rem;
+}
+
+/* Progression rail */
+.fnProgressRail {
+  display: grid;
+  gap: 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 22%, var(--color-border));
+  padding: 1.35rem 1.25rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 14%, transparent), transparent 48%),
+    linear-gradient(165deg, color-mix(in srgb, #12081f 92%, transparent), color-mix(in srgb, var(--color-card) 88%, #07040f));
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32);
+}
+
+@media (min-width: 768px) {
+  .fnProgressRail {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 1.5rem 1.35rem;
+  }
+}
+
+.fnProgressNode {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-radius: 0.85rem;
+  padding: 1rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, var(--fn-purple));
+  background: color-mix(in srgb, #0a0612 90%, transparent);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.fnProgressNode:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--fn-purple) 38%, var(--color-border));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+.fnProgressIconWrap {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--fn-purple) 35%, transparent), color-mix(in srgb, var(--fn-blue) 18%, transparent));
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 35%, transparent);
+  color: #ede9fe;
+}
+
+.fnProgressLabel {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fn-purple) 85%, #fff);
+}
+
+.fnProgressTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.fnProgressHint {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+/* Community live strip */
+.fnLiveStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #22c55e 35%, var(--color-border));
+  padding: 0.65rem 1.15rem;
+  background: linear-gradient(90deg, color-mix(in srgb, #14532d 45%, transparent), color-mix(in srgb, var(--color-card) 90%, #052e16));
+  box-shadow: 0 0 28px color-mix(in srgb, #22c55e 18%, transparent);
+}
+
+.fnLiveDot {
+  position: relative;
+  height: 0.55rem;
+  width: 0.55rem;
+  border-radius: 9999px;
+  background: #4ade80;
+  box-shadow: 0 0 12px #4ade80;
+}
+
+.fnLiveDot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, #4ade80 55%, transparent);
+  animation: fnPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes fnPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fnLiveDot::after {
+    animation: none;
+  }
+}
+
+.fnLiveText {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, #bbf7d0 92%, var(--color-text));
+}
+
+.fnLiveBadge {
+  margin-left: auto;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, #22c55e 28%, transparent);
+  color: #bbf7d0;
+  border: 1px solid color-mix(in srgb, #4ade80 45%, transparent);
+}
+
+/* FAQ accordion */
+.fnFaqItem {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 92%, var(--fn-purple));
+  background: linear-gradient(165deg, var(--fn-card-bg), color-mix(in srgb, #080510 88%, transparent));
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.26);
+  transition:
+    border-color 0.28s ease,
+    box-shadow 0.28s ease,
+    transform 0.22s ease;
+}
+
+.fnFaqItem:hover {
+  border-color: color-mix(in srgb, var(--fn-purple) 30%, var(--color-border));
+}
+
+.fnFaqItem[open] {
+  border-color: color-mix(in srgb, var(--fn-purple) 48%, var(--color-border));
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.36),
+    0 0 40px color-mix(in srgb, var(--fn-purple) 16%, transparent);
+}
+
+.fnFaqSummary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--color-text);
+  outline: none;
+}
+
+.fnFaqSummary::-webkit-details-marker {
+  display: none;
+}
+
+.fnFaqChevron {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  opacity: 0.65;
+  transition: transform 0.28s ease, opacity 0.2s ease;
+}
+
+.fnFaqItem[open] .fnFaqChevron {
+  transform: rotate(180deg);
+  opacity: 1;
+  color: color-mix(in srgb, var(--fn-purple) 95%, #fff);
+}
+
+.fnFaqAnswer {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 95%, var(--fn-purple));
+  padding: 0 1.2rem 1.15rem;
+}
+
+.fnFaqAnswer p {
+  padding-top: 1rem;
+  line-height: 1.65;
+  font-size: 0.92rem;
+  color: var(--color-text-secondary);
+}
+
+/* Embed glow for legacy integration sections */
+.fnEmbedGlow :global(.integration-card) {
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease !important;
+}
+
+.fnEmbedGlow :global(.integration-card:hover) {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--fn-purple) 35%, var(--color-border)) !important;
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.35),
+    0 0 36px color-mix(in srgb, var(--fn-purple) 14%, transparent) !important;
+}
+
+/* Synthèse / guidance block */
+.fnGuidanceSection {
+  margin-bottom: 2rem;
+  border-radius: 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 24%, var(--color-border));
+  padding: 1.35rem 1.35rem;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--fn-purple) 12%, transparent), transparent 42%),
+    linear-gradient(165deg, var(--fn-card-bg), color-mix(in srgb, var(--color-card) 94%, #07040f));
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 768px) {
+  .fnGuidanceSection {
+    padding: 1.5rem 1.65rem;
+  }
+}
+
+.fnGuidanceAccordion {
+  border-radius: 0.85rem;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.fnGuidanceAccordion:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+/* Legacy hero from parcours */
 .fonctionnementHero {
   position: relative;
   overflow: hidden;
@@ -39,6 +682,9 @@
   overflow: hidden;
 }
 
+.active {
+}
+
 .fonctionnementTabPill:not(.active)::after {
   content: "";
   position: absolute;
@@ -53,8 +699,22 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .fnBtnPrimary,
+  .fnBtnGhost,
+  .fnCardInteractive,
+  .fnProgressNode,
+  .fnNavLink,
+  .fnFaqItem,
   .fonctionnementTabPill:not(.active)::after,
   .fonctionnementHero::after {
     transition: none;
+  }
+
+  .fnBtnPrimary:hover,
+  .fnBtnGhost:hover,
+  .fnCardInteractive:hover,
+  .fnProgressNode:hover,
+  .fnNavLink:hover:not(.fnNavLinkActive) {
+    transform: none;
   }
 }

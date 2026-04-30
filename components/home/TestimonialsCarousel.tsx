@@ -24,7 +24,13 @@ function Hearts({ value }: { value: number | null }) {
   );
 }
 
-export default function TestimonialsCarousel({ reviews }: { reviews: Review[] }) {
+export default function TestimonialsCarousel({
+  reviews,
+  emphasis = false,
+}: {
+  reviews: Review[];
+  emphasis?: boolean;
+}) {
   const [index, setIndex] = useState(0);
   const items = useMemo(() => reviews.slice(0, 12), [reviews]);
 
@@ -53,12 +59,22 @@ export default function TestimonialsCarousel({ reviews }: { reviews: Review[] })
 
   return (
     <div
-      className="rounded-2xl border p-6 sm:p-8"
-      style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+      className={`rounded-2xl ${emphasis ? "home-quote-card border-0 p-6 sm:p-10" : "border p-6 sm:p-8"}`}
+      style={
+        emphasis
+          ? undefined
+          : {
+              backgroundColor: "var(--color-card)",
+              borderColor: "var(--color-border)",
+            }
+      }
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-3">
-          <p className="text-base leading-relaxed sm:text-lg" style={{ color: "var(--color-text)" }}>
+          <p
+            className={`leading-relaxed ${emphasis ? "text-lg sm:text-xl font-medium" : "text-base sm:text-lg"}`}
+            style={{ color: "var(--color-text)" }}
+          >
             &quot;{current.message}&quot;
           </p>
           <div className="flex items-center gap-3 text-sm">

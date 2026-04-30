@@ -539,12 +539,12 @@ export default function Page() {
 
   const recentIntegratedMembers = useMemo(() => {
     const now = Date.now();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const eligible = memberCards.filter((member) => {
       if (!member.integrationDate) return false;
       const ts = new Date(member.integrationDate).getTime();
       if (Number.isNaN(ts)) return false;
-      return now - ts <= sevenDaysMs && now >= ts;
+      return now - ts <= thirtyDaysMs && now >= ts;
     });
     if (eligible.length <= 6) return eligible;
     return shuffleArray(eligible).slice(0, 6);
@@ -1132,7 +1132,7 @@ export default function Page() {
           </div>
         ) : (
           <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
-            Aucun nouveau créateur intégré cette semaine pour le moment 💜
+            Aucun nouveau créateur intégré ce mois-ci pour le moment 💜
           </div>
         )}
       </section>

@@ -1,0 +1,2305 @@
+"use client";
+
+import { useState } from "react";
+import {
+  type TabId,
+  tabs,
+  tabUiMeta,
+  tabGuidance,
+} from "@/lib/fonctionnement/guidance";
+import styles from "@/app/fonctionnement-tenf/fonctionnement.module.css";
+import { IntegrationTabContent } from "@/components/fonctionnement/integration-sections";
+
+export { type TabId, tabs, tabUiMeta, tabGuidance };
+
+// Lien unique Discord pour tous les achats
+const DISCORD_SHOP_URL = "https://discord.com/channels/535244857891880970/1278839967962894459";
+
+// Structure des items de la boutique
+interface ShopItem {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: "defis" | "promo" | "coaching" | "spotlight";
+  cooldown?: string;
+  limited?: string;
+  popular?: boolean;
+  badge?: string;
+}
+
+const shopItems: ShopItem[] = [
+  {
+    id: "defi-rigolo",
+    title: "Défi rigolo à faire en live",
+    description: "Un défi fun à réaliser en live pour dynamiser ton émission et créer un moment complice avec ta commu.",
+    price: 2500,
+    category: "defis",
+    badge: "Fun live",
+  },
+  {
+    id: "role-personnalise",
+    title: "Rôle personnalisé",
+    description: "Ajoute une touche perso à ton identité sur le serveur avec un rôle spécial validé par le staff.",
+    price: 5000,
+    category: "defis",
+    badge: "Personnalisation",
+  },
+  {
+    id: "mini-analyse",
+    title: "Mini-analyse de chaîne",
+    description: "Retour ciblé sur tes bases (profil, lisibilité, cohérence) pour débloquer rapidement des pistes d'amélioration.",
+    price: 8000,
+    category: "coaching",
+    badge: "Coaching",
+  },
+  {
+    id: "post-reseaux",
+    title: "Post réseaux promo créateur",
+    description: "Mise en avant de ta chaîne sur les réseaux TENF pour booster ta visibilité de manière cohérente.",
+    price: 10000,
+    category: "promo",
+    cooldown: "2 mois",
+    badge: "Visibilité",
+  },
+  {
+    id: "coaching-identite",
+    title: "Coaching privé : identité de chaîne",
+    description: "Session dédiée pour clarifier ton positionnement, ton image et ta direction de contenu.",
+    price: 10000,
+    category: "coaching",
+    badge: "Coaching",
+  },
+  {
+    id: "test-concept-live",
+    title: "Test de concept de live",
+    description: "Teste une idée de live avec retour structuré pour savoir quoi garder, ajuster ou renforcer.",
+    price: 15000,
+    category: "coaching",
+    badge: "Live",
+  },
+  {
+    id: "interview-post-createur",
+    title: "Interview + post créateur",
+    description: "Un format de mise en avant plus complet pour présenter ton univers et ton parcours à la communauté.",
+    price: 20000,
+    category: "promo",
+    badge: "Visibilité",
+  },
+  {
+    id: "feedback-personnalise",
+    title: "Feedback personnalisé",
+    description: "Analyse détaillée de ton live ou de ta VOD avec recommandations concrètes pour progresser.",
+    price: 25000,
+    category: "coaching",
+    badge: "Coaching",
+  },
+  {
+    id: "spotlight-new-family",
+    title: "Spotlight New Family",
+    description: "Ta mise en lumière communautaire avec un passage dédié pour présenter ton univers et créer du lien.",
+    price: 30000,
+    category: "spotlight",
+    cooldown: "2 mois",
+    popular: true,
+    badge: "Premium",
+  },
+  {
+    id: "analyse-complete-chaine",
+    title: "Analyse complète de chaîne",
+    description: "Audit global de ta chaîne avec plan d'amélioration priorisé pour accélérer ta progression.",
+    price: 40000,
+    category: "coaching",
+    badge: "Premium",
+  },
+];
+
+const categories = [
+  {
+    id: "defis",
+    name: "Défis & fun en live",
+    icon: "🎲",
+    description: "Des challenges ludiques pour animer tes lives",
+  },
+  {
+    id: "promo",
+    name: "Promo & visibilité",
+    icon: "📣",
+    description: "Boost ta visibilité sur TENF et les réseaux",
+  },
+  {
+    id: "coaching",
+    name: "Coaching & outils",
+    icon: "🧰",
+    description: "Accompagnement personnalisé pour progresser",
+  },
+  {
+    id: "spotlight",
+    name: "Spotlight & premium",
+    icon: "🌟",
+    description: "Services premium et mises en avant exclusives",
+  },
+];
+
+export function BoutiquePointsContent() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [copiedTicket, setCopiedTicket] = useState(false);
+
+  const filteredItems = selectedCategory
+    ? shopItems.filter((item) => item.category === selectedCategory)
+    : shopItems;
+
+  const ticketExample = `Récompense achetée : [Nom de la récompense]
+Pseudo Twitch : [Ton pseudo]
+Disponibilités : [Tes dispos si planification nécessaire]
+Détails utiles : [Lien VOD si feedback, etc.]`;
+
+  const faqItems = [
+    {
+      q: "Je viens d'acheter, que faire maintenant ?",
+      a: "Après ton achat, ouvre un ticket sur Discord pour que l'équipe puisse traiter ta demande. Indique la récompense achetée, ton pseudo Twitch et les informations nécessaires à la mise en place.",
+    },
+    {
+      q: "C'est quoi un cooldown ?",
+      a: "Certaines récompenses ne peuvent pas être utilisées trop souvent afin de garder un équilibre dans la communauté et permettre à plusieurs membres d'en profiter.",
+    },
+    {
+      q: "Combien de temps pour traiter une demande ?",
+      a: "Le délai dépend du type de récompense et des disponibilités de l'équipe, mais les demandes sont traitées aussi rapidement que possible.",
+    },
+    {
+      q: "Puis-je annuler un achat ?",
+      a: "Si la demande n'a pas encore été traitée, une annulation peut parfois être possible. Signale-le rapidement dans ton ticket Discord.",
+    },
+    {
+      q: "Pourquoi certaines récompenses demandent plus d'infos ?",
+      a: "Certaines récompenses nécessitent des éléments supplémentaires (liens, disponibilités, VOD, etc.) afin que l'équipe puisse préparer correctement l'intervention ou l'analyse.",
+    },
+    {
+      q: "Le Spotlight a-t-il un délai entre deux passages ?",
+      a: "Oui. Le Spotlight New Family possède un cooldown de 2 mois entre deux passages pour permettre à différents membres de bénéficier de cette mise en avant.",
+    },
+    {
+      q: "Puis-je offrir une récompense à un autre membre ?",
+      a: "Non. Les récompenses de la boutique sont liées au membre qui les achète et ne peuvent pas être offertes à un autre membre.",
+    },
+    {
+      q: "Que faire si je me suis trompé dans mon ticket ?",
+      a: "Tu peux simplement corriger les informations directement dans le ticket ou prévenir l'équipe pour ajuster la demande.",
+    },
+  ];
+
+  const formatPoints = (points: number) => `${new Intl.NumberFormat("fr-FR").format(points)} pts`;
+
+  const copyTicketExample = () => {
+    navigator.clipboard.writeText(ticketExample);
+    setCopiedTicket(true);
+    setTimeout(() => setCopiedTicket(false), 2000);
+  };
+
+  const scrollToRewards = () => {
+    const element = document.getElementById("recompenses");
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToTicket = () => {
+    const element = document.getElementById("rappel-ticket");
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="space-y-12">
+      {/* Hero / intro boutique */}
+      <section className="rounded-2xl border p-6 md:p-8 about-glow" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+        <div className="max-w-4xl space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold" style={{ color: "var(--color-text)" }}>
+            🛍️ Boutique des points TENF
+          </h1>
+          <p className="text-base md:text-lg leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Débloque des récompenses utiles, fun ou valorisantes selon ton implication: visibilité, coaching, expériences live et formats premium pensés pour la communauté.
+          </p>
+          <div className="rounded-xl border px-4 py-3 inline-flex items-center gap-2 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-surface)" }}>
+            <span>🛒</span>
+            <span>Les achats se font via Discord dans le salon boutique, puis traitement en ticket.</span>
+          </div>
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              onClick={scrollToRewards}
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              Voir les récompenses
+            </button>
+            <a
+              href={DISCORD_SHOP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              Ouvrir la boutique Discord
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Comment ça marche */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
+          Comment ça marche ?
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
+          {[
+            { icon: "🎁", title: "1. Choisir une récompense", text: "Parcours les catégories pour sélectionner une récompense qui correspond à ton besoin du moment." },
+            { icon: "🛒", title: "2. Acheter sur Discord", text: "L'achat se fait dans le salon boutique TENF via le lien Discord dédié." },
+            { icon: "📩", title: "3. Ouvrir un ticket", text: "Après achat, ouvre ton ticket avec les infos utiles pour que le staff puisse traiter rapidement." },
+          ].map((step) => (
+            <article key={step.title} className="rounded-xl border p-5 text-center shop-card" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+              <p className="text-3xl mb-2">{step.icon}</p>
+              <h3 className="text-base font-semibold mb-2" style={{ color: "var(--color-primary)" }}>{step.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>{step.text}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="rounded-xl border p-5 md:p-6 about-glow" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+            <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Exemple de ticket pratique</h3>
+            <button
+              onClick={copyTicketExample}
+              className="px-3.5 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: copiedTicket ? "#10b981" : "var(--color-primary)" }}
+            >
+              {copiedTicket ? "✓ Copié !" : "📋 Copier"}
+            </button>
+          </div>
+          <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+            <pre className="text-sm whitespace-pre-wrap" style={{ color: "var(--color-text-secondary)" }}>{ticketExample}</pre>
+          </div>
+        </div>
+      </section>
+
+      {/* Catégories */}
+      <section id="recompenses" className="space-y-5">
+        <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
+          Catégories
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className="px-4 py-2 rounded-full text-sm font-semibold border transition-all"
+            style={{
+              backgroundColor: selectedCategory === null ? "var(--color-primary)" : "var(--color-card)",
+              borderColor: selectedCategory === null ? "var(--color-primary)" : "var(--color-border)",
+              color: selectedCategory === null ? "white" : "var(--color-text)",
+            }}
+          >
+            ✨ Toutes
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className="px-4 py-2 rounded-full text-sm font-semibold border transition-all"
+              style={{
+                backgroundColor: selectedCategory === cat.id ? "var(--color-primary)" : "var(--color-card)",
+                borderColor: selectedCategory === cat.id ? "var(--color-primary)" : "var(--color-border)",
+                color: selectedCategory === cat.id ? "white" : "var(--color-text)",
+              }}
+            >
+              {cat.icon} {cat.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Récompenses disponibles */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
+          Récompenses disponibles
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredItems.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-xl border p-5 h-full flex flex-col about-glow"
+              style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h3 className="text-base font-semibold leading-snug" style={{ color: "var(--color-text)" }}>
+                  {item.title}
+                </h3>
+                {item.badge && (
+                  <span className="text-xs px-2 py-1 rounded-full border whitespace-nowrap" style={{ color: "var(--color-primary)", borderColor: "var(--color-border)", backgroundColor: "rgba(145, 70, 255, 0.1)" }}>
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--color-text-secondary)" }}>
+                {item.description}
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                {item.cooldown && (
+                  <span className="text-xs px-2 py-1 rounded border" style={{ color: "var(--color-primary)", borderColor: "var(--color-border)", backgroundColor: "rgba(145, 70, 255, 0.1)" }}>
+                    Cooldown: {item.cooldown}
+                  </span>
+                )}
+                {item.limited && (
+                  <span className="text-xs px-2 py-1 rounded border" style={{ color: "var(--color-primary)", borderColor: "var(--color-border)", backgroundColor: "rgba(145, 70, 255, 0.1)" }}>
+                    Limité: {item.limited}
+                  </span>
+                )}
+                {item.popular && (
+                  <span className="text-xs px-2 py-1 rounded border" style={{ color: "var(--color-primary)", borderColor: "var(--color-border)", backgroundColor: "rgba(145, 70, 255, 0.1)" }}>
+                    ⭐ Recommandé
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-auto flex items-center justify-between gap-3">
+                <span className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                  {formatPoints(item.price)}
+                </span>
+                <a
+                  href={DISCORD_SHOP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  Acheter
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Infos importantes après achat */}
+      <section id="rappel-ticket" className="space-y-4">
+        <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
+          Infos importantes après achat
+        </h2>
+        <div className="rounded-xl border p-6 about-glow" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <p className="text-sm font-semibold mb-2" style={{ color: "var(--color-primary)" }}>
+            ✅ Après chaque achat, ouvre un ticket
+          </p>
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
+            Sans ticket, ta demande ne peut pas être traitée. Le ticket permet au staff de te répondre proprement et de planifier les récompenses qui en ont besoin.
+          </p>
+          <ul className="space-y-1.5 text-sm mb-5" style={{ color: "var(--color-text-secondary)" }}>
+            <li>• Récompense achetée</li>
+            <li>• Pseudo Twitch</li>
+            <li>• Disponibilités si planification</li>
+            <li>• Détails utiles (ex: lien VOD, contexte, attente)</li>
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={DISCORD_SHOP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              Ouvrir la boutique Discord
+            </a>
+            <button
+              onClick={scrollToTicket}
+              className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              Relire la procédure
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-center" style={{ color: "var(--color-text)" }}>
+          Questions fréquentes
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
+          {faqItems.map((faq) => (
+            <article
+              key={faq.q}
+              className="rounded-xl border p-5 shop-faq"
+              style={{ backgroundColor: "var(--color-card)", borderColor: "rgba(145, 70, 255, 0.25)" }}
+            >
+              <h3 className="font-semibold mb-2 flex items-start gap-2" style={{ color: "var(--color-text)" }}>
+                <span aria-hidden style={{ color: "var(--color-primary)" }}>❓</span>
+                <span>{faq.q}</span>
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                {faq.a}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <article
+          className="rounded-xl border p-5 md:p-6"
+          style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-primary)" }}
+        >
+          <h3 className="font-semibold mb-3 flex items-start gap-2" style={{ color: "var(--color-text)" }}>
+            <span aria-hidden style={{ color: "var(--color-primary)" }}>⭐</span>
+            <span>Important – Organisation du Spotlight</span>
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Lors de l'achat d'un Spotlight, c'est le membre qui choisit lui-même la date et l'horaire de passage.
+            <br />
+            Ce créneau est ensuite validé avec l'équipe.
+            <br />
+            Les retards ou absences peuvent entraîner l'annulation du Spotlight.
+            <br />
+            Dans ce cas, les points utilisés ne sont pas remboursés, afin de respecter l'organisation des événements communautaires.
+          </p>
+        </article>
+      </section>
+
+      {/* CTA final boutique */}
+      <section className="rounded-2xl border p-6 md:p-7 text-center about-glow" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+        <h3 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>
+          Prêt à débloquer ta prochaine récompense ?
+        </h3>
+        <p className="text-sm md:text-base mb-5" style={{ color: "var(--color-text-secondary)" }}>
+          La boutique TENF récompense ton implication: visibilité, progression et formats fun au service de la communauté.
+        </p>
+        <a
+          href={DISCORD_SHOP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-6 py-3 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          Accéder à la boutique Discord
+        </a>
+      </section>
+    </div>
+  );
+}
+
+export function SpotlightContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"viewer" | "streamer">("viewer");
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <section className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
+          🌟 Spotlight New Family
+        </h1>
+        <p className="text-xl md:text-2xl" style={{ color: 'var(--color-text-secondary)' }}>
+          Un moment pour briller… ensemble
+        </p>
+      </section>
+
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("viewer")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg spotlight-subtab"
+          style={{
+            color: activeSubTab === "viewer" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "viewer" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "viewer" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          👀 Je suis viewer sur un Spotlight
+        </button>
+        <button
+          onClick={() => setActiveSubTab("streamer")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg spotlight-subtab"
+          style={{
+            color: activeSubTab === "streamer" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "streamer" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "streamer" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎤 Je suis le streamer mis en avant
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet Viewer */}
+      {activeSubTab === "viewer" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Le Spotlight est un moment communautaire important où un membre de la New Family est mis à l'honneur. 
+              C'est l'occasion de créer du lien, de soutenir quelqu'un, et de faire grandir l'entraide. 
+              <strong style={{ color: 'var(--color-text)' }}> Personne ne peut être présent tout le temps</strong>, 
+              et c'est normal. On valorise la présence quand elle est possible, sans pression ni culpabilité.
+            </p>
+          </section>
+
+          {/* Pourquoi ta présence compte */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              💜 Pourquoi ta présence compte
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Soutien d'un membre</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Ta présence, même silencieuse, montre que tu es là pour le streamer. C'est un geste simple mais précieux.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Renforcer l'entraide</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Chaque viewer contribue à créer une ambiance bienveillante et à faire vivre l'esprit New Family.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Créer des liens humains</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Le Spotlight est l'occasion de découvrir des personnes, de créer des connexions durables, parfois même des amitiés.</p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>Faire vivre le Spotlight</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Ton engagement, même minime, participe à la réussite de ce moment unique pour le streamer.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Prioriser quand tu es disponible */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--color-primary)' }}>
+              ⭐ Prioriser quand tu es disponible
+            </h2>
+            <ul className="space-y-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <li className="flex items-start">
+                <span className="mr-2">✅</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>Si tu peux venir</strong> → viens faire un coucou, même pour 5 minutes. Ta présence compte, même courte.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">💚</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>Si tu ne peux pas</strong> → aucune pression. La vie continue, et c'est parfaitement normal.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">💜</span>
+                <span><strong style={{ color: 'var(--color-text)' }}>L'intention compte plus</strong> que la présence systématique. On préfère ta présence sincère que ton absence par obligation.</span>
+              </li>
+            </ul>
+          </section>
+
+          {/* Lurker = déjà aider */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              👁️ Lurker = déjà aider
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Le lurk compte autant que les messages.</strong> 
+              Ta présence silencieuse apporte déjà beaucoup :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Stats</strong> : chaque viewer compte pour les statistiques Twitch</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Soutien moral</strong> : savoir qu'il y a des gens qui regardent, même en silence, c'est rassurant</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Présence silencieuse</strong> : créer une ambiance communautaire sans avoir besoin de parler</li>
+            </ul>
+            <p className="leading-relaxed text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Déculpabilise-toi si tu es discret.</strong> 
+              Tu participes déjà, même sans écrire dans le chat.
+            </p>
+          </section>
+
+          {/* Être actif sans se forcer */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              💬 Être actif sans se forcer
+            </h2>
+            <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Si tu as envie de participer activement, voici quelques idées simples et naturelles :
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2">
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">👋</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Dire bonjour</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Un simple "salut" ou "bon Spotlight" peut faire la différence.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">💬</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Répondre à une question</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Si le streamer pose une question, n'hésite pas à partager ton avis.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">❓</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Poser une question simple</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Sur le jeu, le stream, ou même juste "comment ça va ?".</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">✨</span>
+                  <div>
+                    <strong style={{ color: 'var(--color-text)' }}>Rester naturel</strong>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>L'important c'est d'être toi-même, pas de jouer un rôle.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Ce qu'on évite */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🌱 Ce qu'on évite
+            </h2>
+            <ul className="space-y-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Comparaisons</strong> : éviter de comparer ce Spotlight avec d'autres ou avec tes propres stats</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ambiance négative</strong> : garder les critiques constructives pour après, pendant le Spotlight on soutient</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Jugement</strong> : chacun a son style, son rythme, sa personnalité. On respecte ça.</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Passage éclair sans interaction</strong> : si tu restes moins de 30 secondes sans rien dire, mieux vaut peut-être revenir plus tard</li>
+            </ul>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Streamer */}
+      {activeSubTab === "streamer" && (
+        <div className="space-y-8">
+          {/* Ce qu'est vraiment un Spotlight */}
+          <section className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              Ce qu'est vraiment un Spotlight
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le Spotlight New Family n'est <strong style={{ color: 'var(--color-text)' }}>pas un examen</strong>, 
+              pas une course aux stats, pas un test de performance. 
+              C'est une <strong style={{ color: 'var(--color-primary)' }}>opportunité humaine et durable</strong> pour :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Présenter ton univers et qui tu es vraiment</li>
+              <li>• Rencontrer de nouvelles personnes de la communauté</li>
+              <li>• Créer des connexions qui dureront au-delà de cette heure</li>
+              <li>• Bénéficier du soutien de la New Family de manière structurée et bienveillante</li>
+            </ul>
+          </section>
+
+          {/* Une heure guidée */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🕒 Une heure guidée (structure rassurante)
+            </h2>
+            <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Voici un déroulé souple pour t'aider à structurer ton Spotlight. Ce n'est pas strict, c'est un guide :
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">👋</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>0–5 min : Accueil & présentation</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Dire bonjour, présenter rapidement qui tu es, ce que tu fais, et remercier la communauté.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">💬</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>5–15 min : Échange</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Répondre aux questions, échanger avec les viewers, créer du lien.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">🎮</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>15–30 min : Ton univers</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Montrer ce que tu aimes, jouer, créer, partager ta passion et ton style.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">💜</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>30–45 min : Moment sincère</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Parler de tes objectifs, tes difficultés, tes réussites. C'est le moment de partager humainement.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl p-5 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <div className="flex items-start">
+                  <span className="text-2xl mr-4">🙏</span>
+                  <div>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>45–60 min : Remerciements & clôture</h3>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Remercier tous ceux qui sont venus, faire un raid vers un autre membre TENF, et clôturer sur une note positive.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Règles simples et protectrices */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🔒 Règles simples et protectrices
+            </h2>
+            <div className="space-y-4">
+              <div className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Duo / co-live</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  À éviter pendant la première heure. Le Spotlight est centré sur <strong style={{ color: 'var(--color-text)' }}>toi</strong>. 
+                  Après la première heure, liberté totale pour faire ce que tu veux.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Pas de multistream</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Pendant ton Spotlight, tu diffuses uniquement sur Twitch. C'est important pour que la communauté puisse te soutenir correctement et que l'heure soit vraiment centrée sur toi.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Réservation minimum 7 jours avant</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Cela permet de bien communiquer sur ton Spotlight, d'organiser la communauté, et de te préparer sereinement.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Réciprocité bienveillante</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  On encourage à venir aux Spotlights des autres membres quand c'est possible. L'entraide fonctionne dans les deux sens, 
+                  et c'est en soutenant les autres qu'on se fait soutenir. <strong style={{ color: 'var(--color-text)' }}>Pas d'obligation</strong>, 
+                  juste de la bienveillance.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Format 1 heure</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Le Spotlight dure environ 1 heure. C'est le temps idéal pour présenter ton univers sans être trop long ni trop court.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border spotlight-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Raid TENF en fin de Spotlight</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  En fin de Spotlight, on encourage à raider un autre membre TENF. C'est un geste d'entraide qui continue l'esprit du Spotlight.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Ce qu'on souhaite éviter */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🧡 Ce qu'on souhaite éviter
+            </h2>
+            <ul className="space-y-3" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Live sans présentation</strong> : prendre quelques minutes au début pour te présenter et expliquer ce qui t'a amené ici</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Silence prolongé</strong> : interagir avec le chat, même si les messages sont rares</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Absence d'interaction</strong> : répondre aux questions, poser des questions aux viewers</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Attente uniquement des stats</strong> : le Spotlight n'est pas un concours de vues, c'est un moment humain</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ne jamais participer aux Spotlights des autres</strong> : l'entraide est réciproque, soutenir les autres fait partie de l'esprit New Family</li>
+            </ul>
+          </section>
+
+          {/* Accompagnement bienveillant */}
+          <section className="rounded-xl p-6 border spotlight-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🤝 Accompagnement bienveillant
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L'équipe est là pour t'accompagner avant, pendant et après ton Spotlight :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Rappels en privé</strong> : si quelque chose n'est pas clair, on te rappelle les règles avec bienveillance</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Aide et explication</strong> : on est là pour répondre à tes questions et t'aider à réussir ton Spotlight</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Sanctions rares et jamais immédiates</strong> : on privilégie toujours le dialogue et l'accompagnement avant toute mesure</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L'objectif c'est que tu passes un bon moment et que la communauté aussi. 
+              On est tous dans le même bateau pour faire grandir l'entraide.
+            </p>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ReglementContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"general" | "vocaux">("general");
+
+  return (
+    <div className="space-y-8">
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("general")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg reglement-subtab"
+          style={{
+            color: activeSubTab === "general" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "general" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "general" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          📜 Règlement général TENF
+        </button>
+        <button
+          onClick={() => setActiveSubTab("vocaux")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg reglement-subtab"
+          style={{
+            color: activeSubTab === "vocaux" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "vocaux" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "vocaux" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎧 Règlement des salons vocaux
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet Règlement général */}
+      {activeSubTab === "general" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              📜 Règlement général – Twitch Entraide New Family
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Bienvenue sur Twitch Entraide New Family (TENF) 💙🐉<br />
+              Ce serveur est un espace d&apos;entraide, de respect et de bienveillance.
+            </p>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              En rejoignant le serveur, vous acceptez les règles suivantes.
+            </p>
+          </section>
+
+          {/* 1. Valeurs de la New Family */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              1️⃣ Valeurs de la New Family
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              La New Family repose sur :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>🤝 l&apos;entraide sincère (pas le donnant-donnant forcé)</li>
+              <li>🧠 le respect des différences (rythmes, niveaux, personnalités)</li>
+              <li>💬 une communication saine et humaine</li>
+              <li>🔒 la confiance et la confidentialité</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Tout comportement allant à l&apos;encontre de ces valeurs pourra être sanctionné.
+            </p>
+          </section>
+
+          {/* 2. Respect & comportement général */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              2️⃣ Respect & comportement général
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le respect de tous les membres est obligatoire (membres, staff, invités).
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Sont interdits :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• propos discriminatoires (racisme, sexisme, homophobie, transphobie, etc.)</li>
+              <li>• moqueries, humiliations, attaques personnelles</li>
+              <li>• harcèlement, pression morale, chantage affectif</li>
+              <li>• comportements toxiques ou passifs-agressifs répétés</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les désaccords sont autorisés dans le calme et le respect.
+            </p>
+          </section>
+
+          {/* 3. Salons & usage approprié */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              3️⃣ Salons & usage approprié
+            </h3>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Chaque salon a un thème précis : merci de le respecter.</li>
+              <li>• Le flood, le spam et les hors-sujets répétés ne sont pas tolérés.</li>
+              <li>• Les débats sensibles peuvent être stoppés par le staff si nécessaire.</li>
+            </ul>
+          </section>
+
+          {/* 4. Confidentialité & confiance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              4️⃣ Confidentialité & confiance
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ce qui se dit sur TENF reste sur TENF.
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Il est strictement interdit :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• de partager des messages privés sans accord</li>
+              <li>• de sortir des propos de leur contexte</li>
+              <li>• d&apos;utiliser le serveur pour nuire à d&apos;autres communautés</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Toute atteinte à la confidentialité est prise très au sérieux.
+            </p>
+          </section>
+
+          {/* 5. Intégration & fonctionnement */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              5️⃣ Intégration & fonctionnement
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;accès complet à l&apos;entraide et à la promotion nécessite :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• la lecture du règlement</li>
+              <li>• la participation à une réunion d&apos;intégration</li>
+            </ul>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Certaines fonctionnalités sont volontairement limitées avant intégration.<br />
+              Ce n&apos;est pas une punition, mais un cadre.
+            </p>
+          </section>
+
+          {/* 6. Entraide & promotion */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              6️⃣ Entraide & promotion
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;entraide sur TENF est humaine, pas automatique.<br />
+              Les follows, vues et participations doivent être authentiques.
+            </p>
+            <p className="leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+              Sont interdits :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• les demandes insistantes de follows, vues ou subs</li>
+              <li>• la consommation de l&apos;entraide sans jamais y participer</li>
+              <li>• le contournement du système (pressions, comparaisons, multi-comptes)</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              L&apos;implication est évaluée dans la durée, pas sur un coup d&apos;éclat.
+            </p>
+          </section>
+
+          {/* 7. Attitude attendue des créateurs */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              7️⃣ Attitude attendue des créateurs
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Être créateur sur TENF implique :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• le respect du cadre</li>
+              <li>• une régularité minimale</li>
+              <li>• une participation honnête à l&apos;entraide</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Un désengagement prolongé ou un comportement nuisible peut entraîner un changement de rôle (ex : Communauté).
+            </p>
+          </section>
+
+          {/* 8. Rôles, évaluations & décisions du staff */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              8️⃣ Rôles, évaluations & décisions du staff
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les rôles (Créateur, Communauté, VIP, etc.) sont attribués selon des critères définis par le staff.<br />
+              Les évaluations servent à améliorer l&apos;entraide : elles sont internes, non publiques et non comparables.
+            </p>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les décisions du staff doivent être respectées.
+            </p>
+          </section>
+
+          {/* 9. Publicité & partenariats */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              9️⃣ Publicité & partenariats
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Toute publicité, lien externe ou partenariat doit respecter les salons prévus à cet effet.<br />
+              La promotion sauvage ou non autorisée est interdite.
+            </p>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              TENF n&apos;est pas un serveur de publicité, mais une communauté d&apos;entraide.
+            </p>
+          </section>
+
+          {/* 10. Sanctions */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🔟 Sanctions
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Selon la gravité ou la répétition :
+            </p>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• rappel à l&apos;ordre</li>
+              <li>• avertissement</li>
+              <li>• restriction de salons ou de rôles</li>
+              <li>• exclusion temporaire ou définitive</li>
+            </ul>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Le staff se réserve le droit d&apos;agir pour préserver l&apos;équilibre du serveur.
+            </p>
+          </section>
+
+          {/* Mot de l'équipe */}
+          <section className="rounded-xl p-6 border reglement-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💙 Mot de l&apos;équipe
+            </h3>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              La New Family est un lieu de confiance, d&apos;échange et d&apos;évolution.<br />
+              Si tu es ici pour construire et avancer avec les autres : tu es au bon endroit 🐉
+            </p>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              📌 En restant sur le serveur, tu confirmes avoir lu et accepté ce règlement.
+            </p>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Règlement des salons vocaux */}
+      {activeSubTab === "vocaux" && (
+        <div className="space-y-8">
+          {/* Introduction */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🎧 Règlement des salons vocaux
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Twitch Entraide New Family</strong>
+            </p>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Les salons vocaux sont des espaces de <strong style={{ color: 'var(--color-text)' }}>convivialité, d&apos;échange et de respect</strong>. 
+              Afin de préserver une ambiance saine et sécurisante pour tous, les règles suivantes doivent être respectées.
+            </p>
+          </section>
+
+          {/* 1. Respect & bienveillance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              1️⃣ Respect & bienveillance
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Le respect de chaque personne est obligatoire.</li>
+              <li>• Sont strictement interdits :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• moqueries, attaques personnelles, jugements,</li>
+                  <li>• propos discriminatoires (racisme, sexisme, homophobie, transphobie, validisme, etc.),</li>
+                  <li>• comportements oppressants, harcèlement ou pression morale.</li>
+                </ul>
+              </li>
+              <li>• Les débats sont autorisés <strong style={{ color: 'var(--color-text)' }}>uniquement s&apos;ils restent calmes et respectueux</strong>.</li>
+            </ul>
+          </section>
+
+          {/* 2. Présence en vocal pendant un live */}
+          <section className="rounded-xl p-6 border reglement-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              2️⃣ Présence en vocal pendant un live ou une session de jeu
+            </h3>
+            <ul className="space-y-3 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• ❌ <strong style={{ color: 'var(--color-text)' }}>Il est interdit de rejoindre un vocal général du serveur lorsque vous êtes en live</strong>, sauf accord clair des personnes présentes.</li>
+              <li>• ❌ Il est également <strong style={{ color: 'var(--color-text)' }}>interdit de rejoindre un vocal lorsque vous jouez avec d&apos;autres personnes</strong>, sans les prévenir au préalable.</li>
+              <li>• ⚠️ Les discussions sur le serveur <strong style={{ color: 'var(--color-text)' }}>doivent rester privées</strong> : être en live expose involontairement les échanges.</li>
+              <li>• En cas de doute : <strong style={{ color: 'var(--color-text)' }}>demandez avant d&apos;entrer</strong>.</li>
+            </ul>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              ➡️ Le non-respect de ce point est considéré comme une <strong style={{ color: '#ef4444' }}>atteinte à la confidentialité</strong>.
+            </p>
+          </section>
+
+          {/* 3. Confidentialité & vie privée */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              3️⃣ Confidentialité & vie privée
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Ce qui est dit en vocal <strong style={{ color: 'var(--color-text)' }}>reste dans le vocal</strong>.</li>
+              <li>• Il est strictement interdit :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• d&apos;enregistrer un salon vocal sans l&apos;accord explicite de toutes les personnes présentes,</li>
+                  <li>• de rediffuser, rapporter ou exploiter des propos entendus en vocal (stream, clip, discussion externe).</li>
+                </ul>
+              </li>
+              <li>• Toute violation pourra entraîner des sanctions immédiates.</li>
+            </ul>
+          </section>
+
+          {/* 4. Écoute en vocal */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              4️⃣ Écoute en vocal (micro coupé)
+            </h3>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Il est <strong style={{ color: 'var(--color-text)' }}>autorisé d&apos;être en vocal en restant mute</strong> pour écouter.</li>
+              <li>• Toutefois :
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>• cela doit rester <strong style={{ color: 'var(--color-text)' }}>occasionnel et respectueux</strong>,</li>
+                  <li>• si une personne demande qui est présent, merci de vous signaler.</li>
+                </ul>
+              </li>
+              <li>• Rester silencieux de manière prolongée sans interaction peut amener le staff à demander des explications.</li>
+            </ul>
+          </section>
+
+          {/* 5. Politesse & savoir-vivre */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              5️⃣ Politesse & savoir-vivre
+            </h3>
+            <ul className="space-y-2 ml-6 mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Dire <strong style={{ color: 'var(--color-text)' }}>bonjour</strong> en arrivant en vocal est obligatoire.</li>
+              <li>• Dire <strong style={{ color: 'var(--color-text)' }}>au revoir</strong> avant de quitter est également obligatoire.</li>
+              <li>• Les déconnexions sans prévenir, répétées ou systématiques ne sont <strong style={{ color: 'var(--color-text)' }}>pas tolérées</strong>.</li>
+            </ul>
+            <p className="leading-relaxed font-semibold" style={{ color: 'var(--color-text)' }}>
+              ➡️ C&apos;est une règle de respect élémentaire envers les personnes présentes.
+            </p>
+          </section>
+
+          {/* 6. Temps de parole & ambiance */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              6️⃣ Temps de parole & ambiance
+            </h3>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Merci de ne pas couper la parole et de laisser chacun s&apos;exprimer.</li>
+              <li>• Évitez de monopoliser le vocal.</li>
+              <li>• Les vocaux ne sont <strong style={{ color: 'var(--color-text)' }}>pas des cercles fermés</strong> : l&apos;inclusivité est essentielle.</li>
+              <li>• Toute ambiance lourde, toxique ou excluante pourra être interrompue par le staff.</li>
+            </ul>
+          </section>
+
+          {/* 7. Gestion des conflits */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              7️⃣ Gestion des conflits
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              En cas de malaise ou de désaccord :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• restez calmes,</li>
+              <li>• évitez les règlements de compte en public,</li>
+              <li>• contactez un membre du staff si nécessaire.</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Le staff peut intervenir à tout moment pour préserver le climat du vocal.
+            </p>
+          </section>
+
+          {/* 8. Autorité du staff */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              8️⃣ Autorité du staff
+            </h3>
+            <p className="leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Les décisions du staff en vocal doivent être respectées.<br />
+              Refus d&apos;obtempérer, provocation ou contestation agressive = sanction.
+            </p>
+          </section>
+
+          {/* 9. Sanctions */}
+          <section className="rounded-xl p-6 border reglement-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              9️⃣ Sanctions
+            </h3>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Selon la gravité ou la répétition :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• rappel à l&apos;ordre,</li>
+              <li>• mute vocal temporaire ou définitif,</li>
+              <li>• avertissement officiel,</li>
+              <li>• sanction serveur (jusqu&apos;au bannissement).</li>
+            </ul>
+          </section>
+
+          {/* Objectif des vocaux */}
+          <section className="rounded-xl p-6 border reglement-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💙 Objectif des vocaux New Family
+            </h3>
+            <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              Créer un espace <strong style={{ color: 'var(--color-text)' }}>safe, respectueux et humain</strong>, 
+              où chacun peut parler librement sans crainte d&apos;être exposé, jugé ou mis mal à l&apos;aise.
+            </p>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SystemePointsContent() {
+  const [showRaidFormat, setShowRaidFormat] = useState(false);
+
+  return (
+    <div className="space-y-12">
+      {/* HERO */}
+      <section className="text-center space-y-4">
+        <h1 className="text-5xl font-bold" style={{ color: 'var(--color-text)' }}>⭐ Système de points TENF</h1>
+        <p className="text-xl" style={{ color: 'var(--color-text-secondary)' }}>Un système pensé pour encourager l&apos;entraide, pas la compétition</p>
+        <div className="rounded-xl p-6 border systeme-points-intro" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Le système de points TENF récompense l&apos;engagement réel, la présence humaine et l&apos;entraide sincère sur le serveur Discord. Ici, chaque action compte — pas la performance, mais l&apos;implication.
+          </p>
+        </div>
+        <div className="rounded-xl p-5 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-primary)' }}>
+            Comment progresser dans TENF ?
+          </h3>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5 gap-2 text-sm">
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>💬 Échanger</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>📺 Passer sur les lives</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>⚡ Participer aux raids & events</p>
+            <p className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>🤝 Faire vivre l&apos;entraide</p>
+            <p className="rounded-lg px-3 py-2 font-semibold" style={{ backgroundColor: 'rgba(145, 70, 255, 0.12)', color: 'var(--color-primary)' }}>⭐ Gagner naturellement des points</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Comment gagner des points */}
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎯 Comment gagner des points ?</h2>
+
+        {/* Activité quotidienne */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Activité quotidienne</h3>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
+            {/* Quête quotidienne */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🗓 Quête quotidienne
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Utilise la commande /journalier une fois par jour dans le salon 🗓・bonus-journalier.
+              </p>
+            </div>
+
+            {/* Participation à la vie du serveur */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  💬 Participation à la vie du serveur
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Tous les 3 niveaux
+              </p>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Tes échanges, ton aide aux autres et ta présence régulière sur les salons font progresser naturellement ton impact dans TENF (hors spam ou activité artificielle).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions communautaires */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Actions communautaires</h3>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
+            {/* Organisation de raids */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🤜🤛 Organisation de raids
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                Lancer un raid, c&apos;est mettre un membre en lumière et créer un vrai moment collectif entre créateurs.
+              </p>
+              <button
+                onClick={() => setShowRaidFormat((prev) => !prev)}
+                className="w-fit text-sm font-semibold underline underline-offset-2"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                {showRaidFormat ? "Masquer le format" : "Voir le format"}
+              </button>
+              {showRaidFormat && (
+                <div className="rounded-lg p-4 mt-3 systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📋 Format obligatoire :</p>
+                  <p className="leading-relaxed text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                    Pour que le raid soit comptabilisé, le message doit être posté obligatoirement et uniquement dans #⚡・coordination-raid, sans aucun texte supplémentaire, sous le format exact suivant :
+                  </p>
+                  <div className="bg-[var(--color-surface)] rounded-lg p-4 border" style={{ borderColor: 'var(--color-border)' }}>
+                    <code className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
+                      @membre1 a raid @membre2
+                    </code>
+                  </div>
+                  <p className="leading-relaxed text-xs mt-3 italic" style={{ color: 'var(--color-text-secondary)' }}>
+                    Tout message qui ne respecte pas strictement ce format ne sera pas pris en compte.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Participation aux événements communautaires */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🎉 Participation aux événements communautaires
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  200-500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Jeux communautaires, soirées, événements spéciaux... plus tu participes vraiment, plus tu contribues à l&apos;énergie collective et plus ta progression est reconnue.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Soutien et visibilité */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>Soutien et visibilité</h3>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-6 items-stretch">
+            {/* Parrainage de nouveaux membres */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🆕 Parrainage de nouveaux membres
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  300 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Invite des créateurs qui partagent les valeurs TENF et ont envie de s&apos;impliquer dans une dynamique d&apos;entraide sincère.
+              </p>
+              <p className="leading-relaxed text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Le but n&apos;est pas de faire du nombre, mais d&apos;accueillir des profils qui feront vivre la communauté dans la durée.
+              </p>
+            </div>
+
+            {/* Suivi des réseaux TENF */}
+            <div className="rounded-xl p-6 border systeme-points-card h-full flex flex-col" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                  🔔 Suivi des réseaux TENF
+                </h3>
+                <span className="text-2xl font-bold whitespace-nowrap ml-4" style={{ color: 'var(--color-primary)' }}>
+                  500 pts
+                </span>
+              </div>
+              <p className="leading-relaxed text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Réseaux concernés : X (Twitter), TikTok, Instagram.
+              </p>
+              <div className="rounded-lg p-3 mt-3 systeme-points-reminder" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)' }}>
+                <p className="leading-relaxed text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  📸 <strong style={{ color: 'var(--color-text)' }}>Preuve obligatoire</strong> à poster dans 📂・preuves-suivi.<br />
+                  Chaque validation aide la visibilité de TENF et des membres actifs : 500 points attribués par réseau.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl p-5 border systeme-points-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-primary)' }}>Exemple concret</h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            Un membre qui participe aux discussions, passe sur les lives, organise un raid et aide un nouveau membre progresse naturellement dans TENF et gagne des points grâce à son implication réelle.
+          </p>
+        </div>
+      </section>
+
+      {/* Bonus & avantages */}
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🎁 Bonus & avantages</h2>
+        
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-6">
+          {/* Pack de démarrage */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🎒</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Pack de démarrage
+              </h3>
+              <span className="text-3xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                1000 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              Attribués aux nouveaux streamers pour démarrer avec un vrai coup de pouce communautaire.
+            </p>
+          </div>
+
+          {/* Bonus d'anniversaire */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🎂</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Bonus d&apos;anniversaire
+              </h3>
+              <span className="text-3xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                2000 pts
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              Parce que fêter ça ensemble, ça mérite un boost 🎉
+            </p>
+          </div>
+
+          {/* Multiplicateur de points x2 */}
+          <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="text-center mb-4">
+              <p className="text-5xl mb-3">🔓</p>
+              <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                Multiplicateur x2
+              </h3>
+              <span className="text-lg font-bold block mb-2" style={{ color: 'var(--color-primary)' }}>
+                Niveau 21+
+              </span>
+              <span className="text-2xl font-bold block" style={{ color: 'var(--color-primary)' }}>
+                1000 pts / 3 niveaux
+              </span>
+            </div>
+            <p className="leading-relaxed text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+              1000 points tous les 3 niveaux au lieu de 500. Un bonus qui valorise la régularité, la présence utile et l&apos;implication dans la durée.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Utiliser ses points */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>🏆 Utiliser ses points</h2>
+        <div className="rounded-xl p-6 border systeme-points-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+            Tes points te permettent de débloquer des avantages concrets dans l&apos;écosystème TENF : défis en live, mises en avant, bonus, coaching ou outils utiles selon la boutique et les salons dédiés.
+          </p>
+          <p className="leading-relaxed text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            L&apos;idée reste simple : plus ton implication est utile à la communauté, plus tu ouvres des options fun et pertinentes pour ta progression.
+          </p>
+        </div>
+      </section>
+
+      {/* L'esprit du système TENF */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold text-center" style={{ color: 'var(--color-text)' }}>💙 L&apos;esprit du système TENF</h2>
+        <div className="rounded-xl p-8 border systeme-points-spirit" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+          <p className="leading-relaxed text-xl mb-4 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+            TENF est avant tout : 🤝 de l&apos;entraide, 💬 de l&apos;échange, ❤️ du respect, 🚀 du soutien mutuel entre streamers.
+          </p>
+          <p className="leading-relaxed text-2xl font-bold text-center" style={{ color: 'var(--color-primary)' }}>
+            Les points récompensent l&apos;humain avant la performance.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function ConseilContent() {
+  const [activeSubTab, setActiveSubTab] = useState<"tenf" | "twitch" | "reseaux">("tenf");
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <section className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold" style={{ color: 'var(--color-text)' }}>
+          🧠 Conseils New Family
+        </h1>
+        <p className="text-xl md:text-2xl" style={{ color: 'var(--color-text-secondary)' }}>
+          Grandir, streamer et interagir sainement
+        </p>
+      </section>
+
+      {/* Sous-onglets */}
+      <div className="flex flex-wrap gap-4 justify-center border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveSubTab("tenf")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "tenf" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "tenf" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "tenf" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          💜 Conseils TENF
+        </button>
+        <button
+          onClick={() => setActiveSubTab("twitch")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "twitch" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "twitch" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "twitch" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          🎮 Conseils Twitch
+        </button>
+        <button
+          onClick={() => setActiveSubTab("reseaux")}
+          className="px-6 py-3 text-base font-medium transition-all rounded-lg conseil-subtab"
+          style={{
+            color: activeSubTab === "reseaux" ? 'white' : 'var(--color-text-secondary)',
+            backgroundColor: activeSubTab === "reseaux" ? 'var(--color-primary)' : 'transparent',
+            border: activeSubTab === "reseaux" ? 'none' : `1px solid var(--color-border)`,
+          }}
+        >
+          📱 Comportement sur les réseaux
+        </button>
+      </div>
+
+      {/* Contenu sous-onglet TENF */}
+      {activeSubTab === "tenf" && (
+        <div className="space-y-6">
+          {/* L'esprit entraide TENF */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              💜 L'esprit entraide TENF
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              À la New Family, l'entraide n'est pas un concept abstrait. C'est quelque chose qu'on vit au quotidien :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Participer aux raids, aux événements, aux lives des membres</li>
+              <li>• Répondre aux questions, partager des connaissances</li>
+              <li>• Encourager, soutenir, motiver</li>
+              <li>• Être présent, même silencieusement (le lurk compte)</li>
+              <li>• Créer des connexions durables, pas des interactions ponctuelles</li>
+            </ul>
+            <p className="leading-relaxed text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>L'entraide fonctionne dans les deux sens.</strong> 
+              On donne autant qu'on reçoit, et c'est ça qui fait la richesse de la communauté.
+            </p>
+          </section>
+
+          {/* Donner avant de demander */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              ⭐ Donner avant de demander
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Avant de demander de l'aide ou du soutien, pose-toi la question : <strong style={{ color: 'var(--color-text)' }}>"Qu'est-ce que j'ai donné récemment à la communauté ?"</strong>
+            </p>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Cela ne veut pas dire qu'il faut être parfait ou toujours présent. Cela signifie simplement :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• Participer aux lives des autres quand tu peux</li>
+              <li>• Aider quand tu as les connaissances</li>
+              <li>• Être présent et bienveillant dans les interactions</li>
+              <li>• Soutenir les événements et les projets communautaires</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>L'entraide devient naturelle</strong> quand on commence par donner, sans attendre de retour immédiat.
+            </p>
+          </section>
+
+          {/* Présence sincère */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              💚 Présence sincère (lurk compris)
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ta présence, même silencieuse, compte.</strong> 
+              Le lurk n'est pas une absence, c'est une forme d'engagement :
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">📊</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Stats</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Chaque viewer compte pour les statistiques Twitch</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">💜</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Soutien moral</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Savoir qu'il y a des gens qui regardent, c'est rassurant</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">🤫</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Présence silencieuse</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Tu participes à l'ambiance communautaire</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">✨</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>Naturel</strong>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Sois toi-même, sans te forcer à interagir</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Partage de live sans spam */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              📢 Partage de live sans spam
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Partager ton live dans les canaux appropriés, c'est bien. Mais attention à ne pas tomber dans le spam :
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <span className="text-xl mr-3">✅</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>À faire</strong>
+                  <ul className="mt-1 space-y-1 ml-4" style={{ color: 'var(--color-text-secondary)' }}>
+                    <li>• Utiliser les salons dédiés (ex: #🔴・live-en-cours)</li>
+                    <li>• Partager 1 à 2 fois maximum par live</li>
+                    <li>• Mentionner ce que tu fais de spécial dans ton live</li>
+                    <li>• Répondre aux messages si quelqu'un interagit</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <span className="text-xl mr-3">❌</span>
+                <div>
+                  <strong style={{ color: 'var(--color-text)' }}>À éviter</strong>
+                  <ul className="mt-1 space-y-1 ml-4" style={{ color: 'var(--color-text-secondary)' }}>
+                    <li>• Poster ton lien toutes les 10 minutes</li>
+                    <li>• Spammer dans plusieurs salons en même temps</li>
+                    <li>• Ne jamais répondre aux messages</li>
+                    <li>• Partager uniquement pour partager, sans interaction</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Feedback constructif */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💬 Feedback constructif
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Quand tu donnes un retour à quelqu'un (conseil, critique, suggestion), pense à :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Être bienveillant</strong> : formuler de manière positive et constructive</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Proposer des solutions</strong> : ne pas seulement pointer les problèmes</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Respecter le rythme</strong> : chacun avance à sa vitesse</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Choisir le bon moment</strong> : en privé plutôt qu'en public si c'est sensible</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Un feedback constructif aide à progresser.</strong> 
+              Un feedback destructeur décourage et crée de la distance.
+            </p>
+          </section>
+
+          {/* Régularité > présence parfaite */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              ⏱️ Régularité &gt; présence parfaite
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              On ne te demande pas d'être présent tout le temps, partout, tout de suite. Ce qui compte, c'est :
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>✅ Régularité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Être présent régulièrement, même si c'est quelques fois par semaine, c'est mieux qu'une présence intensive puis une disparition.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💜 Sincérité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Une présence sincère et naturelle vaut mieux qu'une présence forcée juste pour "faire le nombre".
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🌱 Progression</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  On valorise l'évolution dans le temps, pas la perfection immédiate. Chacun progresse à son rythme.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🤝 Qualité</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Mieux vaut quelques interactions de qualité que beaucoup d'interactions superficielles.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Twitch */}
+      {activeSubTab === "twitch" && (
+        <div className="space-y-6">
+          {/* Conseils en live */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              🎮 Conseils en live
+            </h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>👋 Présentation</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Prends quelques secondes pour dire bonjour quand quelqu'un arrive. Un simple "Salut [pseudo] !" fait toute la différence.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>💬 Interaction</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Réponds aux messages, pose des questions, engage la conversation. Même si le chat est calme, montre que tu es là.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>✨ Ambiance</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Crée une atmosphère positive. Sois authentique, montre ta personnalité, et n'aie pas peur d'être toi-même.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Gestion des stats */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              📊 Gestion des stats
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les statistiques Twitch peuvent être un outil utile, mais attention à ne pas en devenir obsédé :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Les stats fluctuent</strong> : c'est normal, ne panique pas</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Focus sur le contenu</strong> : concentre-toi sur ce que tu fais, pas sur les chiffres</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Patience</strong> : la croissance prend du temps, c'est normal</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Qualité &gt; quantité</strong> : mieux vaut 5 viewers engagés que 50 passifs</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ne laisse pas les stats définir ta valeur.</strong> 
+              Tu es bien plus qu'un chiffre sur un écran.
+            </p>
+          </section>
+
+          {/* Hors live */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+              📅 Hors live
+            </h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>🗓️ Planning</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Annonce tes horaires de stream pour que ta communauté puisse te rejoindre. Utilise le système de planning Twitch.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>⏸️ Pauses</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Communique si tu prends une pause. Un message simple suffit : "Pause de [durée] pour [raison]". La transparence est appréciée.
+                </p>
+              </div>
+              <div className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--color-primary)' }}>📢 Annonces</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Partage tes événements, tes projets, tes nouveautés. Garde ta communauté informée de ce qui se passe.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Sécurité & IRL */}
+          <section className="rounded-xl p-6 border conseil-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              🔒 Sécurité & IRL / déplacements
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Ta sécurité avant tout :</strong>
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ne partage jamais ton adresse</strong> en live ou en public</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Attention aux déplacements</strong> : ne révèle pas tes trajets en temps réel</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Limite les informations personnelles</strong> : prénom, ville, lieu de travail… sois prudent</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Rencontres IRL</strong> : toujours en public, toujours avec précaution, jamais seul(e) si possible</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Écoute ton instinct</strong> : si quelque chose te met mal à l'aise, arrête</li>
+            </ul>
+            <p className="leading-relaxed mt-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+              Ta sécurité personnelle est plus importante que n'importe quel contenu ou engagement communautaire.
+            </p>
+          </section>
+
+          {/* Rester humain et cohérent */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💜 Rester humain et cohérent
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Twitch, c'est un média, mais derrière chaque stream, il y a une personne :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Sois authentique</strong> : n'invente pas une personnalité qui n'est pas toi</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Accepte tes imperfections</strong> : les erreurs font partie de l'apprentissage</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Reste cohérent</strong> : avec tes valeurs, ton style, ta personnalité</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Prends soin de toi</strong> : le streaming ne doit pas prendre le pas sur ta santé mentale</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Communique</strong> : si tu passes un moment difficile, tu peux en parler (sans tout révéler)</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Rester humain, c'est rester vrai.</strong> 
+              Et c'est ça qui crée les vraies connexions.
+            </p>
+          </section>
+        </div>
+      )}
+
+      {/* Contenu sous-onglet Réseaux */}
+      {activeSubTab === "reseaux" && (
+        <div className="space-y-6">
+          {/* Risques des réseaux */}
+          <section className="rounded-xl p-6 border conseil-warning" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#ef4444' }}>
+              ⚠️ Risques des réseaux
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les réseaux sociaux sont des outils puissants, mais ils comportent des risques :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Harcèlement et cyberbullying</strong> : malheureusement fréquent</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Exposition excessive</strong> : risque de partager trop d'informations personnelles</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Comparaison malsaine</strong> : se comparer constamment aux autres</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Perte de vie privée</strong> : frontière floue entre public et privé</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Burnout</strong> : pression constante de devoir être actif et présent</li>
+            </ul>
+            <p className="leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+              <strong style={{ color: 'var(--color-text)' }}>Connaître les risques permet de mieux se protéger.</strong>
+            </p>
+          </section>
+
+          {/* Éviter les dramas */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🚫 Éviter les dramas
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Les dramas, c'est rarement constructif. Voici comment les éviter :
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 mt-4">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🤐 Ne pas réagir à chaud</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si quelque chose te met en colère, attends 24h avant de publier. La colère passe, les posts restent.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💬 Résoudre en privé</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si tu as un conflit avec quelqu'un, parle-lui en privé avant de tout étaler sur les réseaux.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🧹 Ne pas alimenter</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Si un drama éclate ailleurs, ne le partage pas, ne le commente pas. Laisse couler.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🛡️ Se protéger</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Bloque, mute, ignore. Tu n'as pas à subir la négativité des autres.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Pièges classiques */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🪤 Pièges classiques
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Attention à ces pièges fréquents sur les réseaux :
+            </p>
+            <ul className="space-y-3 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>Le follow-for-follow</strong> : 
+                gagner des followers en masse ne crée pas une vraie communauté. Mieux vaut moins mais mieux.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>La course aux vues</strong> : 
+                se comparer constamment aux autres crée de la frustration. Focus sur ton propre chemin.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>Le fake engagement</strong> : 
+                acheter des follows, utiliser des bots… ça se voit et ça ne mène à rien de durable.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>L'over-sharing</strong> : 
+                tout partager, tout le temps. Garde une part de vie privée, c'est sain.
+              </li>
+              <li>
+                • <strong style={{ color: 'var(--color-text)' }}>La réactivité excessive</strong> : 
+                répondre à tous les commentaires négatifs, à tous les haters… ça consume ton énergie pour rien.
+              </li>
+            </ul>
+          </section>
+
+          {/* Réputation & image */}
+          <section className="rounded-xl p-6 border conseil-card" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+              🎭 Réputation & image
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ce que tu postes sur les réseaux peut avoir un impact sur ta réputation :
+            </p>
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>📸 Pense avant de poster</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Une fois publié, c'est difficile à retirer complètement. Assure-toi que ce que tu partages te correspond vraiment.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🔍 Cohérence</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Sois cohérent avec tes valeurs et ton image. Si tu changes d'avis sur quelque chose, c'est ok, mais explique-le.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>💼 Impact professionnel</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Souviens-toi que des employeurs, partenaires ou sponsors potentiels peuvent voir ce que tu publies.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>🧹 Nettoyage régulier</h3>
+                <p style={{ color: 'var(--color-text-secondary)' }}>
+                  Fais un tour de tes anciens posts de temps en temps. Supprime ou archive ce qui ne te correspond plus.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Protection mentale */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              🛡️ Protection mentale
+            </h2>
+            <p className="leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Ta santé mentale est primordiale. Voici comment te protéger :
+            </p>
+            <ul className="space-y-2 ml-6" style={{ color: 'var(--color-text-secondary)' }}>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Limite ton temps</strong> : ne passe pas ta vie sur les réseaux</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Désactive les notifications</strong> : pour éviter d'être constamment sollicité(e)</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Fais des pauses</strong> : parfois, décrocher complètement fait du bien</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Filtre les contenus</strong> : ne suis que ce qui t'apporte du positif</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Ignore les haters</strong> : ne leur donne pas ton énergie</li>
+              <li>• <strong style={{ color: 'var(--color-text)' }}>Cherche de l'aide</strong> : si les réseaux impactent ta santé mentale, parle-en à quelqu'un</li>
+            </ul>
+            <p className="leading-relaxed mt-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+              Ta santé mentale passe avant tout engagement en ligne. N'aie pas peur de prendre du recul.
+            </p>
+          </section>
+
+          {/* Règle d'or TENF */}
+          <section className="rounded-xl p-6 border conseil-tip" style={{ backgroundColor: 'rgba(145, 70, 255, 0.1)', borderColor: 'var(--color-primary)' }}>
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
+              💜 Règle d'or TENF
+            </h2>
+            <p className="leading-relaxed text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Sur les réseaux comme dans la vie, la règle d'or de la New Family reste la même :
+            </p>
+            <div className="bg-[var(--color-surface)] rounded-lg p-6 border-2 border-[var(--color-primary)] text-center" style={{ borderColor: 'var(--color-primary)' }}>
+              <p className="text-2xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                "Traitons les autres comme nous voudrions être traités"
+              </p>
+              <p className="text-lg mt-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Bienveillance, respect, entraide. Que tu sois sur Twitch, Discord, Twitter, ou ailleurs, 
+                cette règle simple crée un environnement sain pour tout le monde.
+              </p>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function FonctionnementParcoursComplet() {
+  const [activeTab, setActiveTab] = useState<TabId>("integration");
+  const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+  const currentStep = activeTabIndex + 1;
+  const isLastStep = currentStep === tabs.length;
+  const nextTabId = isLastStep ? tabs[0].id : tabs[currentStep].id;
+  const currentGuide = tabGuidance[activeTab];
+  const currentTabMeta = tabUiMeta[activeTab];
+
+  return (
+    <main id="top-fonctionnement" className={`min-h-screen ${styles.fonctionnementPage}`} style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10 prose-readable-mobile">
+        {/* HERO INTRO */}
+        <section className={`mb-10 rounded-2xl border p-6 md:p-8 about-glow about-fade-up ${styles.fonctionnementHero}`} style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <div className="max-w-4xl space-y-5">
+            <h1 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--color-text)' }}>
+              Comment fonctionne TENF
+            </h1>
+            <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Cette page est le guide du fonctionnement de la communauté TENF: tu y retrouves les repères essentiels pour t&apos;intégrer, participer, progresser et profiter pleinement de l&apos;entraide.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🤝 Entraide
+              </span>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🚀 Progression
+              </span>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.fonctionnementBadge}`} style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}>
+                🎉 Événements
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setActiveTab("integration");
+                  document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                Commencer par l&apos;intégration
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("systeme-points");
+                  document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold border transition-colors"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                Voir le système de points
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Onglets + progression */}
+        <div id="tenf-onglets" className="mb-8 about-fade-up">
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+              Étape {currentStep}/{tabs.length}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Parcours communautaire TENF
+            </p>
+          </div>
+          <div className="mb-5 h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${(currentStep / tabs.length) * 100}%`,
+                backgroundColor: 'var(--color-primary)',
+              }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center border-b pb-2" style={{ borderColor: 'var(--color-border)' }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 md:px-5 py-2.5 text-sm font-medium transition-all rounded-full border ${styles.fonctionnementTabPill} ${
+                  activeTab === tab.id ? styles.active : ""
+                }`}
+                style={{
+                  color: activeTab === tab.id ? 'white' : 'var(--color-text-secondary)',
+                  borderColor: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-border)',
+                  backgroundColor: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
+                  boxShadow: activeTab === tab.id ? '0 8px 24px rgba(145, 70, 255, 0.28)' : 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.color = 'var(--color-text)';
+                    e.currentTarget.style.borderColor = 'rgba(145, 70, 255, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden>{tabUiMeta[tab.id].icon}</span>
+                  <span>{tab.label}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Contenu des onglets */}
+        <div className="mt-8">
+          <section className="mb-6 rounded-xl border p-4 md:p-5 about-fade-up about-glow" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--color-primary)' }}>
+                  {currentTabMeta.icon} Cap actuel
+                </p>
+                <h2 className="text-lg md:text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
+                  {tabs[activeTabIndex]?.label || "Parcours TENF"}
+                </h2>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {currentTabMeta.subtitle}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* TL;DR */}
+          <section className="mb-8 rounded-xl border p-5 md:p-6 about-glow" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+              À retenir
+            </h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-2.5">
+              {currentGuide.tldr.map((item) => (
+                <p key={item} className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {item.startsWith("Évite") || item.startsWith("Pas") ? "❌ " : "✔ "}
+                  {item}
+                </p>
+              ))}
+            </div>
+          </section>
+
+          {/* Accordéons guide */}
+          <section className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
+            {currentGuide.accordions.map((accordion) => {
+              const borderColor = accordion.key === "details" ? "rgba(239,68,68,0.3)" : "var(--color-border)";
+              const bgColor = accordion.key === "bonnes-pratiques"
+                ? "rgba(145, 70, 255, 0.1)"
+                : accordion.key === "details"
+                  ? "rgba(239,68,68,0.08)"
+                  : "var(--color-card)";
+              return (
+                <article
+                  key={accordion.key}
+                  className="rounded-xl border transition-all duration-200 about-glow p-4"
+                  style={{ borderColor, backgroundColor: bgColor }}
+                >
+                  <p className="font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{accordion.title}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                    {accordion.text}
+                  </p>
+                </article>
+              );
+            })}
+          </section>
+
+          <div key={activeTab} className="about-fade-up">
+          {activeTab === "integration" && <IntegrationTabContent />}
+
+          {activeTab === "reglement" && (
+            <ReglementContent />
+          )}
+
+          {activeTab === "systeme-points" && (
+            <SystemePointsContent />
+          )}
+
+          {activeTab === "boutique-points" && (
+            <BoutiquePointsContent />
+          )}
+
+          {activeTab === "spotlight" && (
+            <SpotlightContent />
+          )}
+
+          {activeTab === "conseil" && (
+            <ConseilContent />
+          )}
+          </div>
+
+          {/* CTA contextuel onglet */}
+          <section className="mt-10 rounded-xl border p-6 about-glow about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+              {currentGuide.cta.title}
+            </h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              {currentGuide.cta.description}
+            </p>
+            <button
+              onClick={() => {
+                setActiveTab(currentGuide.cta.targetTab);
+                document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              {currentGuide.cta.buttonLabel}
+            </button>
+          </section>
+
+          {/* Navigation utilitaire */}
+          <section className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setActiveTab(nextTabId);
+                document.getElementById("tenf-onglets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              Continuer
+            </button>
+            <button
+              onClick={() => document.getElementById("top-fonctionnement")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Retour en haut
+            </button>
+            <a
+              href="https://discord.gg/WnpazgcZHk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Ouvrir Discord
+            </a>
+          </section>
+        </div>
+
+        {/* CTA final */}
+          <section className="mt-12 rounded-2xl border p-8 text-center about-glow about-fade-up" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: 'var(--color-text)' }}>
+            Prêt à rejoindre la dynamique TENF ?
+          </h2>
+          <p className="text-sm md:text-base mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+            Rejoins une communauté active qui avance sur l&apos;entraide, la progression et des actions concrètes.
+          </p>
+          <a
+            href="https://discord.gg/WnpazgcZHk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-6 py-3 rounded-lg font-semibold text-white transition-transform hover:-translate-y-0.5"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            Rejoindre Discord
+          </a>
+        </section>
+      </div>
+    </main>
+  );
+}
+

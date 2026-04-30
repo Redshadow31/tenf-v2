@@ -25,7 +25,7 @@ const dropdownGroups: DropdownGroup[] = [
     label: "La communauté",
     items: [
       { href: "/a-propos", label: "À propos de TENF" },
-      { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
+      { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
       { href: "/upa-event", label: "UPA Event" },
       { href: "/organisation-staff", label: "Organisation du staff" },

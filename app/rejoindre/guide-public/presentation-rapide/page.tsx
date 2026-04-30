@@ -71,7 +71,7 @@ const publicCategories = [
     description: "Comprendre la mission, le fonctionnement et la culture de la communauté.",
     links: [
       { href: "/a-propos", label: "A propos de TENF" },
-      { href: "/fonctionnement-tenf", label: "Fonctionnement TENF" },
+      { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
     ],
   },
   {
@@ -173,7 +173,7 @@ export default function GuidePublicPresentationRapidePage() {
             Par ou commencer ?
           </h2>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/fonctionnement-tenf" className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
+            <Link href="/fonctionnement-tenf/decouvrir" className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>
               1) Decouvrir TENF
             </Link>
             <Link href="/auth/login" className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}>

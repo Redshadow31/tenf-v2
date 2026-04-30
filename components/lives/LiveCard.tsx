@@ -17,10 +17,11 @@ type LiveCardProps = {
 
 export default function LiveCard({ live }: LiveCardProps) {
   const integrationTs = live.integrationDate ? new Date(live.integrationDate).getTime() : NaN;
+  const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const isNewMember =
     Number.isFinite(integrationTs) &&
     integrationTs <= Date.now() &&
-    Date.now() - integrationTs <= 7 * 24 * 60 * 60 * 1000;
+    Date.now() - integrationTs <= NEW_MEMBER_WINDOW_MS;
   const isVipMember = live.isVip === true;
   const isDiscoverCta = live.followState === "not_followed";
   const hasMutualSupportBadge =
