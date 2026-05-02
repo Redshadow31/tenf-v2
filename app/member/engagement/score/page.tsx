@@ -118,6 +118,16 @@ type ScoreCachePayload = {
   entries: FollowEntry[];
 };
 
+/** Données JSON dans localStorage (parse laxiste côté runtime). */
+type ScoreCacheRaw = {
+  savedAt?: number;
+  authenticated?: boolean;
+  linked?: boolean;
+  reason?: string | null;
+  entries?: FollowEntry[];
+  statuses?: FollowStatusesResponse["statuses"];
+};
+
 function normalizeStatuses(raw: FollowStatusesResponse["statuses"]): FollowEntry[] {
   const out: FollowEntry[] = [];
   const rawStatuses = raw || {};
@@ -798,18 +808,19 @@ function readScoreCache(): ScoreCachePayload | null {
   try {
     const raw = localStorage.getItem(SCORE_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as ScoreCachePayload & { statuses?: Record<string, FollowState> };
+    const parsed = JSON.parse(raw) as ScoreCacheRaw;
     if (!parsed?.savedAt || Date.now() - parsed.savedAt > CACHE_TTL_MS) return null;
-    if (parsed.entries && Array.isArray(parsed.entries)) return parsed as ScoreCachePayload;
+    const savedAt = parsed.savedAt;
+    const authenticated = Boolean(parsed.authenticated);
+    const linked = Boolean(parsed.linked);
+    const reason = parsed.reason ?? null;
+
+    if (parsed.entries && Array.isArray(parsed.entries)) {
+      return { savedAt, authenticated, linked, reason, entries: parsed.entries };
+    }
     if (parsed.statuses && typeof parsed.statuses === "object") {
-      const entries = normalizeStatuses(parsed.statuses as FollowStatusesResponse["statuses"]);
-      return {
-        savedAt: parsed.savedAt,
-        authenticated: parsed.authenticated,
-        linked: parsed.linked,
-        reason: parsed.reason,
-        entries,
-      };
+      const entries = normalizeStatuses(parsed.statuses);
+      return { savedAt, authenticated, linked, reason, entries };
     }
     return null;
   } catch {
