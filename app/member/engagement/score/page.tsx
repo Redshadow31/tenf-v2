@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -17,6 +17,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { loginWithDiscord } from "@/lib/discord";
 import MemberSurface from "@/components/member/ui/MemberSurface";
@@ -574,7 +575,7 @@ function TabButton({
 }: {
   active: boolean;
   onClick: () => void;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
