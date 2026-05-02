@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { evaluationRepository, spotlightRepository } from '@/lib/repositories';
+import { debugAgentLog } from '@/lib/debugAgentLog';
 
 interface SpotlightEvaluation {
   spotlightId: string;
@@ -24,6 +25,7 @@ interface SpotlightEvaluation {
  * Query params: month (optionnel, format YYYY-MM, défaut: mois en cours)
  */
 export async function GET(request: NextRequest) {
+  const tSpotStart = Date.now();
   try {
     const admin = await requireAdmin();
     if (!admin) {
@@ -67,6 +69,14 @@ export async function GET(request: NextRequest) {
     const spotlights = Array.from(spotlightsMap.values());
 
     if (spotlights.length === 0) {
+      // #region agent log
+      debugAgentLog({
+        location: 'spotlight/evaluations/monthly/route.ts:empty',
+        message: 'spotlight monthly GET no spotlights',
+        data: { monthKey, totalMs: Date.now() - tSpotStart, spotlightCount: 0 },
+        hypothesisId: 'H-spot-N1',
+      });
+      // #endregion
       return NextResponse.json({
         month: monthKey,
         totalSpotlights: 0,
@@ -76,7 +86,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const spotlightsWithEvaluation: Array<{
+    type SpotlightRow = {
       id: string;
       date: string;
       streamerTwitchLogin: string;
@@ -86,66 +96,82 @@ export async function GET(request: NextRequest) {
       endsAt?: string;
       duration?: string;
       evaluation: SpotlightEvaluation | null;
-      status: 'evaluated' | 'not_evaluated';
+      status: "evaluated" | "not_evaluated";
       members?: Array<{
         twitchLogin: string;
         present: boolean;
         note?: number;
         comment?: string;
       }>;
-    }> = [];
+    };
 
-    for (const spotlight of spotlights) {
-      let evaluation: SpotlightEvaluation | null = null;
-      
-      // Récupérer l'évaluation depuis Supabase
-      try {
-        const evalData = await spotlightRepository.getEvaluation(spotlight.id);
-        
-        if (evalData) {
-          evaluation = {
-            spotlightId: spotlight.id,
-            streamerTwitchLogin: evalData.streamerTwitchLogin,
-            criteria: evalData.criteria,
-            totalScore: evalData.totalScore,
-            maxScore: evalData.maxScore,
-            moderatorComments: evalData.moderatorComments || '',
-            evaluatedAt: evalData.evaluatedAt.toISOString(),
-            evaluatedBy: evalData.evaluatedBy,
-          };
+    const spotlightsWithEvaluation: SpotlightRow[] = await Promise.all(
+      spotlights.map(async (spotlight): Promise<SpotlightRow> => {
+        let evaluation: SpotlightEvaluation | null = null;
+
+        try {
+          const evalData = await spotlightRepository.getEvaluation(spotlight.id);
+
+          if (evalData) {
+            evaluation = {
+              spotlightId: spotlight.id,
+              streamerTwitchLogin: evalData.streamerTwitchLogin,
+              criteria: evalData.criteria,
+              totalScore: evalData.totalScore,
+              maxScore: evalData.maxScore,
+              moderatorComments: evalData.moderatorComments || "",
+              evaluatedAt: evalData.evaluatedAt.toISOString(),
+              evaluatedBy: evalData.evaluatedBy,
+            };
+          }
+        } catch (error) {
+          console.error(
+            `[Spotlight Evaluations] Erreur récupération évaluation ${spotlight.id}:`,
+            error
+          );
         }
-      } catch (error) {
-        console.error(`[Spotlight Evaluations] Erreur récupération évaluation ${spotlight.id}:`, error);
-      }
 
-      // Calculer la durée si on a les dates depuis le spotlight
-      let duration: string | undefined;
-      try {
-        const spotlightData = await spotlightRepository.findById(spotlight.id);
-        if (spotlightData && spotlightData.startedAt && spotlightData.endsAt) {
-          const start = spotlightData.startedAt;
-          const end = spotlightData.endsAt;
-          const diffMs = end.getTime() - start.getTime();
-          const hours = Math.floor(diffMs / (1000 * 60 * 60));
-          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-          duration = `${hours}h ${minutes}m`;
+        let duration: string | undefined;
+        try {
+          const spotlightData = await spotlightRepository.findById(spotlight.id);
+          if (spotlightData && spotlightData.startedAt && spotlightData.endsAt) {
+            const start = spotlightData.startedAt;
+            const end = spotlightData.endsAt;
+            const diffMs = end.getTime() - start.getTime();
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            duration = `${hours}h ${minutes}m`;
+          }
+        } catch {
+          // Ignorer
         }
-      } catch (error) {
-        // Ignorer
-      }
 
-      spotlightsWithEvaluation.push({
-        id: spotlight.id,
-        date: spotlight.date,
-        streamerTwitchLogin: spotlight.streamerTwitchLogin,
-        moderatorUsername: spotlight.moderatorUsername,
-        moderatorDiscordId: spotlight.moderatorDiscordId,
-        evaluation,
-        status: evaluation ? 'evaluated' : 'not_evaluated',
-        duration,
-        members: spotlight.members || [], // Inclure les évaluations individuelles des membres
-      });
-    }
+        return {
+          id: spotlight.id,
+          date: spotlight.date,
+          streamerTwitchLogin: spotlight.streamerTwitchLogin,
+          moderatorUsername: spotlight.moderatorUsername,
+          moderatorDiscordId: spotlight.moderatorDiscordId,
+          evaluation,
+          status: evaluation ? "evaluated" : "not_evaluated",
+          duration,
+          members: spotlight.members || [],
+        };
+      })
+    );
+
+    // #region agent log
+    debugAgentLog({
+      location: 'spotlight/evaluations/monthly/route.ts:done',
+      message: 'spotlight monthly GET complete',
+      data: {
+        monthKey,
+        spotlightCount: spotlights.length,
+        totalMs: Date.now() - tSpotStart,
+      },
+      hypothesisId: 'H-spot-N1',
+    });
+    // #endregion
 
     // Calculer les statistiques
     const evaluatedSpotlights = spotlightsWithEvaluation.filter(s => s.status === 'evaluated');

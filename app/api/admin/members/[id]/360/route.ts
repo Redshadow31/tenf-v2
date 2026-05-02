@@ -19,6 +19,7 @@ import {
 import { getMonthKey } from "@/lib/raidStorage";
 import { eventRepository, memberRepository } from "@/lib/repositories";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
+import { debugAgentLog } from "@/lib/debugAgentLog";
 
 const SUPABASE_PAGE_SIZE = 1000;
 const SUPABASE_MAX_PAGES = 20;
@@ -109,6 +110,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const t360Start = Date.now();
   try {
     // Authentification NextAuth + permission read
     const admin = await requirePermission("read");
@@ -126,9 +128,32 @@ export async function GET(
     const months = parseMonthsParam(request);
     const monthKeys = buildMonthKeys(months);
 
+    // #region agent log
+    debugAgentLog({
+      location: "360/route.ts:params",
+      message: "360 GET params",
+      data: { section, months, monthKeysLen: monthKeys.length },
+      hypothesisId: "H360-entry",
+    });
+    // #endregion
+
     // Charger les données de base
+    const t360Supabase = Date.now();
     await loadMemberDataFromStorage();
     const supabaseMembers = await fetchAllSupabaseMembers();
+
+    // #region agent log
+    debugAgentLog({
+      location: "360/route.ts:supabase",
+      message: "360 after fetchAllSupabaseMembers",
+      data: {
+        section,
+        supabaseMs: Date.now() - t360Supabase,
+        supabaseMemberCount: supabaseMembers.length,
+      },
+      hypothesisId: "H360-supabase",
+    });
+    // #endregion
 
     // Trouver le membre
     // 1) Source canonique Supabase (plus fiable pour l'état courant)
@@ -206,6 +231,14 @@ export async function GET(
     };
 
     if (section === "summary") {
+      // #region agent log
+      debugAgentLog({
+        location: "360/route.ts:summary-return",
+        message: "360 summary response",
+        data: { section: "summary", totalMs: Date.now() - t360Start },
+        hypothesisId: "H360-total",
+      });
+      // #endregion
       return NextResponse.json(result);
     }
 
@@ -238,22 +271,22 @@ export async function GET(
     }
 
     if (section === "integration") {
-      // C) Intégration
+      // C) Intégration (chargements registrations en parallèle + correspondance sur profil canonique)
       try {
         const allIntegrations = await loadIntegrations();
-        const memberIntegrations = [];
-
-        for (const integration of allIntegrations) {
-          const registrations = await loadRegistrations(integration.id);
-          const registration = registrations.find(
-            (reg: any) =>
-              reg.twitchLogin?.toLowerCase() === member.twitchLogin?.toLowerCase() ||
-              reg.discordId === member.discordId ||
-              reg.displayName?.toLowerCase() === member.displayName?.toLowerCase()
-          );
-
-          if (registration) {
-            memberIntegrations.push({
+        const resolved = await Promise.all(
+          allIntegrations.map(async (integration) => {
+            const registrations = await loadRegistrations(integration.id);
+            const registration = registrations.find(
+              (reg: any) =>
+                reg.twitchLogin?.toLowerCase() ===
+                  memberCanonical.twitchLogin?.toLowerCase() ||
+                reg.discordId === memberCanonical.discordId ||
+                reg.displayName?.toLowerCase() ===
+                  memberCanonical.displayName?.toLowerCase()
+            );
+            if (!registration) return null;
+            return {
               integration: {
                 id: integration.id,
                 title: integration.title,
@@ -266,12 +299,28 @@ export async function GET(
                 notes: registration.notes,
                 parrain: registration.parrain,
               },
-            });
-          }
-        }
+            };
+          })
+        );
+        const memberIntegrations = resolved.filter(Boolean) as Array<{
+          integration: {
+            id: string;
+            title: string;
+            date: string;
+            category: string;
+          };
+          registration: {
+            present: boolean;
+            registeredAt: string;
+            notes?: string;
+            parrain?: string;
+          };
+        }>;
 
         result.integration = memberIntegrations.sort(
-          (a, b) => new Date(b.integration.date).getTime() - new Date(a.integration.date).getTime()
+          (a, b) =>
+            new Date(b.integration.date).getTime() -
+            new Date(a.integration.date).getTime()
         );
       } catch (err) {
         console.error("Error loading integration:", err);
@@ -280,85 +329,115 @@ export async function GET(
     }
 
     if (section === "engagement") {
-      // D) Engagement (Follow/Raids/Présences)
+      // D) Engagement (Follow/Raids — mois en parallèle)
       try {
-        // Follow validations (N derniers mois)
-        const followData = [];
-        for (const monthKey of monthKeys) {
-          try {
-            const validations = await getAllFollowValidationsForMonth(monthKey);
-            const memberFollows = validations.filter((validation: any) => {
-              return validation.members?.some((m: any) =>
-                memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
-              );
-            }).map((validation: any) => ({
-              month: monthKey,
-              staffSlug: validation.staffSlug,
-              staffName: validation.staffName,
-              status: validation.members?.find((m: any) =>
-                memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
-              ),
-            }));
-            
-            followData.push(...memberFollows);
-          } catch (err) {
-            // Ignorer les erreurs pour les mois sans données
-          }
-        }
+        const followChunks = await Promise.all(
+          monthKeys.map(async (monthKey) => {
+            try {
+              const validations = await getAllFollowValidationsForMonth(monthKey);
+              return validations
+                .filter((validation: any) =>
+                  validation.members?.some((m: any) =>
+                    memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
+                  )
+                )
+                .map((validation: any) => ({
+                  month: monthKey,
+                  staffSlug: validation.staffSlug,
+                  staffName: validation.staffName,
+                  status: validation.members?.find((m: any) =>
+                    memberIds.logins.has(String(m.twitchLogin || "").toLowerCase())
+                  ),
+                }));
+            } catch {
+              return [];
+            }
+          })
+        );
+        const followData = followChunks.flat();
 
-        // Raids (N derniers mois)
+        const raidsChunks = await Promise.all(
+          monthKeys.map(async (monthKey) => {
+            try {
+              const [raidsFaits, raidsRecus] = await Promise.all([
+                loadRaidsFaits(monthKey),
+                loadRaidsRecus(monthKey),
+              ]);
+
+              const memberRaidsFaits = raidsFaits.filter(
+                (raid: any) =>
+                  memberIds.logins.has(String(raid.raider || "").toLowerCase()) ||
+                  memberIds.discordIds.has(String(raid.raider || "").toLowerCase()) ||
+                  memberIds.displayNames.has(String(raid.raider || "").toLowerCase()) ||
+                  memberIds.siteUsernames.has(String(raid.raider || "").toLowerCase())
+              );
+
+              const memberRaidsRecus = raidsRecus.filter(
+                (raid: any) =>
+                  memberIds.logins.has(String(raid.target || "").toLowerCase()) ||
+                  memberIds.discordIds.has(String(raid.target || "").toLowerCase()) ||
+                  memberIds.displayNames.has(String(raid.target || "").toLowerCase()) ||
+                  memberIds.siteUsernames.has(String(raid.target || "").toLowerCase())
+              );
+
+              const monthSent = memberRaidsFaits.reduce(
+                (sum: number, r: any) => sum + (r.count || 1),
+                0
+              );
+              const monthReceived = memberRaidsRecus.length;
+
+              const details: any[] = [
+                ...memberRaidsFaits.map((r: any) => ({
+                  type: "sent" as const,
+                  date: r.date,
+                  count: r.count || 1,
+                  target: r.target,
+                  month: monthKey,
+                  source: r.source,
+                  manual: !!r.manual,
+                })),
+                ...memberRaidsRecus.map((r: any) => ({
+                  type: "received" as const,
+                  date: r.date,
+                  raider: r.raider,
+                  month: monthKey,
+                  source: r.source,
+                  manual: !!r.manual,
+                })),
+              ];
+
+              return {
+                monthKey,
+                monthSent,
+                monthReceived,
+                details,
+              };
+            } catch {
+              return {
+                monthKey,
+                monthSent: 0,
+                monthReceived: 0,
+                details: [] as any[],
+              };
+            }
+          })
+        );
+
         const raidsData = {
           sent: 0,
           received: 0,
           details: [] as any[],
           byMonth: [] as Array<{ month: string; sent: number; received: number }>,
         };
-        for (const monthKey of monthKeys) {
-          try {
-            const raidsFaits = await loadRaidsFaits(monthKey);
-            const raidsRecus = await loadRaidsRecus(monthKey);
-            
-            const memberRaidsFaits = raidsFaits.filter((raid: any) =>
-              memberIds.logins.has(String(raid.raider || "").toLowerCase()) ||
-              memberIds.discordIds.has(String(raid.raider || "").toLowerCase()) ||
-              memberIds.displayNames.has(String(raid.raider || "").toLowerCase()) ||
-              memberIds.siteUsernames.has(String(raid.raider || "").toLowerCase())
-            );
-            
-            const memberRaidsRecus = raidsRecus.filter((raid: any) =>
-              memberIds.logins.has(String(raid.target || "").toLowerCase()) ||
-              memberIds.discordIds.has(String(raid.target || "").toLowerCase()) ||
-              memberIds.displayNames.has(String(raid.target || "").toLowerCase()) ||
-              memberIds.siteUsernames.has(String(raid.target || "").toLowerCase())
-            );
-
-            const monthSent = memberRaidsFaits.reduce((sum: number, r: any) => sum + (r.count || 1), 0);
-            const monthReceived = memberRaidsRecus.length;
-
-            raidsData.sent += monthSent;
-            raidsData.received += monthReceived;
-            raidsData.byMonth.push({ month: monthKey, sent: monthSent, received: monthReceived });
-
-            raidsData.details.push(...memberRaidsFaits.map((r: any) => ({
-              type: "sent",
-              date: r.date,
-              count: r.count || 1,
-              target: r.target,
-              month: monthKey,
-              source: r.source,
-              manual: !!r.manual,
-            })));
-            raidsData.details.push(...memberRaidsRecus.map((r: any) => ({
-              type: "received",
-              date: r.date,
-              raider: r.raider,
-              month: monthKey,
-              source: r.source,
-              manual: !!r.manual,
-            })));
-          } catch (err) {
-            // Ignorer les erreurs
-          }
+        for (const chunk of raidsChunks) {
+          raidsData.sent += chunk.monthSent;
+          raidsData.received += chunk.monthReceived;
+          raidsData.byMonth.push({
+            month: chunk.monthKey,
+            sent: chunk.monthSent,
+            received: chunk.monthReceived,
+          });
+          raidsData.details.push(...chunk.details);
         }
 
         result.engagement = {
@@ -366,58 +445,68 @@ export async function GET(
           monthKeys,
           follows: followData,
           raids: raidsData,
-          presences: [], // TODO: Si vous avez un système de présences aux événements/spotlights
+          presences: [],
         };
       } catch (err) {
         console.error("Error loading engagement:", err);
-        result.engagement = { follows: [], raids: { sent: 0, received: 0, details: [] }, presences: [] };
+        result.engagement = {
+          follows: [],
+          raids: { sent: 0, received: 0, details: [] },
+          presences: [],
+        };
       }
     }
 
     if (section === "evaluations") {
-      // E) Évaluations mensuelles (N derniers mois)
+      // E) Évaluations mensuelles (mois en parallèle ; détails A/C/D en parallèle par mois)
       try {
-        const evaluations = [];
-
-        for (const monthKey of monthKeys) {
-          try {
-            const finalResult = await loadFinalResult(monthKey);
-            if (finalResult) {
-              const memberScore = finalResult.scores?.find(
-                (s: any) => memberIds.logins.has(String(s.twitchLogin || "").toLowerCase())
+        const evaluationChunks = await Promise.all(
+          monthKeys.map(async (monthKey) => {
+            try {
+              const finalResult = await loadFinalResult(monthKey);
+              if (!finalResult) return null;
+              const memberScore = finalResult.scores?.find((s: any) =>
+                memberIds.logins.has(String(s.twitchLogin || "").toLowerCase())
               );
+              if (!memberScore) return null;
 
-              if (memberScore) {
-                // Charger les détails par section
-                const sectionA = await loadSectionAData(monthKey).catch(() => null);
-                const sectionC = await loadSectionCData(monthKey).catch(() => null);
-                const sectionD = await loadSectionDData(monthKey).catch(() => null);
+              const [sectionA, sectionC, sectionD] = await Promise.all([
+                loadSectionAData(monthKey).catch(() => null),
+                loadSectionCData(monthKey).catch(() => null),
+                loadSectionDData(monthKey).catch(() => null),
+              ]);
 
-                evaluations.push({
-                  month: monthKey,
-                  score: memberScore,
-                  details: {
-                    sectionA: sectionA?.spotlights?.filter((s: any) =>
-                      memberIds.logins.has(String(s.streamerTwitchLogin || "").toLowerCase())
+              return {
+                month: monthKey,
+                score: memberScore,
+                details: {
+                  sectionA:
+                    sectionA?.spotlights?.filter((s: any) =>
+                      memberIds.logins.has(
+                        String(s.streamerTwitchLogin || "").toLowerCase()
+                      )
                     ) || [],
-                    sectionC: sectionC?.validations?.filter((v: any) =>
-                      Object.keys(v.follows || {}).some(login =>
+                  sectionC:
+                    sectionC?.validations?.filter((v: any) =>
+                      Object.keys(v.follows || {}).some((login) =>
                         memberIds.logins.has(String(login || "").toLowerCase())
                       )
                     ) || [],
-                    sectionDBonuses: sectionD?.bonuses?.filter((b: any) =>
+                  sectionDBonuses:
+                    sectionD?.bonuses?.filter((b: any) =>
                       memberIds.logins.has(String(b.twitchLogin || "").toLowerCase())
                     ) || [],
-                  },
-                });
-              }
+                },
+              };
+            } catch {
+              return null;
             }
-          } catch (err) {
-            // Mois sans évaluation
-          }
-        }
+          })
+        );
 
-        result.evaluations = evaluations.reverse(); // Du plus ancien au plus récent
+        result.evaluations = evaluationChunks
+          .filter((e): e is NonNullable<(typeof evaluationChunks)[number]> => e != null)
+          .reverse();
         result.evaluationsMeta = { months, monthKeys };
       } catch (err) {
         console.error("Error loading evaluations:", err);
@@ -446,14 +535,14 @@ export async function GET(
           ]);
 
           const memberPresences = (presences || []).filter((p: any) =>
-            memberMatches(member, p.twitchLogin) ||
-            memberMatches(member, p.discordId) ||
-            memberMatches(member, p.displayName)
+            memberMatches(memberCanonical, p.twitchLogin) ||
+            memberMatches(memberCanonical, p.discordId) ||
+            memberMatches(memberCanonical, p.displayName)
           );
           const memberRegistrations = (registrations || []).filter((r: any) =>
-            memberMatches(member, r.twitchLogin) ||
-            memberMatches(member, r.discordId) ||
-            memberMatches(member, r.displayName)
+            memberMatches(memberCanonical, r.twitchLogin) ||
+            memberMatches(memberCanonical, r.discordId) ||
+            memberMatches(memberCanonical, r.displayName)
           );
 
           // La présence prime sur l'inscription:
@@ -549,7 +638,7 @@ export async function GET(
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
           result.internalNotes = {
-            current: (member as any).notesInternes || "",
+            current: (memberCanonical as any).notesInternes || "",
             history: noteHistory,
           };
         }
@@ -573,7 +662,10 @@ export async function GET(
       } catch (err) {
         console.error("Error loading notes/sanctions:", err);
         if (section === "notes") {
-          result.internalNotes = { current: (member as any).notesInternes || "", history: [] };
+          result.internalNotes = {
+            current: (memberCanonical as any).notesInternes || "",
+            history: [],
+          };
         }
         if (section === "sanctions") {
           result.sanctions = [];
@@ -581,6 +673,14 @@ export async function GET(
       }
     }
 
+    // #region agent log
+    debugAgentLog({
+      location: "360/route.ts:complete",
+      message: "360 GET complete",
+      data: { section, totalMs: Date.now() - t360Start },
+      hypothesisId: "H360-total",
+    });
+    // #endregion
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching member 360 data:", error);

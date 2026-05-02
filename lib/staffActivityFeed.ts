@@ -53,6 +53,8 @@ export function staffActivityHeadline(log: AuditLog): string {
       return "Accès administrateur avancé ajouté";
     case "admin.advanced_access.remove":
       return "Accès administrateur avancé retiré";
+    case "admin.advanced_access.renew":
+      return "Accès administrateur avancé renouvelé";
     case "event.create":
       return rid ? `Événement créé · ${truncate(rid, 36)}` : "Événement créé";
     case "event.update":

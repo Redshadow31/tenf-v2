@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Plus, Trash2, AlertCircle, CheckCircle2, ChevronRight } from "lucide-react";
+import { Users, Plus, Trash2, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 interface AdvancedAccessEntry {
@@ -39,6 +39,10 @@ export default function AdminAvancePage() {
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
   const [searchingDiscord, setSearchingDiscord] = useState(false);
+  const [renewTarget, setRenewTarget] = useState<AdvancedAccessEntry | null>(null);
+  const [renewExpiresAt, setRenewExpiresAt] = useState("");
+  const [renewJustification, setRenewJustification] = useState("");
+  const [renewSubmitting, setRenewSubmitting] = useState(false);
 
   useEffect(() => {
     async function checkAccess() {
@@ -155,6 +159,55 @@ export default function AdminAvancePage() {
     }
   }
 
+  function openRenew(entry: AdvancedAccessEntry) {
+    setRenewTarget(entry);
+    setRenewExpiresAt(getDefaultExpiryDateTimeLocal(30));
+    setRenewJustification("");
+    setError(null);
+  }
+
+  function closeRenew() {
+    setRenewTarget(null);
+    setRenewSubmitting(false);
+  }
+
+  async function handleRenewSubmit() {
+    if (!renewTarget) return;
+    const j = renewJustification.trim();
+    if (!j) {
+      setError("La justification du renouvellement est obligatoire");
+      return;
+    }
+    if (!renewExpiresAt) {
+      setError("La date d'expiration est obligatoire");
+      return;
+    }
+    try {
+      setRenewSubmitting(true);
+      setError(null);
+      const res = await fetch("/api/admin/advanced-access", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discordId: renewTarget.discordId,
+          justification: j,
+          expiresAt: new Date(renewExpiresAt).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur renouvellement");
+      await loadList();
+      closeRenew();
+      setSuccess("Accès renouvelé");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur renouvellement");
+      setSuccess(null);
+    } finally {
+      setRenewSubmitting(false);
+    }
+  }
+
   async function handleRemove(discordId: string) {
     const reason = prompt("Motif du retrait (obligatoire) :");
     if (!reason || !reason.trim()) {
@@ -216,6 +269,86 @@ export default function AdminAvancePage() {
             <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-500" />
             <p className="text-sm" style={{ color: "var(--color-text)" }}>{success}</p>
             <button className="ml-auto text-green-600 hover:text-green-700" onClick={() => setSuccess(null)}>×</button>
+          </div>
+        )}
+
+        {renewTarget && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="renew-modal-title"
+            onClick={(e) => e.target === e.currentTarget && !renewSubmitting && closeRenew()}
+          >
+            <div
+              className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-6 shadow-xl"
+              style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="renew-modal-title" className="mb-1 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+                Renouveler l’accès admin avancé
+              </h3>
+              <p className="mb-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                {renewTarget.username || "Membre"} · <span className="font-mono text-xs">{renewTarget.discordId}</span>
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                    Nouvelle date d’expiration
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={renewExpiresAt}
+                    onChange={(e) => setRenewExpiresAt(e.target.value)}
+                    className="w-full rounded-lg border px-4 py-2"
+                    style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  />
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                    Maximum 90 jours à partir d’aujourd’hui (même règle qu’un nouvel ajout).
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                    Justification du renouvellement
+                  </label>
+                  <textarea
+                    value={renewJustification}
+                    onChange={(e) => setRenewJustification(e.target.value)}
+                    placeholder="Pourquoi prolonger cet accès ?"
+                    className="w-full rounded-lg border px-4 py-2"
+                    style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                    rows={3}
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeRenew}
+                  disabled={renewSubmitting}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenewSubmit}
+                  disabled={renewSubmitting}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  {renewSubmitting ? (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" aria-hidden />
+                  )}
+                  Confirmer le renouvellement
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -412,13 +545,25 @@ export default function AdminAvancePage() {
                         {entry.addedByUsername || entry.addedBy || "—"}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleRemove(entry.discordId)}
-                          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 transition-colors hover:bg-red-500/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Retirer
-                        </button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openRenew(entry)}
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Renouveler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(entry.discordId)}
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 transition-colors hover:bg-red-500/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Retirer
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

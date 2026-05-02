@@ -324,6 +324,109 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * PATCH - Renouvelle la date d'expiration (et la justification) d'une entrée existante (fondateur uniquement)
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const admin = await requireRole("FONDATEUR");
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Réservé aux fondateurs" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const discordId =
+      typeof body?.discordId === "string" ? body.discordId.trim() : "";
+    const justification = sanitizeReason(body?.justification);
+    const expiresAtRaw = typeof body?.expiresAt === "string" ? body.expiresAt : "";
+    const expiresAtDate = parseDateValue(expiresAtRaw);
+
+    if (!discordId) {
+      return NextResponse.json(
+        { error: "discordId est requis" },
+        { status: 400 }
+      );
+    }
+
+    if (!justification) {
+      return NextResponse.json(
+        { error: "La justification du renouvellement est obligatoire" },
+        { status: 400 }
+      );
+    }
+
+    if (!expiresAtDate) {
+      return NextResponse.json(
+        { error: "Une date d'expiration valide est obligatoire" },
+        { status: 400 }
+      );
+    }
+
+    const now = Date.now();
+    const expiresAtMs = expiresAtDate.getTime();
+    if (expiresAtMs <= now) {
+      return NextResponse.json(
+        { error: "La date d'expiration doit etre dans le futur" },
+        { status: 400 }
+      );
+    }
+
+    const maxDurationMs = MAX_ACCESS_DURATION_DAYS * 24 * 60 * 60 * 1000;
+    if (expiresAtMs - now > maxDurationMs) {
+      return NextResponse.json(
+        { error: `L'acces avance ne peut pas depasser ${MAX_ACCESS_DURATION_DAYS} jours` },
+        { status: 400 }
+      );
+    }
+
+    if (isFounder(discordId)) {
+      return NextResponse.json(
+        { error: "Les fondateurs ont toujours accès, renouvellement inutile" },
+        { status: 400 }
+      );
+    }
+
+    let list = await loadAdvancedAccessList();
+    const index = list.findIndex((e) => e.discordId === discordId);
+    if (index === -1) {
+      return NextResponse.json(
+        { error: "Personne non trouvée dans la liste" },
+        { status: 404 }
+      );
+    }
+
+    const previousEntry = list[index];
+    const renewedEntry: AdvancedAccessEntry = {
+      ...previousEntry,
+      expiresAt: expiresAtDate.toISOString(),
+      justification,
+    };
+    list[index] = renewedEntry;
+
+    await saveAdvancedAccessList(list);
+    const { previousValue, newValue } = prepareAuditValues(previousEntry, renewedEntry);
+    await logAction({
+      action: "admin.advanced_access.renew",
+      resourceType: "admin_advanced_access",
+      resourceId: discordId,
+      previousValue,
+      newValue,
+      metadata: {
+        sourcePage: "/admin/gestion-acces/admin-avance",
+        reason: justification,
+      },
+    });
+
+    return NextResponse.json({ success: true, message: "Accès renouvelé" });
+  } catch (error) {
+    console.error("[Advanced Access] PATCH error:", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/**
  * DELETE - Retire une personne de la liste (fondateur uniquement)
  */
 export async function DELETE(request: NextRequest) {
