@@ -57,7 +57,7 @@ const DEFAULT_SECTIONS = {
   goodiesProductIds: [] as string[],
   communityProductIds: [] as string[],
 };
-const DONATION_URL = "https://lydia-app.com/pots?id=10561-don-twitch-entraide";
+const DONATION_URL = "https://pots.lydia.me/collect/pots?id=16729-tenf";
 
 const COLLECTIONS = [
   {
