@@ -6,6 +6,8 @@ const PROFILE_VALIDATION_DEDUPE_KEY = "admin.profile-validation.pending";
 export const AUDIENCE_ADMIN_ACCESS = "admin_access";
 /** Annonces visibles par tous les membres connectés du site */
 export const AUDIENCE_COMMUNITY_BROADCAST = "community_broadcast";
+/** Rappels et messages visibles uniquement par un membre (cible Discord) */
+export const AUDIENCE_MEMBER_DIRECT = "member_direct";
 
 export interface MemberNotificationItem {
   id: string;
@@ -132,24 +134,51 @@ export async function listMemberNotifications(
 }> {
   const audiences = notificationAudiencesForUser(opts.includeAdminAudience);
 
-  const { data: notificationRows, error } = await supabaseAdmin
-    .from("member_notifications")
-    .select("id,type,title,message,link,metadata,audience,created_at,updated_at")
-    .eq("is_active", true)
-    .in("audience", audiences)
-    .order("updated_at", { ascending: false })
-    .limit(120);
+  const selectCols = "id,type,title,message,link,metadata,audience,created_at,updated_at";
 
-  if (error) {
-    throw error;
+  const [{ data: broadcastRows, error: broadcastError }, { data: personalRows, error: personalError }] =
+    await Promise.all([
+      supabaseAdmin
+        .from("member_notifications")
+        .select(selectCols)
+        .eq("is_active", true)
+        .in("audience", audiences)
+        .is("target_discord_id", null)
+        .order("updated_at", { ascending: false })
+        .limit(120),
+      supabaseAdmin
+        .from("member_notifications")
+        .select(selectCols)
+        .eq("is_active", true)
+        .eq("audience", AUDIENCE_MEMBER_DIRECT)
+        .eq("target_discord_id", discordId)
+        .order("updated_at", { ascending: false })
+        .limit(120),
+    ]);
+
+  if (broadcastError) {
+    throw broadcastError;
+  }
+  if (personalError) {
+    throw personalError;
   }
 
-  const notifications = (notificationRows || []) as NotificationRow[];
+  const byId = new Map<string, NotificationRow>();
+  for (const row of [...((broadcastRows || []) as NotificationRow[]), ...((personalRows || []) as NotificationRow[])]) {
+    byId.set(row.id, row);
+  }
+
+  const notifications = [...byId.values()].sort(
+    (a, b) => dateValue(b.updated_at || b.created_at) - dateValue(a.updated_at || a.created_at),
+  );
+
   if (notifications.length === 0) {
     return { notifications: [], unreadCount: 0 };
   }
 
-  const ids = notifications.map((item) => item.id);
+  const trimmed = notifications.slice(0, 120);
+
+  const ids = trimmed.map((item) => item.id);
   const { data: readRows, error: readError } = await supabaseAdmin
     .from("member_notification_reads")
     .select("notification_id,read_at")
@@ -166,7 +195,7 @@ export async function listMemberNotifications(
   });
 
   let unreadCount = 0;
-  const formatted: MemberNotificationItem[] = notifications.map((notification) => {
+  const formatted: MemberNotificationItem[] = trimmed.map((notification) => {
     const readAt = readMap.get(notification.id) || null;
     const changedAt = notification.updated_at || notification.created_at;
     const isRead = dateValue(readAt) >= dateValue(changedAt);
@@ -197,18 +226,20 @@ export async function listMemberNotifications(
 /** Vérifie qu’un utilisateur peut lire cette notification (anti-fraude sur IDs). */
 export async function memberCanAccessNotification(
   notificationId: string,
-  includeAdminAudience: boolean,
+  opts: { includeAdminAudience: boolean; memberDiscordId: string },
 ): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("member_notifications")
-    .select("audience")
+    .select("audience, target_discord_id")
     .eq("id", notificationId)
     .maybeSingle();
 
   if (error || !data) return false;
-  const aud = String((data as { audience?: string }).audience || "");
+  const row = data as { audience?: string; target_discord_id?: string | null };
+  const aud = String(row.audience || "");
   if (aud === AUDIENCE_COMMUNITY_BROADCAST) return true;
-  if (aud === AUDIENCE_ADMIN_ACCESS) return includeAdminAudience;
+  if (aud === AUDIENCE_ADMIN_ACCESS) return opts.includeAdminAudience;
+  if (aud === AUDIENCE_MEMBER_DIRECT) return row.target_discord_id === opts.memberDiscordId;
   return false;
 }
 
@@ -234,17 +265,28 @@ export async function markAllNotificationsAsRead(
 ): Promise<void> {
   const audiences = notificationAudiencesForUser(opts.includeAdminAudience);
 
-  const { data: activeRows, error: activeError } = await supabaseAdmin
-    .from("member_notifications")
-    .select("id")
-    .eq("is_active", true)
-    .in("audience", audiences);
+  const [{ data: broadcastActive, error: broadcastErr }, { data: personalActive, error: personalErr }] =
+    await Promise.all([
+      supabaseAdmin.from("member_notifications").select("id").eq("is_active", true).in("audience", audiences).is("target_discord_id", null),
+      supabaseAdmin
+        .from("member_notifications")
+        .select("id")
+        .eq("is_active", true)
+        .eq("audience", AUDIENCE_MEMBER_DIRECT)
+        .eq("target_discord_id", discordId),
+    ]);
 
-  if (activeError) {
-    throw activeError;
+  if (broadcastErr) {
+    throw broadcastErr;
+  }
+  if (personalErr) {
+    throw personalErr;
   }
 
-  const rows = (activeRows || []) as Array<{ id: string }>;
+  const rows = [
+    ...((broadcastActive || []) as Array<{ id: string }>),
+    ...((personalActive || []) as Array<{ id: string }>),
+  ];
   if (rows.length === 0) return;
 
   const now = new Date().toISOString();

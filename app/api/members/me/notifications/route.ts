@@ -9,6 +9,8 @@ import {
   memberCanAccessNotification,
   syncProfileValidationNotification,
 } from "@/lib/memberNotifications";
+import { syncRegistrationReminderNotificationsForMember } from "@/lib/memberRegistrationReminders";
+import { memberRepository } from "@/lib/repositories";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,6 +31,17 @@ export async function GET() {
     try {
       if (includeAdminAudience) {
         await syncProfileValidationNotification();
+      }
+      const member = await memberRepository.findByDiscordId(discordId);
+      if (member) {
+        try {
+          await syncRegistrationReminderNotificationsForMember({
+            discordId,
+            twitchLogin: member.twitchLogin || "",
+          });
+        } catch (reminderErr) {
+          console.error("[members/me/notifications] syncRegistrationReminders:", reminderErr);
+        }
       }
       const payload = await listMemberNotifications(discordId, { includeAdminAudience });
       notifications = payload.notifications;
@@ -66,7 +79,10 @@ export async function POST(request: NextRequest) {
     if (markAll) {
       await markAllNotificationsAsRead(discordId, { includeAdminAudience });
     } else if (notificationId) {
-      const allowed = await memberCanAccessNotification(notificationId, includeAdminAudience);
+      const allowed = await memberCanAccessNotification(notificationId, {
+        includeAdminAudience,
+        memberDiscordId: discordId,
+      });
       if (!allowed) {
         return NextResponse.json({ error: "Notification inaccessible" }, { status: 403 });
       }

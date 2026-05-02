@@ -724,6 +724,85 @@ export class EventRepository {
     if (lastError) throw lastError;
   }
 
+  /**
+   * Événements communautaires publiés auxquels le membre est inscrit (discord_id ou twitch_login).
+   */
+  async listPublishedRegisteredEventsForMember(params: {
+    discordId: string;
+    twitchLogin: string;
+  }): Promise<Array<{ eventId: string; title: string; startsAtIso: string }>> {
+    const twitch = params.twitchLogin.trim().toLowerCase();
+    if (!params.discordId?.trim() && !twitch) return [];
+
+    let regQuery = supabaseAdmin.from('event_registrations').select('event_id');
+    const did = params.discordId?.trim();
+    if (did && twitch) {
+      regQuery = regQuery.or(`discord_id.eq.${did},twitch_login.eq.${twitch}`);
+    } else if (did) {
+      regQuery = regQuery.eq('discord_id', did);
+    } else {
+      regQuery = regQuery.eq('twitch_login', twitch);
+    }
+
+    const { data: regRows, error: regErr } = await regQuery;
+
+    if (regErr) {
+      const msg = (regErr.message || '').toLowerCase();
+      if (msg.includes('relation') && msg.includes('event_registrations')) {
+        return [];
+      }
+      throw regErr;
+    }
+
+    const ids = [
+      ...new Set(
+        (regRows || [])
+          .map((r: { event_id?: string }) => String(r.event_id || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (ids.length === 0) return [];
+
+    const fetchPublished = async (select: string) =>
+      supabaseAdmin.from(EVENTS_TABLE).select(select).in('id', ids).eq('is_published', true);
+
+    let { data: evRows, error: evErr } = await fetchPublished('id, title, starts_at, date, is_published');
+
+    if (evErr) {
+      const msg0 = (evErr.message || '').toLowerCase();
+      if (
+        (msg0.includes('column') || msg0.includes('could not find')) &&
+        msg0.includes('starts_at')
+      ) {
+        const retry = await fetchPublished('id, title, date, is_published');
+        evRows = retry.data;
+        evErr = retry.error;
+      }
+    }
+
+    if (evErr) {
+      const msg = (evErr.message || '').toLowerCase();
+      if (msg.includes('relation') && msg.includes('community_events')) {
+        return [];
+      }
+      throw evErr;
+    }
+
+    const out: Array<{ eventId: string; title: string; startsAtIso: string }> = [];
+    for (const row of evRows || []) {
+      const raw = (row as any).starts_at ?? (row as any).date;
+      if (!raw) continue;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) continue;
+      out.push({
+        eventId: String((row as any).id),
+        title: String((row as any).title || 'Événement').trim() || 'Événement',
+        startsAtIso: d.toISOString(),
+      });
+    }
+    return out;
+  }
+
   private mapToEvent(row: any): Event {
     const dateValue = row.starts_at || row.date;
     return {
