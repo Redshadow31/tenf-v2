@@ -75,7 +75,7 @@ const getCategoryConfig = (categoryValue: string): CategoryConfig => {
 const BANNER_W = ONBOARDING_SESSION_IMAGE_WIDTH;
 const BANNER_H = ONBOARDING_SESSION_IMAGE_HEIGHT;
 
-/** Redimensionne l’image en bannière 800×200 px avant envoi. */
+/** Recadre l’image au centre (mode « cover », comme object-cover) puis exporte en {BANNER_W}×{BANNER_H} — sans étirement. */
 async function resizeToSessionBanner(file: File): Promise<File> {
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
@@ -83,7 +83,14 @@ async function resizeToSessionBanner(file: File): Promise<File> {
   canvas.height = BANNER_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas non disponible");
-  ctx.drawImage(bitmap, 0, 0, BANNER_W, BANNER_H);
+  const sw = bitmap.width;
+  const sh = bitmap.height;
+  const scale = Math.max(BANNER_W / sw, BANNER_H / sh);
+  const dw = sw * scale;
+  const dh = sh * scale;
+  const dx = (BANNER_W - dw) / 2;
+  const dy = (BANNER_H - dh) / 2;
+  ctx.drawImage(bitmap, 0, 0, sw, sh, dx, dy, dw, dh);
   bitmap.close();
   const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
   const quality = mime === "image/jpeg" ? 0.9 : undefined;
@@ -600,7 +607,7 @@ export default function PlanificationPage() {
                 Image de l'intégration ({BANNER_W}×{BANNER_H} px)
               </label>
               <p className="text-xs text-gray-500 mb-2">
-                Import redimensionné automatiquement en bannière {BANNER_W}×{BANNER_H} px (ratio 4∶1).
+                Recadrage centré au ratio 4∶1 ({BANNER_W}×{BANNER_H} px), sans étirement — le cadre ci‑dessous correspond au rendu sur le site.
               </p>
               <div className="mb-3 flex gap-3 rounded-xl border border-indigo-400/25 bg-[linear-gradient(90deg,rgba(99,102,241,0.14),rgba(6,182,212,0.08))] px-3 py-3 sm:px-4">
                 <div
@@ -614,17 +621,27 @@ export default function PlanificationPage() {
                     Consigne importante — rendu côté membres
                   </span>
                   <br />
-                  Le visuel est prévu au format{" "}
+                  Le visuel est exporté en{" "}
                   <strong className="text-white">
                     {BANNER_W}×{BANNER_H} px
                   </strong>{" "}
-                  (ratio 4∶1). Sur le site public, la bannière est affichée <strong className="text-white">sans recadrage</strong>,{" "}
-                  en entier. Pense à garder
-                  les éléments essentiels au centre : sur certains écrans les bords peuvent paraître moins visibles.
+                  (ratio 4∶1). L’import remplit ce cadre par zoom centré (pas de déformation). Sur le site public la bannière est affichée en entier ; garde le texte et les sujets importants plutôt au centre.
                 </p>
               </div>
               {!imagePreview && !formData.imageUrl ? (
-                <div className="border-2 border-dashed border-[#353a50] rounded-lg p-6 text-center hover:border-indigo-300/55 transition-colors">
+                <div
+                  className="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-[#353a50] bg-[#0a0d14] shadow-[inset_0_0_0_1px_rgba(99,102,241,0.12)] transition-colors hover:border-indigo-300/55"
+                  style={{ aspectRatio: `${BANNER_W} / ${BANNER_H}` }}
+                >
+                  {/* Repères discrets du cadre final (ratio site) */}
+                  <div
+                    className="pointer-events-none absolute inset-3 rounded-md border border-white/10 sm:inset-4"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-none absolute inset-y-3 left-1/4 right-1/4 border-x border-dashed border-white/10 sm:inset-y-4"
+                    aria-hidden
+                  />
                   <input
                     type="file"
                     accept="image/*"
@@ -634,37 +651,46 @@ export default function PlanificationPage() {
                   />
                   <label
                     htmlFor="image-upload"
-                    className="cursor-pointer block"
+                    className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2 px-4 text-center"
                   >
-                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-400 mb-2">
-                      Cliquez pour importer une image (webp, jpg, png)
+                    <ImageIcon className="h-10 w-10 text-indigo-300/70 sm:h-12 sm:w-12" />
+                    <p className="text-sm text-gray-300">
+                      Importer une image — cadre {BANNER_W}×{BANNER_H} (4∶1)
                     </p>
-                    <span className="text-xs text-gray-500">
-                      Taille max: 5MB — export {BANNER_W}×{BANNER_H}
-                    </span>
+                    <p className="text-xs text-gray-500">
+                      webp, jpg, png — max 5 Mo — recadrage centré, sans déformation
+                    </p>
                   </label>
                 </div>
               ) : (
-                <div className="relative">
-                  <img
-                    src={imagePreview || formData.imageUrl || ''}
-                    alt="Aperçu"
-                    className="w-full max-h-48 aspect-[4/1] object-cover rounded-lg border border-[#353a50]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 rounded-full border border-rose-300/45 bg-rose-500/25 p-2 text-rose-100 transition hover:bg-rose-500/35"
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-indigo-200/90">
+                    Aperçu du cadre site ({BANNER_W}×{BANNER_H} px, ratio 4∶1)
+                  </p>
+                  <div
+                    className="relative w-full overflow-hidden rounded-xl border-2 border-indigo-400/45 bg-black/40 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.06)] ring-1 ring-white/10"
+                    style={{ aspectRatio: `${BANNER_W} / ${BANNER_H}` }}
                   >
-                    <X className="w-4 h-4" />
-                  </button>
+                    <img
+                      src={imagePreview || formData.imageUrl || ""}
+                      alt="Aperçu bannière session"
+                      className="h-full w-full object-cover"
+                      width={BANNER_W}
+                      height={BANNER_H}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute right-2 top-2 rounded-full border border-rose-300/45 bg-rose-500/25 p-2 text-rose-100 shadow-lg backdrop-blur-sm transition hover:bg-rose-500/35"
+                      aria-label="Retirer l’image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                   {formData.image && !formData.imageUrl && (
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-400 mb-2">
-                        L'image sera uploadée automatiquement lors de la création de l'intégration
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-400">
+                      L&apos;image sera uploadée automatiquement lors de la création de l&apos;intégration.
+                    </p>
                   )}
                 </div>
               )}
@@ -1020,7 +1046,7 @@ export default function PlanificationPage() {
             </h2>
             <div className="flex flex-col items-stretch gap-2 sm:items-end">
               <label className="text-xs text-gray-400">
-                Même image sur toutes les sessions ({BANNER_W}×{BANNER_H} px)
+                Même image sur toutes les sessions ({BANNER_W}×{BANNER_H} px, recadrage centré)
               </label>
               <div className="flex flex-wrap items-center gap-2">
                 <input
