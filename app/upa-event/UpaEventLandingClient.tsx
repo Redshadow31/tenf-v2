@@ -1,6 +1,19 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Calendar,
+  Compass,
+  ExternalLink,
+  HeartHandshake,
+  LayoutDashboard,
+  Radio,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import fnStyles from "@/app/fonctionnement-tenf/fonctionnement.module.css";
 import type { UpaEventContent } from "@/lib/upaEvent/types";
 
 type TabKey = "discover" | "event" | "staff" | "faq";
@@ -8,10 +21,12 @@ type TabKey = "discover" | "event" | "staff" | "faq";
 const STREAMER_FORM_URL = "https://www.upa-event.fr/formulaire-streameur";
 const MODERATOR_FORM_URL = "https://www.upa-event.fr/formulaire-mod%C3%A9rateurs-twitch";
 const MODERATOR_DISCORD_FORM_URL = "https://www.upa-event.fr/formulaire-moderateurs-discord";
+/** Site public quand l’édition affichée est terminée (pas les formulaires d’inscription). */
+const UPA_PUBLIC_SITE = "https://www.upa-event.fr";
 
 const TAB_LABELS: { key: TabKey; label: string }[] = [
-  { key: "discover", label: "Decouvrir UPA" },
-  { key: "event", label: "L'evenement" },
+  { key: "discover", label: "Découvrir UPA" },
+  { key: "event", label: "L'événement" },
   { key: "staff", label: "Staff" },
   { key: "faq", label: "FAQ" },
 ];
@@ -119,11 +134,115 @@ const FAQ_SECTIONS = [
   },
 ];
 
+/** FAQ au passé lorsque `registrationStatus === "ended"`. */
+const FAQ_SECTIONS_ENDED = [
+  {
+    id: "streamer",
+    icon: "🎥",
+    title: "Streamer à cette édition",
+    items: [
+      {
+        id: "faq-streamer-who",
+        question: "Qui pouvait participer en tant que streamer ?",
+        answer:
+          "Tout créateur pouvait prendre part au dispositif, quelle que soit la taille de sa chaîne. L’objectif était de rassembler des communautés autour d’une cause solidaire.",
+      },
+      {
+        id: "faq-streamer-frequency",
+        question: "Fallait-il streamer chaque jour ?",
+        answer:
+          "Non. Chaque streamer a pu participer selon ses disponibilités — même un seul live a pu contribuer à la mobilisation.",
+      },
+      {
+        id: "faq-streamer-size",
+        question: "Les petites chaînes étaient-elles les bienvenues ?",
+        answer:
+          "Oui. L’événement visait justement à inclure des créateurs de toutes tailles ; chaque communauté a compté.",
+      },
+      {
+        id: "faq-streamer-announce",
+        question: "Comment la participation était-elle annoncée ?",
+        answer:
+          "Les participant·es pouvaient en parler sur leurs lives et réseaux ; le staff et les communautés ont aussi relayé l’événement.",
+      },
+    ],
+  },
+  {
+    id: "moderation",
+    icon: "🛡️",
+    title: "Modération et staff",
+    items: [
+      {
+        id: "faq-mod-role",
+        question: "Quel était le rôle des modérateur·ices volontaires ?",
+        answer:
+          "Iels ont aidé à encadrer la période sur Twitch et Discord, avec bienveillance, au profit des streamers mobilisés.",
+      },
+      {
+        id: "faq-mod-experience",
+        question: "Fallait-il être très expérimenté·e ?",
+        answer:
+          "Non — la motivation et le respect de l’esprit communautaire comptaient plus que l’expérience.",
+      },
+      {
+        id: "faq-mod-time",
+        question: "Le temps à consacrer à la modération ?",
+        answer:
+          "Flexible : aide ponctuelle sur certains lives ou créneaux, selon les disponibilités de chacun·e.",
+      },
+    ],
+  },
+  {
+    id: "event",
+    icon: "📅",
+    title: "L'événement (rétrospective)",
+    items: [
+      {
+        id: "faq-event-when",
+        question: "Quand avait lieu cette édition UPA × TENF ?",
+        answer:
+          "Elle s’est déroulée du 18 au 26 avril 2026. Pendant cette fenêtre, les streamers mobilisés ont animé des lives pour soutenir la cause.",
+      },
+      {
+        id: "faq-event-cause",
+        question: "Quelle cause était soutenue ?",
+        answer:
+          "Une cause solidaire mise en avant avec les associations partenaires — sensibilisation et collecte au service du terrain.",
+      },
+      {
+        id: "faq-event-content",
+        question: "Les streamers devaient-ils changer leur contenu ?",
+        answer:
+          "Non. Chacun·e restait libre de son format ; l’idée était d’utiliser son temps de parole pour la solidarité.",
+      },
+    ],
+  },
+  {
+    id: "community",
+    icon: "🤝",
+    title: "Communauté",
+    items: [
+      {
+        id: "faq-community-not-streamer",
+        question: "Les non-streamers pouvaient-ils participer ?",
+        answer:
+          "Oui : suivre les lives, partager et encourager les créateurs ont été des façons essentielles de faire vivre l’événement.",
+      },
+      {
+        id: "faq-community-follow",
+        question: "Et pour une prochaine fois ?",
+        answer:
+          "Les annonces des prochaines campagnes UPA sont faites sur le site officiel et les canaux habituels — restez attentifs·ives aux nouvelles éditions.",
+      },
+    ],
+  },
+];
+
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return "Dates a confirmer";
+    return "Dates à confirmer";
   }
   const startLabel = start.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const endLabel = end.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -132,15 +251,15 @@ function formatDateRange(startDate: string, endDate: string): string {
 
 function getCountdownLabel(startDate: string): string {
   const start = new Date(startDate);
-  if (Number.isNaN(start.getTime())) return "Date a confirmer";
+  if (Number.isNaN(start.getTime())) return "Date à confirmer";
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const diff = target.getTime() - today.getTime();
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-  if (days > 0) return `J-${days} avant le debut de l'evenement`;
-  if (days === 0) return "Debut de l'evenement aujourd'hui";
-  return "Evenement en cours ou deja lance";
+  if (days > 0) return `J-${days} avant le début de l'événement`;
+  if (days === 0) return "Début de l'événement aujourd'hui";
+  return "Événement en cours ou déjà lancé";
 }
 
 function renderInlineFormatting(text: string): ReactNode[] {
@@ -170,6 +289,8 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   const [activeTab, setActiveTab] = useState<TabKey>("discover");
   const [mobileOpenTab, setMobileOpenTab] = useState<TabKey>("discover");
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
+  const [audience, setAudience] = useState<"public" | "membre">("public");
+  const [activeJumpId, setActiveJumpId] = useState("upa-hero");
 
   const content = initialContent;
 
@@ -205,18 +326,123 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
     [content.editorialSections]
   );
   const totalParticipants = Math.max(content.socialProof.totalRegistered || 0, 0);
+  const eventEnded = content.general.registrationStatus === "ended";
   const totalParticipantsLabel =
-    totalParticipants > 0 ? `${totalParticipants} participants` : "Participants en cours de confirmation";
+    totalParticipants > 0
+      ? `${totalParticipants} participant${totalParticipants > 1 ? "s" : ""}`
+      : eventEnded
+        ? "Mobilisation terminée"
+        : "Participants en cours de confirmation";
   const dateRange = formatDateRange(content.general.startDate, content.general.endDate);
   const countdownLabel =
-    content.general.registrationStatus === "ended" ? "Evenement termine" : getCountdownLabel(content.general.startDate);
+    content.general.registrationStatus === "ended" ? "Événement terminé" : getCountdownLabel(content.general.startDate);
 
   const hasTimeline = content.displaySettings.showTimeline && timeline.length > 0;
   const hasStaff = content.displaySettings.showStaff && staff.length > 0;
   const showEditorial =
     (content.displaySettings?.showEditorialSections ?? true) && editorialSections.length > 0;
 
+  const jumpSections = useMemo(() => {
+    const items: { id: string; label: string }[] = [{ id: "upa-hero", label: "UPA × TENF" }];
+    if (showEditorial) items.push({ id: "upa-editorial", label: "Bilan" });
+    if (hasTimeline) items.push({ id: "upa-timeline", label: "Timeline" });
+    items.push({ id: "upa-infos", label: "Découvrir" });
+    if (officialLinks.length > 0) items.push({ id: "upa-liens", label: "Liens" });
+    if (content.displaySettings.showFinalCta) {
+      items.push({ id: "upa-cta", label: eventEnded ? "Merci" : "Participer" });
+    }
+    return items;
+  }, [
+    showEditorial,
+    hasTimeline,
+    officialLinks.length,
+    content.displaySettings.showFinalCta,
+    eventEnded,
+  ]);
+
+  useEffect(() => {
+    const nodes = jumpSections.map(({ id }) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    if (nodes.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActiveJumpId(visible.target.id);
+      },
+      { root: null, rootMargin: "-36% 0px -42% 0px", threshold: [0, 0.1, 0.25, 0.45] },
+    );
+    nodes.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [jumpSections]);
+
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderDiscoverTab() {
+    if (eventEnded) {
+      return (
+        <div className="upa-tab-panel">
+          <h3 className="upa-tab-title">Unis pour l&apos;Avenir (UPA)</h3>
+          <div className="upa-grid upa-grid-2 upa-discover-main-grid">
+            <article className="upa-card upa-card-highlight">
+              <h4>Présentation</h4>
+              <p>
+                <strong>Unis pour l&apos;Avenir (UPA)</strong> est une initiative caritative créée par le streamer Twitch{" "}
+                <strong>Symaog</strong>. Elle organise des opérations en ligne pour soutenir des associations et sensibiliser les communautés.
+              </p>
+              <p>
+                La première édition commune avec <strong>TENF</strong> ({dateRange}) est <strong>terminée</strong> : elle montre comment
+                streamers, bénévoles et viewers peuvent se mobiliser ensemble autour d&apos;une cause.
+              </p>
+            </article>
+            <article className="upa-card">
+              <h4>Ce qui a été proposé sur cette édition</h4>
+              <p>Lives caritatifs, temps communautaires, sensibilisation et visibilité pour la cause soutenue.</p>
+              <p>
+                Les chiffres, remerciements et perspectives sont rédigés dans la section <strong>Bilan de l&apos;événement</strong> plus haut sur
+                cette page.
+              </p>
+            </article>
+          </div>
+          <div className="upa-subsection">
+            <h4>Nos valeurs</h4>
+            <div className="upa-grid upa-grid-2">
+              <article className="upa-card upa-card-soft">
+                <h5>Respect</h5>
+                <p>Chaque personne est écoutée et considérée avec dignité, quel que soit son parcours.</p>
+              </article>
+              <article className="upa-card upa-card-soft">
+                <h5>Bienveillance</h5>
+                <p>Un cadre sain et humain pour avancer ensemble en confiance.</p>
+              </article>
+              <article className="upa-card upa-card-soft">
+                <h5>Solidarité</h5>
+                <p>Les communautés se rassemblent autour d&apos;une cause pour un impact concret.</p>
+              </article>
+              <article className="upa-card upa-card-soft">
+                <h5>Entraide</h5>
+                <p>Participants, équipes et viewers portent collectivement la dynamique solidaire.</p>
+              </article>
+            </div>
+          </div>
+          <div className="upa-subsection">
+            <article className="upa-card upa-discover-invite">
+              <h4>Merci — et la suite</h4>
+              <p>Merci aux équipes UPA, au staff TENF et à toutes les communautés mobilisées pour cette première édition commune.</p>
+              <p>
+                Pour suivre les prochaines campagnes UPA :{" "}
+                <a className="upa-inline-link" href={UPA_PUBLIC_SITE} target="_blank" rel="noopener noreferrer">
+                  upa-event.fr
+                </a>
+              </p>
+            </article>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="upa-tab-panel">
         <h3 className="upa-tab-title">Unis pour l'Avenir (UPA)</h3>
@@ -308,6 +534,118 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   }
 
   function renderEventTab() {
+    if (eventEnded) {
+      const eventCardsPast = [
+        {
+          title: "Lives caritatifs",
+          icon: "🎥",
+          content:
+            "Des créateurs ont animé des lives pendant la fenêtre de l’événement pour mobiliser leurs communautés et soutenir la cause.",
+        },
+        {
+          title: "Moments communautaires",
+          icon: "🤝",
+          content:
+            "Des temps forts collectifs ont réuni streamers, modérateurs et viewers autour de la solidarité.",
+        },
+        {
+          title: "Sensibilisation",
+          icon: "📣",
+          content:
+            "Les chaînes ont mis en lumière la cause soutenue et informé les communautés tout au long des neuf jours.",
+        },
+        {
+          title: "Visibilité associative",
+          icon: "🫶",
+          content:
+            "La mobilisation en ligne a amplifié la visibilité de l’association partenaire et des actions sur le terrain.",
+        },
+      ];
+
+      return (
+        <div className="upa-tab-panel">
+          <h3 className="upa-tab-title">À quoi a ressemblé l&apos;événement</h3>
+          <div className="upa-grid upa-grid-2 upa-event-cards-grid">
+            {eventCardsPast.map((card) => (
+              <article key={card.title} className="upa-card upa-card-soft upa-event-card">
+                <h4>
+                  <span aria-hidden="true">{card.icon}</span>
+                  {card.title}
+                </h4>
+                <p>{card.content}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="upa-subsection">
+            <h4>Après cette édition</h4>
+            <div className="upa-grid upa-grid-2">
+              <article className="upa-card upa-participation-card">
+                <h4>Site officiel UPA</h4>
+                <p>Les inscriptions à cette édition commune sont closes. Retrouvez les actualités et les prochaines campagnes sur le site UPA.</p>
+                <a href={UPA_PUBLIC_SITE} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                  {content.cta.streamerButtonText || "upa-event.fr"}
+                </a>
+              </article>
+              <article className="upa-card upa-participation-card">
+                <h4>Bilan TENF × UPA</h4>
+                <p>Le récit détaillé, les remerciements et les résultats sont dans la section bilan en haut de page.</p>
+                <a href="#upa-editorial" className="upa-btn upa-btn-accent">
+                  Voir le bilan
+                </a>
+              </article>
+            </div>
+          </div>
+
+          {content.displaySettings.showPartnerCommunities && (
+            <div className="upa-subsection">
+              <h4>Communautés partenaires</h4>
+              {partnerCommunities.length === 0 ? (
+                <p className="upa-empty-text">Les communautés partenaires de cette édition peuvent être listées par l’équipe dans l’admin.</p>
+              ) : (
+                <div className="upa-grid upa-grid-3">
+                  {partnerCommunities.map((partner) => (
+                    <article key={partner.id} className="upa-card">
+                      {partner.logoUrl ? <img src={partner.logoUrl} alt={`Logo ${partner.name}`} className="upa-partner-logo" /> : null}
+                      <h5>{partner.name}</h5>
+                      <p>{partner.description}</p>
+                      {partner.url ? (
+                        <a className="upa-inline-link" href={partner.url} target="_blank" rel="noopener noreferrer">
+                          Voir la communauté
+                        </a>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              )}
+              <p className="upa-empty-text">Merci aux communautés et structures qui ont soutenu cette édition.</p>
+            </div>
+          )}
+
+          <div className="upa-subsection">
+            <h4>Statut</h4>
+            <div className="upa-live-status">
+              <span className="upa-live-dot" />
+              <div>
+                <strong>{content.statusMessages.statusLabel || "Événement terminé"}</strong>
+                <p>{content.statusMessages.statusMessage || "Merci pour cette édition TENF × UPA."}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="upa-subsection">
+            <article className="upa-card upa-event-invite-card">
+              <h4>Merci</h4>
+              <p>
+                Chaque live partagé, chaque message de soutien et chaque don ont compté. La suite se construit avec UPA et les temps forts TENF
+                (cinéma communautaire, Spotlight, soirées…).
+              </p>
+            </article>
+          </div>
+        </div>
+      );
+    }
+
     const eventCards = [
       {
         title: "Lives caritatifs",
@@ -489,30 +827,33 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
         )}
 
         <div className="upa-subsection">
-          <h4>Un staff engage pour l'evenement</h4>
+          <h4>{eventEnded ? "Un staff engagé sur cette édition" : "Un staff engagé pour l'événement"}</h4>
           <p className="upa-empty-text">
-            L'evenement UPA repose sur l'engagement d'une equipe de benevoles passionnes. Streamers, moderateurs et
-            organisateurs travaillent ensemble pour assurer une experience positive et bienveillante.
+            {eventEnded
+              ? "Cette édition a reposé sur des bénévoles, organisateurs et modérateurs mobilisés pour un déroulement sain et bienveillant."
+              : "L'événement UPA repose sur l'engagement d'une équipe de bénévoles passionnés. Streamers, modérateurs et organisateurs travaillent ensemble pour assurer une expérience positive et bienveillante."}
           </p>
           <div className="upa-grid upa-grid-3 upa-staff-info-grid">
             <article className="upa-card upa-card-soft upa-staff-info-card">
               <h5>
                 <span aria-hidden="true">📅</span>
-                Coordination de l'evenement
+                Coordination de l&apos;événement
               </h5>
               <p>
-                Le staff organise la preparation des lives, coordonne les participants et veille au bon deroulement de
-                l'evenement.
+                {eventEnded
+                  ? "Le staff a préparé les lives, coordonné les participant·es et veillé au bon déroulement sur la période."
+                  : "Le staff organise la préparation des lives, coordonne les participants et veille au bon déroulement de l'événement."}
               </p>
             </article>
             <article className="upa-card upa-card-soft upa-staff-info-card">
               <h5>
                 <span aria-hidden="true">🛡️</span>
-                Encadrement des communautes
+                Encadrement des communautés
               </h5>
               <p>
-                Les moderateurs accompagnent les streamers et veillent au respect d'un environnement sain sur Twitch et
-                Discord.
+                {eventEnded
+                  ? "Les modérateur·ices ont accompagné les streamers et aidé à garder un cadre sain sur Twitch et Discord."
+                  : "Les modérateurs accompagnent les streamers et veillent au respect d'un environnement sain sur Twitch et Discord."}
               </p>
             </article>
             <article className="upa-card upa-card-soft upa-staff-info-card">
@@ -521,8 +862,9 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                 Soutien aux participants
               </h5>
               <p>
-                Le staff reste disponible pour repondre aux questions et accompagner les participants pendant toute la
-                duree de l'evenement.
+                {eventEnded
+                  ? "Pendant l’édition, le staff est resté disponible pour répondre aux questions et accompagner les participant·es."
+                  : "Le staff reste disponible pour répondre aux questions et accompagner les participants pendant toute la durée de l'événement."}
               </p>
             </article>
           </div>
@@ -530,23 +872,32 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
 
         <div className="upa-subsection">
           <article className="upa-card upa-staff-join-card">
-            <h4>Envie de contribuer a l'evenement ?</h4>
+            <h4>{eventEnded ? "Prochaine édition ou bénévolat" : "Envie de contribuer à l'événement ?"}</h4>
             <p>
-              Les moderateurs volontaires jouent un role essentiel dans la reussite de l'evenement. Ils participent a la
-              gestion des lives, au soutien des streamers et a la coordination de la communaute.
+              {eventEnded
+                ? "Cette édition est close. Pour vous porter candidat·e à une prochaine campagne UPA ou au bénévolat, suivez les annonces sur le site officiel."
+                : "Les modérateurs volontaires jouent un rôle essentiel dans la réussite de l'événement : gestion des lives, soutien aux streamers et coordination avec la communauté."}
             </p>
             <div className="upa-participation-actions">
-              <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
-                Moderateur Twitch
-              </a>
-              <a
-                href={MODERATOR_DISCORD_FORM_URL}
-                className="upa-btn upa-btn-accent"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Moderateur Discord
-              </a>
+              {eventEnded ? (
+                <a href={UPA_PUBLIC_SITE} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
+                  upa-event.fr
+                </a>
+              ) : (
+                <>
+                  <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-accent" target="_blank" rel="noopener noreferrer">
+                    Modérateur Twitch
+                  </a>
+                  <a
+                    href={MODERATOR_DISCORD_FORM_URL}
+                    className="upa-btn upa-btn-accent"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Modérateur Discord
+                  </a>
+                </>
+              )}
             </div>
           </article>
         </div>
@@ -555,11 +906,12 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   }
 
   function renderFaqTab() {
+    const faqSections = eventEnded ? FAQ_SECTIONS_ENDED : FAQ_SECTIONS;
     return (
       <div className="upa-tab-panel">
-        <h3 className="upa-tab-title">Questions frequentes</h3>
+        <h3 className="upa-tab-title">{eventEnded ? "Questions fréquentes (rétrospective)" : "Questions fréquentes"}</h3>
         <div className="upa-faq-sections">
-          {FAQ_SECTIONS.map((section) => (
+          {faqSections.map((section) => (
             <section key={section.id} className="upa-faq-theme">
               <h4 className="upa-faq-theme-title">
                 <span aria-hidden="true">{section.icon}</span>
@@ -587,7 +939,9 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
           ))}
           <div className="upa-faq-help">
             <p>
-              Besoin d'un accompagnement ? Le staff UPA reste disponible pour t'aider a rejoindre l'evenement sereinement.
+              {eventEnded
+                ? "Pour une prochaine édition ou une question organisationnelle, passe par le site UPA ou les annonces TENF sur Discord."
+                : "Besoin d'un accompagnement ? Le staff UPA reste disponible pour t'aider à rejoindre l'événement sereinement."}
             </p>
           </div>
         </div>
@@ -603,50 +957,155 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
   }
 
   return (
-    <div className="upa-page">
-      <header className="upa-hero">
-        <div className="upa-container">
-          <div className="upa-hero-logos">
-            <img src="/Tenf.png" alt="Logo TENF" className="upa-hero-logo" />
-            <span className="upa-hero-logos-sep">x</span>
-            <img src="/UPA Logo.png" alt="Logo UPA" className="upa-hero-logo" />
+    <div className={fnStyles.fonctionnementPage}>
+      <div className="relative z-10 mx-auto max-w-[1180px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <Link href="/" className={`text-sm font-medium ${fnStyles.fnFlowLink}`} style={{ color: "var(--color-text-secondary)" }}>
+            ← Accueil TENF
+          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/fonctionnement-tenf/decouvrir" className={fnStyles.fnBtnGhost}>
+              <Compass className="h-4 w-4 shrink-0" aria-hidden />
+              Fonctionnement
+            </Link>
+            <Link href="/events2" className={fnStyles.fnBtnGhost}>
+              <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+              Événements
+            </Link>
+            <Link href="/lives" className={fnStyles.fnBtnGhost}>
+              <Radio className="h-4 w-4 shrink-0" aria-hidden />
+              Lives
+            </Link>
+            <Link href="/avis-tenf" className={fnStyles.fnBtnGhost}>
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+              Témoignages
+            </Link>
           </div>
-
-          <div className="upa-hero-badge">{content.general.partnershipBadge || "Partenariat TENF x UPA"}</div>
-          <h1>{content.general.title || "UPA EVENT - Unis pour l'Avenir"}</h1>
-          <p className="upa-hero-date">{dateRange}</p>
-          <p className="upa-hero-countdown">{countdownLabel}</p>
-          <p className="upa-hero-cause">Cause soutenue: {content.general.causeSupported || "Lutte contre le cancer"}</p>
-          {content.general.slogan ? <p className="upa-hero-slogan">{content.general.slogan}</p> : null}
-          <p className="upa-hero-text">{content.general.heroText}</p>
-
-          <div className="upa-cta-row">
-            <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
-              {content.cta.streamerButtonText || "Participer comme streamer"}
-            </a>
-            <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
-              {content.cta.moderatorButtonText || "Devenir moderateur volontaire"}
-            </a>
-          </div>
-
-          {content.displaySettings.showSocialProof && content.socialProof.isVisible && (
-            <div className="upa-social-proof upa-glow-anim">
-              <strong>{content.socialProof.socialProofMessage || `Deja ${totalParticipantsLabel} inscrits`}</strong>
-              <span>{totalParticipantsLabel} - {content.general.moodMessage || "La mobilisation est lancee."}</span>
-            </div>
-          )}
         </div>
-      </header>
+
+        <nav className={`${fnStyles.fnDiscoverJumpNav} mb-6`} aria-label="Sections UPA Event">
+          <div className="flex min-w-min gap-1.5 px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+            {jumpSections.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => scrollToSection(id)}
+                className={`${fnStyles.fnDiscoverJumpLink} ${activeJumpId === id ? fnStyles.fnDiscoverJumpLinkActive : ""}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        <div className="upa-page upa-page--harmonized">
+          <div className="upa-audience-row">
+            <button
+              type="button"
+              className={`upa-audience-btn ${audience === "public" ? "active" : ""}`}
+              onClick={() => setAudience("public")}
+            >
+              <Users className="h-4 w-4 shrink-0" aria-hidden />
+              Grand public
+            </button>
+            <button
+              type="button"
+              className={`upa-audience-btn ${audience === "membre" ? "active" : ""}`}
+              onClick={() => setAudience("membre")}
+            >
+              <HeartHandshake className="h-4 w-4 shrink-0" aria-hidden />
+              Membre TENF
+            </button>
+          </div>
+          <p className="upa-audience-hint">
+            {audience === "public"
+              ? eventEnded
+                ? "Tu tombes sur cette page après coup : le bilan et la FAQ au passé expliquent ce qu’a été l’édition ; les prochaines actions UPA sont sur upa-event.fr."
+                : "Tu découvres le partenariat caritatif : dates, FAQ et formulaires UPA sont accessibles sans être membre Discord."
+              : eventEnded
+                ? "Membre TENF : cette page sert d’archive pour l’édition terminée ; la vie du serveur continue sur Discord et /events2."
+                : "Tu es dans TENF : utilise aussi le calendrier /events2 et Discord pour les annonces staff ; cette page centralise UPA × TENF."}
+          </p>
+
+          <header id="upa-hero" className="upa-hero scroll-mt-28">
+            <div className="upa-container">
+              <div className="upa-hero-logos">
+                <img src="/Tenf.png" alt="Logo TENF" className="upa-hero-logo" />
+                <span className="upa-hero-logos-sep">×</span>
+                <img src="/UPA Logo.png" alt="Logo UPA" className="upa-hero-logo" />
+              </div>
+
+              <div className="upa-hero-badge">{content.general.partnershipBadge || "Partenariat TENF × UPA"}</div>
+              <h1>{content.general.title || "UPA EVENT — Unis pour l'Avenir"}</h1>
+              <p className="upa-hero-date">{dateRange}</p>
+              <p className="upa-hero-countdown">{countdownLabel}</p>
+              <p className="upa-hero-cause">Cause soutenue : {content.general.causeSupported || "Lutte contre le cancer"}</p>
+              {content.general.slogan ? <p className="upa-hero-slogan">{content.general.slogan}</p> : null}
+              <p className="upa-hero-text">{content.general.heroText}</p>
+
+              <div className="upa-cta-row">
+                {eventEnded ? (
+                  <>
+                    <a href={UPA_PUBLIC_SITE} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.streamerButtonText || "Site officiel UPA"}
+                      <ExternalLink className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    </a>
+                    <a href="#upa-editorial" className="upa-btn upa-btn-secondary">
+                      Lire le bilan
+                    </a>
+                    {audience === "membre" ? (
+                      <Link href="/member/dashboard" className="upa-btn upa-btn-member">
+                        <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
+                        Espace membre
+                        <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                      </Link>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.streamerButtonText || "Participer comme streamer"}
+                      <ExternalLink className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    </a>
+                    <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.moderatorButtonText || "Devenir modérateur volontaire"}
+                    </a>
+                    {audience === "membre" ? (
+                      <Link href="/member/dashboard" className="upa-btn upa-btn-member">
+                        <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
+                        Espace membre
+                        <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                      </Link>
+                    ) : null}
+                  </>
+                )}
+              </div>
+
+              {content.displaySettings.showSocialProof && content.socialProof.isVisible && (
+                <div className="upa-social-proof upa-glow-anim">
+                  <strong>
+                    {content.socialProof.socialProofMessage ||
+                      (eventEnded ? `${totalParticipantsLabel} sur cette édition` : `Déjà ${totalParticipantsLabel} inscrits`)}
+                  </strong>
+                  <span>
+                    {totalParticipantsLabel} —{" "}
+                    {content.general.moodMessage ||
+                      (eventEnded ? "Merci pour cette première édition commune." : "La mobilisation est lancée.")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </header>
 
       {showEditorial && (
-        <section className="upa-section upa-editorial-section" aria-labelledby="upa-editorial-heading">
+        <section id="upa-editorial" className="upa-section upa-editorial-section scroll-mt-28" aria-labelledby="upa-editorial-heading">
           <div className="upa-container">
             <h2 id="upa-editorial-heading" className="upa-section-title">
-              Bilan de l&apos;evenement
+              Bilan de l&apos;événement
             </h2>
             <p className="upa-editorial-partner-note">
-              Tour d&apos;horizon apres la premiere edition commune <strong>TENF</strong> et{" "}
-              <strong>Unis pour l&apos;Avenir (UPA)</strong> — merci aux equipes, benevoles et communautes impliquees.
+              Tour d&apos;horizon après la première édition commune <strong>TENF</strong> et{" "}
+              <strong>Unis pour l&apos;Avenir (UPA)</strong> — merci aux équipes, bénévoles et communautés impliquées.
             </p>
             <div className="upa-editorial-stack">
               {editorialSections.map((section) => (
@@ -665,9 +1124,9 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
       )}
 
       {hasTimeline && (
-        <section className="upa-section">
+        <section id="upa-timeline" className="upa-section scroll-mt-28">
           <div className="upa-container">
-            <h2 className="upa-section-title">Timeline evenement</h2>
+            <h2 className="upa-section-title">{eventEnded ? "Timeline (édition passée)" : "Timeline événement"}</h2>
             <div className="upa-timeline">
               {timeline.map((step) => (
                 <article key={step.id} className={`upa-timeline-card ${step.status}`}>
@@ -676,7 +1135,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
                   <span className="upa-timeline-status">
-                    {step.status === "past" ? "Passe" : step.status === "current" ? "Actuel" : "A venir"}
+                    {step.status === "past" ? "Passé" : step.status === "current" ? "En cours" : "À venir"}
                   </span>
                 </article>
               ))}
@@ -685,12 +1144,21 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
         </section>
       )}
 
-      <section className="upa-section">
+      <section id="upa-infos" className="upa-section scroll-mt-28">
         <div className="upa-container">
+          <div className="upa-tabs-intro">
+            <h2 className="upa-section-title">Contenu détaillé</h2>
+            <p className="upa-tabs-intro-text">
+              {eventEnded
+                ? "Archive : présentation UPA, ce qu’a été l’événement, équipe et FAQ au passé — pour comprendre ou se projeter sur une prochaine édition."
+                : "Quatre volets pour tout comprendre : présentation UPA, déroulé de l'événement, équipe et questions fréquentes."}
+            </p>
+          </div>
           <div className="upa-tabs-desktop">
             {TAB_LABELS.map((tab) => (
               <button
                 key={tab.key}
+                type="button"
                 className={`upa-tab-btn ${activeTab === tab.key ? "active" : ""}`}
                 onClick={() => setActiveTab(tab.key)}
               >
@@ -698,7 +1166,11 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
               </button>
             ))}
           </div>
-          <div className="upa-tabs-content-desktop">{renderTabContent(activeTab)}</div>
+          <div className="upa-tabs-content-desktop">
+            <div key={activeTab} className="animate-fadeIn">
+              {renderTabContent(activeTab)}
+            </div>
+          </div>
 
           <div className="upa-tabs-mobile">
             {TAB_LABELS.map((tab) => {
@@ -706,13 +1178,20 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
               return (
                 <div key={tab.key} className="upa-mobile-accordion-item">
                   <button
+                    type="button"
                     className="upa-mobile-accordion-trigger"
                     onClick={() => setMobileOpenTab((prev) => (prev === tab.key ? "discover" : tab.key))}
                   >
                     <span>{tab.label}</span>
                     <span>{open ? "−" : "+"}</span>
                   </button>
-                  {open ? <div className="upa-mobile-accordion-content">{renderTabContent(tab.key)}</div> : null}
+                  {open ? (
+                    <div className="upa-mobile-accordion-content">
+                      <div key={tab.key} className="animate-fadeIn">
+                        {renderTabContent(tab.key)}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -721,7 +1200,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
       </section>
 
       {officialLinks.length > 0 && (
-        <section className="upa-section">
+        <section id="upa-liens" className="upa-section scroll-mt-28">
           <div className="upa-container">
             <h2 className="upa-section-title">Liens officiels</h2>
             <div className="upa-links-grid">
@@ -737,28 +1216,55 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
       )}
 
       {content.displaySettings.showFinalCta && (
-        <section className="upa-section">
+        <section id="upa-cta" className="upa-section scroll-mt-28">
           <div className="upa-container">
             <div className="upa-final-cta">
-              <h2>{content.cta.finalCtaTitle || "Rejoignez l'evenement"}</h2>
-              <p>{content.cta.finalCtaText || "Chaque streamer, chaque moderateur, chaque viewer peut faire la difference."}</p>
+              <h2>
+                {content.cta.finalCtaTitle ||
+                  (eventEnded ? "Merci pour cette édition TENF × UPA" : "Rejoignez l'événement")}
+              </h2>
+              <p>
+                {content.cta.finalCtaText ||
+                  (eventEnded
+                    ? "Cette édition est terminée ; le bilan détaillé est dans la section dédiée. Les prochaines campagnes UPA seront annoncées sur le site officiel."
+                    : "Chaque streamer, chaque modérateur, chaque viewer peut faire la différence.")}
+              </p>
               <p className="upa-final-emotion">
                 {content.cta.finalEmotionText ||
-                  "Chaque streamer, chaque moderateur, chaque viewer peut contribuer a faire la difference."}
+                  (eventEnded
+                    ? "Merci aux communautés, aux équipes UPA et au staff TENF."
+                    : "Chaque streamer, chaque modérateur, chaque viewer peut contribuer à faire la différence.")}
               </p>
-              <p className="upa-final-count">{totalParticipantsLabel} deja mobilises</p>
+              <p className="upa-final-count">
+                {eventEnded ? `${totalParticipantsLabel} — édition terminée` : `${totalParticipantsLabel} déjà mobilisés`}
+              </p>
               <div className="upa-cta-row">
-                <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
-                  {content.cta.streamerButtonText || "Participer comme streamer"}
-                </a>
-                <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
-                  {content.cta.moderatorButtonText || "Devenir moderateur volontaire"}
-                </a>
+                {eventEnded ? (
+                  <>
+                    <a href={UPA_PUBLIC_SITE} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.streamerButtonText || "Site officiel UPA"}
+                    </a>
+                    <a href="#upa-editorial" className="upa-btn upa-btn-secondary">
+                      Retour au bilan
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a href={STREAMER_FORM_URL} className="upa-btn upa-btn-primary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.streamerButtonText || "Participer comme streamer"}
+                    </a>
+                    <a href={MODERATOR_FORM_URL} className="upa-btn upa-btn-secondary" target="_blank" rel="noopener noreferrer">
+                      {content.cta.moderatorButtonText || "Devenir modérateur volontaire"}
+                    </a>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </section>
       )}
+        </div>
+      </div>
     </div>
   );
 }

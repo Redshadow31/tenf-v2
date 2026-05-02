@@ -77,13 +77,13 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
   general: {
     title: "UPA EVENT - Unis pour l'Avenir",
     subtitle: "Partenariat TENF x UPA",
-    slogan: "Un evenement caritatif communautaire et engage",
+    slogan: "Une première édition TENF × UPA à retrouver dans le bilan ci-dessous",
     startDate: "2026-04-18",
     endDate: "2026-04-26",
     causeSupported: "Lutte contre le cancer",
-    partnershipBadge: "Partenariat TENF x UPA",
+    partnershipBadge: "Partenariat TENF × UPA — édition terminée",
     heroText:
-      "Pendant 9 jours, streamers et benevoles se mobilisent pour soutenir une cause essentielle.",
+      "La première édition commune est terminée : pendant neuf jours, streamers et bénévoles ont mobilisé leurs communautés pour une cause essentielle. Merci à toutes et à tous — le détail du bilan se trouve dans les sections ci-dessous.",
     registrationStatus: "ended",
     moodMessage: "Merci pour cette premiere edition TENF x UPA.",
     charityCampaignUrl: "",
@@ -92,7 +92,7 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
     totalRegistered: 38,
     streamersRegistered: 0,
     moderatorsRegistered: 0,
-    socialProofMessage: "Deja 38 participants mobilises pour cette edition",
+    socialProofMessage: "38 participants ont pris part à cette édition",
     isVisible: true,
   },
   timeline: [
@@ -197,11 +197,12 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
   ],
   partnerCommunities: [],
   cta: {
-    streamerButtonText: "Participer comme streamer",
-    moderatorButtonText: "Devenir moderateur volontaire",
-    finalCtaTitle: "Rejoignez l'evenement",
-    finalCtaText: "Chaque participation peut faire une vraie difference.",
-    finalEmotionText: "Inscription ouverte maintenant.",
+    streamerButtonText: "Site officiel UPA",
+    moderatorButtonText: "Prochaines éditions & bénévolat",
+    finalCtaTitle: "Merci pour cette édition TENF × UPA",
+    finalCtaText:
+      "Cette mobilisation est derrière nous : les communautés ont montré la solidarité du streaming francophone. Les prochaines actions UPA seront annoncées sur le site officiel.",
+    finalEmotionText: "Le bilan détaillé est disponible dans la section « Bilan de l'événement ».",
     secondaryText: "",
   },
   displaySettings: {
@@ -215,8 +216,9 @@ export const DEFAULT_UPA_EVENT_CONTENT: UpaEventContent = {
     showFinalCta: true,
   },
   statusMessages: {
-    statusLabel: "Evenement termine",
-    statusMessage: "Merci a toutes et a tous pour cette premiere edition TENF x UPA.",
+    statusLabel: "Événement terminé",
+    statusMessage:
+      "Merci aux équipes UPA, au staff TENF, aux streamers, modérateurs et viewers pour cette première édition commune.",
     highlightMessage: "Plus de 4 500 € collectes en 9 jours.",
   },
   updatedAt: new Date(0).toISOString(),

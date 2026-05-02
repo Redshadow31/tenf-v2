@@ -145,7 +145,7 @@ const navigationDropdownItems = [
     accent: "#f59e0b",
   },
   {
-    label: "Planning TENF",
+    label: "Agenda TENF",
     href: "/member/planning",
     why: "Organiser ta semaine avec des actions realistes.",
     icon: Compass,

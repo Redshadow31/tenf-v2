@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import CharityProgressBar from "@/components/lives/CharityProgressBar";
 import CommunityStatsSection from "@/components/lives/CommunityStatsSection";
 import JoinTENFSection from "@/components/lives/JoinTENFSection";
@@ -9,6 +9,7 @@ import LivesFilters from "@/components/lives/LivesFilters";
 import LivesHero from "@/components/lives/LivesHero";
 import LivesPhilosophyBanner from "@/components/lives/LivesPhilosophyBanner";
 import UpcomingEventsSection from "@/components/lives/UpcomingEventsSection";
+import MemberModal from "@/components/MemberModal";
 import type { LiveMember, LiveStream, PublicEventItem } from "@/components/lives/types";
 
 function normalizeText(value: string): string {
@@ -85,6 +86,51 @@ type UpaLiteContent = {
 
 const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+const LIVE_MEMBER_MODAL_BANNER =
+  "Tu es sur la page Lives TENF : ce créateur est détecté en direct ici. La fiche réunit bio, planning annoncé et réseaux — complément idéal avant d’ouvrir le chat Twitch.";
+
+function liveMemberToModalPayload(
+  live: LiveMember,
+  followState: FollowState | undefined
+): ComponentProps<typeof MemberModal>["member"] {
+  const avatar =
+    live.avatar || `https://placehold.co/96x96?text=${encodeURIComponent(live.displayName.charAt(0))}`;
+  const instagram = live.instagram;
+  const twitter = live.twitter;
+  const tiktok = live.tiktok;
+
+  return {
+    id: live.twitchLogin,
+    name: live.displayName,
+    role: live.role,
+    avatar,
+    twitchLogin: live.twitchLogin,
+    description: live.description?.trim() || `Membre ${live.role} de la communauté TENF.`,
+    twitchUrl: live.twitchUrl,
+    discordId: live.discordId,
+    isVip: live.isVip,
+    vipBadge: live.vipBadge,
+    badges: live.badges || [],
+    socials: {
+      discord: live.discordId ? `https://discord.com/users/${live.discordId}` : undefined,
+      instagram: instagram
+        ? instagram.startsWith("http")
+          ? instagram
+          : `https://instagram.com/${instagram.replace(/^@/, "")}`
+        : undefined,
+      twitter: twitter ? (twitter.startsWith("http") ? twitter : `https://twitter.com/${twitter.replace(/^@/, "")}`) : undefined,
+      tiktok: tiktok ? (tiktok.startsWith("http") ? tiktok : `https://tiktok.com/@${tiktok.replace(/^@/, "")}`) : undefined,
+    },
+    followStatus: followState,
+    mainGame: live.game || "Communauté",
+    isAffiliated: live.role === "Affilié",
+    isLive: true,
+    isActiveThisWeek: true,
+    planningStatus: "none",
+    streamTags: live.game ? [live.game] : [],
+  };
+}
+
 export default function LivesPageClient() {
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<PublicEventItem[]>([]);
@@ -105,6 +151,11 @@ export default function LivesPageClient() {
   const [upaContent, setUpaContent] = useState<UpaLiteContent | null>(null);
   const [streamlabsGoalWidgetSrc, setStreamlabsGoalWidgetSrc] = useState("");
   const [charityStats, setCharityStats] = useState<CharityStatsPayload | null>(null);
+
+  const [liveMemberModalOpen, setLiveMemberModalOpen] = useState(false);
+  const [liveMemberModalMember, setLiveMemberModalMember] = useState<ComponentProps<typeof MemberModal>["member"] | null>(
+    null
+  );
 
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState("all");
@@ -255,6 +306,13 @@ export default function LivesPageClient() {
                 : undefined,
               integrationDate:
                 typeof member.integrationDate === "string" ? member.integrationDate : undefined,
+              description: typeof member.description === "string" ? member.description : undefined,
+              discordId: member.discordId,
+              instagram: member.instagram,
+              tiktok: member.tiktok,
+              twitter: member.twitter,
+              badges: Array.isArray(member.badges) ? member.badges : undefined,
+              vipBadge: typeof member.vipBadge === "string" ? member.vipBadge : undefined,
             } as LiveMember;
           })
           .filter((item): item is LiveMember => item !== null);
@@ -542,6 +600,13 @@ export default function LivesPageClient() {
     window.open(selected.twitchUrl, "_blank", "noopener,noreferrer");
   };
 
+  function openLiveMemberModal(live: LiveMember) {
+    const loginKey = String(live.twitchLogin || "").toLowerCase();
+    const followState = showFollowStatuses ? followStatuses[loginKey] || "unknown" : undefined;
+    setLiveMemberModalMember(liveMemberToModalPayload(live, followState));
+    setLiveMemberModalOpen(true);
+  }
+
   useEffect(() => {
     if (filteredLives.length === 0) {
       setRandomHint("Aucun live ne correspond aux filtres actuels.");
@@ -738,6 +803,7 @@ export default function LivesPageClient() {
               <LiveCard
                 key={`spotlight-${spotlightLive.twitchLogin}-${spotlightLive.startedAt}`}
                 live={spotlightLive}
+                onOpenMemberProfile={() => openLiveMemberModal(spotlightLive)}
               />
             </div>
           </div>
@@ -919,10 +985,8 @@ export default function LivesPageClient() {
             {upaLiveMembers.map((live) => (
               <LiveCard
                 key={`upa-${live.twitchLogin}-${live.startedAt}`}
-                live={{
-                  ...live,
-                  memberAnnuaireHref: `/membres?member=${encodeURIComponent(String(live.twitchLogin || "").toLowerCase())}`,
-                }}
+                live={live}
+                onOpenMemberProfile={() => openLiveMemberModal(live)}
               />
             ))}
           </div>
@@ -932,7 +996,11 @@ export default function LivesPageClient() {
       {regularLiveMembers.length > 0 ? (
         <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
           {regularLiveMembers.map((live) => (
-            <LiveCard key={`${live.twitchLogin}-${live.startedAt}`} live={live} />
+            <LiveCard
+              key={`${live.twitchLogin}-${live.startedAt}`}
+              live={live}
+              onOpenMemberProfile={() => openLiveMemberModal(live)}
+            />
           ))}
         </section>
       ) : upaLiveMembers.length === 0 && spotlightLiveMembers.length === 0 ? (
@@ -972,6 +1040,18 @@ export default function LivesPageClient() {
           </button>
         </div>
       </div>
+
+      {liveMemberModalMember ? (
+        <MemberModal
+          member={liveMemberModalMember}
+          isOpen={liveMemberModalOpen}
+          contextBanner={LIVE_MEMBER_MODAL_BANNER}
+          onClose={() => {
+            setLiveMemberModalOpen(false);
+            setLiveMemberModalMember(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

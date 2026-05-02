@@ -7,9 +7,9 @@ const sectionCardClass =
 
 const cards = [
   {
-    href: "/admin/onboarding/presentation-anime",
-    title: "Présentation TENF",
-    description: "Support visuel principal utilisé pendant la session onboarding.",
+    href: "/admin/onboarding/presentation",
+    title: "Présentation",
+    description: "Support visuel principal utilisé pendant la session onboarding (présentation animée).",
     icon: "📽️",
     priority: "Critique",
     owner: "Modération session",
@@ -23,6 +23,15 @@ const cards = [
     priority: "Critique",
     owner: "Lead onboarding",
     color: "from-indigo-500 to-purple-600",
+  },
+  {
+    href: "/admin/onboarding/discours-mai-2026",
+    title: "Discours — version mai 2026",
+    description: "Version mai 2026 : 9 blocs oraux (objectifs, conseils staff, discours suggéré par page).",
+    icon: "📅",
+    priority: "Critique",
+    owner: "Lead onboarding",
+    color: "from-violet-500 to-fuchsia-600",
   },
   {
     href: "/admin/integration/discours",
@@ -63,7 +72,7 @@ export default function OnboardingContenusPage() {
         <article className={`${sectionCardClass} p-4`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Supports disponibles</p>
           <p className="mt-2 text-3xl font-semibold">{cards.length}</p>
-          <p className="mt-1 text-xs text-slate-400">Présentation, script, historique</p>
+          <p className="mt-1 text-xs text-slate-400">Présentation, scripts, version mai 2026, historique</p>
         </article>
         <article className={`${sectionCardClass} p-4`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Contenus critiques</p>
@@ -160,7 +169,7 @@ export default function OnboardingContenusPage() {
         <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-2">
           <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-200">
             <p className="font-medium text-slate-100">Avant chaque onboarding</p>
-            <p className="mt-1 text-xs text-slate-400">Relire les deux contenus critiques et valider la cohérence du wording.</p>
+            <p className="mt-1 text-xs text-slate-400">Relire la présentation, le discours courant et la version mai 2026 ; valider la cohérence du wording.</p>
           </div>
           <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-200">
             <p className="font-medium text-slate-100">Après chaque onboarding</p>

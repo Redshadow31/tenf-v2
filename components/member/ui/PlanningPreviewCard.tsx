@@ -26,19 +26,23 @@ export default function PlanningPreviewCard({ plannings, planningHref }: Plannin
         <StatusBadge label={hasPlanning ? "Planning renseigné" : "Planning non défini"} tone={hasPlanning ? "success" : "warning"} />
       </div>
       {!hasPlanning ? (
-        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Aucun planning enregistré pour le moment.
+        <p className="rounded-xl border border-dashed border-white/10 bg-black/15 px-4 py-6 text-center text-sm leading-relaxed text-zinc-500">
+          Aucun créneau enregistré — ajoute au moins une intention de live pour que la communauté et le staff puissent s’organiser.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="relative space-y-2 pl-3 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-px before:bg-gradient-to-b before:from-violet-500/50 before:via-white/10 before:to-transparent">
           {preview.map((item) => (
-            <div key={item.id} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-              <p style={{ color: "var(--color-text)" }}>
-                {new Date(item.date).toLocaleDateString("fr-FR")} - {item.time}
+            <div
+              key={item.id}
+              className="relative rounded-xl border border-white/[0.07] bg-black/20 py-2.5 pl-8 pr-3 text-sm transition hover:border-violet-400/25"
+            >
+              <span className="absolute left-0 top-1/2 flex h-3 w-3 -translate-x-[5px] -translate-y-1/2 rounded-full border-2 border-violet-400 bg-[var(--color-card)] shadow-[0_0_10px_rgba(167,139,250,0.45)]" />
+              <p className="font-semibold" style={{ color: "var(--color-text)" }}>
+                {new Date(item.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · {item.time}
               </p>
               <p style={{ color: "var(--color-text-secondary)" }}>
                 {item.liveType}
-                {item.title ? ` - ${item.title}` : ""}
+                {item.title ? ` · ${item.title}` : ""}
               </p>
             </div>
           ))}
@@ -46,8 +50,7 @@ export default function PlanningPreviewCard({ plannings, planningHref }: Plannin
       )}
       <Link
         href={planningHref}
-        className="mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white"
-        style={{ backgroundColor: "var(--color-primary)" }}
+        className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:brightness-110"
       >
         Modifier mon planning
       </Link>

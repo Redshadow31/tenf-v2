@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import DiscoverCreatorsClient from "./DiscoverCreatorsClient";
 
 export const metadata: Metadata = {
-  title: "Découvrir les créateurs | TENF",
+  title: "Clips à découvrir | TENF",
   description:
-    "Sélection publique de clips aléatoires de créateurs TENF actifs, avec rafraîchissement et filtres rapides.",
+    "Clips Twitch TENF renouvelés à chaque tirage : filtres par style et durée, accès direct aux chaînes et aux fiches annuaire pour curieux·ses et membres.",
   alternates: {
     canonical: "https://tenf-community.com/decouvrir-createurs",
   },

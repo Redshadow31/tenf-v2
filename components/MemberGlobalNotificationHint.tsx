@@ -91,13 +91,13 @@ export default function MemberGlobalNotificationHint() {
   }
 
   const label =
-    unread === 1 ? "Vous avez 1 notification non lue." : `Vous avez ${unread} notifications non lues.`;
+    unread === 1 ? "Tu as 1 nouvelle à lire." : `Tu as ${unread} nouvelles à lire.`;
 
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Rappel de notifications"
+      aria-label="Rappel de nouvelles"
       className="pointer-events-none fixed z-[90]"
       style={{
         bottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
@@ -133,7 +133,7 @@ export default function MemberGlobalNotificationHint() {
                   className="inline-flex min-h-[2.5rem] flex-1 items-center justify-center rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight text-white transition hover:opacity-95 sm:flex-none sm:min-h-0 sm:text-sm"
                   style={{ backgroundColor: "var(--color-primary)" }}
                 >
-                  Voir les notifications
+                  Voir tes nouvelles
                 </Link>
                 <button
                   type="button"
@@ -144,7 +144,7 @@ export default function MemberGlobalNotificationHint() {
                     color: "var(--color-text-secondary)",
                     backgroundColor: "var(--color-card-hover)",
                   }}
-                  aria-label="Masquer ce rappel jusqu’à la prochaine notification"
+                  aria-label="Masquer ce rappel jusqu’à la prochaine nouvelle"
                 >
                   Plus tard
                 </button>

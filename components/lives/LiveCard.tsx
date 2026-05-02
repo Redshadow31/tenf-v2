@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink, Radio, User } from "lucide-react";
 import type { LiveMember } from "@/components/lives/types";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
@@ -13,9 +14,11 @@ function formatLiveDuration(startedAt: string): string {
 
 type LiveCardProps = {
   live: LiveMember;
+  /** Ouvre la fiche membre (modale) — prioritaire sur le lien annuaire */
+  onOpenMemberProfile?: () => void;
 };
 
-export default function LiveCard({ live }: LiveCardProps) {
+export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
   const integrationTs = live.integrationDate ? new Date(live.integrationDate).getTime() : NaN;
   const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const isNewMember =
@@ -184,17 +187,29 @@ export default function LiveCard({ live }: LiveCardProps) {
             href={live.twitchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
+            className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
             style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
           >
-            {isDiscoverCta ? "Decouvrir le createur" : "Rejoindre le live"}
+            <Radio className="h-4 w-4 shrink-0 text-red-200" aria-hidden />
+            {isDiscoverCta ? "Découvrir le créateur" : "Rejoindre le live"}
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
           </a>
-          {live.memberAnnuaireHref ? (
+          {onOpenMemberProfile ? (
+            <button
+              type="button"
+              onClick={onOpenMemberProfile}
+              className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border border-violet-400/35 bg-gradient-to-r from-violet-600/25 to-fuchsia-600/15 px-4 py-2 text-sm font-bold text-violet-100 shadow-[0_8px_24px_rgba(88,28,135,0.2)] transition hover:border-violet-400/55 hover:brightness-110 active:scale-[0.99] md:py-2.5"
+            >
+              <User className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+              Ouvrir la fiche TENF
+            </button>
+          ) : live.memberAnnuaireHref ? (
             <Link
               href={live.memberAnnuaireHref}
-              className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5 md:py-2.5"
+              className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5 md:py-2.5"
               style={{ borderColor: "rgba(212,175,55,0.45)", color: "#f5e6b8" }}
             >
+              <User className="h-4 w-4 opacity-80" aria-hidden />
               Fiche membre TENF
             </Link>
           ) : null}

@@ -10,15 +10,6 @@ const slides = [
   "slide4.html",
   "slide5.html",
   "slide6.html",
-  "Slide7.html",
-  "slide8.html",
-  "slide9.html",
-  "slide10.html",
-  "slide10b.html",
-  "slide11.html",
-  "slide12.html",
-  "slide13.html",
-  "slide14.html",
 ];
 
 export default function PresentationAnimePage() {

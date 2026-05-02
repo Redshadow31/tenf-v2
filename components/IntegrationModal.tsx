@@ -3,11 +3,25 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { X, Calendar, MapPin } from "lucide-react";
 import {
   ONBOARDING_SESSION_IMAGE_HEIGHT,
   ONBOARDING_SESSION_IMAGE_WIDTH,
 } from "@/lib/onboardingSessionDefaults";
+
+/**
+ * Prépare la description (saisie libre côté admin) pour ReactMarkdown :
+ * retours à la ligne simples visibles (via remark-breaks) et listes « • » sur une ligne → liste GFM.
+ */
+function normalizeIntegrationDescriptionForMarkdown(raw: string): string {
+  let s = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd();
+  if (!s) return s;
+  s = s.replace(/:\s*•\s*/g, ":\n\n• ");
+  s = s.replace(/\s•\s/g, "\n• ");
+  s = s.replace(/^•\s+/gm, "- ");
+  return s;
+}
 
 type IntegrationModalProps = {
   integration: {
@@ -219,10 +233,12 @@ export default function IntegrationModal({
               </h3>
               {integration.description ? (
                 <div
-                  className="max-w-none text-sm leading-relaxed sm:text-base [&_p]:my-2 [&_li]:my-1 [&_ul]:my-2 [&_ol]:my-2 [&_strong]:font-semibold [&_strong]:text-[var(--color-text)] [&_a]:font-medium [&_a]:text-[var(--color-primary)] [&_a]:underline [&_h1]:text-lg [&_h2]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h1]:text-[var(--color-text)] [&_h2]:text-[var(--color-text)]"
+                  className="max-w-none text-sm leading-relaxed sm:text-base [&_p]:my-2 [&_li]:my-1 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-semibold [&_strong]:text-[var(--color-text)] [&_a]:font-medium [&_a]:text-[var(--color-primary)] [&_a]:underline [&_h1]:text-lg [&_h2]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h1]:text-[var(--color-text)] [&_h2]:text-[var(--color-text)]"
                   style={{ color: "var(--color-text-secondary)" }}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{integration.description}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                    {normalizeIntegrationDescriptionForMarkdown(integration.description)}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <p className="text-sm italic" style={{ color: "var(--color-text-muted, var(--color-text-secondary))" }}>

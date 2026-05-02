@@ -3,9 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import EventDateTime from "@/components/EventDateTime";
 import { formatEventDateTimeInTimezone, getBrowserTimezone } from "@/lib/timezone";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
+import EventDetailModal from "@/components/events2/EventDetailModal";
+import type { EventLocationLink } from "@/lib/eventLocation";
 
 type EventItem = {
   id: string;
@@ -387,18 +386,6 @@ export default function Events2Page() {
     setMessage(null);
   }
 
-  function MarkdownDescription({ value, className }: { value: string; className?: string }) {
-    if (!value?.trim()) {
-      return <p className={className}>Aucune description.</p>;
-    }
-
-    return (
-      <div className={className}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
-      </div>
-    );
-  }
-
   const renderCard = (event: EventItem) => {
     const isRegistered = registeredEventIds.has(event.id);
     const isPast = new Date(event.date).getTime() < Date.now();
@@ -776,99 +763,28 @@ export default function Events2Page() {
       )}
 
       {isModalOpen && selectedEvent && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setIsModalOpen(false)}>
-          <div
-            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl border border-gray-700 bg-[#1a1a1d]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {selectedEvent.image && (
-              <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-auto max-h-[260px] object-contain bg-[#0e0e10]" />
-            )}
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-2xl font-bold">{selectedEvent.title}</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">
-                  ✕
-                </button>
-              </div>
-              <span
-                className={`inline-block text-xs px-2 py-1 rounded-full border ${
-                  selectedEvent.isMaskedForAudience
-                    ? "bg-red-600/30 text-red-200 border-red-500/30"
-                    : categoryColor(selectedEvent.category)
-                }`}
-              >
-                {selectedEvent.isMaskedForAudience ? "Event TENF" : selectedEvent.category}
-              </span>
-              <EventDateTime startUtc={selectedEvent.date} className="text-sm text-gray-300" />
-              <MarkdownDescription
-                value={selectedEvent.description || ""}
-                className="prose prose-invert max-w-none prose-p:my-2 prose-li:my-1 prose-headings:text-white prose-p:text-gray-200 prose-strong:text-white prose-em:text-gray-200 prose-a:text-[#9146ff] prose-a:hover:text-[#7c3aed] prose-ul:text-gray-200 prose-ol:text-gray-200 prose-li:text-gray-200"
-              />
-              {selectedEvent.location && (
-                <p className="text-sm text-gray-300">
-                  {(() => {
-                    const display = buildEventLocationDisplay(selectedEvent.location, locationLinks);
-                    if (!display) return null;
-                    return (
-                      <>
-                        Lieu:{" "}
-                        <a className="text-[#9146ff] hover:text-[#7c3aed] break-all" href={display.url} target="_blank" rel="noreferrer">
-                          {display.label}
-                        </a>
-                      </>
-                    );
-                  })()}
-                </p>
-              )}
-
-              <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <a
-                  href={calendarUrlForEvent(selectedEvent)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
-                >
-                  Ajouter au calendrier
-                </a>
-                {selectedEvent.ctaUrl && (
-                  <a
-                    href={selectedEvent.ctaUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white font-semibold text-center"
-                  >
-                    {selectedEvent.ctaLabel || "En savoir plus"}
-                  </a>
-                )}
-                {new Date(selectedEvent.date).getTime() >= Date.now() ? (
-                  !selectedEvent.isMaskedForAudience &&
-                  (registeredEventIds.has(selectedEvent.id) ? (
-                    <button
-                      onClick={() => handleUnregister(selectedEvent.id)}
-                      disabled={actionLoading}
-                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
-                    >
-                      Se desinscrire
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleRegister(selectedEvent.id)}
-                      disabled={actionLoading}
-                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold"
-                    >
-                      S'inscrire
-                    </button>
-                  ))
-                ) : (
-                  <span className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-gray-600 bg-[#111116] px-4 py-2 text-sm text-gray-300">
-                    Evenement termine
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <EventDetailModal
+          event={selectedEvent}
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          calendarUrl={calendarUrlForEvent(selectedEvent)}
+          locationLinks={locationLinks}
+          categoryBadgeClass={
+            selectedEvent.isMaskedForAudience
+              ? "bg-red-600/30 text-red-200 border-red-500/30"
+              : categoryColor(selectedEvent.category)
+          }
+          categoryLabel={selectedEvent.isMaskedForAudience ? "Event TENF" : selectedEvent.category}
+          statusBadge={getStatusBadge(selectedEvent.date)}
+          urgencyLabel={getUrgencyLabel(selectedEvent.date)}
+          isRegistered={registeredEventIds.has(selectedEvent.id)}
+          isPast={new Date(selectedEvent.date).getTime() < Date.now()}
+          hideRegistration={selectedEvent.isMaskedForAudience === true}
+          actionLoading={actionLoading}
+          onRegister={() => handleRegister(selectedEvent.id)}
+          onUnregister={() => handleUnregister(selectedEvent.id)}
+          browserTimezone={browserTimezone}
+        />
       )}
     </div>
   );

@@ -41,6 +41,14 @@ export interface LiveMember {
   integrationDate?: string;
   /** Lien annuaire (/membres?member=) quand la fiche doit être mise en avant (ex. bloc UPA). */
   memberAnnuaireHref?: string;
+  /** Données profil API publique (pour modale fiche membre). */
+  description?: string;
+  discordId?: string;
+  instagram?: string;
+  tiktok?: string;
+  twitter?: string;
+  badges?: string[];
+  vipBadge?: string;
 }
 
 export interface PublicEventItem {

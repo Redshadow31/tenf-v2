@@ -11,11 +11,6 @@ const nextConfig = {
         permanent: true,
       },
       {
-        source: '/admin/onboarding/presentation',
-        destination: '/admin/onboarding/presentation-anime',
-        permanent: true,
-      },
-      {
         source: '/admin/onboarding/discours',
         destination: '/admin/onboarding/discours2',
         permanent: true,

@@ -858,6 +858,411 @@
   font-weight: 700;
 }
 
+/* ========== Harmonisation TENF (thème sombre, violet #9146ff, fond via .fonctionnementPage parent) ========== */
+
+.upa-page.upa-page--harmonized {
+  --fn-purple: #9146ff;
+  --upa-harmonized-border: color-mix(in srgb, var(--fn-purple) 26%, var(--color-border, #2a2a32));
+  color: var(--color-text, #eaeaf1);
+  background: transparent;
+  border-radius: 1.25rem;
+  padding-bottom: 3rem;
+}
+
+.upa-page.upa-page--harmonized .upa-audience-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.upa-page.upa-page--harmonized .upa-audience-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 22%, var(--color-border, #333));
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: color-mix(in srgb, #fff 4%, transparent);
+  color: var(--color-text-secondary, #b4b4c4);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.upa-page.upa-page--harmonized .upa-audience-btn:hover {
+  border-color: color-mix(in srgb, var(--fn-purple) 45%, transparent);
+  color: var(--color-text, #fff);
+}
+
+.upa-page.upa-page--harmonized .upa-audience-btn.active {
+  border-color: color-mix(in srgb, var(--fn-purple) 55%, #6b21d8);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 82%, #5b21b8), color-mix(in srgb, #6366f1 72%, var(--fn-purple)));
+  color: #fff;
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--fn-purple) 32%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-audience-hint {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 18%, var(--color-border, #333));
+  background: color-mix(in srgb, var(--fn-purple) 8%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary, #c4c4d4);
+}
+
+.upa-page.upa-page--harmonized .upa-tabs-intro {
+  margin-bottom: 14px;
+}
+
+.upa-page.upa-page--harmonized .upa-tabs-intro-text {
+  margin: 8px 0 0;
+  max-width: 62ch;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-section-title {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-card {
+  border-color: var(--upa-harmonized-border);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--color-card, #17171b) 94%, #0a0614),
+    color-mix(in srgb, #12081f 92%, transparent)
+  );
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+.upa-page.upa-page--harmonized .upa-card:hover {
+  border-color: color-mix(in srgb, var(--fn-purple) 42%, var(--color-border, #333));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.42), 0 0 32px color-mix(in srgb, var(--fn-purple) 12%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-card h4,
+.upa-page.upa-page--harmonized .upa-card h5 {
+  color: color-mix(in srgb, #fff 94%, var(--fn-purple));
+}
+
+.upa-page.upa-page--harmonized .upa-card p,
+.upa-page.upa-page--harmonized .upa-empty-text {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-card-highlight {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--fn-purple) 22%, transparent),
+    color-mix(in srgb, var(--color-card, #17171b) 90%, #090513)
+  );
+}
+
+.upa-page.upa-page--harmonized .upa-card-soft {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #22c55e 18%, transparent),
+    color-mix(in srgb, var(--color-card, #17171b) 92%, #052e16)
+  );
+}
+
+.upa-page.upa-page--harmonized .upa-inline-link {
+  color: #c4b5fd;
+}
+
+.upa-page.upa-page--harmonized .upa-inline-link:hover {
+  color: #ddd6fe;
+}
+
+.upa-page.upa-page--harmonized .upa-hero {
+  border-color: color-mix(in srgb, var(--fn-purple) 35%, rgba(255, 255, 255, 0.2));
+  background:
+    radial-gradient(130% 100% at 20% 0%, color-mix(in srgb, var(--fn-purple) 38%, transparent) 0%, transparent 54%),
+    radial-gradient(100% 100% at 88% 12%, rgba(34, 197, 94, 0.28) 0%, transparent 52%),
+    linear-gradient(126deg, #1a0f2e 0%, var(--fn-purple) 44%, #166534 100%);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.45),
+    0 0 60px color-mix(in srgb, var(--fn-purple) 18%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.upa-page.upa-page--harmonized .upa-btn-primary {
+  background: linear-gradient(135deg, var(--fn-purple), #6366f1);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--fn-purple) 38%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.upa-page.upa-page--harmonized .upa-btn-secondary {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-btn-accent {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  box-shadow: 0 10px 26px rgba(34, 197, 94, 0.28);
+}
+
+.upa-page.upa-page--harmonized .upa-btn-member {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #fff 35%, transparent);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px 22px;
+  min-height: 48px;
+  transition: transform 220ms ease, background 220ms ease;
+}
+
+.upa-page.upa-page--harmonized .upa-btn-member:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+
+.upa-page.upa-page--harmonized .upa-tab-panel {
+  border-color: var(--upa-harmonized-border);
+  background: linear-gradient(180deg, color-mix(in srgb, #14101f 96%, transparent), color-mix(in srgb, #0d0d12 98%, transparent));
+}
+
+.upa-page.upa-page--harmonized .upa-tab-title {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-subsection h4 {
+  color: color-mix(in srgb, #fff 92%, var(--fn-purple));
+}
+
+.upa-page.upa-page--harmonized .upa-tab-btn {
+  background: color-mix(in srgb, #fff 4%, transparent);
+  border-color: color-mix(in srgb, var(--fn-purple) 22%, var(--color-border, #333));
+  color: var(--color-text-secondary, #b4b4c4);
+}
+
+.upa-page.upa-page--harmonized .upa-tab-btn.active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 88%, #5b21b8), #6366f1);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--fn-purple) 55%, #6b21d8);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--fn-purple) 28%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-card {
+  border-color: var(--upa-harmonized-border);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--color-card) 92%, #0a0614), #0f0f14);
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-card.current {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-dot {
+  background: var(--fn-purple);
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-card.current .upa-timeline-dot {
+  background: #4ade80;
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-date {
+  color: #c4b5fd;
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-card h3 {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-card p {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-timeline-status {
+  border-color: color-mix(in srgb, var(--fn-purple) 35%, transparent);
+  background: color-mix(in srgb, var(--fn-purple) 18%, transparent);
+  color: #e9d5ff;
+}
+
+.upa-page.upa-page--harmonized .upa-mobile-accordion-item {
+  border-color: var(--upa-harmonized-border);
+  background: color-mix(in srgb, var(--color-card) 94%, #0a0614);
+}
+
+.upa-page.upa-page--harmonized .upa-mobile-accordion-trigger {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-live-status {
+  border-color: var(--upa-harmonized-border);
+  background: color-mix(in srgb, var(--color-card) 94%, #0a0614);
+}
+
+.upa-page.upa-page--harmonized .upa-live-status strong {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-live-status p {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-staff-avatar-fallback {
+  background: color-mix(in srgb, var(--fn-purple) 28%, #1a1025);
+  color: #e9d5ff;
+}
+
+.upa-page.upa-page--harmonized .upa-staff-role {
+  color: #86efac !important;
+}
+
+.upa-page.upa-page--harmonized .upa-staff-divider {
+  border-top-color: color-mix(in srgb, var(--fn-purple) 22%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-staff-divider span {
+  background: color-mix(in srgb, var(--fn-purple) 22%, transparent);
+  color: #e9d5ff;
+}
+
+.upa-page.upa-page--harmonized .upa-discover-invite,
+.upa-page.upa-page--harmonized .upa-event-invite-card,
+.upa-page.upa-page--harmonized .upa-staff-join-card {
+  border-color: color-mix(in srgb, #22c55e 38%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #14532d 35%, transparent), color-mix(in srgb, var(--color-card) 92%, #052e16));
+}
+
+.upa-page.upa-page--harmonized .upa-link-card {
+  border-color: var(--upa-harmonized-border);
+  background: color-mix(in srgb, var(--color-card) 94%, #0a0614);
+  color: #c4b5fd;
+}
+
+.upa-page.upa-page--harmonized .upa-link-card span {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-link-card:hover {
+  border-color: color-mix(in srgb, var(--fn-purple) 45%, transparent);
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-final-cta {
+  border-color: color-mix(in srgb, var(--fn-purple) 35%, rgba(255, 255, 255, 0.25));
+  background:
+    radial-gradient(130% 100% at 18% 0%, color-mix(in srgb, var(--fn-purple) 35%, transparent) 0%, transparent 52%),
+    linear-gradient(126deg, #4c1d95 0%, var(--fn-purple) 42%, #166534 100%);
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-partner-note {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-card {
+  border-color: var(--upa-harmonized-border);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--color-card) 94%, #0a0614), #101018);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-variant-highlight {
+  border-color: color-mix(in srgb, var(--fn-purple) 42%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 14%, transparent), color-mix(in srgb, #12081f 95%, transparent));
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-variant-soft {
+  border-color: color-mix(in srgb, #22c55e 35%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, #14532d 22%, transparent), color-mix(in srgb, var(--color-card) 94%, #052e16));
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-card-title {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-card-subtitle {
+  color: var(--color-text-secondary, #a8a8b8);
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-p {
+  color: color-mix(in srgb, var(--color-text, #eaeaf1) 94%, #c4b5fd);
+}
+
+.upa-page.upa-page--harmonized .upa-editorial-p strong {
+  color: #ddd6fe;
+}
+
+.upa-page.upa-page--harmonized .upa-faq-theme {
+  border-color: color-mix(in srgb, var(--fn-purple) 18%, transparent);
+  background: color-mix(in srgb, var(--fn-purple) 8%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-faq-theme-title {
+  color: #fff;
+}
+
+.upa-page.upa-page--harmonized .upa-faq-item {
+  border-color: var(--upa-harmonized-border);
+  background: color-mix(in srgb, var(--color-card) 96%, #0a0614);
+}
+
+.upa-page.upa-page--harmonized .upa-faq-trigger {
+  color: #e9d5ff;
+}
+
+.upa-page.upa-page--harmonized .upa-faq-answer {
+  color: var(--color-text-secondary, #b4b4c4);
+}
+
+.upa-page.upa-page--harmonized .upa-faq-help {
+  border-color: color-mix(in srgb, #22c55e 40%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #14532d 38%, transparent), color-mix(in srgb, var(--color-card) 92%, #052e16));
+}
+
+.upa-page.upa-page--harmonized .upa-faq-help p {
+  color: #dcfce7;
+}
+
+.upa-page.upa-page--harmonized .upa-event-card h4 span {
+  background: color-mix(in srgb, var(--fn-purple) 22%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-discover-proposal-card h5 span {
+  background: color-mix(in srgb, var(--fn-purple) 22%, transparent);
+}
+
+.upa-page.upa-page--harmonized .upa-staff-info-card h5 span {
+  background: color-mix(in srgb, var(--fn-purple) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upa-page.upa-page--harmonized .upa-glow-anim,
+  .upa-page.upa-page--harmonized .upa-live-dot {
+    animation: none !important;
+  }
+
+  .upa-page.upa-page--harmonized .upa-btn:hover,
+  .upa-page.upa-page--harmonized .upa-card:hover,
+  .upa-page.upa-page--harmonized .upa-btn-member:hover {
+    transform: none;
+  }
+}
+
 @media (max-width: 1024px) {
   .upa-page .upa-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));

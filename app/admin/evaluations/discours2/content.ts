@@ -6,7 +6,13 @@ export type Discours2Part = {
   points: string[];
   conseils: string[];
   discours: string[];
+  /** Mots ou très courtes expressions complémentaires. */
   keywords: string[];
+  /**
+   * Formulations orales à souligner en priorité (groupes de mots, pas seulement un terme isolé).
+   * Fusionnées avec `keywords` pour le surlignage ; les plus longues matchent d’abord.
+   */
+  phrasesCles?: string[];
 };
 
 export const discours2General = {

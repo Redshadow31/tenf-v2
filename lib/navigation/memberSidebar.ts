@@ -44,8 +44,8 @@ export const memberSidebarSections: SidebarNavSection[] = [
         items: [
           { href: "/member/dashboard", label: "Dashboard", icon: LayoutDashboard },
           { href: "/postuler", label: "Postuler modérateur / soutien TENF", icon: ClipboardList },
-          { href: "/member/evenements", label: "Planning TENF", icon: Calendar },
-          { href: "/member/notifications", label: "Mes notifications", icon: Bell },
+          { href: "/member/evenements", label: "Agenda TENF", icon: Calendar },
+          { href: "/member/notifications", label: "Tes nouvelles", icon: Bell },
         ],
       },
     ],

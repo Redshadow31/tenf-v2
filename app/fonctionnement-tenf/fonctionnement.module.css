@@ -286,6 +286,65 @@
 }
 
 /* Footer nav row */
+/* Sticky in-page sections (Découvrir, etc.) — sous la rail principale */
+.fnDiscoverJumpNav {
+  position: sticky;
+  top: 4.35rem;
+  z-index: 28;
+  overflow-x: auto;
+  border-radius: 0.95rem;
+  padding: 0.55rem 0.65rem;
+  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, #0c0818 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 18%, var(--color-border));
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+}
+
+@media (min-width: 640px) {
+  .fnDiscoverJumpNav {
+    top: 4.85rem;
+  }
+}
+
+.fnDiscoverJumpLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--fn-purple) 12%, var(--color-border));
+  padding: 0.4rem 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-text-secondary) 94%, var(--color-text));
+  background: color-mix(in srgb, #fff 3%, transparent);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .fnDiscoverJumpLink {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.78rem;
+  }
+}
+
+.fnDiscoverJumpLink:hover {
+  border-color: color-mix(in srgb, var(--fn-purple) 38%, var(--color-border));
+  color: var(--color-text);
+}
+
+.fnDiscoverJumpLinkActive {
+  color: #fff !important;
+  border-color: color-mix(in srgb, var(--fn-purple) 50%, #5b21b8) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fn-purple) 78%, #4c1d95), color-mix(in srgb, #6366f1 65%, var(--fn-purple)));
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--fn-purple) 28%, transparent);
+}
+
 .fnFlowFooter {
   display: flex;
   flex-wrap: wrap;
@@ -705,6 +764,7 @@
   .fnProgressNode,
   .fnNavLink,
   .fnFaqItem,
+  .fnDiscoverJumpLink,
   .fonctionnementTabPill:not(.active)::after,
   .fonctionnementHero::after {
     transition: none;

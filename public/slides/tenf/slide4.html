@@ -3,317 +3,1099 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Des rôles adaptés à chacun</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <title>TENF — Les rôles Discord</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
+
   <style>
-    :root{
-      --bg:#0e0e10; --panel:rgba(20,20,28,.82); --border:rgba(255,255,255,.08);
-      --text:#fff; --text-soft:rgba(255,255,255,.76); --text-muted:rgba(255,255,255,.45);
-      --violet:#9146ff; --red:#ce1946; --gold:#ffd166;
-      --affilie:#9aaedb; --developpement:#b87333; --pause:#ffffff;
-      --communaute:#06b6d4; --jeunes-createurs:#ff3da5; --ptits-jeunes:#22e3a5;
-      --shadow-lg:0 16px 42px rgba(0,0,0,.36); --shadow-violet:0 0 30px rgba(145,70,255,.14);
-      --shadow-red:0 0 26px rgba(206,25,70,.08);
+    :root {
+      --twitch: #9146ff;
+      --red: #ce1946;
+
+      /* Harmonisation cartes (couleurs d’accent inchangées par rôle) */
+      --surface-card: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.022));
+      --stroke-card: 1px solid rgba(255, 255, 255, 0.075);
+      --radius-card: 12px;
+      --pad-card: 12px 14px;
+      /* Alignement badge / titre : même inset sur toutes les cartes */
+      --card-inset-x: 16px;
+      --card-inset-t: 14px;
+      --badge-title-gap: 7px;
+      --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.32);
+
+      /* Badge pill (toutes cartes) */
+      --badge-pad-y: 3px;
+      --badge-pad-x: 9px;
+      --badge-font: 7.5px;
+      --badge-radius: 999px;
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:"Poppins",sans-serif;background:#19191d}
-    body{position:relative;display:block}
-    .viewport{
-      width:1600px;height:900px;position:absolute;left:50%;top:50%;overflow:hidden;transform-origin:center center;
-      transform:translate(-50%, -50%) scale(1);
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Poppins", sans-serif;
+      background: #050508;
+      color: #fff;
+    }
+
+    .slide-stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #030306;
+    }
+
+    .slide {
+      --mx: 0;
+      --my: 0;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1600px;
+      height: 900px;
+      overflow: hidden;
+      transform-origin: center center;
+      transform: translate(-50%, -50%) scale(1);
+      background: #06060a;
+      will-change: transform;
+    }
+
+    .bg-mesh {
+      position: absolute;
+      inset: -80px;
+      z-index: 0;
       background:
-        radial-gradient(circle at 14% 20%, rgba(206,25,70,.12), transparent 28%),
-        radial-gradient(circle at 82% 82%, rgba(145,70,255,.14), transparent 26%),
-        linear-gradient(135deg,#0a0a0d 0%,#121320 44%,#0d0e12 100%);
-      color:var(--text);will-change:transform
+        radial-gradient(ellipse 90% 70% at 50% 45%, rgba(145, 70, 255, 0.22), transparent 58%),
+        radial-gradient(ellipse 65% 55% at 85% 75%, rgba(206, 25, 70, 0.16), transparent 52%),
+        radial-gradient(ellipse 55% 50% at 12% 70%, rgba(145, 70, 255, 0.12), transparent 48%);
+      animation: auroraShift 22s ease-in-out infinite alternate;
+      transform: translate(calc(var(--mx) * -18px), calc(var(--my) * -14px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .grid-bg{
-      position:absolute;inset:0;z-index:0;
+
+    .bg-mesh::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 48% 52%, rgba(255, 255, 255, 0.04), transparent 55%);
+      animation: pulseSoft 8s ease-in-out infinite;
+    }
+
+    @keyframes auroraShift {
+      0% { filter: hue-rotate(-6deg) saturate(1.05); opacity: 0.92; }
+      100% { filter: hue-rotate(8deg) saturate(1.15); opacity: 1; }
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.03); }
+    }
+
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.35;
       background-image:
-        linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
-      background-size:44px 44px;
-      mask-image:linear-gradient(to bottom, rgba(255,255,255,.20), transparent 88%);
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 75% 65% at 50% 48%, #000 15%, transparent 72%);
+      pointer-events: none;
     }
-    .glow{position:absolute;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;animation:breathe 8s ease-in-out infinite alternate}
-    .glow.red{width:380px;height:380px;top:-120px;left:-120px;background:rgba(206,25,70,.13)}
-    .glow.violet{width:420px;height:420px;right:-90px;bottom:-120px;background:rgba(145,70,255,.14);animation-delay:1.2s}
-    .particle{position:absolute;border-radius:50%;opacity:.75;z-index:0;animation:drift 9s ease-in-out infinite}
-    .p1{top:90px;left:180px;width:5px;height:5px;background:var(--gold)}
-    .p2{top:150px;right:210px;width:4px;height:4px;background:var(--violet);animation-delay:1s}
-    .p3{top:290px;left:70px;width:3px;height:3px;background:#fff;animation-delay:2s}
-    .p4{bottom:160px;right:180px;width:6px;height:6px;background:var(--red);animation-delay:.8s}
-    .p5{bottom:120px;left:240px;width:4px;height:4px;background:var(--gold);animation-delay:1.5s}
-    .p6{top:120px;left:60%;width:3px;height:3px;background:#fff;animation-delay:2.4s}
-    .star{position:absolute;border-radius:50%;background:#fff;opacity:.25;z-index:0;animation:twinkle 3.5s ease-in-out infinite}
-    .s1{top:80px;left:420px;width:2px;height:2px}
-    .s2{top:140px;right:160px;width:3px;height:3px;animation-delay:.8s}
-    .s3{bottom:100px;left:300px;width:2px;height:2px;animation-delay:1.7s}
-    .s4{bottom:180px;right:350px;width:2px;height:2px;animation-delay:2.3s}
-    .light-ray{position:absolute;width:160px;height:1200px;background:rgba(255,255,255,.03);filter:blur(50px);transform:rotate(45deg);z-index:0;animation:rayMove 14s linear infinite}
-    .light-ray.r1{top:-280px;left:180px}
-    .light-ray.r2{top:-320px;right:200px;animation-duration:16s;animation-direction:reverse}
-    .topbar{position:absolute;top:22px;left:28px;right:28px;z-index:4;display:flex;align-items:center;justify-content:space-between}
-    .brand{
-      display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:18px;
-      background:rgba(16,16,24,.55);border:1px solid rgba(255,255,255,.07);backdrop-filter:blur(14px);box-shadow:var(--shadow-lg)
+
+    .rays {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: 1400px;
+      height: 1400px;
+      margin: -700px 0 0 -700px;
+      z-index: 0;
+      opacity: 0.45;
+      pointer-events: none;
+      animation: raysSpin 120s linear infinite;
     }
-    .brand img{
-      width:54px;height:54px;border-radius:50%;object-fit:cover;flex-shrink:0;
-      box-shadow:0 0 24px rgba(206,25,70,.24);animation:logoPulse 4s ease-in-out infinite
+
+    .rays::before,
+    .rays::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(145, 70, 255, 0.07) 40deg,
+        transparent 80deg,
+        rgba(206, 25, 70, 0.06) 160deg,
+        transparent 220deg,
+        rgba(145, 70, 255, 0.05) 300deg,
+        transparent 360deg
+      );
     }
-    .brand-kicker{display:block;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px}
-    .brand-name{font-size:17px;font-weight:700;line-height:1.2}
-    .tag-pill{
-      padding:10px 15px;border-radius:999px;background:rgba(145,70,255,.12);border:1px solid rgba(145,70,255,.28);
-      color:rgba(255,255,255,.92);font-size:13px;font-weight:700;white-space:nowrap;box-shadow:var(--shadow-violet);
-      animation:badgePulse 2.6s ease-in-out infinite
+
+    .rays::after {
+      animation: raysSpin 90s linear infinite reverse;
+      opacity: 0.7;
     }
-    .content{position:relative;z-index:3;width:100%;height:100%;padding:90px 34px 42px;display:grid;grid-template-columns:420px 1fr;gap:28px}
-    .left{display:flex;flex-direction:column;justify-content:center;min-width:0;padding-left:4px;padding-right:8px}
-    .eyebrow{
-      display:inline-flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--text-soft);font-size:12px;font-weight:700;
-      letter-spacing:.18em;text-transform:uppercase
+
+    @keyframes raysSpin { to { transform: rotate(360deg); } }
+
+    .hotspot {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      width: 920px;
+      height: 380px;
+      margin: -190px 0 0 -460px;
+      z-index: 1;
+      background: radial-gradient(ellipse at center, rgba(145, 70, 255, 0.11), transparent 68%);
+      filter: blur(44px);
+      animation: hotspotPulse 5s ease-in-out infinite;
+      pointer-events: none;
+      transform: translate(calc(var(--mx) * -10px), calc(var(--my) * -8px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .eyebrow::before{content:"";width:38px;height:2px;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--violet));box-shadow:0 0 18px rgba(206,25,70,.45)}
-    .title{margin:0;font-size:50px;line-height:.93;font-weight:900;letter-spacing:-.04em;text-transform:uppercase}
-    .title span{display:block}
-    .title .white{color:#fff;text-shadow:0 0 22px rgba(255,255,255,.08)}
-    .title .gold{color:var(--gold);text-shadow:0 0 20px rgba(255,209,102,.20)}
-    .title .violet{color:var(--violet);text-shadow:0 0 24px rgba(145,70,255,.24)}
-    .intro{margin-top:16px;max-width:305px;font-size:14px;line-height:1.6;color:var(--text-soft)}
-    .intro strong,.mini-card-text strong,.story-text strong{color:#fff}
-    .mini-card{
-      margin-top:18px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 22px rgba(0,0,0,.18);
-      transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
+
+    .hotspot-red {
+      width: 480px;
+      height: 260px;
+      margin: -40px 0 0 -160px;
+      background: radial-gradient(ellipse at center, rgba(206, 25, 70, 0.08), transparent 65%);
+      animation-delay: -2s;
     }
-    .mini-card:hover{transform:translateY(-3px);border-color:rgba(145,70,255,.30);box-shadow:0 14px 28px rgba(145,70,255,.18)}
-    .mini-card-title{font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px}
-    .mini-card-text{font-size:13px;line-height:1.5;color:var(--text-soft)}
-    .right{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0}
-    .roles-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-    .role-card{
-      position:relative;min-height:130px;border-radius:18px;padding:13px 14px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),var(--panel);
-      border:1px solid var(--border);box-shadow:var(--shadow-lg),var(--shadow-violet),var(--shadow-red);overflow:hidden;display:flex;gap:12px;align-items:flex-start;min-width:0;
-      transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
+
+    @keyframes hotspotPulse {
+      0%, 100% { opacity: 0.7; transform: translate(calc(var(--mx) * -10px), calc(var(--my) * -8px)) scale(1); }
+      50% { opacity: 1; transform: translate(calc(var(--mx) * -10px), calc(var(--my) * -8px)) scale(1.06); }
     }
-    .role-card:hover{
-      transform:translateY(-4px);border-color:color-mix(in srgb, var(--role-color) 70%, transparent);
-      box-shadow:0 20px 34px rgba(0,0,0,.35),0 0 24px color-mix(in srgb, var(--role-color) 35%, transparent)
+
+    .spark {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 1;
+      pointer-events: none;
+      box-shadow: 0 0 12px currentColor;
     }
-    .role-card::before{
-      content:"";position:absolute;inset:0 0 auto 0;height:4px;
-      background:linear-gradient(90deg,var(--role-color),rgba(255,255,255,.08));
-      box-shadow:0 0 14px color-mix(in srgb, var(--role-color) 45%, transparent)
+
+    .spark.v { width: 4px; height: 4px; color: var(--twitch); background: currentColor; animation: sparkFloat 7s ease-in-out infinite; }
+    .spark.r { width: 3px; height: 3px; color: #ff4d7d; background: currentColor; animation: sparkFloat 9s ease-in-out infinite; }
+    .spark.w { width: 2px; height: 2px; color: rgba(255, 255, 255, 0.9); background: currentColor; animation: sparkFloat 6s ease-in-out infinite; }
+
+    .s1 { left: 14%; top: 18%; }
+    .s2 { right: 15%; bottom: 22%; animation-delay: -3s; }
+    .s3 { left: 44%; top: 10%; animation-delay: -1.5s; }
+
+    @keyframes sparkFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+      50% { transform: translate(8px, -18px) scale(1.15); opacity: 1; }
     }
-    .role-icon{
-      width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-      font-size:16px;color:var(--role-color);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-      box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);animation:pulseIcon 3.1s ease-in-out infinite
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background: radial-gradient(ellipse 72% 58% at 50% 48%, rgba(5, 5, 10, 0.22), rgba(4, 4, 8, 0.84) 100%);
+      pointer-events: none;
     }
-    .role-content{min-width:0}
-    .role-card h3{margin:0 0 6px 0;font-size:14px;font-weight:800;line-height:1.25;color:#fff;letter-spacing:-.01em;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-    .role-card p{margin:0;font-size:11px;line-height:1.45;color:var(--text-soft);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
-    .role-badge{
-      display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;
-      border:1px solid color-mix(in srgb, var(--role-color) 70%, transparent);color:var(--role-color);background:rgba(255,255,255,.03);
-      font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase
+
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.65);
     }
-    .story-card{
-      position:relative;border-radius:22px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),var(--panel);
-      border:1px solid var(--border);box-shadow:var(--shadow-lg),var(--shadow-violet),var(--shadow-red);padding:16px 18px;overflow:hidden;
-      transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease
+
+    .grain {
+      position: absolute;
+      inset: -20px;
+      z-index: 4;
+      opacity: 0.055;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation: grainMove 0.5s steps(2) infinite;
     }
-    .story-card:hover{transform:translateY(-3px);border-color:rgba(145,70,255,.30);box-shadow:0 18px 30px rgba(145,70,255,.16),var(--shadow-lg)}
-    .story-card::before{
-      content:"";position:absolute;inset:0;background:
-      linear-gradient(135deg, rgba(145,70,255,.08), transparent 38%),
-      linear-gradient(315deg, rgba(206,25,70,.06), transparent 35%);
-      pointer-events:none
+
+    @keyframes grainMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(-2%, -2%); }
     }
-    .story-card > *{position:relative;z-index:1}
-    .story-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap;min-width:0}
-    .story-top h2{margin:0;font-size:16px;font-weight:800;line-height:1.3;color:#fff;flex:1 1 240px;min-width:0}
-    .story-pill{
-      padding:7px 11px;border-radius:999px;background:rgba(206,25,70,.12);border:1px solid rgba(206,25,70,.24);font-size:10px;font-weight:700;
-      text-transform:uppercase;letter-spacing:.08em;color:#fff;white-space:nowrap;animation:badgePulse 2.8s ease-in-out infinite
+
+    /* --- Contenu --- */
+    .layout {
+      position: relative;
+      z-index: 5;
+      height: 100%;
+      padding: 16px 44px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
+      overflow: hidden;
     }
-    .story-text{font-size:12px;line-height:1.55;color:var(--text-soft);min-width:0}
-    .story-text .accent{color:#d9bcff;font-weight:700}
-    .footer{
-      position:absolute;left:34px;right:34px;bottom:10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:16px;
-      font-size:11px;color:var(--text-muted);font-weight:500
+
+    /* Entrée échelonnée (une fois au chargement) */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: revealIn 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation-delay: var(--reveal-delay, 0s);
     }
-    .footer-left,.footer-right{display:flex;align-items:center;gap:9px;min-width:0}
-    .footer-left span,.footer-right span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .line{width:34px;height:1px;background:rgba(255,255,255,.16);flex-shrink:0}
-    .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);box-shadow:0 0 12px rgba(145,70,255,.75);flex-shrink:0;animation:twinkle 2.4s ease-in-out infinite}
-    .role-affilie{--role-color:var(--affilie)} .role-dev{--role-color:var(--developpement)} .role-pause{--role-color:var(--pause)}
-    .role-commu{--role-color:var(--communaute)} .role-jeunes{--role-color:var(--jeunes-createurs)} .role-ptits{--role-color:var(--ptits-jeunes)}
-    @keyframes drift{0%,100%{transform:translate(0,0);opacity:.55}50%{transform:translate(8px,-12px);opacity:1}}
-    @keyframes breathe{from{transform:scale(1);opacity:.8}to{transform:scale(1.08);opacity:1}}
-    @keyframes twinkle{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.2)}}
-    @keyframes logoPulse{0%,100%{box-shadow:0 0 18px rgba(206,25,70,.2)}50%{box-shadow:0 0 28px rgba(206,25,70,.38)}}
-    @keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-    @keyframes pulseIcon{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-    @keyframes rayMove{0%{transform:rotate(45deg) translate(-200px,-200px);opacity:0}50%{opacity:.06}100%{transform:rotate(45deg) translate(200px,200px);opacity:0}}
-    .reveal{opacity:0;animation:revealFade .6s ease-out forwards}
-    .reveal.d1{animation-delay:.1s}.reveal.d2{animation-delay:.2s}.reveal.d3{animation-delay:.35s}.reveal.d4{animation-delay:.5s}
-    .reveal.d5{animation-delay:.65s}.reveal.d6{animation-delay:.8s}.reveal.d7{animation-delay:.95s}.reveal.d8{animation-delay:1.1s}
-    @keyframes revealFade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}.reveal{opacity:1!important;transform:none!important}}
+
+    @keyframes revealIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .slide-block--fill {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide-head {
+      flex-shrink: 0;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .slide-head h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.1;
+      background: linear-gradient(118deg, #fff 0%, #f0e8ff 38%, #fff 54%, #ffd8ea 72%, #dcc8ff 90%, #fff 100%);
+      background-size: 200% 100%;
+      background-position: 45% 50%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 20px rgba(145, 70, 255, 0.2));
+    }
+
+    .slide-sub {
+      margin: 12px auto 0;
+      max-width: 640px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.58);
+    }
+
+    .slide-sub .tenf-mark {
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.88);
+      letter-spacing: 0.04em;
+    }
+
+    .sec-label {
+      margin: 0 0 11px;
+      width: 100%;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.72);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 9px;
+      text-shadow:
+        0 0 20px rgba(145, 70, 255, 0.35),
+        0 0 40px rgba(145, 70, 255, 0.12);
+    }
+
+    .sec-label::after {
+      content: "";
+      width: 100%;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, rgba(145, 70, 255, 0.95), rgba(206, 25, 70, 0.5), transparent);
+      box-shadow: 0 0 16px rgba(145, 70, 255, 0.45), 0 0 28px rgba(206, 25, 70, 0.12);
+    }
+
+    .slide-block {
+      flex-shrink: 0;
+      width: 100%;
+      margin-bottom: 34px;
+    }
+
+    .slide-block:last-of-type {
+      margin-bottom: 14px;
+    }
+
+    /* Bloc engagement (Contributeur / Soutien) : léger relief */
+    .slide-block--reco .bridge-card {
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.06),
+        0 14px 32px rgba(0, 0, 0, 0.38);
+    }
+
+    /* Grille 6 cols : reco & parcours (carte = ×2). Staff : même largeur de carte, centrée (×2 aux cols 2–3 et 4–5). */
+    .slide-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      column-gap: 18px;
+      width: 100%;
+      align-items: stretch;
+    }
+
+    .staff-row.slide-cards-grid {
+      row-gap: 12px;
+    }
+
+    .staff-row.slide-cards-grid > .staff-card:nth-child(1) { grid-column: 2 / span 2; }
+    .staff-row.slide-cards-grid > .staff-card:nth-child(2) { grid-column: 4 / span 2; }
+    .staff-row.slide-cards-grid > .staff-card:nth-child(3) { grid-column: 2 / span 2; }
+    .staff-row.slide-cards-grid > .staff-card:nth-child(4) { grid-column: 4 / span 2; }
+
+    /* Deux cartes centrées (même largeur que colonnes reco d’origine) */
+    .bridge-row.slide-cards-grid > .bridge-card:nth-child(1) { grid-column: 2 / span 2; }
+    .bridge-row.slide-cards-grid > .bridge-card:nth-child(2) { grid-column: 4 / span 2; }
+
+    .parcours.slide-cards-grid {
+      row-gap: 14px;
+      flex: 1.15;
+      min-height: 0;
+      padding-top: 2px;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+    }
+
+    .parcours.slide-cards-grid > .mem-card {
+      grid-column: span 2;
+    }
+
+    /* 7e carte : rangée seule, centrée */
+    .parcours.slide-cards-grid > .mem-card:nth-child(7) {
+      grid-column: 3 / span 2;
+    }
+
+    /* Badge : dans le flux (au-dessus du titre), discret */
+    .card-badge {
+      position: relative;
+      z-index: 2;
+      align-self: flex-start;
+      flex-shrink: 0;
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 0 var(--badge-title-gap);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 18px;
+      padding: var(--badge-pad-y) var(--badge-pad-x);
+      border-radius: var(--badge-radius);
+      font-size: var(--badge-font);
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.82);
+      opacity: 0.9;
+      border: 1px solid color-mix(in srgb, var(--bar-a, var(--br-a, var(--accent))) 22%, rgba(255, 255, 255, 0.14));
+      background: color-mix(in srgb, var(--bar-a, var(--br-a, var(--accent))) 7%, rgba(0, 0, 0, 0.42));
+      box-shadow: 0 0 10px color-mix(in srgb, var(--bar-a, var(--br-a, var(--accent))) 12%, transparent);
+      pointer-events: none;
+    }
+
+    /* --- Staff : 2×2, même largeur de carte que la rangée engagement (×2 colonnes sur 6) --- */
+    .staff-row {
+      flex-shrink: 0;
+    }
+
+    .staff-card {
+      position: relative;
+      padding: var(--card-inset-t) var(--card-inset-x) 10px;
+      min-height: 76px;
+      border-radius: var(--radius-card);
+      background: var(--surface-card);
+      border: var(--stroke-card);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      text-align: left;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+    }
+
+    .staff-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+    }
+
+    .staff-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      border-radius: var(--radius-card) var(--radius-card) 0 0;
+      background: linear-gradient(90deg, var(--bar-a), var(--bar-b));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--bar-a) 40%, transparent);
+    }
+
+    .staff-card--fondateur {
+      --bar-a: #c4b5fd;
+      --bar-b: #7c3aed;
+      background:
+        linear-gradient(145deg, rgba(124, 58, 237, 0.12), transparent),
+        var(--surface-card);
+      border-color: rgba(124, 58, 237, 0.35);
+      box-shadow:
+        0 0 0 1px rgba(167, 139, 250, 0.1),
+        0 0 22px rgba(124, 58, 237, 0.18),
+        var(--shadow-card);
+    }
+
+    .staff-card--fondateur::before {
+      box-shadow: 0 0 16px rgba(167, 139, 250, 0.55);
+    }
+
+    .staff-card--coordinateur { --bar-a: #f35de9; --bar-b: #b12d45; }
+    .staff-card--coordinateur::before {
+      box-shadow: 0 0 14px rgba(243, 93, 233, 0.42), 0 0 24px rgba(177, 45, 69, 0.18);
+    }
+
+    .staff-card--mod { --bar-a: #d62828; --bar-b: #f19292; }
+    .staff-card--mod::before {
+      box-shadow: 0 0 14px rgba(241, 146, 146, 0.48), 0 0 22px rgba(214, 40, 40, 0.22);
+    }
+
+    .staff-card--formation { --bar-a: #ef4444; --bar-b: #8b5cf6; }
+    .staff-card--formation::before {
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.38), 0 0 22px rgba(139, 92, 246, 0.28);
+    }
+
+    .staff-card h3 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .role-emoji {
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .role-name--glow {
+      color: #fafafa;
+      text-shadow:
+        0 0 8px rgba(215, 190, 240, 0.95),
+        0 0 18px rgba(124, 58, 237, 0.85),
+        0 0 32px rgba(91, 33, 182, 0.55),
+        0 0 44px rgba(124, 58, 237, 0.35);
+      animation: glowPulse 5.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes glowPulse {
+      from {
+        text-shadow:
+          0 0 6px rgba(215, 190, 240, 0.85),
+          0 0 16px rgba(124, 58, 237, 0.75),
+          0 0 28px rgba(91, 33, 182, 0.45);
+      }
+      to {
+        text-shadow:
+          0 0 10px rgba(215, 190, 240, 1),
+          0 0 22px rgba(167, 139, 250, 0.95),
+          0 0 38px rgba(124, 58, 237, 0.65),
+          0 0 52px rgba(124, 58, 237, 0.4);
+      }
+    }
+
+    .role-name--bitone {
+      background: linear-gradient(135deg, var(--tone-a), var(--tone-b));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: staffBitoneGlow 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes staffBitoneGlow {
+      from {
+        filter: drop-shadow(0 0 4px var(--glow-a)) drop-shadow(0 0 12px var(--glow-b));
+      }
+      to {
+        filter: drop-shadow(0 0 12px var(--glow-a)) drop-shadow(0 0 28px var(--glow-b));
+      }
+    }
+
+    .staff-card--coordinateur .role-name--bitone {
+      --tone-a: #f35de9;
+      --tone-b: #b12d45;
+      --glow-a: rgba(243, 93, 233, 0.75);
+      --glow-b: rgba(177, 45, 69, 0.6);
+    }
+
+    .staff-card--mod .role-name--bitone {
+      --tone-a: #f19292;
+      --tone-b: #d62828;
+      --glow-a: rgba(241, 146, 146, 0.85);
+      --glow-b: rgba(214, 40, 40, 0.55);
+    }
+
+    .staff-card--formation .role-name--bitone {
+      --tone-a: #ef4444;
+      --tone-b: #8b5cf6;
+      --glow-a: rgba(239, 68, 68, 0.7);
+      --glow-b: rgba(139, 92, 246, 0.65);
+    }
+
+    .staff-card p {
+      margin: 0;
+      font-size: 9.5px;
+      line-height: 1.34;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.58);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* --- Engagement (Contributeur / Soutien) : aligné sur la grille 6 cols --- */
+    .bridge-row {
+      flex-shrink: 0;
+    }
+
+    .bridge-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: var(--card-inset-t) var(--card-inset-x) 11px;
+      min-height: 100px;
+      border-radius: var(--radius-card);
+      background: var(--surface-card);
+      border: var(--stroke-card);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      min-width: 0;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+    }
+
+    .bridge-card:hover {
+      transform: translateY(-6px) scale(1.015);
+      border-color: rgba(255, 255, 255, 0.11);
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .bridge-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      border-radius: var(--radius-card) var(--radius-card) 0 0;
+      background: linear-gradient(90deg, var(--br-a), var(--br-b));
+      box-shadow: 0 0 14px color-mix(in srgb, var(--br-a) 45%, transparent);
+    }
+
+    .bridge-card--gold { --br-a: #ffd166; --br-b: #f0b429; }
+    .bridge-card--gold2 { --br-a: #fde68a; --br-b: #d97706; }
+
+    .bridge-card--soutien {
+      --br-a: #7c3aed;
+      --br-b: #d7bef0;
+      border-color: rgba(124, 58, 237, 0.28);
+      box-shadow: 0 0 22px rgba(124, 58, 237, 0.12), var(--shadow-card);
+    }
+
+    .bridge-card h3 {
+      margin: 0 0 4px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.18;
+    }
+
+    .bridge-card--gold h3 {
+      background: linear-gradient(135deg, #fff6d4, #f0b429);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: recoTitleGlowGold1 5s ease-in-out infinite alternate;
+    }
+
+    .bridge-card--gold2 h3 {
+      background: linear-gradient(135deg, #fff6d4, #f0b429);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: recoTitleGlowGold2 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes recoTitleGlowGold1 {
+      from {
+        filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.5)) drop-shadow(0 0 16px rgba(240, 180, 41, 0.35));
+      }
+      to {
+        filter: drop-shadow(0 0 14px rgba(255, 230, 180, 0.85)) drop-shadow(0 0 32px rgba(240, 180, 41, 0.55));
+      }
+    }
+
+    @keyframes recoTitleGlowGold2 {
+      from {
+        filter: drop-shadow(0 0 6px rgba(253, 230, 138, 0.45)) drop-shadow(0 0 14px rgba(217, 119, 6, 0.35));
+      }
+      to {
+        filter: drop-shadow(0 0 14px rgba(255, 251, 235, 0.8)) drop-shadow(0 0 30px rgba(217, 119, 6, 0.5));
+      }
+    }
+
+    .bridge-card--soutien h3 {
+      background: linear-gradient(135deg, #d7bef0, #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: recoTitleGlowViolet 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes recoTitleGlowViolet {
+      from {
+        filter: drop-shadow(0 0 6px rgba(215, 190, 240, 0.65)) drop-shadow(0 0 14px rgba(124, 58, 237, 0.45));
+      }
+      to {
+        filter: drop-shadow(0 0 16px rgba(237, 233, 254, 0.9)) drop-shadow(0 0 34px rgba(124, 58, 237, 0.65));
+      }
+    }
+
+    .bridge-card p {
+      margin: 0;
+      font-size: 9.5px;
+      line-height: 1.36;
+      color: rgba(255, 255, 255, 0.6);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .bridge-top {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .bridge-top > div:last-child {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .bridge-ico {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 230, 180, 0.95);
+      filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.35));
+      animation: recoIcoGlowGold 5s ease-in-out infinite alternate;
+    }
+
+    .bridge-card--gold2 .bridge-ico {
+      animation: recoIcoGlowGold2 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes recoIcoGlowGold {
+      from { filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.35)); }
+      to { filter: drop-shadow(0 0 14px rgba(255, 220, 150, 0.65)); }
+    }
+
+    @keyframes recoIcoGlowGold2 {
+      from { filter: drop-shadow(0 0 6px rgba(253, 230, 138, 0.35)); }
+      to { filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.55)); }
+    }
+
+    .bridge-card--soutien .bridge-ico {
+      color: #d7bef0;
+      border-color: rgba(124, 58, 237, 0.35);
+      box-shadow: 0 0 14px rgba(124, 58, 237, 0.2);
+      animation: recoIcoGlowViolet 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes recoIcoGlowViolet {
+      from { filter: drop-shadow(0 0 6px rgba(215, 190, 240, 0.45)); }
+      to { filter: drop-shadow(0 0 16px rgba(124, 58, 237, 0.55)); }
+    }
+
+    /* --- Parcours membre : détails cartes --- */
+    .mem-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: var(--card-inset-t) var(--card-inset-x) 11px;
+      min-height: 0;
+      border-radius: var(--radius-card);
+      background: var(--surface-card);
+      border: var(--stroke-card);
+      box-shadow: var(--shadow-card);
+      --accent: #6366f1;
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+    }
+
+    .mem-card:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in srgb, var(--accent) 22%, rgba(255, 255, 255, 0.08));
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.38), 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+
+    .mem-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 68%);
+      pointer-events: none;
+    }
+
+    .mem-card::after {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      border-radius: var(--radius-card) var(--radius-card) 0 0;
+      background: var(--accent);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+    }
+
+    .mem-card .row-top {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mem-card .ico {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(0, 0, 0, 0.38);
+      border: 1px solid color-mix(in srgb, var(--accent) 38%, rgba(255,255,255,0.06));
+      flex-shrink: 0;
+    }
+
+    .mem-card h3 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mem-card p {
+      margin: 0;
+      position: relative;
+      z-index: 1;
+      font-size: 9.5px;
+      line-height: 1.36;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.6);
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .slide-foot {
+      flex-shrink: 0;
+      margin-top: 22px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: center;
+    }
+
+    .slide-foot p {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      color: rgba(255, 255, 255, 0.94);
+      text-shadow:
+        0 0 24px rgba(145, 70, 255, 0.35),
+        0 0 48px rgba(145, 70, 255, 0.12);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+      }
+
+      .bg-mesh, .bg-mesh::after, .rays, .rays::after, .hotspot, .hotspot-red, .spark, .grain,
+      .role-name--glow, .role-name--bitone, .slide-head h1,
+      .bridge-card--gold h3, .bridge-card--gold2 h3, .bridge-card--soutien h3,
+      .bridge-ico, .bridge-card--soutien .bridge-ico {
+        animation: none !important;
+      }
+      .role-name--glow {
+        text-shadow:
+          0 0 8px rgba(215, 190, 240, 0.9),
+          0 0 20px rgba(124, 58, 237, 0.75);
+      }
+      .staff-card--coordinateur .role-name--bitone {
+        filter: drop-shadow(0 0 8px rgba(243, 93, 233, 0.65)) drop-shadow(0 0 18px rgba(177, 45, 69, 0.45));
+      }
+      .staff-card--mod .role-name--bitone {
+        filter: drop-shadow(0 0 8px rgba(241, 146, 146, 0.7)) drop-shadow(0 0 18px rgba(214, 40, 40, 0.45));
+      }
+      .staff-card--formation .role-name--bitone {
+        filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.55)) drop-shadow(0 0 18px rgba(139, 92, 246, 0.5));
+      }
+      .bridge-card--gold h3 {
+        filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.55)) drop-shadow(0 0 22px rgba(240, 180, 41, 0.4));
+      }
+      .bridge-card--gold2 h3 {
+        filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.5)) drop-shadow(0 0 22px rgba(217, 119, 6, 0.4));
+      }
+      .bridge-card--soutien h3 {
+        filter: drop-shadow(0 0 10px rgba(215, 190, 240, 0.65)) drop-shadow(0 0 22px rgba(124, 58, 237, 0.5));
+      }
+      .bridge-card--gold .bridge-ico,
+      .bridge-card--gold2 .bridge-ico {
+        filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.45));
+      }
+      .bridge-card--soutien .bridge-ico {
+        filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.45));
+      }
+      .grain { opacity: 0; }
+
+      .staff-card:hover,
+      .bridge-card:hover,
+      .mem-card:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="viewport" id="slideRoot">
-    <div class="grid-bg"></div>
-    <div class="glow red"></div>
-    <div class="glow violet"></div>
+  <div class="slide-stage">
+    <div class="slide" id="slideRoot">
+      <div class="bg-mesh" aria-hidden="true"></div>
+      <div class="bg-grid" aria-hidden="true"></div>
+      <div class="rays" aria-hidden="true"></div>
+      <div class="hotspot" aria-hidden="true"></div>
+      <div class="hotspot hotspot-red" aria-hidden="true"></div>
+      <span class="spark v s1" aria-hidden="true"></span>
+      <span class="spark r s2" aria-hidden="true"></span>
+      <span class="spark w s3" aria-hidden="true"></span>
+      <div class="overlay" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <div class="grain" aria-hidden="true"></div>
 
-    <div class="particle p1"></div><div class="particle p2"></div><div class="particle p3"></div>
-    <div class="particle p4"></div><div class="particle p5"></div><div class="particle p6"></div>
-    <div class="star s1"></div><div class="star s2"></div><div class="star s3"></div><div class="star s4"></div>
-    <div class="light-ray r1"></div>
-    <div class="light-ray r2"></div>
+      <div class="layout">
+        <header class="slide-head reveal" style="--reveal-delay: 0.06s">
+          <h1>Les rôles sur Discord</h1>
+          <p class="slide-sub"><span class="tenf-mark">TENF</span> — l’équipe, les membres mis en avant, puis créateurs &amp; communauté.</p>
+        </header>
 
-    <header class="topbar">
-      <div class="brand">
-        <img src="/Tenf.png" alt="Logo TENF">
-        <div>
-          <span class="brand-kicker">Rôles & visibilité</span>
-          <div class="brand-name">Twitch Entraide New Family</div>
+        <div class="slide-block reveal" style="--reveal-delay: 0.14s">
+        <p class="sec-label">Staff</p>
+        <div class="staff-row slide-cards-grid" role="list">
+          <article class="staff-card staff-card--fondateur" role="listitem">
+            <span class="card-badge">Vision</span>
+            <h3><span class="role-name role-name--glow">Admin fondateur</span></h3>
+            <p>Porte la vision et garantit l’esprit New Family.</p>
+          </article>
+          <article class="staff-card staff-card--coordinateur" role="listitem">
+            <span class="card-badge">Coordination</span>
+            <h3><span class="role-emoji" aria-hidden="true">🏛️</span> <span class="role-name role-name--bitone">Admin coordinateur</span></h3>
+            <p>Coordonne le fonctionnement et la communication interne.</p>
+          </article>
+          <article class="staff-card staff-card--mod" role="listitem">
+            <span class="card-badge">Modération</span>
+            <h3><span class="role-emoji" aria-hidden="true">🛡️</span> <span class="role-name role-name--bitone">Modérateurs</span></h3>
+            <p>Accompagnent les membres et veillent au respect du cadre.</p>
+          </article>
+          <article class="staff-card staff-card--formation" role="listitem">
+            <span class="card-badge">Apprentissage</span>
+            <h3><span class="role-emoji" aria-hidden="true">🔧</span> <span class="role-name role-name--bitone">Modérateur en formation</span></h3>
+            <p>Apprend les outils et les bases de la modération.</p>
+          </article>
         </div>
+        </div>
+
+        <div class="slide-block slide-block--reco reveal" style="--reveal-delay: 0.26s">
+        <p class="sec-label">Engagement</p>
+        <div class="bridge-row slide-cards-grid" role="list">
+          <article class="bridge-card bridge-card--gold" role="listitem">
+            <span class="card-badge">Contribution</span>
+            <div class="bridge-top">
+              <div class="bridge-ico" aria-hidden="true"><i class="fa-solid fa-lightbulb"></i></div>
+              <div>
+                <h3>Contributeur TENF</h3>
+                <p>Mise en avant d’un membre engagé dans l’esprit TENF.</p>
+              </div>
+            </div>
+          </article>
+          <article class="bridge-card bridge-card--soutien" role="listitem">
+            <span class="card-badge">Soutien</span>
+            <div class="bridge-top">
+              <div class="bridge-ico" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></div>
+              <div>
+                <h3>Soutien TENF</h3>
+                <p>Met en avant les membres qui soutiennent activement le projet.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+        </div>
+
+        <div class="slide-block slide-block--fill reveal" style="--reveal-delay: 0.38s">
+        <p class="sec-label">Parcours membre</p>
+        <div class="parcours slide-cards-grid" role="list">
+            <article class="mem-card" style="--accent:#6366f1;" role="listitem">
+              <span class="card-badge">Actif</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-star"></i></div>
+                <h3>Créateurs affiliés</h3>
+              </div>
+              <p>Streamers ayant le statut Twitch Affiliate.</p>
+            </article>
+            <article class="mem-card" style="--accent:#22d3ee;" role="listitem">
+              <span class="card-badge">Communauté</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-users"></i></div>
+                <h3>Communauté</h3>
+              </div>
+              <p>Membres présents sans mise en avant ou à implication réduite.</p>
+            </article>
+            <article class="mem-card" style="--accent:#d97706;" role="listitem">
+              <span class="card-badge">Fiabilité</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-gem"></i></div>
+                <h3>VIP</h3>
+              </div>
+              <p>Valorise la constance et l’implication régulière des membres.</p>
+            </article>
+            <article class="mem-card" style="--accent:#f59e0b;" role="listitem">
+              <span class="card-badge">Progression</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                <h3>Créateurs en développement</h3>
+              </div>
+              <p>Créateurs en progression — une étape, pas une comparaison.</p>
+            </article>
+            <article class="mem-card" style="--accent:#ec4899;" role="listitem">
+              <span class="card-badge">Mineur</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-user"></i></div>
+                <h3>Jeunes créateurs</h3>
+              </div>
+              <p>Cadre adapté pour les streamers mineurs.</p>
+            </article>
+            <article class="mem-card" style="--accent:#e5e7eb;" role="listitem">
+              <span class="card-badge">Pause</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-pause"></i></div>
+                <h3>Créateurs en pause</h3>
+              </div>
+              <p>Pause temporaire tout en restant liés à la communauté.</p>
+            </article>
+            <article class="mem-card" style="--accent:#22c55e;" role="listitem">
+              <span class="card-badge">Mineur</span>
+              <div class="row-top">
+                <div class="ico" aria-hidden="true"><i class="fa-solid fa-face-smile"></i></div>
+                <h3>P’tits jeunes</h3>
+              </div>
+              <p>Version mineure du rôle Communauté — espace sécurisé et encadré.</p>
+            </article>
+        </div>
+        </div>
+
+        <footer class="slide-foot reveal" style="--reveal-delay: 0.5s">
+          <p>Ta place évolue avec ton implication</p>
+        </footer>
       </div>
-      <div class="tag-pill">Chaque rôle a sa place</div>
-    </header>
-
-    <main class="content">
-      <section class="left">
-        <div class="eyebrow reveal d1">Des rôles adaptés à chacun</div>
-        <h1 class="title reveal d2">
-          <span class="white">DES RÔLES</span>
-          <span class="gold">PENSÉS POUR</span>
-          <span class="violet">STRUCTURER</span>
-        </h1>
-        <p class="intro reveal d3">
-          Ici, les rôles ne servent pas à juger les personnes.
-          Ils permettent de <strong>structurer le serveur</strong>, d’organiser la visibilité
-          et de garder un fonctionnement plus juste pour tous.
-        </p>
-        <div class="mini-card reveal d4">
-          <div class="mini-card-title">Idée clé</div>
-          <div class="mini-card-text">
-            Les rôles <strong>évoluent</strong>. Rien n’est figé :
-            chacun peut avancer, faire une pause, revenir ou changer de dynamique
-            selon son implication du moment.
-          </div>
-        </div>
-      </section>
-
-      <section class="right">
-        <div class="roles-grid reveal d5">
-          <div class="role-card role-affilie">
-            <div class="role-icon"><i class="fa-solid fa-star"></i></div>
-            <div class="role-content">
-              <h3>Créateurs Affiliés</h3>
-              <p>Streamers ayant obtenu le statut Twitch Affiliate.</p>
-              <span class="role-badge">Actifs</span>
-            </div>
-          </div>
-          <div class="role-card role-dev">
-            <div class="role-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
-            <div class="role-content">
-              <h3>Créateurs en Développement</h3>
-              <p>Créateurs en progression. Ici, c’est une étape, pas une comparaison.</p>
-              <span class="role-badge">Évolution</span>
-            </div>
-          </div>
-          <div class="role-card role-pause">
-            <div class="role-icon"><i class="fa-solid fa-pause"></i></div>
-            <div class="role-content">
-              <h3>Créateurs en Pause</h3>
-              <p>Absence temporaire tout en restant lié à la communauté.</p>
-              <span class="role-badge">Pause courte</span>
-            </div>
-          </div>
-          <div class="role-card role-commu">
-            <div class="role-icon"><i class="fa-solid fa-users"></i></div>
-            <div class="role-content">
-              <h3>Communauté</h3>
-              <p>Viewers engagés, streamers sans mise en avant, pauses longues ou implication réduite.</p>
-              <span class="role-badge">Participation</span>
-            </div>
-          </div>
-          <div class="role-card role-jeunes">
-            <div class="role-icon"><i class="fa-solid fa-child"></i></div>
-            <div class="role-content">
-              <h3>Jeunes Créateurs</h3>
-              <p>Rôle dédié aux streamers mineurs pour adapter le cadre et la protection.</p>
-              <span class="role-badge">Mineurs</span>
-            </div>
-          </div>
-          <div class="role-card role-ptits">
-            <div class="role-icon"><i class="fa-solid fa-face-smile"></i></div>
-            <div class="role-content">
-              <h3>Les P'tits Jeunes</h3>
-              <p>Rôle pour les viewers mineurs afin d’assurer un espace plus sûr.</p>
-              <span class="role-badge">Mineurs</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="story-card reveal d6">
-          <div class="story-top">
-            <h2>Le rôle Communauté n’est pas une sanction</h2>
-            <div class="story-pill">Équilibre & visibilité</div>
-          </div>
-          <div class="story-text">
-            Les membres en <strong>Communauté</strong> gardent accès au serveur et participent à la vie collective.
-            La différence concerne surtout la <strong>visibilité</strong> :
-            leurs lives ne sont plus mis en avant automatiquement et leur chaîne n’apparaît plus dans les outils de promotion.
-            <br><br>
-            Ce rôle reflète simplement un <strong>niveau d’implication actuel</strong>.
-            Le retour vers un rôle actif reste toujours possible avec une reprise concrète de l’entraide,
-            afin de préserver un système <span class="accent">équitable pour tous</span>.
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-left">
-        <div class="line"></div>
-        <span>Ici, chacun a sa place dans une dynamique évolutive</span>
-      </div>
-      <div class="footer-right">
-        <span class="dot"></span>
-        <span>L’entraide fonctionne dans les deux sens</span>
-      </div>
-    </footer>
+    </div>
   </div>
+
   <script>
-    // Scale global 16:9 (1600x900) pour conserver les proportions de presentation.
     (function () {
       const BASE_WIDTH = 1600;
       const BASE_HEIGHT = 900;
       const slide = document.getElementById("slideRoot");
       if (!slide) return;
 
-      function applyScale() {
-        const scale = Math.min(
-          window.innerWidth / BASE_WIDTH,
-          window.innerHeight / BASE_HEIGHT
-        );
+      const applyScale = () => {
+        const scale = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
         slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
-      }
+      };
 
       applyScale();
       window.addEventListener("resize", applyScale);
       window.addEventListener("orientationchange", applyScale);
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduceMotion) {
+        slide.addEventListener("mousemove", (e) => {
+          const r = slide.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5;
+          const y = (e.clientY - r.top) / r.height - 0.5;
+          slide.style.setProperty("--mx", (x * 1.35).toFixed(4));
+          slide.style.setProperty("--my", (y * 1.35).toFixed(4));
+        });
+        slide.addEventListener("mouseleave", () => {
+          slide.style.setProperty("--mx", "0");
+          slide.style.setProperty("--my", "0");
+        });
+      }
     })();
   </script>
 </body>

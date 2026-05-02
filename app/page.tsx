@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, GraduationCap, Rocket } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import AboutPageEnhancer from "@/components/about/AboutPageEnhancer";
 import TestimonialsCarousel from "@/components/home/TestimonialsCarousel";
+import HomeAudiencePaths from "@/components/home/HomeAudiencePaths";
+import type { HomePillarItem } from "@/components/home/HomeExpandablePillars";
+import HomeExpandablePillars from "@/components/home/HomeExpandablePillars";
+import HomeLivesScroller from "@/components/home/HomeLivesScroller";
+import HomeStickyNav from "@/components/home/HomeStickyNav";
+import HomeTimelineInteractive from "@/components/home/HomeTimelineInteractive";
 import { getRandomItems } from "@/lib/utils";
 
 type Stats = {
@@ -75,6 +81,31 @@ const timeline = [
   { date: "Septembre 2025", label: "Lancement du site TENF" },
   { date: "Janvier 2026", label: "Arrivée de la version 2 du site" },
   { date: "Mars 2026", label: "Mise à jour majeure de la plateforme" },
+];
+
+const pillarItems: HomePillarItem[] = [
+  {
+    title: "Des formations qui te font grandir",
+    description:
+      "Technique, chaîne et développement personnel : des contenus pour monter en compétences, pas seulement en statistiques.",
+    iconKey: "graduation",
+    detail:
+      "Ateliers, replays et parcours pensés pour les créateurs francophones : tu progresses à ton rythme, avec des repères concrets à réutiliser sur tes prochains lives.",
+  },
+  {
+    title: "Du monde qui arrive sur tes directs",
+    description: "Visibilité au sein du réseau : des gens qui ouvrent ton live parce qu’ils font partie du même projet.",
+    iconKey: "rocket",
+    detail:
+      "Raids, shoutouts, événements communautaires : la visibilité naît de la régularité et des échanges entre pairs — TENF structure ces moments pour qu’ils soient durables.",
+  },
+  {
+    title: "Une communauté qui répond présent",
+    description: "Événements, raids, rendez-vous : tu n’es pas un pseudo parmi d’autres dans un serveur muet.",
+    iconKey: "calendar",
+    detail:
+      "Agenda partagé, présences suivies côté espace membre, formats collectifs : tout est pensé pour que tu saches où donner de la voix et où trouver de l’aide.",
+  },
 ];
 
 function average(values: number[]): number {
@@ -209,7 +240,7 @@ export default async function Page() {
   return (
     <main className="home-page min-h-screen py-6 sm:py-14">
       <div className="home-page-inner mx-auto flex w-full max-w-7xl flex-col px-3 sm:px-6 lg:px-8">
-        <section className="about-fade-up home-hero relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-10 lg:p-14">
+        <section id="accueil-hero" className="about-fade-up home-hero relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-10 lg:p-14 scroll-mt-28">
           <div className="home-hero-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
           <div className="home-hero-orb home-hero-orb--tr pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full blur-3xl" />
           <div className="home-hero-orb home-hero-orb--bl pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full blur-3xl" />
@@ -228,7 +259,7 @@ export default async function Page() {
               TENF, c&apos;est du concret : parrains, évaluations, agenda d&apos;événements et des gens qui s&apos;engagent — pas un salon Discord oublié au fond de ta barre d&apos;outils.
             </p>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href="https://discord.gg/WnpazgcZHk"
                 target="_blank"
@@ -239,6 +270,12 @@ export default async function Page() {
               </Link>
               <Link href="/fonctionnement-tenf/decouvrir" className="home-btn-secondary inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-sm font-semibold">
                 Voir comment ça marche (2 min)
+              </Link>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-card)_55%,transparent)] px-6 py-3.5 text-sm font-semibold text-[var(--color-text)] transition hover:border-[color-mix(in_srgb,var(--color-primary)_55%,var(--color-border))]"
+              >
+                Déjà membre ? Connexion Discord
               </Link>
             </div>
 
@@ -267,7 +304,11 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <HomeStickyNav />
+
+        <HomeAudiencePaths />
+
+        <section id="accueil-lives" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="home-section-head flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">Preuve sociale — en direct</p>
@@ -279,46 +320,10 @@ export default async function Page() {
               Tous les lives
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
-            {randomLives.length > 0 ? (
-              randomLives.map((live) => (
-                <article
-                  key={live.id}
-                  className="about-reveal home-live-card group overflow-hidden rounded-2xl border"
-                >
-                  <div className="relative aspect-video overflow-hidden">
-                    <Image
-                      src={live.thumbnail}
-                      alt={live.username}
-                      fill
-                      className="home-live-thumbnail object-cover"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                    <span className="home-live-pill absolute left-3 top-3">EN DIRECT</span>
-                  </div>
-                  <div className="space-y-2 p-4 sm:space-y-3 sm:p-5">
-                    <h3 className="text-lg font-bold">{live.username}</h3>
-                    <p className="home-muted text-sm">{live.game || "Just Chatting"}</p>
-                    <Link
-                      href={live.twitchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="home-btn-primary home-btn-primary--block inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white"
-                    >
-                      Regarder le live
-                    </Link>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <article className="about-reveal home-panel-empty col-span-2 rounded-2xl border p-6 md:col-span-3">
-                <p className="home-muted">Aucun live détecté pour le moment, reviens dans quelques minutes.</p>
-              </article>
-            )}
-          </div>
+          <HomeLivesScroller lives={randomLives} />
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <section id="accueil-nouveaux" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="home-section-head flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">Visages du réseau</p>
@@ -367,7 +372,7 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <section id="accueil-vip" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="home-section-head flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">Membres VIP</p>
@@ -411,52 +416,20 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <section id="accueil-valeur" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="max-w-3xl space-y-3">
             <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">Ce que tu gagnes</p>
             <h2 className="home-section-title text-xl font-extrabold tracking-tight sm:text-4xl">
               Du concret pour ta chaîne — pas des promesses vides
             </h2>
             <p className="home-muted text-sm leading-relaxed sm:text-base">
-              Mentorat, présence sur tes lives, événements : TENF est pensé comme un système, pas comme une liste de salons.
+              Mentorat, présence sur tes lives, événements : TENF est pensé comme un système, pas comme une liste de salons. Touche une carte pour approfondir.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
-            {[
-              {
-                title: "Des formations qui te font grandir",
-                description:
-                  "Technique, développement de chaîne et développement personnel : des contenus pour monter en compétences, pas seulement en statistiques.",
-                icon: GraduationCap,
-              },
-              {
-                title: "Du monde qui arrive sur tes directs",
-                description:
-                  "Visibilité au sein du réseau : des gens qui ouvrent ton live parce qu'ils font partie du même projet.",
-                icon: Rocket,
-              },
-              {
-                title: "Une communauté qui répond présent",
-                description:
-                  "Événements, raids, rendez-vous réguliers : tu n'es pas un pseudo parmi d'autres dans un serveur muet.",
-                icon: CalendarDays,
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <article key={item.title} className="about-reveal home-feature-card rounded-2xl border p-4 sm:p-6">
-                  <div className="home-icon-bubble mb-3 inline-flex rounded-xl p-2.5 sm:mb-4 sm:p-3">
-                    <Icon size={22} style={{ color: "var(--color-primary)" }} aria-hidden />
-                  </div>
-                  <h3 className="text-lg font-bold sm:text-xl">{item.title}</h3>
-                  <p className="home-muted mt-2 text-sm leading-relaxed">{item.description}</p>
-                </article>
-              );
-            })}
-          </div>
+          <HomeExpandablePillars items={pillarItems} />
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <section id="accueil-etapes" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="max-w-3xl space-y-3">
             <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">
               Comment tu rentres dans le mouvement
@@ -492,7 +465,7 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up home-testimonials-shell relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-8">
+        <section id="accueil-avis" className="about-fade-up home-testimonials-shell scroll-mt-28 relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-8">
           <div className="home-testimonials-glow pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full blur-3xl" aria-hidden />
           <div className="relative space-y-5 sm:space-y-7">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -513,29 +486,20 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="about-fade-up home-section space-y-5 sm:space-y-7">
+        <section id="accueil-histoire" className="about-fade-up home-section scroll-mt-28 space-y-5 sm:space-y-7">
           <div className="max-w-3xl space-y-2">
             <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">Depuis le début</p>
             <h2 className="home-section-title text-xl font-extrabold tracking-tight sm:text-4xl">
               Le projet TENF en quelques dates
             </h2>
+            <p className="home-muted text-sm sm:text-base">
+              Explore la frise : sélectionne une étape ou utilise les boutons pour naviguer dans le temps.
+            </p>
           </div>
-          <div className="home-timeline-card rounded-2xl border p-5 sm:p-8">
-            <ol className="space-y-4 sm:space-y-6">
-              {timeline.map((event) => (
-                <li key={event.date} className="about-reveal grid gap-2 sm:grid-cols-[180px_1fr] sm:gap-6">
-                  <p className="home-timeline-date text-sm font-bold">{event.date}</p>
-                  <div className="home-timeline-line relative border-l pl-4">
-                    <span className="home-timeline-dot absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full" />
-                    <p className="home-muted text-sm leading-relaxed sm:text-base">{event.label}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+          <HomeTimelineInteractive events={timeline} />
         </section>
 
-        <section className="about-fade-up">
+        <section id="accueil-cta" className="about-fade-up scroll-mt-28">
           <div className="home-cta-panel relative overflow-hidden rounded-2xl border p-6 text-center sm:rounded-3xl sm:p-12">
             <div className="home-cta-panel-glow pointer-events-none absolute inset-0 opacity-90" aria-hidden />
             <div className="relative">

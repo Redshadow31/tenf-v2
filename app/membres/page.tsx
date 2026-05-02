@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { ArrowRight, ExternalLink, Radio, Search, Shuffle, Sparkles, Users } from "lucide-react";
 import MemberModal from "@/components/MemberModal";
+import MembresDirectoryMemberCard from "@/components/members/MembresDirectoryMemberCard";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
@@ -77,6 +80,14 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
 
 const INITIAL_VISIBLE_COUNT = 24;
 const LOAD_MORE_COUNT = 24;
+
+function twitchPreviewUrl(url: string): string {
+  return url
+    .replace("{width}", "640")
+    .replace("{height}", "360")
+    .replace("%7Bwidth%7D", "640")
+    .replace("%7Bheight%7D", "360");
+}
 
 function normalizeText(text: string | undefined | null): string {
   if (!text) return "";
@@ -686,6 +697,7 @@ export default function Page() {
       followStatus: followState,
       mainGame: member.primaryGame || "Communaute",
       isAffiliated: isAffiliated(member.role),
+      isLive: member.activity === "live",
       isActiveThisWeek: member.activity === "week" || member.activity === "live",
       planningStatus: member.planningStatus || "none",
       streamTags: member.streamTags || [],
@@ -715,437 +727,391 @@ export default function Page() {
 
   return (
     <div className="space-y-8 pb-10">
-      {/* HERO découverte TENF */}
+      {/* HERO — vitrine publique + invitation TENF */}
       <section
-        className="relative overflow-hidden rounded-2xl border p-4 sm:p-6 md:p-8 lg:p-10"
+        className="relative overflow-hidden rounded-3xl border p-4 sm:p-6 md:p-8 lg:p-10"
         style={{
-          borderColor: "rgba(145,70,255,0.35)",
+          borderColor: "rgba(145,70,255,0.38)",
           background:
-            "linear-gradient(120deg, rgba(20,20,28,0.98) 0%, rgba(42,24,62,0.9) 60%, rgba(28,18,42,0.92) 100%)",
-          boxShadow: "0 18px 42px rgba(0,0,0,0.28)",
+            "linear-gradient(125deg, rgba(14,14,20,0.99) 0%, rgba(48,26,72,0.92) 48%, rgba(22,16,38,0.96) 100%)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.35), 0 0 80px rgba(124,58,237,0.12)",
         }}
       >
         <div
-          className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full opacity-70 blur-3xl"
-          style={{ background: "rgba(145,70,255,0.4)" }}
+          className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full opacity-75 blur-3xl"
+          style={{ background: "rgba(167,139,250,0.35)" }}
         />
         <div
-          className="pointer-events-none absolute -bottom-20 right-0 h-56 w-56 rounded-full opacity-50 blur-3xl"
-          style={{ background: "rgba(236,72,153,0.22)" }}
+          className="pointer-events-none absolute -bottom-24 right-[-10%] h-64 w-64 rounded-full opacity-45 blur-3xl"
+          style={{ background: "rgba(236,72,153,0.2)" }}
         />
-        <div className="relative grid items-stretch gap-6 lg:grid-cols-[1.35fr_0.9fr]">
-          <div className="relative rounded-2xl border p-4 sm:p-5 md:p-6" style={{ borderColor: "rgba(145,70,255,0.25)", backgroundColor: "rgba(255,255,255,0.02)" }}>
-            <div
-              className="pointer-events-none absolute -bottom-8 left-14 h-24 w-24 rounded-full blur-2xl"
-              style={{ backgroundColor: "rgba(145,70,255,0.26)" }}
-            />
-            <div className="relative space-y-5">
-              <span className="inline-flex rounded-full border px-3 py-1 text-xs font-medium" style={{ borderColor: "rgba(145,70,255,0.45)", color: "var(--color-text-secondary)" }}>
-                Découverte communautaire
+        <div className="relative grid items-stretch gap-8 lg:grid-cols-[1.25fr_0.95fr]">
+          <div className="relative rounded-2xl border p-5 sm:p-6 md:p-8" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.03)" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
+                style={{ borderColor: "rgba(196,161,255,0.45)", color: "#e9d5ff" }}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+                Annuaire public
               </span>
-              <h1 className="text-2xl font-black tracking-tight sm:text-3xl md:text-5xl" style={{ color: "var(--color-text)" }}>
-                Découvrir les créateurs{" "}
-                <span style={{ color: "#c8a5ff" }}>TENF</span>
-              </h1>
-              <p className="max-w-2xl text-sm leading-relaxed md:text-[1.03rem]" style={{ color: "var(--color-text-secondary)" }}>
-                Chaque créateur ici a son univers, son rythme et son histoire.
-                <br />
-                La découverte fait partie de l&apos;entraide 💜
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => openRandomMember()}
-                  className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all min-h-[44px]"
-                  style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 12px 26px rgba(145,70,255,0.34)" }}
-                >
-                  🎲 Découvrir un créateur
-                </button>
-                <button
-                  type="button"
-                  onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  className="w-full sm:w-auto rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors min-h-[44px]"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                >
-                  🔴 Voir les créateurs en live
-                </button>
-              </div>
-              <p className="text-xs md:text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Des profils variés, du live, et de belles découvertes à portée de clic.
-              </p>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Membres TENF & curieux·ses</span>
             </div>
+            <h1 className="mt-4 text-3xl font-black leading-[1.1] tracking-tight sm:text-4xl md:text-[2.75rem]" style={{ color: "var(--color-text)" }}>
+              Trouve ta prochaine chaîne{" "}
+              <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-200 bg-clip-text text-transparent">coup de cœur</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-300 sm:text-base">
+              Ici, chaque fiche raconte un peu qui anime derrière l’écran : pseudo Twitch, ambiance, parfois une bio. Que tu passes en mode découvreur·se ou que tu sois déjà dans la{" "}
+              <strong className="font-semibold text-white">New Family</strong>, le jeu consiste à ouvrir les profils, tomber sur des univers différents et peut-être poser ta prochaine veille sur un live TENF.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => openRandomMember()}
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:brightness-110 sm:flex-none"
+                style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 14px 34px rgba(124,58,237,0.42)" }}
+              >
+                <Shuffle className="h-4 w-4 shrink-0" aria-hidden />
+                Surprends-moi avec un profil
+              </button>
+              <button
+                type="button"
+                onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-red-400/35 hover:bg-red-500/10 sm:flex-none"
+              >
+                <Radio className="h-4 w-4 shrink-0 text-red-400" aria-hidden />
+                Voir qui est en live
+              </button>
+            </div>
+            <nav className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-5 text-xs font-semibold sm:text-sm" aria-label="Autres découvertes TENF">
+              <Link href="/lives" className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white">
+                Tous les lives <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              </Link>
+              <Link href="/decouvrir-createurs" className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white">
+                Clips à découvrir <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              </Link>
+              <Link href="/auth/login" className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1.5 text-violet-100 transition hover:bg-violet-500/18">
+                Déjà membre ? Connexion <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              </Link>
+            </nav>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
-              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>👥 Membres</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-                {formatStatValue(stats.totalMembers, loadingCommunityStats)}
-              </p>
+            <div
+              className="rounded-2xl border p-4 transition hover:border-violet-400/25 sm:p-5"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
+            >
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                <Users className="h-4 w-4 text-violet-400" aria-hidden />
+                Côté Discord
+              </div>
+              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.totalMembers, loadingCommunityStats)}</p>
+              <p className="mt-1 text-xs leading-snug text-zinc-400">Personnes qui font partie du projet (ordre de grandeur).</p>
             </div>
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
-              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🎮 Créateurs actifs</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-                {formatStatValue(stats.activeCreators, loadingCommunityStats)}
-              </p>
+            <div
+              className="rounded-2xl border p-4 transition hover:border-violet-400/25 sm:p-5"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
+            >
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                <Sparkles className="h-4 w-4 text-amber-300" aria-hidden />
+                Créateurs suivis
+              </div>
+              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.activeCreators, loadingCommunityStats)}</p>
+              <p className="mt-1 text-xs leading-snug text-zinc-400">Profils actifs sur une fenêtre récente — parcours-les plus bas.</p>
             </div>
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.03)" }}>
-              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>🔴 En live</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-                {formatStatValue(stats.liveCount, loadingLive)}
-              </p>
+            <div
+              className="rounded-2xl border p-4 transition hover:border-red-400/20 sm:p-5"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
+            >
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                <Radio className="h-4 w-4 text-red-400" aria-hidden />
+                En direct
+              </div>
+              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.liveCount, loadingLive)}</p>
+              <p className="mt-1 text-xs leading-snug text-zinc-400">Chaînes TENF détectées tout de suite — section dédiée ci-dessous.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* EN LIVE MAINTENANT */}
-      <section ref={liveSectionRef} className="space-y-3">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>🔴 En live maintenant</h2>
-          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Des créateurs TENF sont en direct en ce moment.
-          </p>
+      {/* Lives — vitrine immersive */}
+      <section ref={liveSectionRef} className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-black tracking-tight text-white">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+              </span>
+              En direct tout de suite
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
+              Trois chaînes tirées au sort parmi les membres TENF actuellement live — aperçu vidéo, titre du stream, puis{" "}
+              <strong className="font-semibold text-zinc-200">ouvre la fiche</strong> pour voir bio et réseaux avant de suivre le live.
+            </p>
+          </div>
+          <Link
+            href="/lives"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18"
+          >
+            Voir tous les lives TENF
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
         </div>
         {loadingLive ? (
-          <div className="rounded-xl border p-5 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-card)" }}>
-            Chargement des lives...
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-zinc-400">
+            On synchronise les vignettes Twitch…
           </div>
         ) : liveShowcaseMembers.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pt-1 scrollbar-thin sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible lg:grid-cols-3">
             {liveShowcaseMembers.map((member) => {
               const stream = member.stream!;
               const followBadge = getFollowBadge(member.followState);
+              const thumb = twitchPreviewUrl(stream.thumbnailUrl);
               return (
-                <article
-                  key={member.twitchLogin}
-                  className="group relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[2px]"
-                  style={{
-                    borderColor: "rgba(145,70,255,0.34)",
-                    backgroundColor: "var(--color-card)",
-                    boxShadow: "0 14px 28px rgba(0,0,0,0.24)",
-                  }}
-                >
-                  {showFollowStatuses ? (
-                    <span
-                      className={`absolute right-3 top-3 rounded-full px-2 py-1 text-[10px] ${followBadge.className}`}
-                      title={followBadge.label}
-                    >
-                      {followBadge.icon} {followBadge.label}
-                    </span>
-                  ) : null}
-                  <div className="mb-3 flex items-start gap-3">
-                    <img
-                      src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
-                      alt={member.displayName}
-                      className="h-12 w-12 rounded-full border object-cover"
-                      style={{ borderColor: "var(--color-border)" }}
-                    />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-base font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
-                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white animate-pulse">LIVE</span>
-                      </div>
-                      <p className="truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>@{member.twitchLogin}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 text-sm">
-                    <p style={{ color: "var(--color-text)" }}>🎮 {stream.gameName || "Just Chatting"}</p>
-                    <p style={{ color: "var(--color-text-secondary)" }}>👀 {stream.viewerCount || 0} viewers</p>
-                    <p className="line-clamp-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>{stream.title || "Live TENF"}</p>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <a
-                      href={`https://www.twitch.tv/${member.twitchLogin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-white"
-                      style={{ backgroundColor: "var(--color-primary)" }}
-                    >
-                      🚪 Ouvrir la porte
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => handleMemberClick(member)}
-                      className="w-full sm:w-auto rounded-xl border px-3 py-2 text-sm font-semibold transition-colors"
-                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                    >
-                      Voir profil
-                    </button>
-                  </div>
-                </article>
+                <div key={member.twitchLogin} className="min-w-[min(100%,340px)] shrink-0 snap-center sm:min-w-0">
+                  <MembresDirectoryMemberCard
+                    displayName={member.displayName}
+                    twitchLogin={member.twitchLogin}
+                    avatarSrc={member.avatar || `https://placehold.co/128x128?text=${encodeURIComponent(member.displayName.charAt(0))}`}
+                    primaryGame={`${stream.gameName || "Just Chatting"} · ${stream.viewerCount ?? 0} spectateur·rice·s`}
+                    posterSrc={thumb}
+                    posterAlt={`Aperçu du live de ${member.displayName}`}
+                    description={stream.title?.trim() || undefined}
+                    followCorner={
+                      showFollowStatuses ? (
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${followBadge.className}`} title={followBadge.label}>
+                          {followBadge.icon}
+                        </span>
+                      ) : undefined
+                    }
+                    badgeRow={
+                      <>
+                        <span className="rounded-full border border-red-500/45 bg-red-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-100">
+                          Live
+                        </span>
+                        <span className={getRoleBadgeClassName(member.role)}>{getRoleBadgeLabel(member.role)}</span>
+                      </>
+                    }
+                    onOpenProfile={() => handleMemberClick(member)}
+                    twitchUrl={`https://www.twitch.tv/${member.twitchLogin}`}
+                  />
+                </div>
               );
             })}
           </div>
         ) : (
-          <div
-            className="rounded-xl border p-5 text-sm"
-            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
-          >
-            Aucun créateur TENF en direct pour le moment. Reviens un peu plus tard 💜
+          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center">
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Personne n’est détecté en live dans l’échantillon TENF pour l’instant — les créateurs ont peut-être rangé leur micro. Rafraîchis plus tard ou pars à l’aventure avec{" "}
+              <button type="button" className="font-bold text-violet-300 underline-offset-2 hover:underline" onClick={() => openRandomMember()}>
+                un profil au hasard
+              </button>
+              .
+            </p>
           </div>
         )}
       </section>
 
-      {/* A DECOUVRIR POUR TOI / FALLBACK */}
+      {/* Découverte personnalisée (connecté + Twitch lié) ou sélection du jour */}
       {showFollowStatuses ? (
-        <section className="space-y-3">
+        <section className="space-y-5 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-950/25 via-transparent to-fuchsia-950/15 p-4 sm:p-6">
           <div>
-            <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>💜 À découvrir pour toi</h2>
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Ces créateurs TENF ne sont pas encore suivis par ton compte Twitch.
+            <h2 className="text-2xl font-black tracking-tight text-white">Des chaînes que tu ne suis pas encore</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              On compare ton compte Twitch aux membres TENF : voici des profils où tu n’as pas encore cliqué sur « suivre ». Ce n’est pas une obligation — juste une façon ludique de sortir de ta bulle et de découvrir des voisin·es de réseau.
             </p>
           </div>
           {discoverForYouMembers.length > 0 ? (
             <>
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
-                  Sélection de 3 profils au hasard
-                </p>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300/80">Trois cartes tirées pour te faire envie</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {discoverForYouTopMembers.map((member) => {
                     const followBadge = getFollowBadge(member.followState);
                     return (
-                      <article
+                      <MembresDirectoryMemberCard
                         key={`discover-top-${member.twitchLogin}`}
-                        className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[1px]"
-                        style={{
-                          borderColor: "var(--color-border)",
-                          backgroundColor: "var(--color-card)",
-                          boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
-                        }}
-                      >
-                        <div className="mb-3 flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-3">
-                            <img
-                              src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
-                              alt={member.displayName}
-                              className="h-11 w-11 rounded-full border object-cover"
-                              style={{ borderColor: "var(--color-border)" }}
-                            />
-                            <div>
-                              <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
-                              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
-                            </div>
-                          </div>
-                          <span className={`rounded-full px-2 py-1 text-[10px] ${followBadge.className}`}>{followBadge.icon} {followBadge.label}</span>
-                        </div>
-                        <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
-                          <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
-                          {member.activity !== "normal" ? (
-                            <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
-                              🔥 Actif cette semaine
+                        displayName={member.displayName}
+                        twitchLogin={member.twitchLogin}
+                        avatarSrc={member.avatar || `https://placehold.co/128x128?text=${encodeURIComponent(member.displayName.charAt(0))}`}
+                        primaryGame={member.primaryGame}
+                        description={member.description?.trim()}
+                        followCorner={
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${followBadge.className}`} title={followBadge.label}>
+                            {followBadge.icon}
+                          </span>
+                        }
+                        badgeRow={
+                          <>
+                            <span className={getRoleBadgeClassName(member.role)}>
+                              {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
                             </span>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <a
-                            href={`https://www.twitch.tv/${member.twitchLogin}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                            style={{ backgroundColor: "var(--color-primary)" }}
-                          >
-                            🚪 Ouvrir la porte
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleMemberClick(member)}
-                            className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
-                            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                          >
-                            Voir profil
-                          </button>
-                        </div>
-                      </article>
+                            {member.activity !== "normal" ? (
+                              <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                                Semaine chargée
+                              </span>
+                            ) : null}
+                          </>
+                        }
+                        onOpenProfile={() => handleMemberClick(member)}
+                        twitchUrl={`https://www.twitch.tv/${member.twitchLogin}`}
+                      />
                     );
                   })}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.12em]" style={{ color: "var(--color-text-secondary)" }}>
-                  Toutes les chaînes à découvrir ({discoverForYouMembers.length})
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+                  Raccourcis vers {discoverForYouMembers.length} profil{discoverForYouMembers.length > 1 ? "s" : ""} — clic = fiche TENF
                 </p>
-                <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                   <div className="flex flex-wrap gap-2">
                     {discoverForYouMembers.map((member) => (
-                      <a
+                      <div
                         key={`discover-all-${member.login}`}
-                        href={`https://www.twitch.tv/${member.twitchLogin}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all hover:-translate-y-[1px]"
-                        style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] pl-1 pr-1 transition hover:border-violet-400/35"
                       >
-                        <img
-                          src={member.avatar || `https://placehold.co/32x32?text=${member.displayName.charAt(0)}`}
-                          alt={member.displayName}
-                          className="h-5 w-5 rounded-full object-cover"
-                        />
-                        {member.displayName}
-                        {member.activity === "live" ? " 🔴" : ""}
-                      </a>
+                        <button
+                          type="button"
+                          onClick={() => handleMemberClick(member)}
+                          className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-violet-500/15"
+                        >
+                          <img
+                            src={member.avatar || `https://placehold.co/32x32?text=${member.displayName.charAt(0)}`}
+                            alt=""
+                            className="h-6 w-6 rounded-full object-cover ring-1 ring-violet-500/30"
+                          />
+                          {member.displayName}
+                          {member.activity === "live" ? (
+                            <span className="h-2 w-2 rounded-full bg-red-500" title="Souvent live en ce moment" />
+                          ) : null}
+                        </button>
+                        <a
+                          href={`https://www.twitch.tv/${member.twitchLogin}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                          title="Ouvrir Twitch dans un nouvel onglet"
+                          aria-label={`Chaîne Twitch de ${member.displayName}`}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                        </a>
+                      </div>
                     ))}
                   </div>
                 </div>
               </div>
             </>
           ) : (
-            <div
-              className="rounded-xl border p-4 text-sm"
-              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-card)" }}
-            >
-              Tu suis déjà une grande partie des créateurs proposés. Bien joué 💜
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-5 text-sm leading-relaxed text-emerald-100/90">
+              Tu suivais déjà une très grande partie des créateurs listés côté TENF — chapeau pour la curiosité. Continue à explorer la grille complète plus bas ou offre-toi un{" "}
+              <button type="button" className="font-bold text-white underline-offset-2 hover:underline" onClick={() => openRandomMember()}>
+                tirage au sort
+              </button>
+              .
             </div>
           )}
         </section>
       ) : (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <div>
-            <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>⭐ Créateurs à découvrir aujourd&apos;hui</h2>
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Une sélection découverte du jour, même sans personnalisation Twitch.
+            <h2 className="text-2xl font-black tracking-tight text-white">Pépites du jour (sans connexion Twitch)</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              Tu navigues en invité·e : on te propose quand même une petite sélection pour te donner envie de fouiller les fiches. Connecte-toi avec Discord et lie Twitch pour débloquer le fil « chaînes que tu ne suis pas encore ».
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {discoverTodayMembers.map((member) => (
-              <article
+              <MembresDirectoryMemberCard
                 key={`fallback-${member.twitchLogin}`}
-                className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[1px]"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-              >
-                <div className="mb-3 flex items-start gap-3">
-                  <img
-                    src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
-                    alt={member.displayName}
-                    className="h-11 w-11 rounded-full border object-cover"
-                    style={{ borderColor: "var(--color-border)" }}
-                  />
-                  <div>
-                    <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
-                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
-                  </div>
-                </div>
-                <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
-                  <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
-                  {member.activity !== "normal" ? (
-                    <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
-                      🔥 Actif cette semaine
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex gap-2">
-                  <a
-                    href={`https://www.twitch.tv/${member.twitchLogin}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: "var(--color-primary)" }}
-                  >
-                    🚪 Ouvrir la porte
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleMemberClick(member)}
-                    className="rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
-                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                  >
-                    Voir profil
-                  </button>
-                </div>
-              </article>
+                displayName={member.displayName}
+                twitchLogin={member.twitchLogin}
+                avatarSrc={member.avatar || `https://placehold.co/128x128?text=${encodeURIComponent(member.displayName.charAt(0))}`}
+                primaryGame={member.primaryGame}
+                description={member.description?.trim()}
+                badgeRow={
+                  <>
+                    <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
+                    {member.activity !== "normal" ? (
+                      <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                        Actif·ve cette semaine
+                      </span>
+                    ) : null}
+                  </>
+                }
+                onOpenProfile={() => handleMemberClick(member)}
+                twitchUrl={`https://www.twitch.tv/${member.twitchLogin}`}
+              />
             ))}
           </div>
         </section>
       )}
 
-      {/* Nouveaux createurs a decouvrir */}
-      <section className="space-y-3">
+      {/* Nouveaux membres — accueil chaleureux */}
+      <section className="space-y-4">
         <div>
-          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>✨ Nouveaux créateurs à découvrir</h2>
-          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Une sélection de créateurs récemment intégrés à TENF.
+          <h2 className="text-2xl font-black tracking-tight text-white">Nouveaux dans la communauté</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+            Intégrations récentes (30 derniers jours) : un bon endroit pour passer dire bonjour et découvrir des chaînes toutes fraîches. Chaque fiche résume le style de stream et les liens utiles.
           </p>
         </div>
 
         {recentIntegratedMembers.length > 0 ? (
-          <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {recentIntegratedMembers.map((member) => (
-                <article
+                <MembresDirectoryMemberCard
                   key={`recent-integrated-${member.login}`}
-                  className="rounded-xl border p-3"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
-                >
-                  <div className="mb-2 flex items-start gap-2.5">
-                    <img
-                      src={member.avatar || `https://placehold.co/40x40?text=${member.displayName.charAt(0)}`}
-                      alt={member.displayName}
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                        {member.displayName}
-                      </p>
-                      <p className="truncate text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                        🎮 {member.primaryGame}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-2 flex flex-wrap gap-1.5 text-[11px]">
-                    <span className={getRoleBadgeClassName(member.role)}>
-                      {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
-                    </span>
-                    {member.activity !== "normal" ? (
-                      <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
-                        🔥 Actif cette semaine
+                  density="compact"
+                  displayName={member.displayName}
+                  twitchLogin={member.twitchLogin}
+                  avatarSrc={member.avatar || `https://placehold.co/96x96?text=${encodeURIComponent(member.displayName.charAt(0))}`}
+                  primaryGame={member.primaryGame}
+                  description={member.description?.trim()}
+                  badgeRow={
+                    <>
+                      <span className={getRoleBadgeClassName(member.role)}>
+                        {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
                       </span>
-                    ) : null}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <a
-                      href={`https://www.twitch.tv/${member.twitchLogin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: "var(--color-primary)" }}
-                    >
-                      🚪 Ouvrir la porte
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => handleMemberClick(member)}
-                      className="rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-white/5"
-                      style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                    >
-                      Voir profil
-                    </button>
-                  </div>
-                </article>
+                      {member.activity !== "normal" ? (
+                        <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                          Belle dynamique
+                        </span>
+                      ) : null}
+                    </>
+                  }
+                  onOpenProfile={() => handleMemberClick(member)}
+                  twitchUrl={`https://www.twitch.tv/${member.twitchLogin}`}
+                />
               ))}
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}>
-            Aucun nouveau créateur intégré ce mois-ci pour le moment 💜
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm leading-relaxed text-zinc-400">
+            Pas d’arrivée très récente dans la fenêtre affichée — ce bandeau se remplira dès les prochaines intégrations. En attendant, explore la grille complète ou lance un tirage au sort.
           </div>
         )}
       </section>
 
       {/* Recherche + filtres */}
-      <section className="space-y-4">
+      <section className="space-y-4 rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-6">
+        <div>
+          <h2 className="text-lg font-bold text-white sm:text-xl">Explorer toute la communauté</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Filtre par rôle, cherche un jeu ou un mot dans la bio — puis ouvre les fiches qui te intriguent.
+          </p>
+        </div>
         <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un pseudo, un jeu/catégorie ou une bio..."
-            className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all focus:ring-2"
+            placeholder="Pseudo Twitch, jeu, mot-clé dans la bio…"
+            className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-violet-500/40"
             style={{
               backgroundColor: "var(--color-card)",
               borderColor: searchQuery ? "var(--color-primary)" : "var(--color-border)",
@@ -1187,112 +1153,82 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Grille des membres */}
-      <section className="space-y-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Communauté TENF</h2>
-          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""}
-          </p>
+      {/* Grille complète */}
+      <section className="space-y-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-white">Annuaire complet</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""} après filtres — clique sur « Ouvrir la fiche » pour la vue détaillée (bio, réseaux, statut follow si tu es connecté·e).
+            </p>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: "var(--color-primary)" }} />
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+            <p className="text-sm text-zinc-500">Chargement des créateurs TENF…</p>
           </div>
         ) : visibleMembers.length === 0 ? (
-          <div className="rounded-xl border p-6 text-center" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
-            <p style={{ color: "var(--color-text-secondary)" }}>
-              Aucun créateur trouvé avec ces filtres.
+          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-10 text-center">
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Aucun résultat avec cette recherche ou ce filtre. Élargis ta requête ou réinitialise les filtres pour retrouver des profils.
             </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleMembers.map((member) => {
                 const followBadge = getFollowBadge(member.followState);
                 return (
-                  <article
+                  <MembresDirectoryMemberCard
                     key={member.twitchLogin}
-                    className="group rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-[2px]"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      backgroundColor: "var(--color-card)",
-                      boxShadow: "0 10px 24px rgba(0,0,0,0.2)",
-                    }}
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <img
-                          src={member.avatar || `https://placehold.co/64x64?text=${member.displayName.charAt(0)}`}
-                          alt={member.displayName}
-                          className="h-12 w-12 rounded-full border object-cover"
-                          style={{ borderColor: "var(--color-border)" }}
-                        />
-                        <div>
-                          <p className="font-semibold" style={{ color: "var(--color-text)" }}>{member.displayName}</p>
-                          <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>🎮 {member.primaryGame}</p>
-                        </div>
-                      </div>
-                      {showFollowStatuses ? (
-                        <span className={`rounded-full px-2 py-1 text-[10px] ${followBadge.className}`} title={followBadge.label}>
-                          {followBadge.icon}
+                    displayName={member.displayName}
+                    twitchLogin={member.twitchLogin}
+                    avatarSrc={member.avatar || `https://placehold.co/128x128?text=${encodeURIComponent(member.displayName.charAt(0))}`}
+                    primaryGame={member.primaryGame}
+                    description={member.description?.trim()}
+                    followCorner={
+                      showFollowStatuses ? (
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${followBadge.className}`} title={followBadge.label}>
+                          {followBadge.icon} <span className="sr-only">{followBadge.label}</span>
                         </span>
-                      ) : null}
-                    </div>
-
-                    <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
-                      <span className={getRoleBadgeClassName(member.role)}>
-                        {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
-                      </span>
-                      {member.activity !== "normal" ? (
-                        <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
-                          🔥 Actif cette semaine
+                      ) : undefined
+                    }
+                    badgeRow={
+                      <>
+                        <span className={getRoleBadgeClassName(member.role)}>
+                          {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
                         </span>
-                      ) : null}
-                      <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                        {getPlanningLabel(member.planningStatus)}
-                      </span>
-                      {showFollowStatuses ? (
-                        <span className={`rounded-full px-2 py-0.5 ${followBadge.className}`}>
-                          {followBadge.icon} {followBadge.label}
+                        {member.activity !== "normal" ? (
+                          <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
+                            Actif·ve en ce moment
+                          </span>
+                        ) : null}
+                        <span
+                          className="rounded-full border px-2 py-0.5"
+                          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                        >
+                          {getPlanningLabel(member.planningStatus)}
                         </span>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      <a
-                        href={`https://www.twitch.tv/${member.twitchLogin}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold text-white"
-                        style={{ backgroundColor: "var(--color-primary)" }}
-                      >
-                        🚪 Ouvrir la porte
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleMemberClick(member)}
-                        className="w-full sm:w-auto rounded-lg border px-3 py-2 text-xs font-semibold transition-colors"
-                        style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                      >
-                        Voir profil
-                      </button>
-                    </div>
-                  </article>
+                      </>
+                    }
+                    onOpenProfile={() => handleMemberClick(member)}
+                    twitchUrl={`https://www.twitch.tv/${member.twitchLogin}`}
+                  />
                 );
               })}
             </div>
 
             {hasMoreMembers ? (
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-center pt-4">
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
-                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors min-h-[44px]"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-6 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18"
                 >
-                  Voir plus
+                  Afficher {Math.min(LOAD_MORE_COUNT, filteredMembers.length - visibleCount)} profils de plus
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </button>
               </div>
             ) : null}
@@ -1300,25 +1236,21 @@ export default function Page() {
         )}
       </section>
 
-      {/* Bloc final Decouvrir au hasard */}
-      <section
-        className="rounded-2xl border p-6 text-center"
-        style={{
-          borderColor: "rgba(145,70,255,0.35)",
-          background: "linear-gradient(135deg, rgba(145,70,255,0.11), rgba(145,70,255,0.03))",
-        }}
-      >
-        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>🎲 Découvrir un créateur</h2>
-        <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          Clique et découvre un créateur TENF au hasard.
+      {/* Tirage au sort — même ton que le hero */}
+      <section className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950/50 via-black/40 to-fuchsia-950/30 p-8 text-center sm:p-10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
+        <Shuffle className="mx-auto h-10 w-10 text-violet-300" aria-hidden />
+        <h2 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl">Pas d’idée ? Laisse le hasard choisir</h2>
+        <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
+          Un clic ouvre une fiche tirée parmi les résultats actuels (filtres + recherche inclus). Idéal pour sortir de sa zone de confort.
         </p>
         <button
           type="button"
           onClick={() => openRandomMember(filteredMembers)}
-          className="mt-4 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-[1px]"
-          style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
+          className="mt-6 inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-[0_12px_40px_rgba(124,58,237,0.35)] transition hover:brightness-110 active:scale-[0.99]"
         >
-          🎲 Découvrir
+          <Shuffle className="h-4 w-4" aria-hidden />
+          Tirer un profil au hasard
         </button>
       </section>
 

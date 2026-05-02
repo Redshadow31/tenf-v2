@@ -7,31 +7,20 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --bg: #0e0e10;
-      --panel: rgba(22, 22, 30, 0.82);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --text: #ffffff;
-      --text-soft: rgba(255, 255, 255, 0.76);
-      --text-muted: rgba(255, 255, 255, 0.48);
       --twitch: #9146ff;
       --red: #ce1946;
-      --gold: #ffd166;
-      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
-      --shadow-violet: 0 0 40px rgba(145, 70, 255, 0.18);
-      --shadow-red: 0 0 40px rgba(206, 25, 70, 0.12);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
+      --mx: 0;
+      --my: 0;
     }
 
     * {
       box-sizing: border-box;
     }
 
-    /* Base viewport plein ecran */
     html,
     body {
       margin: 0;
@@ -40,33 +29,21 @@
       height: 100%;
       overflow: hidden;
       font-family: "Poppins", sans-serif;
-      background: #09090f;
-      color: var(--text);
+      background: #050508;
+      color: #fff;
     }
 
-    /*
-      Stage externe:
-      - occupe tout l'ecran de l'iframe
-      - centre la slide
-      - ne deforme jamais la slide (on scale globalement en JS)
-    */
     .slide-stage {
       position: relative;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background:
-        radial-gradient(circle at 15% 20%, rgba(145, 70, 255, 0.16), transparent 35%),
-        radial-gradient(circle at 82% 80%, rgba(206, 25, 70, 0.14), transparent 34%),
-        linear-gradient(135deg, #09090f 0%, #0f0f16 45%, #0c0c11 100%);
+      background: #030306;
     }
 
-    /*
-      Slide fixe 16:9 (base de travail unique):
-      - tout le design vit dans ce bloc 1600x900
-      - on applique uniquement un scale uniforme sur ce bloc
-    */
     .slide {
+      --mx: 0;
+      --my: 0;
       position: absolute;
       left: 50%;
       top: 50%;
@@ -75,674 +52,627 @@
       overflow: hidden;
       transform-origin: center center;
       transform: translate(-50%, -50%) scale(1);
-      background:
-        radial-gradient(circle at 18% 18%, rgba(145, 70, 255, 0.18), transparent 30%),
-        radial-gradient(circle at 84% 78%, rgba(206, 25, 70, 0.16), transparent 28%),
-        linear-gradient(135deg, #0b0b0f 0%, #101018 45%, #0e0e10 100%);
+      background: #06060a;
       will-change: transform;
+    }
+
+    /* Fond : mailles + aurores qui bougent */
+    .bg-mesh {
+      position: absolute;
+      inset: -80px;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 45%, rgba(145, 70, 255, 0.22), transparent 58%),
+        radial-gradient(ellipse 65% 55% at 85% 75%, rgba(206, 25, 70, 0.16), transparent 52%),
+        radial-gradient(ellipse 55% 50% at 12% 70%, rgba(145, 70, 255, 0.12), transparent 48%);
+      animation: auroraShift 14s ease-in-out infinite alternate;
+      transform: translate(calc(var(--mx) * -28px), calc(var(--my) * -22px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .bg-mesh::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 48% 52%, rgba(255, 255, 255, 0.04), transparent 55%);
+      animation: pulseSoft 8s ease-in-out infinite;
+    }
+
+    @keyframes auroraShift {
+      0% {
+        filter: hue-rotate(-6deg) saturate(1.05);
+        opacity: 0.92;
+      }
+      100% {
+        filter: hue-rotate(8deg) saturate(1.15);
+        opacity: 1;
+      }
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.03); }
     }
 
     .bg-grid {
       position: absolute;
       inset: 0;
+      z-index: 0;
+      opacity: 0.35;
       background-image:
-        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-      background-size: 52px 52px;
-      mask-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.28), transparent 85%);
-      z-index: 0;
-    }
-
-    .glow {
-      position: absolute;
-      border-radius: 999px;
-      filter: blur(90px);
-      z-index: 0;
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 75% 65% at 50% 48%, #000 15%, transparent 72%);
       pointer-events: none;
-      animation: glowDrift 11s ease-in-out infinite alternate;
     }
 
-    .glow-violet {
-      width: 620px;
-      height: 620px;
-      top: -140px;
-      left: -140px;
-      background: rgba(145, 70, 255, 0.22);
-    }
-
-    .glow-red {
-      width: 500px;
-      height: 500px;
-      right: -90px;
-      bottom: -110px;
-      background: rgba(206, 25, 70, 0.16);
-      animation-delay: 1.5s;
-    }
-
-    .particle {
+    /* Rayons rotatifs très légers */
+    .rays {
       position: absolute;
-      border-radius: 50%;
+      left: 50%;
+      top: 42%;
+      width: 1400px;
+      height: 1400px;
+      margin: -700px 0 0 -700px;
       z-index: 0;
-      opacity: 0.75;
-      animation: floatParticle 9s ease-in-out infinite;
+      opacity: 0.45;
+      pointer-events: none;
+      animation: raysSpin 120s linear infinite;
     }
 
-    .particle.p1 { top: 112px; left: 238px; width: 7px; height: 7px; background: var(--twitch); animation-delay: 0s; }
-    .particle.p2 { top: 175px; right: 300px; width: 5px; height: 5px; background: var(--gold); animation-delay: 1.2s; }
-    .particle.p3 { bottom: 162px; left: 150px; width: 6px; height: 6px; background: var(--red); animation-delay: 2s; }
-    .particle.p4 { bottom: 225px; right: 225px; width: 8px; height: 8px; background: rgba(145, 70, 255, 0.9); animation-delay: 3s; }
-    .particle.p5 { top: 375px; right: 112px; width: 3px; height: 3px; background: #fff; animation-delay: 0.7s; }
-    .particle.p6 { top: 275px; left: 88px; width: 3px; height: 3px; background: #fff; animation-delay: 2.6s; }
-
-    .star {
-      position: absolute;
-      border-radius: 50%;
-      background: #fff;
-      z-index: 0;
-      opacity: 0.3;
-      animation: twinkle 3.8s ease-in-out infinite;
-    }
-
-    .star.s1 { top: 98px; left: 525px; width: 2px; height: 2px; animation-delay: 0s; }
-    .star.s2 { top: 200px; right: 150px; width: 3px; height: 3px; animation-delay: 1s; }
-    .star.s3 { bottom: 110px; left: 375px; width: 2px; height: 2px; animation-delay: 1.8s; }
-    .star.s4 { bottom: 200px; right: 450px; width: 2px; height: 2px; animation-delay: 2.4s; }
-
-    .light-ray {
-      position: absolute;
-      width: 160px;
-      height: 1200px;
-      background: rgba(255, 255, 255, 0.035);
-      filter: blur(50px);
-      transform: rotate(45deg);
-      z-index: 0;
-      animation: rayMove 14s linear infinite;
-    }
-    .light-ray.r1 { top: -280px; left: 180px; }
-    .light-ray.r2 { top: -320px; right: 220px; animation-duration: 16s; animation-direction: reverse; }
-
-    .topbar {
-      position: absolute;
-      top: 34px;
-      left: 40px;
-      right: 40px;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 12px 18px 12px 12px;
-      background: rgba(16, 16, 24, 0.58);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      backdrop-filter: blur(14px);
-      border-radius: 18px;
-      box-shadow: var(--shadow-lg);
-      max-width: 500px;
-    }
-
-    .brand img {
-      width: 68px;
-      height: 68px;
-      object-fit: cover;
-      border-radius: 50%;
-      box-shadow: 0 0 24px rgba(145, 70, 255, 0.35);
-      flex-shrink: 0;
-      animation: logoPulse 4s ease-in-out infinite;
-    }
-
-    .brand-kicker {
-      display: block;
-      margin-bottom: 2px;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.24em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
-    .brand-name {
-      font-size: 22px;
-      font-weight: 700;
-      line-height: 1.2;
-      color: var(--text);
-    }
-
-    .site-pill {
-      padding: 11px 20px;
-      border-radius: 999px;
-      background: rgba(145, 70, 255, 0.12);
-      border: 1px solid rgba(145, 70, 255, 0.28);
-      color: rgba(255, 255, 255, 0.88);
-      font-size: 15px;
-      font-weight: 600;
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow-violet);
-      max-width: 320px;
-      text-align: center;
-    }
-
-    .content {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
-      display: grid;
-      grid-template-columns: 880px 530px;
-      justify-content: space-between;
-      align-items: center;
-      gap: 44px;
-      padding: 132px 52px 58px;
-    }
-
-    .left {
-      padding-left: 22px;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-      color: var(--text-soft);
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-    }
-
-    .eyebrow::before {
-      content: "";
-      width: 42px;
-      height: 2px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, var(--twitch), var(--red));
-      box-shadow: 0 0 18px rgba(145, 70, 255, 0.55);
-    }
-
-    .title {
-      margin: 0;
-      font-size: 106px;
-      line-height: 0.92;
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      text-transform: uppercase;
-    }
-
-    .title span {
-      display: block;
-    }
-
-    .title .white {
-      color: #fff;
-      text-shadow: 0 0 28px rgba(255, 255, 255, 0.12);
-    }
-
-    .title .red {
-      color: var(--red);
-      text-shadow: 0 0 28px rgba(206, 25, 70, 0.35);
-    }
-
-    .title .violet {
-      color: var(--twitch);
-      text-shadow: 0 0 32px rgba(145, 70, 255, 0.45);
-    }
-
-    .title .white,
-    .title .red,
-    .title .violet {
-      animation: titleFlicker 8s ease-in-out infinite;
-      animation-play-state: paused;
-    }
-    .title.played .white,
-    .title.played .red,
-    .title.played .violet { animation-play-state: running; }
-    .title .red { animation-delay: 0.4s; }
-    .title .violet { animation-delay: 0.8s; }
-
-    .subtitle {
-      margin-top: 24px;
-      max-width: 790px;
-      font-size: 26px;
-      line-height: 1.45;
-      color: var(--text-soft);
-    }
-
-    .subtitle strong {
-      color: #fff;
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 30px;
-    }
-
-    .chip {
-      padding: 12px 18px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: rgba(255, 255, 255, 0.88);
-      font-size: 16px;
-      font-weight: 600;
-      backdrop-filter: blur(8px);
-    }
-
-    .chip.violet {
-      background: rgba(145, 70, 255, 0.12);
-      border-color: rgba(145, 70, 255, 0.3);
-    }
-
-    .chip.red {
-      background: rgba(206, 25, 70, 0.1);
-      border-color: rgba(206, 25, 70, 0.24);
-    }
-
-    .chip.gold {
-      background: rgba(255, 209, 102, 0.08);
-      border-color: rgba(255, 209, 102, 0.22);
-      color: #ffe7a7;
-    }
-
-    .right {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .hero-card {
-      position: relative;
-      width: 530px;
-      min-height: 590px;
-      padding: 30px;
-      border-radius: var(--radius-xl);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-        var(--panel);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow-lg), var(--shadow-violet), var(--shadow-red);
-      overflow: hidden;
-    }
-
-    .hero-card::before {
+    .rays::before,
+    .rays::after {
       content: "";
       position: absolute;
       inset: 0;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(145, 70, 255, 0.07) 40deg,
+        transparent 80deg,
+        rgba(206, 25, 70, 0.06) 160deg,
+        transparent 220deg,
+        rgba(145, 70, 255, 0.05) 300deg,
+        transparent 360deg
+      );
+    }
+
+    .rays::after {
+      animation: raysSpin 90s linear infinite reverse;
+      opacity: 0.7;
+    }
+
+    @keyframes raysSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Logo arrière-plan */
+    .bg-logo-wrap {
+      position: absolute;
+      left: 50%;
+      top: 47%;
+      width: 820px;
+      height: 820px;
+      margin: -410px 0 0 -410px;
+      z-index: 0;
+      pointer-events: none;
+      transform: translate(calc(var(--mx) * 35px), calc(var(--my) * 28px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: logoBreathe 10s ease-in-out infinite;
+    }
+
+    @keyframes logoBreathe {
+      0%, 100% { transform: translate(calc(var(--mx) * 35px), calc(var(--my) * 28px)) scale(1); opacity: 1; }
+      50% { transform: translate(calc(var(--mx) * 35px), calc(var(--my) * 28px)) scale(1.04); opacity: 1; }
+    }
+
+    .bg-logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0.18;
+      filter: blur(18px) saturate(1.2);
+    }
+
+    /* Halos derrière le texte */
+    .hotspot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 900px;
+      height: 420px;
+      margin: -210px 0 0 -450px;
+      z-index: 1;
+      background: radial-gradient(ellipse at center, rgba(145, 70, 255, 0.18), transparent 68%);
+      filter: blur(40px);
+      animation: hotspotPulse 5s ease-in-out infinite;
+      pointer-events: none;
+      transform: translate(calc(var(--mx) * -12px), calc(var(--my) * -10px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hotspot-red {
+      width: 520px;
+      height: 320px;
+      margin: -80px 0 0 -180px;
+      background: radial-gradient(ellipse at center, rgba(206, 25, 70, 0.12), transparent 65%);
+      animation-delay: -2s;
+    }
+
+    @keyframes hotspotPulse {
+      0%, 100% { opacity: 0.75; transform: translate(calc(var(--mx) * -12px), calc(var(--my) * -10px)) scale(1); }
+      50% { opacity: 1; transform: translate(calc(var(--mx) * -12px), calc(var(--my) * -10px)) scale(1.08); }
+    }
+
+    /* Particules */
+    .spark {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 1;
+      pointer-events: none;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .spark.v {
+      width: 4px;
+      height: 4px;
+      color: var(--twitch);
+      background: currentColor;
+      animation: sparkFloat 7s ease-in-out infinite;
+    }
+
+    .spark.r {
+      width: 3px;
+      height: 3px;
+      color: #ff4d7d;
+      background: currentColor;
+      animation: sparkFloat 9s ease-in-out infinite;
+    }
+
+    .spark.w {
+      width: 2px;
+      height: 2px;
+      color: rgba(255, 255, 255, 0.9);
+      background: currentColor;
+      animation: sparkFloat 6s ease-in-out infinite;
+    }
+
+    .s1 { left: 12%; top: 22%; animation-delay: 0s; }
+    .s2 { right: 18%; top: 28%; animation-delay: -2s; }
+    .s3 { left: 22%; bottom: 26%; animation-delay: -4s; }
+    .s4 { right: 14%; bottom: 22%; animation-delay: -1s; }
+    .s5 { left: 48%; top: 14%; animation-delay: -3s; }
+    .s6 { right: 42%; bottom: 18%; animation-delay: -5s; }
+
+    @keyframes sparkFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+      50% { transform: translate(8px, -22px) scale(1.2); opacity: 1; }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
       background:
-        linear-gradient(135deg, rgba(145, 70, 255, 0.08), transparent 38%),
-        linear-gradient(315deg, rgba(206, 25, 70, 0.08), transparent 35%);
+        radial-gradient(ellipse 72% 58% at 50% 48%, rgba(5, 5, 10, 0.2), rgba(4, 4, 8, 0.82) 100%);
       pointer-events: none;
     }
 
-    .hero-top,
-    .icon-stage,
-    .hero-message {
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.65);
+    }
+
+    .grain {
+      position: absolute;
+      inset: -20px;
+      z-index: 4;
+      opacity: 0.055;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation: grainMove 0.5s steps(2) infinite;
+    }
+
+    @keyframes grainMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(-2%, -2%); }
+    }
+
+    .center-stack {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 80px;
+      gap: 0;
+    }
+
+    /* Logo premier plan — net et lisible (parallax sur le bloc, entrée sur l’image) */
+    .hero-logo {
+      position: relative;
+      width: 152px;
+      height: 152px;
+      margin-bottom: 36px;
+      flex-shrink: 0;
+      opacity: 0;
+      transform: translate(calc(var(--mx) * 10px), calc(var(--my) * 8px));
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: heroLogoFade 1s ease-out 0.15s forwards;
+    }
+
+    .hero-logo-ring {
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      background: conic-gradient(from 210deg, rgba(145, 70, 255, 0.5), rgba(206, 25, 70, 0.35), rgba(145, 70, 255, 0.45), rgba(206, 25, 70, 0.25), rgba(145, 70, 255, 0.5));
+      opacity: 0.85;
+      animation: ringRotate 14s linear infinite;
+      filter: blur(0.5px);
+    }
+
+    .hero-logo-ring::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, rgba(30, 28, 45, 0.95), rgba(10, 10, 16, 0.98));
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .hero-logo-core {
       position: relative;
       z-index: 1;
-    }
-
-    .hero-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 26px;
-      gap: 10px;
-    }
-
-    .live-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 14px;
-      border-radius: 999px;
-      background: rgba(206, 25, 70, 0.14);
-      border: 1px solid rgba(206, 25, 70, 0.3);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      white-space: nowrap;
-      animation: badgePulse 2.2s ease-in-out infinite;
-    }
-
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--red);
-      box-shadow: 0 0 14px rgba(206, 25, 70, 0.8);
-    }
-
-    .icon-stage {
-      height: 262px;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 24px;
+      transform: scale(1);
+      transform-origin: center center;
+      animation: logoPulseScale 3.2s ease-in-out 1.15s infinite;
     }
 
-    .icon-ring {
-      position: absolute;
-      width: 262px;
-      height: 262px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(145, 70, 255, 0.22), rgba(145, 70, 255, 0.02) 62%, transparent 72%);
-      animation: ringPulse 4.2s ease-in-out infinite;
-    }
-
-    .icon-core {
+    .hero-logo-img {
       position: relative;
-      width: 160px;
-      height: 160px;
-      border-radius: 38px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        linear-gradient(145deg, rgba(145, 70, 255, 0.22), rgba(206, 25, 70, 0.16)),
-        rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 0 32px rgba(145, 70, 255, 0.18);
-    }
-
-    .icon-core svg,
-    .icon-core-logo {
-      width: 90px;
-      height: 90px;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-    }
-    .icon-core svg { fill: #fff; }
-
-    .floating-tag {
-      position: absolute;
-      padding: 10px 14px;
-      border-radius: 14px;
-      font-size: 14px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
-      max-width: 170px;
-      text-align: center;
-      animation: floatTag 5.5s ease-in-out infinite;
-    }
-
-    .tag-1 { top: 20px; left: 6px; color: #d9c2ff; animation-delay: 0.2s; }
-    .tag-2 { top: 80px; right: 0; color: #ffd7e1; animation-delay: 1.1s; }
-    .tag-3 { bottom: 30px; left: 0; color: #ffe6a7; animation-delay: 2s; }
-
-    .hero-message {
-      margin-top: 8px;
-      padding: 20px 20px 18px;
-      border-radius: var(--radius-lg);
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-
-    .hero-message-title {
-      margin-bottom: 8px;
-      font-size: 22px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .hero-message-text {
-      font-size: 17px;
-      line-height: 1.55;
-      color: var(--text-soft);
-    }
-
-    .hero-message-text strong {
-      color: #fff;
-    }
-
-    .footer {
-      position: absolute;
-      left: 52px;
-      right: 52px;
-      bottom: 26px;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: var(--text-muted);
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .footer-left,
-    .footer-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .footer-line {
-      width: 48px;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.16);
-    }
-
-    .footer-right .dot {
-      width: 6px;
-      height: 6px;
       border-radius: 50%;
-      background: var(--twitch);
-      box-shadow: 0 0 12px rgba(145, 70, 255, 0.8);
-      animation: twinkle 2.2s ease-in-out infinite;
+      padding: 10px;
+      animation: heroLogoPop 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards, logoPulseGlow 3.2s ease-in-out 1.15s infinite;
+      transform: scale(0.82) rotate(-6deg);
     }
 
-    @keyframes glowDrift {
-      from { transform: translate(0, 0) scale(1); opacity: 0.9; }
-      to { transform: translate(16px, -18px) scale(1.06); opacity: 1; }
+    @keyframes heroLogoFade {
+      to {
+        opacity: 1;
+      }
     }
 
-    @keyframes floatParticle {
-      0%, 100% { transform: translate(0, 0); opacity: 0.45; }
-      50% { transform: translate(0, -18px); opacity: 1; }
+    @keyframes heroLogoPop {
+      to {
+        transform: scale(1) rotate(0deg);
+      }
     }
 
-    @keyframes twinkle {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.3); }
+    @keyframes ringRotate {
+      to { transform: rotate(360deg); }
     }
 
-    @keyframes logoPulse {
-      0%, 100% { box-shadow: 0 0 20px rgba(145, 70, 255, 0.25); }
-      50% { box-shadow: 0 0 32px rgba(145, 70, 255, 0.5); }
-    }
-
-    @keyframes titleFlicker {
-      0%, 100% { opacity: 1; transform: translateX(0); }
-      97% { opacity: 0.96; transform: translateX(1px); }
-      98% { opacity: 0.88; transform: translateX(-1px); }
-      99% { opacity: 0.96; transform: translateX(1px); }
-    }
-
-    @keyframes badgePulse {
+    @keyframes logoPulseScale {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.06); }
+      50% { transform: scale(1.05); }
     }
 
-    @keyframes ringPulse {
-      0%, 100% { transform: scale(1); opacity: 0.85; }
-      50% { transform: scale(1.08); opacity: 1; }
+    @keyframes logoPulseGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 10px rgba(206, 25, 70, 0.4)) drop-shadow(0 0 18px rgba(145, 70, 255, 0.32));
+      }
+      50% {
+        filter: drop-shadow(0 0 26px rgba(206, 25, 70, 0.72)) drop-shadow(0 0 36px rgba(145, 70, 255, 0.48));
+      }
     }
 
-    @keyframes floatTag {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+    .title-main {
+      margin: 0;
+      max-width: 1180px;
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      filter: drop-shadow(0 0 40px rgba(145, 70, 255, 0.35)) drop-shadow(0 0 80px rgba(206, 25, 70, 0.2));
     }
 
-    @keyframes rayMove {
-      0% { transform: rotate(45deg) translate(-200px, -200px); opacity: 0; }
-      50% { opacity: 0.08; }
-      100% { transform: rotate(45deg) translate(200px, 200px); opacity: 0; }
+    .title-main .title-line {
+      display: block;
     }
 
-    /* Staggered reveal au chargement */
-    .reveal { opacity: 0; transform: translateY(24px); }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-    .eyebrow.reveal { animation: revealFade 0.6s ease-out 0.2s forwards; }
-    .title .white.reveal { animation: revealFade 0.6s ease-out 0.35s forwards; }
-    .title .red.reveal { animation: revealFade 0.6s ease-out 0.5s forwards; }
-    .title .violet.reveal { animation: revealFade 0.6s ease-out 0.65s forwards; }
-    .subtitle.reveal { animation: revealFade 0.6s ease-out 0.85s forwards; }
-    .chip.reveal { animation: revealFade 0.5s ease-out forwards; }
-    .chip.reveal:nth-child(1) { animation-delay: 1.2s; }
-    .chip.reveal:nth-child(2) { animation-delay: 1.35s; }
-    .chip.reveal:nth-child(3) { animation-delay: 1.5s; }
-    .chip.reveal:nth-child(4) { animation-delay: 1.65s; }
-    .hero-card.reveal { animation: revealScale 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards; }
-    @keyframes revealFade {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
+    .title-main .title-line-1 {
+      font-size: clamp(26px, 2.65vw, 42px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      line-height: 1.2;
     }
-    @keyframes revealScale {
-      from { opacity: 0; transform: scale(0.94) translateY(16px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
+
+    .title-main .title-line-2 {
+      font-size: clamp(52px, 5.4vw, 96px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.02;
     }
-    .chip { transition: transform 0.25s ease, box-shadow 0.25s ease; }
-    .chip:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(145, 70, 255, 0.15); }
+
+    @keyframes titleLineUp {
+      from {
+        opacity: 0;
+        transform: translateY(32px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .title-main .title-gradient {
+      background: linear-gradient(
+        115deg,
+        #ffffff 0%,
+        #f0e8ff 18%,
+        #ffffff 32%,
+        #e8c4ff 48%,
+        #ffd0e0 58%,
+        #ffffff 72%,
+        #dcc8ff 88%,
+        #ffffff 100%
+      );
+      background-size: 280% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* Une seule propriété animation : entrée + gradient + shimmer sans s’écraser */
+    .title-main .title-line-1.title-gradient {
+      animation:
+        titleLineUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both,
+        gradientFlow 10s ease-in-out infinite,
+        titleShimmer 3.2s ease-in-out 1.35s infinite;
+    }
+
+    .title-main .title-line-2.title-gradient {
+      animation:
+        titleLineUp 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both,
+        gradientFlow 10s ease-in-out infinite,
+        titleShimmer 3.2s ease-in-out 1.55s infinite;
+    }
+
+    @keyframes gradientFlow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @keyframes titleShimmer {
+      0%, 100% {
+        filter: brightness(1);
+      }
+      50% {
+        filter: brightness(1.12);
+      }
+    }
+
+    .subtitle {
+      margin: 40px 0 0;
+      max-width: 820px;
+      font-size: clamp(20px, 2.05vw, 32px);
+      font-weight: 600;
+      line-height: 1.55;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      color: rgba(255, 255, 255, 0.82);
+      text-shadow: 0 0 40px rgba(145, 70, 255, 0.15);
+      opacity: 0;
+      animation: subEnter 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.72s forwards;
+    }
+
+    .subtitle .sub-glow {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.65), rgba(238, 228, 255, 0.98), rgba(255, 240, 245, 0.9), rgba(255, 255, 255, 0.65));
+      background-size: 220% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: subShine 8s ease-in-out infinite;
+    }
+
+    @keyframes subEnter {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes subShine {
+      0%, 100% { background-position: 0% center; }
+      50% { background-position: 100% center; }
+    }
+
+    .slide-signature {
+      position: absolute;
+      left: 56px;
+      right: 56px;
+      bottom: 26px;
+      z-index: 6;
+      margin: 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      animation: sigFadeIn 0.9s ease-out 1.05s forwards;
+    }
+
+    @keyframes sigFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 0.5;
+        transform: translateY(0);
+      }
+    }
+
+    .motion-on .slide {
+      cursor: default;
+    }
 
     @media (prefers-reduced-motion: reduce) {
-      * {
+      .bg-mesh,
+      .bg-mesh::after,
+      .rays,
+      .rays::after,
+      .bg-logo-wrap,
+      .hotspot,
+      .hotspot-red,
+      .spark,
+      .grain,
+      .hero-logo-ring,
+      .hero-logo-core,
+      .hero-logo-img,
+      .title-main .title-gradient,
+      .title-main .title-line-1.title-gradient,
+      .title-main .title-line-2.title-gradient,
+      .subtitle .sub-glow,
+      .slide-signature {
         animation: none !important;
-        transition: none !important;
       }
-      .reveal { opacity: 1 !important; transform: none !important; }
+
+      .hero-logo {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .hero-logo-core {
+        transform: none !important;
+      }
+
+      .hero-logo-img {
+        animation: none !important;
+        transform: none !important;
+        filter: drop-shadow(0 0 24px rgba(145, 70, 255, 0.4)) !important;
+      }
+
+      .title-main .title-line-1,
+      .title-main .title-line-2 {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .title-main,
+      .subtitle {
+        filter: drop-shadow(0 0 28px rgba(145, 70, 255, 0.3)) !important;
+      }
+
+      .subtitle {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .slide-signature {
+        opacity: 0.5 !important;
+        transform: none !important;
+      }
+
+      .title-main .title-gradient {
+        background-position: 40% 50%;
+      }
+
+      .subtitle .sub-glow {
+        color: rgba(255, 255, 255, 0.85);
+        background: none;
+        -webkit-background-clip: unset;
+        background-clip: unset;
+      }
+
+      .grain {
+        opacity: 0;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="slide-stage">
+  <div class="slide-stage motion-on">
     <div class="slide" id="slideRoot">
-      <div class="bg-grid"></div>
-      <div class="glow glow-violet"></div>
-      <div class="glow glow-red"></div>
+      <div class="bg-mesh" aria-hidden="true"></div>
+      <div class="bg-grid" aria-hidden="true"></div>
+      <div class="rays" aria-hidden="true"></div>
 
-      <div class="particle p1"></div>
-      <div class="particle p2"></div>
-      <div class="particle p3"></div>
-      <div class="particle p4"></div>
-      <div class="particle p5"></div>
-      <div class="particle p6"></div>
-      <div class="star s1"></div>
-      <div class="star s2"></div>
-      <div class="star s3"></div>
-      <div class="star s4"></div>
+      <div class="bg-logo-wrap" aria-hidden="true">
+        <img src="/Tenf.png" alt="" />
+      </div>
 
-      <div class="light-ray r1"></div>
-      <div class="light-ray r2"></div>
+      <div class="hotspot" aria-hidden="true"></div>
+      <div class="hotspot hotspot-red" aria-hidden="true"></div>
 
-      <header class="topbar">
-        <div class="brand">
-          <img src="/Tenf.png" alt="Logo TENF" />
-          <div>
-            <span class="brand-kicker">Communauté streaming</span>
-            <div class="brand-name">Twitch Entraide New Family</div>
+      <span class="spark v s1" aria-hidden="true"></span>
+      <span class="spark r s2" aria-hidden="true"></span>
+      <span class="spark w s3" aria-hidden="true"></span>
+      <span class="spark v s4" aria-hidden="true"></span>
+      <span class="spark w s5" aria-hidden="true"></span>
+      <span class="spark r s6" aria-hidden="true"></span>
+
+      <div class="overlay" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <div class="grain" aria-hidden="true"></div>
+
+      <div class="center-stack">
+        <div class="hero-logo" aria-hidden="true">
+          <div class="hero-logo-ring"></div>
+          <div class="hero-logo-core">
+            <img src="/Tenf.png" alt="" class="hero-logo-img" width="152" height="152" />
           </div>
         </div>
 
-        <div class="site-pill">tenf-community.com</div>
-      </header>
+        <h1 class="title-main">
+          <span class="title-line title-line-1 title-gradient">💜 Bienvenue dans la</span>
+          <span class="title-line title-line-2 title-gradient">New Family</span>
+        </h1>
 
-      <main class="content">
-        <section class="left">
-          <div class="eyebrow reveal">Bienvenue dans la communauté</div>
+        <p class="subtitle">
+          <span class="sub-glow">Une entraide réelle entre streamers</span>
+        </p>
+      </div>
 
-          <h1 class="title" id="titleEl">
-            <span class="white reveal">TWITCH</span>
-            <span class="red reveal">ENTRAIDE</span>
-            <span class="violet reveal">NEW FAMILY</span>
-          </h1>
-
-          <p class="subtitle reveal">
-            Une communauté francophone de <strong>streamers</strong> et <strong>créateurs</strong>,
-            basée sur l’
-            <strong>entraide réelle</strong> et un cadre humain.
-          </p>
-
-          <div class="chips">
-            <span class="chip violet reveal">Streaming Twitch</span>
-            <span class="chip red reveal">Discord actif</span>
-            <span class="chip gold reveal">Événements mensuels</span>
-            <span class="chip violet reveal">Progression à votre rythme</span>
-          </div>
-        </section>
-
-        <aside class="right">
-          <div class="hero-card reveal">
-            <div class="hero-top">
-              <div class="live-badge">
-                <span class="live-dot"></span>
-                New Family
-              </div>
-            </div>
-
-            <div class="icon-stage">
-              <div class="icon-ring"></div>
-
-              <div class="floating-tag tag-1">Streaming</div>
-              <div class="floating-tag tag-2">Discord &amp; lives</div>
-              <div class="floating-tag tag-3">Entraide concrète</div>
-
-              <div class="icon-core" aria-hidden="true">
-                <img src="/Tenf.png" alt="" class="icon-core-logo" />
-              </div>
-            </div>
-
-            <div class="hero-message">
-              <div class="hero-message-title">Ici, vous avez votre place.</div>
-              <div class="hero-message-text">
-                Entraide <strong>dans les deux sens</strong>, cadre qui protège
-                le groupe, évolution <strong>humaine et dans votre streaming</strong>.
-              </div>
-            </div>
-          </div>
-        </aside>
-      </main>
-
-      <footer class="footer">
-        <div class="footer-left">
-          <div class="footer-line"></div>
-          <span>Une famille choisie, une dynamique collective</span>
-        </div>
-
-        <div class="footer-right">
-          <span class="dot"></span>
-          <span>Bienvenue officiellement dans la TENF</span>
-        </div>
-      </footer>
+      <p class="slide-signature">Une famille choisie • Une dynamique collective</p>
     </div>
   </div>
 
   <script>
-    /*
-      Moteur de scale global + déclenchement titleFlicker après le reveal
-    */
     (function () {
       const BASE_WIDTH = 1600;
       const BASE_HEIGHT = 900;
       const slide = document.getElementById("slideRoot");
-      const titleEl = document.getElementById("titleEl");
-
       if (!slide) return;
 
       const applyScale = () => {
-        const scale = Math.min(
-          window.innerWidth / BASE_WIDTH,
-          window.innerHeight / BASE_HEIGHT
-        );
+        const scale = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
         slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
       };
 
@@ -750,8 +680,19 @@
       window.addEventListener("resize", applyScale);
       window.addEventListener("orientationchange", applyScale);
 
-      if (titleEl) {
-        setTimeout(() => titleEl.classList.add("played"), 1600);
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduceMotion) {
+        slide.addEventListener("mousemove", (e) => {
+          const r = slide.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5;
+          const y = (e.clientY - r.top) / r.height - 0.5;
+          slide.style.setProperty("--mx", (x * 2).toFixed(4));
+          slide.style.setProperty("--my", (y * 2).toFixed(4));
+        });
+        slide.addEventListener("mouseleave", () => {
+          slide.style.setProperty("--mx", "0");
+          slide.style.setProperty("--my", "0");
+        });
       }
     })();
   </script>

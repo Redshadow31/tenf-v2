@@ -1,27 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { highlightDiscoursText } from "@/lib/discoursHighlight";
 import { discours2Parts } from "../content";
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function highlightText(text: string, keywords: string[]) {
-  if (!keywords.length) return text;
-  const regex = new RegExp(`(${keywords.map(escapeRegExp).join("|")})`, "gi");
-  const chunks = text.split(regex);
-
-  return chunks.map((chunk, index) => {
-    const isKeyword = keywords.some((keyword) => keyword.toLowerCase() === chunk.toLowerCase());
-    if (!isKeyword) return <span key={`${chunk}-${index}`}>{chunk}</span>;
-
-    return (
-      <mark key={`${chunk}-${index}`} className="bg-amber-400/20 text-amber-200 px-1 rounded font-semibold">
-        {chunk}
-      </mark>
-    );
-  });
-}
 
 type PartPageProps = {
   params: Promise<{
@@ -63,7 +43,7 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
             <ul className="space-y-3">
               {part.points.map((point) => (
                 <li key={point} className="pl-6 relative text-gray-200 before:content-['✓'] before:absolute before:left-0 before:text-cyan-300">
-                  {highlightText(point, part.keywords)}
+                  {highlightDiscoursText(point, part.keywords, part.phrasesCles)}
                 </li>
               ))}
             </ul>
@@ -74,7 +54,7 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
             <ul className="space-y-3">
               {part.conseils.map((conseil) => (
                 <li key={conseil} className="pl-6 relative text-gray-200 before:content-['➜'] before:absolute before:left-0 before:text-emerald-300">
-                  {highlightText(conseil, part.keywords)}
+                  {highlightDiscoursText(conseil, part.keywords, part.phrasesCles)}
                 </li>
               ))}
             </ul>
@@ -85,7 +65,7 @@ export default async function Discours2PartPage({ params }: PartPageProps) {
           <h2 className="text-2xl font-bold text-amber-300 mb-4">🎤 Discours Suggéré</h2>
           <div className="space-y-4 text-gray-100 leading-relaxed">
             {part.discours.map((paragraph, index) => (
-              <p key={`${part.slug}-speech-${index}`}>{highlightText(paragraph, part.keywords)}</p>
+              <p key={`${part.slug}-speech-${index}`}>{highlightDiscoursText(paragraph, part.keywords, part.phrasesCles)}</p>
             ))}
           </div>
         </section>
