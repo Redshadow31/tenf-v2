@@ -7,13 +7,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 
 /**
- * Espace membre public : préfixe (n) sur le titre d’onglet, bannière globale, événement de compteur pour le header.
+ * Espace membre public : préfixe (n) sur le titre d’onglet, toast fixe au scroll, événement de compteur pour le header.
  */
 export default function MemberGlobalNotificationHint() {
   const { status } = useSession();
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [toastDismissed, setToastDismissed] = useState(false);
 
   const fetchUnread = useCallback(async () => {
     if (status !== "authenticated") return;
@@ -57,7 +57,7 @@ export default function MemberGlobalNotificationHint() {
   }, []);
 
   useEffect(() => {
-    if (unread === 0) setBannerDismissed(false);
+    if (unread === 0) setToastDismissed(false);
   }, [unread]);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function MemberGlobalNotificationHint() {
     };
   }, []);
 
-  if (status !== "authenticated" || unread === 0 || bannerDismissed) {
+  if (status !== "authenticated" || unread === 0 || toastDismissed) {
     return null;
   }
 
@@ -96,35 +96,70 @@ export default function MemberGlobalNotificationHint() {
   return (
     <div
       role="status"
-      className="border-b px-3 py-2.5 sm:px-6"
+      aria-live="polite"
+      aria-label="Rappel de notifications"
+      className="pointer-events-none fixed z-[90]"
       style={{
-        borderColor: "rgba(145, 70, 255, 0.35)",
-        background: "linear-gradient(90deg, rgba(145, 70, 255, 0.18), rgba(99, 102, 241, 0.12))",
+        bottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+        left: "max(1rem, env(safe-area-inset-left, 0px))",
+        right: "max(1rem, env(safe-area-inset-right, 0px))",
       }}
     >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 text-center sm:text-left">
-        <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "var(--color-text)" }}>
-          <Bell className="h-4 w-4 shrink-0 text-red-400" aria-hidden />
-          <span>{label}</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Link
-            href="/member/notifications"
-            className="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold text-white sm:text-sm"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            Ouvrir mes notifications
-          </Link>
-          <button
-            type="button"
-            onClick={() => setBannerDismissed(true)}
-            className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium sm:text-sm"
-            style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
-            aria-label="Masquer ce message"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden />
-            Plus tard
-          </button>
+      {/* Desktop / tablette : coin bas-droite ; le bloc reste dans la zone safe-area */}
+      <div className="pointer-events-none flex justify-center sm:justify-end">
+        <div
+          className="member-notif-toast-in pointer-events-auto w-full max-w-md rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md sm:max-w-sm"
+          style={{
+            borderColor: "rgba(145, 70, 255, 0.45)",
+            backgroundColor: "var(--color-card)",
+            boxShadow:
+              "0 24px 48px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(145, 70, 255, 0.12) inset",
+          }}
+        >
+          <div className="flex gap-3">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: "rgba(145, 70, 255, 0.2)" }}
+            >
+              <Bell className="h-5 w-5 text-red-400" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 space-y-3">
+              <p className="text-sm font-medium leading-snug" style={{ color: "var(--color-text)" }}>
+                {label}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/member/notifications"
+                  className="inline-flex min-h-[2.5rem] flex-1 items-center justify-center rounded-xl px-3 py-2 text-center text-xs font-semibold leading-tight text-white transition hover:opacity-95 sm:flex-none sm:min-h-0 sm:text-sm"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  Voir les notifications
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setToastDismissed(true)}
+                  className="inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition hover:opacity-90 sm:text-sm"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text-secondary)",
+                    backgroundColor: "var(--color-card-hover)",
+                  }}
+                  aria-label="Masquer ce rappel jusqu’à la prochaine notification"
+                >
+                  Plus tard
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastDismissed(true)}
+              className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg opacity-70 transition hover:opacity-100"
+              style={{ color: "var(--color-text-secondary)" }}
+              aria-label="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

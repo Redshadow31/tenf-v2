@@ -95,7 +95,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
             memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
             showMemberMenuInBurger={isMemberArea}
           />
-          <MemberGlobalNotificationHint />
           <div className="flex min-w-0 overflow-x-hidden">
             {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
             <main className="flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8">{children}</main>
@@ -117,6 +116,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
               />
             </div>
           ) : null}
+          <MemberGlobalNotificationHint />
         </div>
       </ThemeProvider>
     </SessionProvider>
