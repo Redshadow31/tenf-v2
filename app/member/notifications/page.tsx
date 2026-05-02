@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell, BellOff, CheckCheck, Loader2 } from "lucide-react";
+import { Bell, BellOff, CheckCheck, Loader2, X } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -26,6 +26,7 @@ export default function MemberNotificationsPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [lightbox, setLightbox] = useState<{ src: string; title: string } | null>(null);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
 
@@ -56,6 +57,15 @@ export default function MemberNotificationsPage() {
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setLightbox(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   async function markAsRead(notificationId: string) {
     try {
@@ -163,6 +173,36 @@ export default function MemberNotificationsPage() {
         </div>
       </section>
 
+      {lightbox ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/88 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image en grand"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 z-[101] rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+            aria-label="Fermer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightbox(null);
+            }}
+          >
+            <X size={22} />
+          </button>
+          <div className="max-h-[min(92vh,920px)] max-w-[min(96vw,1200px)] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox.src}
+              alt={lightbox.title}
+              className="mx-auto max-h-[min(92vh,920px)] w-auto max-w-full rounded-lg object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      ) : null}
+
       <section className="space-y-3">
         {notifications.map((notification) => (
           <article
@@ -179,13 +219,29 @@ export default function MemberNotificationsPage() {
                   {notification.title}
                 </h2>
                 {notification.imageUrl ? (
-                  <div
-                    className="relative mt-3 aspect-video max-w-xl overflow-hidden rounded-lg border"
+                  <button
+                    type="button"
+                    className="group relative mt-3 block w-full max-w-xl overflow-hidden rounded-lg border text-left outline-none ring-offset-2 transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                     style={{ borderColor: "var(--color-border)" }}
+                    title="Cliquer pour afficher en grand"
+                    aria-label={`Agrandir l’image : ${notification.title}`}
+                    onClick={() =>
+                      setLightbox({
+                        src: notification.imageUrl as string,
+                        title: notification.title,
+                      })
+                    }
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={notification.imageUrl} alt="" className="h-full w-full object-cover" />
-                  </div>
+                    <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/25 group-hover:opacity-100">
+                      <span className="rounded-lg bg-black/55 px-3 py-1.5 text-xs font-medium text-white">
+                        Voir en grand
+                      </span>
+                    </span>
+                    <div className="aspect-video w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={notification.imageUrl} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  </button>
                 ) : null}
                 <div className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                   {notification.bodyFormat === "markdown" ? (

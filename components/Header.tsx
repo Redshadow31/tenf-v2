@@ -112,6 +112,16 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileOpenGroups, setMobileOpenGroups] = useState<Set<string>>(new Set());
   const [memberMenuOpen, setMemberMenuOpen] = useState(false);
+  const [memberUnreadNotifications, setMemberUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    const h = (e: Event) => {
+      const ce = e as CustomEvent<{ count?: number }>;
+      if (typeof ce.detail?.count === "number") setMemberUnreadNotifications(ce.detail.count);
+    };
+    window.addEventListener("member-notifications-count", h);
+    return () => window.removeEventListener("member-notifications-count", h);
+  }, []);
 
   useEffect(() => {
     setOpenDropdown(null);
@@ -420,7 +430,12 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
                   className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
                   style={{ color: "var(--color-text)" }}
                 >
-                  <span>Compte</span>
+                  <span className="flex items-center gap-2">
+                    Compte
+                    {memberUnreadNotifications > 0 ? (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Notifications non lues" />
+                    ) : null}
+                  </span>
                   <span className={`transition-transform ${memberMenuOpen ? "rotate-180" : ""}`}>▼</span>
                 </button>
                 {memberMenuOpen && (
@@ -441,7 +456,12 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
                           e.currentTarget.style.color = "var(--color-text-secondary)";
                         }}
                       >
-                        {item.label}
+                        <span className="flex items-center gap-2">
+                          {item.label}
+                          {item.href === "/member/notifications" && memberUnreadNotifications > 0 ? (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Non lu" />
+                          ) : null}
+                        </span>
                       </Link>
                     ))}
                   </div>

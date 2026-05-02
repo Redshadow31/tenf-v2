@@ -73,9 +73,15 @@ export default function UserSidebar({
   const loadUnreadNotificationsCount = useCallback(async () => {
     try {
       const response = await fetch("/api/members/me/notifications", { cache: "no-store" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        setUnreadNotifications(0);
+        window.dispatchEvent(new CustomEvent("member-notifications-count", { detail: { count: 0 } }));
+        return;
+      }
       const data = await response.json();
-      setUnreadNotifications(Number(data?.unreadCount || 0));
+      const n = Number(data?.unreadCount || 0);
+      setUnreadNotifications(n);
+      window.dispatchEvent(new CustomEvent("member-notifications-count", { detail: { count: n } }));
     } catch (error) {
       console.error("Error loading member notifications count:", error);
     }
@@ -272,11 +278,17 @@ export default function UserSidebar({
                         pathname === item.href || (pathname != null && item.href !== "/" && pathname.startsWith(`${item.href}/`))
                     );
 
+                    const navUnreadDot =
+                      section.title === "Espace membre" &&
+                      group.title === "Navigation" &&
+                      unreadNotifications > 0;
+
                     return (
                       <SidebarCollapsibleGroup
                         key={`${section.title}-${group.title}`}
                         title={group.title}
                         defaultOpen={hasActiveItem}
+                        showTitleUnreadDot={navUnreadDot}
                       >
                         {groupItems.map((item) => (
                           <SidebarLink
