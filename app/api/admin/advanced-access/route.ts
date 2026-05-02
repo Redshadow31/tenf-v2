@@ -4,7 +4,11 @@ import { isFounder } from '@/lib/adminRoles';
 import { getAuthenticatedAdmin } from '@/lib/requireAdmin';
 import { getBlobStore } from '@/lib/memberData';
 import { GUILD_ID } from '@/lib/discordRoles';
-import { hasAdvancedAdminAccess, resetAdvancedAccessCache } from '@/lib/advancedAccess';
+import {
+  hasAdvancedAdminAccess,
+  rawAdvancedAccessEntryActive,
+  resetAdvancedAccessCache,
+} from '@/lib/advancedAccess';
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 
 const ACCESS_STORE = 'tenf-admin-access';
@@ -71,6 +75,23 @@ async function loadAdvancedAccessList(): Promise<AdvancedAccessEntry[]> {
     .filter((entry): entry is AdvancedAccessEntry => !!entry && entry.discordId.length > 0);
 }
 
+async function loadAdvancedAccessPairs(): Promise<
+  Array<{ raw: unknown; entry: AdvancedAccessEntry }>
+> {
+  const store = getBlobStore(ACCESS_STORE);
+  const stored = await store.get(ADVANCED_ACCESS_KEY);
+  const parsed = stored ? JSON.parse(stored) : [];
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .map((raw) => {
+      const entry = normalizeEntry(raw);
+      if (!entry || entry.discordId.length === 0) return null;
+      return { raw, entry };
+    })
+    .filter((p): p is { raw: unknown; entry: AdvancedAccessEntry } => p !== null);
+}
+
 async function saveAdvancedAccessList(list: AdvancedAccessEntry[]): Promise<void> {
   const store = getBlobStore(ACCESS_STORE);
   await store.set(ADVANCED_ACCESS_KEY, JSON.stringify(list, null, 2));
@@ -96,14 +117,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const checkOnly = searchParams.get('check') === '1' || searchParams.get('check') === 'true';
 
-    // Charger la liste depuis Blobs
-    let advancedList: AdvancedAccessEntry[] = [];
-    try {
-      advancedList = await loadAdvancedAccessList();
-    } catch (error) {
-      console.error('[Advanced Access] Erreur chargement depuis Blobs:', error);
-    }
-
     // Mode check : retourner uniquement si l'utilisateur a accès
     if (checkOnly) {
       const canAccess = await hasAdvancedAdminAccess(admin.discordId);
@@ -116,6 +129,13 @@ export async function GET(request: NextRequest) {
         { error: "Réservé aux fondateurs" },
         { status: 403 }
       );
+    }
+
+    let advancedPairs: Array<{ raw: unknown; entry: AdvancedAccessEntry }> = [];
+    try {
+      advancedPairs = await loadAdvancedAccessPairs();
+    } catch (error) {
+      console.error('[Advanced Access] Erreur chargement depuis Blobs:', error);
     }
 
     // Enrichir avec les infos Discord (comme gestion-acces)
@@ -170,7 +190,7 @@ export async function GET(request: NextRequest) {
 
     const resolve = await createResolver();
     const enriched = await Promise.all(
-      advancedList.map(async (e) => {
+      advancedPairs.map(async ({ raw, entry: e }) => {
         const info = await resolve(e.discordId);
         let addedByUsername = e.addedBy;
         if (e.addedBy && e.addedBy !== 'system') {
@@ -182,7 +202,7 @@ export async function GET(request: NextRequest) {
           username: info.username,
           avatar: info.avatar,
           addedByUsername,
-          isExpired: !isEntryActive(e),
+          isExpired: !rawAdvancedAccessEntryActive(raw),
         };
       })
     );
@@ -208,12 +228,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { discordId } = body;
+    const discordId =
+      typeof body?.discordId === "string" ? body.discordId.trim() : "";
     const justification = sanitizeReason(body?.justification);
     const expiresAtRaw = typeof body?.expiresAt === "string" ? body.expiresAt : "";
     const expiresAtDate = parseDateValue(expiresAtRaw);
 
-    if (!discordId || typeof discordId !== 'string') {
+    if (!discordId) {
       return NextResponse.json(
         { error: "discordId est requis" },
         { status: 400 }

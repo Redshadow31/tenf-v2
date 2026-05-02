@@ -17,6 +17,26 @@ interface AdvancedAccessEntry {
 let cachedIds = new Set<string>();
 let cacheLoadedAt = 0;
 
+/**
+ * Entrée brute du blob : même règle que l’accès effectif (pas de prolongation « rolling »
+ * des entrées sans expiresAt — voir normalizeEntry côté API affichage).
+ */
+export function rawAdvancedAccessEntryActive(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const r = raw as Record<string, unknown>;
+  const discordId =
+    typeof r.discordId === "string" ? r.discordId.trim() : "";
+  if (!discordId) return false;
+  const expiresAtRaw = r.expiresAt;
+  if (expiresAtRaw == null || expiresAtRaw === "") {
+    const addedAt = new Date(String(r.addedAt || "")).getTime();
+    if (Number.isNaN(addedAt)) return false;
+    return addedAt + LEGACY_GRACE_MS > Date.now();
+  }
+  const expiresAt = new Date(String(expiresAtRaw)).getTime();
+  return !Number.isNaN(expiresAt) && expiresAt > Date.now();
+}
+
 async function loadAdvancedAccessIds(force = false): Promise<Set<string>> {
   const now = Date.now();
   const cacheExpired = now - cacheLoadedAt > CACHE_TTL_MS;
@@ -27,23 +47,23 @@ async function loadAdvancedAccessIds(force = false): Promise<Set<string>> {
   try {
     const store = getBlobStore(ACCESS_STORE);
     const stored = await store.get(ADVANCED_ACCESS_KEY);
-    const entries: AdvancedAccessEntry[] = stored ? JSON.parse(stored) : [];
+    const entries: unknown[] = stored ? JSON.parse(stored) : [];
     const now = Date.now();
     cachedIds = new Set(
-      entries
-        .filter((entry) => {
-          if (!entry?.discordId) return false;
-          // Entrées legacy sans expiresAt: grâce de 30 jours depuis addedAt.
-          if (!entry.expiresAt) {
-            const addedAt = new Date(entry.addedAt || "").getTime();
-            if (Number.isNaN(addedAt)) return false;
-            return addedAt + LEGACY_GRACE_MS > now;
-          }
-          const expiresAt = new Date(entry.expiresAt).getTime();
-          return !Number.isNaN(expiresAt) && expiresAt > now;
-        })
-        .map((entry) => entry.discordId)
-        .filter(Boolean)
+      Array.isArray(entries)
+        ? entries
+            .filter((entry) => rawAdvancedAccessEntryActive(entry))
+            .map((entry) => {
+              const id =
+                entry &&
+                typeof entry === "object" &&
+                typeof (entry as AdvancedAccessEntry).discordId === "string"
+                  ? (entry as AdvancedAccessEntry).discordId.trim()
+                  : "";
+              return id;
+            })
+            .filter(Boolean)
+        : []
     );
     cacheLoadedAt = now;
     return cachedIds;
@@ -56,10 +76,11 @@ async function loadAdvancedAccessIds(force = false): Promise<Set<string>> {
 }
 
 export async function hasAdvancedAdminAccess(discordId?: string | null): Promise<boolean> {
-  if (!discordId) return false;
-  if (isFounder(discordId)) return true;
+  const normalized = discordId != null ? String(discordId).trim() : "";
+  if (!normalized) return false;
+  if (isFounder(normalized)) return true;
   const ids = await loadAdvancedAccessIds();
-  return ids.has(discordId);
+  return ids.has(normalized);
 }
 
 export function resetAdvancedAccessCache(): void {
