@@ -57,46 +57,29 @@ export default function InscriptionPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Charger toutes les intégrations
-      const response = await fetch("/api/integrations?admin=true", {
-        cache: 'no-store',
+
+      const response = await fetch("/api/admin/integrations/inscriptions-overview", {
+        cache: "no-store",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        const integrationsList = (data.integrations || []).filter((i: Integration) => i.isPublished);
-        
-        // Séparer les intégrations futures et passées
+        const integrationsList: Integration[] = data.integrations || [];
+
         const now = new Date();
         const futureIntegrations = integrationsList.filter((i: Integration) => new Date(i.date) >= now);
         const pastIntegrations = integrationsList.filter((i: Integration) => new Date(i.date) < now);
-        
-        // Trier les futures par date (les plus proches en premier)
+
         futureIntegrations.sort((a: Integration, b: Integration) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
-        
-        // Trier les passées par date (les plus récentes en premier)
+
         pastIntegrations.sort((a: Integration, b: Integration) => {
           return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
-        
-        // Stocker les deux listes séparément dans le state
+
         setIntegrations([...futureIntegrations, ...pastIntegrations]);
-        
-        // Charger les inscriptions pour chaque intégration
-        const registrationsMap: Record<string, IntegrationRegistration[]> = {};
-        for (const integration of integrationsList) {
-          const regResponse = await fetch(`/api/admin/integrations/${integration.id}/registrations`, {
-            cache: 'no-store',
-          });
-          if (regResponse.ok) {
-            const regData = await regResponse.json();
-            registrationsMap[integration.id] = regData.registrations || [];
-          }
-        }
-        setAllRegistrations(registrationsMap);
+        setAllRegistrations(data.registrationsByIntegrationId || {});
       }
     } catch (error) {
       console.error("Erreur chargement données:", error);

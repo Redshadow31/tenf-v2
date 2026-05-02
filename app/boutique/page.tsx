@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ProductModal from "@/components/ProductModal";
 
@@ -57,8 +58,6 @@ const DEFAULT_SECTIONS = {
   goodiesProductIds: [] as string[],
   communityProductIds: [] as string[],
 };
-const DONATION_URL = "https://pots.lydia.me/collect/pots?id=16729-tenf";
-
 const COLLECTIONS = [
   {
     id: "founders",
@@ -367,15 +366,14 @@ export default function BoutiquePage() {
               >
                 🎁 Voir les nouveautes
               </button>
-              <a
-                href={DONATION_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-5 py-3 rounded-lg font-semibold border transition-transform min-h-[44px] text-center"
-                style={{ borderColor: "rgba(220,38,38,0.7)", color: "#ffd7e0", backgroundColor: "rgba(220,38,38,0.14)" }}
+              <Link
+                href="/soutenir-tenf"
+                className="w-full sm:w-auto px-5 py-3 rounded-lg font-semibold border transition-transform min-h-[44px] text-center flex flex-col items-center justify-center gap-0.5 leading-tight"
+                style={{ borderColor: "rgba(167,139,250,0.65)", color: "#f0e8ff", backgroundColor: "rgba(139,92,246,0.18)" }}
               >
-                💜 Soutenir TENF (don)
-              </a>
+                <span>💜 Soutenir TENF</span>
+                <span className="text-xs font-normal opacity-90">Don libre pour la communauté</span>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-3">
@@ -657,15 +655,14 @@ export default function BoutiquePage() {
             Chaque commande participe au developpement des projets communautaires et aux prochains evenements.
           </p>
           <div className="mt-5">
-            <a
-              href={DONATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-5 py-3 rounded-lg font-semibold text-white transition-transform hover:scale-[1.02]"
-              style={{ backgroundColor: "#dc2626" }}
+            <Link
+              href="/soutenir-tenf"
+              className="inline-flex flex-col items-center justify-center gap-1 px-5 py-3 rounded-lg font-semibold text-white transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: "#8B5CF6" }}
             >
-              💜 Faire un don TENF
-            </a>
+              <span>💜 Soutenir TENF</span>
+              <span className="text-xs font-normal opacity-95">Don libre — page dédiée</span>
+            </Link>
           </div>
         </section>
       </div>

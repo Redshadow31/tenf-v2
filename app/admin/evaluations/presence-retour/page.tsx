@@ -100,41 +100,28 @@ export default function PresenceRetourPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Charger toutes les intégrations
-      const response = await fetch("/api/integrations?admin=true", {
-        cache: 'no-store',
+
+      const response = await fetch("/api/admin/integrations/inscriptions-overview", {
+        cache: "no-store",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        const integrationsList = (data.integrations || []).filter((i: Integration) => i.isPublished);
-        
-        // Charger les inscriptions pour chaque intégration
-        const registrationsMap: Record<string, IntegrationRegistration[]> = {};
-        for (const integration of integrationsList) {
-          const regResponse = await fetch(`/api/admin/integrations/${integration.id}/registrations`, {
-            cache: 'no-store',
-          });
-          if (regResponse.ok) {
-            const regData = await regResponse.json();
-            registrationsMap[integration.id] = regData.registrations || [];
-          }
-        }
+        const integrationsList: Integration[] = data.integrations || [];
+        const registrationsMap: Record<string, IntegrationRegistration[]> =
+          data.registrationsByIntegrationId || {};
+
         setAllRegistrations(registrationsMap);
-        
-        // Filtrer uniquement les réunions où les présences ont été validées (au moins une présence enregistrée)
+
         const validatedIntegrations = integrationsList.filter((integration: Integration) => {
           const registrations = registrationsMap[integration.id] || [];
-          // Une réunion est validée si au moins une présence a été enregistrée (present === true ou false)
-          return registrations.some(reg => reg.present !== undefined);
+          return registrations.some((reg) => reg.present !== undefined);
         });
-        
-        // Trier par date (les plus proches en premier)
+
         validatedIntegrations.sort((a: Integration, b: Integration) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
-        
+
         setIntegrations(validatedIntegrations);
       }
     } catch (error) {

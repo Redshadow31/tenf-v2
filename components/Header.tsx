@@ -58,6 +58,7 @@ const dropdownGroups: DropdownGroup[] = [
       { href: "/rejoindre/guide-public", label: "Guide Public" },
       { href: "/rejoindre/guide-espace-membre", label: "Guide Espace Membre" },
       { href: "/rejoindre/faq", label: "FAQ / comment rejoindre" },
+      { href: "/soutenir-tenf", label: "Soutenir TENF" },
     ],
   },
 ];

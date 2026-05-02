@@ -268,12 +268,29 @@ export async function unregisterFromIntegration(integrationId: string, twitchLog
 
 export async function getAllRegistrations(): Promise<Record<string, IntegrationRegistration[]>> {
   const integrations = await loadIntegrations();
-  const allRegistrations: Record<string, IntegrationRegistration[]> = {};
-  
-  for (const integration of integrations) {
-    allRegistrations[integration.id] = await loadRegistrations(integration.id);
-  }
-  
-  return allRegistrations;
+  const pairs = await Promise.all(
+    integrations.map(async (integration) => {
+      const regs = await loadRegistrations(integration.id);
+      return [integration.id, regs] as const;
+    })
+  );
+  return Object.fromEntries(pairs);
+}
+
+/** Charge les inscriptions pour plusieurs intégrations en parallèle (blobs / fichiers indépendants). */
+export async function loadRegistrationsMapForIntegrationIds(
+  integrationIds: string[]
+): Promise<Record<string, IntegrationRegistration[]>> {
+  if (integrationIds.length === 0) return {};
+  const pairs = await Promise.all(
+    integrationIds.map(async (id) => {
+      const registrations = await loadRegistrations(id);
+      registrations.sort(
+        (a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()
+      );
+      return [id, registrations] as const;
+    })
+  );
+  return Object.fromEntries(pairs);
 }
 
