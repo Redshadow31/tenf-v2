@@ -87,3 +87,9 @@ export function resetAdvancedAccessCache(): void {
   cachedIds = new Set<string>();
   cacheLoadedAt = 0;
 }
+
+/** Discord IDs avec accès admin avancé actif (blob), pour diffusion cross-canal. */
+export async function listAdvancedAdminDiscordIds(): Promise<string[]> {
+  const set = await loadAdvancedAccessIds(true);
+  return Array.from(set);
+}

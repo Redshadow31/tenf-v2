@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, type LucideIcon } from "lucide-react";
@@ -70,7 +70,7 @@ export default function UserSidebar({
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [twitchLinked, setTwitchLinked] = useState<boolean | null>(null);
 
-  async function loadUnreadNotificationsCount() {
+  const loadUnreadNotificationsCount = useCallback(async () => {
     try {
       const response = await fetch("/api/members/me/notifications", { cache: "no-store" });
       if (!response.ok) return;
@@ -79,7 +79,7 @@ export default function UserSidebar({
     } catch (error) {
       console.error("Error loading member notifications count:", error);
     }
-  }
+  }, []);
 
   async function loadTwitchLinkStatus() {
     try {
@@ -110,15 +110,11 @@ export default function UserSidebar({
             const data = await roleResponse.json();
             const hasAccess = data.hasAdminAccess || false;
             setHasAdminAccess(hasAccess);
-            if (hasAccess) {
-              await loadUnreadNotificationsCount();
-            } else {
-              setUnreadNotifications(0);
-            }
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
         }
+        await loadUnreadNotificationsCount();
         await loadTwitchLinkStatus();
       } else {
         setTwitchLinked(null);
@@ -127,17 +123,15 @@ export default function UserSidebar({
       setLoading(false);
     }
     fetchUser();
-  }, []);
+  }, [loadUnreadNotificationsCount]);
 
   useEffect(() => {
     const handler = () => {
-      if (hasAdminAccess) {
-        loadUnreadNotificationsCount();
-      }
+      void loadUnreadNotificationsCount();
     };
     window.addEventListener("member-notifications-refresh", handler);
     return () => window.removeEventListener("member-notifications-refresh", handler);
-  }, [hasAdminAccess]);
+  }, [loadUnreadNotificationsCount]);
 
   const handleDiscordLogin = () => {
     loginWithDiscord("/member/dashboard");

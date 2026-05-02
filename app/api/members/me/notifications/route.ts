@@ -6,6 +6,7 @@ import {
   listMemberNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  memberCanAccessNotification,
   syncProfileValidationNotification,
 } from "@/lib/memberNotifications";
 
@@ -21,19 +22,15 @@ export async function GET() {
     }
 
     const admin = await getAuthenticatedAdmin();
-    if (!admin) {
-      return NextResponse.json({
-        hasAdminAccess: false,
-        notifications: [],
-        unreadCount: 0,
-      });
-    }
+    const includeAdminAudience = !!admin;
 
     let notifications: Awaited<ReturnType<typeof listMemberNotifications>>["notifications"] = [];
     let unreadCount = 0;
     try {
-      await syncProfileValidationNotification();
-      const payload = await listMemberNotifications(discordId);
+      if (includeAdminAudience) {
+        await syncProfileValidationNotification();
+      }
+      const payload = await listMemberNotifications(discordId, { includeAdminAudience });
       notifications = payload.notifications;
       unreadCount = payload.unreadCount;
     } catch (notificationError) {
@@ -41,7 +38,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      hasAdminAccess: true,
+      hasAdminAccess: includeAdminAudience,
       notifications,
       unreadCount,
     });
@@ -60,17 +57,19 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = await getAuthenticatedAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    const includeAdminAudience = !!admin;
 
     const body = await request.json().catch(() => ({}));
     const notificationId = typeof body?.notificationId === "string" ? body.notificationId.trim() : "";
     const markAll = body?.markAll === true;
 
     if (markAll) {
-      await markAllNotificationsAsRead(discordId);
+      await markAllNotificationsAsRead(discordId, { includeAdminAudience });
     } else if (notificationId) {
+      const allowed = await memberCanAccessNotification(notificationId, includeAdminAudience);
+      if (!allowed) {
+        return NextResponse.json({ error: "Notification inaccessible" }, { status: 403 });
+      }
       await markNotificationAsRead(notificationId, discordId);
     } else {
       return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
     let notifications: Awaited<ReturnType<typeof listMemberNotifications>>["notifications"] = [];
     let unreadCount = 0;
     try {
-      const payload = await listMemberNotifications(discordId);
+      const payload = await listMemberNotifications(discordId, { includeAdminAudience });
       notifications = payload.notifications;
       unreadCount = payload.unreadCount;
     } catch (notificationError) {

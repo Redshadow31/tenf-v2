@@ -27,6 +27,7 @@ import {
   UserPlus,
   Video,
 } from "lucide-react";
+import AnnouncementMarkdown from "@/components/ui/AnnouncementMarkdown";
 
 type CharterPayload = {
   currentVersion: string;
@@ -65,6 +66,15 @@ type StaffMissionItem = {
   title: string;
   description: string | null;
   sortOrder: number;
+};
+
+type StaffAnnouncementBrief = {
+  id: string;
+  title: string;
+  body: string;
+  link: string | null;
+  imageUrl: string | null;
+  createdAt: string;
 };
 
 type AccountPayload = {
@@ -323,6 +333,7 @@ export default function AdminMonComptePage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [staffFeed, setStaffFeed] = useState<StaffFeedItem[]>([]);
+  const [staffAnnouncements, setStaffAnnouncements] = useState<StaffAnnouncementBrief[]>([]);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [showSensitiveIds, setShowSensitiveIds] = useState(false);
   const [testEmailBusy, setTestEmailBusy] = useState(false);
@@ -367,6 +378,24 @@ export default function AdminMonComptePage() {
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { items?: StaffFeedItem[] };
         if (!cancelled) setStaffFeed(Array.isArray(j.items) ? j.items : []);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/staff-announcements?audience=staff", { cache: "no-store" });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as { items?: StaffAnnouncementBrief[] };
+        const raw = Array.isArray(j.items) ? j.items : [];
+        if (!cancelled) setStaffAnnouncements(raw.slice(0, 6));
       } catch {
         /* ignore */
       }
@@ -689,6 +718,54 @@ export default function AdminMonComptePage() {
           </div>
         </div>
       )}
+
+      {staffAnnouncements.length > 0 ? (
+        <section className="space-y-4 rounded-3xl border border-amber-500/25 bg-gradient-to-br from-amber-950/30 via-[#080a12]/95 to-[#080a12]/90 p-5 shadow-lg shadow-amber-950/10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-amber-300" aria-hidden />
+              <h2 className="text-lg font-semibold text-white">Annonces staff</h2>
+            </div>
+            <Link
+              href="/admin/moderation/staff/info/annonces-staff"
+              className={`text-xs font-semibold text-amber-200/90 underline-offset-2 hover:underline ${focusRingClass}`}
+            >
+              Gérer les annonces
+            </Link>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Uniquement les annonces « staff dashboard ». Format Markdown ; bannière 16:9 si présente. La cloche membre
+            reprend les mêmes messages pour les comptes admin.
+          </p>
+          <ul className="space-y-3">
+            {staffAnnouncements.map((a) => (
+              <li key={a.id} className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm font-semibold text-zinc-50">{a.title}</p>
+                {a.imageUrl ? (
+                  <div className="relative mt-3 aspect-video max-w-xl overflow-hidden rounded-xl border border-white/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.imageUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                ) : null}
+                <div className="mt-2 max-h-[320px] overflow-y-auto text-sm leading-relaxed text-zinc-400">
+                  <AnnouncementMarkdown content={a.body} />
+                </div>
+                {a.link ? (
+                  <a
+                    href={a.link}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
+                  >
+                    Lien associé <ArrowUpRight className="h-3 w-3 opacity-80" aria-hidden />
+                  </a>
+                ) : null}
+                <p className="mt-2 text-[11px] text-zinc-600">
+                  {formatDateFr(a.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Pilotage — actions rapides + fil d’activité + chiffres */}
       <section className="space-y-5 rounded-3xl border border-white/10 bg-[#080a12]/90 p-5 shadow-lg">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import StaffAnnouncementsAdminPage from "@/components/admin/StaffAnnouncementsAdminPage";
 import CharteModerationPage from "./CharteModerationPage";
 import StaffMeetingCrInboxPage from "./StaffMeetingCrInboxPage";
 import StaffMonthlyExercisesPage from "./StaffMonthlyExercisesPage";
@@ -40,6 +41,9 @@ export default function AdminModerationStaffModulePage({ params }: AdminModerati
   }
   if (params.group === "info" && params.module === "comptes-rendus-reunions") {
     return <StaffMeetingCrInboxPage />;
+  }
+  if (params.group === "info" && params.module === "annonces-staff") {
+    return <StaffAnnouncementsAdminPage />;
   }
   if (
     params.group === "petits-travaux" &&

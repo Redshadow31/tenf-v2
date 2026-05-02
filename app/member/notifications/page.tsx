@@ -6,6 +6,7 @@ import { Bell, BellOff, CheckCheck, Loader2 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
+import AnnouncementMarkdown from "@/components/ui/AnnouncementMarkdown";
 
 interface NotificationItem {
   id: string;
@@ -16,6 +17,8 @@ interface NotificationItem {
   createdAt: string;
   updatedAt: string;
   isRead: boolean;
+  imageUrl?: string | null;
+  bodyFormat?: "markdown" | "plain";
 }
 
 export default function MemberNotificationsPage() {
@@ -103,16 +106,24 @@ export default function MemberNotificationsPage() {
     );
   }
 
-  if (!hasAdminAccess) {
+  if (notifications.length === 0) {
     return (
       <MemberSurface>
         <MemberPageHeader
           title="Mes notifications"
-          description="Cette section affiche les alertes admin pour les membres autorisés au dashboard."
+          description={
+            hasAdminAccess
+              ? "Alertes administration et annonces serveur."
+              : "Annonces communautaires TENF (connexion Discord requise)."
+          }
         />
         <EmptyFeatureCard
-          title="Aucune notification disponible"
-          description="Tu n'as pas d'accès admin actif, donc aucune notification de validation de profil ne t'est attribuée."
+          title="Aucune notification active"
+          description={
+            hasAdminAccess
+              ? "Rien à afficher pour l’instant (validations de profils, annonces, etc.)."
+              : "Tu seras notifié ici lors des annonces à destination de tous les membres."
+          }
           icon={BellOff}
         />
       </MemberSurface>
@@ -123,7 +134,11 @@ export default function MemberNotificationsPage() {
     <MemberSurface>
       <MemberPageHeader
         title="Mes notifications"
-        description="Notifications liées à la validation des profils côté administration."
+        description={
+          hasAdminAccess
+            ? "Validations profils, alertes admin et annonces serveur (Markdown)."
+            : "Annonces TENF pour tous les membres connectés."
+        }
       />
 
       <section className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
@@ -137,7 +152,7 @@ export default function MemberNotificationsPage() {
             </p>
           </div>
           <button
-            onClick={markAllAsRead}
+            onClick={() => void markAllAsRead()}
             disabled={unreadCount === 0 || actioningId === "all"}
             className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             style={{ backgroundColor: "var(--color-primary)" }}
@@ -148,64 +163,70 @@ export default function MemberNotificationsPage() {
         </div>
       </section>
 
-      {notifications.length === 0 ? (
-        <EmptyFeatureCard
-          title="Aucune notification active"
-          description="Aucun profil n'est actuellement en attente de validation."
-          icon={BellOff}
-        />
-      ) : (
-        <section className="space-y-3">
-          {notifications.map((notification) => (
-            <article
-              key={notification.id}
-              className="rounded-xl border p-4"
-              style={{
-                borderColor: notification.isRead ? "var(--color-border)" : "var(--color-primary)",
-                backgroundColor: "var(--color-card)",
-              }}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
-                    {notification.title}
-                  </h2>
-                  <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    {notification.message}
-                  </p>
-                  <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    Mise à jour : {new Date(notification.updatedAt).toLocaleString("fr-FR")}
-                  </p>
-                </div>
-                {!notification.isRead ? (
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" title="Non lue" />
-                ) : null}
-              </div>
-
-              <div className="mt-4 flex items-center gap-2">
-                {notification.link ? (
-                  <Link
-                    href={notification.link}
-                    className="inline-flex rounded-lg px-3 py-2 text-sm font-medium text-white"
-                    style={{ backgroundColor: "var(--color-primary)" }}
+      <section className="space-y-3">
+        {notifications.map((notification) => (
+          <article
+            key={notification.id}
+            className="rounded-xl border p-4"
+            style={{
+              borderColor: notification.isRead ? "var(--color-border)" : "var(--color-primary)",
+              backgroundColor: "var(--color-card)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
+                  {notification.title}
+                </h2>
+                {notification.imageUrl ? (
+                  <div
+                    className="relative mt-3 aspect-video max-w-xl overflow-hidden rounded-lg border"
+                    style={{ borderColor: "var(--color-border)" }}
                   >
-                    Ouvrir
-                  </Link>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={notification.imageUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
                 ) : null}
-                <button
-                  onClick={() => markAsRead(notification.id)}
-                  disabled={notification.isRead || actioningId === notification.id}
-                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                >
-                  {actioningId === notification.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
-                  {notification.isRead ? "Déjà lue" : "Marquer comme lue"}
-                </button>
+                <div className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  {notification.bodyFormat === "markdown" ? (
+                    <AnnouncementMarkdown content={notification.message} className="prose-sm" />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{notification.message}</p>
+                  )}
+                </div>
+                <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  Mise à jour : {new Date(notification.updatedAt).toLocaleString("fr-FR")}
+                </p>
               </div>
-            </article>
-          ))}
-        </section>
-      )}
+              {!notification.isRead ? (
+                <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" title="Non lue" />
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {notification.link ? (
+                <Link
+                  href={notification.link}
+                  className="inline-flex rounded-lg px-3 py-2 text-sm font-medium text-white"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  Ouvrir
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void markAsRead(notification.id)}
+                disabled={notification.isRead || actioningId === notification.id}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                {actioningId === notification.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
+                {notification.isRead ? "Déjà lue" : "Marquer comme lue"}
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
     </MemberSurface>
   );
 }

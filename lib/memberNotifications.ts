@@ -2,6 +2,11 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 
 const PROFILE_VALIDATION_DEDUPE_KEY = "admin.profile-validation.pending";
 
+/** Notifications réservées au dashboard admin / staff */
+export const AUDIENCE_ADMIN_ACCESS = "admin_access";
+/** Annonces visibles par tous les membres connectés du site */
+export const AUDIENCE_COMMUNITY_BROADCAST = "community_broadcast";
+
 export interface MemberNotificationItem {
   id: string;
   type: string;
@@ -13,6 +18,9 @@ export interface MemberNotificationItem {
   isRead: boolean;
   readAt: string | null;
   metadata: Record<string, unknown>;
+  /** Dérivé de metadata (annonces serveur) */
+  imageUrl: string | null;
+  bodyFormat: "markdown" | "plain";
 }
 
 type NotificationRow = {
@@ -22,6 +30,7 @@ type NotificationRow = {
   message: string;
   link: string | null;
   metadata: Record<string, unknown> | null;
+  audience: string;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +44,27 @@ function dateValue(value: string | null | undefined): number {
   if (!value) return 0;
   const parsed = new Date(value).getTime();
   return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function notificationAudiencesForUser(includeAdminAudience: boolean): string[] {
+  return includeAdminAudience ? [AUDIENCE_ADMIN_ACCESS, AUDIENCE_COMMUNITY_BROADCAST] : [AUDIENCE_COMMUNITY_BROADCAST];
+}
+
+function mapMetadataToItem(
+  metadata: Record<string, unknown> | null,
+  notificationType: string,
+): { imageUrl: string | null; bodyFormat: "markdown" | "plain" } {
+  const m = metadata || {};
+  const img = m.imageUrl;
+  const imageUrl = typeof img === "string" && img.trim() ? img.trim() : null;
+  const fmt = m.bodyFormat;
+  const bodyFormat: "markdown" | "plain" =
+    fmt === "plain"
+      ? "plain"
+      : fmt === "markdown" || notificationType === "server_announcement"
+        ? "markdown"
+        : "plain";
+  return { imageUrl, bodyFormat };
 }
 
 export async function syncProfileValidationNotification(): Promise<number> {
@@ -60,7 +90,7 @@ export async function syncProfileValidationNotification(): Promise<number> {
     const { error: upsertError } = await supabaseAdmin.from("member_notifications").upsert(
       {
         dedupe_key: PROFILE_VALIDATION_DEDUPE_KEY,
-        audience: "admin_access",
+        audience: AUDIENCE_ADMIN_ACCESS,
         type: "profile_validation_pending",
         title,
         message,
@@ -69,7 +99,7 @@ export async function syncProfileValidationNotification(): Promise<number> {
         is_active: true,
         updated_at: now,
       },
-      { onConflict: "dedupe_key" }
+      { onConflict: "dedupe_key" },
     );
 
     if (upsertError) {
@@ -93,17 +123,22 @@ export async function syncProfileValidationNotification(): Promise<number> {
   return pendingCount;
 }
 
-export async function listMemberNotifications(discordId: string): Promise<{
+export async function listMemberNotifications(
+  discordId: string,
+  opts: { includeAdminAudience: boolean },
+): Promise<{
   notifications: MemberNotificationItem[];
   unreadCount: number;
 }> {
+  const audiences = notificationAudiencesForUser(opts.includeAdminAudience);
+
   const { data: notificationRows, error } = await supabaseAdmin
     .from("member_notifications")
-    .select("id,type,title,message,link,metadata,created_at,updated_at")
+    .select("id,type,title,message,link,metadata,audience,created_at,updated_at")
     .eq("is_active", true)
-    .eq("audience", "admin_access")
+    .in("audience", audiences)
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .limit(120);
 
   if (error) {
     throw error;
@@ -138,6 +173,8 @@ export async function listMemberNotifications(discordId: string): Promise<{
 
     if (!isRead) unreadCount += 1;
 
+    const { imageUrl, bodyFormat } = mapMetadataToItem(notification.metadata, notification.type);
+
     return {
       id: notification.id,
       type: notification.type,
@@ -149,10 +186,30 @@ export async function listMemberNotifications(discordId: string): Promise<{
       isRead,
       readAt,
       metadata: notification.metadata || {},
+      imageUrl,
+      bodyFormat,
     };
   });
 
   return { notifications: formatted, unreadCount };
+}
+
+/** Vérifie qu’un utilisateur peut lire cette notification (anti-fraude sur IDs). */
+export async function memberCanAccessNotification(
+  notificationId: string,
+  includeAdminAudience: boolean,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("member_notifications")
+    .select("audience")
+    .eq("id", notificationId)
+    .maybeSingle();
+
+  if (error || !data) return false;
+  const aud = String((data as { audience?: string }).audience || "");
+  if (aud === AUDIENCE_COMMUNITY_BROADCAST) return true;
+  if (aud === AUDIENCE_ADMIN_ACCESS) return includeAdminAudience;
+  return false;
 }
 
 export async function markNotificationAsRead(notificationId: string, discordId: string): Promise<void> {
@@ -163,7 +220,7 @@ export async function markNotificationAsRead(notificationId: string, discordId: 
       member_discord_id: discordId,
       read_at: now,
     },
-    { onConflict: "notification_id,member_discord_id" }
+    { onConflict: "notification_id,member_discord_id" },
   );
 
   if (error) {
@@ -171,12 +228,17 @@ export async function markNotificationAsRead(notificationId: string, discordId: 
   }
 }
 
-export async function markAllNotificationsAsRead(discordId: string): Promise<void> {
+export async function markAllNotificationsAsRead(
+  discordId: string,
+  opts: { includeAdminAudience: boolean },
+): Promise<void> {
+  const audiences = notificationAudiencesForUser(opts.includeAdminAudience);
+
   const { data: activeRows, error: activeError } = await supabaseAdmin
     .from("member_notifications")
     .select("id")
     .eq("is_active", true)
-    .eq("audience", "admin_access");
+    .in("audience", audiences);
 
   if (activeError) {
     throw activeError;
