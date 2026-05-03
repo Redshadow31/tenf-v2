@@ -22,6 +22,10 @@ const directLinks: NavLeaf[] = [{ href: "/boutique", label: "Boutique" }];
 
 const dropdownGroups: DropdownGroup[] = [
   {
+    label: "Guides & parcours",
+    items: [{ href: "/guides/partie-publique", label: "Guide — partie publique du site" }],
+  },
+  {
     label: "La communauté",
     items: [
       { href: "/a-propos", label: "À propos de TENF" },

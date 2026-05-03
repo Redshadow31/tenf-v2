@@ -1,9 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Upload, LayoutGrid, Eye, Download, RefreshCw, Copy, Save, Users, ChevronUp, ChevronDown, AlertCircle, CheckCircle2, XCircle, History, ArchiveRestore, Trash2, Calendar } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  LayoutGrid,
+  Eye,
+  Download,
+  RefreshCw,
+  Copy,
+  Save,
+  Users,
+  ChevronUp,
+  ChevronDown,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  History,
+  ArchiveRestore,
+  Trash2,
+  Calendar,
+  Sparkles,
+  Star,
+  LayoutList,
+  ClipboardList,
+  ArrowRight,
+  Zap,
+  UserCheck,
+  HeartHandshake,
+  Archive,
+  UserCircle2,
+  Shield,
+  Percent,
+  ExternalLink,
+  ArrowUpDown,
+} from "lucide-react";
 import MemberBadges from "@/components/admin/MemberBadges";
 import AddChannelModal from "@/components/admin/AddChannelModal";
 import EditMemberModal from "@/components/admin/EditMemberModal";
@@ -137,6 +171,9 @@ const sectionCardClass =
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
+/** Liste gestion : évite getTwitchUsers sur tous les logins (avatars via resolveMemberAvatar / stockage). */
+const ADMIN_MEMBERS_LIST_QUERY = "?skipAvatarBatch=1";
+
 function getPresetFilterDisplayLabel(preset: string): string {
   switch (preset) {
     case "nouveaux":
@@ -179,6 +216,10 @@ export default function GestionMembresPage() {
   const [hasAdvancedAccess, setHasAdvancedAccess] = useState(false);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<"simple" | "complet">("simple");
+  /** Affichage liste tableau ou grille de cartes (même données paginées). */
+  const [listLayout, setListLayout] = useState<"table" | "gallery">("table");
+  /** Ligne tableau dépliée : aperçu créateur + raccourcis (clic sur la ligne). */
+  const [expandedTableRowKey, setExpandedTableRowKey] = useState<string | null>(null);
   type SortableColumn = "nom" | "role" | "statut" | "createdAt" | "integrationDate" | "parrain" | "lastLive" | "raidsDone" | "raidsReceived" | "isVip" | "isLive" | "completude";
   type PresetFilter =
     | "all"
@@ -216,7 +257,8 @@ export default function GestionMembresPage() {
   const [selectedSavedViewId, setSelectedSavedViewId] = useState<string>("");
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [lastLiveDatesLoaded, setLastLiveDatesLoaded] = useState(false);
+  const membersRef = useRef<Member[]>([]);
+  membersRef.current = members;
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [membersToMerge, setMembersToMerge] = useState<any[]>([]);
   const [mergeLoading, setMergeLoading] = useState(false);
@@ -390,6 +432,7 @@ export default function GestionMembresPage() {
 
   useEffect(() => {
     setCurrentPage(1);
+    setExpandedTableRowKey(null);
   }, [
     searchQuery,
     presetFilter,
@@ -403,6 +446,7 @@ export default function GestionMembresPage() {
     joinedBeforeFilter,
     integrationSessionsLoaded,
     sessionDayIndex.dayKeys.size,
+    listLayout,
   ]);
 
   useEffect(() => {
@@ -410,6 +454,10 @@ export default function GestionMembresPage() {
     const timeout = setTimeout(() => setActionNotice(null), 5000);
     return () => clearTimeout(timeout);
   }, [actionNotice]);
+
+  useEffect(() => {
+    setExpandedTableRowKey(null);
+  }, [currentPage, pageSize]);
 
   function saveViewsToStorage(views: typeof savedViews) {
     setSavedViews(views);
@@ -682,15 +730,14 @@ export default function GestionMembresPage() {
   async function loadMembers() {
     try {
       setLoading(true);
-      setLastLiveDatesLoaded(false); // Réinitialiser le flag pour recharger les dates
-      const archivesPromise = loadArchivedMembers().catch(() => undefined);
+      void loadArchivedMembers().catch(() => undefined);
       const raidsStatsPromise = fetchRaidsStats().catch(() => ({}));
 
       // Toujours essayer de charger depuis l'API centralisée (l'API vérifie les permissions)
       // L'API centralisée contient les modifications manuelles et est prioritaire
       // Tous les admins (Fondateur, Admin, Admin Adjoint, Mentor, Modérateur Junior) ont accès
       try {
-        const centralResponse = await fetchWithTimeout("/api/admin/members", {
+        const centralResponse = await fetchWithTimeout(`/api/admin/members${ADMIN_MEMBERS_LIST_QUERY}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -714,7 +761,6 @@ export default function GestionMembresPage() {
             if (!raidsStats || Object.keys(raidsStats).length === 0) return;
             setMembers((prev) => applyRaidsStatsToMembers(prev, raidsStats));
           });
-          await archivesPromise;
           return;
         } else if (centralResponse.status === 403) {
           // Accès refusé : rediriger vers unauthorized
@@ -728,7 +774,6 @@ export default function GestionMembresPage() {
       
       // Fallback: essayer de charger depuis Discord si l'API centralisée n'est pas disponible
       await loadDiscordMembers();
-      await archivesPromise;
     } catch (error) {
       console.error("Erreur lors du chargement des membres:", error);
       setMembers([]);
@@ -834,7 +879,7 @@ export default function GestionMembresPage() {
       // Récupérer aussi les données centralisées pour enrichir (tous les admins ont accès)
       let centralMembers: any[] = [];
       try {
-        const centralResponse = await fetchWithTimeout("/api/admin/members", {
+        const centralResponse = await fetchWithTimeout(`/api/admin/members${ADMIN_MEMBERS_LIST_QUERY}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -1367,38 +1412,73 @@ export default function GestionMembresPage() {
     }
   }
 
-  // Helper pour rendre un en-tête de colonne triable
-  const SortableHeader = ({ column, label }: { column: SortableColumn; label: string }) => (
-    <th 
-      className="text-left py-4 px-6 text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
+  // En-têtes triables : infobulle métier + feedback hover (tableau orienté équipe / créateurs TENF)
+  const SortableHeader = ({
+    column,
+    label,
+    hint,
+    icon: Icon,
+  }: {
+    column: SortableColumn;
+    label: string;
+    hint?: string;
+    icon?: LucideIcon;
+  }) => (
+    <th
+      scope="col"
+      title={hint}
+      className="group cursor-pointer px-3 py-3 text-left align-middle transition-colors hover:bg-white/[0.06] sm:px-5 sm:py-4"
       onClick={() => handleSort(column)}
     >
       <div className="flex items-center gap-2">
-        {label}
-        {sortColumn === column && (
-          <span className="text-purple-400">
-            {sortDirection === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </span>
-        )}
+        {Icon ? (
+          <Icon className="h-4 w-4 shrink-0 text-indigo-400/70" aria-hidden />
+        ) : null}
+        <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">{label}</span>
+        <span className="flex shrink-0 items-center">
+          {sortColumn === column ? (
+            <span className="rounded-md bg-indigo-500/25 p-0.5 text-indigo-300">
+              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </span>
+          ) : (
+            <ArrowUpDown className="h-3.5 w-3.5 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+          )}
+        </span>
       </div>
+      {hint ? <p className="mt-1 hidden max-w-[200px] text-[10px] font-normal normal-case leading-snug text-slate-600 xl:block">{hint}</p> : null}
     </th>
   );
 
-  // Récupérer les dernières dates de live après le chargement initial
+  // Derniers lives : uniquement en vue « complet » (colonne absente en vue simple).
   useEffect(() => {
-    if (members.length > 0 && !loading && !lastLiveDatesLoaded) {
-      setLastLiveDatesLoaded(true);
-      fetchLastLiveDates(members).then(updatedMembers => {
-        // Ne mettre à jour que si les dates ont changé
-        const hasNewDates = updatedMembers.some((m, i) => 
-          m.lastLiveDate !== members[i]?.lastLiveDate
-        );
-        if (hasNewDates) {
-          setMembers(updatedMembers);
-        }
+    if (loading || viewMode !== "complet") return;
+    const snapshot = membersRef.current;
+    if (snapshot.length === 0) return;
+
+    let cancelled = false;
+    void fetchLastLiveDates(snapshot).then((updatedMembers) => {
+      if (cancelled) return;
+      const lastByLogin = new Map(
+        updatedMembers.map((m) => [(m.twitch || "").toLowerCase(), m.lastLiveDate] as const)
+      );
+      setMembers((prev) => {
+        let changed = false;
+        const next = prev.map((m) => {
+          const login = (m.twitch || "").toLowerCase();
+          const nextLd = lastByLogin.get(login);
+          if (nextLd !== m.lastLiveDate) {
+            changed = true;
+            return { ...m, lastLiveDate: nextLd };
+          }
+          return m;
+        });
+        return changed ? next : prev;
       });
-    }
-  }, [loading]); // Seulement quand le chargement change
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, viewMode]);
 
   const handleToggleStatus = async (memberToUpdate: Member) => {
     if (!currentAdmin) {
@@ -1926,6 +2006,14 @@ export default function GestionMembresPage() {
     discordId?: string;
     twitch: string;
     avatar: string;
+    description?: string;
+    onboardingStatus?: "a_faire" | "en_cours" | "termine";
+    mentorTwitchLogin?: string;
+    parrain?: string;
+    integrationDate?: string;
+    primaryLanguage?: string;
+    timezone?: string;
+    countryCode?: string;
   }) => {
     if (!currentAdmin?.isFounder && !hasAdvancedAccess) {
       alert("Accès refusé : droits insuffisants pour ajouter un membre");
@@ -1949,6 +2037,14 @@ export default function GestionMembresPage() {
           discordUsername: newMember.discord,
           role: newMember.role,
           isActive: newMember.statut === "Actif",
+          ...(newMember.description?.trim() ? { description: newMember.description.trim() } : {}),
+          ...(newMember.onboardingStatus ? { onboardingStatus: newMember.onboardingStatus } : {}),
+          ...(newMember.mentorTwitchLogin?.trim() ? { mentorTwitchLogin: newMember.mentorTwitchLogin.trim().toLowerCase() } : {}),
+          ...(newMember.parrain?.trim() ? { parrain: newMember.parrain.trim() } : {}),
+          ...(newMember.integrationDate ? { integrationDate: newMember.integrationDate } : {}),
+          ...(newMember.primaryLanguage?.trim() ? { primaryLanguage: newMember.primaryLanguage.trim() } : {}),
+          ...(newMember.timezone?.trim() ? { timezone: newMember.timezone.trim() } : {}),
+          ...(newMember.countryCode?.trim() ? { countryCode: newMember.countryCode.trim().toUpperCase().slice(0, 2) } : {}),
         }),
       });
 
@@ -2299,10 +2395,16 @@ export default function GestionMembresPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff] mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des membres depuis la base centralisée...</p>
+      <div className="min-h-screen bg-[#0a0b0f] text-white flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="relative mx-auto mb-6 h-16 w-16">
+            <div className="absolute inset-0 animate-ping rounded-full bg-indigo-500/20" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-fuchsia-600/10 shadow-[0_0_40px_rgba(99,102,241,0.25)]">
+              <Users className="h-8 w-8 text-indigo-200" aria-hidden />
+            </div>
+          </div>
+          <p className="text-lg font-semibold text-white">Chargement de la communauté TENF</p>
+          <p className="mt-2 text-sm text-slate-400">Récupération des membres depuis la base centralisée…</p>
         </div>
       </div>
     );
@@ -2325,17 +2427,31 @@ export default function GestionMembresPage() {
         onClose={() => setActionNotice(null)}
       />
       <div className="p-4 md:p-6 xl:p-8">
-        <section className={`${glassCardClass} mb-6 p-5 md:p-6`}>
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-4xl">
-              <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Admin panel · gestion membres</p>
-              <h1 className="bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-                Gestion des Membres
+        <section className={`relative overflow-hidden ${glassCardClass} mb-6 p-5 md:p-8`}>
+          <div
+            className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/15 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl"
+            aria-hidden
+          />
+          <div className="relative mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-3xl space-y-3">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-300">
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+                TENF · Pilotage membres
+              </p>
+              <h1 className="bg-gradient-to-r from-white via-indigo-100 to-cyan-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl lg:text-[2.75rem]">
+                La New Family, au même endroit
               </h1>
-              <p className="mt-2 text-sm text-slate-200">
-                Cette page te permet de piloter l'ensemble du cycle membre: recherche et segmentation avancées, édition des profils,
-                gestion des statuts (actif/inactif/archivé), onboarding, revue périodique, contrôle qualité des fiches et opérations bulk
-                (imports, fusion, vérification Twitch/Discord, vues sauvegardées).
+              <p className="text-base leading-relaxed text-slate-300 md:text-[1.05rem]">
+                Ici tu relies la vie réelle des créateurs TENF à la base : parcours d&apos;intégration, rôles, complétude des fiches,
+                passages communauté et suivis staff. Utilise les <strong className="font-semibold text-white">puces de filtres</strong>, les{" "}
+                <strong className="font-semibold text-white">vues tableau ou cartes</strong>, puis ouvre une fiche pour approfondir.
+              </p>
+              <p className="text-sm text-slate-400">
+                Les créateurs voient leur profil côté espace membre et annuaire public ; garde les données alignées pour éviter les surprises au moment des événements ou des missions staff.
               </p>
             </div>
             <button
@@ -2344,72 +2460,153 @@ export default function GestionMembresPage() {
                 void loadMembers();
                 void loadArchivedMembers();
               }}
-              className={subtleButtonClass}
+              className={`${subtleButtonClass} shrink-0 shadow-lg shadow-indigo-900/20`}
               title="Rafraîchir les données membres"
             >
               <RefreshCw className="h-4 w-4" />
-              Actualiser
+              Actualiser la base
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-            <div className="rounded-xl border border-gray-700 bg-[#14151a] px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Total</p>
-              <p className="mt-1 text-xl font-semibold text-white">{members.length}</p>
+          <div className="relative grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="group rounded-xl border border-white/10 bg-[#14151a]/90 px-3 py-3 transition hover:border-white/20 hover:bg-[#1a1c24]">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-slate-400">Total</p>
+                <Users className="h-4 w-4 text-slate-500 opacity-80 transition group-hover:text-indigo-300" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-white">{members.length}</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">comptes en base</p>
             </div>
-            <div className="rounded-xl border border-green-500/25 bg-green-500/10 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-green-200">Actifs</p>
-              <p className="mt-1 text-xl font-semibold text-green-300">{totalActiveMembers}</p>
+            <div className="group rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 to-transparent px-3 py-3 transition hover:border-emerald-400/45">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-emerald-200/90">Actifs</p>
+                <UserCheck className="h-4 w-4 text-emerald-400/80 transition group-hover:scale-110" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-200">{totalActiveMembers}</p>
               {totalActiveNewRoleMembers > 0 ? (
-                <p className="mt-1 text-[10px] leading-snug text-green-200/80">
-                  {totalActiveMembersIntegrated} intégrés (onglet Actifs) ·{" "}
-                  {totalActiveNewRoleMembers}{" "}
-                  {totalActiveNewRoleMembers > 1 ? "nouveaux actifs (onglet Nouveaux)" : "nouveau actif (onglet Nouveaux)"}
+                <p className="mt-1 text-[10px] leading-snug text-emerald-200/75">
+                  {totalActiveMembersIntegrated} intégrés · {totalActiveNewRoleMembers} nouveau
+                  {totalActiveNewRoleMembers > 1 ? "x" : ""} en pipeline
                 </p>
-              ) : null}
+              ) : (
+                <p className="mt-1 text-[10px] text-emerald-200/60">dont staff si actif</p>
+              )}
             </div>
-            <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-red-200">Suivi communauté</p>
-              <p className="mt-1 text-xl font-semibold text-red-300">{totalInactiveMembers}</p>
+            <div className="group rounded-xl border border-rose-500/30 bg-gradient-to-br from-rose-500/12 to-transparent px-3 py-3 transition hover:border-rose-400/45">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-rose-200/90">Suivi communauté</p>
+                <HeartHandshake className="h-4 w-4 text-rose-300/80 transition group-hover:scale-110" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-rose-200">{totalInactiveMembers}</p>
+              <p className="mt-1 text-[10px] text-rose-200/65">à accompagner hors staff</p>
             </div>
-            <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-purple-200">Nouveaux</p>
-              <p className="mt-1 text-xl font-semibold text-purple-300">{totalNewMembers}</p>
+            <div className="group rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/14 to-transparent px-3 py-3 transition hover:border-violet-400/45">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-violet-200/90">Nouveaux</p>
+                <Sparkles className="h-4 w-4 text-violet-300/80 transition group-hover:scale-110" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-violet-200">{totalNewMembers}</p>
+              <p className="mt-1 text-[10px] text-violet-200/65">rôle « Nouveau »</p>
             </div>
-            <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/10 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-yellow-200">Incomplets</p>
-              <p className="mt-1 text-xl font-semibold text-yellow-300">{totalIncompleteMembers}</p>
+            <div className="group rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/12 to-transparent px-3 py-3 transition hover:border-amber-400/45">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-amber-200/90">Incomplets</p>
+                <AlertCircle className="h-4 w-4 text-amber-300/80 transition group-hover:scale-110" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-200">{totalIncompleteMembers}</p>
+              <p className="mt-1 text-[10px] text-amber-200/65">fiche &lt; 80 %</p>
             </div>
-            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-cyan-200">Sans ID Twitch</p>
-              <p className="mt-1 text-xl font-semibold text-cyan-300">{totalWithoutTwitchId}</p>
+            <div className="group rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/12 to-transparent px-3 py-3 transition hover:border-cyan-400/45">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-cyan-200/90">Sans Twitch ID</p>
+                <Zap className="h-4 w-4 text-cyan-300/80 transition group-hover:scale-110" aria-hidden />
+              </div>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-cyan-200">{totalWithoutTwitchId}</p>
+              <p className="mt-1 text-[10px] text-cyan-200/65">à lier / sync</p>
             </div>
           </div>
         </section>
 
-        <section className="mb-6 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1fr]">
-          <article className={`${sectionCardClass} p-4`}>
-            <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Fonctionnalités clés</p>
-            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 text-sm text-slate-200">
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Recherche multi-critères et filtres métier</p>
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Vues enregistrées pour workflows récurrents</p>
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Edition détaillée profil + actions rapides par ligne</p>
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">Bulk update, import, fusion et vérifications massives</p>
-            </div>
-          </article>
-          <article className={`${sectionCardClass} p-4`}>
-            <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Repères opérationnels</p>
-            <div className="mt-2 space-y-2 text-sm">
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
-                Active les filtres avancés pour les revues hebdo.
-              </p>
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
-                Sauvegarde tes segments de suivi par équipe.
-              </p>
-              <p className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-200">
-                Vérifie les IDs Twitch/Discord avant actions bulk.
-              </p>
-            </div>
-          </article>
+        <section className="mb-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Raccourcis équipe</p>
+            <Link
+              href="/membres"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-indigo-300 hover:text-indigo-200 inline-flex items-center gap-1"
+            >
+              Voir l&apos;annuaire public
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory">
+            {(
+              [
+                {
+                  href: "/admin/membres/validation-profil",
+                  title: "Validation profils",
+                  desc: "Examens & statuts",
+                  icon: ClipboardList,
+                  accent: "from-violet-500/25 to-indigo-600/10 border-violet-400/35",
+                },
+                {
+                  href: "/admin/membres/incomplets",
+                  title: "Fiches incomplètes",
+                  desc: "Qualité données",
+                  icon: AlertCircle,
+                  accent: "from-amber-500/25 to-orange-600/10 border-amber-400/35",
+                },
+                {
+                  href: "/admin/membres/badges",
+                  title: "Badges",
+                  desc: "Distinctions TENF",
+                  icon: Star,
+                  accent: "from-yellow-500/20 to-amber-700/10 border-yellow-400/30",
+                },
+                {
+                  href: "/admin/membres/historique",
+                  title: "Historique",
+                  desc: "Événements membre",
+                  icon: History,
+                  accent: "from-sky-500/25 to-blue-700/10 border-sky-400/35",
+                },
+                {
+                  href: "/admin/membres/revues",
+                  title: "Revues staff",
+                  desc: "Suivi périodique",
+                  icon: Calendar,
+                  accent: "from-emerald-500/20 to-teal-700/10 border-emerald-400/35",
+                },
+                {
+                  href: "/admin/membres/vip",
+                  title: "VIP & élites",
+                  desc: "Membres mis en avant",
+                  icon: Sparkles,
+                  accent: "from-fuchsia-500/25 to-purple-800/10 border-fuchsia-400/35",
+                },
+                {
+                  href: "/admin/membres/postulations",
+                  title: "Postulations",
+                  desc: "Candidatures staff",
+                  icon: Users,
+                  accent: "from-indigo-500/25 to-slate-800/10 border-indigo-400/35",
+                },
+              ] as const
+            ).map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`snap-start min-w-[200px] max-w-[220px] flex-shrink-0 rounded-2xl border bg-gradient-to-br p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:shadow-indigo-500/10 ${item.accent}`}
+              >
+                <item.icon className="mb-3 h-7 w-7 text-white/90" aria-hidden />
+                <p className="font-semibold text-white">{item.title}</p>
+                <p className="mt-1 text-xs text-slate-300/90">{item.desc}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-200">
+                  Ouvrir <ArrowRight className="h-3 w-3" aria-hidden />
+                </span>
+              </Link>
+            ))}
+          </div>
         </section>
 
         {/* Barre de recherche et actions */}
@@ -2451,6 +2648,47 @@ export default function GestionMembresPage() {
               >
                 Filtres avancés
               </button>
+            </div>
+
+            <div
+              className="flex flex-wrap gap-2 border-t border-white/5 pt-3"
+              role="toolbar"
+              aria-label="Filtres métier rapides"
+            >
+              {(
+                [
+                  { key: "all" as const, label: "Tous", Icon: Users },
+                  { key: "nouveaux" as const, label: "Nouveaux", Icon: Sparkles },
+                  { key: "incomplets" as const, label: "Incomplets", Icon: AlertCircle },
+                  { key: "sans_twitch_id" as const, label: "Sans Twitch ID", Icon: Zap },
+                  { key: "sans_integration" as const, label: "Sans intégration", Icon: Calendar },
+                  {
+                    key: "integration_session_alignee" as const,
+                    label: "Aligné session",
+                    Icon: Calendar,
+                  },
+                  { key: "vip" as const, label: "VIP", Icon: Star },
+                  { key: "inactifs" as const, label: "Inactifs", Icon: XCircle },
+                  { key: "revue_due" as const, label: "Revue due", Icon: ClipboardList },
+                ] as const
+              ).map(({ key, label, Icon }) => {
+                const active = presetFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPresetFilter(key)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      active
+                        ? "border-indigo-400/55 bg-indigo-500/25 text-white shadow-[0_0_20px_rgba(99,102,241,0.25)]"
+                        : "border-[#353a50] bg-[#151821]/90 text-slate-300 hover:border-indigo-400/35 hover:bg-[#1b2130] hover:text-white"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -2607,6 +2845,39 @@ export default function GestionMembresPage() {
               >
                 <LayoutGrid className="w-4 h-4" />
                 Vue complète
+              </button>
+            </div>
+
+            <div
+              className="inline-flex items-center rounded-lg border border-gray-700 bg-[#151821] p-1"
+              role="group"
+              aria-label="Affichage liste ou cartes"
+            >
+              <button
+                type="button"
+                onClick={() => setListLayout("table")}
+                className={`min-w-[108px] px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  listLayout === "table"
+                    ? "bg-indigo-500/20 border border-indigo-400/35 text-indigo-100"
+                    : "border border-transparent text-gray-300 hover:bg-[#1b2030]"
+                }`}
+                aria-pressed={listLayout === "table"}
+              >
+                <LayoutList className="w-4 h-4" aria-hidden />
+                Tableau
+              </button>
+              <button
+                type="button"
+                onClick={() => setListLayout("gallery")}
+                className={`min-w-[108px] px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  listLayout === "gallery"
+                    ? "bg-fuchsia-500/18 border border-fuchsia-400/35 text-fuchsia-100"
+                    : "border border-transparent text-gray-300 hover:bg-[#1b2030]"
+                }`}
+                aria-pressed={listLayout === "gallery"}
+              >
+                <LayoutGrid className="w-4 h-4" aria-hidden />
+                Cartes
               </button>
             </div>
 
@@ -2907,50 +3178,58 @@ export default function GestionMembresPage() {
         )}
 
         {/* Onglets Actifs/Suivi communauté/Nouveaux */}
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-[#111218] p-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[#2a3148] bg-[linear-gradient(145deg,rgba(22,26,40,0.95),rgba(12,14,20,0.98))] p-2 shadow-inner shadow-black/20">
           <button
             type="button"
             onClick={() => setStatusTab("actifs")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
               statusTab === "actifs"
-                ? "bg-green-600/90 text-white border border-green-400/40"
-                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+                ? "scale-[1.02] bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/30 ring-1 ring-emerald-400/50"
+                : "border border-transparent bg-[#1a1f2e] text-slate-300 hover:border-emerald-500/25 hover:text-white"
             }`}
           >
-            Actifs ({activeMembers.length})
+            <UserCheck className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+            Actifs
+            <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs tabular-nums">{activeMembers.length}</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusTab("inactifs")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
               statusTab === "inactifs"
-                ? "bg-red-600/90 text-white border border-red-400/40"
-                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+                ? "scale-[1.02] bg-gradient-to-r from-rose-600 to-orange-700 text-white shadow-lg shadow-rose-900/25 ring-1 ring-rose-400/45"
+                : "border border-transparent bg-[#1a1f2e] text-slate-300 hover:border-rose-500/25 hover:text-white"
             }`}
           >
-            Suivi communauté ({communityFollowupMembers.length})
+            <HeartHandshake className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+            Suivi communauté
+            <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs tabular-nums">{communityFollowupMembers.length}</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusTab("nouveaux")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
               statusTab === "nouveaux"
-                ? "bg-purple-600/90 text-white border border-purple-400/40"
-                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+                ? "scale-[1.02] bg-gradient-to-r from-violet-600 to-indigo-700 text-white shadow-lg shadow-violet-900/30 ring-1 ring-violet-400/45"
+                : "border border-transparent bg-[#1a1f2e] text-slate-300 hover:border-violet-500/25 hover:text-white"
             }`}
           >
-            Nouveaux ({newMembers.length})
+            <Sparkles className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+            Nouveaux
+            <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs tabular-nums">{newMembers.length}</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusTab("archives")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
               statusTab === "archives"
-                ? "bg-slate-600/90 text-white border border-slate-400/40"
-                : "bg-[#1a1a1d] border border-gray-700 text-gray-300 hover:text-white"
+                ? "scale-[1.02] bg-gradient-to-r from-slate-600 to-slate-800 text-white shadow-lg shadow-black/30 ring-1 ring-slate-400/40"
+                : "border border-transparent bg-[#1a1f2e] text-slate-300 hover:border-slate-500/35 hover:text-white"
             }`}
           >
-            Archivé ({totalArchivedMembers})
+            <Archive className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+            Archivés
+            <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs tabular-nums">{totalArchivedMembers}</span>
           </button>
         </div>
 
@@ -2961,6 +3240,17 @@ export default function GestionMembresPage() {
               <p className="text-sm text-slate-300">
                 Affichage <span className="font-semibold text-white">{startItem}</span>-<span className="font-semibold text-white">{endItem}</span> sur{" "}
                 <span className="font-semibold text-white">{displayedMembers.length}</span>
+                {listLayout === "gallery" ? (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-fuchsia-500/35 bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-100">
+                    <LayoutGrid className="h-3 w-3" aria-hidden />
+                    Cartes
+                  </span>
+                ) : (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/12 px-2 py-0.5 text-[11px] font-semibold text-sky-100">
+                    <LayoutList className="h-3 w-3" aria-hidden />
+                    Tableau
+                  </span>
+                )}
               </p>
               <div className="flex flex-wrap gap-2 text-[11px]">
                 <span className="rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2 py-0.5 text-emerald-100">
@@ -2988,78 +3278,138 @@ export default function GestionMembresPage() {
               </select>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          {listLayout === "table" ? (
+          <div className="relative overflow-x-auto rounded-b-2xl border-x border-b border-white/[0.08] bg-[linear-gradient(180deg,rgba(16,18,28,0.98),rgba(8,9,14,0.99))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <table
               className={
                 viewMode === "complet"
-                  ? "w-full min-w-[1540px]"
-                  : "w-full"
+                  ? "w-full min-w-[1540px] border-collapse"
+                  : "w-full border-collapse"
               }
             >
-              <thead className="sticky top-0 z-10 bg-[#111421]">
-                <tr className="border-b border-[#353a50]">
+              <thead className="sticky top-0 z-20 border-b border-indigo-500/25 bg-[linear-gradient(180deg,#252a3d_0%,#181c28_100%)] shadow-[0_14px_48px_rgba(0,0,0,0.42)] backdrop-blur-md">
+                <tr>
                   {currentAdmin?.isFounder && (
-                    <th className="py-4 px-3 text-sm font-semibold text-slate-300">
+                    <th
+                      scope="col"
+                      className="w-11 px-2 py-3 text-center align-middle sm:px-3 sm:py-4"
+                      title="Sélection pour actions de masse (fondateurs)"
+                    >
                       <input
                         type="checkbox"
+                        className="h-4 w-4 rounded border-slate-600 bg-[#1e2434] text-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
                         checked={displayedMembers.length > 0 && displayedMembers.every((m) => selectedMemberLogins.includes(m.twitch))}
                         onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                       />
                     </th>
                   )}
-                  <SortableHeader column="nom" label="CRÉATEUR" />
+                  <SortableHeader
+                    column="nom"
+                    label="Créateur"
+                    hint="Nom et chaîne alignés avec l’annuaire public et l’espace membre TENF."
+                    icon={UserCircle2}
+                  />
                   {viewMode === "complet" && (
                     <>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Pseudo Site</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ID Discord</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ID Twitch</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Onboarding</th>
-                      <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">Mentor</th>
+                      <th className="px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:px-5 sm:py-4" title="Identifiant sur le site TENF">
+                        Pseudo site
+                      </th>
+                      <th className="px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:px-5 sm:py-4" title="Clé technique Discord">
+                        ID Discord
+                      </th>
+                      <th className="px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:px-5 sm:py-4" title="ID numérique Twitch (API)">
+                        ID Twitch
+                      </th>
+                      <th className="px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:px-5 sm:py-4" title="Parcours d’accueil interne">
+                        Onboarding
+                      </th>
+                      <th className="px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:px-5 sm:py-4" title="Référent staff Twitch">
+                        Mentor
+                      </th>
                     </>
                   )}
-                  <SortableHeader column="role" label="RÔLE" />
-                  <SortableHeader column="statut" label="STATUT" />
-                  <SortableHeader column="createdAt" label={statusTab === "archives" ? "DATE SUPPR." : "MEMBRE DEPUIS"} />
-                  <SortableHeader column="integrationDate" label="INTÉGRATION" />
-                  <SortableHeader column="completude" label="COMPLÉTUDE" />
+                  <SortableHeader column="role" label="Rôle" hint="Parcours TENF : staff, créateur, communauté…" icon={Shield} />
+                  <SortableHeader column="statut" label="Statut" hint="Actif = dans les listings membres ; inactif = pause ou suivi." icon={UserCheck} />
+                  <SortableHeader
+                    column="createdAt"
+                    label={statusTab === "archives" ? "Archivé" : "Membre depuis"}
+                    hint={statusTab === "archives" ? "Date associée à l’archivage." : "Création de la fiche dans TENF."}
+                    icon={Calendar}
+                  />
+                  <SortableHeader
+                    column="integrationDate"
+                    label="Intégration"
+                    hint="Date de réunion d’intégration validée — repère fort pour la communauté."
+                    icon={Calendar}
+                  />
+                  <SortableHeader
+                    column="completude"
+                    label="Complétude"
+                    hint="Champs clés remplis (IDs, parrain, description…)."
+                    icon={Percent}
+                  />
                   {viewMode === "complet" && (
                     <>
-                      <SortableHeader column="parrain" label="PARRAIN" />
-                      <SortableHeader column="lastLive" label="DERNIER LIVE" />
-                      <SortableHeader column="raidsDone" label="Raids TENF faits" />
-                      <SortableHeader column="raidsReceived" label="Raids reçus" />
+                      <SortableHeader column="parrain" label="Parrain" hint="Membre TENF référent pour ce créateur." />
+                      <SortableHeader column="lastLive" label="Dernier live" hint="Indicateur d’activité chaîne." />
+                      <SortableHeader column="raidsDone" label="Raids envoyés" hint="Raids TENF relevés ce mois." />
+                      <SortableHeader column="raidsReceived" label="Raids reçus" hint="Réception de raids ce mois." />
                     </>
                   )}
                   {viewMode === "complet" && (
                     <>
-                      <SortableHeader column="isVip" label="VIP" />
-                      <SortableHeader column="isLive" label="Live" />
+                      <SortableHeader column="isVip" label="VIP" hint="Badge mise en avant." />
+                      <SortableHeader column="isLive" label="Live" hint="État live au chargement de la page." />
                     </>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-300">ACTIONS</th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left align-middle sm:px-5 sm:py-4"
+                    title="Raccourcis staff : fiche, édition, statut…"
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Actions</span>
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                {paginatedMembers.map((member, rowIndex) => (
+              <tbody className="[&_tr:last-child_td]:border-b-0">
+                {paginatedMembers.map((member, rowIndex) => {
+                  const rowKey = getMemberStableKey(member);
+                  const isRowExpanded = expandedTableRowKey === rowKey;
+                  const isRowSelected = Boolean(currentAdmin?.isFounder && selectedMemberLogins.includes(member.twitch));
+                  return (
+                    <Fragment key={rowKey}>
                   <tr
-                    key={getMemberStableKey(member)}
-                    className={`border-b border-[#2f354a]/80 hover:bg-[#1a2132] transition-colors ${rowIndex % 2 === 0 ? "bg-transparent" : "bg-[#131824]"}`}
+                    className={`group cursor-pointer border-b border-white/[0.06] transition-all duration-200 hover:bg-[#1e2436]/95 hover:shadow-[inset_3px_0_0_rgba(129,140,248,0.65)] ${
+                      rowIndex % 2 === 0 ? "bg-[#0f121a]/50" : "bg-[#141824]/65"
+                    } ${isRowExpanded ? "bg-[#1a2033]/90 shadow-[inset_3px_0_0_rgba(167,139,250,0.85)]" : ""} ${
+                      isRowSelected ? "ring-1 ring-inset ring-indigo-400/25" : ""
+                    }`}
+                    onClick={(e) => {
+                      const el = e.target as HTMLElement;
+                      if (el.closest("a,button,input,textarea,select,label")) return;
+                      setExpandedTableRowKey((prev) => (prev === rowKey ? null : rowKey));
+                    }}
                   >
                     {currentAdmin?.isFounder && (
-                      <td className="py-4 px-3">
+                      <td className="py-4 px-3 align-middle" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
+                          className="h-4 w-4 rounded border-slate-600 bg-[#1e2434] text-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
                           checked={selectedMemberLogins.includes(member.twitch)}
                           onChange={(e) => toggleMemberSelection(member.twitch, e.target.checked)}
                         />
                       </td>
                     )}
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
+                    <td className="py-4 px-4 align-middle sm:px-6">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-slate-600 transition-transform duration-200 ${isRowExpanded ? "rotate-180 text-indigo-400" : "group-hover:text-slate-400"}`}
+                          aria-hidden
+                        />
                         <img
                           src={member.avatar}
                           alt={member.nom}
-                          className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10"
+                          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/15 transition-[box-shadow] duration-200 group-hover:ring-2 group-hover:ring-indigo-400/40"
                         />
                         <div>
                           <div className="text-white font-medium">{member.nom}</div>
@@ -3248,13 +3598,30 @@ export default function GestionMembresPage() {
                         const title = completeness.missing.length > 0
                           ? `Champs manquants: ${completeness.missing.join(", ")}`
                           : "Profil complet";
+                        const barGradient =
+                          completeness.percent >= 80
+                            ? "from-emerald-400 to-teal-400"
+                            : completeness.percent >= 50
+                            ? "from-amber-400 to-orange-400"
+                            : "from-rose-400 to-red-500";
                         return (
-                          <span
-                            title={title}
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${colorClass}`}
-                          >
-                            {completeness.percent}%
-                          </span>
+                          <div className="max-w-[140px]" title={title}>
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold tabular-nums text-slate-200">
+                                <Percent className="h-3 w-3 text-indigo-400/80" aria-hidden />
+                                {completeness.percent}%
+                              </span>
+                              <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${colorClass}`}>
+                                {completeness.label}
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-[#252a3d]">
+                              <div
+                                className={`h-full rounded-full bg-gradient-to-r ${barGradient} transition-[width] duration-500`}
+                                style={{ width: `${completeness.percent}%` }}
+                              />
+                            </div>
+                          </div>
                         );
                       })()}
                     </td>
@@ -3334,10 +3701,11 @@ export default function GestionMembresPage() {
                           href={`/admin/membres/fiche/${encodeURIComponent(
                             member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
                           )}`}
-                          className={actionPrimaryClass}
+                          className={`${actionPrimaryClass} inline-flex items-center gap-1`}
                           title="Voir la fiche membre"
                         >
-                          {isCompactView ? "Fiche" : "👁️ Fiche"}
+                          <Eye className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                          {isCompactView ? "Fiche" : "Fiche"}
                         </Link>
                         {member.isArchived ? (
                           <>
@@ -3439,7 +3807,105 @@ export default function GestionMembresPage() {
                       })()}
                     </td>
                   </tr>
-                ))}
+                  {isRowExpanded ? (
+                    <tr className="border-b border-indigo-500/25 bg-[radial-gradient(ellipse_120%_80%_at_0%_0%,rgba(99,102,241,0.14),transparent_55%),#10131c]">
+                      <td colSpan={tableColumnCount} className="px-4 py-5 sm:px-8">
+                        {(() => {
+                          const completeness = getMemberCompleteness(member);
+                          const ficheHref = `/admin/membres/fiche/${encodeURIComponent(
+                            member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
+                          )}`;
+                          const publicAnnuaireHref = member.twitch
+                            ? `/membres?member=${encodeURIComponent(member.twitch)}`
+                            : "/membres";
+                          const desc = (member.description || "").trim();
+                          return (
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="min-w-0 flex-1 space-y-3">
+                                <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-300/90">
+                                  <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+                                  Aperçu créateur TENF
+                                </p>
+                                <p className="text-sm leading-relaxed text-slate-300">
+                                  {desc
+                                    ? desc.length > 280
+                                      ? `${desc.slice(0, 280)}…`
+                                      : desc
+                                    : "Pas encore de description publique : pense à la renseigner pour l’annuaire et l’espace membre."}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {completeness.missing.length > 0 ? (
+                                    completeness.missing.map((label) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-100"
+                                      >
+                                        À compléter · {label}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-100">
+                                      Champs clés renseignés
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
+                                <Link
+                                  href={ficheHref}
+                                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-400/35 bg-indigo-500/15 px-4 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Fiche 360°
+                                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                </Link>
+                                <Link
+                                  href={publicAnnuaireHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Voir dans l’annuaire
+                                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                </Link>
+                                {member.twitch ? (
+                                  <a
+                                    href={`https://www.twitch.tv/${member.twitch}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#9146ff]/35 bg-[#9146ff]/10 px-4 py-2.5 text-xs font-semibold text-[#e9d5ff] transition hover:bg-[#9146ff]/20"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Ouvrir Twitch
+                                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                  </a>
+                                ) : null}
+                                {currentAdmin?.canWrite ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEdit(member);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/15 px-4 py-2.5 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/25"
+                                  >
+                                    Modifier la fiche
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <p className="mt-4 border-t border-white/5 pt-3 text-[11px] text-slate-600">
+                          Clique à nouveau sur la ligne pour replier. Les données affichées côté membres dépendent des champs remplis et des droits de publication.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : null}
+                    </Fragment>
+                  );
+                })}
                 {displayedMembers.length === 0 && (
                   <tr>
                     <td
@@ -3463,6 +3929,199 @@ export default function GestionMembresPage() {
               </tbody>
             </table>
           </div>
+          ) : (
+          <div className="border-t border-[#353a50]/40 bg-[linear-gradient(180deg,rgba(18,22,35,0.65),rgba(10,11,16,0.92))] p-4 md:p-6">
+            {paginatedMembers.length === 0 ? (
+              <div className="py-16 text-center text-slate-400">
+                {isSearching
+                  ? "Aucun membre ne correspond à cette recherche."
+                  : `Aucun membre ${
+                      statusTab === "actifs"
+                        ? "actif"
+                        : statusTab === "inactifs"
+                        ? "du suivi communauté"
+                        : statusTab === "nouveaux"
+                        ? "nouveau"
+                        : "archivé"
+                    } avec les filtres actuels.`}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {paginatedMembers.map((member) => {
+                  const completeness = getMemberCompleteness(member);
+                  const ficheHref = `/admin/membres/fiche/${encodeURIComponent(
+                    member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
+                  )}`;
+                  const isCommunityLocked = member.statut === "Inactif" && member.role === "Communauté";
+                  const canValidateCommunity = canValidateCommunityPassage(member);
+                  const barColor =
+                    completeness.percent >= 80
+                      ? "from-emerald-400 to-cyan-400"
+                      : completeness.percent >= 50
+                      ? "from-amber-400 to-orange-400"
+                      : "from-rose-400 to-red-500";
+                  return (
+                    <div
+                      key={getMemberStableKey(member)}
+                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#2f354a] bg-gradient-to-b from-[#161a28] via-[#12151f] to-[#0b0d12] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.35)] transition duration-300 hover:border-indigo-400/45 hover:shadow-[0_24px_60px_rgba(79,70,229,0.14)]"
+                    >
+                      {currentAdmin?.isFounder && (
+                        <div className="absolute right-3 top-3 z-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedMemberLogins.includes(member.twitch)}
+                            onChange={(e) => toggleMemberSelection(member.twitch, e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-600 bg-[#0f1321]"
+                            aria-label={`Sélectionner ${member.nom}`}
+                          />
+                        </div>
+                      )}
+                      <div className="flex gap-3 pr-8">
+                        <img
+                          src={member.avatar}
+                          alt={member.nom}
+                          className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-white/10"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{member.nom}</p>
+                          {member.twitch ? (
+                            <a
+                              href={`https://www.twitch.tv/${member.twitch}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-0.5 block truncate text-xs text-indigo-300 hover:text-indigo-200"
+                            >
+                              twitch.tv/{member.twitch}
+                            </a>
+                          ) : (
+                            <p className="mt-0.5 text-xs text-slate-500">Pas de Twitch</p>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <span className={`inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold ${getRoleBadgeColor(member.role)}`}>
+                              {getRoleBadgeLabel(member.role)}
+                            </span>
+                            <span
+                              className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${getStatusBadgeColor(member.statut)}`}
+                            >
+                              {member.statut}
+                            </span>
+                            {member.isVip ? (
+                              <span className="inline-flex items-center gap-0.5 rounded-full border border-indigo-400/35 bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-100">
+                                <Star className="h-3 w-3" aria-hidden />
+                                VIP
+                              </span>
+                            ) : null}
+                            {member.twitchStatus?.isLive ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-200">
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" aria-hidden />
+                                LIVE
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                          <span>Complétude fiche</span>
+                          <span className="tabular-nums text-slate-200">{completeness.percent}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-[#252a3d]">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-500`}
+                            style={{ width: `${completeness.percent}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setShowMemberHistory(true);
+                          }}
+                          className={rowActionInfoCompact}
+                          title="Historique"
+                        >
+                          <History className="w-3 h-3 shrink-0" aria-hidden />
+                          Hist.
+                        </button>
+                        <Link href={ficheHref} className={rowActionPrimaryCompact} title="Fiche membre">
+                          Fiche
+                        </Link>
+                        {member.isArchived ? (
+                          <>
+                            <button type="button" onClick={() => handleViewArchivedData(member)} className={rowActionInfoCompact}>
+                              Data
+                            </button>
+                            {currentAdmin?.canWrite ? (
+                              <button type="button" onClick={() => handleRestoreArchived(member)} className={rowActionSuccessCompact}>
+                                <ArchiveRestore className="w-3 h-3 shrink-0" aria-hidden />
+                                Restaurer
+                              </button>
+                            ) : null}
+                            {currentAdmin?.isFounder ? (
+                              <button type="button" onClick={() => handlePurgeArchived(member)} className={rowActionDangerCompact}>
+                                <Trash2 className="w-3 h-3 shrink-0" aria-hidden />
+                                Purge
+                              </button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(member)}
+                              disabled={isCommunityLocked}
+                              className={`${member.statut === "Actif" ? rowActionDangerCompact : rowActionSuccessCompact} ${
+                                isCommunityLocked ? "opacity-60 cursor-not-allowed" : ""
+                              }`}
+                              title={
+                                isCommunityLocked
+                                  ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
+                                  : undefined
+                              }
+                            >
+                              {member.statut === "Actif" ? "Désact." : "Activer"}
+                            </button>
+                            {statusTab !== "nouveaux" && canValidateCommunity && currentAdmin?.canWrite ? (
+                              <button
+                                type="button"
+                                onClick={() => handleValidateCommunityPassage(member)}
+                                className={rowActionWarningCompact}
+                              >
+                                Communauté
+                              </button>
+                            ) : null}
+                            {statusTab === "nouveaux" && currentAdmin?.canWrite ? (
+                              <>
+                                <button type="button" onClick={() => handleQuickAssignRole(member, "Affilié")} className={rowActionSuccessCompact}>
+                                  Affilié
+                                </button>
+                                <button type="button" onClick={() => handleQuickAssignRole(member, "Développement")} className={rowActionPrimaryCompact}>
+                                  Dév.
+                                </button>
+                              </>
+                            ) : null}
+                            {currentAdmin?.canWrite ? (
+                              <>
+                                <button type="button" onClick={() => handleEdit(member)} className={rowActionEditCompact}>
+                                  Éditer
+                                </button>
+                                <button type="button" onClick={() => handleDelete(member)} className={rowActionDangerCompact}>
+                                  Suppr.
+                                </button>
+                              </>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          )}
           {displayedMembers.length > 0 && (
             <div className="border-t border-[#353a50]/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#121623]/95">
               <p className="text-sm text-slate-400">

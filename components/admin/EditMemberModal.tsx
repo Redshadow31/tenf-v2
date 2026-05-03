@@ -1,8 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+import {
+  Award,
+  CalendarDays,
+  ExternalLink,
+  FileText,
+  History,
+  Keyboard,
+  RotateCcw,
+  Save,
+  Shield,
+  Sparkles,
+  User,
+  X,
+} from "lucide-react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+
+/** Bloc section formulaire (cohérent dans tout le modal). */
+const EDIT_MODAL_SECTION =
+  "rounded-2xl border border-white/[0.08] bg-[linear-gradient(160deg,rgba(26,28,40,0.92),rgba(14,15,22,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
 
 type MemberRole =
   | "Nouveau"
@@ -74,12 +94,32 @@ export default function EditMemberModal({
 }: EditMemberModalProps) {
   type EditTab = "comptes" | "role" | "suivi" | "badges" | "notes";
   const tabOrder: EditTab[] = ["comptes", "role", "suivi", "badges", "notes"];
-  const tabLabels: Record<EditTab, string> = {
-    comptes: "Identité & comptes",
-    role: "Rôles & statut",
-    suivi: "Profil & suivi",
-    badges: "Badges",
-    notes: "Description & notes",
+  const tabMeta: Record<EditTab, { label: string; Icon: LucideIcon; hint: string }> = {
+    comptes: {
+      label: "Identité & comptes",
+      Icon: User,
+      hint: "Liens utilisés par Twitch, Discord et le site pour reconnaître ce membre.",
+    },
+    role: {
+      label: "Rôle & statut",
+      Icon: Shield,
+      hint: "Ce que l’équipe voit dans l’admin ; impact sur les accès et le cycle de vie.",
+    },
+    suivi: {
+      label: "Parcours & dates",
+      Icon: CalendarDays,
+      hint: "Intégration, mentor, revues : la timeline TENF du créateur.",
+    },
+    badges: {
+      label: "Badges",
+      Icon: Award,
+      hint: "Pastilles affichées sur le profil public et l’espace membre.",
+    },
+    notes: {
+      label: "Textes",
+      Icon: FileText,
+      hint: "Bio visible par la communauté vs notes réservées au staff.",
+    },
   };
   const [formData, setFormData] = useState<Member>(member);
   const [badgeInput, setBadgeInput] = useState("");
@@ -424,105 +464,176 @@ export default function EditMemberModal({
       : "bg-purple-900/20 text-purple-400 border-purple-900/30";
   };
 
+  const adminFicheHref = `/admin/membres/fiche/${encodeURIComponent(
+    String(formData.discordId || formData.twitchId || formData.twitch || formData.nom || "")
+  )}`;
+  const twitchChannelUrl = formData.twitch ? `https://www.twitch.tv/${formData.twitch}` : null;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-4"
       onClick={onClose}
+      role="presentation"
     >
       <div
-        className="bg-[#1a1a1d] border border-gray-700 rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-indigo-400/20 bg-[#0f1118] shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(99,102,241,0.12)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header fixe */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0 bg-gradient-to-r from-[#171822] to-[#141418]">
-          <div className="flex items-center gap-4">
-            <img
-              src={formData.avatar}
-              alt={formData.nom}
-              className="w-16 h-16 rounded-full object-cover border border-gray-700"
-            />
-            <div>
-              <h2 className="text-2xl font-bold text-white">{formData.nom}</h2>
-              <p className="text-sm text-gray-400">ID: {formData.id} • @ {formData.twitch || "inconnu"}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className={getRoleBadgeClassName(formData.role)}>
-              {getRoleBadgeLabel(formData.role)}
-            </span>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeColor(formData.statut)}`}>
-              {formData.statut}
-            </span>
-            {formData.isVip && (
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#9146ff]/20 text-[#9146ff] border border-[#9146ff]/30">
-                VIP
-              </span>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors ml-2"
-              type="button"
-              aria-label="Fermer le modal"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"
+          aria-hidden
+        />
+        {/* Header */}
+        <div className="relative flex-shrink-0 border-b border-white/10 bg-[linear-gradient(125deg,rgba(79,70,229,0.18),rgba(15,17,24,0.96)_42%,rgba(56,189,248,0.08))] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 flex-1 items-start gap-4">
+              <div className="relative shrink-0">
+                <img
+                  src={formData.avatar}
+                  alt={formData.nom}
+                  className="h-20 w-20 rounded-2xl border border-white/15 object-cover shadow-lg shadow-black/40 ring-2 ring-indigo-500/20 sm:h-[5.5rem] sm:w-[5.5rem]"
                 />
-              </svg>
-            </button>
+                <span
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-lg border border-amber-400/40 bg-amber-500/25 text-amber-100 shadow-md"
+                  title="Membre TENF"
+                  aria-hidden
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-200/90">
+                  <Sparkles className="h-3 w-3 text-amber-300" aria-hidden />
+                  Fiche créateur · TENF New Family
+                </p>
+                <h2 className="truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">{formData.nom}</h2>
+                <p className="text-sm text-slate-400">
+                  Réf. admin #{formData.id}
+                  {formData.twitch ? (
+                    <>
+                      {" "}
+                      · <span className="text-slate-300">@{formData.twitch}</span>
+                    </>
+                  ) : null}
+                </p>
+                <p className="max-w-2xl text-xs leading-relaxed text-slate-400">
+                  Les changements ici alimentent l&apos;espace membre et les pages publiques (selon les champs). Avance par onglet :
+                  identité d&apos;abord, puis rôle, parcours, badges et textes.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {twitchChannelUrl ? (
+                    <a
+                      href={twitchChannelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#9146ff]/35 bg-[#9146ff]/15 px-3 py-1.5 text-xs font-semibold text-[#bf94ff] transition hover:bg-[#9146ff]/25"
+                    >
+                      Chaîne Twitch
+                      <ExternalLink className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                    </a>
+                  ) : null}
+                  <Link
+                    href={adminFicheHref}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20"
+                  >
+                    Fiche 360° admin
+                    <ExternalLink className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/membres"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                  >
+                    Annuaire public
+                    <ExternalLink className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                  </Link>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-shrink-0 flex-wrap items-center gap-2 lg:flex-col lg:items-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className={getRoleBadgeClassName(formData.role)}>{getRoleBadgeLabel(formData.role)}</span>
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusBadgeColor(formData.statut)}`}>
+                  {formData.statut}
+                </span>
+                {formData.isVip ? (
+                  <span className="rounded-full border border-[#9146ff]/40 bg-[#9146ff]/20 px-3 py-1 text-xs font-semibold text-[#d4b8ff]">
+                    VIP
+                  </span>
+                ) : null}
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-xl border border-white/10 bg-black/20 p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                type="button"
+                aria-label="Fermer le modal"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="px-6 py-3 border-b border-gray-700 bg-[#141418]">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-xs text-gray-400">
-              Navigation clavier onglets: fleches gauche/droite, Home, End.
+        <div className="flex-shrink-0 border-b border-white/10 bg-[#12151f]/95 px-4 py-3 sm:px-6">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="inline-flex items-center gap-2 text-[11px] text-slate-500">
+              <Keyboard className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden />
+              Onglets : flèches gauche / droite, Home, End · Échap ferme la fenêtre.
             </p>
-            <span className="text-xs text-gray-400">
-              {hasUnsavedChanges ? `${modifiedTabCount} onglet(s) modifié(s)` : "Aucune modification"}
+            <span
+              className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                hasUnsavedChanges
+                  ? "border-amber-400/35 bg-amber-500/15 text-amber-100"
+                  : "border-white/10 bg-white/5 text-slate-400"
+              }`}
+            >
+              {hasUnsavedChanges ? `${modifiedTabCount} section(s) modifiée(s)` : "Aucune modification en cours"}
             </span>
           </div>
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections du formulaire membre">
-            {tabOrder.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab}
-                aria-controls={`edit-member-tab-panel-${tab}`}
-                id={`edit-member-tab-${tab}`}
-                ref={(node) => {
-                  tabButtonRefs.current[tab] = node;
-                }}
-                tabIndex={activeTab === tab ? 0 : -1}
-                onClick={() => setActiveTab(tab)}
-                onKeyDown={(event) => handleTabKeyDown(event, tab)}
-                className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors border ${
-                  activeTab === tab
-                    ? "bg-purple-600/90 text-white border-purple-400/40"
-                    : "bg-[#0e0e10] text-gray-300 border-gray-700 hover:text-white hover:bg-[#1a1d26]"
-                }`}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {tabLabels[tab]}
-                  {tabDirtyState[tab] && <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />}
-                  {tabErrorState[tab] && <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden="true" />}
-                </span>
-              </button>
-            ))}
+          <p className="mb-3 text-xs leading-snug text-slate-400">{tabMeta[activeTab].hint}</p>
+          <div
+            className="-mx-1 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label="Sections du formulaire membre"
+          >
+            {tabOrder.map((tab) => {
+              const { Icon, label } = tabMeta[tab];
+              const selected = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-controls={`edit-member-tab-panel-${tab}`}
+                  id={`edit-member-tab-${tab}`}
+                  ref={(node) => {
+                    tabButtonRefs.current[tab] = node;
+                  }}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActiveTab(tab)}
+                  onKeyDown={(event) => handleTabKeyDown(event, tab)}
+                  className={`flex min-w-[max-content] shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-all ${
+                    selected
+                      ? "scale-[1.02] border-indigo-400/50 bg-gradient-to-r from-indigo-600/90 to-violet-700/85 text-white shadow-lg shadow-indigo-950/40"
+                      : "border-white/10 bg-[#1a1f2e] text-slate-300 hover:border-indigo-400/25 hover:bg-[#222836] hover:text-white"
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${selected ? "text-white" : "text-indigo-300/80"}`} aria-hidden />
+                  <span>{label}</span>
+                  {tabDirtyState[tab] ? (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" aria-hidden />
+                  ) : null}
+                  {tabErrorState[tab] ? <span className="h-2 w-2 shrink-0 rounded-full bg-red-400" aria-hidden /> : null}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Corps scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
           <form onSubmit={handleSubmit} id="edit-member-form">
             <div className="grid grid-cols-1 gap-6">
               {/* Colonne gauche */}
@@ -533,7 +644,7 @@ export default function EditMemberModal({
                 aria-labelledby="edit-member-tab-comptes"
               >
                 {/* Section Identité */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div className={EDIT_MODAL_SECTION}>
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Identité</h3>
                   <div>
                     <label className="block text-sm font-semibold text-gray-300 mb-2">
@@ -550,7 +661,7 @@ export default function EditMemberModal({
                 </div>
 
                 {/* Section Twitch */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div className={EDIT_MODAL_SECTION}>
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Twitch</h3>
                   <div className="space-y-4">
                     <div>
@@ -622,7 +733,7 @@ export default function EditMemberModal({
                 </div>
 
                 {/* Section Discord */}
-                <div className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4">
+                <div className={EDIT_MODAL_SECTION}>
                   <h3 className="text-sm font-semibold text-gray-300 mb-4">Discord</h3>
                   <div className="space-y-4">
                     <div>
@@ -679,7 +790,7 @@ export default function EditMemberModal({
               <div className={activeTab === "role" || activeTab === "suivi" || activeTab === "badges" ? "space-y-6" : "hidden"}>
                 {/* Section Statut */}
                 <div
-                  className={activeTab === "role" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  className={activeTab === "role" ? EDIT_MODAL_SECTION : "hidden"}
                   role="tabpanel"
                   id="edit-member-tab-panel-role"
                   aria-labelledby="edit-member-tab-role"
@@ -695,9 +806,10 @@ export default function EditMemberModal({
                           <button
                             type="button"
                             onClick={() => setShowRoleHistory(true)}
-                            className="text-xs text-purple-400 hover:text-purple-300 underline"
+                            className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/20"
                           >
-                            📜 Historique
+                            <History className="h-3.5 w-3.5" aria-hidden />
+                            Historique
                           </button>
                         )}
                       </div>
@@ -810,7 +922,7 @@ export default function EditMemberModal({
 
                 {/* Section Badges */}
                 <div
-                  className={activeTab === "badges" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  className={activeTab === "badges" ? EDIT_MODAL_SECTION : "hidden"}
                   role="tabpanel"
                   id="edit-member-tab-panel-badges"
                   aria-labelledby="edit-member-tab-badges"
@@ -882,7 +994,7 @@ export default function EditMemberModal({
 
                 {/* Section Dates */}
                 <div
-                  className={activeTab === "suivi" ? "bg-[#0e0e10] border border-gray-700 rounded-lg p-4" : "hidden"}
+                  className={activeTab === "suivi" ? EDIT_MODAL_SECTION : "hidden"}
                   role="tabpanel"
                   id="edit-member-tab-panel-suivi"
                   aria-labelledby="edit-member-tab-suivi"
@@ -993,13 +1105,13 @@ export default function EditMemberModal({
                         placeholder="Rechercher un membre..."
                       />
                       {showParrainSuggestions && parrainSuggestions.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-[#1a1a1d] border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-indigo-400/25 bg-[#151821] py-1 shadow-xl shadow-black/40 ring-1 ring-black/30">
                           {parrainSuggestions.map((suggestion, index) => (
                             <button
                               key={index}
                               type="button"
                               onClick={() => selectParrain(suggestion)}
-                              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-600/20 transition-colors"
+                              className="w-full px-4 py-2.5 text-left text-sm text-white transition hover:bg-indigo-600/25"
                             >
                               {suggestion}
                             </button>
@@ -1141,112 +1253,116 @@ export default function EditMemberModal({
         </div>
 
         {/* Footer fixe */}
-        <div className="p-6 border-t border-gray-700 flex-shrink-0 bg-[#141418]">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-gray-400">
+        <div className="flex-shrink-0 border-t border-white/10 bg-[linear-gradient(180deg,rgba(18,21,32,0.98),rgba(12,14,20,1))] p-4 sm:p-6">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <p
+              className={`text-xs font-medium ${
+                hasValidationErrors ? "text-red-300" : hasUnsavedChanges ? "text-emerald-200/90" : "text-slate-500"
+              }`}
+            >
               {hasValidationErrors
-                ? `${Object.keys(validationErrors).length} erreur(s) à corriger`
+                ? `${Object.keys(validationErrors).length} erreur(s) à corriger avant enregistrement`
                 : hasUnsavedChanges
-                ? "Modifications prêtes à être enregistrées"
-                : "Aucune modification en attente"}
+                ? "Tu peux enregistrer : les données à jour pour les créateurs et le staff."
+                : "Aucun changement détecté — modifie un champ pour activer l’enregistrement."}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={resetFormToInitial}
               disabled={!hasUnsavedChanges}
-              className="bg-[#0e0e10] hover:bg-[#1a1d26] border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
+              <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
               Réinitialiser
             </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            form="edit-member-form"
-            disabled={hasValidationErrors || !hasUnsavedChanges}
-            className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg transition-colors"
-          >
-            {hasUnsavedChanges ? "Enregistrer les modifications" : "Aucune modification"}
-          </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-white/10 bg-[#252830] py-3 text-sm font-semibold text-white transition hover:bg-[#323846] sm:min-w-[120px] sm:flex-none"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              form="edit-member-form"
+              disabled={hasValidationErrors || !hasUnsavedChanges}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-500 hover:to-violet-500 disabled:cursor-not-allowed disabled:border-transparent disabled:!bg-slate-700 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:shadow-none sm:min-w-[200px]"
+            >
+              <Save className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+              {hasUnsavedChanges ? "Enregistrer" : "À jour"}
+            </button>
           </div>
         </div>
 
         {/* Modal Historique des rôles */}
         {showRoleHistory && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            onClick={() => setShowRoleHistory(false)}
+            role="presentation"
           >
             <div
-              className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+              className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-indigo-400/25 bg-[#12151f] shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-white">Historique des rôles</h3>
+              <div className="flex items-start justify-between gap-3 border-b border-white/10 bg-[linear-gradient(90deg,rgba(79,70,229,0.2),transparent)] p-5">
+                <div>
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-white">
+                    <History className="h-5 w-5 text-indigo-300" aria-hidden />
+                    Historique des rôles
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-400">Traçabilité des changements de rôle pour ce membre.</p>
+                </div>
                 <button
+                  type="button"
                   onClick={() => setShowRoleHistory(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="rounded-lg border border-white/10 p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Fermer l'historique"
                 >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              {formData.roleHistory && formData.roleHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {formData.roleHistory.map((entry, index) => (
-                    <div
-                      key={index}
-                      className="bg-[#0e0e10] border border-gray-700 rounded-lg p-4"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="text-white font-semibold">
-                            {entry.fromRole} → {entry.toRole}
-                          </div>
-                          <div className="text-sm text-gray-400 mt-1">
-                            {new Date(entry.changedAt).toLocaleDateString('fr-FR', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
+              <div className="max-h-[calc(82vh-5.5rem)] overflow-y-auto p-5">
+                {formData.roleHistory && formData.roleHistory.length > 0 ? (
+                  <ul className="space-y-3">
+                    {formData.roleHistory.map((entry, index) => (
+                      <li
+                        key={index}
+                        className="rounded-xl border border-white/[0.08] border-l-4 border-l-indigo-500/75 bg-[linear-gradient(160deg,rgba(26,28,40,0.92),rgba(14,15,22,0.98))] p-4 shadow-inner shadow-black/20"
+                      >
+                        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="font-semibold text-white">
+                            <span className="text-slate-400">{entry.fromRole}</span>
+                            <span className="mx-2 text-indigo-400">→</span>
+                            <span>{entry.toRole}</span>
+                          </p>
+                          <time className="text-xs tabular-nums text-slate-500">
+                            {new Date(entry.changedAt).toLocaleDateString("fr-FR", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
                             })}
-                          </div>
+                          </time>
                         </div>
-                      </div>
-                      <div className="text-sm text-gray-300">
-                        <span className="text-gray-500">Modifié par:</span> {entry.changedBy}
-                      </div>
-                      {entry.reason && (
-                        <div className="text-sm text-gray-400 mt-2 italic">
-                          Raison: {entry.reason}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400">
-                  Aucun historique de changement de rôle
-                </div>
-              )}
+                        <p className="text-sm text-slate-400">
+                          <span className="text-slate-600">Par</span> {entry.changedBy}
+                        </p>
+                        {entry.reason ? (
+                          <p className="mt-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-sm italic text-slate-300">
+                            {entry.reason}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="py-12 text-center text-sm text-slate-500">Aucun changement de rôle enregistré pour l’instant.</div>
+                )}
+              </div>
             </div>
           </div>
         )}

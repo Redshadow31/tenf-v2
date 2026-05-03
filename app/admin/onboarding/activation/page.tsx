@@ -129,23 +129,23 @@ export default function OnboardingActivationPage() {
       <section className={`${glassCardClass} p-5 md:p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Onboarding membres</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Accueil & intégration</p>
             <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-              Activation membres
+              Rôles & activation
             </h1>
             <p className="mt-3 text-sm text-slate-300">
-              Espace de pilotage pour reassigner automatiquement les participants des sessions passees et synchroniser
-              l'activation dans la gestion membres.
+              Pilotage pour réassigner automatiquement les participants aux sessions passées et synchroniser
+              l&apos;activation dans la gestion des membres.
             </p>
           </div>
           <button type="button" onClick={() => void loadData()} disabled={running} className={subtleButtonClass}>
             <RefreshCw className="h-4 w-4" />
-            Actualiser les donnees
+            Actualiser les données
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/admin/onboarding/presences" className={subtleButtonClass}>
-            Ouvrir presences
+            Ouvrir les présences
             <ArrowRight className="h-4 w-4" />
           </Link>
           <button

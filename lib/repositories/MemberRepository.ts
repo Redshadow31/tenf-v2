@@ -102,6 +102,20 @@ export class MemberRepository {
   }
 
   /**
+   * Récupère un membre par son id (UUID Supabase)
+   */
+  async findById(id: string): Promise<MemberData | null> {
+    const trimmed = String(id || "").trim();
+    if (!trimmed) return null;
+
+    const { data, error } = await supabaseAdmin.from("members").select("*").eq("id", trimmed).maybeSingle();
+
+    if (error && error.code !== "PGRST116") throw error;
+
+    return data ? this.mapToMemberData(data) : null;
+  }
+
+  /**
    * Récupère un membre par son login Twitch
    */
   async findByTwitchLogin(login: string): Promise<MemberData | null> {

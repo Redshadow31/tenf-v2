@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { AlertTriangle, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -33,7 +34,19 @@ type CreateMemberDraft = {
   twitchUrl: string;
 };
 
+const validateModalBackdropClass =
+  "fixed inset-0 z-[100] flex animate-fadeIn items-center justify-center bg-black/70 p-4 backdrop-blur-md";
+const validateModalShellClass =
+  "relative w-full max-w-md animate-fadeIn overflow-hidden rounded-3xl border border-emerald-400/30 bg-[linear-gradient(165deg,rgba(16,185,129,0.12),rgba(14,15,23,0.96)_40%)] shadow-[0_28px_80px_rgba(2,6,23,0.75)]";
+
 export default function AdminEngagementRaidsAValiderPage() {
+  const pathname = usePathname() || "";
+  const isCommunity = pathname.startsWith("/admin/communaute");
+  const validateTitleId = useId();
+  const backHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
+  const raidsSubHref = isCommunity ? "/admin/communaute/engagement/raids-eventsub" : "/admin/engagement/raids-sub";
+  const historiqueHref = isCommunity ? "/admin/communaute/engagement/historique-raids" : "/admin/engagement/historique-raids";
+
   const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "to_study" | "validated" | "rejected">("processing");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -53,6 +66,7 @@ export default function AdminEngagementRaidsAValiderPage() {
     displayName: "",
     twitchUrl: "",
   });
+  const [pendingValidateId, setPendingValidateId] = useState<string | null>(null);
 
   async function loadData() {
     try {
@@ -106,14 +120,7 @@ export default function AdminEngagementRaidsAValiderPage() {
     };
   }, [rows]);
 
-  async function updateStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
-    if (status === "validated") {
-      const ok = window.confirm(
-        "Avant validation: verifier que ce raid n'est pas deja comptabilise automatiquement via EventSub.\n\nContinuer ?"
-      );
-      if (!ok) return;
-    }
-
+  async function applyStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
     setSavingId(id);
     try {
       const response = await fetch(`/api/admin/engagement/raids-declarations/${id}`, {
@@ -141,6 +148,30 @@ export default function AdminEngagementRaidsAValiderPage() {
       setSavingId("");
     }
   }
+
+  function updateStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
+    if (status === "validated") {
+      setPendingValidateId(id);
+      return;
+    }
+    void applyStatus(id, status);
+  }
+
+  async function confirmValidateDeclaration() {
+    if (!pendingValidateId) return;
+    const id = pendingValidateId;
+    setPendingValidateId(null);
+    await applyStatus(id, "validated");
+  }
+
+  useEffect(() => {
+    if (!pendingValidateId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPendingValidateId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingValidateId]);
 
   function normalizeLogin(value: string): string {
     return value.trim().toLowerCase();
@@ -279,15 +310,51 @@ export default function AdminEngagementRaidsAValiderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+    <div className={`text-white space-y-6 ${isCommunity ? "pb-2" : "min-h-screen bg-[#0e0e10] p-8"}`}>
       <section className="rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur">
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
-          ← Retour à Engagement
+        <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
+          {isCommunity ? "← Hub engagement" : "← Retour à Engagement"}
         </Link>
-        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
-          Raids à valider
+        {isCommunity ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-100">
+              <Users className="h-3 w-3" />
+              Déclarations membres
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-100">
+              <Sparkles className="h-3 w-3" />
+              Fiabilité TENF
+            </span>
+          </div>
+        ) : null}
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Link
+            href={raidsSubHref}
+            className="inline-flex rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200"
+          >
+            Voir EventSub (état auto)
+          </Link>
+          <Link
+            href={historiqueHref}
+            className="inline-flex rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200"
+          >
+            Historique consolidé
+          </Link>
+        </div>
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+          {isCommunity ? "Signalements raids — file staff" : "Raids à valider"}
         </h1>
-        <p className="text-sm text-slate-300">Validation des declarations raids membres avec statuts synchronises.</p>
+        <p className="max-w-3xl text-sm text-slate-300">
+          {isCommunity ? (
+            <>
+              Les membres TENF déclarent un raid manquant ou incorrect. Chaque fiche est une <strong className="text-white">promesse
+              de réponse</strong> : vérifie d’abord l’historique EventSub, puis valide, refuse ou renvoie en analyse avec un
+              commentaire clair.
+            </>
+          ) : (
+            <>Validation des declarations raids membres avec statuts synchronises.</>
+          )}
+        </p>
       </section>
 
       <section className="rounded-2xl border border-amber-300/35 bg-amber-300/10 p-4 text-amber-100">
@@ -395,7 +462,19 @@ export default function AdminEngagementRaidsAValiderPage() {
 
       <div className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-6 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
         {loading ? (
-          <p className="text-sm text-gray-300">Chargement des declarations...</p>
+          isCommunity ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-xl border border-[#353a50] bg-[#121623]/60 p-4">
+                  <div className="h-4 w-1/2 rounded bg-slate-700/40" />
+                  <div className="mt-3 h-3 w-full rounded bg-slate-800/40" />
+                  <div className="mt-2 h-8 w-full rounded bg-slate-800/30" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-300">Chargement des declarations...</p>
+          )
         ) : rows.length === 0 ? (
           <p className="text-sm text-gray-300">Aucune declaration a afficher.</p>
         ) : (
@@ -415,7 +494,12 @@ export default function AdminEngagementRaidsAValiderPage() {
                 })
                 .slice(0, 8);
               return (
-                <article key={item.id} className="rounded-xl border border-[#353a50] bg-[#121623]/85 p-4">
+                <article
+                  key={item.id}
+                  className={`rounded-xl border border-[#353a50] bg-[#121623]/85 p-4 transition hover:border-indigo-400/25 ${
+                    isCommunity ? "border-l-4 border-l-amber-500/45 pl-3" : ""
+                  }`}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-base font-semibold text-white">
                       {item.member_display_name} ({item.member_twitch_login}) → {item.target_twitch_login}
@@ -537,6 +621,61 @@ export default function AdminEngagementRaidsAValiderPage() {
           </div>
         )}
       </div>
+
+      {pendingValidateId ? (
+        <div
+          className={validateModalBackdropClass}
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setPendingValidateId(null);
+          }}
+        >
+          <div
+            className={validateModalShellClass}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={validateTitleId}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-end border-b border-white/10 px-2 py-2">
+              <button
+                type="button"
+                onClick={() => setPendingValidateId(null)}
+                className="rounded-xl border border-white/10 bg-black/30 p-2 text-slate-300 hover:bg-white/10 hover:text-white"
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-6 pb-4 pt-2">
+              <h2 id={validateTitleId} className="text-lg font-semibold text-white">
+                Valider cette déclaration ?
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Vérifie qu’aucun raid équivalent n’a déjà été <strong className="text-emerald-200">comptabilisé via EventSub</strong>
+                . En cas de doute, ouvre l’historique ou la page EventSub depuis la barre du haut.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setPendingValidateId(null)}
+                className="rounded-xl border border-slate-500/50 bg-slate-800/80 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmValidateDeclaration()}
+                disabled={Boolean(savingId)}
+                className="rounded-xl border border-emerald-500/45 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {savingId ? "Envoi…" : "Confirmer la validation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showCreateMemberModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowCreateMemberModal(false)}>

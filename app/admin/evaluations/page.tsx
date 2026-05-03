@@ -457,50 +457,50 @@ export default function IntegrationDashboardPage() {
   const sections = [
     {
       href: "/admin/onboarding/sessions",
-      title: "Sessions",
-      description: "Planifier les sessions d'onboarding.",
+      title: "Créneaux & annonces",
+      description: "Planifier et publier les sessions d’accueil.",
       icon: "📅",
       color: "from-blue-500 to-blue-600",
     },
     {
       href: "/admin/onboarding/inscriptions",
-      title: "Inscriptions membres",
-      description: "Piloter les inscriptions aux sessions.",
+      title: "Inscriptions",
+      description: "Gérer les inscriptions aux sessions d’accueil.",
       icon: "📝",
       color: "from-green-500 to-green-600",
     },
     {
       href: "/admin/onboarding/staff",
-      title: "Staff onboarding",
-      description: "Coordonner la présence des modérateurs.",
+      title: "Équipe sur session",
+      description: "Coordonner modérateurs et renforts sur le live.",
       icon: "🛡️",
       color: "from-indigo-500 to-indigo-600",
     },
     {
       href: "/admin/onboarding/presences",
       title: "Présences",
-      description: "Valider les présences et retours post-session.",
+      description: "Valider les présences et le passage membre après session.",
       icon: "👥",
       color: "from-purple-500 to-purple-600",
     },
     {
       href: "/admin/onboarding/activation",
-      title: "Activation membres",
-      description: "Réassigner et activer automatiquement les membres présents.",
+      title: "Rôles & activation",
+      description: "Réassigner et activer les comptes après validation.",
       icon: "⚡",
       color: "from-fuchsia-500 to-violet-600",
     },
     {
       href: "/admin/onboarding/kpi",
-      title: "KPI onboarding",
-      description: "Suivre les indicateurs de performance du parcours.",
+      title: "Indicateurs",
+      description: "Suivre volumes, publication et charge opérationnelle.",
       icon: "📊",
       color: "from-amber-500 to-amber-600",
     },
     {
       href: "/admin/onboarding/contenus",
-      title: "Contenus onboarding",
-      description: "Centraliser présentation et trame de discours.",
+      title: "Supports & discours",
+      description: "Centraliser présentation et scripts d’animateur.",
       icon: "🎬",
       color: "from-teal-500 to-teal-600",
     },
@@ -533,9 +533,9 @@ export default function IntegrationDashboardPage() {
       <section className="rounded-2xl border border-[#e6c773]/25 bg-[radial-gradient(circle_at_top_left,_rgba(230,199,115,0.18),_rgba(18,18,24,0.96)_45%)] p-5 md:p-6 shadow-[0_18px_45px_rgba(0,0,0,0.35)] premium-hero-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-[#e6c773]">Onboarding membres</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-[#e6c773]">Accueil & intégration</p>
             <h1 className="mt-2 text-3xl font-bold md:text-4xl premium-title-gradient">
-              Bienvenue {username} dans l&apos;espace onboarding membres
+              Bienvenue {username} — outils d&apos;accueil et d&apos;intégration
             </h1>
           </div>
           <div className="grid w-full gap-2 sm:w-auto sm:min-w-[280px]">

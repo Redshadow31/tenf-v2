@@ -207,6 +207,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const twitchLogin = searchParams.get("twitchLogin");
     const discordId = searchParams.get("discordId");
+    const skipAvatarBatchParam = (searchParams.get("skipAvatarBatch") || "").toLowerCase();
+    const skipAvatarBatch =
+      skipAvatarBatchParam === "1" ||
+      skipAvatarBatchParam === "true" ||
+      skipAvatarBatchParam === "yes";
 
     if (twitchLogin) {
       // Récupérer un membre spécifique par login Twitch
@@ -318,11 +323,11 @@ export async function GET(request: NextRequest) {
     const mergedResult = mergeMembersWithoutDuplicates(sanitizedLegacyMembers, supabaseMembers);
     const members = mergedResult.members;
 
-    // Récupérer les avatars Twitch pour TOUS les membres (y compris non validés)
-    // La page admin gestion utilisait /api/members/public qui ne renvoie que les validés → avatars manquants
+    // Avatars Twitch en masse (coûteux). La page gestion peut passer skipAvatarBatch=1 pour s'appuyer
+    // sur les URLs déjà stockées (resolveMemberAvatar → twitch_status / legacy).
     const twitchLogins = extractUniqueTwitchLogins(members);
     let avatarMap = new Map<string, string>();
-    if (twitchLogins.length > 0) {
+    if (!skipAvatarBatch && twitchLogins.length > 0) {
       const twitchUsers = await withTimeout(
         getTwitchUsers(twitchLogins),
         TWITCH_AVATARS_TIMEOUT_MS,
@@ -359,6 +364,7 @@ export async function GET(request: NextRequest) {
     logApi.route('GET', '/api/admin/members', 200, duration, admin.id, {
       count: members.length,
       mergeInfo: mergedResult.stats,
+      skipAvatarBatch,
     });
     
     return response;
@@ -412,6 +418,8 @@ export async function POST(request: NextRequest) {
       countryCode,
       lastReviewAt,
       nextReviewAt,
+      integrationDate,
+      parrain,
     } = body;
 
     const normalizedRole = typeof role === "string" ? toCanonicalMemberRole(role) : undefined;
@@ -475,6 +483,8 @@ export async function POST(request: NextRequest) {
       countryCode,
       lastReviewAt: lastReviewAt ? new Date(lastReviewAt) : undefined,
       nextReviewAt: nextReviewAt ? new Date(nextReviewAt) : undefined,
+      integrationDate: integrationDate ? new Date(integrationDate) : undefined,
+      parrain: typeof parrain === "string" && parrain.trim().length > 0 ? parrain.trim() : undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
       updatedBy: admin.discordId,

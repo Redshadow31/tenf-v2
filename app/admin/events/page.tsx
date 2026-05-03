@@ -855,10 +855,11 @@ export default function CommunityDashboardPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-[#fff4cf] via-[#f4d27a] to-[#d4af37] bg-clip-text text-transparent">
-              Vie communautaire - Dashboard de pilotage
+              Animation & engagement — pilotage consolidé
             </h1>
             <p className="text-gray-300 max-w-3xl">
-              Vision consolidée de la communauté: événements, Spotlight, anniversaires, UPA Event et engagement.
+              Vue d’ensemble pour le staff : événements, Spotlight, anniversaires, UPA Event et leviers d’engagement —
+              utile aux modérateurs comme aux administrateurs pour suivre l’activité sans multiplier les écrans.
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-300">
@@ -1476,7 +1477,7 @@ export default function CommunityDashboardPage() {
 
       {loading ? (
         <div className="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
-          Chargement des indicateurs Vie communautaire...
+          Chargement des indicateurs animation & engagement…
         </div>
       ) : null}
 

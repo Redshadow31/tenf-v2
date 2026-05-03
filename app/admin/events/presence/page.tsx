@@ -3,7 +3,25 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
-import { Search, Plus, Check, X, Save, Edit2, Trash2, Calendar, ArrowUpDown, User } from "lucide-react";
+import {
+  ArrowUpDown,
+  BarChart3,
+  Calendar,
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  Edit2,
+  ExternalLink,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Trash2,
+  User,
+  Users,
+  X,
+} from "lucide-react";
+import { useCommunauteEventsHub } from "@/lib/admin/CommunauteEventsHubContext";
 
 const panelClass =
   "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
@@ -22,6 +40,12 @@ const tabBaseClass =
 const tabActiveClass =
   "bg-[linear-gradient(145deg,rgba(99,102,241,0.24),rgba(79,70,229,0.18))] border-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]";
 const tabInactiveClass = "text-gray-300 hover:text-white hover:bg-white/[0.06]";
+const hubHeroClass =
+  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
+const hubSubtleBtnClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45";
+const focusRingClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
 
 function normalizeCategoryKey(value?: string): string {
   return (value || "")
@@ -253,6 +277,7 @@ function computeEventPresenceStats(event: Pick<Event, "registrations" | "presenc
 }
 
 export default function EventPresencePage() {
+  const hubLayout = useCommunauteEventsHub();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -905,6 +930,21 @@ export default function EventPresencePage() {
   const absenceRate = dashboardStats.registrations > 0 ? Math.max(0, 100 - participationRate) : 0;
 
   if (loading && !events.length) {
+    if (hubLayout) {
+      return (
+        <div className="min-h-[calc(100vh-4rem)] bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] px-4 py-10 text-white sm:px-6">
+          <div className="mx-auto max-w-7xl space-y-4">
+            <div className={`h-40 animate-pulse rounded-3xl bg-indigo-500/10 ${sectionCardClass}`} />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={`h-24 animate-pulse rounded-2xl bg-slate-800/50 ${sectionCardClass}`} />
+              ))}
+            </div>
+            <p className="text-center text-sm text-slate-500">Chargement des présences et inscriptions…</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center p-8">
         <div className={`text-center p-8 ${panelClass}`}>
@@ -927,7 +967,91 @@ export default function EventPresencePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-8 space-y-6">
+    <div
+      className={
+        hubLayout
+          ? "min-h-[calc(100vh-4rem)] scroll-smooth bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] pb-12 text-white selection:bg-indigo-500/35"
+          : "min-h-screen bg-[#0e0e10] text-white p-8"
+      }
+    >
+      <div className={hubLayout ? "mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8" : "space-y-6"}>
+      {hubLayout ? (
+        <section className={`${hubHeroClass} p-6 md:p-8`}>
+          <div className="pointer-events-none absolute -right-20 top-0 h-48 w-48 rounded-full bg-fuchsia-600/14 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-cyan-500/12 blur-3xl" aria-hidden />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl space-y-4">
+              <Link
+                href="/admin/communaute/evenements"
+                className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+                Retour pilotage événements
+              </Link>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
+                  Ce que vivent les membres
+                </span>
+                <span className="rounded-full border border-emerald-400/28 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100/90">
+                  Fiabilisation staff
+                </span>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Participation & présences</p>
+                <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
+                  Feuilles de présence, au service des membres
+                </h1>
+                <p className="mt-3 text-sm leading-relaxed text-slate-300 md:text-[15px]">
+                  Chaque case cochée ou note saisie ici alimente la <strong className="text-slate-100">confiance</strong>{" "}
+                  dans les stats (suivi, évaluations, récaps). Pensez au ressenti côté vocal : un membre « présent » doit
+                  refléter une vraie participation au créneau.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadData()}
+                  className={`${hubSubtleBtnClass} ${focusRingClass}`}
+                >
+                  <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                  Recharger le mois
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateEventModalOpen(true)}
+                  className={`${hubSubtleBtnClass} ${focusRingClass} border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-50`}
+                >
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                  Événement passé (rattrapage)
+                </button>
+                <Link href="/admin/communaute/evenements/calendrier" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                  <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+                  Calendrier
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/suivi"
+                  className={`${hubSubtleBtnClass} ${focusRingClass} border-sky-400/25 bg-sky-500/10 text-sky-100`}
+                >
+                  <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+                  Suivi par type
+                </Link>
+                <Link href="/member/evenements" target="_blank" rel="noopener noreferrer" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                  <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                  Vue membre (événements)
+                </Link>
+              </div>
+            </div>
+            <div className="w-full max-w-sm shrink-0 rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Interaction</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                Ouvrez un événement pour cocher les présents, annoter un contexte (retard, vocal coupé…) puis{" "}
+                <strong className="text-slate-200">valider et fermer</strong> pour enregistrer. L’onglet « par membre »
+                retrace l’historique individuel.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : (
       <div className={`mb-1 p-6 ${glassCardClass}`}>
         <Link
           href="/admin/events"
@@ -955,27 +1079,28 @@ export default function EventPresencePage() {
           </button>
         </div>
       </div>
+      )}
 
-      <div className={`p-2 ${panelClass}`}>
-        <div className="inline-flex flex-wrap gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+      <div className={`p-2 ${hubLayout ? `${sectionCardClass} border-indigo-400/15` : panelClass}`}>
+        <div className={`inline-flex flex-wrap gap-1 rounded-2xl border p-1 ${hubLayout ? "border-white/10 bg-black/35" : "rounded-xl border border-white/10 bg-black/20"}`}>
           <button
             type="button"
             onClick={() => setPresencePageTab("byMonth")}
-            className={`${tabBaseClass} ${presencePageTab === "byMonth" ? tabActiveClass : tabInactiveClass}`}
+            className={`${tabBaseClass} ${presencePageTab === "byMonth" ? tabActiveClass : tabInactiveClass} ${focusRingClass}`}
           >
             <span className="inline-flex items-center gap-2">
-              <Calendar className="h-4 w-4 opacity-90" />
+              <Calendar className="h-4 w-4 opacity-90" aria-hidden />
               Vue par mois
             </span>
           </button>
           <button
             type="button"
             onClick={() => setPresencePageTab("byMember")}
-            className={`${tabBaseClass} ${presencePageTab === "byMember" ? tabActiveClass : tabInactiveClass}`}
+            className={`${tabBaseClass} ${presencePageTab === "byMember" ? tabActiveClass : tabInactiveClass} ${focusRingClass}`}
           >
             <span className="inline-flex items-center gap-2">
-              <User className="h-4 w-4 opacity-90" />
-              Recherche par membre
+              <Users className="h-4 w-4 opacity-90" aria-hidden />
+              Parcours d’un membre
             </span>
           </button>
         </div>
@@ -1548,6 +1673,7 @@ export default function EventPresencePage() {
         <EventPresenceModal
           event={selectedEvent}
           allMembers={allMembers}
+          hubLayout={hubLayout}
           onClose={() => {
             setIsEventModalOpen(false);
             setSelectedEvent(null);
@@ -1562,6 +1688,7 @@ export default function EventPresencePage() {
       {/* Modal de création d'événement passé */}
       {isCreateEventModalOpen && (
         <CreateEventModal
+          hubLayout={hubLayout}
           onClose={() => setIsCreateEventModalOpen(false)}
           onSuccess={async () => {
             setIsCreateEventModalOpen(false);
@@ -1569,6 +1696,7 @@ export default function EventPresencePage() {
           }}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -1577,12 +1705,14 @@ export default function EventPresencePage() {
 function EventPresenceModal({
   event,
   allMembers,
+  hubLayout = false,
   onClose,
   onCommitChanges,
   saving,
 }: {
   event: Event;
   allMembers: Member[];
+  hubLayout?: boolean;
   onClose: () => void;
   onCommitChanges: (previousEvent: Event, nextEvent: Event) => Promise<void>;
   saving: boolean;
@@ -1592,9 +1722,18 @@ function EventPresenceModal({
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingNote, setEditingNote] = useState<{ twitchLogin: string; note: string } | null>(null);
   const [modalTab, setModalTab] = useState<"participants" | "stats">("participants");
+  const [modalEnter, setModalEnter] = useState(false);
   // État local pour l'événement qui se synchronise avec les props
   const [localEvent, setLocalEvent] = useState<Event>(event);
   const [sourceEvent, setSourceEvent] = useState<Event>(event);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setModalEnter(true));
+    return () => {
+      cancelAnimationFrame(id);
+      setModalEnter(false);
+    };
+  }, []);
 
   // Synchroniser l'événement local avec les props quand elles changent
   useEffect(() => {
@@ -1811,33 +1950,71 @@ function EventPresenceModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-[3px] p-4">
+    <div
+      role="presentation"
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-slate-950/85 backdrop-blur-md sm:items-center sm:p-4 ${hubLayout ? "" : "p-4"}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !saving) void handleRequestClose();
+      }}
+    >
       <div
-        className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-indigo-300/20 bg-[linear-gradient(160deg,rgba(18,24,40,0.96),rgba(9,13,24,0.98))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.7)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="presence-modal-title"
+        className={`max-h-[92vh] w-full max-w-6xl overflow-y-auto border bg-[linear-gradient(160deg,rgba(18,24,40,0.98),rgba(9,13,24,0.99))] shadow-[0_24px_70px_rgba(2,6,23,0.7)] transition-all duration-300 ease-out ${
+          hubLayout
+            ? `rounded-t-3xl border-indigo-400/30 p-5 sm:rounded-3xl sm:p-6 ${modalEnter ? "translate-y-0 opacity-100 sm:scale-100" : "translate-y-6 opacity-0 sm:translate-y-0 sm:scale-[0.97]"}`
+            : `rounded-2xl border-indigo-300/20 p-6 ${modalEnter ? "opacity-100" : "opacity-0"}`
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2">{localEvent.title}</h2>
-            <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4 mb-6">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.12em] text-indigo-200/85">Présences événement</p>
+            <h2 id="presence-modal-title" className="text-2xl font-bold text-white mb-2 break-words">
+              {localEvent.title}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
               <p className="text-gray-400 text-sm">{formatEventDateForModal(localEvent.date)}</p>
               {localEvent.category ? (
-                <span className={`rounded-lg border px-2 py-0.5 text-xs ${modalTone.badgeClass}`}>
-                  {localEvent.category}
+                <span className={`rounded-lg border px-2 py-0.5 text-xs ${modalTone.badgeClass}`}>{localEvent.category}</span>
+              ) : null}
+              {hasPendingChanges ? (
+                <span className="rounded-full border border-amber-400/35 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-100">
+                  Modifications non enregistrées
                 </span>
               ) : null}
             </div>
           </div>
           <button
-            onClick={handleRequestClose}
-            className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 hover:text-white hover:border-white/25 transition-colors"
+            type="button"
+            onClick={() => void handleRequestClose()}
+            disabled={saving}
+            className={`shrink-0 rounded-xl border border-white/10 bg-white/5 p-2.5 text-gray-300 transition hover:border-white/25 hover:text-white disabled:opacity-50 ${focusRingClass}`}
+            aria-label="Fermer"
           >
-            <X className="w-6 h-6" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
-        <div className="mb-4 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs text-cyan-100">
-          Outil de suivi: utilise l'onglet participants pour l'operationnel et l'onglet statistiques pour la lecture rapide.
+        <div
+          className={`mb-4 rounded-xl border px-3 py-2 text-xs ${
+            hubLayout
+              ? "border-indigo-400/25 bg-indigo-500/10 text-indigo-100"
+              : "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
+          }`}
+        >
+          {hubLayout ? (
+            <>
+              <span className="font-semibold text-white">Pour les membres TENF :</span> ce que vous cochez ici alimente les
+              récaps et le suivi. Utilisez <strong className="text-white">Participants</strong> pour l’opérationnel et{" "}
+              <strong className="text-white">Statistiques</strong> pour la lecture d’équipe avant validation.
+            </>
+          ) : (
+            <>
+              Outil de suivi : utilisez l’onglet participants pour l’opérationnel et l’onglet statistiques pour la lecture rapide.
+            </>
+          )}
         </div>
 
         {/* Recherche et ajout de membre */}
@@ -1881,27 +2058,21 @@ function EventPresenceModal({
           </div>
         </div>
 
-        <div className="mb-5 inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
+        <div className={`mb-5 inline-flex rounded-2xl border border-white/10 bg-black/25 p-1 ${hubLayout ? "grid w-full grid-cols-2 sm:inline-flex sm:w-auto" : ""}`}>
           <button
             type="button"
             onClick={() => setModalTab("participants")}
-            className={`${tabBaseClass} ${
-              modalTab === "participants"
-                ? tabActiveClass
-                : tabInactiveClass
-            }`}
+            className={`${tabBaseClass} ${modalTab === "participants" ? tabActiveClass : tabInactiveClass} ${focusRingClass} inline-flex items-center justify-center gap-2`}
           >
+            <Users className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
             Participants
           </button>
           <button
             type="button"
             onClick={() => setModalTab("stats")}
-            className={`${tabBaseClass} ${
-              modalTab === "stats"
-                ? tabActiveClass
-                : tabInactiveClass
-            }`}
+            className={`${tabBaseClass} ${modalTab === "stats" ? tabActiveClass : tabInactiveClass} ${focusRingClass} inline-flex items-center justify-center gap-2`}
           >
+            <BarChart3 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
             Statistiques
           </button>
         </div>
@@ -2092,18 +2263,23 @@ function EventPresenceModal({
             {hasPendingChanges ? "Fermer (modifs non enregistrées)" : "Fermer"}
           </button>
           <button
-            onClick={handleSaveAndClose}
+            type="button"
+            onClick={() => void handleSaveAndClose()}
             disabled={saving || !hasPendingChanges}
-            className={`${actionPrimaryClass} disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+            className={`disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
+              hubLayout && hasPendingChanges
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/25 hover:brightness-110"
+                : `${actionPrimaryClass}`
+            }`}
           >
             {saving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Sauvegarde...
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+                Sauvegarde…
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="h-4 w-4 shrink-0" aria-hidden />
                 {hasPendingChanges ? "Valider et fermer" : "Aucune modification"}
               </>
             )}
@@ -2116,12 +2292,15 @@ function EventPresenceModal({
 
 // Modal de création d'événement passé
 function CreateEventModal({
+  hubLayout = false,
   onClose,
   onSuccess,
 }: {
+  hubLayout?: boolean;
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }) {
+  const [modalEnter, setModalEnter] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -2130,6 +2309,14 @@ function CreateEventModal({
     location: '',
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setModalEnter(true));
+    return () => {
+      cancelAnimationFrame(id);
+      setModalEnter(false);
+    };
+  }, []);
 
   const categories = [
     'Spotlight',
@@ -2179,23 +2366,52 @@ function CreateEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-[3px] p-4">
+    <div
+      role="presentation"
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-slate-950/85 backdrop-blur-md sm:items-center sm:p-4 ${hubLayout ? "" : "p-4"}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-indigo-300/20 bg-[linear-gradient(160deg,rgba(18,24,40,0.96),rgba(9,13,24,0.98))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.7)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-past-event-title"
+        className={`w-full max-w-2xl border border-indigo-300/25 bg-[linear-gradient(160deg,rgba(18,24,40,0.98),rgba(9,13,24,0.99))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.7)] transition-all duration-300 ease-out sm:p-6 ${
+          hubLayout
+            ? `rounded-t-3xl sm:rounded-3xl ${modalEnter ? "translate-y-0 opacity-100 sm:scale-100" : "translate-y-6 opacity-0 sm:translate-y-0 sm:scale-[0.97]"}`
+            : `rounded-2xl ${modalEnter ? "opacity-100" : "opacity-0"}`
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
-          <h2 className="text-2xl font-bold text-white">Créer un événement passé</h2>
+          <div>
+            <p className="text-xs uppercase tracking-[0.12em] text-indigo-200/85">Rattrapage</p>
+            <h2 id="create-past-event-title" className="text-2xl font-bold text-white">
+              Créer un événement passé
+            </h2>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 hover:text-white hover:border-white/25 transition-colors"
+            disabled={saving}
+            className={`rounded-xl border border-white/10 bg-white/5 p-2.5 text-gray-300 transition hover:border-white/25 hover:text-white disabled:opacity-50 ${focusRingClass}`}
+            aria-label="Fermer"
           >
-            <X className="w-6 h-6" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
-        <div className="mb-4 rounded-xl border border-indigo-300/25 bg-indigo-300/10 p-3 text-xs text-indigo-100">
-          Explication: cette modal sert a ajouter rapidement un evenement passe pour rattacher et fiabiliser les presences.
+        <div className="mb-4 rounded-xl border border-indigo-300/25 bg-indigo-500/10 p-3 text-xs leading-relaxed text-indigo-100">
+          {hubLayout ? (
+            <>
+              Ajoutez un créneau déjà vécu pour <strong className="text-white">rattacher les présences</strong> saisies hors
+              calendrier ou corriger l’historique — les membres ne voient pas cette fiche comme une annonce : c’est un outil
+              de cohérence des données.
+            </>
+          ) : (
+            <>Cette fenêtre permet d’ajouter rapidement un événement passé afin de rattacher et fiabiliser les présences.</>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -2279,12 +2495,18 @@ function CreateEventModal({
             <button
               type="submit"
               disabled={saving}
-              className={`${actionPrimaryClass} disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+              className={`${
+                hubLayout
+                  ? "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  : actionPrimaryClass
+              } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${focusRingClass}`}
             >
-              {saving ? 'Création...' : (
+              {saving ? (
+                "Création…"
+              ) : (
                 <>
-                  <Plus className="w-5 h-5" />
-                  Créer l'événement
+                  <Plus className="h-5 w-5 shrink-0" aria-hidden />
+                  Créer l’événement
                 </>
               )}
             </button>

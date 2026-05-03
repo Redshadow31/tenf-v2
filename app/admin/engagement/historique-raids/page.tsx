@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
 import { ArrowRight, Info, X } from "lucide-react";
 
@@ -83,6 +84,12 @@ function shouldIncludeRaidBySource(raid: RaidApiItem, sourceFilter: RaidSourceFi
 }
 
 export default function AdminEngagementHistoriqueRaidsPage() {
+  const pathname = usePathname() || "";
+  const isCommunity = pathname.startsWith("/admin/communaute");
+  const engagementHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
+  const raidsSubHref = isCommunity ? "/admin/communaute/engagement/raids-eventsub" : "/admin/engagement/raids-sub";
+  const signalementsHref = isCommunity ? "/admin/communaute/engagement/signalements-raids" : "/admin/engagement/raids-a-valider";
+
   const [activeTab, setActiveTab] = useState<"history" | "stats">("history");
   const [statsSubTab, setStatsSubTab] = useState<"received" | "sent" | "all">("sent");
   const [statsSearch, setStatsSearch] = useState("");
@@ -789,41 +796,54 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+    <div className={`text-white space-y-6 ${isCommunity ? "pb-2" : "min-h-screen bg-[#0e0e10] p-8"}`}>
       <section className={glassCardClass}>
-        <Link href="/admin/raids" className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
-          ← Retour à Engagement
+        <Link href={engagementHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
+          {isCommunity ? "← Hub engagement" : "← Retour à Engagement"}
         </Link>
         <div className="mb-3 flex flex-wrap gap-2">
+          {isCommunity ? null : (
+            <Link
+              href="/admin/raids2"
+              className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-300"
+              style={{ borderColor: "rgba(52,211,153,0.45)" }}
+            >
+              Ouvrir suivi des raids (import manuel)
+            </Link>
+          )}
           <Link
-            href="/admin/raids2"
-            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-300"
-            style={{ borderColor: "rgba(52,211,153,0.45)" }}
-          >
-            Ouvrir suivi des raids (import manuel)
-          </Link>
-          <Link
-            href="/admin/engagement/raids-a-valider"
+            href={signalementsHref}
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#facc15]"
             style={{ borderColor: "rgba(250,204,21,0.4)" }}
           >
-            Ouvrir raids a valider
+            File signalements
           </Link>
           <Link
-            href="/admin/engagement/raids-sub"
+            href={raidsSubHref}
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-sky-300"
             style={{ borderColor: "rgba(56,189,248,0.45)" }}
           >
-            Ouvrir raids-sub EventSub
+            Raids EventSub
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Link>
         </div>
-        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
-          Historique des raids
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+          {isCommunity ? "Historique — mémoire des raids TENF" : "Historique des raids"}
         </h1>
         <p className="max-w-4xl text-sm text-slate-300">
-          Vue consolidée des raids manuels et EventSub pour analyser volumes, qualité de validation, tendances mensuelles
-          et actions de correction.
+          {isCommunity ? (
+            <>
+              Ici se croisent les <strong className="text-white">preuves automatiques</strong> (EventSub) et les{" "}
+              <strong className="text-white">corrections humaines</strong> (signalements). Utilise ce module pour expliquer la
+              dynamique du mois aux membres, repérer les pics d’activité et sécuriser les chiffres avant toute communication
+              externe.
+            </>
+          ) : (
+            <>
+              Vue consolidée des raids manuels et EventSub pour analyser volumes, qualité de validation, tendances mensuelles
+              et actions de correction.
+            </>
+          )}
         </p>
       </section>
 

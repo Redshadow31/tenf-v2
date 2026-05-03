@@ -1,12 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
+import { discordAvatarUrl } from "@/lib/discordAvatarUrl";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 import { isFounder } from "@/lib/adminRoles";
-import { CheckCircle2, MessageSquare, ShieldCheck, Star, RefreshCw, ArrowRight, Activity } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Flag,
+  Gauge,
+  HeartHandshake,
+  MessageSquare,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Users,
+} from "lucide-react";
 
 type StaffApplication = {
   id: string;
@@ -115,6 +132,47 @@ const sectionCardClass =
   "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+const focusRingClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
+const heroShellClass =
+  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
+
+const PIPELINE_LABELS = ["Réception", "Contact", "Entretien", "Décision"] as const;
+
+function statusBadgeStyles(status: StaffApplication["admin_status"]): string {
+  switch (status) {
+    case "nouveau":
+      return "border-sky-400/45 bg-sky-500/15 text-sky-100";
+    case "a_contacter":
+      return "border-amber-400/45 bg-amber-500/12 text-amber-100";
+    case "entretien_prevu":
+      return "border-violet-400/45 bg-violet-500/15 text-violet-100";
+    case "accepte":
+      return "border-emerald-400/45 bg-emerald-500/15 text-emerald-100";
+    case "refuse":
+      return "border-rose-400/45 bg-rose-500/12 text-rose-100";
+    case "archive":
+      return "border-slate-500/40 bg-slate-600/15 text-slate-200";
+    default:
+      return "border-white/15 bg-white/5 text-slate-200";
+  }
+}
+
+function pipelineStepIndex(status: StaffApplication["admin_status"]): number {
+  if (status === "refuse" || status === "archive") return 3;
+  const order = ["nouveau", "a_contacter", "entretien_prevu", "accepte"] as const;
+  const i = order.indexOf(status as (typeof order)[number]);
+  return i >= 0 ? i : 0;
+}
+
+function pipelineDecisionTone(
+  status: StaffApplication["admin_status"]
+): "progress" | "ok" | "ko" | "archived" {
+  if (status === "accepte") return "ok";
+  if (status === "refuse") return "ko";
+  if (status === "archive") return "archived";
+  return "progress";
+}
 
 export default function PostulationsStaffPage() {
   const [applications, setApplications] = useState<StaffApplication[]>([]);
@@ -125,6 +183,8 @@ export default function PostulationsStaffPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "moderateur" | "soutien" | "les_deux">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | StaffApplication["admin_status"]>("all");
+  const [flagsOnly, setFlagsOnly] = useState(false);
+  const [openPipelineOnly, setOpenPipelineOnly] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [assignedToInput, setAssignedToInput] = useState("");
@@ -148,6 +208,7 @@ export default function PostulationsStaffPage() {
   const [finalDecisionInput, setFinalDecisionInput] = useState("");
   const [finalDecisionOutcome, setFinalDecisionOutcome] = useState<FounderFinalDecision["outcome"]>("soutien_tenf");
   const [finalDecisionMemberMessage, setFinalDecisionMemberMessage] = useState("");
+  const [workspaceTab, setWorkspaceTab] = useState<"candidat" | "equipe">("candidat");
 
   const SAVED_VIEWS_KEY = "tenf-admin-postulations-saved-views";
 
@@ -263,7 +324,7 @@ export default function PostulationsStaffPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, roleFilter, statusFilter, dateFilter]);
+  }, [search, roleFilter, statusFilter, dateFilter, flagsOnly, openPipelineOnly]);
 
   async function loadApplications() {
     try {
@@ -398,6 +459,13 @@ export default function PostulationsStaffPage() {
   }
 
   const filtered = applications.filter((item) => {
+    if (flagsOnly && !item.has_red_flag) return false;
+    if (
+      openPipelineOnly &&
+      !["nouveau", "a_contacter", "entretien_prevu"].includes(item.admin_status)
+    ) {
+      return false;
+    }
     if (roleFilter !== "all" && item.answers.role_postule !== roleFilter) return false;
     if (statusFilter !== "all" && item.admin_status !== statusFilter) return false;
     if (dateFilter && item.created_at.slice(0, 10) !== dateFilter) return false;
@@ -419,6 +487,9 @@ export default function PostulationsStaffPage() {
   }, [filtered, currentPage, pageSize]);
 
   const selected = filtered.find((item) => item.id === selectedId) || filtered[0] || null;
+  const selectedAvatarSrc = selected
+    ? discordAvatarUrl(selected.applicant_discord_id, selected.applicant_avatar)
+    : null;
   const dashboardStats = useMemo(() => {
     const total = applications.length;
     const open = applications.filter((a) => ["nouveau", "a_contacter", "entretien_prevu"].includes(a.admin_status)).length;
@@ -443,6 +514,10 @@ export default function PostulationsStaffPage() {
     () => parseStructuredAdminNotes(selected?.admin_notes || []),
     [selected?.id, selected?.admin_notes]
   );
+
+  useEffect(() => {
+    setWorkspaceTab("candidat");
+  }, [selected?.id]);
 
   useEffect(() => {
     if (!selected) return;
@@ -542,121 +617,309 @@ export default function PostulationsStaffPage() {
     URL.revokeObjectURL(url);
   }
 
+  const roleSum = Math.max(
+    1,
+    operationalStats.roleModerateur + operationalStats.roleSoutien + operationalStats.roleBoth
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9146ff]"></div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#06060a] text-white">
+        <div className="relative h-14 w-14">
+          <div className="absolute inset-0 rounded-full border-2 border-violet-500/25" />
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-violet-400" />
+        </div>
+        <p className="text-sm text-violet-200/85">Chargement des candidatures…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-8 space-y-6">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(79,70,229,0.12),_transparent_50%),#06060a] p-4 text-white md:p-8 space-y-6">
       <AdminToastStack
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
-      <section className={`${glassCardClass} p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <Link href="/admin/membres/gestion" className="text-sm text-slate-300 hover:text-white inline-block mb-3">
-              ← Retour gestion membres
+      <section className={`${heroShellClass} p-6 md:p-8`}>
+        <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-52 w-52 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-start justify-between gap-6">
+          <div className="max-w-2xl">
+            <Link
+              href="/admin/membres/gestion"
+              className={`mb-3 inline-flex items-center gap-1 text-sm text-violet-200/85 transition hover:text-white ${focusRingClass} rounded-lg`}
+            >
+              <ChevronRight className="h-4 w-4 rotate-180" aria-hidden />
+              Retour gestion membres
             </Link>
-            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Membres · Recrutement staff</p>
-            <h1 className="bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-2xl md:text-3xl font-semibold text-transparent">
-              Postulations Modérateur / Soutien TENF
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/35 bg-violet-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-100">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                Recrutement staff TENF
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
+                Expérience candidats & équipe
+              </span>
+            </div>
+            <h1 className="mt-4 bg-gradient-to-r from-white via-indigo-100 to-cyan-200 bg-clip-text text-2xl font-bold text-transparent md:text-4xl md:leading-tight">
+              Postulations modération &amp; soutien
             </h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Gère le pipeline de recrutement: tri des candidatures, revue interne, avis croisés, décision finale fondateurs et suivi opérationnel.
+            <p className="mt-3 text-sm leading-relaxed text-slate-400 md:text-base">
+              Ici, le staff fait vivre un parcours clair pour les personnes qui veulent rejoindre TENF : lecture humaine des
+              réponses, relecture croisée, entretien, puis décision transparente. Chaque dossier est une promesse de sérieux
+              vis-à-vis des membres de la communauté.
             </p>
+            <div className="mt-6 hidden gap-2 md:flex md:flex-wrap">
+              {PIPELINE_LABELS.map((label, i) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
+                    {i + 1}. {label}
+                  </span>
+                  {i < PIPELINE_LABELS.length - 1 ? (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" aria-hidden />
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
           <button
             type="button"
             onClick={() => void loadApplications()}
             disabled={loading}
-            className={`${subtleButtonClass} disabled:opacity-60`}
+            className={`${subtleButtonClass} shrink-0 disabled:opacity-60`}
           >
             <RefreshCw className="h-4 w-4" />
             Actualiser
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-          <div className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2">
-            <p className="text-xs text-gray-400">Total</p>
-            <p className="text-lg font-bold">{dashboardStats.total}</p>
-          </div>
-          <div className="rounded-lg border border-blue-700/40 bg-[#0d1220] px-3 py-2">
-            <p className="text-xs text-blue-300">En cours</p>
-            <p className="text-lg font-bold text-blue-200">{dashboardStats.open}</p>
-          </div>
-          <div className="rounded-lg border border-green-700/40 bg-[#0d1b15] px-3 py-2">
-            <p className="text-xs text-green-300">Acceptes</p>
-            <p className="text-lg font-bold text-green-200">{dashboardStats.accepted}</p>
-          </div>
-          <div className="rounded-lg border border-red-700/40 bg-[#1b0f12] px-3 py-2">
-            <p className="text-xs text-red-300">Red flags</p>
-            <p className="text-lg font-bold text-red-200">{dashboardStats.flagged}</p>
-          </div>
+
+        <div className="relative mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            {
+              label: "Total dossiers",
+              value: dashboardStats.total,
+              sub: "Historique complet",
+              icon: ClipboardList,
+              border: "border-slate-500/35",
+              onClick: () => {
+                setStatusFilter("all");
+                setRoleFilter("all");
+                setDateFilter("");
+                setFlagsOnly(false);
+                setOpenPipelineOnly(false);
+                pushToast("info", "Filtres réinitialisés");
+              },
+            },
+            {
+              label: "En traitement",
+              value: dashboardStats.open,
+              sub: "Réception → entretien",
+              icon: Activity,
+              border: "border-sky-400/40",
+              onClick: () => {
+                setStatusFilter("all");
+                setOpenPipelineOnly(true);
+                setFlagsOnly(false);
+                pushToast("info", "Pipeline actif", "Dossiers non clos uniquement.");
+              },
+            },
+            {
+              label: "Acceptés",
+              value: dashboardStats.accepted,
+              sub: "Intégration à suivre",
+              icon: CheckCircle2,
+              border: "border-emerald-400/40",
+              onClick: () => {
+                setOpenPipelineOnly(false);
+                setFlagsOnly(false);
+                setStatusFilter("accepte");
+              },
+            },
+            {
+              label: "Red flags",
+              value: dashboardStats.flagged,
+              sub: "À examiner",
+              icon: Flag,
+              border: "border-rose-400/40",
+              onClick: () => {
+                setOpenPipelineOnly(false);
+                setFlagsOnly(true);
+                pushToast("info", "Red flags", "Seuls les dossiers signalés sont affichés.");
+              },
+            },
+          ].map((card) => {
+            const Icon = card.icon;
+            return (
+              <button
+                key={card.label}
+                type="button"
+                onClick={card.onClick}
+                className={`rounded-2xl border ${card.border} bg-black/30 p-4 text-left transition hover:-translate-y-0.5 hover:bg-black/45 hover:shadow-lg hover:shadow-black/30 ${focusRingClass}`}
+              >
+                <Icon className="h-5 w-5 text-indigo-200/90" aria-hidden />
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">{card.value}</p>
+                <p className="mt-1 text-[11px] text-slate-500">{card.sub}</p>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <article className={`${sectionCardClass} p-5`}>
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-sky-200" />
-            <h2 className="text-lg font-semibold text-slate-100">Pilotage recrutement</h2>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
+        <article className={`${sectionCardClass} p-5 md:p-6`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Gauge className="h-5 w-5 text-sky-300" aria-hidden />
+              <h2 className="text-lg font-semibold text-slate-100">Rythme sur 7 jours</h2>
+            </div>
+            <p className="text-xs text-slate-500">Arrivées récentes et files actives</p>
           </div>
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <div className="rounded-lg border border-sky-400/30 bg-sky-500/10 p-3">
-              <p className="text-slate-300">Nouvelles 7j</p>
-              <p className="text-xl font-semibold text-sky-200">{operationalStats.recent}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-sky-400/35 bg-sky-500/10 p-4 transition hover:border-sky-400/55">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Nouvelles 7j</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.recent}</p>
             </div>
-            <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3">
-              <p className="text-slate-300">À contacter</p>
-              <p className="text-xl font-semibold text-amber-200">{operationalStats.toContact}</p>
+            <div className="rounded-2xl border border-amber-400/35 bg-amber-500/10 p-4 transition hover:border-amber-400/55">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">À contacter</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.toContact}</p>
             </div>
-            <div className="rounded-lg border border-indigo-400/30 bg-indigo-500/10 p-3">
-              <p className="text-slate-300">Entretiens</p>
-              <p className="text-xl font-semibold text-indigo-200">{operationalStats.interviews}</p>
+            <div className="rounded-2xl border border-violet-400/35 bg-violet-500/10 p-4 transition hover:border-violet-400/55">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Entretiens</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.interviews}</p>
             </div>
-            <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3">
-              <p className="text-slate-300">Score moyen</p>
-              <p className="text-xl font-semibold text-emerald-200">{operationalStats.avgScore}</p>
+            <div className="rounded-2xl border border-emerald-400/35 bg-emerald-500/10 p-4 transition hover:border-emerald-400/55">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Score moyen</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-white">
+                {operationalStats.avgScore}
+                <span className="text-lg font-semibold text-slate-500">/5</span>
+              </p>
             </div>
           </div>
         </article>
-        <article className={`${sectionCardClass} p-5`}>
-          <h2 className="text-lg font-semibold text-slate-100">Répartition des postulations</h2>
-          <div className="mt-3 space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
-              <span className="text-slate-200">Parcours Modérateur</span>
+        <article className={`${sectionCardClass} p-5 md:p-6`}>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-300" aria-hidden />
+            <h2 className="text-lg font-semibold text-slate-100">Parcours choisi par les candidats</h2>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Répartition visuelle — utile pour anticiper les entretiens</p>
+          <div className="mt-4 flex h-4 w-full overflow-hidden rounded-full border border-white/10 bg-black/40">
+            <div
+              className="bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+              style={{ width: `${(operationalStats.roleModerateur / roleSum) * 100}%` }}
+              title={`Modération: ${operationalStats.roleModerateur}`}
+            />
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+              style={{ width: `${(operationalStats.roleSoutien / roleSum) * 100}%` }}
+              title={`Soutien: ${operationalStats.roleSoutien}`}
+            />
+            <div
+              className="bg-gradient-to-r from-amber-500 to-orange-400 transition-all"
+              style={{ width: `${(operationalStats.roleBoth / roleSum) * 100}%` }}
+              title={`Mixte: ${operationalStats.roleBoth}`}
+            />
+          </div>
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-xl border border-indigo-400/25 bg-indigo-500/5 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-slate-200">
+                <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                Modération
+              </span>
               <span className="font-semibold text-indigo-200">{operationalStats.roleModerateur}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
-              <span className="text-slate-200">Parcours Soutien TENF</span>
+            <div className="flex items-center justify-between rounded-xl border border-emerald-400/25 bg-emerald-500/5 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-slate-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Soutien TENF
+              </span>
               <span className="font-semibold text-emerald-200">{operationalStats.roleSoutien}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2">
-              <span className="text-slate-200">Parcours Mixte</span>
+            <div className="flex items-center justify-between rounded-xl border border-amber-400/25 bg-amber-500/5 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-slate-200">
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                Les deux
+              </span>
               <span className="font-semibold text-amber-200">{operationalStats.roleBoth}</span>
             </div>
-            <Link
-              href="/admin/membres/gestion"
-              className="inline-flex w-full items-center justify-between rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-slate-100 hover:border-indigo-300/45"
-            >
-              Ouvrir gestion membres
-              <ArrowRight className="h-4 w-4 text-indigo-200" />
-            </Link>
           </div>
+          <Link
+            href="/admin/membres/gestion"
+            className={`mt-4 inline-flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-indigo-400/40 hover:bg-white/[0.07] ${focusRingClass}`}
+          >
+            Passer à la gestion des membres actifs
+            <ArrowRight className="h-4 w-4 text-indigo-300" aria-hidden />
+          </Link>
         </article>
       </section>
 
-      <section className={`${sectionCardClass} p-4`}>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <section className={`${sectionCardClass} p-4 md:p-5`}>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Raccourcis filtres</p>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("nouveau");
+            setOpenPipelineOnly(false);
+            setFlagsOnly(false);
+          }}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
+            statusFilter === "nouveau" && !openPipelineOnly && !flagsOnly
+              ? "border-sky-400/50 bg-sky-500/20 text-sky-100"
+              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+          }`}
+        >
+          Boîte nouveaux
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpenPipelineOnly(true);
+            setStatusFilter("all");
+            setFlagsOnly(false);
+          }}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
+            openPipelineOnly && !flagsOnly
+              ? "border-violet-400/50 bg-violet-500/20 text-violet-100"
+              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+          }`}
+        >
+          Dossiers ouverts
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("entretien_prevu");
+            setOpenPipelineOnly(false);
+            setFlagsOnly(false);
+          }}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
+            statusFilter === "entretien_prevu"
+              ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-100"
+              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+          }`}
+        >
+          Entretiens prévus
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setFlagsOnly(true);
+            setOpenPipelineOnly(false);
+          }}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
+            flagsOnly ? "border-rose-400/50 bg-rose-500/15 text-rose-100" : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+          }`}
+        >
+          Red flags
+        </button>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
-          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
+          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
         >
           <option value="all">Tous rôles</option>
           <option value="moderateur">Modérateur</option>
@@ -665,8 +928,11 @@ export default function PostulationsStaffPage() {
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
+          onChange={(e) => {
+            setStatusFilter(e.target.value as typeof statusFilter);
+            setOpenPipelineOnly(false);
+          }}
+          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
         >
           <option value="all">Tous statuts</option>
           <option value="nouveau">Nouveau</option>
@@ -680,11 +946,12 @@ export default function PostulationsStaffPage() {
           type="date"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-white"
+          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
         />
         <button
+          type="button"
           onClick={exportCsv}
-          className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-2 font-semibold text-indigo-100 transition hover:bg-indigo-500/30"
+          className={`rounded-xl border border-indigo-300/35 bg-indigo-500/20 px-3 py-2.5 font-semibold text-indigo-100 transition hover:bg-indigo-500/30 ${focusRingClass}`}
         >
           Export CSV
         </button>
@@ -731,8 +998,8 @@ export default function PostulationsStaffPage() {
             <div className="p-6 text-gray-400">Aucune postulation pour ces filtres.</div>
           ) : (
             <AdminTableShell
-              title="Liste des postulations"
-              subtitle="Table standardisée avec pagination"
+              title="Dossiers candidats"
+              subtitle="Clique pour ouvrir la fiche — vue lecteur ou outils équipe"
               searchValue={search}
               onSearchChange={setSearch}
               page={currentPage}
@@ -740,53 +1007,187 @@ export default function PostulationsStaffPage() {
               total={filtered.length}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => setPageSize(size)}
-              searchPlaceholder="Filtrer pseudo..."
+              searchPlaceholder="Pseudo Discord, nom…"
             >
-              <div className="divide-y divide-gray-700">
-              {paginated.map((application) => (
+              <div className="divide-y divide-white/[0.06]">
+              {paginated.map((application) => {
+                const rowAvatarSrc = discordAvatarUrl(
+                  application.applicant_discord_id,
+                  application.applicant_avatar
+                );
+                return (
                 <button
                   key={application.id}
+                  type="button"
                   onClick={() => setSelectedId(application.id)}
-                  className={`w-full text-left p-4 transition-colors ${
-                        selected?.id === application.id ? "bg-[#2a1740]" : "hover:bg-[#1b1f2b]"
+                  className={`w-full text-left p-4 transition-all ${
+                        selected?.id === application.id
+                          ? "bg-gradient-to-r from-violet-950/50 to-indigo-950/30 ring-1 ring-inset ring-violet-500/35"
+                          : "hover:bg-white/[0.04]"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-white">{application.answers.pseudo_discord}</p>
-                      <p className="text-xs text-gray-400">
-                        {formatRole(application.answers.role_postule)} · {new Date(application.created_at).toLocaleDateString("fr-FR")}
+                  <div className="flex items-start gap-3">
+                    {rowAvatarSrc ? (
+                      <Image
+                        src={rowAvatarSrc}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 shrink-0 rounded-2xl border border-white/10 object-cover"
+                        sizes="48px"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/15 text-sm font-bold text-violet-100">
+                        {application.answers.pseudo_discord.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-white">{application.answers.pseudo_discord}</p>
+                        {application.has_red_flag ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/35 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-200">
+                            <Flag className="h-3 w-3" aria-hidden />
+                            Signalé
+                          </span>
+                        ) : null}
+                        {typeof application.score === "number" ? (
+                          <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                            Score {application.score}/5
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatRole(application.answers.role_postule)} ·{" "}
+                        {new Date(application.created_at).toLocaleDateString("fr-FR")}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded border border-[#3a3f55] bg-[#121623]/80">{formatStatus(application.admin_status)}</span>
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeStyles(application.admin_status)}`}
+                    >
+                      {formatStatus(application.admin_status)}
+                    </span>
                   </div>
                 </button>
-              ))}
+                );
+              })}
               </div>
             </AdminTableShell>
           )}
         </div>
 
-        <div className={`${sectionCardClass} p-5`}>
+        <div className={`${sectionCardClass} p-5 md:p-6`}>
           {!selected ? (
-            <p className="text-gray-400">Sélectionne une postulation pour voir le détail.</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-violet-400/25 bg-violet-500/10">
+                <ClipboardList className="h-8 w-8 text-violet-200/80" aria-hidden />
+              </div>
+              <p className="max-w-sm text-sm text-slate-400">
+                Choisis un dossier dans la liste pour lire les réponses comme un candidat les a écrites, puis passe à
+                l&apos;onglet <span className="text-indigo-200">Outils équipe</span> pour statuts, notes et décision.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">{selected.answers.pseudo_discord}</h2>
-                  <p className="text-xs text-gray-400">
-                    {formatRole(selected.answers.role_postule)} · {new Date(selected.created_at).toLocaleString("fr-FR")}
-                  </p>
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-start gap-3">
+                  {selectedAvatarSrc ? (
+                    <Image
+                      src={selectedAvatarSrc}
+                      alt=""
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover"
+                      sizes="64px"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-violet-400/30 bg-violet-500/15 text-xl font-bold text-violet-100">
+                      {selected.answers.pseudo_discord.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{selected.answers.pseudo_discord}</h2>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {formatRole(selected.answers.role_postule)} · reçu le{" "}
+                      {new Date(selected.created_at).toLocaleString("fr-FR")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeStyles(selected.admin_status)}`}
+                      >
+                        {formatStatus(selected.admin_status)}
+                      </span>
+                      {typeof selected.score === "number" ? (
+                        <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-200">
+                          Score auto {selected.score}/5
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-1 rounded bg-gray-700">{formatStatus(selected.admin_status)}</span>
-                  <button
-                    onClick={() => exportFullApplication(selected)}
-                    className="text-xs px-3 py-1 rounded-lg border border-indigo-300/35 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-100 font-semibold"
-                  >
-                    Exporter fiche complète
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => exportFullApplication(selected)}
+                  className={`rounded-xl border border-indigo-400/35 bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25 ${focusRingClass}`}
+                >
+                  Exporter JSON complet
+                </button>
+              </div>
+
+              <div className="flex gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceTab("candidat")}
+                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
+                    workspaceTab === "candidat"
+                      ? "bg-violet-600/35 text-white shadow-inner shadow-violet-900/40"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Lecture candidat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceTab("equipe")}
+                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
+                    workspaceTab === "equipe"
+                      ? "bg-indigo-600/35 text-white shadow-inner shadow-indigo-900/40"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Outils équipe
+                </button>
+              </div>
+
+              {workspaceTab === "candidat" && (
+              <>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Progression dossier</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {PIPELINE_LABELS.map((label, i) => {
+                    const pi = pipelineStepIndex(selected.admin_status);
+                    const done = i < pi;
+                    const current = i === pi;
+                    const pending = i > pi;
+                    const tone = pipelineDecisionTone(selected.admin_status);
+                    let card =
+                      "rounded-xl border px-3 py-2 text-[11px] font-semibold transition ";
+                    if (pending) card += "border-white/10 bg-white/[0.03] text-slate-500";
+                    else if (done) card += "border-emerald-400/35 bg-emerald-500/10 text-emerald-100";
+                    else if (current && i === 3) {
+                      if (tone === "ok") card += "border-emerald-400/55 bg-emerald-500/20 text-emerald-50 ring-2 ring-emerald-400/25";
+                      else if (tone === "ko") card += "border-rose-400/55 bg-rose-500/20 text-rose-50 ring-2 ring-rose-400/25";
+                      else if (tone === "archived") card += "border-slate-400/45 bg-slate-600/20 text-slate-100 ring-2 ring-slate-400/20";
+                      else card += "border-amber-400/50 bg-amber-500/15 text-amber-50 ring-2 ring-amber-400/25";
+                    } else card += "border-violet-400/50 bg-violet-500/20 text-white ring-2 ring-violet-400/30";
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className={card}>{label}</span>
+                        {i < PIPELINE_LABELS.length - 1 ? (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" aria-hidden />
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -833,8 +1234,14 @@ export default function PostulationsStaffPage() {
                   </div>
                 </article>
               )}
+              </>
+              )}
 
-              <div className="border-t border-gray-700 pt-4 space-y-4">
+              {workspaceTab === "equipe" && (
+              <div className="border-t border-white/10 pt-4 space-y-4">
+                <p className="text-xs font-medium text-indigo-200/90">
+                  Statut admin, assignation, relecture croisée et décision — réservé au staff TENF.
+                </p>
                 <label className="block text-sm text-gray-300">Statut</label>
                 <select
                   value={selected.admin_status}
@@ -896,7 +1303,10 @@ export default function PostulationsStaffPage() {
                   Tag red flag
                 </label>
                 {selected.has_red_flag && (
-                  <p className="text-xs text-red-300">⚠️ Candidature marquée red flag</p>
+                  <p className="flex items-center gap-1.5 text-xs text-red-300">
+                    <Flag className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Candidature marquée red flag
+                  </p>
                 )}
 
                 <textarea
@@ -1131,6 +1541,7 @@ export default function PostulationsStaffPage() {
                 )}
 
                 <button
+                  type="button"
                   onClick={() => void updateApplication(selected.id, { adminStatus: "archive" })}
                   disabled={savingId === selected.id}
                   className="rounded-lg border border-yellow-300/35 bg-yellow-500/20 px-4 py-2 text-sm font-semibold text-yellow-100 transition hover:bg-yellow-500/30 disabled:opacity-60"
@@ -1138,6 +1549,7 @@ export default function PostulationsStaffPage() {
                   Archiver
                 </button>
               </div>
+              )}
             </div>
           )}
         </div>

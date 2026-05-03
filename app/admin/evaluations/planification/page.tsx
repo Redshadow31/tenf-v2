@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Upload,
@@ -14,6 +14,14 @@ import {
   CalendarDays,
   Archive,
   Info,
+  RefreshCw,
+  Sparkles,
+  ExternalLink,
+  Users,
+  MapPin,
+  HeartHandshake,
+  Gauge,
+  Eye,
 } from "lucide-react";
 import {
   addMonths,
@@ -102,12 +110,14 @@ async function resizeToSessionBanner(file: File): Promise<File> {
   return new File([blob], `${base}-${BANNER_W}x${BANNER_H}.${ext}`, { type: mime });
 }
 
-const glassCardClass =
-  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
+const heroShellClass =
+  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
 const sectionCardClass =
   "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+const focusRingClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
 
 const emptyForm = () => ({
   title: "",
@@ -137,14 +147,27 @@ export default function PlanificationPage() {
   const [sessionTime, setSessionTime] = useState("20:00");
   const [bulkImageApplying, setBulkImageApplying] = useState(false);
   const [listTab, setListTab] = useState<"upcoming" | "archive">("upcoming");
+  const [kpiPulse, setKpiPulse] = useState(false);
+  const formSectionRef = useRef<HTMLDivElement>(null);
+  const listSectionRef = useRef<HTMLDivElement>(null);
 
   const stats = useMemo(() => {
     const total = integrations.length;
     const published = integrations.filter((item) => item.isPublished).length;
     const upcoming = integrations.filter((item) => new Date(item.date).getTime() >= Date.now()).length;
     const withImage = integrations.filter((item) => Boolean(item.image)).length;
-    return { total, published, upcoming, withImage };
+    const drafts = Math.max(0, total - published);
+    const publicationRate = total > 0 ? Math.round((published / total) * 100) : 0;
+    return { total, published, upcoming, withImage, drafts, publicationRate };
   }, [integrations]);
+
+  useEffect(() => {
+    if (!loading) {
+      setKpiPulse(true);
+      const t = window.setTimeout(() => setKpiPulse(false), 700);
+      return () => window.clearTimeout(t);
+    }
+  }, [loading, integrations.length]);
 
   const { upcomingIntegrations, archiveIntegrations } = useMemo(() => {
     const now = Date.now();
@@ -539,64 +562,191 @@ export default function PlanificationPage() {
     }
   };
 
+  const scrollToForm = () =>
+    formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToList = () =>
+    listSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
-    <div className="space-y-6 p-8 text-white">
-      <section className={`${glassCardClass} p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
+    <div className="space-y-8 text-white">
+      <section className={`${heroShellClass} p-6 md:p-8`}>
+        <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-violet-600/20 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-cyan-500/12 blur-3xl" aria-hidden />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl space-y-4">
             <Link
               href="/admin/onboarding"
-              className="mb-3 inline-block text-sm text-slate-300 transition hover:text-white"
+              className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
             >
-              ← Retour à l'onboarding
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Retour au hub onboarding
             </Link>
-            <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Onboarding · Sessions</p>
-            <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-              Planification des sessions d'intégration
-            </h1>
-            <p className="mt-3 text-sm text-slate-300">
-              Centralise la création, l'édition et la publication des sessions pour piloter l'onboarding sans friction.
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
+                Sessions d&apos;accueil
+              </span>
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100/90">
+                Vue membres &amp; public
+              </span>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/85">Planification</p>
+              <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-white to-cyan-100 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
+                Les créneaux que voient les nouveaux membres
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300 md:text-[15px]">
+                Chaque session publiée apparaît sur le parcours{" "}
+                <strong className="font-semibold text-slate-100">intégration</strong> : titre, visuel 4∶1, date et lien
+                vocal. Les brouillons restent internes au staff — publie quand le staffing et le message sont prêts.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void loadIntegrations()}
+                className={`${subtleButtonClass} ${focusRingClass}`}
+              >
+                <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? "animate-spin" : ""}`} aria-hidden />
+                Rafraîchir les sessions
+              </button>
+              <button
+                type="button"
+                onClick={scrollToForm}
+                className={`${subtleButtonClass} ${focusRingClass} border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/45`}
+              >
+                <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+                Créer / éditer
+              </button>
+              <Link
+                href="/integration"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${subtleButtonClass} ${focusRingClass} border-sky-400/25 bg-sky-500/10 text-sky-100 hover:border-sky-300/45`}
+              >
+                <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                Page publique intégration
+              </Link>
+            </div>
+          </div>
+
+          <div className="w-full max-w-sm shrink-0 space-y-4 rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">
+              <Gauge className="h-4 w-4 text-violet-300" aria-hidden />
+              Publication
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Publiées / total</span>
+                <span className="font-semibold text-white">{stats.publicationRate}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 transition-[width] duration-700 ease-out ${kpiPulse ? "animate-pulse" : ""}`}
+                  style={{ width: `${stats.publicationRate}%` }}
+                  role="progressbar"
+                  aria-valuenow={stats.publicationRate}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                {stats.published} en ligne · {stats.drafts} brouillon(s) · {stats.total} session(s)
+              </p>
+            </div>
+            <p className="flex items-start gap-2 border-t border-white/10 pt-3 text-xs leading-relaxed text-slate-400">
+              <HeartHandshake className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300/80" aria-hidden />
+              Pense au ressenti : une bannière lisible et une date claire rassurent avant le vocal.
             </p>
           </div>
-          <button type="button" onClick={() => void loadIntegrations()} className={subtleButtonClass}>
-            <Copy className="h-4 w-4" />
-            Rafraîchir la liste
-          </button>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Total sessions</p>
-          <p className="mt-2 text-3xl font-semibold text-indigo-200">{stats.total}</p>
-        </article>
-        <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Sessions publiées</p>
-          <p className="mt-2 text-3xl font-semibold text-emerald-300">{stats.published}</p>
-        </article>
-        <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">À venir</p>
-          <p className="mt-2 text-3xl font-semibold text-sky-300">{stats.upcoming}</p>
-        </article>
-        <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Avec visuel</p>
-          <p className="mt-2 text-3xl font-semibold text-amber-300">{stats.withImage}</p>
-        </article>
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <button
+          type="button"
+          onClick={scrollToList}
+          className={`${sectionCardClass} w-full p-5 text-left transition hover:-translate-y-0.5 hover:border-indigo-400/35 hover:shadow-[0_12px_36px_rgba(79,70,229,0.18)] ${focusRingClass}`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Total</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums text-white transition ${kpiPulse ? "scale-[1.02]" : ""}`}>
+            {stats.total}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">Voir la liste complète</p>
+          <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300">
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden /> Défiler vers les sessions
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            scrollToForm();
+          }}
+          className={`${sectionCardClass} w-full border-emerald-500/15 p-5 text-left transition hover:-translate-y-0.5 hover:border-emerald-400/35 ${focusRingClass}`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-200/70">Publiées</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums text-emerald-300 ${kpiPulse ? "scale-[1.02]" : ""}`}>
+            {stats.published}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">Visibles côté membre / public</p>
+          <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300/90">
+            <Eye className="h-3.5 w-3.5" aria-hidden /> Cocher « Publier » dans le formulaire
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setListTab("upcoming");
+            scrollToList();
+          }}
+          className={`${sectionCardClass} w-full border-sky-500/15 p-5 text-left transition hover:-translate-y-0.5 hover:border-sky-400/35 ${focusRingClass}`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-200/70">À venir</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums text-sky-300 ${kpiPulse ? "scale-[1.02]" : ""}`}>
+            {stats.upcoming}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">Onglet « À venir »</p>
+          <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-sky-300/90">
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden /> Filtrer la liste
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={scrollToForm}
+          className={`${sectionCardClass} w-full border-amber-500/15 p-5 text-left transition hover:-translate-y-0.5 hover:border-amber-400/35 ${focusRingClass}`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200/70">Avec visuel</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums text-amber-300 ${kpiPulse ? "scale-[1.02]" : ""}`}>
+            {stats.withImage}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">Bannières {BANNER_W}×{BANNER_H}</p>
+          <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-amber-200/90">
+            <ImageIcon className="h-3.5 w-3.5" aria-hidden /> Ajouter une image
+          </span>
+        </button>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
         {/* Formulaire */}
-        <div className={`${sectionCardClass} p-6`}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">
-              {isEditMode ? "Modifier l'intégration" : "Créer une intégration"}
-            </h2>
+        <div ref={formSectionRef} className={`${sectionCardClass} scroll-mt-24 p-6 md:p-7`}>
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-200/75">Éditeur</p>
+              <h2 className="mt-1 text-xl font-bold text-white md:text-2xl">
+                {isEditMode ? "Modifier la session" : "Nouvelle session"}
+              </h2>
+              <p className="mt-2 max-w-md text-sm text-slate-400">
+                Le bloc de gauche prépare ce que les membres verront ; la liste à droite permet de dupliquer ou corriger
+                vite.
+              </p>
+            </div>
             {isEditMode && (
               <button
+                type="button"
                 onClick={handleCancelEdit}
-                className="text-gray-400 hover:text-white transition-colors"
+                className={`rounded-xl border border-white/10 p-2 text-slate-400 transition hover:border-rose-400/35 hover:bg-rose-500/10 hover:text-rose-100 ${focusRingClass}`}
+                aria-label="Annuler l’édition"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             )}
           </div>
@@ -955,26 +1105,56 @@ export default function PlanificationPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isPublished"
-                checked={formData.isPublished}
-                onChange={(e) =>
-                  setFormData({ ...formData, isPublished: e.target.checked })
-                }
-                className="w-4 h-4 text-indigo-300 bg-[#0f1321] border-[#353a50] rounded focus:ring-indigo-300/50"
-              />
-              <label htmlFor="isPublished" className="text-sm text-gray-300">
-                Publier sur /integration (visible publiquement)
-              </label>
-            </div>
+            <label
+              htmlFor="isPublished"
+              className={`flex cursor-pointer flex-col gap-3 rounded-2xl border p-4 transition sm:flex-row sm:items-center sm:justify-between ${
+                formData.isPublished
+                  ? "border-emerald-400/40 bg-emerald-500/[0.08] ring-1 ring-emerald-400/20"
+                  : "border-[#353a50] bg-[#0a0d14] hover:border-white/15"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="isPublished"
+                  checked={formData.isPublished}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isPublished: e.target.checked })
+                  }
+                  className={`mt-1 h-4 w-4 shrink-0 rounded border-[#353a50] bg-[#0f1321] ${focusRingClass}`}
+                />
+                <div>
+                  <span className="text-sm font-semibold text-white">Publication sur le parcours intégration</span>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    Activé : la session est visible sur{" "}
+                    <Link href="/integration" className="text-indigo-300 underline-offset-2 hover:underline" target="_blank">
+                      /integration
+                    </Link>{" "}
+                    pour les membres et le public (selon les règles du site).
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`inline-flex shrink-0 items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                  formData.isPublished
+                    ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+                    : "border-amber-400/35 bg-amber-500/15 text-amber-100"
+                }`}
+              >
+                {formData.isPublished ? "Visible" : "Interne staff"}
+              </span>
+            </label>
 
             <button
               type="submit"
               disabled={saving || uploadingImage}
-              className="w-full rounded-xl border border-indigo-300/35 bg-indigo-500/20 py-3 px-6 font-semibold text-indigo-100 transition hover:bg-indigo-500/30 disabled:opacity-50"
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-400/35 bg-gradient-to-r from-indigo-500/25 to-violet-500/20 py-3.5 px-6 text-base font-semibold text-white shadow-[0_12px_36px_rgba(79,70,229,0.2)] transition hover:from-indigo-500/35 hover:to-violet-500/30 disabled:opacity-50 ${focusRingClass}`}
             >
+              {saving || uploadingImage ? (
+                <RefreshCw className="h-5 w-5 shrink-0 animate-spin text-indigo-100" aria-hidden />
+              ) : (
+                <Sparkles className="h-5 w-5 shrink-0 text-indigo-100" aria-hidden />
+              )}
               {saving || uploadingImage
                 ? uploadingImage
                   ? "Upload image…"
@@ -987,13 +1167,13 @@ export default function PlanificationPage() {
                     ? selectedDateKeys.size > 0
                       ? `Créer ${selectedDateKeys.size} session(s)`
                       : "Sélectionnez des jours dans le calendrier"
-                    : "Créer l'intégration"}
+                    : "Créer la session"}
             </button>
           </form>
         </div>
 
         {/* Liste des intégrations */}
-        <div className={`${sectionCardClass} p-6`}>
+        <div ref={listSectionRef} className={`${sectionCardClass} scroll-mt-24 p-6 md:p-7`}>
           <div
             className="mb-4 flex gap-1 rounded-xl border border-[#353a50] bg-[#0a0d18] p-1"
             role="tablist"
@@ -1040,10 +1220,17 @@ export default function PlanificationPage() {
               )}
             </button>
           </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">
-              {listTab === "upcoming" ? "Sessions à venir" : "Sessions passées"}
-            </h2>
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-200/75">Bibliothèque</p>
+              <h2 className="mt-1 text-xl font-bold text-white md:text-2xl">
+                {listTab === "upcoming" ? "Prochains créneaux" : "Historique"}
+              </h2>
+              <p className="mt-2 max-w-md text-sm text-slate-400">
+                Clique une carte pour modifier, dupliquer pour pré-remplir une nouvelle date, ou applique une bannière à
+                toutes les sessions.
+              </p>
+            </div>
             <div className="flex flex-col items-stretch gap-2 sm:items-end">
               <label className="text-xs text-gray-400">
                 Même image sur toutes les sessions ({BANNER_W}×{BANNER_H} px, recadrage centré)
@@ -1068,105 +1255,155 @@ export default function PlanificationPage() {
             </div>
           </div>
           {loading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9146ff]"></div>
+            <div className="space-y-3 py-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-2xl border border-white/[0.06] bg-[#0f1321]/80 p-4"
+                >
+                  <div className="flex gap-4">
+                    <div className="h-20 w-28 shrink-0 rounded-xl bg-white/10" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-2/3 rounded bg-white/10" />
+                      <div className="h-3 w-full rounded bg-white/5" />
+                      <div className="h-3 w-1/2 rounded bg-white/5" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : integrations.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">
-              Aucune intégration créée
-            </p>
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-indigo-400/25 bg-indigo-500/[0.04] py-14 text-center">
+              <Users className="h-10 w-10 text-indigo-300/50" aria-hidden />
+              <p className="text-slate-300">Aucune session pour l&apos;instant</p>
+              <p className="max-w-sm text-sm text-slate-500">
+                Utilise le formulaire à gauche pour créer le premier créneau — tu pourras le dupliquer ensuite.
+              </p>
+              <button
+                type="button"
+                onClick={scrollToForm}
+                className={`mt-2 ${subtleButtonClass} ${focusRingClass}`}
+              >
+                <Sparkles className="h-4 w-4" aria-hidden />
+                Créer une session
+              </button>
+            </div>
           ) : displayedIntegrations.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">
-              {listTab === "upcoming"
-                ? "Aucune session à venir"
-                : "Aucune session dans l’archive"}
-            </p>
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.08] bg-black/20 py-12 text-center">
+              <CalendarDays className="h-9 w-9 text-slate-600" aria-hidden />
+              <p className="text-slate-400">
+                {listTab === "upcoming"
+                  ? "Aucune session à venir dans cette liste."
+                  : "Rien dans l’archive pour le moment."}
+              </p>
+            </div>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="max-h-[min(640px,70vh)] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(99,102,241,0.35)_transparent] [scrollbar-width:thin]">
               {displayedIntegrations.map((integration) => (
-                <div key={integration.id} className="rounded-lg border border-[#353a50] bg-[#0f1321] p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-white font-semibold mb-1">
-                        {integration.title}
-                      </h3>
-                      {integration.description && (
-                        <p className="text-sm text-gray-300 mb-2 line-clamp-2">
-                          {integration.description}
-                        </p>
+                <div
+                  key={integration.id}
+                  className={`group rounded-2xl border bg-[#0f1321]/90 p-4 transition hover:border-indigo-400/35 hover:shadow-[0_12px_40px_rgba(67,56,202,0.12)] ${
+                    integration.isPublished
+                      ? "border-emerald-500/25 ring-1 ring-emerald-500/10"
+                      : "border-[#353a50]"
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                      {integration.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={integration.image}
+                          alt=""
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center">
+                          <ImageIcon className="h-6 w-6 text-slate-600" aria-hidden />
+                          <span className="text-[10px] text-slate-600">Sans visuel</span>
+                        </div>
                       )}
-                      <p className="text-sm text-gray-400 mb-2">
+                      {integration.isPublished ? (
+                        <span className="absolute left-1 top-1 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                          Live
+                        </span>
+                      ) : (
+                        <span className="absolute left-1 top-1 rounded-md bg-amber-500/85 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0a0d14] shadow">
+                          Brouillon
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold leading-snug text-white">{integration.title}</h3>
+                      {integration.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-slate-400">{integration.description}</p>
+                      ) : null}
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-sky-400/80" aria-hidden />
                         {new Date(integration.date).toLocaleDateString("fr-FR", {
+                          weekday: "short",
                           day: "numeric",
-                          month: "long",
+                          month: "short",
                           year: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </p>
                       {integration.locationName && integration.locationUrl ? (
-                        <p className="text-sm text-gray-400 mb-2">
-                          📍{" "}
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-400/90" aria-hidden />
                           <a
                             href={integration.locationUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-300 hover:text-indigo-200 underline"
+                            className="truncate text-indigo-300 underline-offset-2 hover:text-indigo-200 hover:underline"
                           >
                             {integration.locationName}
                           </a>
                         </p>
                       ) : integration.location ? (
-                        <p className="text-sm text-gray-400 mb-2">
-                          📍 {integration.location}
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                          {integration.location}
                         </p>
                       ) : null}
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         {(() => {
                           const catConfig = getCategoryConfig(integration.category);
                           return (
-                            <span className={`text-xs px-2 py-1 rounded border ${catConfig.bgColor} ${catConfig.color} ${catConfig.borderColor}`}>
+                            <span
+                              className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${catConfig.bgColor} ${catConfig.color} ${catConfig.borderColor}`}
+                            >
                               {integration.category}
                             </span>
                           );
                         })()}
-                        {integration.isPublished && (
-                          <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30">
-                            Publié
-                          </span>
-                        )}
                       </div>
-                      {integration.image && (
-                        <div className="mt-2">
-                          <img
-                            src={integration.image}
-                            alt={integration.title}
-                            className="w-full aspect-[4/1] max-h-40 object-cover rounded-lg border border-[#353a50]"
-                          />
-                        </div>
-                      )}
                     </div>
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex shrink-0 flex-col gap-2">
                       <button
+                        type="button"
                         onClick={() => handleStartEdit(integration)}
-                        className="rounded-lg border border-sky-300/35 bg-sky-500/20 p-2 text-sky-100 transition hover:bg-sky-500/30"
+                        className={`rounded-xl border border-sky-300/35 bg-sky-500/20 p-2.5 text-sky-100 transition hover:bg-sky-500/35 ${focusRingClass}`}
                         title="Modifier"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="h-4 w-4" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDuplicate(integration)}
-                        className="rounded-lg border border-emerald-300/35 bg-emerald-500/20 p-2 text-emerald-100 transition hover:bg-emerald-500/30"
+                        className={`rounded-xl border border-emerald-300/35 bg-emerald-500/20 p-2.5 text-emerald-100 transition hover:bg-emerald-500/35 ${focusRingClass}`}
                         title="Dupliquer (nouvelle date)"
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="h-4 w-4" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDelete(integration.id)}
-                        className="rounded-lg border border-rose-300/35 bg-rose-500/20 p-2 text-rose-100 transition hover:bg-rose-500/30"
+                        className={`rounded-xl border border-rose-300/35 bg-rose-500/20 p-2.5 text-rose-100 transition hover:bg-rose-500/35 ${focusRingClass}`}
                         title="Supprimer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

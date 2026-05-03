@@ -86,10 +86,10 @@ export default function OnboardingKpiPage() {
   return (
     <div className="space-y-6 text-white">
       <section className="rounded-2xl border border-[#e6c773]/25 bg-[radial-gradient(circle_at_top_left,_rgba(230,199,115,0.18),_rgba(18,18,24,0.96)_45%)] p-5 md:p-6 shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
-        <p className="text-xs uppercase tracking-[0.12em] text-[#e6c773]">Onboarding membres</p>
-        <h1 className="mt-2 text-3xl font-bold md:text-4xl">KPI onboarding</h1>
+        <p className="text-xs uppercase tracking-[0.12em] text-[#e6c773]">Accueil & intégration</p>
+        <h1 className="mt-2 text-3xl font-bold md:text-4xl">Indicateurs</h1>
         <p className="mt-2 text-sm text-gray-300">
-          Pilotage des sessions, présences, activation et capacité de relance.
+          Synthèse pour la modération et l&apos;administration : sessions, présences, activation et suivi des relances.
         </p>
       </section>
 

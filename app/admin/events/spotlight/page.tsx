@@ -45,9 +45,10 @@ export default function EventsSpotlightHubPage() {
         <Link href="/admin/events" className="text-gray-400 hover:text-white transition-colors mb-4 inline-block">
           ← Retour au hub Événements
         </Link>
-        <h1 className="text-4xl font-bold text-white mb-2">Spotlight (Vie communautaire)</h1>
+        <h1 className="text-4xl font-bold text-white mb-2">Spotlight — pilotage staff</h1>
         <p className="text-gray-400">
-          Sous-groupe Spotlight intégré aux événements : évaluation, consultation et analytics ciblés.
+          Outils réservés au staff autour du Spotlight : évaluation, consultation des dossiers et analyses — rattachés
+          au module Événements pour l’historique des données.
         </p>
       </div>
 

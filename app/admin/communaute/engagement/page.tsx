@@ -84,6 +84,11 @@ const followLinks = [
 
 const raidsLinks = [
   {
+    href: "/admin/communaute/engagement/raids-fiabilite",
+    label: "Raids & fiabilité (accueil)",
+    description: "Vue d’ensemble : EventSub, signalements membres et historique consolidé.",
+  },
+  {
     href: "/admin/communaute/engagement/raids-eventsub",
     label: "Raids EventSub",
     description: "Pipeline principal des raids entrants/sortants.",

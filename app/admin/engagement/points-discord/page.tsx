@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  ArrowRight,
+  ChevronLeft,
+  History,
+  Shield,
+  Sparkles,
+  Trophy,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 import EventDiscordPointsTab from "@/components/admin/EventDiscordPointsTab";
 
 type TodoRaidItem = {
@@ -79,9 +90,19 @@ const tabBaseClass =
 const tabActiveTodoClass = `${tabBaseClass} border-amber-400/55 bg-amber-500/12 text-amber-100 shadow-[0_8px_18px_rgba(245,158,11,0.2)]`;
 const tabActiveHistoryClass = `${tabBaseClass} border-emerald-400/55 bg-emerald-500/12 text-emerald-100 shadow-[0_8px_18px_rgba(16,185,129,0.18)]`;
 const tabInactiveClass = `${tabBaseClass} border-white/15 bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08]`;
+const hubHeroClass =
+  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
+const subtleHubLinkClass =
+  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-0.5 hover:border-indigo-200/45";
+const modalBackdropClass =
+  "fixed inset-0 z-[100] flex animate-fadeIn items-center justify-center bg-black/70 p-4 backdrop-blur-md";
+const modalShellClass =
+  "relative w-full max-w-md animate-fadeIn overflow-hidden rounded-3xl border border-amber-400/30 bg-[linear-gradient(165deg,rgba(245,158,11,0.12),rgba(14,15,23,0.96)_40%,rgba(11,13,20,0.99))] shadow-[0_28px_80px_rgba(2,6,23,0.75)]";
 
 export default function AdminEngagementPointsDiscordPage() {
   const pathname = usePathname() || "";
+  const bulkModalTitleId = useId();
+  const hubLayout = pathname.startsWith("/admin/communaute");
   const [sourceTab, setSourceTab] = useState<"raids" | "events">("raids");
   const [activeTab, setActiveTab] = useState<"todo" | "history">("todo");
   const [loading, setLoading] = useState(true);
@@ -98,11 +119,11 @@ export default function AdminEngagementPointsDiscordPage() {
   const [bulkFeedback, setBulkFeedback] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const historyLoadedAtRef = useRef<Record<string, number>>({});
   const availableMonths = useMemo(() => getLast12Months(), []);
-  const backHref = (pathname ?? "").startsWith("/admin/communaute")
-    ? "/admin/communaute/engagement/historique-raids"
-    : "/admin/raids";
+  const backHref = hubLayout ? "/admin/communaute/engagement/historique-raids" : "/admin/raids";
+  const hubEngagementHref = "/admin/communaute/engagement";
 
   async function loadData(options?: { includeTodo?: boolean; includeHistory?: boolean; month?: string }) {
     const includeTodo = options?.includeTodo ?? true;
@@ -183,17 +204,16 @@ export default function AdminEngagementPointsDiscordPage() {
     }
   }
 
-  async function awardAllPoints() {
+  function openBulkConfirmModal() {
     if (sortedTodo.length === 0) {
       setBulkFeedback("Aucun raid en attente à valider.");
       return;
     }
-    const confirmed = window.confirm(
-      `Valider ${sortedTodo.length} raid(s) en une seule fois ?\n` +
-        "Cette action attribue +500 points pour chaque raid non encore traité."
-    );
-    if (!confirmed) return;
+    setBulkModalOpen(true);
+  }
 
+  async function executeBulkAward() {
+    if (sortedTodo.length === 0) return;
     setBulkSaving(true);
     setBulkFeedback("");
     try {
@@ -217,6 +237,7 @@ export default function AdminEngagementPointsDiscordPage() {
       setBulkFeedback(
         `Validation groupée terminée: ${inserted} ajouté(s), ${already} déjà attribué(s), ${invalid} statut non matched, ${missing} introuvable(s).`
       );
+      setBulkModalOpen(false);
       await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur reseau.");
@@ -224,6 +245,15 @@ export default function AdminEngagementPointsDiscordPage() {
       setBulkSaving(false);
     }
   }
+
+  useEffect(() => {
+    if (!bulkModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !bulkSaving) setBulkModalOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [bulkModalOpen, bulkSaving]);
 
   const sortedTodo = useMemo(() => {
     return [...todo].sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
@@ -303,44 +333,127 @@ export default function AdminEngagementPointsDiscordPage() {
     }
   }
 
+  const monthChipBase =
+    "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60";
+  const monthChipInactive = "border-[#3b4157] bg-[#13192b] text-slate-300 hover:border-indigo-300/35 hover:text-slate-100";
+  const monthChipActive = "border-indigo-400/50 bg-indigo-500/20 text-indigo-50";
+
   return (
-    <div className="min-h-screen space-y-6 bg-[#0b0f1a] p-4 text-white md:p-6 xl:p-8">
-      <div className={`${panelClass} p-6`}>
-        <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
-          ← Retour à Engagement
-        </Link>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <h1 className="mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
-              Points Discord - Raids & Evenements
-            </h1>
-            <p className="text-sm text-slate-300">
-              Gestion des points Discord sur deux flux: raids EventSub (+500) et presences evenements (+300).
-            </p>
-            <p className="mt-2 text-xs text-slate-400">
-              Auto-refresh: 30s
-              {lastRefreshAt ? ` • dernière mise à jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
-              {runId ? ` • run actif ${runId.slice(0, 8)}...` : " • aucun run actif"}
-            </p>
+    <div className="min-h-screen bg-[#0b0f1a] p-4 text-white md:p-6 xl:p-8">
+      <div className={hubLayout ? "mx-auto max-w-6xl space-y-6 pb-10" : "space-y-6"}>
+        {hubLayout ? (
+          <section className={`${hubHeroClass} p-6 md:p-8`}>
+            <div className="pointer-events-none absolute -right-12 top-0 h-44 w-44 rounded-full bg-violet-500/20 blur-3xl" />
+            <div className="pointer-events-none absolute bottom-0 left-0 h-36 w-36 rounded-full bg-cyan-500/15 blur-3xl" />
+            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 max-w-3xl">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <Link
+                    href={hubEngagementHref}
+                    className="inline-flex items-center gap-2 text-indigo-100/90 transition hover:text-white"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Hub engagement
+                  </Link>
+                  <span className="text-slate-600">·</span>
+                  <Link href={backHref} className="text-slate-400 transition hover:text-white">
+                    Historique raids
+                  </Link>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100">
+                    <Users className="h-3.5 w-3.5" />
+                    Récompenses membres
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                    <Shield className="h-3.5 w-3.5" />
+                    Staff — contrôle
+                  </span>
+                </div>
+                <h1 className="mt-4 flex flex-wrap items-center gap-3 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+                  <Zap className="h-9 w-9 shrink-0 text-amber-300/90 md:h-10 md:w-10" />
+                  Points Discord
+                </h1>
+                <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                  Validez les raids EventSub (+500) et basculez sur les présences événements (+300) : commandes Discord, historique
+                  mensuel et validation groupée dans une vue plus lisible.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Auto-refresh 30s
+                  {lastRefreshAt ? ` · MAJ ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
+                  {runId ? ` · run ${runId.slice(0, 8)}…` : " · aucun run actif"}
+                </p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <Link href="/admin/communaute/engagement/follow" className={subtleHubLinkClass}>
+                    Follow
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link href={backHref} className={subtleHubLinkClass}>
+                    Historique raids
+                    <History className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+              <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1.5 text-xs font-semibold text-emerald-200">
+                    <Trophy className="h-3.5 w-3.5" />
+                    {completionRate}% traité
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/35 bg-sky-500/12 px-3 py-1.5 text-xs font-semibold text-sky-200">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {history.length} validations
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
+                  disabled={loading}
+                  className={`${secondaryButtonClass} w-full sm:w-auto`}
+                >
+                  Rafraîchir
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <div className={`${panelClass} p-6`}>
+            <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
+              ← Retour à Engagement
+            </Link>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <h1 className="mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+                  Points Discord - Raids & Evenements
+                </h1>
+                <p className="text-sm text-slate-300">
+                  Gestion des points Discord sur deux flux: raids EventSub (+500) et presences evenements (+300).
+                </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  Auto-refresh: 30s
+                  {lastRefreshAt ? ` • dernière mise à jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
+                  {runId ? ` • run actif ${runId.slice(0, 8)}...` : " • aucun run actif"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  {completionRate}% traité
+                </span>
+                <span className="rounded-full border border-sky-400/35 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-sky-200">
+                  {history.length} validations
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
+                  disabled={loading}
+                  className={secondaryButtonClass}
+                >
+                  Rafraîchir
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-200">
-              {completionRate}% traité
-            </span>
-            <span className="rounded-full border border-sky-400/35 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-sky-200">
-              {history.length} validations
-            </span>
-            <button
-              type="button"
-              onClick={() => void loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth })}
-              disabled={loading}
-              className={secondaryButtonClass}
-            >
-              Rafraîchir
-            </button>
-          </div>
-        </div>
-      </div>
+        )}
 
       {(warning || error) && (
         <div className="space-y-2">
@@ -438,22 +551,48 @@ export default function AdminEngagementPointsDiscordPage() {
       {sourceTab === "raids" ? (
         <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className={`${panelClass} p-4`}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("todo");
+          }}
+          className={`${panelClass} p-4 text-left transition hover:border-amber-400/35 hover:shadow-[0_12px_32px_rgba(245,158,11,0.12)] ${
+            activeTab === "todo" ? "ring-2 ring-amber-400/40 ring-offset-2 ring-offset-[#0b0f1a]" : ""
+          }`}
+        >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raids à traiter</p>
           <p className="text-2xl font-bold text-amber-300">{sortedTodo.length}</p>
-        </div>
-        <div className={`${panelClass} p-4`}>
+          {hubLayout ? <p className="mt-1 text-[11px] text-slate-500">Ouvre l&apos;onglet À faire</p> : null}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("todo")}
+          className={`${panelClass} p-4 text-left transition hover:border-indigo-400/35 hover:shadow-[0_12px_32px_rgba(99,102,241,0.12)]`}
+        >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points potentiels</p>
           <p className="text-2xl font-bold text-indigo-200">{todoPointsTotal}</p>
-        </div>
-        <div className={`${panelClass} p-4`}>
+          {hubLayout ? <p className="mt-1 text-[11px] text-slate-500">Si tout est validé</p> : null}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("todo")}
+          className={`${panelClass} p-4 text-left transition hover:border-cyan-400/35`}
+        >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Raiders uniques</p>
           <p className="text-2xl font-bold text-cyan-200">{uniqueTodoRaiders}</p>
-        </div>
-        <div className={`${panelClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points attribués (filtre)</p>
+          {hubLayout ? <p className="mt-1 text-[11px] text-slate-500">File en cours</p> : null}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          className={`${panelClass} p-4 text-left transition hover:border-emerald-400/35 hover:shadow-[0_12px_32px_rgba(16,185,129,0.12)] ${
+            activeTab === "history" ? "ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-[#0b0f1a]" : ""
+          }`}
+        >
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points attribués (mois)</p>
           <p className="text-2xl font-bold text-emerald-300">{historyPointsTotal}</p>
-        </div>
+          {hubLayout ? <p className="mt-1 text-[11px] text-slate-500">Ouvre l&apos;historique</p> : null}
+        </button>
       </div>
 
       <div className={`${panelClass} p-4`}>
@@ -474,18 +613,26 @@ export default function AdminEngagementPointsDiscordPage() {
           </button>
           {activeTab === "history" ? (
             <>
-              <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className={controlClass}>
-                {availableMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {formatMonthLabel(month)}
-                  </option>
-                ))}
-              </select>
+              <div className="flex w-full min-w-0 max-w-full flex-col gap-2 lg:max-w-none">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Mois</p>
+                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+                  {availableMonths.map((month) => (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() => setSelectedMonth(month)}
+                      className={`${monthChipBase} ${selectedMonth === month ? monthChipActive : monthChipInactive}`}
+                    >
+                      {formatMonthLabel(month)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <input
                 value={historySearch}
                 onChange={(event) => setHistorySearch(event.target.value)}
                 placeholder="Rechercher raider / cible / admin / note..."
-                className={`${controlClass} w-full max-w-[420px]`}
+                className={`${controlClass} w-full min-w-[200px] max-w-[420px]`}
               />
             </>
           ) : null}
@@ -494,7 +641,23 @@ export default function AdminEngagementPointsDiscordPage() {
 
       <div className={`${panelClass} p-6`}>
         {loading ? (
-          <p className="text-sm text-gray-300">Chargement des donnees...</p>
+          hubLayout ? (
+            <div className="space-y-4">
+              <div className="animate-pulse rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4">
+                <div className="h-4 w-2/3 rounded bg-slate-700/40" />
+                <div className="mt-3 h-16 w-full rounded-lg bg-slate-800/40" />
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-xl border border-[#343a52] bg-[#111725]/60 p-4">
+                  <div className="h-4 w-1/2 rounded bg-slate-700/40" />
+                  <div className="mt-3 h-3 w-full rounded bg-slate-800/40" />
+                  <div className="mt-2 h-3 w-4/5 rounded bg-slate-800/40" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-300">Chargement des donnees...</p>
+          )
         ) : activeTab === "todo" ? (
           sortedTodo.length === 0 ? (
             <p className="text-sm text-gray-300">Aucun point de raid en attente.</p>
@@ -511,7 +674,7 @@ export default function AdminEngagementPointsDiscordPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void awardAllPoints()}
+                      onClick={openBulkConfirmModal}
                       disabled={bulkSaving || sortedTodo.length === 0}
                       className={primaryButtonClass}
                     >
@@ -519,7 +682,17 @@ export default function AdminEngagementPointsDiscordPage() {
                     </button>
                   </div>
                 </div>
-                {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
+                {copyFeedback ? (
+                  <p
+                    className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                      hubLayout
+                        ? "animate-fadeIn border-cyan-400/35 bg-cyan-950/35 text-cyan-100"
+                        : "text-cyan-100"
+                    }`}
+                  >
+                    {copyFeedback}
+                  </p>
+                ) : null}
                 {raidCommands.length === 0 ? (
                   <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable trouvé sur les raids en attente.</p>
                 ) : (
@@ -534,7 +707,12 @@ export default function AdminEngagementPointsDiscordPage() {
                 </p>
               </article>
               {sortedTodo.map((item) => (
-                <article key={item.id} className="rounded-xl border border-[#343a52] bg-[#111725]/85 p-4">
+                <article
+                  key={item.id}
+                  className={`rounded-xl border border-[#343a52] bg-[#111725]/85 p-4 transition hover:border-indigo-400/30 ${
+                    hubLayout ? "border-l-4 border-l-amber-500/50 pl-3" : ""
+                  }`}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-base font-semibold text-white">
                       Raider: {item.from_broadcaster_user_login} → Cible: {item.to_broadcaster_user_login}
@@ -575,7 +753,12 @@ export default function AdminEngagementPointsDiscordPage() {
         ) : (
           <div className="space-y-3">
             {filteredHistory.map((item) => (
-              <article key={item.id} className="rounded-xl border border-[#2f3d3a] bg-[#111b19]/80 p-4">
+              <article
+                key={item.id}
+                className={`rounded-xl border border-[#2f3d3a] bg-[#111b19]/80 p-4 transition hover:border-emerald-400/25 ${
+                  hubLayout ? "border-l-4 border-l-emerald-500/45 pl-3" : ""
+                }`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-base font-semibold text-white">
                     {item.raider_twitch_login} → {item.target_twitch_login}
@@ -599,8 +782,79 @@ export default function AdminEngagementPointsDiscordPage() {
       </div>
         </>
       ) : (
-        <EventDiscordPointsTab />
+        <div className={hubLayout ? "rounded-2xl border border-violet-500/15 bg-violet-950/5 p-1" : ""}>
+          {hubLayout ? (
+            <p className="px-3 pb-2 pt-3 text-center text-xs text-violet-200/90">
+              Présences événements (+300) — commandes <strong className="text-violet-100">/event</strong> et même logique que les
+              raids.
+            </p>
+          ) : null}
+          <EventDiscordPointsTab />
+        </div>
       )}
+
+      {bulkModalOpen ? (
+        <div
+          className={modalBackdropClass}
+          role="presentation"
+          onMouseDown={(e) => {
+            if (bulkSaving) return;
+            if (e.target === e.currentTarget) setBulkModalOpen(false);
+          }}
+        >
+          <div
+            className={modalShellClass}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={bulkModalTitleId}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-end border-b border-white/10 px-2 py-2">
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(false)}
+                disabled={bulkSaving}
+                className="rounded-xl border border-white/10 bg-black/30 p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-6 pb-2 pt-2">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/40 bg-amber-500/15">
+                <Zap className="h-7 w-7 text-amber-200" />
+              </div>
+              <h2 id={bulkModalTitleId} className="mt-4 text-center text-lg font-semibold text-white">
+                Valider {sortedTodo.length} raid{sortedTodo.length > 1 ? "s" : ""} ?
+              </h2>
+              <p className="mt-2 text-center text-sm text-slate-400">
+                Attribution de <strong className="text-amber-200">+500 points</strong> pour chaque ligne encore en attente. Les
+                lignes déjà traitées côté serveur seront ignorées.
+              </p>
+              <p className="mt-3 text-center text-xs text-slate-500">Échap ou clic hors fenêtre pour annuler.</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 border-t border-white/10 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(false)}
+                disabled={bulkSaving}
+                className="rounded-xl border border-slate-500/50 bg-slate-800/80 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeBulkAward()}
+                disabled={bulkSaving}
+                className="rounded-xl border border-amber-500/45 bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+              >
+                {bulkSaving ? "Envoi…" : "Confirmer la validation groupée"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      </div>
     </div>
   );
 }

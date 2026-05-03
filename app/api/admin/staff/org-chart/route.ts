@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePermission, requireSectionAccess } from "@/lib/requireAdmin";
 import { staffOrgChartRepository } from "@/lib/repositories";
 import type { OrgChartUpsertInput } from "@/lib/repositories/StaffOrgChartRepository";
+import { syncMembersTableRoleFromOrgChart } from "@/lib/staff/syncMembersTableRoleFromOrgChart";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +63,13 @@ export async function POST(request: Request) {
       isArchived: body.isArchived,
     });
 
-    return NextResponse.json({ success: true, entry });
+    const roleSync = await syncMembersTableRoleFromOrgChart({
+      memberId: body.memberId,
+      roleKey: body.roleKey,
+      actorDiscordId: sectionAdmin.discordId,
+    });
+
+    return NextResponse.json({ success: true, entry, memberRoleSynced: roleSync.updated });
   } catch (error) {
     console.error("[API admin/staff/org-chart POST] Erreur:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

@@ -183,6 +183,10 @@ export default function AdminRaidsSubPage() {
   const isCommunity = pathname.startsWith("/admin/communaute");
   const backHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
   const historyHref = isCommunity ? "/admin/communaute/engagement/historique-raids" : "/admin/engagement/historique-raids";
+  const signalementsHref = isCommunity ? "/admin/communaute/engagement/signalements-raids" : "/admin/engagement/raids-a-valider";
+  const pointsDiscordHref = isCommunity
+    ? "/admin/communaute/engagement/points-discord"
+    : "/admin/engagement/points-discord";
   const eventSubHubHref = "/admin/engagement/raids-test";
   const reviewHref = "/admin/engagement/raids-sub/a-valider";
   const watchlistHref = "/admin/engagement/raids-test/watchlist";
@@ -523,10 +527,12 @@ export default function AdminRaidsSubPage() {
   }, [dailyChartData, selectedChartDay, selectedMonth, nonDuplicateEvents]);
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] p-8 text-white space-y-6">
+    <div
+      className={`text-white space-y-6 ${isCommunity ? "pb-2" : "min-h-screen bg-[#0e0e10] p-8"}`}
+    >
       <section className="rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur">
         <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
-          ← Retour au suivi des raids
+          {isCommunity ? "← Hub engagement" : "← Retour au suivi des raids"}
         </Link>
         <div className="mb-3 flex flex-wrap gap-2">
           <Link
@@ -534,28 +540,57 @@ export default function AdminRaidsSubPage() {
             className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#c4b5fd]"
             style={{ borderColor: "rgba(167,139,250,0.45)" }}
           >
-            Ouvrir historique raids
+            Historique consolidé
           </Link>
+          {isCommunity ? (
+            <Link
+              href={signalementsHref}
+              className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#facc15]"
+              style={{ borderColor: "rgba(250,204,21,0.45)" }}
+            >
+              File signalements
+            </Link>
+          ) : (
+            <Link
+              href={eventSubHubHref}
+              className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#93c5fd]"
+              style={{ borderColor: "rgba(96,165,250,0.45)" }}
+            >
+              Ouvrir hub raids EventSub test
+            </Link>
+          )}
           <Link
-            href={eventSubHubHref}
-            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#93c5fd]"
-            style={{ borderColor: "rgba(96,165,250,0.45)" }}
+            href={pointsDiscordHref}
+            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-200"
+            style={{ borderColor: "rgba(52,211,153,0.45)" }}
           >
-            Ouvrir hub raids EventSub test
+            Points Discord (+500)
           </Link>
         </div>
-        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-4xl font-bold text-transparent">
-          Raids Sub - Suivi EventSub
+        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+          {isCommunity ? "Raids EventSub — santé du flux" : "Raids Sub - Suivi EventSub"}
         </h1>
         <p className="max-w-4xl text-sm text-slate-300">
-          Cette page pilote le flux EventSub de bout en bout: surveillance des subscriptions, suivi des statuts de traitement,
-          analyse des volumes quotidiens et corrections rapides des raids mal classés. Périmètre membres :{" "}
-          <span className="text-slate-100">non archivés</span> (<span className="font-mono text-xs">members.is_archived</span>
-          ), actifs ou inactifs côté communauté. La sync ne garde des subscriptions
-          <span className="text-slate-100"> channel.raid</span> que pour ceux qui sont en live (Helix) ou dans la fenêtre de
-          grâce après fin de live (<span className="font-mono text-xs text-slate-200">GRACE_PERIOD_MINUTES</span>, plus long pour
-          le rôle <span className="text-slate-100">Nouveau</span>, dans{" "}
-          <span className="font-mono text-xs text-slate-200">lib/raidEventsubTest.ts</span>).
+          {isCommunity ? (
+            <>
+              Pour les <span className="text-slate-100">membres TENF</span>, un raid mal compté = frustration. Ce tableau permet
+              de voir en direct si Twitch envoie bien les événements, combien sont <strong>matched</strong>, et où corriger. La
+              synchronisation ne garde les abonnements <span className="font-mono text-xs text-slate-200">channel.raid</span> que
+              pour les chaînes réellement en live (Helix) ou en fenêtre de grâce après le live — paramètres dans{" "}
+              <span className="font-mono text-xs text-slate-200">lib/raidEventsubTest.ts</span>.
+            </>
+          ) : (
+            <>
+              Cette page pilote le flux EventSub de bout en bout: surveillance des subscriptions, suivi des statuts de traitement,
+              analyse des volumes quotidiens et corrections rapides des raids mal classés. Périmètre membres :{" "}
+              <span className="text-slate-100">non archivés</span> (<span className="font-mono text-xs">members.is_archived</span>
+              ), actifs ou inactifs côté communauté. La sync ne garde des subscriptions
+              <span className="text-slate-100"> channel.raid</span> que pour ceux qui sont en live (Helix) ou dans la fenêtre de
+              grâce après fin de live (<span className="font-mono text-xs text-slate-200">GRACE_PERIOD_MINUTES</span>, plus long pour
+              le rôle <span className="text-slate-100">Nouveau</span>, dans{" "}
+              <span className="font-mono text-xs text-slate-200">lib/raidEventsubTest.ts</span>).
+            </>
+          )}
         </p>
       </section>
 
