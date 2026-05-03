@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type LucideIcon } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -25,6 +25,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 import { getDiscordUser } from "@/lib/discord";
