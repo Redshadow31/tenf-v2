@@ -43,6 +43,15 @@ const ROLE_LABELS: Record<string, string> = {
   SOUTIEN_TENF: "Soutien TENF",
 };
 
+/** Rôles modifiables depuis l’interface (les fondateurs restent figés dans le code). */
+const EDITABLE_ROLES: Array<Exclude<AdminAccess["role"], "FONDATEUR">> = [
+  "ADMIN_COORDINATEUR",
+  "MODERATEUR",
+  "MODERATEUR_EN_FORMATION",
+  "MODERATEUR_EN_PAUSE",
+  "SOUTIEN_TENF",
+];
+
 const heroCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.14),rgba(12,14,22,0.9)_45%,rgba(56,189,248,0.08))] shadow-[0_18px_40px_rgba(2,6,23,0.45)]";
 const sectionCardClass =
@@ -66,6 +75,7 @@ export default function GestionAccesPage() {
   const [tableSearch, setTableSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | AdminAccess["role"]>("all");
   const [aliasFilter, setAliasFilter] = useState<"all" | "with_alias" | "without_alias">("all");
+  const [updatingRoleDiscordId, setUpdatingRoleDiscordId] = useState<string | null>(null);
 
   // Vérifier si l'utilisateur est fondateur
   useEffect(() => {
@@ -259,6 +269,43 @@ export default function GestionAccesPage() {
       console.error("Error deleting access:", err);
       setError(err.message || "Erreur lors de la suppression de l'accès");
       setSuccess(null);
+    }
+  }
+
+  async function handleUpdateRole(access: AdminAccess, newRole: AdminAccess["role"]) {
+    if (newRole === access.role) return;
+    if (access.role === "FONDATEUR" || newRole === "FONDATEUR") return;
+
+    try {
+      setUpdatingRoleDiscordId(access.discordId);
+      setError(null);
+      const response = await fetch("/api/admin/access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          discordId: access.discordId,
+          role: newRole,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erreur lors de la mise à jour du rôle");
+      }
+
+      await loadAccessList();
+      setSuccess("Rôle mis à jour.");
+      setError(null);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Error updating role:", err);
+      setError(err.message || "Erreur lors de la mise à jour du rôle");
+      setSuccess(null);
+      await loadAccessList();
+    } finally {
+      setUpdatingRoleDiscordId(null);
     }
   }
 
@@ -775,9 +822,28 @@ export default function GestionAccesPage() {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={getRoleBadgeClass(access.role)}>
-                          {ROLE_LABELS[access.role] || access.role}
-                        </span>
+                        {access.role === "FONDATEUR" ? (
+                          <span className={getRoleBadgeClass(access.role)}>
+                            {ROLE_LABELS[access.role] || access.role}
+                          </span>
+                        ) : (
+                          <select
+                            value={access.role}
+                            disabled={updatingRoleDiscordId === access.discordId || loading}
+                            onChange={(e) => {
+                              const next = e.target.value as AdminAccess["role"];
+                              void handleUpdateRole(access, next);
+                            }}
+                            className="max-w-[min(100%,15rem)] rounded-lg border border-[#3a4059] bg-[#0d1220] px-2 py-1.5 text-sm text-white disabled:opacity-60"
+                            aria-label={`Changer le rôle de ${access.username || access.discordId}`}
+                          >
+                            {EDITABLE_ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABELS[r]}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-center align-middle">
                         {access.memberInSupabase === false ? (

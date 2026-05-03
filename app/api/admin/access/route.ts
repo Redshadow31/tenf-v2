@@ -329,7 +329,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { discordId, role } = body;
-    const adminAlias = sanitizeAdminAlias(body?.adminAlias);
+    const hasAdminAliasKey =
+      body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, "adminAlias");
+    const adminAlias = hasAdminAliasKey ? sanitizeAdminAlias(body.adminAlias) : undefined;
     const normalizedRole = normalizeAdminRole(role);
 
     if (!discordId || !normalizedRole) {
@@ -384,13 +386,14 @@ export async function POST(request: NextRequest) {
     const existingIndex = storedAccessList.findIndex(a => a.discordId === discordId);
     
     if (existingIndex >= 0) {
-      // Mettre à jour le rôle existant
+      // Mettre à jour le rôle existant (ne pas effacer l'alias si le corps ne contient pas adminAlias)
+      const prev = storedAccessList[existingIndex];
       storedAccessList[existingIndex] = {
-        ...storedAccessList[existingIndex],
+        ...prev,
         role: targetRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
-        adminAlias,
+        ...(hasAdminAliasKey ? { adminAlias } : {}),
       };
     } else {
       // Ajouter un nouvel accès
@@ -399,7 +402,7 @@ export async function POST(request: NextRequest) {
         role: targetRole,
         addedAt: new Date().toISOString(),
         addedBy: admin.discordId,
-        adminAlias,
+        ...(adminAlias !== undefined ? { adminAlias } : {}),
       });
     }
 
